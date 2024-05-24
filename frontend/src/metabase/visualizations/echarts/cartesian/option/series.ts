@@ -27,6 +27,7 @@ import type {
   LabelFormatter,
   ChartDataDensity,
   CartesianChartModel,
+  CartesianChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
@@ -97,7 +98,7 @@ export function getDataLabelFormatter(
 
   const getShowLabel = getShowLabelFn(
     chartWidth,
-    seriesModel.dataKey,
+    accessKey,
     chartDataDensity,
     settings,
   );
@@ -130,12 +131,13 @@ function getShowLabelFn(
     return () => true;
   }
 
-  const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
+  const { averageLabelWidth, totalNumberOfLabels, type } = chartDataDensity;
   if (totalNumberOfLabels === 0 || averageLabelWidth === 0) {
     return () => true;
   }
 
-  const maxNumberOfLabels = (1.7 * chartWidth) / averageLabelWidth;
+  const scaleFactor = type === "cartesian" ? 1.7 : 0.6;
+  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
   }
@@ -156,6 +158,16 @@ function getSelectionFrequency(
   maxNumberOfLabels: number,
   dataKey: DataKey,
 ) {
+  if (chartDataDensity.type === "waterfall") {
+    const { totalNumberOfLabels } = chartDataDensity;
+
+    const selectionFrequency = Math.ceil(
+      totalNumberOfLabels / maxNumberOfLabels,
+    );
+
+    return { selectionFrequency, selectionOffset: 0 };
+  }
+
   const { totalNumberOfLabels, seriesDataKeysWithLabels } = chartDataDensity;
 
   const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
@@ -324,7 +336,7 @@ const buildEChartsLineAreaSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
-  chartDataDensity: ChartDataDensity,
+  chartDataDensity: CartesianChartDataDensity,
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
@@ -400,7 +412,7 @@ const buildEChartsLineAreaSeries = (
 };
 
 function getShowSymbol(
-  chartDataDensity: ChartDataDensity,
+  chartDataDensity: CartesianChartDataDensity,
   chartWidth: number,
   seriesSettings: SeriesSettings,
 ): boolean {

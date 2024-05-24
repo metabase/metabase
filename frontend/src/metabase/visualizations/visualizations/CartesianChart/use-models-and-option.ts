@@ -8,6 +8,7 @@ import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import type {
+  CartesianChartModel,
   ScatterPlotModel,
   WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -70,8 +71,9 @@ export function useModelsAndOption({
     : false;
 
   const chartModel = useMemo(() => {
-    let getModel = getCartesianChartModel;
+    let getModel;
 
+    getModel = getCartesianChartModel;
     if (card.display === "waterfall") {
       getModel = getWaterfallChartModel;
     } else if (card.display === "scatter") {
@@ -153,7 +155,7 @@ export function useModelsAndOption({
         );
       default:
         return getCartesianChartOption(
-          chartModel,
+          chartModel as CartesianChartModel,
           chartMeasurements,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,

@@ -3,13 +3,14 @@ import _ from "underscore";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
-  ChartDataDensity,
+  CartesianChartDataDensity,
   ChartDataset,
   DataKey,
   Datum,
   DimensionModel,
   LabelFormatter,
   LegacySeriesSettingsObjectKey,
+  RawValueFormatter,
   SeriesFormatters,
   SeriesModel,
   StackDisplay,
@@ -17,6 +18,7 @@ import type {
   StackTotalDataKey,
   StackedSeriesFormatters,
   VizSettingsKey,
+  WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -331,6 +333,59 @@ function shouldRenderCompact(
   return getAvgLength(true) + 3 < getAvgLength(false);
 }
 
+export function getWaterfallChartDataDensity(
+  dataset: ChartDataset,
+  waterfallLabelFormatter: RawValueFormatter | undefined,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): WaterFallChartDataDensity {
+  const type = "waterfall";
+  if (
+    !settings["graph.show_values"] ||
+    settings["graph.label_value_frequency"] === "all"
+  ) {
+    return {
+      type,
+      averageLabelWidth: 0,
+      totalNumberOfLabels: 0,
+    };
+  }
+
+  const totalNumberOfLabels = dataset.reduce((sum, datum) => {
+    const labelCount = datum[WATERFALL_VALUE_KEY] != null ? 1 : 0;
+
+    return sum + labelCount;
+  }, 0);
+
+  const fontStyle = {
+    family: renderingContext.fontFamily,
+    weight: CHART_STYLE.seriesLabels.weight,
+    size: CHART_STYLE.seriesLabels.size,
+  };
+  const sumOfLabelWidths = dataset.reduce((sum, datum) => {
+    const value = datum[WATERFALL_VALUE_KEY];
+
+    if (!waterfallLabelFormatter) {
+      return sum;
+    }
+
+    const labelWidth = renderingContext.measureText(
+      waterfallLabelFormatter(value),
+      fontStyle,
+    );
+
+    return sum + labelWidth;
+  }, 0);
+  const averageLabelWidth =
+    totalNumberOfLabels > 0 ? sumOfLabelWidths / totalNumberOfLabels : 0;
+
+  return {
+    type,
+    averageLabelWidth,
+    totalNumberOfLabels,
+  };
+}
+
 export function getChartDataDensity(
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
@@ -339,7 +394,8 @@ export function getChartDataDensity(
   stackedLabelsFormatters: StackedSeriesFormatters,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): ChartDataDensity {
+): CartesianChartDataDensity {
+  const type = "cartesian";
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     seriesModels,
     stackModels,
@@ -364,6 +420,7 @@ export function getChartDataDensity(
     settings["graph.label_value_frequency"] === "all"
   ) {
     return {
+      type,
       seriesDataKeysWithLabels,
       stackedDisplayWithLabels,
       totalNumberOfDots,
@@ -496,6 +553,7 @@ export function getChartDataDensity(
     totalNumberOfLabels > 0 ? sumOfLabelWidths / totalNumberOfLabels : 0;
 
   return {
+    type,
     seriesDataKeysWithLabels,
     stackedDisplayWithLabels,
     totalNumberOfDots,

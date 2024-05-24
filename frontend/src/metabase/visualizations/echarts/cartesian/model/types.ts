@@ -192,15 +192,28 @@ export type StackModel = {
   seriesKeys: DataKey[];
 };
 
-export type ChartDataDensity = {
+type BaseChartDataDensity = {
+  type: string;
   averageLabelWidth: number;
-  seriesDataKeysWithLabels: DataKey[];
-  stackedDisplayWithLabels: StackDisplay[];
-  totalNumberOfDots: number;
   totalNumberOfLabels: number;
 };
 
-export type CartesianChartModel = {
+export type ChartDataDensity =
+  | WaterFallChartDataDensity
+  | CartesianChartDataDensity;
+
+export type WaterFallChartDataDensity = BaseChartDataDensity & {
+  type: "waterfall";
+};
+
+export type CartesianChartDataDensity = BaseChartDataDensity & {
+  type: "cartesian";
+  seriesDataKeysWithLabels: DataKey[];
+  stackedDisplayWithLabels: StackDisplay[];
+  totalNumberOfDots: number;
+};
+
+export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
@@ -221,15 +234,19 @@ export type CartesianChartModel = {
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters?: SeriesFormatters;
   stackedLabelsFormatters?: StackedSeriesFormatters;
-  dataDensity: ChartDataDensity;
 };
 
-export type ScatterPlotModel = CartesianChartModel & {
+export type CartesianChartModel = BaseCartesianChartModel & {
+  dataDensity: CartesianChartDataDensity;
+};
+
+export type ScatterPlotModel = BaseCartesianChartModel & {
   bubbleSizeDomain: Extent | null;
 };
 
-export type WaterfallChartModel = CartesianChartModel & {
+export type WaterfallChartModel = BaseCartesianChartModel & {
   waterfallLabelFormatter: LabelFormatter | undefined;
+  dataDensity: WaterFallChartDataDensity;
 };
 
 export type ShowWarning = (warning: string) => void;

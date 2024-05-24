@@ -3,7 +3,7 @@ import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/const
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
-  CartesianChartModel,
+  BaseCartesianChartModel,
   ChartDataset,
   NumericAxisScaleTransforms,
   XAxisModel,
@@ -200,7 +200,7 @@ const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
 const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
 
 const getAutoAxisEnabledSetting = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   boundaryWidth: number,
   maxXTickWidth: number,
@@ -250,7 +250,7 @@ const getAutoAxisEnabledSetting = (
 };
 
 const getTicksDimensions = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   chartWidth: number,
   outerHeight: number,
   settings: ComputedVisualizationSettings,
@@ -348,7 +348,7 @@ const getTicksDimensions = (
 const TICK_OVERFLOW_BUFFER = 4;
 
 export const getChartPadding = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
@@ -478,7 +478,7 @@ export const getChartBounds = (
 };
 
 const getDimensionWidth = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   boundaryWidth: number,
 ) => {
   const { xAxisModel } = chartModel;
@@ -525,7 +525,7 @@ const areHorizontalXAxisTicksOverlapping = (
 };
 
 export const getChartMeasurements = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   width: number,
