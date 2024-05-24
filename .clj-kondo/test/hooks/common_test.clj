@@ -1,7 +1,7 @@
-(ns hooks.common-test
+(ns ^:mb/once hooks.common-test
   (:require
    [clj-kondo.hooks-api :as api]
-   [clj-kondo.impl.utils :as utils]
+   [clj-kondo.impl.utils]
    [clojure.test :refer :all]
    [hooks.common]))
 

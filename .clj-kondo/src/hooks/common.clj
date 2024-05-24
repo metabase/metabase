@@ -378,7 +378,7 @@
         (when (symbol? sexpr)
           (let [resolved (hooks/resolve {:name sexpr})]
             (cond
-              resolved
+              (and resolved (:ns resolved))
               (symbol (name (:ns resolved)) (name (:name resolved)))
 
               ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
