@@ -179,7 +179,11 @@ describe("SmartScalar > compute", () => {
 
       it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
         const insights = [{ unit: dateUnit, col: "Count" }];
-        const trend = computeTrend(series({ rows, cols }), insights, settings);
+        const { trend } = computeTrend(
+          series({ rows, cols }),
+          insights,
+          settings,
+        );
         expect(getTrend(trend)).toEqual(expected);
       });
     });
@@ -258,7 +262,7 @@ describe("SmartScalar > compute", () => {
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
           const insights = [{ unit: dateUnit, col: "Count" }];
-          const trend = computeTrend(
+          const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
             settings,
@@ -459,7 +463,7 @@ describe("SmartScalar > compute", () => {
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
           const insights = [{ unit: dateUnit, col: "Count" }];
-          const trend = computeTrend(
+          const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
             settings,
@@ -494,10 +498,13 @@ describe("SmartScalar > compute", () => {
 
           it.each(testCases)("$description", ({ rows, dateUnit, error }) => {
             const insights = [{ unit: dateUnit, col: "Count" }];
+            const { error: computeTrendError } = computeTrend(
+              series({ rows, cols }),
+              insights,
+              settings,
+            );
 
-            expect(() =>
-              computeTrend(series({ rows, cols }), insights, settings),
-            ).toThrow(error);
+            expect(computeTrendError.message).toEqual(error);
           });
         });
       });
@@ -796,7 +803,7 @@ describe("SmartScalar > compute", () => {
           "$description",
           ({ rows, expected, dateUnit, periodsAgo }) => {
             const insights = [{ unit: dateUnit, col: "Count" }];
-            const trend = computeTrend(
+            const { trend } = computeTrend(
               series({ rows, cols }),
               insights,
               createSettings(periodsAgo),
@@ -882,13 +889,13 @@ describe("SmartScalar > compute", () => {
             ({ rows, dateUnit, periodsAgo, error }) => {
               const insights = [{ unit: dateUnit, col: "Count" }];
 
-              expect(() =>
-                computeTrend(
-                  series({ rows, cols }),
-                  insights,
-                  createSettings(periodsAgo),
-                ),
-              ).toThrow(error);
+              const { error: computeTrendError } = computeTrend(
+                series({ rows, cols }),
+                insights,
+                createSettings(periodsAgo),
+              );
+
+              expect(computeTrendError.message).toEqual(error);
             },
           );
         });
@@ -1000,7 +1007,7 @@ describe("SmartScalar > compute", () => {
         ];
 
         it.each(testCases)("$description", ({ label, value, expected }) => {
-          const trend = computeTrend(
+          const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
             createSettings({ label, value }),
@@ -1097,7 +1104,7 @@ describe("SmartScalar > compute", () => {
         ];
 
         it.each(testCases)("$description", ({ rows, cols, expected }) => {
-          const trend = computeTrend(
+          const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
             createSettings({ column: "Average" }),
@@ -1144,13 +1151,15 @@ describe("SmartScalar > compute", () => {
         it.each(testCases)("$description", ({ rows, dateUnit, type }) => {
           const insights = [{ unit: dateUnit, col: "Count" }];
 
-          expect(() =>
-            computeTrend(
-              series({ rows, cols }),
-              insights,
-              createSettings(type),
-            ),
-          ).toThrow("Invalid comparison type specified.");
+          const { error: computeTrendError } = computeTrend(
+            series({ rows, cols }),
+            insights,
+            createSettings(type),
+          );
+
+          expect(computeTrendError.message).toEqual(
+            "Invalid comparison type specified.",
+          );
         });
       });
     });
@@ -1519,7 +1528,7 @@ describe("SmartScalar > compute", () => {
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
           const insights = [{ unit: dateUnit, col: "Count" }];
-          const trend = computeTrend(
+          const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
             settings,
@@ -1690,7 +1699,7 @@ describe("SmartScalar > compute", () => {
             "$description",
             ({ rows, expected, dateUnit, periodsAgo }) => {
               const insights = [{ unit: dateUnit, col: "Count" }];
-              const trend = computeTrend(
+              const { trend } = computeTrend(
                 series({ rows, cols }),
                 insights,
                 createSettings(periodsAgo),
@@ -1805,7 +1814,7 @@ describe("SmartScalar > compute", () => {
             "$description",
             ({ rows, expected, dateUnit, periodsAgo }) => {
               const insights = [{ unit: dateUnit, col: "Count" }];
-              const trend = computeTrend(
+              const { trend } = computeTrend(
                 series({ rows, cols }),
                 insights,
                 createSettings(periodsAgo),
@@ -1887,7 +1896,7 @@ describe("SmartScalar > compute", () => {
         "$description",
         ({ rows, expected, dateUnit, field }) => {
           const insights = [{ unit: dateUnit, col: field }];
-          const trend = computeTrend(
+          const { trend } = computeTrend(
             series({ rows, cols }),
             insights,
             createSettings(field),
@@ -1924,9 +1933,11 @@ describe("SmartScalar > compute", () => {
 
       it("should have `compact: false` by default", () => {
         const {
-          comparisons: [{ display: comparisonDisplay }],
-          display,
-          formatOptions,
+          trend: {
+            comparisons: [{ display: comparisonDisplay }],
+            display,
+            formatOptions,
+          },
         } = computeTrend(series, insights, createVizSettings());
 
         expect(formatOptions.compact).toBeFalsy();
@@ -1936,9 +1947,11 @@ describe("SmartScalar > compute", () => {
 
       it("should have `compact: true` with `scalar.compact_primary_number` viz setting", () => {
         const {
-          comparisons: [{ display: comparisonDisplay }],
-          display,
-          formatOptions,
+          trend: {
+            comparisons: [{ display: comparisonDisplay }],
+            display,
+            formatOptions,
+          },
         } = computeTrend(
           series,
           insights,
@@ -1993,7 +2006,7 @@ describe("SmartScalar > compute", () => {
       };
 
       const insights = [{ unit: dateUnit, col: COUNT_FIELD }];
-      const trend = computeTrend(
+      const { trend } = computeTrend(
         series({ rows, cols, queryType: QUERY_TYPE }),
         insights,
         createSettings(periodsAgo),
