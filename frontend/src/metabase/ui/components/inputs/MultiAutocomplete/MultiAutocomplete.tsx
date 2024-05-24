@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import { Icon } from "metabase/ui";
 
+import styles from "./MultiAutocomplete.module.css";
 import { parseValues } from "./util";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
@@ -132,7 +133,7 @@ export function MultiAutocomplete({
     <Tooltip
       label={t`Separate values with commas, tabs or newlines. Use double quotes for values containing commas.`}
     >
-      <Icon name="info_filled" color="red" />
+      <Icon name="info_filled" className={styles.icon} />
     </Tooltip>
   );
 
