@@ -24,14 +24,11 @@ import type {
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard as IDashboard,
   DashboardId,
   DashCardDataMap,
   DashCardId,
-  Database,
-  DatabaseId,
   ParameterId,
   ParameterValueOrArray,
   CardId,
@@ -84,10 +81,8 @@ type DashboardProps = {
   dashboard: IDashboard;
   dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, boolean>;
-  databases: Record<DatabaseId, Database>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
-  metadata: Metadata;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
@@ -389,7 +384,6 @@ function DashboardInner(props: DashboardProps) {
     return (
       <DashboardGridConnected
         clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
-        metadata={props.metadata}
         isNightMode={shouldRenderAsNightMode}
         isFullscreen={props.isFullscreen}
         isEditingParameter={props.isEditingParameter}
@@ -469,7 +463,6 @@ function DashboardInner(props: DashboardProps) {
               sidebar={props.sidebar}
               setSidebar={props.setSidebar}
               closeSidebar={props.closeSidebar}
-              databases={props.databases}
               isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
               showAddParameterPopover={props.showAddParameterPopover}
               hideAddParameterPopover={props.hideAddParameterPopover}

@@ -24,19 +24,15 @@ import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard as IDashboard,
   DashboardId,
   DashCardDataMap,
   DashCardId,
-  DatabaseId,
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -87,9 +83,7 @@ type StateProps = {
   dashboard: IDashboard | null;
   dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, unknown>;
-  databases: Record<DatabaseId, Database>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  metadata: Metadata;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
@@ -113,7 +107,6 @@ type DispatchProps = {
 type DashboardAppProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => {
-  const metadata = getMetadata(state);
   return {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
@@ -126,10 +119,7 @@ const mapStateToProps = (state: State): StateProps => {
     dashboard: getDashboardComplete(state),
     dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
-    databases: metadata.databases,
     parameterValues: getParameterValues(state),
-
-    metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
