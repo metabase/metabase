@@ -136,7 +136,7 @@ function getShowLabelFn(
     return () => true;
   }
 
-  const scaleFactor = type === "cartesian" ? 1.7 : 0.6;
+  const scaleFactor = type === "cartesian" ? 1 : 0.6;
   const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
@@ -558,7 +558,7 @@ function getShowStackedLabelFn(
     return () => true;
   }
 
-  const scaleFactor = 1.7;
+  const scaleFactor = 1;
   const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
