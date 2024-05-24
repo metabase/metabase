@@ -1,6 +1,8 @@
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { offsetClause, aggregations } from "./aggregation";
+import { aggregate, aggregations } from "./aggregation";
+import { offsetClause } from "./expression";
+import { displayInfo } from "./metadata";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
@@ -14,13 +16,22 @@ describe("aggregation", () => {
         aggregations: [{ operatorName: "count" }],
       });
       const [aggregationClause] = aggregations(query, stageIndex);
-
-      const finalQuery = offsetClause(
+      const ofsettedClause = offsetClause(
         query,
         stageIndex,
         aggregationClause,
         offset,
       );
+      const finalQuery = aggregate(query, stageIndex, ofsettedClause);
+      const expectedOffsettedClauseName = "Count (previous period)";
+
+      expect(displayInfo(finalQuery, stageIndex, ofsettedClause)).toEqual({
+        displayName: expectedOffsettedClauseName,
+        effectiveType: "type/Integer",
+        isNamed: true,
+        longDisplayName: expectedOffsettedClauseName,
+        name: expectedOffsettedClauseName,
+      });
 
       expect(toLegacyQuery(finalQuery)).toMatchObject({
         database: SAMPLE_DATABASE.id,
@@ -30,8 +41,8 @@ describe("aggregation", () => {
             [
               "offset",
               {
-                name: "Count (previous period)",
-                "display-name": "Count (previous period)",
+                name: expectedOffsettedClauseName,
+                "display-name": expectedOffsettedClauseName,
               },
               ["count"],
               offset,

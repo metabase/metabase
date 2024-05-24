@@ -1,5 +1,8 @@
+import { t } from "ttag";
+
 import * as ML from "cljs/metabase.lib.js";
 
+import { displayInfo } from "./metadata";
 import type {
   AggregationClause,
   ColumnMetadata,
@@ -99,4 +102,19 @@ export function diagnoseExpression(
     mbql,
     expressionPosition,
   );
+}
+
+export function offsetClause(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): ExpressionClause {
+  const { displayName } = displayInfo(query, stageIndex, clause);
+  const newName = t`${displayName} (previous period)`;
+  const newClause = expressionClause("offset", [clause, offset], {
+    name: newName,
+    "display-name": newName,
+  });
+  return newClause;
 }

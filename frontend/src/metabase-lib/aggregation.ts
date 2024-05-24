@@ -1,16 +1,11 @@
-import { t } from "ttag";
-
 import * as ML from "cljs/metabase.lib.js";
 
-import { expressionClause } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   Aggregable,
   AggregationClause,
   AggregationOperator,
   ColumnMetadata,
-  ExpressionClause,
-  FilterClause,
   Query,
 } from "./types";
 
@@ -78,21 +73,4 @@ export function aggregateByCount(query: Query): Query {
 
   const aggregation = aggregationClause(countOperator);
   return aggregate(query, stageIndex, aggregation);
-}
-
-// TODO: move to different file
-export function offsetClause(
-  query: Query,
-  stageIndex: number,
-  clause: AggregationClause | ExpressionClause | FilterClause,
-  offset: number,
-): Query {
-  const { displayName } = displayInfo(query, stageIndex, clause);
-  const newName = t`${displayName} (previous period)`;
-  const newClause = expressionClause("offset", [clause, offset], {
-    name: newName,
-    "display-name": newName,
-  });
-
-  return aggregate(query, stageIndex, newClause);
 }
