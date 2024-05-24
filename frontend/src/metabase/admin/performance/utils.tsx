@@ -20,7 +20,7 @@ import type {
 } from "metabase-types/api";
 
 import { rootId } from "./constants";
-import type { StrategyLabel } from "./strategies";
+import type { StrategyLabel } from "./types";
 
 const { strategies } = PLUGIN_CACHING;
 

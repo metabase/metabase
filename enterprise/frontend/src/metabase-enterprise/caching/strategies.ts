@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { StrategyData } from "metabase/admin/performance/strategies";
+import type { StrategyData } from "metabase/admin/performance/types";
 import { defaultCron } from "metabase/admin/performance/utils";
 
 const scheduleStrategyValidationSchema = Yup.object({
