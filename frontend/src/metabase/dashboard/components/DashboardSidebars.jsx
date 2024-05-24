@@ -47,7 +47,6 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
-  getEmbeddedParameterVisibility: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
@@ -76,7 +75,6 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
-  getEmbeddedParameterVisibility,
 }) {
   const parameters = useSelector(getParameters);
   const editingParameter = useSelector(getEditingParameter);
@@ -141,7 +139,6 @@ export function DashboardSidebars({
       );
       return (
         <ParameterSidebar
-          getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}

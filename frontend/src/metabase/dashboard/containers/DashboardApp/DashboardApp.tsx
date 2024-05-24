@@ -21,7 +21,6 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -67,7 +66,6 @@ import {
   getSelectedTabId,
   getSidebar,
   getSlowCards,
-  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {
@@ -104,9 +102,6 @@ type StateProps = {
   isAdditionalInfoVisible: boolean;
   selectedTabId: SelectedTabId;
   isNavigatingBackToDashboard: boolean;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
 };
 
 type DispatchProps = {
@@ -147,8 +142,6 @@ const mapStateToProps = (state: State): StateProps => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-    getEmbeddedParameterVisibility: (slug: string) =>
-      getEmbeddedParameterVisibility(state, slug),
   };
 };
 

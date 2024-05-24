@@ -24,7 +24,6 @@ import type {
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard as IDashboard,
@@ -160,9 +159,6 @@ type DashboardProps = {
     columnKey: string,
     settings?: Record<string, unknown> | null,
   ) => void;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
   updateDashboardAndCards: () => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
@@ -541,9 +537,6 @@ function DashboardInner(props: DashboardProps) {
               sidebar={props.sidebar}
               closeSidebar={props.closeSidebar}
               selectedTabId={props.selectedTabId}
-              getEmbeddedParameterVisibility={
-                props.getEmbeddedParameterVisibility
-              }
               setDashboardAttribute={handleSetDashboardAttribute}
               onCancel={() => setSharing(false)}
             />
