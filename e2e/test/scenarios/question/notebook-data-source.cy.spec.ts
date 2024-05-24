@@ -115,13 +115,9 @@ describe("scenarios > notebook > data source", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 2);
-        entityPickerModalTab("Recents").should("not.exist");
-        entityPickerModalTab("Models").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        cy.findAllByRole("tab").should("have.length", 3);
+        entityPickerModalTab("Recents").should("exist");
+        entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
         entityPickerModalTab("Saved questions").should("not.exist");
       });

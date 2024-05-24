@@ -96,8 +96,8 @@ describe("issue 21984", () => {
     cy.visit("/");
 
     cy.findByTestId("home-page").within(() => {
-      cy.findByText("Metabase tips");
-      cy.findByText("Pick up where you left off").should("not.exist");
+      // the table should not be in the recents results
+      cy.findByText("Reviews").should("not.exist");
     });
 
     commandPaletteButton().click();
