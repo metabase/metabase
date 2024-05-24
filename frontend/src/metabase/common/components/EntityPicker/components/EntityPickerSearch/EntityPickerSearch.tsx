@@ -44,6 +44,7 @@ export function EntityPickerSearchInput({
     {
       q: debouncedSearchQuery,
       models,
+      context: "entity-picker",
       ...searchParams,
     },
     {

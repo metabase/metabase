@@ -123,7 +123,7 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: "search-bar" | "search-app" | "command-palette";
+  context?: "search-bar" | "search-app" | "command-palette" | "entity-picker";
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;

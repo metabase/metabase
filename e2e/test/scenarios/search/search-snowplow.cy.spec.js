@@ -3,16 +3,18 @@ import {
   describeEE,
   describeWithSnowplow,
   enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  modal,
   popover,
   resetSnowplow,
   restore,
   setTokenFeatures,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
 describeWithSnowplow("scenarios > search > snowplow", () => {
-  const SEARCH_RESULTS_FILTERED_NAME = "search_results_filtered";
   const NEW_SEARCH_QUERY_EVENT_NAME = "new_search_query";
 
   beforeEach(() => {
@@ -27,19 +29,69 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
     expectNoBadSnowplowEvents();
   });
 
-  it("should send snowplow events for global search queries", () => {
-    cy.visit("/");
-    commandPaletteSearch("Orders", false);
-    expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
+  describe("command palette", () => {
+    it("should send snowplow events search queries", () => {
+      cy.visit("/");
+      commandPaletteSearch("Orders", false);
+      expectGoodSnowplowEvent(
+        {
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "command-palette",
+          q: "Orders",
+        },
+        1,
+      );
+    });
+  });
+
+  describe("entity picker", () => {
+    it("should send snowplow events search queries", () => {
+      cy.visit("/");
+      cy.button("New").click();
+      popover().findByText("Dashboard").click();
+      modal().findByTestId("collection-picker-button").click();
+
+      entityPickerModal().findByPlaceholderText("Search…").type("second");
+
+      expectGoodSnowplowEvent({
+        event: NEW_SEARCH_QUERY_EVENT_NAME,
+        context: "entity-picker",
+        q: "second",
+        models: ["collection"],
+      });
+    });
+  });
+
+  describe("search bar - embedding only", () => {
+    it("should send snowplow events search queries", () => {
+      visitFullAppEmbeddingUrl({
+        url: "/",
+        qs: { top_nav: true, search: true },
+      });
+      cy.findByPlaceholderText("Search…").type("pers");
+      cy.findByTestId("loading-spinner").should("not.exist");
+
+      expectGoodSnowplowEvent({
+        event: NEW_SEARCH_QUERY_EVENT_NAME,
+        context: "search-bar",
+        q: "pers",
+      });
+    });
   });
 
   describe("should send snowplow events for each filter when it is applied and removed", () => {
     describe("no filters", () => {
-      it("should send a new_search_query snowplow event, but not search_results_filtered when a search with no filters is accessed from the URL", () => {
+      it("should send a new_search_query snowplow event", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+            context: "search-app",
+            q: "orders",
+          },
+          1,
+        );
       });
     });
 
@@ -48,15 +100,25 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         cy.visit("/search?q=orders&type=card");
         cy.wait("@search");
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+            q: "orders",
+            context: "search-app",
+            models: ["card"],
+          },
+          1,
+        );
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          q: "orders",
+          context: "search-app",
+        });
 
         cy.findByTestId("type-search-filter").click();
         popover().within(() => {
@@ -66,22 +128,41 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           cy.findByText("Apply").click();
         });
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          q: "orders",
+          context: "search-app",
+          models: [
+            "dashboard",
+            "card",
+            "dataset",
+            "collection",
+            "database",
+            "table",
+          ],
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&type=card");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          models: ["card"],
+        });
 
         cy.findByTestId("type-search-filter")
           .findByLabelText("close icon")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          models: [],
+        });
       });
     });
 
@@ -89,15 +170,22 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_by=1");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_by: "1",
+        });
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
 
         cy.findByTestId("created_by-search-filter").click();
         popover().within(() => {
@@ -105,22 +193,34 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           cy.findByText("Apply").click();
         });
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_by: "1",
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&created_by=1");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_by: "1",
+        });
 
         cy.findByTestId("created_by-search-filter")
           .findByLabelText("close icon")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_by: undefined,
+        });
       });
     });
 
@@ -128,15 +228,22 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_by=1");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_by: "1",
+        });
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
 
         cy.findByTestId("last_edited_by-search-filter").click();
         popover().within(() => {
@@ -144,22 +251,34 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           cy.findByText("Apply").click();
         });
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_by: "1",
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&last_edited_by=1");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_by: "1",
+        });
 
         cy.findByTestId("last_edited_by-search-filter")
           .findByLabelText("close icon")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_by: undefined,
+        });
       });
     });
 
@@ -167,37 +286,56 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_at=thisday");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_at: "thisday",
+        });
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
 
         cy.findByTestId("created_at-search-filter").click();
         popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_at: "thisday",
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&created_at=thisday");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_at: "thisday",
+        });
 
         cy.findByTestId("created_at-search-filter")
           .findByLabelText("close icon")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          created_at: undefined,
+        });
       });
     });
 
@@ -205,37 +343,56 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_at: "thisday",
+        });
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
 
         cy.findByTestId("last_edited_at-search-filter").click();
         popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_at: "thisday",
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_at: "thisday",
+        });
 
         cy.findByTestId("last_edited_at-search-filter")
           .findByLabelText("close icon")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          last_edited_at: undefined,
+        });
       });
     });
 
@@ -247,36 +404,55 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&verified=true");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          verified: "true",
+        });
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
 
         cy.findByTestId("verified-search-filter")
           .findByText("Verified items only")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          verified: "true",
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&verified=true");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          verified: "true",
+        });
 
         cy.findByTestId("verified-search-filter")
           .findByText("Verified items only")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          verified: undefined,
+        });
       });
     });
 
@@ -284,36 +460,111 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&search_native_query=true");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          search_native_query: "true",
+        });
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 0);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
 
         cy.findByTestId("search_native_query-search-filter")
           .findByText("Search the contents of native queries")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          search_native_query: "true",
+        });
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&search_native_query=true");
         cy.wait("@search");
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          search_native_query: "true",
+        });
 
         cy.findByTestId("search_native_query-search-filter")
           .findByText("Search the contents of native queries")
           .click();
 
-        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
-        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          search_native_query: undefined,
+        });
+      });
+    });
+
+    describe("archived filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&archived=true");
+        cy.wait("@search");
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          archived: "true",
+        });
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search?q=orders");
+        cy.wait("@search");
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+        });
+
+        cy.findByTestId("archived-search-filter")
+          .findByText("Search items in trash")
+          .click();
+
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          archived: "true",
+        });
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&archived=true");
+        cy.wait("@search");
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          archived: "true",
+        });
+
+        cy.findByTestId("archived-search-filter")
+          .findByText("Search items in trash")
+          .click();
+
+        expectGoodSnowplowEvent({
+          event: NEW_SEARCH_QUERY_EVENT_NAME,
+          context: "search-app",
+          q: "orders",
+          archived: undefined,
+        });
       });
     });
   });
