@@ -224,6 +224,7 @@ const DashboardApp = (props: DashboardAppProps) => {
     documentTitle: _documentTitle,
     pageFavicon: _pageFavicon,
     isRunning: _isRunning,
+    isLoadingComplete: _isLoadingComplete,
     children,
     ...dashboardProps
   } = props;
