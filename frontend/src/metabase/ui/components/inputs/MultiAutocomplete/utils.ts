@@ -7,6 +7,7 @@ export function parseValues(str: string): string[] {
       delimiter: [",", "\t", "\n"],
       skip_empty_lines: true,
       relax_column_count: true,
+      relax_quotes: true,
       trim: true,
       quote: '"',
       escape: "\\",

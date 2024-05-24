@@ -71,12 +71,12 @@ export function MultiAutocomplete({
 
     setSearchValue("");
 
-    if (values.length > 0) {
+    if (validValues.length > 0) {
       const newValues = [...lastSelectedValues, ...validValues];
       setSelectedValues(newValues);
       setLastSelectedValues(newValues);
     } else {
-      setLastSelectedValues(selectedValues);
+      setSelectedValues(lastSelectedValues);
     }
 
     onBlur?.(event);
@@ -108,12 +108,20 @@ export function MultiAutocomplete({
   };
 
   const handleSearchChange = (newSearchValue: string) => {
+    const first = newSearchValue.at(0);
     const last = newSearchValue.at(-1);
 
     setSearchValue(newSearchValue);
     setSelectedValues([...lastSelectedValues, newSearchValue]);
 
-    if (last === "," || last === "\t" || last === "\n" || last === '"') {
+    const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
+
+    if (
+      (last === "," && quotes % 2 === 0) ||
+      last === "\t" ||
+      last === "\n" ||
+      (first === '"' && last === '"')
+    ) {
       const values = parseValues(newSearchValue);
       const validValues = values.filter(
         value => value !== "" && shouldCreate?.(value, lastSelectedValues),
