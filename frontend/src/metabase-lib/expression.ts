@@ -121,10 +121,11 @@ export function offsetClause(
   return newClause;
 }
 
+// TODO: should this come from inside MLv2?
 export function getPeriodName(query: Query, stageIndex: number): string {
   const firstTimeBreakout = breakouts(query, stageIndex).find(breakout => {
     const info = displayInfo(query, stageIndex, breakout);
-    return info.effectiveType === "type/DateTime"; // TODO: this should be inside MLv2
+    return info.effectiveType === "type/DateTime";
   });
 
   if (!firstTimeBreakout) {
