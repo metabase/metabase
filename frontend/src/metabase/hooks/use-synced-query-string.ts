@@ -1,7 +1,7 @@
-import querystring from "querystring";
 import { useEffect } from "react";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { buildSearchString } from "metabase/lib/urls";
 
 export function useSyncedQueryString(
   fn: () => Record<string, any>,
@@ -18,7 +18,10 @@ export function useSyncedQueryString(
       return;
     }
     const object = fn();
-    const searchString = buildSearchString({ object });
+    const searchString = buildSearchString({
+      object,
+      filterFn: containsAllowedParams,
+    });
 
     if (searchString !== window.location.search) {
       history.replaceState(
@@ -27,20 +30,6 @@ export function useSyncedQueryString(
         window.location.pathname + searchString + window.location.hash,
       );
     }
-
-    return () => {
-      // Remove every previously-synced keys from the query string when the component is unmounted.
-      // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
-      const search = buildSearchString({
-        filterFn: key => !(key in object),
-      });
-
-      history.replaceState(
-        null,
-        document.title,
-        window.location.pathname + search + window.location.hash,
-      );
-    };
     // exhaustive-deps is enabled for useSyncedQueryString so we don't need to include `fn` as a dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deps]);
@@ -51,24 +40,3 @@ const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
 const containsAllowedParams = (objectKey: string) => {
   return QUERY_PARAMS_ALLOW_LIST.includes(objectKey);
 };
-
-function buildSearchString({
-  object = {},
-  filterFn = containsAllowedParams,
-}: {
-  object?: Record<string, any>;
-  filterFn?: (objectKey: string) => boolean;
-}) {
-  const currentSearchParams = querystring.parse(
-    window.location.search.replace("?", ""),
-  );
-  const filteredSearchParams = Object.fromEntries(
-    Object.entries(currentSearchParams).filter(entry => filterFn(entry[0])),
-  );
-
-  const search = querystring.stringify({
-    ...filteredSearchParams,
-    ...object,
-  });
-  return search ? `?${search}` : "";
-}

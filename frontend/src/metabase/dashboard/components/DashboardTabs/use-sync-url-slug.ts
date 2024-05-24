@@ -7,6 +7,7 @@ import _ from "underscore";
 import { getIdFromSlug, initTabs, selectTab } from "metabase/dashboard/actions";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { buildSearchString } from "metabase/lib/urls";
 import type { SelectedTabId } from "metabase-types/store";
 
 export function parseSlug({ location }: { location: Location }) {
@@ -71,6 +72,7 @@ export function useSyncURLSlug({ location }: { location: Location }) {
     }
 
     const tabFromSlug = tabs.find(t => t.id === getIdFromSlug(slug));
+    const slugChanged = slug && slug !== prevSlug;
 
     // If the tabs haven't been loaded before, the tab data from slug exists,
     // and the current tab differs from the slug.
@@ -87,12 +89,7 @@ export function useSyncURLSlug({ location }: { location: Location }) {
           name: tabFromSlug.name,
         }),
       });
-
-      return;
-    }
-
-    const slugChanged = slug && slug !== prevSlug;
-    if (slugChanged) {
+    } else if (slugChanged) {
       dispatch(initTabs({ slug }));
       const slugId = getIdFromSlug(slug);
       const hasTabs = tabs.length > 0;
@@ -101,32 +98,47 @@ export function useSyncURLSlug({ location }: { location: Location }) {
         const [tab] = tabs;
         updateURLSlug({ slug: getSlug({ tabId: tab.id, name: tab.name }) });
       }
-      return;
-    }
+    } else {
+      const tabSelected = selectedTabId !== prevSelectedTabId;
+      const tabRenamed =
+        tabs.find(t => t.id === selectedTabId)?.name !==
+        prevTabs?.find(t => t.id === selectedTabId)?.name;
+      const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
 
-    const tabSelected = selectedTabId !== prevSelectedTabId;
-    const tabRenamed =
-      tabs.find(t => t.id === selectedTabId)?.name !==
-      prevTabs?.find(t => t.id === selectedTabId)?.name;
-    const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
+      if (tabSelected || tabRenamed || penultimateTabDeleted) {
+        const newSlug =
+          tabs.length <= 1
+            ? ""
+            : getSlug({
+                tabId: selectedTabId,
+                name: tabs.find(t => t.id === selectedTabId)?.name,
+              });
+        updateURLSlug({
+          slug: newSlug,
+          shouldReplace: !tabInitialized,
+        });
 
-    if (tabSelected || tabRenamed || penultimateTabDeleted) {
-      const newSlug =
-        tabs.length <= 1
-          ? ""
-          : getSlug({
-              tabId: selectedTabId,
-              name: tabs.find(t => t.id === selectedTabId)?.name,
-            });
-      updateURLSlug({
-        slug: newSlug,
-        shouldReplace: !tabInitialized,
-      });
-
-      if (newSlug) {
-        setTabInitialized(true);
+        if (newSlug) {
+          setTabInitialized(true);
+        }
       }
     }
+
+    return () => {
+      // Remove every previously-synced keys from the query string when the component is unmounted.
+      // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
+      const search = buildSearchString({
+        filterFn: key => key !== "tab",
+      });
+
+      if (search !== window.location.search) {
+        history.replaceState(
+          null,
+          document.title,
+          window.location.pathname + search + window.location.hash,
+        );
+      }
+    };
   }, [
     tabInitialized,
     slug,
