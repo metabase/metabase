@@ -266,6 +266,7 @@ const buildEChartsBarSeries = (
   yAxisIndex: number,
   barSeriesCount: number,
   hasMultipleSeries: boolean,
+  chartDataDensity: ChartDataDensity,
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
@@ -305,6 +306,8 @@ const buildEChartsBarSeries = (
       renderingContext,
       chartWidth,
       labelFormatter,
+      settings,
+      chartDataDensity,
     ),
     labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
     itemStyle: {
@@ -599,7 +602,7 @@ export const buildEChartsSeries = (
             hasMultipleSeries,
             chartModel.dataDensity,
             chartWidth,
-            chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
+            chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
         case "bar":
@@ -614,8 +617,9 @@ export const buildEChartsSeries = (
             yAxisIndex,
             barSeriesCount,
             hasMultipleSeries,
+            chartModel.dataDensity,
             chartWidth,
-            chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
+            chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
       }
