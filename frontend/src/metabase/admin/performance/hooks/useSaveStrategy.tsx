@@ -2,13 +2,12 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import _ from "underscore";
 
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import type { Config, CacheableModel, Strategy } from "metabase-types/api";
 
-import { getFieldsForStrategyType, translateConfigToAPI } from "../utils";
 import { rootId } from "../constants/simple";
-import { PLUGIN_CACHING } from "metabase/plugins";
-const { strategies } = PLUGIN_CACHING;
+import { getFieldsForStrategyType, translateConfigToAPI } from "../utils";
 
 export const useSaveStrategy = (
   targetId: number | null,
@@ -21,6 +20,7 @@ export const useSaveStrategy = (
       if (targetId === null) {
         return;
       }
+      const { strategies } = PLUGIN_CACHING;
 
       const isRoot = targetId === rootId;
       const baseConfig: Pick<Config, "model" | "model_id"> = {
