@@ -238,7 +238,7 @@ export type MetricDisplayInfo = {
 
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "longDisplayName" | "table"
+  "name" | "displayName" | "longDisplayName" | "effectiveType" | "table"
 > & {
   isNamed?: boolean;
 };

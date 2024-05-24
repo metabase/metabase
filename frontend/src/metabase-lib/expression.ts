@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import * as ML from "cljs/metabase.lib.js";
 
+import { breakouts } from "./breakout";
 import { displayInfo } from "./metadata";
 import type {
   AggregationClause,
@@ -110,11 +111,33 @@ export function offsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
+  const period = getPeriodName(query, stageIndex);
   const { displayName } = displayInfo(query, stageIndex, clause);
-  const newName = t`${displayName} (previous period)`;
+  const newName = t`${displayName} (previous ${period})`;
   const newClause = expressionClause("offset", [clause, offset], {
     name: newName,
     "display-name": newName,
   });
   return newClause;
+}
+
+export function getPeriodName(query: Query, stageIndex: number): string {
+  const firstTimeBreakout = breakouts(query, stageIndex).find(breakout => {
+    const info = displayInfo(query, stageIndex, breakout);
+    return info.effectiveType === "type/DateTime"; // TODO: this should be inside MLv2
+  });
+
+  if (!firstTimeBreakout) {
+    return t`period`;
+  }
+
+  const firstTimeBreakoutInfo = displayInfo(
+    query,
+    stageIndex,
+    firstTimeBreakout,
+  );
+
+  const period = firstTimeBreakoutInfo.longDisplayName.split(":").at(-1);
+
+  return period ? period.trim().toLowerCase() : t`period`;
 }
