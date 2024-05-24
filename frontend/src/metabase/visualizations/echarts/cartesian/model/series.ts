@@ -3,6 +3,7 @@ import _ from "underscore";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
+  ChartDataDensity,
   ChartDataset,
   DataKey,
   Datum,
@@ -11,6 +12,7 @@ import type {
   LegacySeriesSettingsObjectKey,
   SeriesFormatters,
   SeriesModel,
+  StackDisplay,
   StackModel,
   StackTotalDataKey,
   StackedSeriesFormatters,
@@ -33,12 +35,14 @@ import type {
   DatasetColumn,
   RawSeries,
   CardId,
+  SeriesSettings,
 } from "metabase-types/api";
 
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "../constants/dataset";
+import { CHART_STYLE } from "../constants/style";
 import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
@@ -327,6 +331,198 @@ function shouldRenderCompact(
   return getAvgLength(true) + 3 < getAvgLength(false);
 }
 
+export function getChartDataDensity(
+  seriesModels: SeriesModel[],
+  stackModels: StackModel[],
+  dataset: ChartDataset,
+  seriesLabelsFormatters: SeriesFormatters,
+  stackedLabelsFormatters: StackedSeriesFormatters,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): ChartDataDensity {
+  const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
+    seriesModels,
+    stackModels,
+    settings,
+  );
+  const seriesWithSymbols = seriesModels.filter(seriesModel => {
+    const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
+    return ["area", "line"].includes(seriesSettings.display ?? "");
+  });
+  const totalNumberOfDots = dataset.reduce((sum, datum) => {
+    const numOfDotsPerDatum = seriesWithSymbols.filter(
+      seriesModel => datum[seriesModel.dataKey] != null,
+    ).length;
+
+    return sum + numOfDotsPerDatum;
+  }, 0);
+
+  const seriesDataKeysWithLabels: DataKey[] = [];
+  const stackedDisplayWithLabels: StackDisplay[] = [];
+  if (!settings["graph.show_values"]) {
+    return {
+      seriesDataKeysWithLabels,
+      stackedDisplayWithLabels,
+      totalNumberOfDots,
+      averageLabelWidth: 0,
+      totalNumberOfLabels: 0,
+    };
+  }
+
+  const seriesWithLabels = seriesModels.filter(seriesModel => {
+    const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
+    if (
+      ["area", "bar"].includes(seriesSettings.display ?? "") &&
+      settings["stackable.stack_type"] != null
+    ) {
+      return false;
+    }
+
+    return seriesSettings["show_series_values"];
+  });
+  const totalNumberOfSeriesLabels =
+    seriesWithLabels.length > 0
+      ? dataset.reduce((sum, datum) => {
+          const numOfLabelsPerDatum = seriesWithLabels.filter(
+            seriesModel => datum[seriesModel.dataKey] != null,
+          ).length;
+
+          return sum + numOfLabelsPerDatum;
+        }, 0)
+      : 0;
+
+  const totalNumberOfStackedLabels =
+    settings["stackable.stack_type"] !== "normalized"
+      ? dataset.reduce((sum, datum) => {
+          const numOfStackedLabelsPerDatum = stackModels.reduce(
+            (sum, stackModel) => {
+              const positiveStackCount =
+                getStackTotalValue(
+                  datum,
+                  stackModel.seriesKeys,
+                  POSITIVE_STACK_TOTAL_DATA_KEY,
+                ) !== null
+                  ? 1
+                  : 0;
+              const negativeStackCount =
+                getStackTotalValue(
+                  datum,
+                  stackModel.seriesKeys,
+                  NEGATIVE_STACK_TOTAL_DATA_KEY,
+                ) !== null
+                  ? 1
+                  : 0;
+
+              return sum + positiveStackCount + negativeStackCount;
+            },
+            0,
+          );
+
+          return sum + numOfStackedLabelsPerDatum;
+        }, 0)
+      : 0;
+  const totalNumberOfLabels =
+    totalNumberOfSeriesLabels + totalNumberOfStackedLabels;
+
+  seriesDataKeysWithLabels.push(
+    ...seriesWithLabels.map(series => series.dataKey),
+  );
+
+  if (settings["stackable.stack_type"] !== "normalized") {
+    stackedDisplayWithLabels.push(
+      ...stackModels.map(stackModel => stackModel.display),
+    );
+  }
+
+  const fontStyle = {
+    family: renderingContext.fontFamily,
+    weight: CHART_STYLE.seriesLabels.weight,
+    size: CHART_STYLE.seriesLabels.size,
+  };
+  const sumOfLabelWidths = dataset.reduce((sum, datum) => {
+    const sumOfSeriesLabelsWidths = seriesWithLabels.reduce(
+      (seriesSum, seriesModel) => {
+        const value = datum[seriesModel.dataKey];
+        const formatter = seriesLabelsFormatters[seriesModel.dataKey];
+
+        if (!formatter) {
+          return sum;
+        }
+
+        const labelWidth = renderingContext.measureText(
+          formatter(value),
+          fontStyle,
+        );
+
+        return seriesSum + labelWidth;
+      },
+      0,
+    );
+
+    const sumOfStackedSeriesLabelsWidths = stackModels.reduce(
+      (stackSum, stackModel) => {
+        const formatter = stackedLabelsFormatters[stackModel.display];
+        if (!formatter) {
+          return 0;
+        }
+
+        const stackValues = [
+          POSITIVE_STACK_TOTAL_DATA_KEY,
+          NEGATIVE_STACK_TOTAL_DATA_KEY,
+        ].map(signKey => {
+          return getStackTotalValue(datum, stackModel.seriesKeys, signKey) ?? 0;
+        });
+        const sumOfLabelWidths = stackValues.reduce((sum, value) => {
+          const labelWidth = renderingContext.measureText(
+            formatter(value),
+            fontStyle,
+          );
+
+          return sum + labelWidth;
+        }, 0);
+
+        return stackSum + sumOfLabelWidths;
+      },
+      0,
+    );
+
+    return sum + sumOfSeriesLabelsWidths + sumOfStackedSeriesLabelsWidths;
+  }, 0);
+
+  const averageLabelWidth =
+    totalNumberOfLabels > 0 ? sumOfLabelWidths / totalNumberOfLabels : 0;
+
+  return {
+    seriesDataKeysWithLabels,
+    stackedDisplayWithLabels,
+    totalNumberOfDots,
+    averageLabelWidth,
+    totalNumberOfLabels,
+  };
+}
+
+export function getDisplaySeriesSettingsByDataKey(
+  seriesModels: SeriesModel[],
+  stackModels: StackModel[] | null,
+  settings: ComputedVisualizationSettings,
+) {
+  const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
+    acc[seriesModel.dataKey] = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return acc;
+  }, {} as Record<DataKey, SeriesSettings>);
+
+  if (stackModels != null) {
+    stackModels.forEach(({ display, seriesKeys }) => {
+      seriesKeys.forEach(seriesKey => {
+        seriesSettingsByKey[seriesKey].display = display;
+      });
+    });
+  }
+
+  return seriesSettingsByKey;
+}
 export const getStackedLabelsFormatters = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],

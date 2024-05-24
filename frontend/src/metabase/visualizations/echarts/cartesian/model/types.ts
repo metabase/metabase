@@ -192,6 +192,14 @@ export type StackModel = {
   seriesKeys: DataKey[];
 };
 
+export type ChartDataDensity = {
+  averageLabelWidth: number;
+  seriesDataKeysWithLabels: DataKey[];
+  stackedDisplayWithLabels: StackDisplay[];
+  totalNumberOfDots: number;
+  totalNumberOfLabels: number;
+};
+
 export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
@@ -218,6 +226,7 @@ export type BaseCartesianChartModel = {
 
 export type CartesianChartModel = BaseCartesianChartModel & {
   bubbleSizeDomain: Extent | null;
+  dataDensity: ChartDataDensity;
 };
 
 export type ShowWarning = (warning: string) => void;

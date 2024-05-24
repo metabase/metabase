@@ -96,6 +96,7 @@ export const buildEChartsWaterfallSeries = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ) => {
@@ -111,6 +112,7 @@ export const buildEChartsWaterfallSeries = (
       seriesModel,
       chartModel.yAxisScaleTransforms,
       renderingContext,
+      chartWidth,
       labelFormatter,
     ),
     formatter:
@@ -119,6 +121,7 @@ export const buildEChartsWaterfallSeries = (
         seriesModel,
         chartModel.yAxisScaleTransforms,
         labelFormatter,
+        chartWidth,
         WATERFALL_VALUE_KEY,
       ),
   });
@@ -224,6 +227,7 @@ export const getWaterfallChartOption = (
     chartModel,
     settings,
     chartMeasurements,
+    chartWidth,
     chartModel?.waterfallLabelFormatter,
     renderingContext,
   );
