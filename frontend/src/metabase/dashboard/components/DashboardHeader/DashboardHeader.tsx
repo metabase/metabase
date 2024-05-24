@@ -50,6 +50,7 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -85,7 +86,6 @@ type DashboardHeaderProps = {
   dashboardId: DashboardId;
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  databases: Record<DatabaseId, Database>;
   sidebar: DashboardSidebarState;
   location: Location;
   isAdmin: boolean;
@@ -152,7 +152,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     sidebar,
     setSidebar,
     closeSidebar,
-    databases,
     isAddParameterPopoverOpen,
     showAddParameterPopover,
     hideAddParameterPopover,
@@ -171,6 +170,10 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const formInput = useSelector(getPulseFormInput);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
+  const databases = useSelector(getMetadata).databases as Record<
+    DatabaseId,
+    Database
+  >;
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
   );

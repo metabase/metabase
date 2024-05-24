@@ -24,18 +24,13 @@ import type {
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard as IDashboard,
   DashboardCard,
   DashboardId,
   CardId,
   DashboardTabId,
-  DashCardDataMap,
   DashCardId,
-  Database,
-  DatabaseId,
   ParameterId,
   ParameterMappingOptions,
   ParameterValueOrArray,
@@ -83,19 +78,12 @@ export type DashboardProps = {
   isEditingParameter: boolean;
   isDirty: boolean;
   dashboard: IDashboard | null;
-  dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, boolean>;
-  databases: Record<DatabaseId, Database>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  metadata: Metadata;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
   sidebar: State["dashboard"]["sidebar"];
-  pageFavicon: string | null;
-  documentTitle: string | undefined;
-  isRunning: boolean;
-  isLoadingComplete: boolean;
   isHeaderVisible: boolean;
   isAdditionalInfoVisible: boolean;
   selectedTabId: SelectedTabId;
@@ -158,9 +146,6 @@ export type DashboardProps = {
     columnKey: string,
     settings?: Record<string, unknown> | null,
   ) => void;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
   updateDashboardAndCards: () => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
@@ -415,12 +400,10 @@ function DashboardInner(props: DashboardProps) {
     return (
       <DashboardGridConnected
         clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
-        metadata={props.metadata}
         isNightMode={shouldRenderAsNightMode}
         isFullscreen={props.isFullscreen}
         isEditingParameter={props.isEditingParameter}
         isEditing={props.isEditing}
-        dashcardData={props.dashcardData}
         dashboard={dashboard}
         slowCards={props.slowCards}
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
@@ -500,7 +483,6 @@ function DashboardInner(props: DashboardProps) {
                 sidebar={props.sidebar}
                 setSidebar={props.setSidebar}
                 closeSidebar={props.closeSidebar}
-                databases={props.databases}
                 isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
                 showAddParameterPopover={props.showAddParameterPopover}
                 hideAddParameterPopover={props.hideAddParameterPopover}
@@ -560,15 +542,11 @@ function DashboardInner(props: DashboardProps) {
                   props.setParameterFilteringParameters
                 }
                 setParameterRequired={props.setParameterRequired}
-                dashcardData={props.dashcardData}
                 isFullscreen={props.isFullscreen}
                 params={props.params}
                 sidebar={props.sidebar}
                 closeSidebar={props.closeSidebar}
                 selectedTabId={props.selectedTabId}
-                getEmbeddedParameterVisibility={
-                  props.getEmbeddedParameterVisibility
-                }
                 setDashboardAttribute={handleSetDashboardAttribute}
                 onCancel={() => setSharing(false)}
               />

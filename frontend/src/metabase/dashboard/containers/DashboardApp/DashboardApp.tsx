@@ -24,18 +24,16 @@ import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type { DashboardId, Database, DatabaseId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
@@ -56,7 +54,6 @@ import {
   getSelectedTabId,
   getSidebar,
   getSlowCards,
-  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {
@@ -67,7 +64,6 @@ type OwnProps = {
 };
 
 const mapStateToProps = (state: State) => {
-  const metadata = getMetadata(state);
   return {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
@@ -78,13 +74,8 @@ const mapStateToProps = (state: State) => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
-    // this type is a bandaid until we can fix the type of metadata.databases
-    databases: metadata.databases as Record<DatabaseId, Database>,
     parameterValues: getParameterValues(state),
-
-    metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
@@ -97,8 +88,6 @@ const mapStateToProps = (state: State) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-    getEmbeddedParameterVisibility: (slug: string) =>
-      getEmbeddedParameterVisibility(state, slug),
   };
 };
 
@@ -182,6 +171,15 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
+  const {
+    documentTitle: _documentTitle,
+    pageFavicon: _pageFavicon,
+    isRunning: _isRunning,
+    isLoadingComplete: _isLoadingComplete,
+    children,
+    ...dashboardProps
+  } = props;
+
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
@@ -191,7 +189,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
-        {...props}
+        {...dashboardProps}
       />
       {/* For rendering modal urls */}
       {props.children}

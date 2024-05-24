@@ -15,9 +15,7 @@ import type {
   Dashboard,
   QuestionDashboardCard,
   DashCardId,
-  CardId,
   ClickBehavior,
-  DatasetData,
   DatasetColumn,
 } from "metabase-types/api";
 
@@ -34,7 +32,6 @@ type VizSettings = Record<string, unknown>;
 interface Props {
   dashboard: Dashboard;
   dashcard: QuestionDashboardCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;
   onUpdateDashCardColumnSettings: (
@@ -55,7 +52,6 @@ interface Props {
 export function ClickBehaviorSidebar({
   dashboard,
   dashcard,
-  dashcardData,
   parameters,
   hideClickBehaviorSidebar,
   onUpdateDashCardColumnSettings,
@@ -213,7 +209,6 @@ export function ClickBehaviorSidebar({
         <ClickBehaviorSidebarContent
           dashboard={dashboard}
           dashcard={dashcard}
-          dashcardData={dashcardData}
           parameters={parameters}
           clickBehavior={clickBehavior}
           isTypeSelectorVisible={isTypeSelectorVisible}
