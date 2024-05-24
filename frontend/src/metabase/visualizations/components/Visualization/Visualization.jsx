@@ -508,7 +508,7 @@ class Visualization extends PureComponent {
               isDashboard={isDashboard}
             />
           ) : genericError ? (
-            <SmallGenericError />
+            <SmallGenericError bordered={false} />
           ) : loading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
