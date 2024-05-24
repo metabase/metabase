@@ -1,4 +1,4 @@
-import { parseValues } from "./util";
+import { parseValues } from "./utils";
 
 describe("parseValues", () => {
   it("should parse comma-separated values", () => {

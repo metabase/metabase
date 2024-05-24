@@ -8,7 +8,7 @@ import { t } from "ttag";
 import { Icon } from "metabase/ui";
 
 import styles from "./MultiAutocomplete.module.css";
-import { parseValues } from "./util";
+import { parseValues } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
