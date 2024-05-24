@@ -2,6 +2,7 @@ import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { aggregate, aggregations } from "./aggregation";
 import { offsetClause } from "./expression";
+import { displayInfo } from "./metadata";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
@@ -15,13 +16,17 @@ describe("expression", () => {
         aggregations: [{ operatorName: "count" }],
       });
       const [aggregationClause] = aggregations(query, stageIndex);
-      const ofsettedClause = offsetClause(
+      const offsettedClause = offsetClause(
         query,
         stageIndex,
         aggregationClause,
         offset,
       );
-      const finalQuery = aggregate(query, stageIndex, ofsettedClause);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+
+      expect(
+        displayInfo(finalQuery, stageIndex, offsettedClause).displayName,
+      ).toBe("Count (previous period)");
 
       expect(toLegacyQuery(finalQuery)).toMatchObject({
         database: SAMPLE_DATABASE.id,
@@ -44,7 +49,7 @@ describe("expression", () => {
       });
     });
 
-    it("offsets Count aggregation with a Month breakout", () => {
+    it("generates proper name for Count aggregation with a Month breakout", () => {
       const stageIndex = -1;
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
@@ -57,33 +62,17 @@ describe("expression", () => {
         ],
       });
       const [aggregationClause] = aggregations(query, stageIndex);
-      const ofsettedClause = offsetClause(
+      const offsettedClause = offsetClause(
         query,
         stageIndex,
         aggregationClause,
         offset,
       );
-      const finalQuery = aggregate(query, stageIndex, ofsettedClause);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      expect(toLegacyQuery(finalQuery)).toMatchObject({
-        database: SAMPLE_DATABASE.id,
-        query: {
-          aggregation: [
-            ["count"],
-            [
-              "offset",
-              {
-                name: "Count (previous month)",
-                "display-name": "Count (previous month)",
-              },
-              ["count"],
-              offset,
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-        type: "query",
-      });
+      expect(
+        displayInfo(finalQuery, stageIndex, offsettedClause).displayName,
+      ).toBe("Count (previous month)");
     });
   });
 });
