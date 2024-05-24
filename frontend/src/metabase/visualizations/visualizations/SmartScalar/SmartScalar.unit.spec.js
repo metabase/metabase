@@ -366,10 +366,9 @@ describe("SmartScalar", () => {
       );
 
       expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
-      await userEvent.hover(screen.getByLabelText("warning icon"));
       expect(
         screen.getByText(
-          "No integer value supplied for periods ago comparison. Click for more information",
+          "No integer value supplied for periods ago comparison.",
         ),
       ).toBeInTheDocument();
     });
