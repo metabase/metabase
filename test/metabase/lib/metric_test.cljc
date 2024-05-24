@@ -115,7 +115,7 @@
           metrics (lib.metric/available-metrics query)]
       (is (= 1
              (count metrics)))
-      ;; test with both `:metadata/legacy-metric` and with a `:metric` ref clause
+      ;; test with both `:metadata/metric` and with a `:metric` ref clause
       (doseq [metric [(first metrics)
                       [:metric {:lib/uuid (str (random-uuid))} 100]]]
         (testing (pr-str (list 'lib/aggregate 'query metric))

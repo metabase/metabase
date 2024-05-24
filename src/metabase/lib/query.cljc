@@ -298,9 +298,7 @@
   (occurs-in-stage-clause? a-query :filters #(occurs-in-expression? % :segment segment-id)))
 
 (mu/defn uses-metric? :- :boolean
-  "Tests whether `a-query` uses metric with ID `metric-id`.
-  `metric-id` can be a regular metric ID or a string. The latter is to support
-  some strange use-cases (see [[metabase.lib.legacy-metric-test/ga-metric-metadata-test]])."
+  "Tests whether `a-query` uses metric with ID `metric-id`."
   [a-query :- ::lib.schema/query
-   metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
+   metric-id :- ::lib.schema.id/metric]
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))
