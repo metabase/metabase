@@ -21,23 +21,17 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard as IDashboard,
   DashboardId,
-  DashCardDataMap,
   DashCardId,
-  DatabaseId,
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -46,7 +40,6 @@ import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
@@ -67,7 +60,6 @@ import {
   getSelectedTabId,
   getSidebar,
   getSlowCards,
-  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {
@@ -87,11 +79,8 @@ type StateProps = {
   isEditingParameter: boolean;
   isDirty: boolean;
   dashboard: IDashboard | null;
-  dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, unknown>;
-  databases: Record<DatabaseId, Database>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  metadata: Metadata;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
   isAddParameterPopoverOpen: boolean;
@@ -104,9 +93,6 @@ type StateProps = {
   isAdditionalInfoVisible: boolean;
   selectedTabId: SelectedTabId;
   isNavigatingBackToDashboard: boolean;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
 };
 
 type DispatchProps = {
@@ -118,7 +104,6 @@ type DispatchProps = {
 type DashboardAppProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (state: State): StateProps => {
-  const metadata = getMetadata(state);
   return {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
@@ -129,12 +114,8 @@ const mapStateToProps = (state: State): StateProps => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
-    databases: metadata.databases,
     parameterValues: getParameterValues(state),
-
-    metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
@@ -147,8 +128,6 @@ const mapStateToProps = (state: State): StateProps => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-    getEmbeddedParameterVisibility: (slug: string) =>
-      getEmbeddedParameterVisibility(state, slug),
   };
 };
 
@@ -227,6 +206,15 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
+  const {
+    documentTitle: _documentTitle,
+    pageFavicon: _pageFavicon,
+    isRunning: _isRunning,
+    isLoadingComplete: _isLoadingComplete,
+    children,
+    ...dashboardProps
+  } = props;
+
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
@@ -235,7 +223,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
-        {...props}
+        {...dashboardProps}
       />
       {/* For rendering modal urls */}
       {props.children}
