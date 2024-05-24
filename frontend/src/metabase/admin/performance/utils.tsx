@@ -22,8 +22,6 @@ import type {
 import { defaultMinDurationMs, rootId } from "./constants/simple";
 import type { StrategyLabel } from "./types";
 
-const { strategies } = PLUGIN_CACHING;
-
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
   const index = weekdays.findIndex(o => o.value === day);
   if (index === -1) {
@@ -187,10 +185,13 @@ export const getFrequencyFromCron = (cron: string) => {
     : optionNameTranslations[scheduleType];
 };
 
-const validStrategyNames = new Set(Object.keys(strategies));
 export const isValidStrategyName = (
   strategy: string,
-): strategy is StrategyType => validStrategyNames.has(strategy);
+): strategy is StrategyType => {
+  const { strategies } = PLUGIN_CACHING;
+  const validStrategyNames = new Set(Object.keys(strategies));
+  return validStrategyNames.has(strategy);
+};
 
 export const getLabelString = (label: StrategyLabel, model?: CacheableModel) =>
   typeof label === "string" ? label : label(model);
@@ -199,6 +200,7 @@ export const getShortStrategyLabel = (
   strategy?: Strategy,
   model?: CacheableModel,
 ) => {
+  const { strategies } = PLUGIN_CACHING;
   if (!strategy) {
     return null;
   }
@@ -213,6 +215,7 @@ export const getShortStrategyLabel = (
 };
 
 export const getFieldsForStrategyType = (strategyType: StrategyType) => {
+  const { strategies } = PLUGIN_CACHING;
   const strategy = strategies[strategyType];
   const validationSchemaDescription =
     strategy.validateWith.describe() as SchemaObjectDescription;
