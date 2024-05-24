@@ -6,9 +6,6 @@
    [clojure.test :refer :all]
    [hooks.metabase.util.log]))
 
-(deftest ^:parallel fail-test
-  (is (= 1 0)))
-
 (defn- warnings
   [form]
   (let [f (if (str/ends-with? (name (first form)) "f")

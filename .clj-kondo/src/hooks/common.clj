@@ -376,10 +376,15 @@
     (when (hooks/token-node? node)
       (let [sexpr (hooks/sexpr node)]
         (when (symbol? sexpr)
-          (if (qualified-symbol? sexpr)
-            sexpr
-            (when-let [resolved (hooks/resolve {:name sexpr})]
-              (symbol (name (:ns resolved)) (name (:name resolved))))))))
+          (let [resolved (hooks/resolve {:name sexpr})]
+            (cond
+              resolved
+              (symbol (name (:ns resolved)) (name (:name resolved)))
+
+              ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
+              ;; alias.
+              (qualified-symbol? sexpr)
+              sexpr)))))
     ;; some symbols like `*count/Integer` aren't resolvable.
     (catch Exception _
       nil)))
