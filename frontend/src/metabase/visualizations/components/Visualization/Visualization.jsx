@@ -324,10 +324,6 @@ class Visualization extends PureComponent {
   };
 
   onErrorBoundaryError = error => {
-    if (error?.message) {
-      return this.setState({ error: error.message });
-    }
-
     this.setState({ error });
   };
 

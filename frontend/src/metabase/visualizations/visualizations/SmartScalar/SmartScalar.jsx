@@ -68,11 +68,12 @@ export function SmartScalar({
   height,
   totalNumGridCols,
   fontFamily,
+  onRenderError,
 }) {
   const scalarRef = useRef(null);
 
   const insights = rawSeries?.[0].data?.insights;
-  const trend = useMemo(
+  const { trend, error } = useMemo(
     () =>
       computeTrend(series, insights, settings, {
         formatValue,
@@ -80,6 +81,12 @@ export function SmartScalar({
       }),
     [series, insights, settings],
   );
+
+  if (error) {
+    onRenderError(error.message);
+    return null;
+  }
+
   const { value, clicked, comparisons, display, formatOptions } = trend;
 
   const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;

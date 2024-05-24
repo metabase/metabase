@@ -23,13 +23,12 @@ export function SmartScalar({
 
   const settings = computeSmartScalarSettings(rawSeries, dashcardSettings);
 
-  let trend;
-  try {
-    trend = computeTrend(rawSeries, insights, settings, {
-      formatValue,
-      getColor,
-    });
-  } catch (error) {
+  const { trend, error } = computeTrend(rawSeries, insights, settings, {
+    formatValue,
+    getColor,
+  });
+
+  if (error || !trend) {
     throw new Error(
       `Failed to compute trend data for ${card.name}\: ${
         (error as { message: string }).message
