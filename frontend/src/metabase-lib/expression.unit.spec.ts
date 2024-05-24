@@ -8,7 +8,7 @@ import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
 const offset = -1;
 
-describe("aggregation", () => {
+describe("expression", () => {
   describe("offsetClause", () => {
     it("offsets Count aggregation", () => {
       const stageIndex = -1;
