@@ -4,7 +4,6 @@ import { safeJsonParse } from "metabase/lib/utils";
 
 function parseQueryStringOptions(s) {
   const options = querystring.parse(s);
-
   for (const name in options) {
     if (options[name] === "") {
       options[name] = true;

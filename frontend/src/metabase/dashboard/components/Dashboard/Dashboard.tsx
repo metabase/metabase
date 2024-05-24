@@ -22,22 +22,22 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard as IDashboard,
+  DashboardCard,
   DashboardId,
   DashCardDataMap,
-  DashCardId,
   Database,
   DatabaseId,
   ParameterId,
-  ParameterValueOrArray,
   CardId,
   DashboardTabId,
+  DashCardId,
   ParameterMappingOptions,
+  ParameterValueOrArray,
   RowValue,
-  VisualizationSettings,
   ValuesQueryType,
-  ValuesSourceType,
   ValuesSourceConfig,
-  DashboardCard,
+  ValuesSourceType,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -53,10 +53,10 @@ import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
   CardsContainer,
-  DashboardStyled,
-  DashboardLoadingAndErrorWrapper,
   DashboardBody,
   DashboardHeaderContainer,
+  DashboardLoadingAndErrorWrapper,
+  DashboardStyled,
   ParametersAndCardsContainer,
 } from "./Dashboard.styled";
 import {
@@ -64,7 +64,7 @@ import {
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
 
-type DashboardProps = {
+export type DashboardProps = {
   route: Route;
   params: { slug: string };
   children?: ReactNode;
@@ -76,8 +76,8 @@ type DashboardProps = {
   dashboardBeforeEditing: IDashboard | null;
   isEditingParameter: boolean;
   isDirty: boolean;
-  dashboard: IDashboard;
-  dashcardData: DashCardDataMap;
+  dashboard: IDashboard | null;
+    dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, boolean>;
   databases: Record<DatabaseId, Database>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
@@ -94,12 +94,12 @@ type DashboardProps = {
   isHeaderVisible: boolean;
   isAdditionalInfoVisible: boolean;
   selectedTabId: SelectedTabId;
-  isAutoApplyFilters: boolean;
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[];
 
   initialize: (opts?: { clearCache?: boolean }) => void;
+    fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -161,6 +161,21 @@ type DashboardProps = {
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   hideAddParameterPopover: () => void;
+
+  fetchDashboard: (opts: {
+    dashId: DashboardId;
+    queryParams?: Record<string, unknown>;
+    options?: {
+      clearCache?: boolean;
+      preserveParameters?: boolean;
+    };
+  }) => Promise<FetchDashboardResult>;
+
+  fetchDashboardCardData: (opts?: {
+    isRefreshing?: boolean;
+    reload?: boolean;
+    clearCache?: boolean;
+  }) => void;
 } & DashboardControlsPassedProps;
 
 function DashboardInner(props: DashboardProps) {
@@ -181,8 +196,6 @@ function DashboardInner(props: DashboardProps) {
     isNavigatingBackToDashboard,
     isNightMode,
     isSharing,
-    loadDashboardParams,
-    location,
     onRefreshPeriodChange,
     parameterValues,
     selectedTabId,
@@ -191,6 +204,9 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setSharing,
     toggleSidebar,
+    queryParams,
+    location,
+      fetchDashboardCardMetadata,
   } = props;
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -203,7 +219,7 @@ function DashboardInner(props: DashboardProps) {
   const previousParameterValues = usePrevious(parameterValues);
 
   const currentTabDashcards = useMemo(() => {
-    if (!Array.isArray(dashboard?.dashcards)) {
+    if (!dashboard || !Array.isArray(dashboard.dashcards)) {
       return [];
     }
     if (!selectedTabId) {
@@ -216,16 +232,18 @@ function DashboardInner(props: DashboardProps) {
 
   const canWrite = Boolean(dashboard?.can_write);
   const tabHasCards = currentTabDashcards.length > 0;
-  const dashboardHasCards = dashboard?.dashcards.length > 0;
+  const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
   const handleSetDashboardAttribute = useCallback(
     <Key extends keyof IDashboard>(attribute: Key, value: IDashboard[Key]) => {
-      setDashboardAttributes({
-        id: dashboard.id,
-        attributes: { [attribute]: value },
-      });
+      if (dashboard) {
+        setDashboardAttributes({
+          id: dashboard.id,
+          attributes: { [attribute]: value },
+        });
+      }
     },
     [dashboard, setDashboardAttributes],
   );
@@ -251,11 +269,9 @@ function DashboardInner(props: DashboardProps) {
     async (dashboardId: DashboardId) => {
       initialize({ clearCache: !isNavigatingBackToDashboard });
 
-      loadDashboardParams();
-
       const result = await fetchDashboard({
         dashId: dashboardId,
-        queryParams: location.query,
+        queryParams,
         options: {
           clearCache: !isNavigatingBackToDashboard,
           preserveParameters: isNavigatingBackToDashboard,
@@ -296,8 +312,7 @@ function DashboardInner(props: DashboardProps) {
       handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
-      loadDashboardParams,
-      location.query,
+      queryParams,
       setErrorPage,
     ],
   );
@@ -309,27 +324,27 @@ function DashboardInner(props: DashboardProps) {
       return;
     }
 
-    if (!dashboard) {
+    if (previousTabId !== selectedTabId && dashboard) {
+      fetchDashboardCardData();
+      fetchDashboardCardMetadata();
       return;
     }
 
     const hasDashboardLoaded = !previousDashboard;
-    const hasTabChanged = selectedTabId !== previousTabId;
     const hasParameterValueChanged = !_.isEqual(
       parameterValues,
       previousParameterValues,
     );
 
-    if (hasDashboardLoaded) {
+    if (hasDashboardLoaded || hasParameterValueChanged) {
       fetchDashboardCardData({ reload: false, clearCache: true });
-    } else if (hasTabChanged || hasParameterValueChanged) {
-      fetchDashboardCardData();
     }
   }, [
     dashboard,
     dashboardId,
     fetchDashboardCardData,
     handleLoadDashboard,
+    isInitialized,
     parameterValues,
     previousDashboard,
     previousDashboardId,
@@ -362,6 +377,10 @@ function DashboardInner(props: DashboardProps) {
   });
 
   const renderContent = () => {
+    if (!dashboard) {
+      return null;
+    }
+
     if (!dashboardHasCards && !canWrite) {
       return (
         <DashboardEmptyStateWithoutAddPrompt
@@ -395,7 +414,7 @@ function DashboardInner(props: DashboardProps) {
         isEditingParameter={props.isEditingParameter}
         isEditing={props.isEditing}
         dashcardData={props.dashcardData}
-        dashboard={props.dashboard}
+        dashboard={dashboard}
         slowCards={props.slowCards}
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
         selectedTabId={selectedTabId}
@@ -412,120 +431,128 @@ function DashboardInner(props: DashboardProps) {
       loading={!dashboard}
       error={error}
     >
-      {() => (
-        <DashboardStyled>
-          <DashboardHeaderContainer
-            data-element-id="dashboard-header-container"
-            id="Dashboard-Header-Container"
-            isFullscreen={isFullscreen}
-            isNightMode={shouldRenderAsNightMode}
-          >
-            {/**
-             * Do not conditionally render `<DashboardHeader />` as it calls
-             * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
-             * in Redux state which kicks off a fetch for the dashboard cards.
-             */}
-            <DashboardHeader
-              dashboardId={dashboardId}
-              isEditing={isEditing}
-              location={location}
-              dashboard={dashboard}
-              isNightMode={shouldRenderAsNightMode}
+      {() => {
+        if (!dashboard) {
+          return null;
+        }
+
+        return (
+          <DashboardStyled>
+            <DashboardHeaderContainer
+              data-element-id="dashboard-header-container"
+              id="Dashboard-Header-Container"
               isFullscreen={isFullscreen}
-              fetchDashboard={fetchDashboard}
-              onEditingChange={handleSetEditing}
-              setDashboardAttribute={handleSetDashboardAttribute}
-              addParameter={addParameter}
-              onSharingClick={handleToggleSharing}
-              addCardToDashboard={addCardToDashboard}
-              onRefreshPeriodChange={onRefreshPeriodChange}
-              addMarkdownDashCardToDashboard={
-                props.addMarkdownDashCardToDashboard
-              }
-              addHeadingDashCardToDashboard={
-                props.addHeadingDashCardToDashboard
-              }
-              addLinkDashCardToDashboard={props.addLinkDashCardToDashboard}
-              updateDashboardAndCards={props.updateDashboardAndCards}
-              dashboardBeforeEditing={props.dashboardBeforeEditing}
-              isDirty={props.isDirty}
-              onFullscreenChange={props.onFullscreenChange}
-              sidebar={props.sidebar}
-              setSidebar={props.setSidebar}
-              closeSidebar={props.closeSidebar}
-              databases={props.databases}
-              isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
-              showAddParameterPopover={props.showAddParameterPopover}
-              hideAddParameterPopover={props.hideAddParameterPopover}
-              isAdditionalInfoVisible={props.isAdditionalInfoVisible}
-              isAdmin={props.isAdmin}
-              canManageSubscriptions={props.canManageSubscriptions}
-              hasNightModeToggle={props.hasNightModeToggle}
-              onNightModeChange={props.onNightModeChange}
-              refreshPeriod={props.refreshPeriod}
-              setRefreshElapsedHook={props.setRefreshElapsedHook}
-            />
-          </DashboardHeaderContainer>
-
-          <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-            <ParametersAndCardsContainer
-              id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-              data-element-id="dashboard-parameters-and-cards"
-              data-testid="dashboard-parameters-and-cards"
-              shouldMakeDashboardHeaderStickyAfterScrolling={
-                !isFullscreen && (isEditing || isSharing)
-              }
+              isNightMode={shouldRenderAsNightMode}
             >
-              <DashboardParameterPanel
+              {/**
+               * Do not conditionally render `<DashboardHeader />` as it calls
+               * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
+               * in Redux state which kicks off a fetch for the dashboard cards.
+               */}
+              <DashboardHeader
+                dashboardId={dashboardId}
+                isEditing={isEditing}
+                location={location}
+                dashboard={dashboard}
+                isNightMode={shouldRenderAsNightMode}
                 isFullscreen={isFullscreen}
-                hasScroll={hasScroll}
+                fetchDashboard={fetchDashboard}
+                onEditingChange={handleSetEditing}
+                setDashboardAttribute={handleSetDashboardAttribute}
+                addParameter={addParameter}
+                onSharingClick={handleToggleSharing}
+                addCardToDashboard={addCardToDashboard}
+                onRefreshPeriodChange={onRefreshPeriodChange}
+                addMarkdownDashCardToDashboard={
+                  props.addMarkdownDashCardToDashboard
+                }
+                addHeadingDashCardToDashboard={
+                  props.addHeadingDashCardToDashboard
+                }
+                addLinkDashCardToDashboard={props.addLinkDashCardToDashboard}
+                updateDashboardAndCards={props.updateDashboardAndCards}
+                dashboardBeforeEditing={props.dashboardBeforeEditing}
+                isDirty={props.isDirty}
+                onFullscreenChange={props.onFullscreenChange}
+                sidebar={props.sidebar}
+                setSidebar={props.setSidebar}
+                closeSidebar={props.closeSidebar}
+                databases={props.databases}
+                isAddParameterPopoverOpen={props.isAddParameterPopoverOpen}
+                showAddParameterPopover={props.showAddParameterPopover}
+                hideAddParameterPopover={props.hideAddParameterPopover}
+                isAdditionalInfoVisible={props.isAdditionalInfoVisible}
+                isAdmin={props.isAdmin}
+                canManageSubscriptions={props.canManageSubscriptions}
+                hasNightModeToggle={props.hasNightModeToggle}
+                onNightModeChange={props.onNightModeChange}
+                refreshPeriod={props.refreshPeriod}
+                setRefreshElapsedHook={props.setRefreshElapsedHook}
               />
-              <CardsContainer data-element-id="dashboard-cards-container">
-                {renderContent()}
-              </CardsContainer>
-            </ParametersAndCardsContainer>
+            </DashboardHeaderContainer>
 
-            <DashboardSidebars
-              dashboard={dashboard}
-              showAddParameterPopover={props.showAddParameterPopover}
-              removeParameter={props.removeParameter}
-              addCardToDashboard={props.addCardToDashboard}
-              clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
-              onReplaceAllDashCardVisualizationSettings={
-                props.onReplaceAllDashCardVisualizationSettings
-              }
-              onUpdateDashCardVisualizationSettings={
-                props.onUpdateDashCardVisualizationSettings
-              }
-              onUpdateDashCardColumnSettings={
-                props.onUpdateDashCardColumnSettings
-              }
-              setParameterName={props.setParameterName}
-              setParameterType={props.setParameterType}
-              setParameterDefaultValue={props.setParameterDefaultValue}
-              setParameterIsMultiSelect={props.setParameterIsMultiSelect}
-              setParameterQueryType={props.setParameterQueryType}
-              setParameterSourceType={props.setParameterSourceType}
-              setParameterSourceConfig={props.setParameterSourceConfig}
-              setParameterFilteringParameters={
-                props.setParameterFilteringParameters
-              }
-              setParameterRequired={props.setParameterRequired}
-              dashcardData={props.dashcardData}
-              isFullscreen={props.isFullscreen}
-              params={props.params}
-              sidebar={props.sidebar}
-              closeSidebar={props.closeSidebar}
-              selectedTabId={props.selectedTabId}
-              getEmbeddedParameterVisibility={
-                props.getEmbeddedParameterVisibility
-              }
-              setDashboardAttribute={handleSetDashboardAttribute}
-              onCancel={() => setSharing(false)}
-            />
-          </DashboardBody>
-        </DashboardStyled>
-      )}
+            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+              <ParametersAndCardsContainer
+                id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+                data-element-id="dashboard-parameters-and-cards"
+                data-testid="dashboard-parameters-and-cards"
+                shouldMakeDashboardHeaderStickyAfterScrolling={
+                  !isFullscreen && (isEditing || isSharing)
+                }
+              >
+                <DashboardParameterPanel
+                  isFullscreen={isFullscreen}
+                  hasScroll={hasScroll}
+                />
+                <CardsContainer data-element-id="dashboard-cards-container">
+                  {renderContent()}
+                </CardsContainer>
+              </ParametersAndCardsContainer>
+
+              <DashboardSidebars
+                dashboard={dashboard}
+                showAddParameterPopover={props.showAddParameterPopover}
+                removeParameter={props.removeParameter}
+                addCardToDashboard={props.addCardToDashboard}
+                clickBehaviorSidebarDashcard={
+                  props.clickBehaviorSidebarDashcard
+                }
+                onReplaceAllDashCardVisualizationSettings={
+                  props.onReplaceAllDashCardVisualizationSettings
+                }
+                onUpdateDashCardVisualizationSettings={
+                  props.onUpdateDashCardVisualizationSettings
+                }
+                onUpdateDashCardColumnSettings={
+                  props.onUpdateDashCardColumnSettings
+                }
+                setParameterName={props.setParameterName}
+                setParameterType={props.setParameterType}
+                setParameterDefaultValue={props.setParameterDefaultValue}
+                setParameterIsMultiSelect={props.setParameterIsMultiSelect}
+                setParameterQueryType={props.setParameterQueryType}
+                setParameterSourceType={props.setParameterSourceType}
+                setParameterSourceConfig={props.setParameterSourceConfig}
+                setParameterFilteringParameters={
+                  props.setParameterFilteringParameters
+                }
+                setParameterRequired={props.setParameterRequired}
+                dashcardData={props.dashcardData}
+                isFullscreen={props.isFullscreen}
+                params={props.params}
+                sidebar={props.sidebar}
+                closeSidebar={props.closeSidebar}
+                selectedTabId={props.selectedTabId}
+                getEmbeddedParameterVisibility={
+                  props.getEmbeddedParameterVisibility
+                }
+                setDashboardAttribute={handleSetDashboardAttribute}
+                onCancel={() => setSharing(false)}
+              />
+            </DashboardBody>
+          </DashboardStyled>
+        );
+      }}
     </DashboardLoadingAndErrorWrapper>
   );
 }

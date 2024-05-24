@@ -110,7 +110,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       fetchDashboard,
       fetchDashboardCardData,
       setErrorPage,
-      location,
+      queryParams,
       params: { uuid, token },
     } = this.props;
     if (uuid) {
@@ -123,7 +123,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
 
     const result = await fetchDashboard({
       dashId: String(uuid || token),
-      queryParams: location.query,
+      queryParams,
     });
 
     if (!isSuccessfulFetchDashboardResult(result)) {
@@ -245,10 +245,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         dashboardTabs={
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
-            <DashboardTabs
-              dashboardId={this.props.dashboardId}
-              location={this.props.location}
-            />
+            <DashboardTabs dashboardId={this.props.dashboardId} />
           )
         }
       >
