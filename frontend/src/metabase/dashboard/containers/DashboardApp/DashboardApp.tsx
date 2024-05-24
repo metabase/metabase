@@ -32,14 +32,12 @@ import {
 } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard as IDashboard,
   DashboardId,
   DashCardDataMap,
   DashCardId,
   DatabaseId,
-  Parameter,
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -48,17 +46,14 @@ import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getCardData,
+  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDocumentTitle,
-  getDraftParameterValues,
-  getEditingParameter,
   getFavicon,
   getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
-  getIsAutoApplyFilters,
   getIsDirty,
   getIsEditing,
   getIsEditingParameter,
@@ -68,7 +63,6 @@ import {
   getIsRunning,
   getIsSharing,
   getLoadingStartTime,
-  getParameters,
   getParameterValues,
   getSelectedTabId,
   getSidebar,
@@ -96,10 +90,7 @@ type StateProps = {
   dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, unknown>;
   databases: Record<DatabaseId, Database>;
-  editingParameter?: Parameter | null;
-  parameters: UiParameter[];
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
   metadata: Metadata;
   loadingStartTime: number | null;
   clickBehaviorSidebarDashcard: StoreDashcard | null;
@@ -112,7 +103,6 @@ type StateProps = {
   isHeaderVisible: boolean;
   isAdditionalInfoVisible: boolean;
   selectedTabId: SelectedTabId;
-  isAutoApplyFilters: boolean;
   isNavigatingBackToDashboard: boolean;
   getEmbeddedParameterVisibility: (
     slug: string,
@@ -139,13 +129,10 @@ const mapStateToProps = (state: State): StateProps => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getCardData(state),
+    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
     databases: metadata.databases,
-    editingParameter: getEditingParameter(state),
-    parameters: getParameters(state),
     parameterValues: getParameterValues(state),
-    draftParameterValues: getDraftParameterValues(state),
 
     metadata,
     loadingStartTime: getLoadingStartTime(state),
@@ -159,7 +146,6 @@ const mapStateToProps = (state: State): StateProps => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
-    isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
     getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),

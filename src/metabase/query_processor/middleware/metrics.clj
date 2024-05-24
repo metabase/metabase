@@ -28,9 +28,11 @@
                                           &match))]
                       (update (lib.util/fresh-uuids replacement)
                               1
-                              merge
-                              {:name metric-name}
-                              (select-keys (get &match 1) [:lib/uuid :name])))
+                              #(merge
+                                 %
+                                 {:name metric-name}
+                                 (select-keys % [:name :display-name])
+                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
@@ -47,14 +49,17 @@
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
                (map (fn [card-metadata]
-                      (let [metric-query (lib.convert/->pMBQL
+                      (let [unprocessed-metric-query (lib/query query (:dataset-query card-metadata))
+                            [_ {aggregation-name :name}] (first (lib/aggregations unprocessed-metric-query))
+                            metric-query (lib.convert/->pMBQL
                                            ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                            (lib/query query (:dataset-query card-metadata))))]
+                                            unprocessed-metric-query))
+                            metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
                            {:query metric-query
-                            :aggregation aggregation
-                            :name (:name card-metadata)}]
+                            :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
+                            :name metric-name}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
@@ -83,7 +88,7 @@
 (defn- temp-query-at-stage-path
   [query stage-path]
   (cond-> query
-    stage-path (lib.walk/query-for-stage-at-path stage-path)
+    stage-path (lib.walk/query-for-path stage-path)
     stage-path :query))
 
 (defn splice-compatible-metrics
@@ -103,7 +108,7 @@
                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
                             (as-> query $q
                               (reduce expression-with-name-from-source $q (lib/expressions metric-query 0))
-                              (reduce lib/filter $q (lib/filters metric-query 0))
+                              (reduce #(lib/filter %1 0 %2) $q (lib/filters metric-query 0))
                               (replace-metric-aggregation-refs $q 0 lookup)))
                           (throw (ex-info "Incompatible metric" {:query query
                                                                  :metric metric-query}))))

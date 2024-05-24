@@ -133,14 +133,13 @@
                                          aggregation-pos (assoc :aggregation-position aggregation-pos))))]
      (cond
        (and first-stage? s-metric)
-       (not-empty
-         (mapv maybe-add-aggregation-pos
-               [s-metric]))
+       [(maybe-add-aggregation-pos s-metric)]
 
        (and first-stage? source-table)
        (let [metrics (lib.metadata/metadatas-for-table query :metadata/metric source-table)]
          (not-empty
-           (mapv (comp maybe-add-aggregation-pos #(lib.metadata/metric query %) :id)
-                 (filter (fn [metric-card]
-                           (= 1 (lib.query/stage-count (lib.query/query query (:definition metric-card)))))
-                         metrics))))))))
+          (into []
+                (comp (filter (fn [metric-card]
+                                (= 1 (lib.query/stage-count (lib.query/query query (:dataset-query metric-card))))))
+                      (map maybe-add-aggregation-pos))
+                metrics)))))))
