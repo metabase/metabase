@@ -1151,12 +1151,13 @@
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/process-query-for-dashcard
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id})))
+  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                     (merge
+                      body
+                      {:dashboard-id dashboard-id
+                       :card-id      card-id
+                       :dashcard-id  dashcard-id}))
+    (events/publish-event! :event/card-read {:object (t2/select-one :model/Card card-id) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
@@ -1197,12 +1198,13 @@
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
    parameters   [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/process-query-for-dashcard
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id
-              :qp           qp.pivot/run-pivot-query})))
+  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                     (merge
+                      body
+                      {:dashboard-id dashboard-id
+                       :card-id      card-id
+                       :dashcard-id  dashcard-id
+                       :qp           qp.pivot/run-pivot-query}))
+    (events/publish-event! :event/card-read {:object (t2/select-one :model/Card card-id) :user-id api/*current-user-id*})))
 
 (api/define-routes)

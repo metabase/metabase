@@ -144,7 +144,8 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
-  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params))
+  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params)
+    (events/publish-event! :event/card-read {:object (t2/select-one :model/Card card-id) :user-id api/*current-user-id*})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -304,6 +305,7 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
-  (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query))
+  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query)
+    (events/publish-event! :event/card-read {:object (t2/select-one :model/Card card-id) :user-id api/*current-user-id*})))
 
 (api/define-routes)

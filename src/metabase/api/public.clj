@@ -284,14 +284,15 @@
    card-id     ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
-  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (process-query-for-dashcard
-     :dashboard-id  dashboard-id
-     :card-id       card-id
-     :dashcard-id   dashcard-id
-     :export-format :api
-     :parameters    parameters)))
+  (let [card         (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
+        dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+    (u/prog1 (process-query-for-dashcard
+              :dashboard-id  dashboard-id
+              :card-id       card-id
+              :dashcard-id   dashcard-id
+              :export-format :api
+              :parameters    parameters)
+      (events/publish-event! :event/card-read {:object card, :user-id api/*current-user-id*}))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
@@ -606,14 +607,16 @@
    dashcard-id ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (process-query-for-dashcard
-     :dashboard-id  dashboard-id
-     :card-id       card-id
-     :dashcard-id   dashcard-id
-     :export-format :api
-     :parameters    parameters
-     :qp            qp.pivot/run-pivot-query)))
+  (let [card         (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
+        dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+    (u/prog1 (process-query-for-dashcard
+              :dashboard-id  dashboard-id
+              :card-id       card-id
+              :dashcard-id   dashcard-id
+              :export-format :api
+              :parameters    parameters
+              :qp            qp.pivot/run-pivot-query)
+      (events/publish-event! :event/card-read {:object card, :user-id api/*current-user-id*}))))
 
 (def ^:private action-execution-throttle
   "Rate limit at 10 actions per 1000 ms on a per action basis.
