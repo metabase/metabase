@@ -41,7 +41,7 @@ if (hasPremiumFeature("cache_granular_controls")) {
     inherit: PLUGIN_CACHING.strategies.inherit,
     duration: enterpriseOnlyCachingStrategies.duration,
     schedule: enterpriseOnlyCachingStrategies.schedule,
-    ttl: enterpriseOnlyCachingStrategies.ttl,
+    ttl: PLUGIN_CACHING.strategies.ttl,
     nocache: PLUGIN_CACHING.strategies.nocache,
   };
 }

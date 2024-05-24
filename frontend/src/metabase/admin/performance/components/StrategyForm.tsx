@@ -38,11 +38,14 @@ import type {
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
-import { useIsFormPending } from "../hooks/useIsFormPending";
-import { getLabelString } from "../utils";
-import { rootId } from "../constants/simple";
 import { strategyValidationSchema } from "../constants/complex";
-import { cronToScheduleSettings, scheduleSettingsToCron } from "../utils";
+import { rootId } from "../constants/simple";
+import { useIsFormPending } from "../hooks/useIsFormPending";
+import {
+  getLabelString,
+  cronToScheduleSettings,
+  scheduleSettingsToCron,
+} from "../utils";
 
 import {
   FormBox,
@@ -50,8 +53,6 @@ import {
   LoaderInButton,
   StyledForm,
 } from "./StrategyForm.styled";
-
-const { strategies } = PLUGIN_CACHING;
 
 interface ButtonLabels {
   save: string;
@@ -367,11 +368,13 @@ const StrategySelector = ({
   targetId: number | null;
   model?: CacheableModel;
 }) => {
+  const { strategies } = PLUGIN_CACHING;
+
   const { values } = useFormikContext<Strategy>();
 
   const availableStrategies = useMemo(() => {
     return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
-  }, [targetId]);
+  }, [targetId, strategies]);
 
   return (
     <section>
@@ -465,6 +468,8 @@ const getDefaultValueForField = (
   strategyType: StrategyType,
   fieldName?: string,
 ) => {
+  const { strategies } = PLUGIN_CACHING;
+
   return fieldName
     ? strategies[strategyType].validateWith.cast({})[fieldName]
     : "";
