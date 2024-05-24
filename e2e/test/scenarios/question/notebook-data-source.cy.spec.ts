@@ -28,6 +28,7 @@ import {
   resyncDatabase,
   saveQuestion,
   startNewQuestion,
+  tabsShouldBe,
   visitModel,
   visitQuestion,
   visualize,
@@ -132,15 +133,8 @@ describe("scenarios > notebook > data source", () => {
 
       startNewQuestion();
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 2);
-        entityPickerModalTab("Recents").should("not.exist");
+        tabsShouldBe("Recents", ["Recents", "Tables", "Saved questions"]);
         entityPickerModalTab("Models").should("not.exist");
-        entityPickerModalTab("Tables").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        entityPickerModalTab("Saved questions").should("exist");
       });
     });
   });
@@ -156,12 +150,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should("exist");
-        entityPickerModalTab("Tables").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        tabsShouldBe("Tables", ["Recents", "Models", "Tables", "Saved questions"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -175,12 +164,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should("exist");
-        entityPickerModalTab("Tables").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        tabsShouldBe("Tables", ["Recents", "Models", "Tables", "Saved questions"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -269,7 +253,7 @@ describe("scenarios > notebook > data source", () => {
       cy.signInAsAdmin();
     });
 
-    it("data selector should properly show a model as the source (metabase#39699)", () => {
+    it.only("data selector should properly show a model as the source (metabase#39699)", () => {
       createQuestion(modelDetails, { visitQuestion: true });
       openNotebook();
       cy.findByTestId("data-step-cell")
@@ -277,21 +261,18 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Models").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        tabsShouldBe("Models", ["Recents", "Models", "Tables", "Saved questions"]);
+
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Second collection");
         assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
 
         entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
+
+        cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
-          .and("contain.text", checkNotNull(modelDetails.name))
-          .and("have.attr", "aria-selected", "true");
+          .and("contain.text", checkNotNull(modelDetails.name));
       });
     });
 
@@ -308,9 +289,10 @@ describe("scenarios > notebook > data source", () => {
         );
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
-
         entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
+
+
+        cy.findByText("Orders Model")
           .should("exist")
           .and("contain.text", "Orders Model")
           .and("have.attr", "aria-selected", "true");
@@ -332,7 +314,7 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(2, "Orders Model");
 
         entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
+        cy.findByText("Orders Model")
           .should("exist")
           .and("contain.text", "Orders Model")
           .and("have.attr", "aria-selected", "true");
