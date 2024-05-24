@@ -82,7 +82,7 @@
    "test_resources"])
 
 (defn- default-options []
-  {:namespace-pattern   #"^metabase.*"
+  {:namespace-pattern   #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
    :exclude-directories excluded-directories
    :test-warn-time      3000})
 
