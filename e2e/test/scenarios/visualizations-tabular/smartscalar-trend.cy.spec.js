@@ -3,6 +3,7 @@ import Color from "color";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   cartesianChartCircle,
+  createNativeQuestion,
   menu,
   popover,
   queryBuilderMain,
@@ -453,7 +454,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should gracefully handle errors (metabase#42948)", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "42948",
         native: {
@@ -478,11 +479,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // check that error/warning is showing up
     cy.icon("warning").realHover();
-    cy.findByRole("tooltip").within(() => {
-      cy.findByText(
-        "No integer value supplied for periods ago comparison. Click for more information",
-      );
-    });
+    queryBuilderMain().findByText(
+      "No integer value supplied for periods ago comparison.",
+    );
 
     // check that we can switch to the table view and the data is shown
     cy.findByLabelText("Switch to data").click();
