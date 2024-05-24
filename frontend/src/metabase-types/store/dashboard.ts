@@ -76,24 +76,6 @@ export type TabDeletion = {
   removedDashCardIds: DashCardId[];
 };
 
-export type DashboardLoadingStatus = "idle" | "running" | "complete";
-
-export type DashboardCardsLoadingState = {
-  loadingIds: DashCardId[];
-  loadingStatus: DashboardLoadingStatus;
-  startTime: number | null;
-  endTime: number | null;
-};
-
-export type DashboardMetadataLoadingState = {
-  loadingStatus: DashboardLoadingStatus;
-};
-
-export type DashboardLoadingControls = {
-  documentTitle?: string;
-  showLoadCompleteFavicon?: boolean;
-};
-
 export interface DashboardState {
   dashboardId: DashboardId | null;
   selectedTabId: SelectedTabId;
@@ -105,9 +87,16 @@ export interface DashboardState {
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
 
-  loadingDashCards: DashboardCardsLoadingState;
-  loadingMetadata: DashboardMetadataLoadingState;
-  loadingControls: DashboardLoadingControls;
+  loadingDashCards: {
+    loadingIds: DashCardId[];
+    loadingStatus: "idle" | "running" | "complete";
+    startTime: number | null;
+    endTime: number | null;
+  };
+  loadingControls: {
+    documentTitle?: string;
+    showLoadCompleteFavicon?: boolean;
+  };
 
   editingDashboard: Dashboard | null;
   isAddParameterPopoverOpen: boolean;

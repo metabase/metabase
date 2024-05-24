@@ -24,12 +24,9 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   draftParameterValues: {},
   loadingDashCards: {
     loadingIds: [],
-    loadingStatus: "idle",
+    loadingStatus: "idle" as const,
     startTime: null,
     endTime: null,
-  },
-  loadingMetadata: {
-    loadingStatus: "idle",
   },
   loadingControls: {},
   isAddParameterPopoverOpen: false,

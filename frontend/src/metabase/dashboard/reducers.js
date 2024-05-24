@@ -48,7 +48,6 @@ import {
   FETCH_CARD_DATA_PENDING,
   SET_DISPLAY_THEME,
   fetchDashboard,
-  fetchDashboardMetadata,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
@@ -465,37 +464,6 @@ const loadingDashCards = handleActions(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
-const loadingMetadata = handleActions(
-  {
-    [INITIALIZE]: {
-      next: state => ({
-        ...state,
-        loadingStatus: "idle",
-      }),
-    },
-    [fetchDashboardMetadata.pending]: {
-      next: state => ({
-        ...state,
-        loadingStatus:
-          state.loadingStatus === "idle" ? "running" : state.loadingStatus,
-      }),
-    },
-    [fetchDashboardMetadata.fulfilled]: {
-      next: state => ({
-        ...state,
-        loadingStatus: "complete",
-      }),
-    },
-    [RESET]: {
-      next: state => ({
-        ...state,
-        loadingStatus: "idle",
-      }),
-    },
-  },
-  INITIAL_DASHBOARD_STATE.loadingMetadata,
-);
-
 const DEFAULT_SIDEBAR = { props: {} };
 const sidebar = handleActions(
   {
@@ -566,7 +534,6 @@ export const dashboardReducers = reduceReducers(
     parameterValues,
     draftParameterValues,
     loadingDashCards,
-    loadingMetadata,
     isAddParameterPopoverOpen,
     isNavigatingBackToDashboard,
     sidebar,

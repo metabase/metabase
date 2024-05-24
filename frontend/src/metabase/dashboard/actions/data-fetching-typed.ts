@@ -125,7 +125,7 @@ export const fetchDashboard = createAsyncThunk(
       fetchDashboardCancellation = null;
 
       if (dashboardType === "normal" || dashboardType === "transient") {
-        dispatch(fetchDashboardMetadata(result.dashcards));
+        await dispatch(loadMetadataForDashboard(result.dashcards));
       }
 
       const isUsingCachedResults = entities != null;
@@ -182,12 +182,5 @@ export const fetchDashboard = createAsyncThunk(
       }
       return rejectWithValue(error);
     }
-  },
-);
-
-export const fetchDashboardMetadata = createAsyncThunk(
-  "metabase/dashboard/FETCH_DASHBOARD_METADATA",
-  async (dashcards: DashboardCard[], { dispatch }) => {
-    dispatch(await loadMetadataForDashboard(dashcards));
   },
 );
