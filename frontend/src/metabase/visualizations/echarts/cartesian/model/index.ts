@@ -11,7 +11,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
-  getChartDataDensity,
+  getCartesianChartDataDensity,
   getDimensionModel,
   getSeriesLabelsFormatters,
   getStackedLabelsFormatters,
@@ -152,7 +152,7 @@ export const getCartesianChartModel = (
       renderingContext,
     );
 
-  const dataDensity = getChartDataDensity(
+  const dataDensity = getCartesianChartDataDensity(
     seriesModels,
     stackModels,
     transformedDataset,

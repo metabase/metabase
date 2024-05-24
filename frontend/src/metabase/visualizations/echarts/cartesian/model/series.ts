@@ -386,7 +386,7 @@ export function getWaterfallChartDataDensity(
   };
 }
 
-export function getChartDataDensity(
+export function getCartesianChartDataDensity(
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
   dataset: ChartDataset,
