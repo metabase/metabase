@@ -141,11 +141,6 @@ function getShowLabelFn(
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
   }
-  // echarts handles labels better when there are lot in a waterfall
-  // b/c hideOverlap ends up hiding too many labels if you sparsely plot them
-  if (type === "waterfall" && totalNumberOfLabels > 100) {
-    return () => true;
-  }
 
   const { selectionFrequency, selectionOffset } = getSelectionFrequency(
     chartDataDensity,
