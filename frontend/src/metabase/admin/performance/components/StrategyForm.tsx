@@ -468,10 +468,8 @@ const getDefaultValueForField = (
   strategyType: StrategyType,
   fieldName?: string,
 ) => {
-  const { strategies } = PLUGIN_CACHING;
-
   return fieldName
-    ? strategies[strategyType].validateWith.cast({})[fieldName]
+    ? PLUGIN_CACHING.strategies[strategyType].validateWith.cast({})[fieldName]
     : "";
 };
 
