@@ -128,7 +128,7 @@ export function useSyncURLSlug({ location }: { location: Location }) {
       // Remove every previously-synced keys from the query string when the component is unmounted.
       // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
       const search = buildSearchString({
-        filterFn: key => key !== "tab",
+        filterFn: key => key === "tab",
       });
 
       if (search !== window.location.search) {
