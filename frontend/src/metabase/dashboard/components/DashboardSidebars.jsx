@@ -36,7 +36,6 @@ DashboardSidebars.propTypes = {
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
   setParameterRequired: PropTypes.func.isRequired,
-  dashcardData: PropTypes.object,
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
@@ -67,7 +66,6 @@ export function DashboardSidebars({
   setParameterSourceConfig,
   setParameterFilteringParameters,
   setParameterRequired,
-  dashcardData,
   isFullscreen,
   onCancel,
   params,
@@ -120,7 +118,6 @@ export function DashboardSidebars({
           dashboard={dashboard}
           dashcard={clickBehaviorSidebarDashcard}
           parameters={parameters}
-          dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
           onUpdateDashCardVisualizationSettings={
             onUpdateDashCardVisualizationSettings
           }

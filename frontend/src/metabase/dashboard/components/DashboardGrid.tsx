@@ -42,12 +42,12 @@ import {
 import type {
   BaseDashboardCard,
   Card,
-  DashCardDataMap,
   DashCardId,
   Dashboard,
   DashboardTabId,
   DashboardCard,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -62,6 +62,7 @@ import {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 } from "../actions";
+import { getDashcardDataMap } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
@@ -99,6 +100,10 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
+const mapStateToProps = (state: State) => ({
+  dashcardData: getDashcardDataMap(state),
+});
+
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
@@ -113,13 +118,12 @@ const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 };
-const connector = connect(null, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps);
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboard: Dashboard;
-  dashcardData: DashCardDataMap;
   selectedTabId: DashboardTabId | null;
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;

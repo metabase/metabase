@@ -31,7 +31,6 @@ import {
 import type {
   Dashboard as IDashboard,
   DashboardId,
-  DashCardDataMap,
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
@@ -41,7 +40,6 @@ import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
@@ -81,7 +79,6 @@ type StateProps = {
   isEditingParameter: boolean;
   isDirty: boolean;
   dashboard: IDashboard | null;
-  dashcardData: DashCardDataMap;
   slowCards: Record<DashCardId, unknown>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   loadingStartTime: number | null;
@@ -117,7 +114,6 @@ const mapStateToProps = (state: State): StateProps => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getDashcardDataMap(state),
     slowCards: getSlowCards(state),
     parameterValues: getParameterValues(state),
     loadingStartTime: getLoadingStartTime(state),

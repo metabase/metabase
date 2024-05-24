@@ -388,7 +388,6 @@ function DashboardInner(props: DashboardProps) {
         isFullscreen={props.isFullscreen}
         isEditingParameter={props.isEditingParameter}
         isEditing={props.isEditing}
-        dashcardData={props.dashcardData}
         dashboard={props.dashboard}
         slowCards={props.slowCards}
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
@@ -520,7 +519,6 @@ function DashboardInner(props: DashboardProps) {
                 props.setParameterFilteringParameters
               }
               setParameterRequired={props.setParameterRequired}
-              dashcardData={props.dashcardData}
               isFullscreen={props.isFullscreen}
               params={props.params}
               sidebar={props.sidebar}
