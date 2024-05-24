@@ -339,6 +339,8 @@ describe("scenarios > models metadata", () => {
         cy.go("back"); // navigate away from drilled table
         cy.wait("@dataset");
 
+        cy.findByText("Native Model"); // we are back on the original model
+
         // Drill to Reviews table
         // FK column has a FK semantic type, no mapping to real DB columns
         drillFK({ id: 7 });

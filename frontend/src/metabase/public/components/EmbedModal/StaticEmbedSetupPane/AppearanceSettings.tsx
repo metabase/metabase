@@ -81,7 +81,7 @@ export const AppearanceSettings = ({
         <Stack spacing="1rem">
           <DisplayOptionSection title={t`Background`}>
             <SegmentedControl
-              value={displayOptions.theme}
+              value={displayOptions.theme ?? undefined}
               // `data` type is required to be mutable, but THEME_OPTIONS is const.
               data={[...THEME_OPTIONS]}
               fullWidth
