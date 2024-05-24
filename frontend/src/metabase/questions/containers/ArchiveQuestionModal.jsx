@@ -1,29 +1,31 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
 import { msgid, ngettext, t } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
-import { setArchivedQuestion } from "metabase/query_builder/actions";
+import Questions from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 
-const mapDispatchToProps = dispatch => ({
-  archive: question => dispatch(setArchivedQuestion(question, true)),
-});
+const mapDispatchToProps = {
+  archive: card => Questions.actions.setArchived(card, true),
+};
 
 const getLabels = question => {
   const type = question.type();
 
   if (type === "question") {
     return {
-      title: t`Move this question to trash?`,
-      message: t`This question will be removed from any dashboards or alerts using it.`,
+      title: t`Archive this question?`,
+      message: t`This question will be removed from any dashboards or pulses using it.`,
     };
   }
 
   if (type === "model") {
     return {
-      title: t`Move this model to trash?`,
-      message: t`This model will be removed from any dashboards or alerts using it.`,
+      title: t`Archive this model?`,
+      message: t`This model will be removed from any dashboards or pulses using it.`,
     };
   }
 
@@ -32,9 +34,11 @@ const getLabels = question => {
 
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
-    const { question, archive } = this.props;
+    const { question, archive, router } = this.props;
 
-    archive(question);
+    const card = question.card();
+    archive(card);
+    router.push(Urls.collection(card.collection));
   };
 
   render() {
@@ -64,4 +68,7 @@ class ArchiveQuestionModal extends Component {
   }
 }
 
-export default connect(null, mapDispatchToProps)(ArchiveQuestionModal);
+export default connect(
+  null,
+  mapDispatchToProps,
+)(withRouter(ArchiveQuestionModal));

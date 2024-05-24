@@ -817,15 +817,13 @@ export class NativeQueryEditor extends Component<
                 enableParameterRequiredBehavior
               />
             )}
-            {query.hasWritePermission() &&
-              !query.question().isArchived() &&
-              this.props.setIsNativeEditorOpen && (
-                <VisibilityToggler
-                  isOpen={isNativeEditorOpen}
-                  readOnly={!!readOnly}
-                  toggleEditor={this.toggleEditor}
-                />
-              )}
+            {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
+              <VisibilityToggler
+                isOpen={isNativeEditorOpen}
+                readOnly={!!readOnly}
+                toggleEditor={this.toggleEditor}
+              />
+            )}
           </Flex>
         )}
         {isPromptInputVisible && (

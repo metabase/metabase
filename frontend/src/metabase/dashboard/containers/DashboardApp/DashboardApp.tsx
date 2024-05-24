@@ -12,6 +12,7 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import Dashboards from "metabase/entities/dashboards";
 import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -110,6 +111,7 @@ type StateProps = {
 };
 
 type DispatchProps = {
+  archiveDashboard: (id: DashboardId) => Promise<void>;
   closeNavbar: () => void;
   setErrorPage: (error: unknown) => void;
   onChangeLocation: (location: Location) => void;
@@ -155,6 +157,8 @@ const mapStateToProps = (state: State): StateProps => {
 const mapDispatchToProps = {
   ...dashboardActions,
   closeNavbar,
+  archiveDashboard: (id: DashboardId) =>
+    Dashboards.actions.setArchived({ id }, true),
   setErrorPage,
   onChangeLocation: push,
 };

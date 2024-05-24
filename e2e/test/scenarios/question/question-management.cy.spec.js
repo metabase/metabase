@@ -24,6 +24,8 @@ import {
   expectGoodSnowplowEvents,
   modal,
   entityPickerModal,
+  openCommandPalette,
+  commandPalette,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -181,6 +183,38 @@ describe(
                       .should("have.attr", "aria-selected", "true");
                   });
                 });
+              });
+
+              it("should be able to archive the question (metabase#11719-3, metabase#16512, metabase#20133)", () => {
+                cy.intercept("GET", "/api/collection/root/items**").as(
+                  "getItems",
+                );
+                openQuestionActions();
+                cy.findByTestId("archive-button").click();
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                cy.findByText(
+                  "It will also be removed from the filter that uses it to populate values.",
+                ).should("not.exist");
+                clickButton("Archive");
+                assertRequestNot403("updateQuestion");
+                assertNoPermissionsError();
+                cy.wait("@getItems"); // pinned items
+                cy.wait("@getItems"); // unpinned items
+                cy.location("pathname").should("eq", "/collection/root");
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                cy.findByText("Orders").should("not.exist");
+
+                openCommandPalette();
+                commandPalette().within(() => {
+                  cy.findByRole("option", { name: /recent/i }).should(
+                    "not.exist",
+                  );
+                });
+
+                // Check page for archived questions
+                cy.visit("/question/" + ORDERS_QUESTION_ID);
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+                cy.findByText("This question has been archived");
               });
 
               describe("Add to Dashboard", () => {
@@ -478,4 +512,8 @@ function moveQuestionTo(newCollectionName, clickTab = false) {
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });
+}
+
+function clickButton(button_name) {
+  cy.button(button_name).should("not.be.disabled").click();
 }

@@ -59,7 +59,7 @@ export const InfoTextEditedInfo = ({
 
   const { prefix, timestamp, userId } = isUpdated
     ? {
-        prefix: result.archived ? t`Deleted` : t`Updated`,
+        prefix: t`Updated`,
         timestamp: result.last_edited_at,
         userId: result.last_editor_id,
       }
