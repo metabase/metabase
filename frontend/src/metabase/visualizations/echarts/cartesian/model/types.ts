@@ -241,7 +241,6 @@ export type CartesianChartModel = BaseCartesianChartModel & {
 };
 
 export type ScatterPlotModel = BaseCartesianChartModel & {
-  seriesLabelsFormatters: SeriesFormatters;
   bubbleSizeDomain: Extent | null;
 };
 
