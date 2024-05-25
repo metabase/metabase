@@ -405,6 +405,7 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
@@ -444,21 +445,60 @@ describe("scenarios > dashboard > tabs", () => {
       );
     });
 
+    const firstQuestion = () => {
+      return cy.request("GET", `/api/card/${ORDERS_QUESTION_ID}`).its("body");
+    };
+    const secondQuestion = () => {
+      return cy
+        .request("GET", `/api/card/${ORDERS_COUNT_QUESTION_ID}`)
+        .its("body");
+    };
+
+    cy.wait(1000);
+
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(1);
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(1);
+    });
+
     // Visit first tab and confirm only first card was queried
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
-    // Visit second tab and confirm only second card was queried
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(3);
+    }); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(2);
+    }); // 1 (previously) + 1 (secondQuestion)
+
+    // // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
 
-    // Go back to first tab, expect no additional queries
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(4);
+    }); // 3 (previously) + 1 (firstQuestion)
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(4);
+    }); // 2 (previously) + 1 (secondQuestion) + 1 (secondTabQuery)
+
+    // // Go back to first tab, expect no additional queries
     goToTab("Tab 1");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
+
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(5);
+    }); // 4 (previously) + 1 (firstQuestion)
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(5);
+    }); // 4 (previously) + 1 (secondQuestion)
 
     // Go to public dashboard
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
@@ -486,10 +526,24 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("not.have.been.called");
 
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(7);
+    }); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(6);
+    }); // 5 (previously) + 1 (secondQuestion)
+
     // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
+
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(8);
+    }); // 7 (previously) + 1 (firstQuestion)
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(8);
+    }); // 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
