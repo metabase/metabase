@@ -166,7 +166,7 @@
       (mt/with-temp [:model/Dashboard dash {}]
         (testing "GET /api/dashboard/:id"
           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" (u/id dash)))
-          (is (partial= {:user_id (mt/user->id :crowberto), :model "dashboar", :model_id (u/id dash)}
+          (is (partial= {:user_id (mt/user->id :crowberto), :model "dashboard", :model_id (u/id dash)}
                         (latest-view (mt/user->id :crowberto) (u/id dash)))))))))
 
 (deftest get-public-card-logs-view-test
