@@ -232,15 +232,16 @@ export type BaseCartesianChartModel = {
   seriesIdToDataKey?: Record<string, DataKey>;
 
   trendLinesModel?: TrendLinesModel;
-  seriesLabelsFormatters?: SeriesFormatters;
-  stackedLabelsFormatters?: StackedSeriesFormatters;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {
+  seriesLabelsFormatters: SeriesFormatters;
+  stackedLabelsFormatters: StackedSeriesFormatters;
   dataDensity: CartesianChartDataDensity;
 };
 
 export type ScatterPlotModel = BaseCartesianChartModel & {
+  seriesLabelsFormatters: SeriesFormatters;
   bubbleSizeDomain: Extent | null;
 };
 

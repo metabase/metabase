@@ -8,7 +8,7 @@ import {
   TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  CartesianChartModel,
+  BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -34,7 +34,7 @@ import { getHoveredEChartsSeriesIndex } from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
   {

@@ -3,7 +3,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { useEffect } from "react";
 
 import { isChartsDebugLoggingEnabled } from "metabase/env";
-import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { RawSeries } from "metabase-types/api";
 
 export function useChartDebug({
@@ -15,7 +15,7 @@ export function useChartDebug({
   isQueryBuilder: boolean;
   rawSeries: RawSeries;
   option: EChartsCoreOption;
-  chartModel: CartesianChartModel;
+  chartModel: BaseCartesianChartModel;
 }) {
   useEffect(() => {
     if (!isQueryBuilder || !isChartsDebugLoggingEnabled) {
