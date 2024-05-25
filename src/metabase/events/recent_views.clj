@@ -49,10 +49,11 @@
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
 
-(derive ::card-query-event :metabase/event)
-(derive :event/card-query ::card-query-event)
+;; TODO: change to :event/card-query and move to :event/card-read
+(derive ::card-read :metabase/event)
+(derive :event/card-query ::card-query)
 
-(m/defmethod events/publish-event! ::card-query-event
+(m/defmethod events/publish-event! ::card-read
   "Handle processing for a single card query event."
   [topic {:keys [card-id user-id context] :as _event}]
   (span/with-span!
