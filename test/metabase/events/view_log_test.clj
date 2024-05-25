@@ -97,14 +97,7 @@
                 :has_access true
                 :context    nil}
                (latest-view (u/id user) (u/id dashboard))))
-
-          (is (partial=
-               {:user_id    (u/id user)
-                :model      "card"
-                :model_id   (u/id card)
-                :has_access true
-                :context    "dashboard"}
-               (latest-view (u/id user) (u/id card)))))))))
+          (is (nil? (latest-view (u/id user) (u/id card)))))))))
 
 (deftest card-read-view-count-test
   (mt/with-temp [:model/User user {}

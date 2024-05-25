@@ -91,13 +91,14 @@
 
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
-  [topic {:keys [object user-id] :as _event}]
+  [topic {:keys [object user-id] :as event}]
   (span/with-span!
     {:name "view-log-dashboard-read"
      :topic topic
      :user-id user-id}
     (try
       (increment-view-counts! :model/Dashboard (:id object))
+      (record-views! (generate-view event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
