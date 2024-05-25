@@ -12,11 +12,29 @@
 
 (derive ::event :metabase/event)
 
-(derive :event/dashboard-read ::event)
-(derive :event/table-read ::event)
+(derive ::dashboard-read :metabase/event)
+(derive :event/dashboard-read ::dashboard-read)
 
-(m/defmethod events/publish-event! ::event
+(m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for a single event notification which should update the recent views for a user."
+  [topic {:keys [object-id user-id] :as _event}]
+  (span/with-span!
+    {:name (str "recent-views-" (name topic))
+     :topic topic
+     :user-id user-id}
+    (try
+      (let [model    (audit-log/model-name :model/Dashboard)
+            model-id object-id
+            user-id  (or user-id api/*current-user-id*)]
+        (recent-views/update-users-recent-views! user-id model model-id))
+      (catch Throwable e
+        (log/warnf e "Failed to process recent_views event: %s" topic)))))
+
+(derive ::table-read :metabase/event)
+(derive :event/table-read ::table-read)
+
+(m/defmethod events/publish-event! ::table-read
+  "Handle processing for a single table read event."
   [topic {:keys [object user-id] :as _event}]
   (span/with-span!
     {:name (str "recent-views-" (name topic))

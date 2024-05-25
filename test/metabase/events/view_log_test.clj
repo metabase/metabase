@@ -26,7 +26,7 @@
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is recorded in EE"
-        (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+        (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user)})
         (is (partial=
              {:user_id  (u/id user)
               :model    "card"
@@ -40,7 +40,7 @@
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
-        (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+        (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user)})
         (is (nil? (latest-view (u/id user) (u/id card)))
             "view log entries should not be made in OSS")))))
 
@@ -89,7 +89,7 @@
                    :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
       (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
         (testing "A basic dashboard read event is recorded in EE, as well as events for its cards"
-          (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/id user)})
+          (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/id user)})
           (is (partial=
                {:user_id    (u/id user)
                 :model      "dashboard"
@@ -105,9 +105,9 @@
     (testing "A card read events are recorded by a card's view_count"
       (is (= 0 (:view_count card))
           "view_count should be 0 before the event is published")
-      (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user)})
       (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
-      (events/publish-event! :event/card-read {:object card :user-id (u/the-id user)})
+      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user)})
       (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
 
 (deftest dashboard-read-view-count-test
@@ -119,11 +119,11 @@
       (testing "A dashboard read events are recorded by a dashboard's view_count"
         (is (= 0 (:view_count dashboard) (:view_count card))
             "view_count should be 0 before the event is published")
-        (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
+        (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
         (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
         (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
             "view_count for cards on the dashboard should not be incremented")
-        (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
+        (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
         (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))
 
 (deftest table-read-view-count-test

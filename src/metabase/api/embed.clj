@@ -46,7 +46,7 @@
   (let [unsigned (embed/unsign token)]
     (api.embed.common/check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
-      (events/publish-event! :event/card-read {:object <>, :user-id api/*current-user-id*}))))
+      (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -104,8 +104,7 @@
   (let [unsigned (embed/unsign token)]
     (api.embed.common/check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
-      (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
-                                                    :object <>}))))
+      (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
 (defn- process-query-for-dashcard-with-signed-token
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -145,7 +144,7 @@
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params)
-    (events/publish-event! :event/card-read {:object (t2/select-one :model/Card card-id) :user-id api/*current-user-id*})))
+    (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -306,6 +305,6 @@
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query)
-    (events/publish-event! :event/card-read {:object (t2/select-one :model/Card card-id) :user-id api/*current-user-id*})))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*})))
 
 (api/define-routes)

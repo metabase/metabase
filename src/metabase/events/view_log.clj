@@ -30,12 +30,12 @@
       (t2/insert! :model/ViewLog view-or-views))))
 
 (defn- generate-view
-  "Generates a view, given an event map."
-  [{:keys [object user-id has-access]
-    :or   {has-access true}}]
-  {:model      (u/lower-case-en (audit-log/model-name object))
+  "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
+  [& {:keys [model object-id object user-id has-access]
+      :or   {has-access true}}]
+  {:model      (u/lower-case-en (audit-log/model-name (or model object)))
    :user_id    (or user-id api/*current-user-id*)
-   :model_id   (u/id object)
+   :model_id   (or object-id (u/id object))
    :has_access has-access})
 
 (derive ::card-read-event :metabase/event)
@@ -43,15 +43,14 @@
 
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
-  [topic {:keys [object user-id] :as event}]
+  [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
-    {:name "view-log-card-read"
-     :topic topic
+    {:name    "view-log-card-read"
+     :topic   topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Card (:id object))
-      (-> event
-          generate-view
+      (increment-view-counts! :model/Card object-id)
+      (-> (generate-view :model :model/Card event)
           (assoc :context "question")
           record-views!)
       (catch Throwable e
@@ -91,14 +90,14 @@
 
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
-  [topic {:keys [object user-id] :as event}]
+  [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
     {:name "view-log-dashboard-read"
      :topic topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Dashboard (:id object))
-      (record-views! (generate-view event))
+      (increment-view-counts! :model/Dashboard object-id)
+      (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
