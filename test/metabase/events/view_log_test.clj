@@ -128,12 +128,10 @@
             "view_count should be 0 before the event is published")
         (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
         (is (= 1 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
-        (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card)))
-            "view_count for cards on the dashboard be incremented too")
+        (is (= 0 (t2/select-one-fn :view_count :model/Card (:id card)))
+            "view_count for cards on the dashboard should not be incremented")
         (events/publish-event! :event/dashboard-read {:object dashboard :user-id (u/the-id user)})
-        (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))
-        (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))
-            "view_count for cards on the dashboard be incremented too")))))
+        (is (= 2 (t2/select-one-fn :view_count :model/Dashboard (:id dashboard))))))))
 
 (deftest table-read-view-count-test
   (mt/with-temp [:model/User  user  {}
