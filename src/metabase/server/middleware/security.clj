@@ -127,21 +127,25 @@
 (defn parse-url
   "Returns an object with protocol, domain and port for the given url"
   [url]
-  (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
-        matches (re-matches pattern url)]
-    (if matches
-      (let [[_ protocol domain port] matches]
-        {:protocol protocol
-         :domain domain
-         :port port})
-      (throw (IllegalArgumentException. "Invalid URL")))))
+  (if (= url "*")
+    {:protocol nil :domain "*" :port "*"}
+    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+          matches (re-matches pattern url)]
+      (if matches
+        (let [[_ protocol domain port] matches]
+          {:protocol protocol
+           :domain domain
+           :port port})
+        (throw (IllegalArgumentException. (str "Invalid URL '" url "'"))))))
+    )
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
   [domain reference-domain]
+  (or (= reference-domain "*")
   (if (str/starts-with? reference-domain "*.")
     (str/ends-with? domain (str/replace-first reference-domain "*." "."))
-    (= domain reference-domain)))
+    (= domain reference-domain))))
 
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
@@ -156,21 +160,24 @@
    (= reference-port "*")
    (= port reference-port)))
 
+  (defn parse-approved-origins
+    "Parses the space separated string of approved origins"
+    [approved-origins-raw]
+      (str/split approved-origins-raw #" "))
+
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
   [raw-origin approved-origins]
   (boolean
    (when (and (seq raw-origin) (seq approved-origins))
-     (let [approved-list (str/split approved-origins #" ")
+     (let [approved-list (parse-approved-origins approved-origins)
            origin        (parse-url raw-origin)]
        (boolean (some (fn [approved-origin-raw]
-                        (or
-                         (= approved-origin-raw "*")
                          (let [approved-origin (parse-url approved-origin-raw)]
                            (and
                             (approved-domain? (:domain origin) (:domain approved-origin))
                             (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                            (approved-port? (:port origin) (:port approved-origin))))))
+                            (approved-port? (:port origin) (:port approved-origin)))))
                       approved-list))))))
 
 (defn- access-control-headers
