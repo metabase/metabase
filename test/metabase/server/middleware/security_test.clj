@@ -105,6 +105,11 @@
     (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (mw.security/parse-url "://example.com")))
     (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (mw.security/parse-url "example:com")))))
 
+(deftest test-parse-approved-origins
+  (testing "Should not break on multiple spaces in a row"
+    (is (= (count (mw.security/parse-approved-origins "example.com      example.org")) 2 ))
+    (is (= (count (mw.security/parse-approved-origins "   example.com      example.org   ")) 2))))
+
 (deftest test-approved-domain?
   (testing "Exact match"
     (is (true? (mw.security/approved-domain? "example.com" "example.com")))

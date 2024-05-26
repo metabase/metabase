@@ -163,7 +163,7 @@
   (defn parse-approved-origins
     "Parses the space separated string of approved origins"
     [approved-origins-raw]
-      (str/split approved-origins-raw #" "))
+     (filter seq (str/split approved-origins-raw #" ")))
 
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
