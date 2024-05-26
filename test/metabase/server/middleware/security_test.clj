@@ -107,8 +107,11 @@
 
 (deftest test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
-    (is (= (count (mw.security/parse-approved-origins "example.com      example.org")) 2 ))
-    (is (= (count (mw.security/parse-approved-origins "   example.com      example.org   ")) 2))))
+    (is (= (count (mw.security/parse-approved-origins "example.com      example.org")) 2))
+    (is (= (count (mw.security/parse-approved-origins "   example.com      example.org   ")) 2)))
+  (testing "Should filter out invalid origins without throwing"
+    (is (= (count (mw.security/parse-approved-origins "example.org ://example.com")) 1))
+    (is (= (count (mw.security/parse-approved-origins "example.org http:/example.com")) 1))))
 
 (deftest test-approved-domain?
   (testing "Exact match"
@@ -174,4 +177,7 @@
 
   (testing "Should allow any port with example.com:*"
     (is (true? (mw.security/approved-origin? "http://example.com" "example.com:*")))
-    (is (true? (mw.security/approved-origin? "http://example.com:8080" "example.com:*")))))
+    (is (true? (mw.security/approved-origin? "http://example.com:8080" "example.com:*"))))
+
+  (testing "Should handle invalid origins"
+    (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something http://example.com ://123  4")))))

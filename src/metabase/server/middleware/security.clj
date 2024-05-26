@@ -9,6 +9,7 @@
    [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as req.util]
+   [metabase.util.log :as log]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.security MessageDigest SecureRandom)))
@@ -136,16 +137,16 @@
           {:protocol protocol
            :domain domain
            :port port})
-        (throw (IllegalArgumentException. (str "Invalid URL '" url "'"))))))
-    )
+        (throw (IllegalArgumentException. (str "Invalid URL '" url "'")))))))
+
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
   [domain reference-domain]
   (or (= reference-domain "*")
-  (if (str/starts-with? reference-domain "*.")
-    (str/ends-with? domain (str/replace-first reference-domain "*." "."))
-    (= domain reference-domain))))
+   (if (str/starts-with? reference-domain "*.")
+     (str/ends-with? domain (str/replace-first reference-domain "*." "."))
+     (= domain reference-domain))))
 
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
@@ -160,10 +161,16 @@
    (= reference-port "*")
    (= port reference-port)))
 
-  (defn parse-approved-origins
+(defn parse-approved-origins
     "Parses the space separated string of approved origins"
     [approved-origins-raw]
-     (filter seq (str/split approved-origins-raw #" ")))
+    (let [urls (filter seq (str/split approved-origins-raw #" "))]
+     (remove nil? (map
+      (fn [url]
+        (try
+          (parse-url url)
+          (catch Exception e (log/error e) nil)))
+      urls))))
 
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
@@ -172,12 +179,11 @@
    (when (and (seq raw-origin) (seq approved-origins))
      (let [approved-list (parse-approved-origins approved-origins)
            origin        (parse-url raw-origin)]
-       (boolean (some (fn [approved-origin-raw]
-                         (let [approved-origin (parse-url approved-origin-raw)]
+       (boolean (some (fn [approved-origin]
                            (and
                             (approved-domain? (:domain origin) (:domain approved-origin))
                             (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                            (approved-port? (:port origin) (:port approved-origin)))))
+                            (approved-port? (:port origin) (:port approved-origin))))
                       approved-list))))))
 
 (defn- access-control-headers
@@ -185,8 +191,8 @@
   (merge
    (when
     (approved-origin? origin (embedding-app-origin))
-     {"Access-Control-Allow-Origin" origin
-      "Vary"                        "Origin"})
+    {"Access-Control-Allow-Origin" origin
+     "Vary"                        "Origin"})
 
    {"Access-Control-Allow-Headers"   "*"
     "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
