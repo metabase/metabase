@@ -112,10 +112,8 @@
 (deftest ^:parallel expr-test
   (testing "[= entid literal]"
     (is (=? {:mbql.clause/operator :=
-             :mbql.clause/argument [{:mbql/ref    [:metadata.field/id 12]
-                                     :mbql/series 0}
-                                    {:mbql/lit    7
-                                     :mbql/series 1}]}
+             :mbql.clause/argument [{:mbql/series 0, :mbql/ref [:metadata.field/id 12]}
+                                    {:mbql/series 1, :mbql/lit 7}]}
             (ld/expr := [:metadata.field/id 12] 7))))
   (testing "[= entid Entity]"
     (is (=? {:mbql.clause/operator :=
@@ -123,13 +121,13 @@
                                      :mbql/series 0}
                                     {:mbql/ref    8
                                      :mbql/series 1}]}
-            (ld/expr := [:metadata.field/id 12] {:db/id 8, :other/values "here"}))))
+            (ld/expr := [:metadata.field/id 12] {:db/id 8, :metadata.column/source {:db/id 9}}))))
   (testing "nesting and multiple arguments"
     (testing "[= entid [= entid 6] 7 8 9]"
       (is (=? {:mbql.clause/operator :=
                :mbql.clause/argument [{:mbql/ref    [:metadata.field/id 12]
                                        :mbql/series 0}
-                                      {:mbql/ref    {:mbql.clause/operator :+
+                                      {:mbql/sub    {:mbql.clause/operator :+
                                                      :mbql.clause/argument [{:mbql/ref    [:metadata.field/id 9001]
                                                                              :mbql/series 0}
                                                                             {:mbql/lit    6
@@ -181,7 +179,7 @@
                                                0.1)))
               exp   {:mbql.clause/operator :>
                      :mbql.clause/argument
-                     [{:mbql/ref    {:mbql.clause/operator (keyword "/")
+                     [{:mbql/sub    {:mbql.clause/operator (keyword "/")
                                      :mbql.clause/argument
                                      ;; Showing that the order here doesn't matter.
                                      [{:mbql/ref {:metadata.field/id (meta/id :orders :subtotal)}
@@ -324,7 +322,7 @@
                               :mbql.clause/operator (keyword "/")
                               :mbql.clause/argument
                               [{:mbql/series          0
-                                :mbql/ref {:mbql.clause/operator :coalesce
+                                :mbql/sub {:mbql.clause/operator :coalesce
                                            :mbql.clause/argument
                                            [{:mbql/series 0
                                              :mbql/ref    {:metadata.field/id (meta/id :orders :discount)}}
@@ -857,11 +855,9 @@
                           ld/append-stage)
           stage0      (:mbql.query/stage0 query)
           stage0-cols [{:metadata.column/source stage0
-                        :metadata.column/mirror (-> stage0 :mbql.stage/breakout first)
-                        :metadata.column/name   "CREATED_AT"}
+                        :metadata.column/mirror (-> stage0 :mbql.stage/breakout first)}
                        {:metadata.column/source stage0
-                        :metadata.column/mirror (-> stage0 :mbql.stage/aggregation first)
-                        :metadata.column/name   "count"}]]
+                        :metadata.column/mirror (-> stage0 :mbql.stage/aggregation first)}]]
       (testing "stage 0 returned-columns have the stage as their source"
         (is (=? stage0-cols
                 (ld/returned-columns query 0))))
@@ -887,6 +883,215 @@
                                              {:mbql/series 1, :mbql/lit 100}]
                       :mbql/series          0}]}}
                   filtered)))))))
+
+(defn- transitive-closure
+  [edges seen x]
+  (let [reachable (for [edge edges
+                        :let [targets (when-let [t (get x edge)]
+                                        (if (set? t) t #{t}))]
+                        :when targets
+                        target targets
+                        :when (not (seen target))]
+                    target)]
+    (reduce (partial transitive-closure edges) (apply conj seen reachable) reachable)))
+
+(defn- no-dangling-refs
+  "Searches for any ref attributes pointing at an entity that no longer exists."
+  [query]
+  (let [db         (d/entity-db query)
+        referenced (d/q '[:find [?ref ...]
+                          :in $ [?ref-attr ...] :where
+                          [_ ?ref-attr ?ref]]
+                        db ld/ref-attrs)]
+    (is (empty? (filter #(nil? (d/datoms db :eavt %)) referenced)))))
+
+(defn- no-orphaned-entities
+  "Searches for entities which still exist in the DB but are not either reachable from the query, or exist independently
+  like the metadata."
+  [query]
+  (let [;; Metadata - databases, tables, fields, cards - exist independently.
+        bedrock-attrs [:metadata.database/id :metadata.table/id :metadata.field/id :metadata.card/id]
+        db            (d/entity-db query)
+        ;; `bedrock` is the set of independently real things - metadata, etc.
+        bedrock       (set (d/q '[:find [?bedrock ...]
+                                  :in $ [?bedrock-attr ...] :where
+                                  [?bedrock ?bedrock-attr]]
+                                db bedrock-attrs))
+        entities      (into #{} (map :e) (d/datoms db :eavt))
+        reachable     (into #{} (map :db/id) (transitive-closure ld/ref-attrs #{query} query))]
+    (is (empty? (remove (set/union bedrock reachable) entities)))))
+
+(deftest ^:parallel remove-clause-test-basic-soundness
+  (testing "no-dangling-refs on a basic query"
+    (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+        no-dangling-refs)
+    (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+        (ld/aggregate -1 (ld/agg-count))
+        (ld/breakout -1 (ld/with-temporal-bucketing
+                          [:metadata.field/id (meta/id :orders :created-at)]
+                          :month))
+        no-dangling-refs))
+  (testing "no-orphaned-entities on a basic query"
+    (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+        no-orphaned-entities)
+    (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+        (ld/aggregate -1 (ld/agg-count))
+        (ld/breakout -1 (ld/with-temporal-bucketing
+                          [:metadata.field/id (meta/id :orders :created-at)]
+                          :month))
+        no-orphaned-entities)))
+
+(deftest ^:parallel remove-clause-test-basic-clauses
+  (testing "remove-clause on a breakout"
+    (let [query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                    (ld/aggregate -1 (ld/agg-count))
+                    (ld/breakout -1 (ld/with-temporal-bucketing
+                                      [:metadata.field/id (meta/id :orders :created-at)]
+                                      :month)))
+          after (ld/remove-clause query (-> query :mbql.query/stage :mbql.stage/breakout first))]
+      (no-dangling-refs after)
+      (no-orphaned-entities after)
+      (is (=? {:mbql.query/stage {:mbql.stage/aggregation [{:mbql.aggregation/operator :count}]
+                                  :mbql.stage/breakout    nil}}
+              after))))
+  (testing "remove-clause on an aggregation"
+    (let [query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                    (ld/aggregate -1 (ld/agg-count))
+                    (ld/breakout -1 (ld/with-temporal-bucketing
+                                      [:metadata.field/id (meta/id :orders :created-at)]
+                                      :month)))
+          after (ld/remove-clause query (-> query :mbql.query/stage :mbql.stage/aggregation first))]
+      (no-dangling-refs after)
+      (no-orphaned-entities after)
+      (is (=? {:mbql.query/stage {:mbql.stage/aggregation nil
+                                  :mbql.stage/breakout
+                                  [{:mbql.breakout/origin        {:metadata.field/id (meta/id :orders :created-at)}
+                                    :mbql.breakout/temporal-unit :month}]}}
+              after)))))
+
+(deftest ^:parallel remove-clause-test-clause-order
+  (testing "remove-clause on a filter"
+    (let [query      (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                         (ld/filter -1 (ld/expr :< [:metadata.field/id (meta/id :orders :subtotal)] 100))
+                         (ld/filter -1 (ld/expr := [:metadata.field/id (meta/id :orders :total)] 1000))
+                         (ld/filter -1 (ld/expr :> [:metadata.field/id (meta/id :orders :user-id)] 100)))
+          [f0 f1 f2] (ld/filters query -1)
+          exp0       {:mbql.clause/operator :<
+                      :mbql/series          0
+                      :mbql.clause/argument
+                      [{:mbql/series 0, :mbql/ref {:metadata.field/id (meta/id :orders :subtotal)}}
+                       {:mbql/series 1, :mbql/lit 100}]}
+          exp1       {:mbql.clause/operator :=
+                      :mbql/series          1
+                      :mbql.clause/argument
+                      [{:mbql/series 0, :mbql/ref {:metadata.field/id (meta/id :orders :total)}}
+                       {:mbql/series 1, :mbql/lit 1000}]}
+          exp2       {:mbql.clause/operator :>
+                      :mbql/series          2
+                      :mbql.clause/argument
+                      [{:mbql/series 0, :mbql/ref {:metadata.field/id (meta/id :orders :user-id)}}
+                       {:mbql/series 1, :mbql/lit 100}]}]
+      (let [after (ld/remove-clause query f0)]
+        (no-dangling-refs after)
+        (no-orphaned-entities after)
+        (is (=? {:mbql.query/stage {:mbql.stage/filter [(assoc exp1 :mbql/series 0)
+                                                        (assoc exp2 :mbql/series 1)]}}
+                after)))
+      (let [after (ld/remove-clause query f1)]
+        (no-dangling-refs after)
+        (no-orphaned-entities after)
+        (is (=? {:mbql.query/stage {:mbql.stage/filter [exp0
+                                                        (assoc exp2 :mbql/series 1)]}}
+                after)))
+      (let [after (ld/remove-clause query f2)]
+        (no-dangling-refs after)
+        (no-orphaned-entities after)
+        (is (=? {:mbql.query/stage {:mbql.stage/filter [exp0 exp1]}}
+                after))))))
+
+(deftest ^:parallel remove-clause-test-used-expressions
+  (testing "removing an expression used elsewhere"
+    (let [query       (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                          (ld/expression -1 "zero"
+                                         (ld/expr :* [:metadata.field/id (meta/id :orders :subtotal)] 0))
+                          (ld/expression -1 "pennies_pinched"
+                                         (ld/expr :* [:metadata.field/id (meta/id :orders :subtotal)] 100))
+                          (ld/expression -1 "negative"
+                                         (ld/expr :* [:metadata.field/id (meta/id :orders :subtotal)] -1))
+                          (as-> $q
+                            (ld/filter $q -1 (ld/expr := (ld/stage> $q :mbql.stage/expression 2) -100))
+                            (ld/filter $q -1 (ld/expr :< (ld/stage> $q :mbql.stage/expression 1) 1))
+                            (ld/filter $q -1 (ld/expr :> (ld/stage> $q :mbql.stage/expression 0) 1))))
+          [x0 x1 x2]  (ld/expressions query -1)
+          [f0 f1 f2]  (ld/filters query -1)
+          exp-expr    (fn [index label value]
+                        {:mbql/series          index
+                         :mbql.expression/name label
+                         :mbql.clause/operator :*
+                         :mbql.clause/argument
+                         [{:mbql/series 0, :mbql/ref {:metadata.field/id (meta/id :orders :subtotal)}}
+                          {:mbql/series 1, :mbql/lit value}]})
+          exp-expr0   (exp-expr 0 "zero" 0)
+          exp-expr1   (exp-expr 1 "pennies_pinched" 100)
+          exp-expr2   (exp-expr 2 "negative" -1)
+          exp-filter  (fn [filter-index operator expr-index value]
+                        {:mbql/series          filter-index
+                         :mbql.clause/operator operator
+                         :mbql.clause/argument
+                         [{:mbql/series 0, :mbql/ref (ld/stage> query :mbql.stage/expression expr-index)}
+                          {:mbql/series 1, :mbql/lit value}]})
+          exp-filter0 (exp-filter 0 := 2 -100)
+          exp-filter1 (exp-filter 1 :< 1 1)
+          exp-filter2 (exp-filter 2 :> 0 1)]
+      (d/touch (first (ld/filters query -1)))
+      #_(testing "sanity check"
+        (no-dangling-refs query)
+        (no-orphaned-entities query)
+        (is (=? {:mbql.query/stage {:mbql.stage/expression [exp-expr0   exp-expr1   exp-expr2]
+                                    :mbql.stage/filter     [exp-filter0 exp-filter1 exp-filter2]}}
+                query)))
+      #_(testing "0th expression, 2nd filter"
+        (let [after (ld/remove-clause query x0)]
+          (no-dangling-refs after)
+          (no-orphaned-entities after)
+          (is (=? {:mbql.query/stage {:mbql.stage/expression [exp-expr1   exp-expr2]
+                                      :mbql.stage/filter     [exp-filter0 exp-filter1]}}
+                  after))))
+      )))
+
+(comment
+  *e
+  (let [query (-> (ld/query meta/metadata-provider (meta/table-metadata :orders))
+                  (ld/aggregate -1 (ld/agg-count))
+                  (ld/breakout -1 (ld/with-temporal-bucketing
+                                    [:metadata.field/id (meta/id :orders :created-at)]
+                                    :month))
+                  ld/append-stage)
+        db    (d/entity-db query)
+        refs  (->> (d/schema db)
+                   (m/filter-vals (comp #{:db.type/ref} :db/valueType))
+                   keys)
+        target (d/entid db [:metadata.table/id (meta/id :orders)])]
+    (no-dangling-refs (-> (d/entity-db query)
+                          (d/db-with [[:db/add (-> query :mbql.query/stage0 :mbql.stage/aggregation first :db/id)
+                                       :metadata.column/fk-target 12000]])
+                          (d/entity (:db/id query))))
+    #_(d/datoms db :eavt 12)
+    #_(into {} (for [ref-attr refs
+                   :let [datoms (d/datoms db :avet ref-attr target)]
+                   :when (seq datoms)]
+               [ref-attr (map :e datoms)]))
+    #_(conj (-> query
+              :mbql.query/stage0
+              :mbql.stage/aggregation
+              first
+              :mbql.stage/_aggregation
+              )
+          (d/entity db 70)
+          )
+    )
+  )
+
 
 ;; TODO: Test multiple stages and add a bunch more gnarly double-join cases. Really need to stress-test that column
 ;; model.
