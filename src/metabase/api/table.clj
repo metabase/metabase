@@ -402,7 +402,8 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (t2/hydrate card :collection)]
+  (let [card (t2/hydrate card :collection)
+        dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -410,6 +411,7 @@
              :moderated_status (:moderated_status card)
              :description      (:description card)
              :type             (:type card)}
+      dataset-query   (assoc :dataset_query dataset-query)
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))
@@ -434,7 +436,7 @@
   {id ms/PositiveInt}
   (let [{:keys [database_id] :as card} (api/check-404
                                         (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id :type]
+                                                        :collection_id :database_id :type :dataset_query]
                                                        :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
