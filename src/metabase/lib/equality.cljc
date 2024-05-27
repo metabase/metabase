@@ -361,17 +361,27 @@
   DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
   Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
   [[find-matching-ref]] if it's refs."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   needles      :- [:sequential ::lib.schema.ref/ref]
-   haystack     :- [:sequential ::lib.schema.metadata/column]]
-  (let [by-column (into {}
-                        (map-indexed (fn [index column]
-                                       [column index]))
-                        haystack)]
-    (for [needle needles
-          :let [matched (find-matching-column query stage-number needle haystack)]]
-      (get by-column matched -1))))
+  ([needles      :- [:sequential ::lib.schema.ref/ref]
+    haystack     :- [:sequential ::lib.schema.metadata/column]]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (find-column-indexes-for-refs needles haystack find-matching-column))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    needles      :- [:sequential ::lib.schema.ref/ref]
+    haystack     :- [:sequential ::lib.schema.metadata/column]]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (find-column-indexes-for-refs needles haystack (fn [n h] (find-matching-column query stage-number n h))))
+
+  ([needles      :- [:sequential ::lib.schema.ref/ref]
+    haystack     :- [:sequential ::lib.schema.metadata/column]
+    find-match   :- fn?]
+   (let [by-column (into {}
+                         (map-indexed (fn [index column]
+                                        [column index]))
+                         haystack)]
+     (for [needle needles
+           :let [matched (find-match needle haystack)]]
+       (get by-column matched -1)))))
 
 ;; TODO: Refactor this away. Handle legacy refs in `lib.js`, then call [[find-matching-column]] directly.
 (mu/defn find-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]

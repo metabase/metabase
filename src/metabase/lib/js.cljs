@@ -1241,14 +1241,22 @@
   > **Code health:** Legacy. This is used in several places, mostly because legacy field refs are used as the keys to
   identify a column in viz settings. Avoid new calls if you have an alternative way to find the column you need. But if
   you need it, no worries about a new call."
-  [a-query stage-number legacy-columns legacy-refs]
-  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
-  ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
-  (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (let [haystack (mapv ->column-or-ref legacy-columns)
-          needles  (map legacy-ref->pMBQL legacy-refs)]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
+  ([legacy-columns legacy-refs]
+   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
+   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+   (let [haystack (mapv ->column-or-ref legacy-columns)
+         needles  (map legacy-ref->pMBQL legacy-refs)]
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (to-array (lib.equality/find-column-indexes-for-refs needles haystack))))
+
+  ([a-query stage-number legacy-columns legacy-refs]
+   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
+   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+     (let [haystack (mapv ->column-or-ref legacy-columns)
+           needles  (map legacy-ref->pMBQL legacy-refs)]
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
 (defn ^:export source-table-or-card-id
   "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
