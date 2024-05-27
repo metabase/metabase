@@ -60,25 +60,17 @@ export function getParameterTargetField(
   if (isConcreteFieldReference(fieldRef)) {
     const query = question.query();
     const stageIndex = -1;
-    const columns = Lib.visibleColumns(query, stageIndex);
-    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+    const fields = metadata.fieldsList();
+    const columns = fields.map(field =>
+      Lib.fromLegacyColumn(query, stageIndex, field),
+    );
+    const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
       columns,
       [fieldRef],
     );
-    if (columnIndex >= 0) {
-      const column = columns[columnIndex];
-      const fields = metadata.fieldsList();
-      const fieldIndexes = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        [column],
-        fields.map(field => field.reference()),
-      );
-      const fieldIndex = fieldIndexes.findIndex(index => index >= 0);
-      return fields[fieldIndex];
-    }
+    return fields[fieldIndex];
   }
 
   return null;
