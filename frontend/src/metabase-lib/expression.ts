@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import * as ML from "cljs/metabase.lib.js";
+import { inflect } from "metabase/lib/formatting";
 
 import { breakouts } from "./breakout";
 import { displayInfo } from "./metadata";
@@ -144,8 +145,6 @@ export function percentDiffOffsetClause(
   return newClause;
 }
 
-// TODO: should this come from inside MLv2?
-// TODO: add `offset: number` argument, see https://metaboat.slack.com/archives/C0645JP1W81/p1716556485318749?thread_ts=1716475674.712849&cid=C0645JP1W81
 export function getOffsettedName(
   query: Query,
   stageIndex: number,
@@ -154,7 +153,7 @@ export function getOffsettedName(
 ): string {
   if (offset >= 0) {
     throw new Error(
-      "non-negative offset values aren't supported in 'getPeriodName'",
+      "non-negative offset values aren't supported in 'getOffsettedName'",
     );
   }
 
@@ -186,7 +185,9 @@ export function getOffsettedName(
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const period = inflect(bucketInfo.shortName, absoluteOffset);
 
-  //TODO: pluralize
-  return t`${displayName} (previous ${bucketInfo.shortName})`;
+  return absoluteOffset === 1
+    ? t`${displayName} (previous ${period})`
+    : t`${displayName} (${absoluteOffset} ${period} ago)`; // TODO pluralize shortName
 }

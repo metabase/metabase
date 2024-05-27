@@ -132,8 +132,23 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on binned datetime column", () => {
+      const query = createQueryWithClauses({
+        query: baseQuery,
+        breakouts: [
+          {
+            columnName: "CREATED_AT",
+            tableName: "ORDERS",
+            temporalBucketName: "Month",
+          },
+        ],
+      });
+      const [clause] = aggregations(query, stageIndex);
+      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+
       it("produces correct aggregation name", () => {
-        expect("TODO").toBe("TODO");
+        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        expect(info.displayName).toBe("Count (2 months ago)");
       });
     });
 
