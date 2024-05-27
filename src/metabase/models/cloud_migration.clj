@@ -93,11 +93,6 @@
        (map t2/table-name)
        (into #{})))
 
-(def ^:private ^:dynamic
-  *ignore-read-only-mode*
-  "Used during dump-to-h2, since rotate-encryption-key! over the dump will hit read-only-mode."
-  nil)
-
 ;; Block write calls to most tables in read-only mode.
 (methodical/defmethod t2.pipeline/build :before [#_query-type     :toucan.statement-type/DML
                                                  #_model          :default
@@ -106,8 +101,7 @@
   (let [table-name (t2/table-name model)]
     (when (and (read-only-mode)
                (read-only-mode-inclusions table-name)
-               (not (read-only-mode-exceptions table-name))
-               (not *ignore-read-only-mode*))
+               (not (read-only-mode-exceptions table-name)))
       (throw (ex-info (tru "Metabase is in read-only-mode mode!")
                       {:status-code 403}))))
   resolved-query)
@@ -251,8 +245,7 @@
 
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
-      (binding [*ignore-read-only-mode* true]
-        (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true}))
+      (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
       (when-not (read-only-mode)
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
