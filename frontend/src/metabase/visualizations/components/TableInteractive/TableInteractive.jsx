@@ -1088,6 +1088,10 @@ class TableInteractive extends Component {
     const tableTheme = theme?.other?.table;
     const backgroundColor = tableTheme?.cell?.backgroundColor;
 
+    const totalWidth =
+      this.state.columnWidths?.reduce((sum, width) => sum + width, 0) +
+      (gutterColumn ? SIDEBAR_WIDTH : 0);
+
     return (
       <DelayGroup>
         <ScrollSync>
@@ -1161,7 +1165,7 @@ class TableInteractive extends Component {
                   <ColumnShortcut
                     height={headerHeight - 1}
                     pageWidth={width}
-                    totalWidth={this.header?.getTotalColumnsWidth()}
+                    totalWidth={totalWidth}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
@@ -1344,8 +1348,7 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
   }
 
   const isOverflowing = totalWidth > pageWidth;
-  const width = height + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
-  const left = (isOverflowing ? pageWidth : totalWidth) - width;
+  const width = HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
 
   return (
     <div
@@ -1356,7 +1359,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
       style={{
         height,
         width,
-        left,
+        left: isOverflowing ? undefined : totalWidth,
+        right: isOverflowing ? 0 : undefined,
       }}
     >
       <UIButton
