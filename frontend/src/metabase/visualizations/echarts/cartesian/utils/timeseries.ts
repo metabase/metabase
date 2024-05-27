@@ -206,7 +206,7 @@ function maxTicksForChartWidth(
   chartWidth: number,
   tickFormat: (value: RowValue) => string,
 ) {
-  const PIXELS_PER_CHARACTER = 5;
+  const PIXELS_PER_CHARACTER = 5.5;
   // if there isn't enough buffer, the labels are hidden by ECharts
   const TICK_BUFFER_PIXELS = 10;
 
