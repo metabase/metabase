@@ -3,6 +3,7 @@ import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { alpha } from "metabase/lib/colors";
 
 /**
  * Default theme options for Metabase components.
@@ -18,6 +19,11 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       textColor: "brand",
     },
   },
+  pivotTable: {
+    emphasizedCell: {
+      backgroundColor: alpha("border", 0.25),
+    },
+  },
 };
 
 /**
@@ -29,7 +35,13 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
   {
     table: {
       cell: {
+        textColor: "text-dark",
         backgroundColor: "bg-white",
+      },
+    },
+    pivotTable: {
+      emphasizedCell: {
+        backgroundColor: "bg-dark",
       },
     },
   },

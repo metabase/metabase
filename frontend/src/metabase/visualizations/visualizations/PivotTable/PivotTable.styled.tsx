@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color, alpha, darken } from "metabase/lib/colors";
+import type { MantineTheme } from "metabase/ui";
 
 import {
   CELL_HEIGHT,
@@ -32,26 +33,42 @@ interface PivotTableCellProps {
   isBorderedHeader?: boolean;
   hasTopBorder?: boolean;
   isTransparent?: boolean;
+  theme: MantineTheme;
 }
 
 const getCellBackgroundColor = ({
+  theme,
   isEmphasized,
   isNightMode,
   isTransparent,
-}: Partial<PivotTableCellProps>) => {
+}: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
+  const { table: tableTheme, pivotTable: pivotTheme } = theme.other;
+
   if (isTransparent) {
     return "transparent";
   }
 
-  if (!isEmphasized) {
-    return isNightMode ? alpha("bg-black", 0.1) : color("white");
+  if (isEmphasized) {
+    if (isNightMode) {
+      return color("bg-black");
+    }
+
+    return color(pivotTheme.emphasizedCell.backgroundColor);
   }
 
-  return isNightMode ? color("bg-black") : alpha("border", 0.25);
+  if (isNightMode) {
+    return alpha("bg-black", 0.1);
+  }
+
+  return color(tableTheme.cell.backgroundColor);
 };
 
-const getColor = ({ isNightMode }: PivotTableCellProps) => {
-  return isNightMode ? color("white") : color("text-dark");
+const getColor = ({ theme, isNightMode }: PivotTableCellProps) => {
+  if (isNightMode) {
+    return color("white");
+  }
+
+  return color(theme.other.table.cell.textColor);
 };
 
 const getBorderColor = ({ isNightMode }: PivotTableCellProps) => {
@@ -98,6 +115,7 @@ export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCells
     getCellBackgroundColor({
       isEmphasized: true,
       isNightMode: props.isNightMode,
+      theme: props.theme,
     })};
 `;
 
