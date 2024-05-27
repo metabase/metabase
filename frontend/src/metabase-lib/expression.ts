@@ -180,8 +180,9 @@ export function getOffsettedName(
   const bucket = temporalBucket(firstBreakout);
 
   if (!bucket) {
-    //TODO: pluralize
-    return t`${displayName} (previous period)`;
+    return absoluteOffset === 1
+      ? t`${displayName} (previous period)`
+      : t`${displayName} (${absoluteOffset} periods ago)`;
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
