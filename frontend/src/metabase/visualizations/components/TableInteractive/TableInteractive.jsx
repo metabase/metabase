@@ -1062,6 +1062,7 @@ class TableInteractive extends Component {
       scrollToLastColumn,
       theme,
       question,
+      mode,
     } = this.props;
 
     if (!width || !height) {
@@ -1070,15 +1071,19 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-    const query = question?.query();
-    const info = query && Lib.queryDisplayInfo(query);
-    const hasAggregation = cols.some(column => column.source === "aggregation");
 
-    const shortcutColumn =
-      info?.isEditable &&
-      !question?.isArchived() &&
-      !hasAggregation &&
-      !isRawTable;
+    const shortcutActions = mode.clickActions.flatMap(action =>
+      action({
+        question,
+        clicked: {
+          columnShortcuts: true,
+          extraData: {
+            isRawTable,
+          },
+        },
+      }),
+    );
+    const shortcutColumn = shortcutActions.length > 0;
 
     const tableTheme = theme?.other?.table;
     const backgroundColor = tableTheme?.cell?.backgroundColor;
