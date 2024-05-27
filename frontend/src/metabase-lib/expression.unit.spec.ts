@@ -9,6 +9,7 @@ import {
 import { displayInfo } from "./metadata";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
+import type { Query } from "./types";
 
 const queryNoBreakout = createQueryWithClauses({
   aggregations: [{ operatorName: "count" }],
@@ -48,22 +49,30 @@ const queryCategoryBreakout = createQueryWithClauses({
 describe("offsetClause", () => {
   const stageIndex = -1;
 
+  const setup = (query: Query, offset: number) => {
+    const [clause] = aggregations(query, stageIndex);
+    const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+    const finalQuery = aggregate(query, stageIndex, offsettedClause);
+
+    return {
+      clause: offsettedClause,
+      query: finalQuery,
+    };
+  };
+
   describe("offset = -1", () => {
     const offset = -1;
 
     describe("no breakout", () => {
-      const query = queryNoBreakout;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryNoBreakout, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (previous period)");
       });
 
       it("produces correct aggregation clause", () => {
-        expect(toLegacyQuery(finalQuery)).toMatchObject({
+        expect(toLegacyQuery(query)).toMatchObject({
           database: SAMPLE_DATABASE.id,
           query: {
             aggregation: [
@@ -86,37 +95,28 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on binned datetime column", () => {
-      const query = queryDateBreakoutBinning;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryDateBreakoutBinning, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (previous month)");
       });
     });
 
     describe("breakout on non-binned datetime column", () => {
-      const query = queryDateBreakoutNoBinning;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryDateBreakoutNoBinning, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (previous period)");
       });
     });
 
     describe("breakout on non-datetime column", () => {
-      const query = queryCategoryBreakout;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryCategoryBreakout, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (previous value)");
       });
     });
@@ -126,49 +126,37 @@ describe("offsetClause", () => {
     const offset = -2;
 
     describe("no breakout", () => {
-      const query = queryNoBreakout;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryNoBreakout, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (2 periods ago)");
       });
     });
 
     describe("breakout on binned datetime column", () => {
-      const query = queryDateBreakoutBinning;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryDateBreakoutBinning, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (2 months ago)");
       });
     });
 
     describe("breakout on non-binned datetime column", () => {
-      const query = queryDateBreakoutNoBinning;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryDateBreakoutNoBinning, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (2 periods ago)");
       });
     });
 
     describe("breakout on non-datetime column", () => {
-      const query = queryCategoryBreakout;
-      const [clause] = aggregations(query, stageIndex);
-      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+      const { query, clause } = setup(queryCategoryBreakout, offset);
 
       it("produces correct aggregation name", () => {
-        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        const info = displayInfo(query, stageIndex, clause);
         expect(info.displayName).toBe("Count (2 rows above)");
       });
     });
