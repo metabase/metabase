@@ -12,7 +12,7 @@ import {
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   beforeEach(() => {
@@ -54,6 +54,26 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
     });
+  });
+
+  it("should not show the shortcut button when the table is raw", function () {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("TableInteractive-root").should("exist");
+    cy.findByLabelText("Add column").should("not.exist");
   });
 });
 
