@@ -4,6 +4,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics";
 import { ExtractColumn } from "metabase/query_builder/components/expressions/ExtractColumn";
+import { rem, Box } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
@@ -52,12 +53,14 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     }
 
     return (
-      <ExtractColumn
-        query={query}
-        stageIndex={stageIndex}
-        onSubmit={handleSubmit}
-        onCancel={onClose}
-      />
+      <Box mah={rem(550)}>
+        <ExtractColumn
+          query={query}
+          stageIndex={stageIndex}
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+        />
+      </Box>
     );
   };
 

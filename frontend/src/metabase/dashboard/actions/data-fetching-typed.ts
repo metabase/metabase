@@ -1,13 +1,10 @@
 import { denormalize, normalize, schema } from "normalizr";
 
-import { loadMetadataForDashboard } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
-  getInitialSelectedTabId,
   getParameterValues,
   getQuestions,
-  getSelectedTabId,
 } from "metabase/dashboard/selectors";
 import {
   expandInlineDashboard,
@@ -21,7 +18,7 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
-import type { DashboardCard } from "metabase-types/api";
+import type { DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -39,7 +36,7 @@ export const fetchDashboard = createAsyncThunk(
       queryParams,
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
-      dashId: string;
+      dashId: DashboardId;
       queryParams: Record<string, any>;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
@@ -95,7 +92,7 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "transient") {
-        const subPath = dashId.split("/").slice(3).join("/");
+        const subPath = String(dashId).split("/").slice(3).join("/");
         result = await AutoApi.dashboard(
           { subPath },
           { cancelled: fetchDashboardCancellation.promise },
@@ -125,20 +122,6 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       fetchDashboardCancellation = null;
-
-      if (dashboardType === "normal" || dashboardType === "transient") {
-        const selectedTabId =
-          getSelectedTabId(getState()) ?? getInitialSelectedTabId(result);
-
-        const cards =
-          selectedTabId == null
-            ? result.dashcards
-            : result.dashcards.filter(
-                (c: DashboardCard) => c.dashboard_tab_id === selectedTabId,
-              );
-
-        await dispatch(loadMetadataForDashboard(cards));
-      }
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {

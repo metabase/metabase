@@ -103,7 +103,6 @@ export function JoinDraft({
             query={query}
             stageIndex={stageIndex}
             table={rhsTable}
-            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
             columnPicker={

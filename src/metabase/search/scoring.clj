@@ -302,6 +302,9 @@
      (max (- stale-time days-ago) 0)
      stale-time)))
 
+;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
+;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
+;;; endpoint itself, not in the search impl.
 (defn serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name

@@ -6,7 +6,6 @@ import {
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
-  getAceEditor,
   getNotebookStep,
   modal,
   openNotebook,
@@ -73,7 +72,6 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
@@ -83,14 +81,14 @@ describe("scenarios > question > offset", () => {
       createQuestion({ query }, { visitQuestion: true });
       openNotebook();
       cy.button("Custom column").click();
-      getAceEditor().type(prefix);
+      enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in custom column expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      getAceEditor().type(suffix);
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -102,7 +100,7 @@ describe("scenarios > question > offset", () => {
       cy.button("Sort").click();
       popover().findByText("ID").click();
       getNotebookStep("expression").icon("add").click();
-      getAceEditor().type(expression);
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -134,7 +132,6 @@ describe("scenarios > question > offset", () => {
       const expression = `Offset([${offsettedColumnName}], -1)`;
       const prefixLength = "Offset([x".length;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         expressions: {
@@ -163,20 +160,20 @@ describe("scenarios > question > offset", () => {
 
       cy.log("custom column expressions");
       getNotebookStep("expression").icon("add").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
 
       cy.log("custom filter expressions");
       cy.icon("filter").click();
       popover().findByText("Custom Expression").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
       cy.realPress("Escape");
 
       cy.log("custom aggregation expressions");
       cy.icon("sum").click();
       popover().findByText("Custom Expression").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
       cy.realPress("Escape");
 
@@ -191,7 +188,6 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset([Total], -1) > 0";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         limit: 5,
@@ -201,12 +197,12 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Filter").click();
       popover().findByText("Custom Expression").click();
-      getAceEditor().type(prefix);
+      enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      getAceEditor().type(suffix);
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -223,7 +219,6 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         limit: 5,
@@ -236,14 +231,14 @@ describe("scenarios > question > offset", () => {
         .findByText("Pick the metric you want to see")
         .click();
       popover().findByText("Custom Expression").click();
-      getAceEditor().type(prefix);
+      enterCustomColumnDetails({ formula: prefix });
 
       cy.log("suggests offset() in aggregation expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      getAceEditor().type(suffix);
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -574,12 +569,12 @@ function verifyNoQuestionError() {
 function verifyInvalidColumnName(
   columnName: string,
   prefix: string,
-  suffix: string,
+  expression: string,
 ) {
-  getAceEditor().type(prefix);
+  enterCustomColumnDetails({ formula: prefix });
   cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-  getAceEditor().type(suffix);
+  enterCustomColumnDetails({ formula: expression });
   cy.realPress("Tab");
   popover().within(() => {
     cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");

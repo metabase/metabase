@@ -14,6 +14,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -62,7 +63,14 @@ export const getClickBehaviorSidebarDashcard = (state: State) => {
     : null;
 };
 export const getDashboards = (state: State) => state.dashboard.dashboards;
-export const getCardData = (state: State) => state.dashboard.dashcardData;
+export const getDashcardDataMap = (state: State) =>
+  state.dashboard.dashcardData;
+
+export function getDashcardData(state: State, dashcardId: DashCardId) {
+  const dashcardData = getDashcardDataMap(state);
+  return dashcardData[dashcardId];
+}
+
 export const getSlowCards = (state: State) => state.dashboard.slowCards;
 export const getParameterValues = (state: State) =>
   state.dashboard.parameterValues;
@@ -80,6 +88,9 @@ export const getLoadingStartTime = (state: State) =>
   state.dashboard.loadingDashCards.startTime;
 export const getLoadingEndTime = (state: State) =>
   state.dashboard.loadingDashCards.endTime;
+
+export const getIsMetadataLoaded = (state: State) =>
+  state.dashboard.loadingMetadata.loadingStatus === "complete";
 
 export const getIsSlowDashboard = createSelector(
   [getLoadingStartTime, getLoadingEndTime],
@@ -200,6 +211,16 @@ const getIsParameterValuesEmpty = createSelector(
         ? parameterValue.length === 0
         : parameterValue == null,
     );
+  },
+);
+
+export const getParameterValuesBySlugMap = createSelector(
+  [getDashboardComplete, getParameterValues],
+  (dashboard, parameterValues) => {
+    if (!dashboard) {
+      return {};
+    }
+    return getParameterValuesBySlug(dashboard.parameters, parameterValues);
   },
 );
 
@@ -435,6 +456,41 @@ export const getSelectedTabId = createSelector(
 export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
   return dashboard.tabs?.[0]?.id || null;
 }
+
+export const getCurrentTabDashcards = createSelector(
+  [getDashboardComplete, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
+      return [];
+    }
+    if (!selectedTabId) {
+      return dashboard.dashcards;
+    }
+    return dashboard.dashcards.filter(
+      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
+    );
+  },
+);
+
+export const getHiddenParameterSlugs = createSelector(
+  [getParameters, getCurrentTabDashcards, getIsEditing],
+  (parameters, currentTabDashcards, isEditing) => {
+    if (isEditing) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const currentTabParameterIds = currentTabDashcards.flatMap(
+      (dc: DashboardCard) =>
+        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+    );
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(p => p.slug).join(",");
+  },
+);
 
 export const getParameterMappingsBeforeEditing = createSelector(
   [getDashboardBeforeEditing],

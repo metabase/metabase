@@ -394,29 +394,25 @@
   {:arglists '([model database-id table-ids])}
   (fn [model _database-id _table-ids] (keyword model)))
 
-(defmethod database-usage-query :question
-  [_ db-id _table-ids]
-  {:select [[:%count.* :question]]
+(defn- card-query
+  [db-id model type-str]
+  {:select [[:%count.* model]]
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :type "question"]]})
+            [:= :type type-str]]})
+
+(defmethod database-usage-query :question
+  [_ db-id _table-ids]
+  (card-query db-id :question "question"))
 
 (defmethod database-usage-query :dataset
   [_model db-id _table-ids]
-  {:select [[:%count.* :dataset]]
-   :from   [:report_card]
-   :where  [:and
-            [:= :database_id db-id]
-            [:= :type "model"]]})
+  (card-query db-id :dataset "model"))
 
 (defmethod database-usage-query :metric
-  [_ _db-id table-ids]
-  {:select [[:%count.* :metric]]
-   :from   [:metric]
-   :where  (if table-ids
-             [:in :table_id table-ids]
-             always-false-hsql-expr)})
+  [_ db-id _table-ids]
+  (card-query db-id :metric "metric"))
 
 (defmethod database-usage-query :segment
   [_ _db-id table-ids]

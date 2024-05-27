@@ -9,7 +9,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.analyze.query-results :as qr]
+   [metabase.analyze :as analyze]
    [metabase.api.common :as api]
    [metabase.compatibility :as compatibility]
    [metabase.config :as config]
@@ -508,7 +508,8 @@
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
+  (public-settings/remove-public-uuid-if-public-sharing-is-disabled
+   (dissoc card :dataset_query_metrics_v2_migration_backup)))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -587,7 +588,7 @@
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata dataset?]}]
-  (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
+  (let [valid-metadata? (and metadata (mc/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata

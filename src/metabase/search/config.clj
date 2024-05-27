@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [malli.core :as mc]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
@@ -96,24 +95,30 @@
 
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
-  (mc/schema
-   [:map {:closed true}
-    [:search-string                                        [:maybe ms/NonBlankString]]
-    [:archived?                                            [:maybe :boolean]]
-    [:model-ancestors?                                     :boolean]
-    [:current-user-perms                                   [:set perms.u/PathSchema]]
-    [:models                                               [:set SearchableModel]]
-    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
-    [:created-at                          {:optional true} ms/NonBlankString]
-    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:last-edited-at                      {:optional true} ms/NonBlankString]
-    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:table-db-id                         {:optional true} ms/PositiveInt]
-    [:limit-int                           {:optional true} ms/Int]
-    [:offset-int                          {:optional true} ms/Int]
-    [:search-native-query                 {:optional true} true?]
-    ;; true to search for verified items only, nil will return all items
-    [:verified                            {:optional true} true?]]))
+  [:map {:closed true}
+   ;;
+   ;; required
+   ;;
+   [:archived?          [:maybe :boolean]]
+   [:current-user-id    pos-int?]
+   [:current-user-perms [:set perms.u/PathSchema]]
+   [:model-ancestors?   :boolean]
+   [:models             [:set SearchableModel]]
+   [:search-string      [:maybe ms/NonBlankString]]
+   ;;
+   ;; optional
+   ;;
+   [:created-at                          {:optional true} ms/NonBlankString]
+   [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:last-edited-at                      {:optional true} ms/NonBlankString]
+   [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:limit-int                           {:optional true} ms/Int]
+   [:offset-int                          {:optional true} ms/Int]
+   [:search-native-query                 {:optional true} true?]
+   [:table-db-id                         {:optional true} ms/PositiveInt]
+   ;; true to search for verified items only, nil will return all items
+   [:verified                            {:optional true} true?]])
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a

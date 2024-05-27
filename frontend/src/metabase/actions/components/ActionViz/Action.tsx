@@ -8,7 +8,10 @@ import {
   executeRowAction,
   reloadDashboardCards,
 } from "metabase/dashboard/actions";
-import { getEditingDashcardId } from "metabase/dashboard/selectors";
+import {
+  getEditingDashcardId,
+  getParameterValues,
+} from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
@@ -139,6 +142,7 @@ const ConnectedActionComponent = connect()(ActionComponent);
 
 function mapStateToProps(state: State, props: ActionProps) {
   return {
+    parameterValues: getParameterValues(state),
     isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
   };
 }
