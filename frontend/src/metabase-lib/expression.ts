@@ -158,12 +158,14 @@ export function getOffsettedName(
     );
   }
 
+  const absoluteOffset = Math.abs(offset);
   const { displayName } = displayInfo(query, stageIndex, clause);
   const firstBreakout = breakouts(query, stageIndex)[0];
 
   if (!firstBreakout) {
-    //TODO: pluralize
-    return t`${displayName} (previous period)`;
+    return absoluteOffset === 1
+      ? t`${displayName} (previous period)`
+      : t`${displayName} (${absoluteOffset} periods ago)`;
   }
 
   const firstBreakoutInfo = displayInfo(query, stageIndex, firstBreakout);

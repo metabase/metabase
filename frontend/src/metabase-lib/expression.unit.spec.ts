@@ -116,7 +116,7 @@ describe("offsetClause", () => {
     });
   });
 
-  describe.skip("offset < -1", () => {
+  describe("offset < -1", () => {
     const offset = -2;
 
     describe("no breakout", () => {
