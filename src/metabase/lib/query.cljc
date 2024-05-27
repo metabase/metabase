@@ -106,21 +106,21 @@
                        (not (lib.util.match/match-one (:expressions stage) :offset)))))
                (:stages query))))
 
-(defn- add-effective-type
-  [metadata-providerable x]
-  (cond-> x
-    (map? x)
-    (lib.util.match/replace
-     #_#_
-     [:field (_options :guard map?) (id :guard integer?)]
-     (update &match 1
-             merge (select-keys (lib.metadata/field metadata-providerable id)
-                                [:effective-type]))
-
-     [:field (id :guard integer?) (_options :guard (some-fn nil? map?))]
-     (update &match 2
-             merge (select-keys (lib.metadata/field metadata-providerable id)
-                                [:effective-type])))))
+(defn- add-types-to-fields
+  "Add `:base-type` and `:effective-type` (where applicable) to options of all fields in `x`, using `metadata-provider.
+  As this function is called during normalization, also clauses that are not yet keywordized must be handled.
+  `:effective-type` is required for coerced fields to pass schema checks."
+  [x metadata-provider]
+  (lib.util.match/replace
+   x
+   ;; pmbql fields
+   [(_clause :guard #{:field "field"}) (_options :guard map?) (id :guard integer?)]
+   (update &match 1 merge (-> (lib.metadata/field metadata-provider id)
+                              (select-keys [:base-type :effective-type])))
+   ;; legacy mbql fields
+   [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard (some-fn map? nil?))]
+   (update &match 2 merge (-> (lib.metadata/field metadata-provider id)
+                              (select-keys [:base-type :effective-type])))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
@@ -160,9 +160,7 @@
 (defmethod query-method :query ; legacy MBQL query
   [metadata-providerable legacy-query]
   (query-from-legacy-query metadata-providerable
-                           #_legacy-query
-                           (add-effective-type metadata-providerable
-                                               legacy-query)))
+                           (add-types-to-fields legacy-query metadata-providerable)))
 
 (defmethod query-method :native ; legacy native query
   [metadata-providerable legacy-query]
@@ -188,30 +186,24 @@
       converted?
       (assoc
         :stages
-        (into []
-              (map (fn [[stage-number stage]]
-                     (lib.util.match/replace stage
-                       [:field
-                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
-                        (field-id :guard (every-pred number? pos?))]
-                       (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
-                                           (select-keys [:base-type :effective-type]))]
-                         ;; Fallback if metadata is missing
-                         [:field (merge found-ref opts) field-id])
-                       [:expression
-                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
-                        expression-name]
-                       (let [found-ref (try
-                                         (m/remove-vals
-                                           #(= :type/* %)
-                                           (-> (lib.expression/expression-ref query stage-number expression-name)
-                                               second
-                                               (select-keys [:base-type :effective-type])))
-                                         (catch #?(:clj Exception :cljs :default) _
-                                           ;; This currently does not find expressions defined in join stages
-                                           nil))]
-                         ;; Fallback if metadata is missing
-                         [:expression (merge found-ref opts) expression-name]))))
+        (mapv (fn [[stage-number stage]]
+                (-> stage
+                    (add-types-to-fields metadata-providerable)
+                    (lib.util.match/replace
+                     [:expression
+                      (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
+                      expression-name]
+                     (let [found-ref (try
+                                       (m/remove-vals
+                                        #(= :type/* %)
+                                        (-> (lib.expression/expression-ref query stage-number expression-name)
+                                            second
+                                            (select-keys [:base-type :effective-type])))
+                                       (catch #?(:clj Exception :cljs :default) _
+                                         ;; This currently does not find expressions defined in join stages
+                                         nil))]
+                       ;; Fallback if metadata is missing
+                       [:expression (merge found-ref opts) expression-name]))))
               (m/indexed stages))))))
 
 (defmethod query-method :metadata/table

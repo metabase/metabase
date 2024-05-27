@@ -44,9 +44,7 @@
     #_y [:ref ::expression/orderable]))
 
 ;; needed because FE replace-clause call removes errorneous query parts -- this is the escalation "fix"
-(mbql-clause/define-mbql-clause-with-schema-fn
-  mbql-clause/tuple-clause-schema
-  #_(tuple-clause-of-comparables-schema #{[0 1] [0 2]})
+(mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1] [0 2]})
   :between :- :type/Boolean
   ;; TODO -- should we enforce that min is <= max (for literal number values?)
   #_expr [:ref ::expression/orderable]
