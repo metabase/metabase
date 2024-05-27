@@ -104,7 +104,6 @@ export function MultiAutocomplete({
       setSearchValue("");
     } else {
       setSearchValue(text);
-      setSelectedValues(unique([...lastSelectedValues, text]));
     }
   };
 
@@ -113,7 +112,10 @@ export function MultiAutocomplete({
     const last = newSearchValue.at(-1);
 
     setSearchValue(newSearchValue);
-    setSelectedValues(unique([...lastSelectedValues, newSearchValue]));
+
+    if (shouldCreate?.(newSearchValue, lastSelectedValues)) {
+      setSelectedValues(unique([...lastSelectedValues, newSearchValue]));
+    }
 
     const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
 
@@ -128,12 +130,12 @@ export function MultiAutocomplete({
         value => value !== "" && shouldCreate?.(value, lastSelectedValues),
       );
 
-      if (values.length > 0) {
+      setSearchValue("");
+
+      if (validValues.length > 0) {
         const newValues = unique([...lastSelectedValues, ...validValues]);
         setSelectedValues(newValues);
         setLastSelectedValues(newValues);
-
-        setSearchValue("");
       }
     }
   };
