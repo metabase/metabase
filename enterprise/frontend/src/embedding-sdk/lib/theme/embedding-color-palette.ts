@@ -4,7 +4,13 @@ import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
 import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
 
-// Exclude sdk colors that are not 1:1 mappable.
+/**
+ * Define SDK colors that can be mapped 1:1 to the main app colors.
+ *
+ * Every color defined in `lib/colors` can be mapped here. However,
+ * we do define a custom public interface for some colors,
+ * such as chart colors, which needs to be excluded here.
+ */
 export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
