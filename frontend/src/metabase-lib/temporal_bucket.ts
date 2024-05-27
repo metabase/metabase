@@ -83,3 +83,7 @@ export function formatRelativeDateRange({
     "include-current": includeCurrent,
   });
 }
+
+export function datetimeBucketUnits(): string[] {
+  return ML.datetime_bucket_units();
+}

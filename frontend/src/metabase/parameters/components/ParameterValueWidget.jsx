@@ -41,6 +41,7 @@ import {
 import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
 
 class ParameterValueWidget extends Component {
   static propTypes = {
@@ -321,6 +322,10 @@ function Widget({
     );
   }
 
+  if (isTemporalUnitParameter(parameter)) {
+    return <TemporalUnitWidget setValue={setValue} />;
+  }
+
   if (isTextWidget(parameter)) {
     return (
       <TextWidget
@@ -397,10 +402,7 @@ function hasNoPopover(parameter) {
 
 function isTextWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  return (
-    (parameter.hasVariableTemplateTagTarget && !canQuery) ||
-    isTemporalUnitParameter(parameter)
-  );
+  return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 
 function isFieldWidget(parameter) {
