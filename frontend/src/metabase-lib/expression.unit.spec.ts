@@ -13,6 +13,96 @@ import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 const offset = -1;
 
 describe("offsetClause", () => {
+  describe("offset = -1", () => {
+    const offset = -1;
+
+    describe("no breakout", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+
+    describe("breakout on non-binned datetime column", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+
+    describe("breakout on binned datetime column", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+
+    describe("breakout on non-datetime column", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+  });
+
+  describe("offset < -1", () => {
+    const offset = -2;
+
+    describe("no breakout", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+
+    describe("breakout on non-binned datetime column", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+
+    describe("breakout on binned datetime column", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+
+    describe("breakout on non-datetime column", () => {
+      it("works", () => {
+        expect("TODO").toBe("TODO");
+      });
+
+      it("gives correct name", () => {
+        expect("TODO").toBe("TODO");
+      });
+    });
+  });
+});
+
+describe("offsetClause - old", () => {
   it("offsets Count aggregation without breakout", () => {
     const stageIndex = -1;
     const query = createQueryWithClauses({
