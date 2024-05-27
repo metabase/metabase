@@ -398,13 +398,15 @@
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes/*export-table-fk*)
         (update :fk_target_field_id serdes/*export-field-fk*)
+        (update :parent_id          serdes/*export-field-fk*)
         (dissoc :fingerprint :last_analyzed :fingerprint_version))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
       (update :table_id           serdes/*import-table-fk*)
-      (update :fk_target_field_id serdes/*import-field-fk*)))
+      (update :fk_target_field_id serdes/*import-field-fk*)
+      (update :parent_id          serdes/*import-field-fk*)))
 
 (defmethod serdes/load-find-local "Field"
   [path]
