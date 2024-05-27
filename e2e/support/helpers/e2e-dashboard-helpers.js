@@ -83,12 +83,14 @@ export function showDashboardCardActions(index = 0) {
  * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
  */
 export function findDashCardAction(dashcardElement, labelText) {
-  return dashcardElement.realHover().findByLabelText(labelText);
+  return dashcardElement
+    .realHover({ scrollBehavior: "bottom" })
+    .findByLabelText(labelText);
 }
 
 export function removeDashboardCard(index = 0) {
   getDashboardCard(index)
-    .realHover({ scrollBehavior: "bottom" })
+    .realHover()
     .findByTestId("dashboardcard-actions-panel")
     .should("be.visible")
     .icon("close")

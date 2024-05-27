@@ -63,9 +63,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
           parseSpecialCharSequences: false,
         });
-        cy.get("input").last().type("column value: {{my_number}}", {
-          parseSpecialCharSequences: false,
-        });
+        cy.get("input")
+          .last()
+          .type("column value: {{my_number}}", {
+            parseSpecialCharSequences: false,
+          })
+          .blur();
         cy.findByText("Done").click();
       });
 
@@ -299,7 +302,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input")
           .first()
           .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`);
-        cy.get("input").last().type("Click behavior");
+        cy.get("input").last().type("Click behavior").blur();
         cy.findByText("Done").click();
       });
 

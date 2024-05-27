@@ -7,6 +7,7 @@ import {
   summarize,
   chartPathWithFillColor,
   cartesianChartCircle,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -118,7 +119,7 @@ describe("scenarios > binning > binning options", () => {
     it("should work for number", () => {
       openTable({ table: ORDERS_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Total").click();
+      tableHeaderClick("Total");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -132,7 +133,7 @@ describe("scenarios > binning > binning options", () => {
     it("should work for time series", () => {
       openTable({ table: ORDERS_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At").click();
+      tableHeaderClick("Created At");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -146,7 +147,7 @@ describe("scenarios > binning > binning options", () => {
     it("should work for longitude/latitude", () => {
       openTable({ table: PEOPLE_ID });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Longitude").click();
+      tableHeaderClick("Longitude");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
