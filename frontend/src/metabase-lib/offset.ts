@@ -1,0 +1,107 @@
+import { t } from "ttag";
+
+import { inflect } from "metabase/lib/formatting";
+
+import { breakouts } from "./breakout";
+import { expressionClause, withExpressionName } from "./expression";
+import { displayInfo } from "./metadata";
+import { temporalBucket } from "./temporal_bucket";
+import type { AggregationClause, ExpressionClause, Query } from "./types";
+
+export function offsetClause(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): ExpressionClause {
+  const newName = getOffsetClauseName(query, stageIndex, clause, offset, "");
+  const newClause = expressionClause("offset", [clause, offset]);
+  return withExpressionName(newClause, newName);
+}
+
+export function diffOffsetClause(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): ExpressionClause {
+  const newName = getOffsetClauseName(query, stageIndex, clause, offset, "vs ");
+  const newClause = expressionClause("-", [
+    clause,
+    expressionClause("offset", [clause, offset]),
+  ]);
+  return withExpressionName(newClause, newName);
+}
+
+export function percentDiffOffsetClause(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): ExpressionClause {
+  const prefix = "% vs ";
+  const newName = getOffsetClauseName(
+    query,
+    stageIndex,
+    clause,
+    offset,
+    prefix,
+  );
+  const newClause = expressionClause("-", [
+    expressionClause("/", [
+      clause,
+      expressionClause("offset", [clause, offset]),
+    ]),
+    1,
+  ]);
+  return withExpressionName(newClause, newName);
+}
+
+function getOffsetClauseName(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+  prefix: string,
+): string {
+  if (offset >= 0) {
+    throw new Error(
+      "non-negative offset values aren't supported in 'getOffsettedName'",
+    );
+  }
+
+  const absoluteOffset = Math.abs(offset);
+  const { displayName } = displayInfo(query, stageIndex, clause);
+  const firstBreakout = breakouts(query, stageIndex)[0];
+
+  if (!firstBreakout) {
+    return absoluteOffset === 1
+      ? t`${displayName} (${prefix}previous period)`
+      : t`${displayName} (${prefix}${absoluteOffset} periods ago)`;
+  }
+
+  const firstBreakoutInfo = displayInfo(query, stageIndex, firstBreakout);
+  const isFirstBreakoutDateTime =
+    firstBreakoutInfo.effectiveType === "type/DateTime";
+
+  if (!isFirstBreakoutDateTime) {
+    return absoluteOffset === 1
+      ? t`${displayName} (${prefix}previous value)`
+      : t`${displayName} (${prefix}${absoluteOffset} rows above)`;
+  }
+
+  const bucket = temporalBucket(firstBreakout);
+
+  if (!bucket) {
+    return absoluteOffset === 1
+      ? t`${displayName} (${prefix}previous period)`
+      : t`${displayName} (${prefix}${absoluteOffset} periods ago)`;
+  }
+
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const period = inflect(bucketInfo.shortName, absoluteOffset);
+
+  return absoluteOffset === 1
+    ? t`${displayName} (${prefix}previous ${period})`
+    : t`${displayName} (${prefix}${absoluteOffset} ${period} ago)`;
+}

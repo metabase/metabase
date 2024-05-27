@@ -1,12 +1,12 @@
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { aggregate, aggregations } from "./aggregation";
-import {
-  offsetClause,
-  diffOffsetClause,
-  percentDiffOffsetClause,
-} from "./expression";
 import { displayInfo } from "./metadata";
+import {
+  diffOffsetClause,
+  offsetClause,
+  percentDiffOffsetClause,
+} from "./offset";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 import type { Query } from "./types";
