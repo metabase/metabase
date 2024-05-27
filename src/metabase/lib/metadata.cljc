@@ -55,7 +55,7 @@
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
    Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/column, :metadata/metric,, :metadata/segment]
+   metadata-type         :- [:enum :metadata/column :metadata/metric :metadata/segment]
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id))
 
