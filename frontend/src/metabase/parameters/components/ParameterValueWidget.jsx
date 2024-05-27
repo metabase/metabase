@@ -31,6 +31,7 @@ import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source"
 import {
   isDateParameter,
   isNumberParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -396,7 +397,10 @@ function hasNoPopover(parameter) {
 
 function isTextWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  return parameter.hasVariableTemplateTagTarget && !canQuery;
+  return (
+    (parameter.hasVariableTemplateTagTarget && !canQuery) ||
+    isTemporalUnitParameter(parameter)
+  );
 }
 
 function isFieldWidget(parameter) {
