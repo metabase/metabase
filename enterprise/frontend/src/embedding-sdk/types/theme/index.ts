@@ -80,15 +80,4 @@ export interface MetabaseComponentTheme {
       backgroundColor?: string;
     };
   };
-
-  /**
-   * Pivot table specific overrides.
-   * Pivot tables inherits from the table component theme.
-   */
-  pivotTable?: {
-    /** Cells that has been emphasized in the pivot tables. */
-    emphasizedCell?: {
-      backgroundColor?: string;
-    };
-  };
 }

@@ -1,7 +1,14 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color, alpha, darken } from "metabase/lib/colors";
+import {
+  color,
+  alpha,
+  darken,
+  lighten,
+  isDark,
+  shade,
+} from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
 import {
@@ -41,7 +48,7 @@ const getCellBackgroundColor = ({
   isNightMode,
   isTransparent,
 }: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
-  const { table: tableTheme, pivotTable: pivotTheme } = theme.other;
+  const { backgroundColor } = theme.other.table.cell;
 
   if (isTransparent) {
     return "transparent";
@@ -52,14 +59,33 @@ const getCellBackgroundColor = ({
       return color("bg-black");
     }
 
-    return color(pivotTheme.emphasizedCell.backgroundColor);
+    if (!backgroundColor) {
+      return alpha("border", 0.25);
+    }
+
+    return isDark(backgroundColor)
+      ? lighten(backgroundColor, 0.15)
+      : shade(backgroundColor, 0.05);
   }
 
   if (isNightMode) {
     return alpha("bg-black", 0.1);
   }
 
-  return color(tableTheme.cell.backgroundColor);
+  return color(backgroundColor);
+};
+
+const getCellHoverBackground = (
+  props: PivotTableCellProps & { theme: MantineTheme },
+) => {
+  const backgroundColor = getCellBackgroundColor(props);
+  if (!backgroundColor) {
+    return color("border");
+  }
+
+  return isDark(backgroundColor)
+    ? lighten(backgroundColor, 0.15)
+    : shade(backgroundColor, 0.1);
 };
 
 const getColor = ({
@@ -101,7 +127,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     `}
 
   &:hover {
-    background-color: ${color("border")};
+    background-color: ${getCellHoverBackground};
   }
 `;
 
