@@ -1258,6 +1258,7 @@
                         (binding [*out* writer]
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/pprint data))))
+        columns-to-remove [:view_count]
         data (into {}
                    (for [table-name [:collection
                                      :metabase_database
@@ -1275,14 +1276,15 @@
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
                                                                                  [:= :personal_owner_id nil]]))]]
                      [table-name (->> (t2/query query)
-                                      (map (fn [x] (into {} (dissoc x :view_count))))
+                                      (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
                                       (keep (fn [x] (and (= table-name :collection) (= (:type x) "trash"))))
                                       (sort-by :id))]))]
     (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
+  ;; - add any columns that need removing to `columns-to-remove` above, and create the EDN file again
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
-  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
+  ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
 
 
