@@ -1343,8 +1343,8 @@ function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
     return null;
   }
 
-  const width = height + COLUMN_SHORTCUT_PADDING;
   const isOverflowing = totalWidth > pageWidth;
+  const width = height + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
   const left = (isOverflowing ? pageWidth : totalWidth) - width;
 
   return (
