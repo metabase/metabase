@@ -61,7 +61,6 @@ export function getParameterTargetField(
     const query = question.query();
     const stageIndex = -1;
     const columns = Lib.visibleColumns(query, stageIndex);
-    const fields = metadata.fieldsList();
     if (columns.length > 0) {
       const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
         query,
@@ -71,6 +70,7 @@ export function getParameterTargetField(
       );
       if (columnIndex >= 0) {
         const column = columns[columnIndex];
+        const fields = metadata.fieldsList();
         const fieldIndexes = Lib.findColumnIndexesFromLegacyRefs(
           query,
           stageIndex,
