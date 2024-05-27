@@ -244,13 +244,16 @@
   [db]
   (driver/database-supports? (driver.u/database->driver db) :uploads db))
 
+(defn- add-can-upload
+  "Adds :can_upload boolean, which is true if the user can create a new upload to this DB."
+  [db]
+  (assoc db :can_upload (upload/can-create-upload? db (:uploads_schema_name db))))
+
 (defn- add-can-upload-to-dbs
   "Add an entry to each DB about whether the user can upload to it."
   [dbs]
-  (let [uploads-db-id (public-settings/uploads-database-id)]
-    (for [db dbs]
-      (assoc db :can_upload (and (= (:id db) uploads-db-id)
-                                 (upload/can-create-upload? db (public-settings/uploads-schema-name)))))))
+  (for [db dbs]
+    (add-can-upload db)))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -344,12 +347,6 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(defn- add-can-upload
-  "Add an entry about whether the user can upload to this DB."
-  [db]
-  (assoc db :can_upload (and (= (u/the-id db) (public-settings/uploads-database-id))
-                             (upload/can-create-upload? db (public-settings/uploads-schema-name)))))
-
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
@@ -394,29 +391,25 @@
   {:arglists '([model database-id table-ids])}
   (fn [model _database-id _table-ids] (keyword model)))
 
-(defmethod database-usage-query :question
-  [_ db-id _table-ids]
-  {:select [[:%count.* :question]]
+(defn- card-query
+  [db-id model type-str]
+  {:select [[:%count.* model]]
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :type "question"]]})
+            [:= :type type-str]]})
+
+(defmethod database-usage-query :question
+  [_ db-id _table-ids]
+  (card-query db-id :question "question"))
 
 (defmethod database-usage-query :dataset
   [_model db-id _table-ids]
-  {:select [[:%count.* :dataset]]
-   :from   [:report_card]
-   :where  [:and
-            [:= :database_id db-id]
-            [:= :type "model"]]})
+  (card-query db-id :dataset "model"))
 
 (defmethod database-usage-query :metric
-  [_ _db-id table-ids]
-  {:select [[:%count.* :metric]]
-   :from   [:metric]
-   :where  (if table-ids
-             [:in :table_id table-ids]
-             always-false-hsql-expr)})
+  [_ db-id _table-ids]
+  (card-query db-id :metric "metric"))
 
 (defmethod database-usage-query :segment
   [_ _db-id table-ids]

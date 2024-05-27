@@ -1,15 +1,14 @@
 import { getIn } from "icepick";
 import { useMemo } from "react";
 
+import { getDashcardData } from "metabase/dashboard/selectors";
 import { isTableDisplay } from "metabase/lib/click-behavior";
+import { useSelector } from "metabase/lib/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   QuestionDashboardCard,
-  DashCardId,
-  CardId,
   ClickBehavior,
-  DatasetData,
   DatasetColumn,
 } from "metabase-types/api";
 
@@ -22,7 +21,6 @@ import { getClickBehaviorForColumn } from "./utils";
 interface Props {
   dashboard: Dashboard;
   dashcard: QuestionDashboardCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   clickBehavior?: ClickBehavior;
   isTypeSelectorVisible: boolean | null;
@@ -35,7 +33,6 @@ interface Props {
 export function ClickBehaviorSidebarContent({
   dashboard,
   dashcard,
-  dashcardData,
   parameters,
   clickBehavior,
   isTypeSelectorVisible,
@@ -51,6 +48,9 @@ export function ClickBehaviorSidebarContent({
     // drill-through menu
     return { type: "actionMenu" };
   }, [clickBehavior]);
+  const dashcardData = useSelector(state =>
+    getDashcardData(state, dashcard.id),
+  );
 
   if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);

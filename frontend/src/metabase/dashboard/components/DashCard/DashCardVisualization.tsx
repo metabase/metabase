@@ -4,18 +4,19 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useClickBehaviorData } from "metabase/dashboard/hoc/useClickBehaviorData";
+import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import {
   getVirtualCardType,
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName, IconProps } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Dashboard,
   DashCardId,
@@ -43,7 +44,6 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  metadata: Metadata;
   mode?: Mode;
 
   gridSize: {
@@ -87,7 +87,6 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
-  metadata,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -113,6 +112,7 @@ export function DashCardVisualization({
   onChangeLocation,
   onUpdateVisualizationSettings,
 }: DashCardVisualizationProps) {
+  const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
     return isQuestionCard(dashcard.card)
       ? new Question(dashcard.card, metadata)

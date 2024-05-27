@@ -36,7 +36,6 @@ DashboardSidebars.propTypes = {
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
   setParameterRequired: PropTypes.func.isRequired,
-  dashcardData: PropTypes.object,
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
@@ -47,7 +46,6 @@ DashboardSidebars.propTypes = {
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
   selectedTabId: PropTypes.number,
-  getEmbeddedParameterVisibility: PropTypes.func.isRequired,
 };
 
 export function DashboardSidebars({
@@ -68,7 +66,6 @@ export function DashboardSidebars({
   setParameterSourceConfig,
   setParameterFilteringParameters,
   setParameterRequired,
-  dashcardData,
   isFullscreen,
   onCancel,
   params,
@@ -76,7 +73,6 @@ export function DashboardSidebars({
   closeSidebar,
   setDashboardAttribute,
   selectedTabId,
-  getEmbeddedParameterVisibility,
 }) {
   const parameters = useSelector(getParameters);
   const editingParameter = useSelector(getEditingParameter);
@@ -122,7 +118,6 @@ export function DashboardSidebars({
           dashboard={dashboard}
           dashcard={clickBehaviorSidebarDashcard}
           parameters={parameters}
-          dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
           onUpdateDashCardVisualizationSettings={
             onUpdateDashCardVisualizationSettings
           }
@@ -141,7 +136,6 @@ export function DashboardSidebars({
       );
       return (
         <ParameterSidebar
-          getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}

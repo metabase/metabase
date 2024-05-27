@@ -15,7 +15,7 @@
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues LegacyMetric Segment Table]]
+    :refer [Card Collection Database Field FieldValues Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
@@ -195,12 +195,13 @@
 
 (deftest get-database-can-upload-test
   (testing "GET /api/database"
-    (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
+    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
-                                             uploads-schema-name "public"
-                                             uploads-database-id db-id]
+        (mt/with-temp [Database {db-id :id} {:engine          :postgres
+                                             :name            "The Chosen One"
+                                             :uploads_enabled uploads-enabled?
+                                             :uploads_schema_name "public"}]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
             (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
               (is (= uploads-enabled? (:can_upload result))))))))))
 
@@ -222,9 +223,17 @@
                                 :type        :model
                                 :archived    true}
 
-     LegacyMetric   _                {:table_id table-id-1}
-     LegacyMetric   _                {:table_id table-id-1}
-     LegacyMetric   _                {:table_id table-id-2}
+     ;; metric
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :type        :metric
+                                :archived    true}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :type        :metric}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-2
+                                :type        :metric}
      Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
@@ -874,15 +883,15 @@
 (deftest databases-list-can-upload-test
   (testing "GET /api/database"
     (let [old-ids (t2/select-pks-set Database)]
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
-        (doseq [uploads-enabled? [true false]]
-          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-            (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
-                                               uploads-schema-name "public"
-                                               uploads-database-id db-id]
-              (let [result (get-all :crowberto "database" old-ids)]
-                (is (= (:total result) 1))
-                (is (= uploads-enabled? (-> result :data first :can_upload)))))))))))
+      (doseq [uploads-enabled? [true false]]
+        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+          (mt/with-temp [Database _ {:engine          :postgres
+                                     :name            "The Chosen One"
+                                     :uploads_enabled uploads-enabled?
+                                     :uploads_schema_name "public"}]
+            (let [result (get-all :crowberto "database" old-ids)]
+              (is (= (:total result) 1))
+              (is (= uploads-enabled? (-> result :data first :can_upload))))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"

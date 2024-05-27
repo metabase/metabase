@@ -424,7 +424,7 @@
 
 (defmethod lib-type :metric
   [_object-type]
-  :metadata/legacy-metric)
+  :metadata/metric)
 
 (defmethod excluded-keys :metric
   [_object-type]
