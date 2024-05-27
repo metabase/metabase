@@ -1076,7 +1076,7 @@ class TableInteractive extends Component {
 
     const shortcutColumn =
       info?.isEditable &&
-      Number(!question?.isArchived()) &&
+      !question?.isArchived() &&
       !hasAggregation &&
       !isRawTable;
 
