@@ -7,7 +7,6 @@
         "ranquild",
         "uladzimirdev",
         "kamilmielnik",
-        "oleggromov",
         "nemanjaglumac",
         "romeovs"
       ]
@@ -15,7 +14,8 @@
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
-      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto"]
+      "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
+      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto", "heypoom"]
     },
     {
       "name": "BEC",

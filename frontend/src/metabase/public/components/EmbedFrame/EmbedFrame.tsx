@@ -8,6 +8,7 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
+import CS from "metabase/css/core/index.css";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -22,7 +23,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { setOptions } from "metabase/redux/embed";
+import { setInitialUrlOptions } from "metabase/redux/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -34,7 +35,10 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import "./EmbedFrame.module.css";
+import type { DashboardUrlHashOptions } from "../../../dashboard/types";
+import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
+
+import EmbedFrameS from "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
 import {
   ActionButtonsContainer,
@@ -48,7 +52,7 @@ import {
   Separator,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import LogoBadge from "./LogoBadge";
+import { LogoBadge } from "./LogoBadge";
 
 type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
 
@@ -80,19 +84,25 @@ type Props = OwnProps &
     location: Location;
   };
 
-interface HashOptions {
-  bordered?: boolean;
-  titled?: boolean;
-  theme?: string;
-  hide_parameters?: string;
-  hide_download_button?: boolean;
-}
-
 function mapStateToProps(state: State) {
   return {
     hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
   };
 }
+
+const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
+  if (!theme) {
+    return null;
+  }
+
+  if (theme === "night") {
+    return cx(ParameterValueWidgetS.ThemeNight, EmbedFrameS.ThemeNight);
+  }
+
+  if (theme === "transparent") {
+    return EmbedFrameS.ThemeTransparent;
+  }
+};
 
 function EmbedFrame({
   className,
@@ -138,7 +148,7 @@ function EmbedFrame({
 
   const dispatch = useDispatch();
   useEffect(() => {
-    dispatch(setOptions(location));
+    dispatch(setInitialUrlOptions(location));
   }, [dispatch, location]);
 
   const {
@@ -147,7 +157,7 @@ function EmbedFrame({
     theme,
     hide_parameters,
     hide_download_button,
-  } = parseHashOptions(location.hash) as HashOptions;
+  } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
@@ -164,7 +174,7 @@ function EmbedFrame({
     : [];
   const hasVisibleParameters = visibleParameters.length > 0;
 
-  const hasHeader = Boolean(finalName || hasParameters);
+  const hasHeader = Boolean(finalName || dashboardTabs);
   const isParameterPanelSticky =
     !!dashboard &&
     theme !== "transparent" && // https://github.com/metabase/metabase/pull/38766#discussion_r1491549200
@@ -174,14 +184,20 @@ function EmbedFrame({
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
-      className={cx("EmbedFrame", className, {
-        [`Theme--${theme}`]: !!theme,
-      })}
+      className={cx(
+        EmbedFrameS.EmbedFrame,
+        className,
+        EMBED_THEME_CLASSES(theme),
+      )}
       data-testid="embed-frame"
+      data-embed-theme={theme}
     >
       <ContentContainer>
         {hasHeader && (
-          <Header className="EmbedFrame-header">
+          <Header
+            className={EmbedFrameS.EmbedFrameHeader}
+            data-testid="embed-frame-header"
+          >
             {finalName && (
               <TitleAndDescriptionContainer>
                 <FixedWidthContainer
@@ -191,7 +207,7 @@ function EmbedFrame({
                   <TitleAndDescription
                     title={finalName}
                     description={description}
-                    className="my2"
+                    className={CS.my2}
                   />
                 </FixedWidthContainer>
               </TitleAndDescriptionContainer>
@@ -243,7 +259,10 @@ function EmbedFrame({
         <Body>{children}</Body>
       </ContentContainer>
       {showFooter && (
-        <Footer className="EmbedFrame-footer" variant={footerVariant}>
+        <Footer
+          className={EmbedFrameS.EmbedFrameFooter}
+          variant={footerVariant}
+        >
           {hasEmbedBranding && (
             <LogoBadge variant={footerVariant} dark={theme === "night"} />
           )}

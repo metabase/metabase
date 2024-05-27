@@ -4,6 +4,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import CS from "metabase/css/core/index.css";
 import { isValidTimeInterval } from "metabase/lib/time";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
@@ -196,7 +197,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
       ) : null}
       <NumericInput
-        className="text-right"
+        className={CS.textRight}
         primaryColor={primaryColor}
         style={SELECT_STYLE}
         data-ui-tag="relative-date-input"
@@ -239,7 +240,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         <>
           <GridText>{t`Starting from`}</GridText>
           <NumericInput
-            className="text-right"
+            className={CS.textRight}
             primaryColor={primaryColor}
             style={SELECT_STYLE}
             aria-label={t`Starting from interval`}

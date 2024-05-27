@@ -46,7 +46,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
     <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.relative)}>
       {/* TEXT VALUE */}
       <div
-        className={cx("text-ellipsis", CS.textBold, CS.textRight, CS.flexFull)}
+        className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
         style={{ minWidth: LABEL_MIN_WIDTH }}
       >
         {formatValue(value, { ...options, jsx: true, type: "cell" })}
@@ -54,7 +54,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       {/* OUTER CONTAINER BAR */}
       <div
         data-testid="mini-bar"
-        className="ml1"
+        className={CS.ml1}
         style={{
           position: "relative",
           width: BAR_WIDTH,

@@ -11,7 +11,6 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
-  modal,
   popover,
   openOrdersTable,
   navigationSidebar,
@@ -24,6 +23,7 @@ import {
   moveOpenedCollectionTo,
   pickEntity,
   entityPickerModal,
+  openCollectionMenu,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -36,6 +36,8 @@ describe("scenarios > collection defaults", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+    cy.intercept("GET", "/api/collection/tree**").as("getTree");
+    cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
   describe("new collection modal", () => {
@@ -70,6 +72,7 @@ describe("scenarios > collection defaults", () => {
       pickEntity({
         path: ["Our analytics", `Collection ${COLLECTIONS_COUNT}`],
         select: true,
+        tab: "Collections",
       });
 
       cy.findByTestId("new-collection-modal").button("Create").click();
@@ -229,7 +232,7 @@ describe("scenarios > collection defaults", () => {
                 id: 1,
                 last_name: null,
                 first_name: null,
-                email: "admin@metabase.test",
+                email: "me@email.com",
                 timestamp: "2022-07-05T07:31:09.054-07:00",
               }),
             );
@@ -238,7 +241,7 @@ describe("scenarios > collection defaults", () => {
       );
       visitRootCollection();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("admin@metabase.test").trigger("mouseenter");
+      cy.findByText("me@email.com").trigger("mouseenter");
       cy.findByRole("tooltip").should("not.exist");
     });
 
@@ -397,14 +400,10 @@ describe("scenarios > collection defaults", () => {
         cy.findByText("Move").click();
       });
 
-      modal().within(() => {
-        cy.findByText("My personal collection")
-          .parent()
-          .find(".Icon-chevronright")
-          .click();
-
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.findByText("Bobby Tables's Personal Collection").click();
         cy.findByText(COLLECTION).click();
-
         cy.button("Move").should("not.be.disabled");
       });
     });
@@ -424,7 +423,32 @@ describe("scenarios > collection defaults", () => {
 
       visitCollection(SECOND_COLLECTION_ID);
 
-      moveOpenedCollectionTo("Our analytics");
+      openCollectionMenu();
+      popover().findByText("Move").click();
+
+      // we need to do this manually because we need to await the correct number of api requests to keep this from flaking
+
+      entityPickerModal().within(() => {
+        cy.findByTestId("loading-spinner").should("not.exist");
+        cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.wait([
+          "@getCollectionItems",
+          "@getCollectionItems",
+          "@getCollectionItems",
+        ]);
+        // make sure the first collection (current parent) is selected
+        findPickerItem("First collection").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        // then click our analytics
+        cy.findByText("Our analytics").click();
+        cy.button("Move").click();
+      });
+
+      entityPickerModal().should("not.exist");
+      cy.wait("@getTree");
 
       navigationSidebar().within(() => {
         ensureCollectionHasNoChildren("First collection");
@@ -440,6 +464,7 @@ describe("scenarios > collection defaults", () => {
       );
 
       moveOpenedCollectionTo(NEW_COLLECTION);
+      cy.wait("@getTree");
 
       navigationSidebar().within(() => {
         ensureCollectionHasNoChildren("Second collection");
@@ -472,8 +497,7 @@ describe("scenarios > collection defaults", () => {
           // Select all
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/\d+ items selected/);
+          cy.findByTestId("toast-card").findByText(/\d+ items selected/);
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
@@ -507,16 +531,14 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/)
+          cy.findByTestId("toast-card")
             .parent()
-            .button("Archive")
+            .button("Move to trash")
             .click();
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          cy.findByTestId("toast-card").should("not.exist");
         });
       });
 
@@ -525,21 +547,16 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/)
-            .parent()
-            .button("Move")
-            .click();
+          cy.findByTestId("toast-card").button("Move").click();
 
-          modal().within(() => {
+          entityPickerModal().within(() => {
             cy.findByText("First collection").click();
             cy.button("Move").click();
           });
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          cy.findByTestId("toast-card").should("not.exist");
 
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();
@@ -553,6 +570,80 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("Orders").should("be.visible");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Undo").should("not.exist");
+        });
+
+        it("moving collections should disable moving into any of the moving collections", () => {
+          cy.createCollection({ name: "Another collection" });
+
+          cy.log("moving a single collection");
+          cy.visit(`/collection/${SECOND_COLLECTION_ID}`);
+
+          cy.log("from the collection header");
+
+          cy.findByTestId("collection-menu").icon("ellipsis").click();
+          popover().findByText("Move").click();
+
+          entityPickerModal().within(() => {
+            cy.findByRole("tab", { name: /Collections/ }).click();
+            cy.log("parent collection should be selected");
+            findPickerItem("First collection").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.log("moving collection should be visible but disabled");
+            findPickerItem("Second collection").should("have.attr", "disabled");
+            cy.findByText("Cancel").click();
+          });
+
+          cy.log("from the collection items list");
+
+          cy.findByTestId("collection-table").within(() => {
+            openEllipsisMenuFor("Third collection");
+          });
+
+          popover().findByText("Move").click();
+
+          entityPickerModal().within(() => {
+            cy.log("parent collection should be selected");
+            cy.findByRole("tab", { name: /Collections/ }).click();
+            findPickerItem("Second collection").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.log("moving collection should be visible but disabled");
+            findPickerItem("Third collection").should("have.attr", "disabled");
+            cy.findByText("Cancel").click();
+          });
+
+          cy.log("bulk moving items that include collections");
+          cy.visit("/collection/root");
+
+          cy.findByTestId("collection-table").within(() => {
+            selectItemUsingCheckbox("Orders");
+            selectItemUsingCheckbox("Another collection");
+            selectItemUsingCheckbox("First collection");
+          });
+
+          cy.findByTestId("toast-card").button("Move").click();
+
+          entityPickerModal().within(() => {
+            cy.log("should disable all moving collections");
+            cy.findByRole("tab", { name: /Collections/ }).click();
+            findPickerItem("First collection").should("have.attr", "disabled");
+            findPickerItem("Another collection").should(
+              "have.attr",
+              "disabled",
+            );
+            findPickerItem("Our analytics").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+          });
         });
       });
     });
@@ -630,11 +721,8 @@ function visitRootCollection() {
 function ensureCollectionHasNoChildren(collection) {
   cy.findByText(collection)
     .closest("li")
-    .within(() => {
-      // We used should.not.exist previously, but
-      // this icon is now only hidden. It still exists in the DOM.
-      cy.icon("chevronright").should("be.hidden");
-    });
+    .icon("chevronright")
+    .should("be.hidden");
 }
 
 function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
@@ -671,4 +759,9 @@ function moveItemToCollection(itemName, collectionName) {
   function getCollectionItem(collection, itemName) {
     return collection.find(item => item.name === itemName);
   }
+}
+
+// the button element that gets attributes is 2 levels up from the text
+function findPickerItem(name) {
+  return cy.findByText(name).parent().parent();
 }

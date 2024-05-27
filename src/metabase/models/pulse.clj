@@ -87,12 +87,17 @@
 
 (t2/define-before-update :model/Pulse
   [notification]
-  (let [{:keys [collection_id dashboard_id]} (t2/original notification)]
+  (let [{:keys [collection_id dashboard_id]} (t2/original notification)
+        changes                              (t2/changes notification)]
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
                (not *allow-moving-dashboard-subscriptions*))
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
+    (when (contains? changes :archived)
+      (if (:archived changes)
+        (t2/update! :model/PulseChannel :pulse_id (u/the-id notification) {:enabled false})
+        (t2/update! :model/PulseChannel :pulse_id (u/the-id notification) {:enabled true})))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
@@ -100,6 +105,11 @@
   (u/prog1 (t2/changes notification)
     (assert-valid-parameters notification)
     (collection/check-collection-namespace Pulse (:collection_id notification))))
+
+(t2/define-before-delete :model/Pulse
+  [pulse]
+  ;; to trigger deleting the scheduled jobs
+  (t2/delete! :model/PulseChannel :pulse_id (u/the-id pulse)))
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
@@ -180,6 +190,7 @@
     [:map
      [:include_csv                        ms/BooleanValue]
      [:include_xls                        ms/BooleanValue]
+     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
      [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
@@ -232,7 +243,7 @@
   [pulse-ids]
   (t2/select
    :model/Card
-   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
+   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows
                 :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]
     :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
@@ -256,29 +267,29 @@
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
-(mu/defn hydrate-notification :- (mi/InstanceOf Pulse)
+(mu/defn hydrate-notification :- (ms/InstanceOf Pulse)
   "Hydrate Pulse or Alert with the Fields needed for sending it."
-  [notification :- (mi/InstanceOf Pulse)]
+  [notification :- (ms/InstanceOf Pulse)]
   (-> notification
       (t2/hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(mu/defn ^:private hydrate-notifications :- [:sequential (mi/InstanceOf Pulse)]
+(mu/defn ^:private hydrate-notifications :- [:sequential (ms/InstanceOf Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
-  [notifications :- [:sequential (mi/InstanceOf Pulse)]]
+  [notifications :- [:sequential (ms/InstanceOf Pulse)]]
   (as-> notifications <>
     (t2/hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
-(mu/defn ^:private notification->pulse :- (mi/InstanceOf Pulse)
+(mu/defn ^:private notification->pulse :- (ms/InstanceOf Pulse)
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
   consists of removing associated `Alert` columns."
-  [notification :- (mi/InstanceOf Pulse)]
+  [notification :- (ms/InstanceOf Pulse)]
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `t2/select` and `hydrate` like we do for everything
 ;; else?  (#40016)
-(mu/defn retrieve-pulse :- [:maybe (mi/InstanceOf Pulse)]
+(mu/defn retrieve-pulse :- [:maybe (ms/InstanceOf Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
@@ -286,7 +297,7 @@
           hydrate-notification
           notification->pulse))
 
-(mu/defn retrieve-notification :- [:maybe (mi/InstanceOf Pulse)]
+(mu/defn retrieve-notification :- [:maybe (ms/InstanceOf Pulse)]
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
@@ -294,15 +305,15 @@
   (some-> (apply t2/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
-(mu/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
+(mu/defn ^:private notification->alert :- (ms/InstanceOf Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
   consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
-  [notification :- (mi/InstanceOf Pulse)]
+  [notification :- (ms/InstanceOf Pulse)]
   (-> notification
       (assoc :card (first (:cards notification)))
       (dissoc :cards)))
 
-(mu/defn retrieve-alert :- [:maybe (mi/InstanceOf Pulse)]
+(mu/defn retrieve-alert :- [:maybe (ms/InstanceOf Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
   (some-> (t2/select-one Pulse, :id (u/the-id alert-or-id), :alert_condition [:not= nil])
@@ -312,7 +323,7 @@
 (defn- query-as [model query]
   (t2/select model query))
 
-(mu/defn retrieve-alerts :- [:sequential (mi/InstanceOf Pulse)]
+(mu/defn retrieve-alerts :- [:sequential (ms/InstanceOf Pulse)]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
@@ -341,7 +352,7 @@
            :when (:card alert)]
        alert))))
 
-(mu/defn retrieve-pulses :- [:sequential (mi/InstanceOf Pulse)]
+(mu/defn retrieve-pulses :- [:sequential (ms/InstanceOf Pulse)]
   "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
@@ -416,6 +427,7 @@
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
+   :format_rows       (get card :format_rows true)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
 
@@ -433,12 +445,13 @@
   (t2/delete! PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls dashboard_card_id]}]
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows dashboard_card_id]}]
                                {:pulse_id          (u/the-id notification-or-id)
                                 :card_id           card-id
                                 :position          i
                                 :include_csv       include_csv
                                 :include_xls       include_xls
+                                :format_rows       format_rows
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
       (t2/insert! PulseCard cards))))

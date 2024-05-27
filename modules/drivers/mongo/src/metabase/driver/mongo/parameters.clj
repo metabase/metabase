@@ -11,7 +11,7 @@
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.util :as u]
@@ -69,7 +69,7 @@
   ([field]
    (field->name field true))
 
-  ([field :- lib.metadata/ColumnMetadata
+  ([field :- ::lib.schema.metadata/column
     pr?]
    ;; for native parameters we serialize and don't need the extra pr
    (cond-> (mongo.qp/field->name field ".")
@@ -111,7 +111,7 @@
 
 (mu/defn ^:private substitute-field-filter
   [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                [:field lib.metadata/ColumnMetadata]
+                                                                [:field ::lib.schema.metadata/column]
                                                                 [:value [:map [:value :any]]]]]
   (if (sequential? value)
     (format "{%s: %s}" (field->name field) (param-value->str field value))
@@ -208,7 +208,7 @@
     x
     (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
-        (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
+        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
 
 (defn substitute-native-parameters
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."

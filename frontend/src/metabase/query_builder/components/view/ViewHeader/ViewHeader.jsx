@@ -1,10 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -35,7 +37,7 @@ import {
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 import {
-  ConvertQueryButton,
+  ToggleNativeQueryPreview,
   HeadBreadcrumbs,
   FilterHeaderButton,
   FilterHeaderToggle,
@@ -80,8 +82,6 @@ const viewTitleHeaderPropTypes = {
 
   className: PropTypes.string,
   style: PropTypes.object,
-
-  requiredTemplateTags: PropTypes.array,
 };
 
 export function ViewTitleHeader(props) {
@@ -117,7 +117,8 @@ export function ViewTitleHeader(props) {
 
   const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
-  const isModel = question.type() === "model";
+  const isModelOrMetric =
+    question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
 
   const onQueryChange = useCallback(
@@ -148,7 +149,7 @@ export function ViewTitleHeader(props) {
         <ViewTitleHeaderRightSide
           {...props}
           isSaved={isSaved}
-          isModel={isModel}
+          isModelOrMetric={isModelOrMetric}
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
@@ -221,7 +222,7 @@ function SavedQuestionLeftSide(props) {
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const type = question.type();
-  const isModel = type === "model";
+  const isModelOrMetric = type === "model" || type === "metric";
 
   const onHeaderChange = useCallback(
     name => {
@@ -251,15 +252,15 @@ function SavedQuestionLeftSide(props) {
       showSubHeader={showSubHeader}
     >
       <ViewHeaderMainLeftContentContainer>
-        <SavedQuestionHeaderButtonContainer isModel={isModel}>
+        <SavedQuestionHeaderButtonContainer isModelOrMetric={isModelOrMetric}>
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
             parts={[
-              ...(isAdditionalInfoVisible && isModel
+              ...(isAdditionalInfoVisible && isModelOrMetric
                 ? [
-                    <DatasetCollectionBadge
+                    <HeaderCollectionBadge
                       key="collection"
-                      dataset={question}
+                      question={question}
                     />,
                   ]
                 : []),
@@ -275,7 +276,7 @@ function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {QuestionDataSource.shouldRender(props) && !isModel && (
+          {QuestionDataSource.shouldRender(props) && !isModelOrMetric && (
             <StyledQuestionDataSource
               question={question}
               isObjectDetail={isObjectDetail}
@@ -340,7 +341,7 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className="mb1"
+            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
@@ -351,14 +352,15 @@ function AhHocQuestionLeftSide(props) {
   );
 }
 
-DatasetCollectionBadge.propTypes = {
-  dataset: PropTypes.object.isRequired,
+HeaderCollectionBadge.propTypes = {
+  question: PropTypes.object.isRequired,
 };
 
-function DatasetCollectionBadge({ dataset }) {
-  const { collection } = dataset.card();
+function HeaderCollectionBadge({ question }) {
+  const { collection } = question.card();
+  const icon = question.type();
   return (
-    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon={icon}>
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
   );
@@ -368,7 +370,7 @@ ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
-  isModel: PropTypes.bool,
+  isModelOrMetric: PropTypes.bool,
   isSaved: PropTypes.bool,
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -396,7 +398,6 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
-  requiredTemplateTags: PropTypes.array,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -407,7 +408,7 @@ function ViewTitleHeaderRightSide(props) {
     isBookmarked,
     toggleBookmark,
     isSaved,
-    isModel,
+    isModelOrMetric,
     isRunnable,
     isRunning,
     isNativeEditorOpen,
@@ -429,7 +430,6 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    requiredTemplateTags,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -438,10 +438,14 @@ function ViewTitleHeaderRightSide(props) {
     canExploreResults(question) &&
     MetabaseSettings.get("enable-nested-queries");
 
-  // Models can't be saved. But changing anything about the model will prompt the user
-  // to save it as a new question (based on that model). In other words, at this point
+  // Models and metrics can't be saved. But changing anything about the model/metric will prompt the user
+  // to save it as a new question (based on that model/metric). In other words, at this point
   // the `type` field is set to "question".
-  const hasSaveButton = !isModel && !!isDirty && isActionListVisible;
+  const hasSaveButton =
+    !isModelOrMetric &&
+    !!isDirty &&
+    !question.isArchived() &&
+    isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
@@ -460,19 +464,15 @@ function ViewTitleHeaderRightSide(props) {
     [isRunning],
   );
 
-  const canSave = Lib.canSave(question.query());
+  const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
-  const disabledSaveTooltip = getDisabledSaveTooltip(
-    isEditable,
-    requiredTemplateTags,
-    canSave,
-  );
+  const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
-          className="ml2 mr1"
+          className={cx(CS.ml2, CS.mr1)}
           query={question.query()}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
@@ -481,13 +481,13 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {FilterHeaderButton.shouldRender(props) && (
         <FilterHeaderButton
-          className="hide sm-show"
+          className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
-          className="hide sm-show"
+          className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
@@ -503,8 +503,8 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {ConvertQueryButton.shouldRender(props) && (
-        <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
+      {ToggleNativeQueryPreview.shouldRender(props) && (
+        <ToggleNativeQueryPreview question={question} />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
@@ -556,39 +556,8 @@ function ViewTitleHeaderRightSide(props) {
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
 
-function getDisabledSaveTooltip(
-  isEditable,
-  requiredTemplateTags = [],
-  canSave,
-) {
+function getDisabledSaveTooltip(isEditable) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
-
-  const missingValueRequiredTTags = requiredTemplateTags.filter(
-    tag => tag.required && !tag.default,
-  );
-
-  if (!canSave) {
-    return getMissingRequiredTemplateTagsTooltip(missingValueRequiredTTags);
-  }
-
-  // Having an empty tooltip text is ok because it won't be shown.
-  return "";
-}
-
-function getMissingRequiredTemplateTagsTooltip(requiredTemplateTags = []) {
-  if (!requiredTemplateTags.length) {
-    return "";
-  }
-
-  const names = requiredTemplateTags
-    .map(tag => `"${tag["display-name"] ?? tag.name}"`)
-    .join(", ");
-
-  return ngettext(
-    msgid`The ${names} variable requires a default value but none was provided.`,
-    `The ${names} variables require default values but none were provided.`,
-    requiredTemplateTags.length,
-  );
 }

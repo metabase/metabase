@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.public-test :as public-test]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
@@ -15,7 +16,7 @@
                         [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
     (testing x
       (is (= expected
-             (params/wrap-field-id-if-needed x))))))
+             (mbql.u/wrap-field-id-if-needed x))))))
 
 
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------

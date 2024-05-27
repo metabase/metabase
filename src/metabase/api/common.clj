@@ -283,7 +283,7 @@
           ;; their API error messages
           route-doc                                           (route-dox method route docstr args
                                                                          (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                            body)]
+                                                                         body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
@@ -321,7 +321,8 @@
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)
         schema          (into [:map] (for [[k v] arg->schema]
-                                       [(keyword k) v]))]
+                                       [(keyword k) v]))
+        quoted-args     (list 'quote args)]
     `(def ~(vary-meta fn-name
                       merge
                       {:doc          route-doc
@@ -329,6 +330,7 @@
                        :method       method-kw
                        :path         route
                        :schema       schema
+                       :args         quoted-args
                        :is-endpoint? true}
                       (meta method))
        ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
@@ -654,3 +656,23 @@
   (if (sequential? xs)
     (map parse-fn xs)
     [(parse-fn xs)]))
+
+
+;;; ---------------------------------------- MOVING TO TRASH ON ARCHIVE --------------------------------
+
+(defn move-on-archive-or-unarchive
+  "Given a current instance with a `collection_id` and `trashed_from_collection_id` and a set of updates to that
+  instance, return a possibly modified version of the updates reflecting the fact that archiving or unarchiving also
+  moves the instance to/from the Trash."
+  [current-obj obj-updates trash-collection-id]
+  (cond-> obj-updates
+    (column-will-change? :archived current-obj obj-updates)
+    (assoc :collection_id (cond
+                            (:archived obj-updates) trash-collection-id
+
+                            (column-will-change? :collection_id current-obj obj-updates)
+                            (:collection_id obj-updates)
+
+                            :else (:trashed_from_collection_id current-obj))
+           :trashed_from_collection_id (when (:archived obj-updates)
+                                         (:collection_id current-obj)))))

@@ -5,15 +5,15 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
@@ -30,7 +30,7 @@
 (mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in [[metabase.query-processor.sort]], for all the Fields in a given Table."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (let [fields (table->sorted-fields table-id)]
     (when (empty? fields)
       (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
@@ -82,9 +82,9 @@
              (qp.store/initialized?))
     ;; by 'caching' this result, this log message will only be shown once for a given QP run.
     (qp.store/cached [::should-add-implicit-fields-warning]
-      (log/warn (str (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")
-                     \newline
-                     (trs "Query: {0}" (u/pprint-to-str source-query))))))
+      (log/warn (str "Warning: cannot determine fields for an explicit `source-query` unless you also include"
+                     " `source-metadata`.\n"
+                     (format "Query: %s" (u/pprint-to-str source-query))))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))

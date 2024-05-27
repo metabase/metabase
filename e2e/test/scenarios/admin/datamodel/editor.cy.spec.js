@@ -6,14 +6,17 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  moveDnDKitElement,
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openTable,
   popover,
   restore,
-  startNewQuestion,
   setTokenFeatures,
-  openTable,
+  startNewQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
@@ -53,8 +56,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated Table display_name").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -100,8 +103,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -114,8 +117,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("4 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -226,7 +229,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -283,7 +287,10 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow sorting fields in the custom order", () => {
       visitTableMetadata({ tableId: PRODUCTS_ID });
-      moveField(0, 200);
+      //moveField(0, 200);
+      moveDnDKitElement(cy.findAllByTestId("grabber").first(), {
+        vertical: 200,
+      });
       cy.wait("@updateFieldOrder");
       openProductsTable();
       assertTableHeader([
@@ -405,7 +412,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -434,8 +442,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -503,7 +511,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -656,28 +665,6 @@ const searchAndSelectValue = (newValue, searchText = newValue) => {
 
 const getFieldSection = fieldName => {
   return cy.findByLabelText(fieldName);
-};
-
-const moveField = (fieldIndex, deltaY) => {
-  cy.findAllByTestId("grabber")
-    .eq(fieldIndex)
-    .trigger("pointerdown", 0, 0, { force: true, button: 0, isPrimary: true })
-    .wait(200)
-    .trigger("pointermove", 5, 5, { force: true, button: 0, isPrimary: true })
-    .wait(200)
-    //cy.get("#ColumnsList")
-    .trigger("pointermove", 10, deltaY, {
-      force: true,
-      button: 0,
-      isPrimary: true,
-    })
-    .wait(200)
-    .trigger("pointerup", 10, deltaY, {
-      force: true,
-      button: 0,
-      isPrimary: true,
-    })
-    .wait(200);
 };
 
 const setTableOrder = order => {

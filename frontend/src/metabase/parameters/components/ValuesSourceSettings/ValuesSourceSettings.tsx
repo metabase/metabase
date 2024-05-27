@@ -14,6 +14,8 @@ import type {
 
 import ValuesSourceModal from "../ValuesSourceModal";
 
+import { ClickAreaExpander } from "./ValuesSourceSettings.styled";
+
 interface ValuesSourceSettingsProps {
   parameter: Parameter;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
@@ -113,7 +115,7 @@ function RadioContainer({
               p={0}
               compact={true}
             >
-              {t`Edit`}
+              <ClickAreaExpander>{t`Edit`}</ClickAreaExpander>
             </Button>
           </div>
         </Tooltip>

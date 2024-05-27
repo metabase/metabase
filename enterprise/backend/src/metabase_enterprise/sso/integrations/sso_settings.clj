@@ -8,7 +8,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -47,7 +47,7 @@ don''t have one.")
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
-using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml")
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`")
   :feature :sso-saml
   :audit   :getter)
 
@@ -57,7 +57,7 @@ using, this usually looks like https://your-org-name.example.com or https://exam
   (try
     (instance? java.security.cert.X509Certificate (saml/->X509Certificate idp-cert-str))
     (catch Throwable e
-      (log/error e (trs "Error parsing SAML identity provider certificate"))
+      (log/error e "Error parsing SAML identity provider certificate")
       (throw
        (Exception. (tru "Invalid identity provider certificate. Certificate should be a base-64 encoded string."))))))
 
@@ -74,7 +74,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
 
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
-on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v")
+on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`")
   :feature :sso-saml
   :audit   :getter)
 

@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -163,9 +164,9 @@
                                   (mu/disable-enforcement
                                    (lib/display-info query -1 query)))
           true  editable
-          false (assoc editable :database 999999999)    ; database unknown - no permissions
-          false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
-          false (mock-db-native-perms nil))))))         ; native-permissions not found on the database
+          false (assoc editable :database 999999999) ; database unknown - no permissions
+          false (mock-db-native-perms :none)         ; native-permissions explicitly set to :none
+          false (mock-db-native-perms nil))))))      ; native-permissions not found on the database
 
 (deftest ^:parallel convert-from-legacy-preserve-info-test
   (testing ":info key should be converted when converting from legacy to pMBQL"
@@ -188,11 +189,104 @@
            (lib.query/query meta/metadata-provider
              {:database 74001, :type :query, :query {:source-table 74040}})))))
 
+(deftest ^:parallel can-run-test
+  (mu/disable-enforcement
+    (are [can-run? card-type query]
+         (= can-run? (lib.query/can-run query card-type))
+      true  :question lib.tu/venues-query
+      false :question (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true  :question (lib/native-query meta/metadata-provider "SELECT")
+      false :question (lib/native-query meta/metadata-provider "")
+      false :metric   lib.tu/venues-query
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count)))
+      false :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
+
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
-    (are [can-save? query]
-      (= can-save?  (lib.query/can-save query))
-      true lib.tu/venues-query
-      false (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
-      true (lib/native-query meta/metadata-provider "SELECT")
-      false (lib/native-query meta/metadata-provider ""))))
+    (are [can-save? card-type query]
+         (= can-save? (lib.query/can-save query card-type))
+      true  :question lib.tu/venues-query
+      false :question (assoc lib.tu/venues-query :database nil)           ; database unknown - no permissions
+      true  :question (lib/native-query meta/metadata-provider "SELECT")
+      false :question (lib/native-query meta/metadata-provider "")
+      false :metric   lib.tu/venues-query
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count)))
+      false :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
+      true  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
+
+(deftest ^:parallel can-preview-test
+  (mu/disable-enforcement
+    (testing "can-preview"
+      (is (= true (lib/can-preview lib.tu/venues-query)))
+      (testing "with an offset expression"
+        (let [offset-query (lib/expression lib.tu/venues-query "prev_price"
+                                           (lib/offset (meta/field-metadata :venues :price) -1))]
+          (testing "without order-by = false"
+            (is (= false (lib/can-preview offset-query))))
+          (testing "with order-by = true"
+            (is (= true  (-> offset-query
+                             (lib/order-by (meta/field-metadata :venues :latitude))
+                             lib/can-preview))))))
+      (testing "with an offset expression in an earlier stage"
+        (let [offset-query (-> lib.tu/venues-query
+                               (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
+                               (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
+                               (lib/aggregate (lib/count))
+                               lib/append-stage)]
+          (testing "without order-by in that stage = false"
+            (is (= false (lib/can-preview offset-query)))
+            ;; order by in the other stage doesn't help
+            (is (= false (-> offset-query
+                             (lib/order-by -1 (meta/field-metadata :venues :latitude) :asc)
+                             lib/can-preview))))
+          (testing "with order-by in that stage = true"
+            (is (= true  (-> offset-query
+                             (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
+                             lib/can-preview)))))))))
+
+(deftest ^:parallel normalize-test
+  (testing "Normalize (including adding :lib/uuids) when creating a new query"
+    (are [x] (=? {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :source-table 1
+                              :aggregation  [[:count {:lib/uuid string?}]]
+                              :filters      [[:=
+                                              {:lib/uuid string?}
+                                              [:field {:lib/uuid string?} 1]
+                                              4]]}]}
+                 (lib/query meta/metadata-provider x))
+      {"lib/type" "mbql/query"
+       "database" (meta/id)
+       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                    "source-table" 1
+                    "aggregation"  [["count" {}]]
+                    "filters"      [["=" {} ["field" {} 1] 4]]}]}
+
+      {:lib/type :mbql/query
+       :database (meta/id)
+       :stages   [{:lib/type     :mbql.stage/mbql
+                   :source-table 1
+                   :aggregation  [[:count {}]]
+                   :filters      [[:=
+                                   {}
+                                   [:field {} 1]
+                                   4]]}]}
+
+      ;; denormalized legacy query
+      {"type"     "query"
+       "database" (meta/id)
+       "query"    {"source-table" 1
+                   "aggregation"  [["count"]]
+                   "filter"       ["=" ["field" 1 nil] 4]}})))

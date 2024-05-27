@@ -34,7 +34,7 @@ export const getMultiSelectOverrides =
         { invalid }: MultiSelectStylesParams,
         { size = "md" },
       ) => ({
-        ...getSelectInputOverrides(theme, size),
+        ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
         values: {
           minHeight: getSize({ size, sizes: SIZES }),

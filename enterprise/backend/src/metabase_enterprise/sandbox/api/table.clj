@@ -7,14 +7,13 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private find-gtap-question :- [:maybe (mi/InstanceOf Card)]
+(mu/defn ^:private find-gtap-question :- [:maybe (ms/InstanceOf Card)]
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
@@ -30,7 +29,7 @@
 (mu/defn only-sandboxed-perms? :- :boolean
   "Returns true if the user has sandboxed permissions. If a sandbox policy exists, it overrides existing permission on
   the table."
-  [table :- (mi/InstanceOf Table)]
+  [table :- (ms/InstanceOf Table)]
   (contains? (->> (sandbox.api.util/enforced-sandboxes-for api/*current-user-id*)
                   (map :table_id)
                   set)
@@ -72,8 +71,9 @@
     (if sandboxed-perms?
       (maybe-filter-fields
        table
-       (data-perms/with-additional-table-permission :perms/data-access (:db_id table) (u/the-id table) :unrestricted
-         (thunk)))
+       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+           (thunk))))
       (thunk))))
 
 (api/define-routes)

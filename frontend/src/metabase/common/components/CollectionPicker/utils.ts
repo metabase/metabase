@@ -1,12 +1,11 @@
-import { isRootCollection } from "metabase/collections/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type {
   CollectionId,
-  SearchListQuery,
-  SearchModelType,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
-import type { PickerState, IsFolder, TypeWithModel } from "../EntityPicker";
+import type { PickerState } from "../EntityPicker";
+import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type { CollectionPickerItem } from "./types";
 
@@ -16,8 +15,9 @@ export const getCollectionIdPath = (
     "id" | "location" | "is_personal" | "effective_location"
   >,
   userPersonalCollectionId?: CollectionId,
+  isPersonal?: boolean,
 ): CollectionId[] => {
-  if (isRootCollection(collection)) {
+  if (collection.id === null || collection.id === "root") {
     return ["root"];
   }
 
@@ -39,10 +39,10 @@ export const getCollectionIdPath = (
     (collection.id === userPersonalCollectionId ||
       pathFromRoot.includes(userPersonalCollectionId));
 
-  if (isInUserPersonalCollection) {
-    return [...pathFromRoot, collection.id];
-  } else if (collection.is_personal) {
+  if (isPersonal) {
     return ["personal", ...pathFromRoot, collection.id];
+  } else if (isInUserPersonalCollection) {
+    return [...pathFromRoot, collection.id];
   } else {
     return ["root", ...pathFromRoot, collection.id];
   }
@@ -54,13 +54,18 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem, SearchListQuery> => {
-  const statePath: PickerState<CollectionPickerItem, SearchListQuery> = [
+}): PickerState<CollectionPickerItem, ListCollectionItemsRequest> => {
+  const statePath: PickerState<
+    CollectionPickerItem,
+    ListCollectionItemsRequest
+  > = [
     {
       selectedItem: {
         name: "",
         model: "collection",
         id: idPath[0],
+        here: ["collection"],
+        below: ["collection"],
       },
     },
   ];
@@ -70,7 +75,7 @@ export const getStateFromIdPath = ({
 
     statePath.push({
       query: {
-        collection: id,
+        id,
         models: ["collection"],
         namespace,
       },
@@ -79,6 +84,8 @@ export const getStateFromIdPath = ({
             name: "",
             model: "collection",
             id: nextLevelId,
+            here: ["collection"],
+            below: ["collection"],
           }
         : null,
     });
@@ -87,13 +94,39 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder: IsFolder<
-  CollectionId,
-  SearchModelType,
-  CollectionPickerItem
-> = <Item extends TypeWithModel<CollectionId, SearchModelType>>(item: Item) => {
-  return item.model === "collection";
+export const isFolder = (item: CollectionPickerItem): boolean => {
+  return Boolean(
+    item.model === "collection" && item?.here?.includes("collection"),
+  );
 };
 
-export const generateKey = (query?: SearchListQuery) =>
-  JSON.stringify(query ?? "root");
+export const getParentCollectionId = (
+  location?: string | null,
+): CollectionId => {
+  const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
+  return parentCollectionId ? Number(parentCollectionId) : "root";
+};
+
+export const getPathLevelForItem = (
+  item: CollectionPickerItem | QuestionPickerItem,
+  path: PickerState<
+    CollectionPickerItem | QuestionPickerItem,
+    ListCollectionItemsRequest
+  >,
+  userPersonalCollectionId?: CollectionId,
+): number => {
+  if (item.id === userPersonalCollectionId) {
+    return 0;
+  }
+
+  const parentCollectionId =
+    item.collection_id ??
+    getParentCollectionId(item?.effective_location ?? item?.location);
+
+  // set selected item at the correct level
+  const pathLevel = path.findIndex(
+    level => String(level?.query?.id) === String(parentCollectionId),
+  );
+
+  return pathLevel === -1 ? 0 : pathLevel;
+};

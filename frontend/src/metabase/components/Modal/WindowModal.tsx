@@ -10,6 +10,7 @@ import type {
 } from "metabase/components/Modal/utils";
 import { getModalContent, modalSizes } from "metabase/components/Modal/utils";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
 import { FocusTrap } from "metabase/ui";
 
@@ -26,12 +27,19 @@ export type WindowModalProps = BaseModalProps & {
   [size in ModalSize]?: boolean;
 };
 
+const MODAL_CLASSES = {
+  small: ModalS.ModalSmall,
+  medium: ModalS.ModalMedium,
+  wide: ModalS.ModalWide,
+  tall: ModalS.ModalTall,
+  fit: ModalS.ModalFit,
+} as const;
+
 export class WindowModal extends Component<WindowModalProps> {
   _modalElement: HTMLDivElement;
 
   static defaultProps = {
-    className: "Modal",
-    backdropClassName: "Modal-backdrop",
+    className: ModalS.Modal,
     enableTransition: true,
     trapFocus: true,
   };
@@ -40,7 +48,7 @@ export class WindowModal extends Component<WindowModalProps> {
     super(props);
 
     this._modalElement = document.createElement("div");
-    this._modalElement.className = "ModalContainer";
+    this._modalElement.className = ModalS.ModalContainer;
 
     if (props.zIndex != null) {
       this._modalElement.style.zIndex = String(props.zIndex);
@@ -65,7 +73,7 @@ export class WindowModal extends Component<WindowModalProps> {
       this.props.className,
       ...modalSizes
         .filter(type => this.props[type])
-        .map(type => `Modal--${type}`),
+        .map(type => MODAL_CLASSES[type]),
     );
     return (
       <MaybeOnClickOutsideWrapper
@@ -75,8 +83,9 @@ export class WindowModal extends Component<WindowModalProps> {
       >
         <FocusTrap active={this.props.trapFocus}>
           <div
-            className={cx(className, "relative bg-white rounded")}
+            className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
             role="dialog"
+            data-testid="modal"
           >
             {getModalContent({
               ...this.props,
@@ -94,7 +103,6 @@ export class WindowModal extends Component<WindowModalProps> {
   render() {
     const {
       enableMouseEvents,
-      backdropClassName,
       isOpen,
       style,
       enableTransition,
@@ -126,7 +134,14 @@ export class WindowModal extends Component<WindowModalProps> {
           {isOpen && (
             <CSSTransition
               key="modal"
-              classNames="Modal"
+              classNames={{
+                appear: ModalS.ModalAppear,
+                appearActive: ModalS.ModalAppearActive,
+                enter: ModalS.ModalEnter,
+                enterActive: ModalS.ModalEnterActive,
+                exit: ModalS.ModalExit,
+                exitActive: ModalS.ModalExitActive,
+              }}
               timeout={{
                 appear: 250,
                 enter: 250,
@@ -134,7 +149,7 @@ export class WindowModal extends Component<WindowModalProps> {
               }}
             >
               <div
-                className={cx(backdropClassName, backdropClassnames)}
+                className={cx(ModalS.ModalBackdrop, backdropClassnames)}
                 style={style}
                 data-testid={dataTestId}
               >

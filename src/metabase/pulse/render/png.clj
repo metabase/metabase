@@ -10,7 +10,6 @@
    [hiccup.core :refer [html]]
    [metabase.formatter :as formatter]
    [metabase.pulse.render.style :as style]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -89,5 +88,5 @@
             (write-image! "png" os))
         (.toByteArray os)))
     (catch Throwable e
-      (log/error e (trs "Error rendering Pulse"))
+      (log/error e "Error rendering Pulse")
       (throw e))))

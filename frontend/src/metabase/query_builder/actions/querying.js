@@ -5,7 +5,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
@@ -95,7 +95,6 @@ export const runQuestionQuery = ({
   ignoreCache = false,
   overrideWithQuestion = null,
   prevQueryResults = undefined,
-  settingsSyncOptions = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -111,11 +110,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      const isAdHocModel =
-        question.type() === "model" &&
+      const isAdHocModelOrMetric =
+        (question.type() === "model" || question.type() === "metric") &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
+      dispatch(
+        updateUrl(question, { dirty: !isAdHocModelOrMetric && cardIsDirty }),
+      );
     }
 
     const startTime = new Date();
@@ -140,7 +141,6 @@ export const runQuestionQuery = ({
         return dispatch(
           queryCompleted(question, queryResults, {
             prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
-            settingsSyncOptions,
           }),
         );
       })
@@ -153,7 +153,9 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
+    const getLoadingMessage = getWhiteLabeledLoadingMessageFactory(getState());
+    const loadingMessage = getLoadingMessage();
+
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -178,7 +180,7 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (
   question,
   queryResults,
-  { prevQueryResults, settingsSyncOptions } = {},
+  { prevQueryResults } = {},
 ) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
@@ -191,7 +193,6 @@ export const queryCompleted = (
       question = question.syncColumnsAndSettings(
         queryResults[0],
         prevQueryResults?.[0],
-        settingsSyncOptions,
       );
 
       question = question.maybeResetDisplay(

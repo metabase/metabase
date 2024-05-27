@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -19,10 +20,12 @@ import {
   describeOSS,
   queryBuilderHeader,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   collectionOnTheGoModal,
   modal,
   pickEntity,
-  hovercard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -43,9 +46,9 @@ describe("scenarios > question > new", () => {
       }
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
-        cy.findByText("Sample3").isVisibleInPopover();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Sample3").should("be.visible");
       });
     });
 
@@ -56,72 +59,67 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
-      popover()
-        .findAllByRole("menuitem")
-        .should("have.length", 3)
-        .and("contain", "Models")
-        .and("contain", "Raw Data")
-        .and("contain", "Saved Questions");
+      entityPickerModal().within(() => {
+        cy.findAllByRole("tab").should("have.length", 3);
+        entityPickerModalTab("Models").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        entityPickerModalTab("Tables").should("exist");
+        entityPickerModalTab("Saved questions").should("exist");
+        entityPickerModalTab("Search").should("not.exist");
 
-      // should not trigger search for an empty string
-      cy.findByPlaceholderText("Search for some data…").type("  ").blur();
-      cy.findByPlaceholderText("Search for some data…").type("ord");
-      cy.wait("@search");
-      cy.get("@searchQuery").should("have.been.calledOnce");
+        cy.findByPlaceholderText("Search…").type("  ").blur();
+        cy.findByPlaceholderText("Search…").type("ord");
+        cy.wait("@search");
+        // should not trigger search for an empty string
+        cy.get("@searchQuery").should("have.been.calledOnce");
 
-      // Search results include both saved questions and database tables
-      cy.findAllByTestId("search-result-item").should(
-        "have.length.at.least",
-        4,
-      );
+        cy.findAllByTestId("result-item").should("have.length.at.least", 4);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Our analytics");
+        const searchResultItems = cy.findAllByTestId("result-item");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Sample Database");
+        searchResultItems.then($results => {
+          const types = $results
+            .toArray()
+            .map(element => element.getAttribute("data-model-type"));
 
-      // Discarding the search query should take us back to the original selector
-      // that starts with the list of databases and saved questions
-      cy.findByPlaceholderText("Search for some data…");
-      cy.findByTestId("input-reset-button").click();
+          // Search results include both saved questions and database tables
+          expect(types).to.include("card");
+          expect(types).to.include("dataset");
+          expect(types).to.include("table");
+        });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
+        // Discarding the search query should take us back to the original tab
+        cy.findByPlaceholderText("Search…").clear().blur();
+        entityPickerModalTab("Search").should("not.exist");
+        entityPickerModalTab("Models").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("Orders, Count").click();
+      });
 
-      // Search is now scoped to questions only
-      cy.findByPlaceholderText("Search for a question…");
-      cy.findByTestId("select-list")
-        .as("rightSide")
-        // should display the collection tree on the left side
-        .should("contain", "Orders")
-        .and("contain", "Orders, Count");
-
-      cy.get("@rightSide")
-        .siblings()
-        .should("have.length", 1)
-        .as("leftSide")
-        // should display the collection tree on the left side
-        .should("contain", "Our analytics");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").should("not.exist");
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
       cy.icon("notebook").click();
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
-      // It is now possible to choose another saved question
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      popover().within(() => {
-        cy.contains("Raw Data").click();
-        cy.contains("Sample Database").click();
+      entityPickerModal().within(() => {
+        // It is now possible to choose another saved question
+        entityPickerModalTab("Saved questions").should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+        cy.findByText("Orders").should("exist");
+        cy.findByText("Orders, Count").should("exist");
+
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       cy.findByTestId("data-step-cell").contains("Products");
@@ -145,8 +143,8 @@ describe("scenarios > question > new", () => {
       });
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
         // Note: collection name's first letter is capitalized
         cy.findByText(/foo:bar/i).click();
         cy.findByText("Orders");
@@ -161,10 +159,24 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("First collection");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        assertDataPickerEntitySelected(0, "Our analytics");
+        cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
+        cy.findByText("Third collection").should("not.exist");
+
+        cy.findByText("First collection").click();
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, "First collection");
+        cy.findByText("Second collection").should("exist");
+        cy.findByText("Third collection").should("not.exist");
+
+        cy.findByText("Second collection").click();
+        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected(1, "First collection");
+        assertDataPickerEntitySelected(2, "Second collection");
+        cy.findByText("Third collection").should("not.exist");
       });
     });
 
@@ -172,51 +184,21 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Orders").click();
-      });
+      entityPickerModal().findByText("Orders").click();
       visualize();
       saveQuestion("Personal question");
 
       cy.signOut();
       cy.signInAsAdmin();
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Saved Questions").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
         cy.findByText("All personal collections").click();
-        cy.findByText(getPersonalCollectionName(USERS.normal)).should(
-          "not.exist",
-        );
         cy.findByText(getPersonalCollectionName(USERS.nocollection)).click();
         cy.findByText("Personal question").click();
       });
       visualize();
     });
-
-    it("should allow clicking linked tables in table info popover", () => {
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
-        cy.findByLabelText("People").findByLabelText("More info").realHover();
-      });
-
-      hovercard().findByText("Orders").click();
-
-      cy.url().should("include", "question#");
-    });
-  });
-
-  it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
-    openOrdersTable();
-
-    cy.url().should("include", "question#");
-    // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
-    cy.findByTestId("query-builder-root").icon("notebook").click();
-    cy.url().should("include", "question/notebook#");
-    cy.findByTestId("query-builder-root").icon("sql").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Convert this question to SQL").click();
-    cy.url().should("include", "question#");
   });
 
   it("composite keys should act as filters on click (metabase#13717)", () => {
@@ -226,16 +208,15 @@ describe("scenarios > question > new", () => {
 
     openOrdersTable();
 
-    cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
       .eq(1) // first table body cell
       .should("contain", "2") // quantity for order ID#1
       .click();
     cy.wait("@dataset");
 
-    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
-      "have.length.gt",
-      1,
-    );
+    cy.get(
+      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
+    ).should("have.length.gt", 1);
 
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
@@ -243,19 +224,18 @@ describe("scenarios > question > new", () => {
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    cy.get(".TableInteractive");
+    cy.get(".test-TableInteractive");
 
-    cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
+    cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
       .eq(1) // first table body cell
       .should("contain", 1)
       .click();
     cy.wait("@dataset");
 
     cy.log("only one row should appear after filtering by ID");
-    cy.get("#main-data-grid .TableInteractive-cellWrapper--firstColumn").should(
-      "have.length",
-      1,
-    );
+    cy.get(
+      "#main-data-grid .test-TableInteractive-cellWrapper--firstColumn",
+    ).should("have.length", 1);
   });
 
   it("should handle ad-hoc question with old syntax (metabase#15372)", () => {
@@ -285,8 +265,8 @@ describe("scenarios > question > new", () => {
 
     popover().findByText("Question").click();
 
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
@@ -306,14 +286,24 @@ describe("scenarios > question > new", () => {
 
     cy.findByLabelText("Navigation bar").findByText("New").click();
     popover().findByText("Question").click();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("qb-header").findByText("Save").click();
+
+    cy.log("should be able to tab through fields (metabase#41683)");
+    cy.realPress("Tab").realPress("Tab");
+    cy.findByLabelText("Description").should("be.focused");
+
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Which collection/)
       .click();
+
+    entityPickerModal()
+      .findByRole("tab", { name: /Collections/ })
+      .click();
+
     entityPickerModal().findByText("Create a new collection").click();
 
     const NEW_COLLECTION = "Foo";
@@ -321,8 +311,10 @@ describe("scenarios > question > new", () => {
       cy.findByLabelText(/Give it a name/).type(NEW_COLLECTION);
       cy.findByText("Create").click();
     });
-    entityPickerModal().findByText("Foo").click();
-    entityPickerModal().findByText("Select").click();
+    entityPickerModal().within(() => {
+      cy.findByText("Foo").click();
+      cy.findByText("Select").click();
+    });
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save new question");
       cy.findByLabelText(/Which collection/).should(
@@ -335,6 +327,35 @@ describe("scenarios > question > new", () => {
     cy.get("header").findByText(NEW_COLLECTION);
   });
 
+  it("should preserve the original question name (metabase#41196)", () => {
+    const originalQuestionName = "Foo";
+    const modifiedQuestionName = `${originalQuestionName} - Modified`;
+    const originalDescription = "Lorem ipsum dolor sit amet";
+
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      name: originalQuestionName,
+      description: originalDescription,
+    });
+
+    visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    cy.findByDisplayValue(originalQuestionName).should("exist");
+
+    cy.log("Change anything about this question to make it dirty");
+    cy.findByTestId("header-cell").should("have.text", "Count").click();
+    popover().icon("arrow_down").click();
+
+    cy.findByTestId("qb-header-action-panel").button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save as new question").click();
+
+      cy.findByLabelText("Name").should("have.value", modifiedQuestionName);
+      cy.findByLabelText("Description").should(
+        "have.value",
+        originalDescription,
+      );
+    });
+  });
+
   describe("add to a dashboard", () => {
     const collectionInRoot = {
       name: "Collection in root collection",
@@ -342,7 +363,6 @@ describe("scenarios > question > new", () => {
     const dashboardInRoot = {
       name: "Dashboard in root collection",
     };
-    const myPersonalCollection = "My personal collection";
     const myPersonalCollectionName = "Bobby Tables's Personal Collection";
 
     beforeEach(() => {
@@ -357,8 +377,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
 
@@ -367,7 +387,11 @@ describe("scenarios > question > new", () => {
         .findByLabelText(/Which collection/)
         .click();
 
-      pickEntity({ path: [myPersonalCollectionName], select: true });
+      pickEntity({
+        path: [myPersonalCollectionName],
+        select: true,
+        tab: "Collections",
+      });
 
       cy.findByTestId("save-question-modal").button("Save").click();
       cy.wait("@createQuestion");
@@ -379,18 +403,18 @@ describe("scenarios > question > new", () => {
         cy.button("Yes please!").click();
       });
 
-      cy.get("#AddToDashSelectDashModal").within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
-        cy.findByText(collectionInRoot.name).should("not.exist");
-        cy.findByText(dashboardInRoot.name).should("not.exist");
-        cy.findByText("Create a new dashboard").should("not.exist");
+        cy.findByText(/bobby tables's personal collection/i).should(
+          "be.visible",
+        );
+        cy.findByText(/our analytics/i).should("not.exist");
       });
     });
 
     it("should show all collections when selecting a dashboard for a question in a public collection", () => {
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
 
@@ -406,9 +430,11 @@ describe("scenarios > question > new", () => {
         cy.findByText("Yes please!").click();
       });
 
-      cy.get("#AddToDashSelectDashModal").within(() => {
+      entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        cy.findByText(myPersonalCollection).should("be.visible");
+        cy.findByText("Bobby Tables's Personal Collection").should(
+          "be.visible",
+        );
         cy.findByText(collectionInRoot.name).should("be.visible");
         cy.findByText(dashboardInRoot.name).should("be.visible");
         cy.findByText("Create a new dashboard").should("be.visible");
@@ -482,3 +508,7 @@ describeOSS(
     });
   },
 );
+
+function assertDataPickerEntitySelected(level, name) {
+  entityPickerModalItem(level, name).should("have.attr", "data-active", "true");
+}

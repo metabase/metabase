@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
+   [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -80,6 +81,7 @@
                              :display            :table
                              :include_csv        false
                              :include_xls        false
+                             :format_rows        true
                              :dashboard_card_id  nil
                              :dashboard_id       nil
                              :parameter_mappings nil}]
@@ -166,6 +168,7 @@
                              :display            :table
                              :include_csv        false
                              :include_xls        false
+                             :format_rows        true
                              :dashboard_card_id  nil
                              :dashboard_id       nil
                              :parameter_mappings nil}]})
@@ -256,6 +259,7 @@
                                    :display            :bar
                                    :include_csv        false
                                    :include_xls        false
+                                   :format_rows        true
                                    :dashboard_card_id  nil
                                    :dashboard_id       nil
                                    :parameter_mappings nil}
@@ -265,6 +269,7 @@
                                    :display            :table
                                    :include_csv        false
                                    :include_xls        false
+                                   :format_rows        true
                                    :dashboard_card_id  nil
                                    :dashboard_id       nil
                                    :parameter_mappings nil}]
@@ -399,6 +404,31 @@
                  (is (pos? (t2/update! User user-id {:is_active false}))))
                (testing "Pulse should not be archived"
                  (is (not (archived?))))))))))))
+
+(deftest archive-pulse-will-disable-pulse-channels-test
+  (pulse-channel-test/with-send-pulse-setup!
+    (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                   :model/PulseChannel {pc-id :id}    (merge {:pulse_id       pulse-id
+                                                              :channel_type   :email}
+                                                             pulse-channel-test/daily-at-6pm)]
+      (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
+             (pulse-channel-test/send-pulse-triggers pulse-id)))
+
+      (testing "archived pulse will disable pulse channels and remove triggers"
+        (t2/update! :model/Pulse pulse-id {:archived true})
+        (is (false? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
+
+      (testing "re-enabled pulse will re-enable pulse channels and add triggers"
+        (t2/update! :model/Pulse pulse-id {:archived false})
+        (is (true? (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+        (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
+               (pulse-channel-test/send-pulse-triggers pulse-id))))
+
+      (testing "delete pulse will remove pulse channels and triggers"
+        (t2/delete! :model/Pulse pulse-id)
+        (is (false? (t2/exists? :model/PulseChannel pc-id)))
+        (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Pulse Collections Permissions Tests                                          |

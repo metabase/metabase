@@ -19,7 +19,7 @@
 (defn reset-password!
   "Reset the password for EMAIL-ADDRESS, and return the reset token in a format that can be understood by the Mac App."
   [email-address]
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (println (str (deferred-trs "Resetting password for {0}..." email-address)
                 "\n"))
   (try

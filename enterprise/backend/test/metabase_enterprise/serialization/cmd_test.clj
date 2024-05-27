@@ -9,9 +9,11 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd :as cmd]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database User]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database
+                            User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize.test-users :as test-users]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
@@ -66,17 +68,21 @@
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"
     (mt/with-premium-features #{:serialization}
-      (let [dump-dir                 (ts/random-dump-dir "serdes-")
-            user-pre-insert-called?  (atom false)]
-        (log/infof "Dumping to %s" dump-dir)
-        (cmd/dump dump-dir "--user" "crowberto@metabase.com")
-        (mt/with-empty-h2-app-db
-          (with-redefs [load/pre-insert-user  (fn [user]
-                                                (reset! user-pre-insert-called? true)
-                                                (assoc user :password "test-password"))]
-            (cmd/load dump-dir "--mode"     "update"
-                      "--on-error" "abort")
-            (is (true? @user-pre-insert-called?))))))))
+      (ts/with-dbs [source-db dest-db]
+        (let [dump-dir                 (ts/random-dump-dir "serdes-")
+              user-pre-insert-called?  (atom false)]
+          (log/infof "Dumping to %s" dump-dir)
+          (ts/with-db source-db
+            (test-users/init!)
+            (ts/create! :model/Collection :name "My_Collection")
+            (cmd/dump dump-dir "--user" "crowberto@metabase.com"))
+          (ts/with-db dest-db
+            (with-redefs [load/pre-insert-user (fn [user]
+                                                 (reset! user-pre-insert-called? true)
+                                                 (assoc user :password "test-password"))]
+              (cmd/load dump-dir "--mode"     "update"
+                        "--on-error" "abort")
+              (is (true? @user-pre-insert-called?)))))))))
 
 (deftest mode-update-remove-cards-test
   (testing "--mode update should remove Cards in a Dashboard if they're gone from the serialized YAML (#20786)"
@@ -143,17 +149,18 @@
 
 (deftest premium-features-test
   (testing "without a premium token"
-    (ts/with-random-dump-dir [dump-dir "serdes-"]
-      (testing "dump should fail"
-        (is (thrown-with-msg? Exception #"Please upgrade"
-                              (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
-
-      (testing "load should fail"
-        (mt/with-empty-h2-app-db
+    (mt/with-premium-features #{}
+      (ts/with-random-dump-dir [dump-dir "serdes-"]
+        (testing "dump should fail"
           (is (thrown-with-msg? Exception #"Please upgrade"
-                                (cmd/load dump-dir
-                                          "--mode"     "update"
-                                          "--on-error" "abort"))))))))
+                                (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
+
+        (testing "load should fail"
+          (mt/with-empty-h2-app-db
+            (is (thrown-with-msg? Exception #"Please upgrade"
+                                  (cmd/load dump-dir
+                                            "--mode"     "update"
+                                            "--on-error" "abort")))))))))
 
 (deftest dump-readonly-dir-test
   (testing "command exits early when destination is not writable"
@@ -183,7 +190,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           3
+                         "count"           4
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -198,7 +205,7 @@
                          "duration_ms"   pos?
                          "source"        "cli"
                          "models"        "Card,Collection,Setting"
-                         "count"         3
+                         "count"         4
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))

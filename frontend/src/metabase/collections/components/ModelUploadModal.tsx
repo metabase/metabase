@@ -13,17 +13,24 @@ import {
   Icon,
 } from "metabase/ui";
 import type { CollectionId, TableId, CardId } from "metabase-types/api";
+import { UploadMode } from "metabase-types/store/upload";
+
+import type { OnFileUpload } from "../types";
 
 import { findLastEditedCollectionItem } from "./utils";
 
-enum UploadMode {
-  append = "append",
-  create = "create",
-}
-
-type CollectionOrTableIdProps =
-  | { collectionId: CollectionId; tableId?: never }
-  | { collectionId?: never; tableId: TableId; modelId?: CardId };
+export type CollectionOrTableIdProps =
+  | {
+      uploadMode: UploadMode.create;
+      collectionId: CollectionId;
+      tableId?: never;
+    }
+  | {
+      uploadMode: UploadMode.append | UploadMode.replace;
+      collectionId?: never;
+      tableId: TableId;
+      modelId?: CardId;
+    };
 
 export function ModelUploadModal({
   opened,
@@ -33,7 +40,7 @@ export function ModelUploadModal({
 }: {
   opened: boolean;
   onClose: () => void;
-  onUpload: ({ collectionId, tableId }: CollectionOrTableIdProps) => void;
+  onUpload: OnFileUpload;
   collectionId: CollectionId;
 }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);
@@ -63,24 +70,25 @@ export function ModelUploadModal({
   );
 
   const handleUpload = () => {
-    if (uploadMode === "append" && tableId) {
+    if (uploadMode !== UploadMode.create && tableId) {
       const modelForTableId = uploadableModels.find(
         model => model.based_on_upload === Number(tableId),
       );
       return onUpload({
         tableId: Number(tableId),
         modelId: modelForTableId?.id,
+        uploadMode: uploadMode,
       });
     }
 
-    return onUpload({ collectionId });
+    return onUpload({ collectionId, uploadMode: UploadMode.create });
   };
 
   useEffect(() => {
     // if we trigger the modal, and there's no uploadable models, just
     // automatically upload a new one
     if (opened && uploadableModels.length === 0) {
-      onUpload({ collectionId });
+      onUpload({ collectionId, uploadMode: UploadMode.create });
       onClose();
     }
   }, [onUpload, onClose, collectionId, uploadableModels, opened]);
@@ -91,14 +99,21 @@ export function ModelUploadModal({
 
   const isFormValid = uploadMode === UploadMode.create || !!tableId;
 
+  const buttonText = (() => {
+    switch (uploadMode) {
+      case UploadMode.create:
+        return t`Create model`;
+      case UploadMode.append:
+        return t`Append to model`;
+      case UploadMode.replace:
+        return t`Replace model data`;
+    }
+  })();
+
   return (
     <Modal
       opened={opened}
       title={t`Select upload destination`}
-      styles={{
-        header: { padding: "2.5rem 2.5rem 1.5rem 2.5rem" },
-        body: { padding: "0 2.5rem 2.5rem 2.5rem" },
-      }}
       onClose={onClose}
     >
       <Stack mb="lg">
@@ -116,8 +131,13 @@ export function ModelUploadModal({
             label={t`Append to a model`}
             value={UploadMode.append}
           />
+          <Radio
+            mt="md"
+            label={t`Replace data in a model`}
+            value={UploadMode.replace}
+          />
         </Radio.Group>
-        {uploadMode === UploadMode.append && (
+        {uploadMode !== UploadMode.create && (
           <Select
             icon={<Icon name="model" />}
             placeholder="Select a model"
@@ -136,7 +156,7 @@ export function ModelUploadModal({
       <Flex justify="flex-end" gap="sm">
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleUpload} variant="filled" disabled={!isFormValid}>
-          {uploadMode === UploadMode.append ? t`Append` : t`Create`}
+          {buttonText}
         </Button>
       </Flex>
     </Modal>

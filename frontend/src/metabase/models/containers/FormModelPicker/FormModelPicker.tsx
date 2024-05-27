@@ -1,23 +1,26 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { t } from "ttag";
 
-import { useQuestionQuery } from "metabase/common/hooks";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { skipToken, useGetCardQuery } from "metabase/api";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import FormField from "metabase/core/components/FormField";
-import SelectButton from "metabase/core/components/SelectButton";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-
-import { PopoverItemPicker, MIN_POPOVER_WIDTH } from "./FormModelPicker.styled";
+import { Button, Icon } from "metabase/ui";
 
 export interface FormModelPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-function FormModelPicker({
+export function FormModelPicker({
   className,
   style,
   name,
@@ -27,23 +30,16 @@ function FormModelPicker({
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
   const formFieldRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(MIN_POPOVER_WIDTH);
+
   const isModelSelected = typeof value === "number";
-  const { data: model } = useQuestionQuery({
-    id: value,
-    enabled: isModelSelected,
-  });
+  const { data: model } = useGetCardQuery(
+    isModelSelected ? { id: value } : skipToken,
+  );
 
-  useEffect(() => {
-    const { width: formFieldWidth } =
-      formFieldRef.current?.getBoundingClientRect() || {};
-    if (formFieldWidth) {
-      setWidth(formFieldWidth);
-    }
-  }, []);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const renderTrigger = useCallback(
-    ({ onClick: handleShowPopover }) => (
+  return (
+    <>
       <FormField
         className={className}
         style={style}
@@ -52,51 +48,34 @@ function FormModelPicker({
         error={touched ? error : undefined}
         ref={formFieldRef}
       >
-        <SelectButton onClick={handleShowPopover}>
-          {isModelSelected ? model?.displayName() : placeholder}
-        </SelectButton>
-      </FormField>
-    ),
-    [
-      id,
-      title,
-      placeholder,
-      error,
-      touched,
-      className,
-      style,
-      model,
-      isModelSelected,
-    ],
-  );
-
-  const renderContent = useCallback(
-    ({ closePopover }) => {
-      return (
-        <PopoverItemPicker
-          value={{ id: value, model: "dataset" }}
-          models={["dataset"]}
-          onChange={({ id }) => {
-            setValue(id);
-            closePopover();
+        <Button
+          data-testid="collection-picker-button"
+          id={id}
+          onClick={() => setIsPickerOpen(true)}
+          fullWidth
+          rightIcon={<Icon name="ellipsis" />}
+          styles={{
+            inner: {
+              justifyContent: "space-between",
+            },
+            root: { "&:active": { transform: "none" } },
           }}
-          showSearch
-          width={width}
+        >
+          {isModelSelected ? model?.name : placeholder}
+        </Button>
+      </FormField>
+      {isPickerOpen && (
+        <QuestionPickerModal
+          models={["dataset"]}
+          title={t`Select a model`}
+          value={model?.id ? getQuestionPickerValue(model) : undefined}
+          onChange={newModel => {
+            setValue(newModel.id);
+            setIsPickerOpen(false);
+          }}
+          onClose={() => setIsPickerOpen(false)}
         />
-      );
-    },
-    [value, width, setValue],
-  );
-
-  return (
-    <TippyPopoverWithTrigger
-      placement="bottom-start"
-      renderTrigger={renderTrigger}
-      popoverContent={renderContent}
-      maxWidth={width}
-    />
+      )}
+    </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormModelPicker;

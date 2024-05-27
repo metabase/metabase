@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { useCreateCollectionMutation } from "metabase/api";
 import FormFooter from "metabase/core/components/FormFooter";
-import Collections from "metabase/entities/collections";
 import {
   Form,
   FormErrorMessage,
@@ -9,16 +9,16 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex, Modal } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
+import { ENTITY_PICKER_Z_INDEX } from "../../EntityPicker";
 import type { CollectionPickerItem } from "../types";
 
 interface NewCollectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  parentCollectionId: CollectionId;
+  parentCollectionId: CollectionId | null;
   onNewCollection: (item: CollectionPickerItem) => void;
 }
 
@@ -28,17 +28,14 @@ export const NewCollectionDialog = ({
   parentCollectionId,
   onNewCollection,
 }: NewCollectionDialogProps) => {
-  const dispatch = useDispatch();
+  const [createCollection] = useCreateCollectionMutation();
 
   const onCreateNewCollection = async ({ name }: { name: string }) => {
-    const {
-      payload: { collection: newCollection },
-    } = await dispatch(
-      Collections.actions.create({
-        name,
-        parent_id: parentCollectionId === "root" ? null : parentCollectionId,
-      }),
-    );
+    const newCollection = await createCollection({
+      name,
+      parent_id: parentCollectionId === "root" ? null : parentCollectionId,
+    }).unwrap();
+
     onNewCollection({ ...newCollection, model: "collection" });
     onClose();
   };
@@ -51,11 +48,7 @@ export const NewCollectionDialog = ({
       data-testid="create-collection-on-the-go"
       trapFocus={true}
       withCloseButton={false}
-      styles={{
-        content: {
-          padding: "1rem",
-        },
-      }}
+      zIndex={ENTITY_PICKER_Z_INDEX}
     >
       <FormProvider
         initialValues={{ name: "" }}

@@ -3,7 +3,6 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
@@ -16,8 +15,6 @@ import {
   visitCollection,
   popover,
 } from "e2e/support/helpers";
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -292,33 +289,6 @@ describe("scenarios > question > native", () => {
     cy.findByText(/missing required parameters/).should("be.visible");
   });
 
-  it("should allow to convert a structured query to a native query", () => {
-    visitQuestionAdhoc(
-      {
-        display: "table",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            limit: 1,
-          },
-          database: SAMPLE_DB_ID,
-        },
-      },
-      { mode: "notebook", autorun: false },
-    );
-
-    cy.button("View the SQL").click();
-    cy.wait("@datasetNative");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
-
-    cy.button("Convert this question to SQL").click();
-    runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 1 row").should("be.visible");
-  });
-
   describe("prompts", () => {
     const PROMPT = "orders count";
     const PROMPT_RESPONSE = { sql: "select count(*) from orders" };
@@ -407,11 +377,20 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
     cy.intercept("/api/database?saved=true").as("database");
     cy.updatePermissionsGraph({
       [USER_GROUPS.ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [WRITABLE_DB_ID]: {
+          "view-data": "blocked",
+          "create-queries": "no",
+        },
       },
       [USER_GROUPS.NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
-        [WRITABLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
+        [WRITABLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 

@@ -2,13 +2,13 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import User from "metabase/entities/users";
+import Users from "metabase/entities/users";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
@@ -60,7 +60,7 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const { isLoading, data: apiKeys } = useListApiKeyQuery();
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
   const groupApiKeys = useMemo(() => {
     return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);
@@ -140,7 +140,9 @@ function GroupMembersTable({
       )}
       {!hasMembers && (
         <div className={cx(CS.mt4, CS.pt4, CS.flex, CS.layoutCentered)}>
-          <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
+          <h2
+            className={CS.textMedium}
+          >{t`A group is only as good as its members.`}</h2>
         </div>
       )}
     </>
@@ -148,7 +150,7 @@ function GroupMembersTable({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default User.loadList({
+export default Users.loadList({
   reload: true,
   pageSize: 25,
   listName: "groupUsers",
@@ -191,7 +193,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{getName(user)}</td>
+      <td className={CS.textBold}>{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -202,10 +204,10 @@ const UserRow = ({
       <td>{user.email}</td>
       {canRemove ? (
         <td
-          className="text-right cursor-pointer"
+          className={cx(CS.textRight, CS.cursorPointer)}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
-          <Icon name="close" className="text-light" size={16} />
+          <Icon name="close" className={CS.textLight} size={16} />
         </td>
       ) : null}
     </tr>
@@ -232,7 +234,7 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
         <Text weight="bold" color="text-medium">{t`API Key`}</Text>
       </td>
       <td>{/* api keys don't have real emails */}</td>
-      <td className="text-right">
+      <td className={CS.textRight}>
         <Link to="/admin/settings/authentication/api-keys">
           <Tooltip label={t`Manage API keys`} position="left">
             <Icon name="link" size={16} />

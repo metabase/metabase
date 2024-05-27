@@ -101,9 +101,8 @@
         (chart-type nil "display-type is %s" display-type)
 
         (and (some? maybe-dashcard)
-             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))
-             (not (#{:combo} display-type)))
-        (chart-type :multiple "result has multiple card semantics, a multiple chart")
+             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
+        (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (not (contains? #{:progress :gauge} display-type))
@@ -111,19 +110,21 @@
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
-           :line
-           :area
-           :bar
-           :combo
            :row
-           :funnel
            :progress
            :gauge
            :table
-           :waterfall} display-type)
+           :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
-        (#{:smartscalar} display-type)
+        (#{:smartscalar
+           :scalar
+           :scatter
+           :waterfall
+           :line
+           :area
+           :bar
+           :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
 
         (= display-type :pie)
@@ -173,7 +174,7 @@
                          (when (is-attached? card)
                            :attached)
                          :unknown)]
-      (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
+      (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
       (if (:card-error (ex-data e))
@@ -189,10 +190,10 @@
 (mu/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
-- attachments
-- content (a hiccup form suitable for rendering on rich clients or rendering into an image)
-- render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
-  scalar results where text is preferable to an image of a div of a single result."
+  - attachments
+  - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
+  - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
+    scalar results where text is preferable to an image of a div of a single result."
   [render-type
    timezone-id :- [:maybe :string]
    card

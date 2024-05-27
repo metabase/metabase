@@ -1,13 +1,12 @@
-import cx from "classnames";
 import { useState, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeyQuery } from "metabase/api";
+import { useListApiKeysQuery } from "metabase/api";
+import { StyledTable } from "metabase/common/components/Table";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/index.module.css";
+import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -16,7 +15,8 @@ import type { ApiKey } from "metabase-types/api";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
-import { formatMaskedKey } from "./utils";
+import type { FlatApiKey } from "./utils";
+import { flattenApiKey, formatMaskedKey } from "./utils";
 
 const { fontFamilyMonospace } = getThemeOverrides();
 
@@ -24,7 +24,13 @@ type Modal = null | "create" | "edit" | "delete";
 
 function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
   return (
-    <Stack mt="xl" align="center" justify="center" spacing="sm">
+    <Stack
+      mt="xl"
+      align="center"
+      justify="center"
+      spacing="sm"
+      data-testid="empty-table-warning"
+    >
       <Title>{t`No API keys here yet`}</Title>
       <Text color="text.1" mb="md">
         {t`You can create an API key to make API calls programatically.`}
@@ -35,6 +41,15 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
     </Stack>
   );
 }
+
+const columns = [
+  { key: "name", name: t`Key name` },
+  { key: "group_name", name: t`Group` },
+  { key: "masked_key", name: t`Key` },
+  { key: "updated_by_name", name: t`Last modified by` },
+  { key: "updated_at", name: t`Last modified on` },
+  { key: "actions", name: "" },
+];
 
 function ApiKeysTable({
   apiKeys,
@@ -49,71 +64,81 @@ function ApiKeysTable({
   loading: boolean;
   error?: unknown;
 }) {
+  const flatApiKeys = useMemo(() => apiKeys?.map(flattenApiKey), [apiKeys]);
+
+  if (loading || error) {
+    return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
+  }
+
+  if (apiKeys?.length === 0 || !apiKeys || !flatApiKeys) {
+    return <EmptyTableWarning onCreate={() => setModal("create")} />;
+  }
+
   return (
-    <Stack data-testid="api-keys-table" pb="lg">
-      <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
-        <thead>
-          <tr>
-            <th>{t`Key name`}</th>
-            <th>{t`Group`}</th>
-            <th>{t`Key`}</th>
-            <th>{t`Last modified by`}</th>
-            <th>{t`Last modified on`}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {apiKeys?.map(apiKey => (
-            <tr key={apiKey.id} className="border-bottom">
-              <td className="text-bold" style={{ maxWidth: 400 }}>
-                <Ellipsified>{apiKey.name}</Ellipsified>
-              </td>
-              <td>{apiKey.group.name}</td>
-              <td>
-                <Text ff={fontFamilyMonospace as string}>
-                  {formatMaskedKey(apiKey.masked_key)}
-                </Text>
-              </td>
-              <td>{apiKey.updated_by.common_name}</td>
-              <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
-              <td>
-                <Group spacing="md">
-                  <Icon
-                    name="pencil"
-                    className="cursor-pointer"
-                    onClick={() => {
-                      setActiveApiKey(apiKey);
-                      setModal("edit");
-                    }}
-                  />
-                  <Icon
-                    name="trash"
-                    className="cursor-pointer"
-                    onClick={() => {
-                      setActiveApiKey(apiKey);
-                      setModal("delete");
-                    }}
-                  />
-                </Group>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <LoadingAndErrorWrapper loading={loading} error={error}>
-        {apiKeys?.length === 0 && (
-          <EmptyTableWarning onCreate={() => setModal("create")} />
-        )}
-      </LoadingAndErrorWrapper>
-    </Stack>
+    <StyledTable
+      data-testid="api-keys-table"
+      columns={columns}
+      rows={flatApiKeys}
+      rowRenderer={row => (
+        <ApiKeyRow
+          apiKey={row}
+          setActiveApiKey={setActiveApiKey}
+          setModal={setModal}
+        />
+      )}
+    />
   );
 }
+
+const ApiKeyRow = ({
+  apiKey,
+  setActiveApiKey,
+  setModal,
+}: {
+  apiKey: FlatApiKey;
+  setActiveApiKey: (apiKey: ApiKey) => void;
+  setModal: (modal: Modal) => void;
+}) => (
+  <tr>
+    <td className={CS.textBold} style={{ maxWidth: 400 }}>
+      <Ellipsified>{apiKey.name}</Ellipsified>
+    </td>
+    <td>{apiKey.group.name}</td>
+    <td>
+      <Text ff={fontFamilyMonospace as string}>
+        {formatMaskedKey(apiKey.masked_key)}
+      </Text>
+    </td>
+    <td>{apiKey.updated_by.common_name}</td>
+    <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
+    <td>
+      <Group spacing="md" py="md">
+        <Icon
+          name="pencil"
+          className={CS.cursorPointer}
+          onClick={() => {
+            setActiveApiKey(apiKey);
+            setModal("edit");
+          }}
+        />
+        <Icon
+          name="trash"
+          className={CS.cursorPointer}
+          onClick={() => {
+            setActiveApiKey(apiKey);
+            setModal("delete");
+          }}
+        />
+      </Group>
+    </td>
+  </tr>
+);
 
 export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
   const [activeApiKey, setActiveApiKey] = useState<null | ApiKey>(null);
 
-  const { data: apiKeys, error, isLoading } = useListApiKeyQuery();
+  const { data: apiKeys, error, isLoading } = useListApiKeysQuery();
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {

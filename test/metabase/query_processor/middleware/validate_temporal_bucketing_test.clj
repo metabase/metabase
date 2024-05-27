@@ -62,7 +62,7 @@
     (mt/dataset attempted-murders
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Unsupported temporal bucketing: You can't bucket a :type/Date Field by :minute"
+           #"Unsupported temporal bucketing: You can't bucket a :type/Date Field by :minute|Invalid output:.*should be a.*got"
            (mt/run-mbql-query attempts
              {:aggregation [[:count]]
               :filter      [:time-interval $date :last :minute]}))))))

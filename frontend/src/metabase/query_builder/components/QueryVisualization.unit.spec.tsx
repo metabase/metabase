@@ -10,7 +10,7 @@ type SetupOpts = {
 function setup({ customMessage }: SetupOpts = {}) {
   if (customMessage) {
     jest
-      .spyOn(PLUGIN_SELECTORS, "getLoadingMessage")
+      .spyOn(PLUGIN_SELECTORS, "getLoadingMessageFactory")
       .mockImplementation(() => customMessage);
   }
 

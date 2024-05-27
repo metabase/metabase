@@ -7,18 +7,18 @@ import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFil
 import { enabledSearchTypes } from "metabase/search/constants";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { Checkbox, Stack } from "metabase/ui";
-import type { EnabledSearchModelType } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 
-const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
+const EMPTY_SEARCH_QUERY = { models: ["dataset" as const], limit: 1 };
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
   ({ value, onChange, width }) => {
     const { metadata, isLoading } = useSearchListQuery({
       query: EMPTY_SEARCH_QUERY,
     });
 
-    const [selectedTypes, setSelectedTypes] = useState<
-      EnabledSearchModelType[]
-    >(value ?? []);
+    const [selectedTypes, setSelectedTypes] = useState<EnabledSearchModel[]>(
+      value ?? [],
+    );
 
     const availableModels = (metadata && metadata.available_models) ?? [];
     const typeFilters = enabledSearchTypes.filter(type =>
@@ -35,9 +35,7 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
           data-testid="type-filter-checkbox-group"
           w="100%"
           value={selectedTypes}
-          onChange={value =>
-            setSelectedTypes(value as EnabledSearchModelType[])
-          }
+          onChange={value => setSelectedTypes(value as EnabledSearchModel[])}
         >
           <Stack spacing="md" p="md" justify="center" align="flex-start">
             {typeFilters.map(model => (

@@ -12,17 +12,9 @@ export const PaletteFooter = () => {
         borderTop: `1px solid ${color("border")}`,
       }}
     >
-      <Flex gap=".33rem">
-        <Icon color={color("text-light")} name="sort" />
-        <Text tt="uppercase" weight="bold" size="10px" color={color("medium")}>
-          {t`Select`}
-        </Text>
-      </Flex>
-      <Flex gap=".33rem">
-        <Icon name="enter_or_return" color={color("text-light")} />
-        <Text tt="uppercase" weight="bold" size="10px" color={color("medium")}>
-          {t`Open`}
-        </Text>
+      <Flex gap=".33rem" c={color("text-medium")} lh="1rem">
+        <Icon name="sort" />
+        <Text size="12px">{t`Select`}</Text>
       </Flex>
     </Flex>
   );

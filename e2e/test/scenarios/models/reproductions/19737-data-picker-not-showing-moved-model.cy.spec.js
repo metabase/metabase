@@ -1,12 +1,14 @@
 import {
-  restore,
-  modal,
-  popover,
+  entityPickerModal,
+  entityPickerModalLevel,
   navigationSidebar,
   openNavigationSidebar,
+  popover,
+  restore,
 } from "e2e/support/helpers";
 
 const modelName = "Orders Model";
+const personalCollectionName = "Bobby Tables's Personal Collection";
 
 describe("issue 19737", () => {
   beforeEach(() => {
@@ -17,7 +19,7 @@ describe("issue 19737", () => {
   it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
     cy.visit("/collection/root");
 
-    moveModel(modelName, "My personal collection");
+    moveModel(modelName, personalCollectionName);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
@@ -27,9 +29,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Your personal collection").click();
+    entityPickerModal().within(() => {
+      cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
   });
@@ -51,8 +52,7 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
-    popover().within(() => {
-      cy.findByText("Models").click();
+    entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -64,7 +64,7 @@ describe("issue 19737", () => {
     openNavigationSidebar();
     navigationSidebar().findByText("First collection").click();
 
-    moveModel(modelName, "My personal collection");
+    moveModel(modelName, personalCollectionName);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
@@ -74,21 +74,22 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("First collection").click();
-      cy.findByText("Nothing here");
+    entityPickerModal().within(() => {
+      cy.findByText("First collection").should("not.exist");
+      entityPickerModalLevel(1).should("not.exist");
+      entityPickerModalLevel(2).should("not.exist");
     });
   });
 });
 
 function moveModel(modelName, collectionName) {
   openEllipsisMenuFor(modelName);
-  popover().contains("Move").click();
+  popover().findByText("Move").click();
 
-  modal().within(() => {
+  entityPickerModal().within(() => {
+    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(collectionName).click();
-    cy.findByText("Move").click();
+    cy.button("Move").click();
   });
 }
 

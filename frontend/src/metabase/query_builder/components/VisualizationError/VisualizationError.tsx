@@ -9,7 +9,6 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { isNotNull } from "metabase/lib/types";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -25,18 +24,8 @@ import {
   QueryErrorMessage,
   QueryErrorContent,
 } from "./VisualizationError.styled";
+import { AdminEmail } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";
-
-function EmailAdmin(): JSX.Element | null {
-  const hasAdminEmail = isNotNull(MetabaseSettings.adminEmail());
-  return hasAdminEmail ? (
-    <span className={QueryBuilderS.QueryErrorAdminEmail}>
-      <a className="no-decoration" href={`mailto:${hasAdminEmail}`}>
-        {hasAdminEmail}
-      </a>
-    </span>
-  ) : null;
-}
 
 interface VisualizationErrorProps {
   via: Record<string, any>[];
@@ -65,7 +54,7 @@ export function VisualizationError({
           type="timeout"
           title={t`Your question took too long`}
           message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
-          action={<EmailAdmin />}
+          action={<AdminEmail />}
         />
       );
     } else {
@@ -75,7 +64,7 @@ export function VisualizationError({
           type="serverError"
           title={t`We're experiencing server issues`}
           message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
-          action={<EmailAdmin />}
+          action={<AdminEmail />}
         />
       );
     }
@@ -97,8 +86,10 @@ export function VisualizationError({
           )}
         />
         <div className={QueryBuilderS.QueryError2Details}>
-          <h1 className="text-bold">{t`There was a problem with this visualization`}</h1>
-          <ErrorDetails className="pt2" details={error} />
+          <h1
+            className={CS.textBold}
+          >{t`There was a problem with this visualization`}</h1>
+          <ErrorDetails className={CS.pt2} details={error} />
         </div>
       </div>
     );

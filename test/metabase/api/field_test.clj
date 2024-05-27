@@ -26,12 +26,12 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :timezone :initial_sync_status])
    (dissoc (mt/object-defaults Database) :details :initial_sync_status :dbms_version)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :timezone      "UTC"}))
+    :timezone      "UTC"}
+   (select-keys (mt/db) [:id :timezone :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
 
 (deftest get-field-test
   (testing "GET /api/field/:id"
@@ -43,7 +43,7 @@
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+                                    (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil
@@ -731,19 +731,23 @@
                                         "Red"
                                         nil)))))
     (tqpt/test-timeseries-drivers
-      (is (= [["139" "Red Medicine"]
-              ["148" "Fred 62"]
-              ["308" "Fred 62"]
-              ["375" "Red Medicine"]
-              ["396" "Fred 62"]
-              ["589" "Fred 62"]
-              ["648" "Fred 62"]
-              ["72" "Red Medicine"]
-              ["977" "Fred 62"]]
-             (api.field/search-values (t2/select-one Field :id (mt/id :checkins :id))
-                                      (t2/select-one Field :id (mt/id :checkins :venue_name))
-                                      "Red"
-                                      nil)))))
+      (is (= (sort-by first [["139" "Red Medicine"]
+                             ["148" "Fred 62"]
+                             ["308" "Fred 62"]
+                             ["375" "Red Medicine"]
+                             ["396" "Fred 62"]
+                             ["589" "Fred 62"]
+                             ["648" "Fred 62"]
+                             ["72" "Red Medicine"]
+                             ["977" "Fred 62"]])
+             (->> (api.field/search-values (t2/select-one Field :id (mt/id :checkins :id))
+                                           (t2/select-one Field :id (mt/id :checkins :venue_name))
+                                           "Red"
+                                           nil)
+                  ;; Druid JDBC returns id as int and non-JDBC as str. Also ordering is different. Following lines
+                  ;; mitigate that.
+                  (mapv #(update % 0 str))
+                  (sort-by first))))))
   (testing "make sure limit works"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]

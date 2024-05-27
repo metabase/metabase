@@ -1,3 +1,4 @@
+import { createReducer } from "@reduxjs/toolkit";
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import produce from "immer";
 import reduceReducers from "reduce-reducers";
@@ -45,7 +46,9 @@ import {
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
+  SET_DISPLAY_THEME,
   fetchDashboard,
+  FETCH_DASHBOARD_CARD_METADATA,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
@@ -462,6 +465,30 @@ const loadingDashCards = handleActions(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
+const loadingMetadata = handleActions(
+  {
+    [INITIALIZE]: {
+      next: state => ({
+        ...state,
+        loadingStatus: "idle",
+      }),
+    },
+    [FETCH_DASHBOARD_CARD_METADATA]: {
+      next: state => ({
+        ...state,
+        loadingStatus: "complete",
+      }),
+    },
+    [RESET]: {
+      next: state => ({
+        ...state,
+        loadingStatus: "idle",
+      }),
+    },
+  },
+  INITIAL_DASHBOARD_STATE.loadingMetadata,
+);
+
 const DEFAULT_SIDEBAR = { props: {} };
 const sidebar = handleActions(
   {
@@ -502,7 +529,7 @@ const missingActionParameters = handleActions(
   INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
-export const autoApplyFilters = handleActions(
+const autoApplyFilters = handleActions(
   {
     [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
       next: (state, { payload: { toastId, dashboardId } }) => ({
@@ -514,6 +541,10 @@ export const autoApplyFilters = handleActions(
   },
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
+
+const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, builder => {
+  builder.addCase(SET_DISPLAY_THEME, (state, { payload }) => payload || null);
+});
 
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
@@ -528,6 +559,7 @@ export const dashboardReducers = reduceReducers(
     parameterValues,
     draftParameterValues,
     loadingDashCards,
+    loadingMetadata,
     isAddParameterPopoverOpen,
     isNavigatingBackToDashboard,
     sidebar,
@@ -536,6 +568,7 @@ export const dashboardReducers = reduceReducers(
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
+    theme,
   }),
   tabsReducer,
 );

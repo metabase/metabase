@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -20,7 +20,7 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -29,10 +29,12 @@
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -45,6 +47,7 @@
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
 (doto :model/Dashboard
+  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
@@ -95,11 +98,13 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 (maybe-populate-initially-published-at dashboard)
-    (params/assert-valid-parameters dashboard)
-    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
-  (maybe-populate-initially-published-at dashboard))
+  (let [changes (t2/changes dashboard)]
+    (u/prog1 (maybe-populate-initially-published-at dashboard)
+     (params/assert-valid-parameters dashboard)
+     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
+     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+     (when (:archived changes)
+       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -138,7 +143,7 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! Pulse {:dashboard_id dashboard-id}
+            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
                         {:name (:name dashboard)
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
@@ -236,7 +241,7 @@
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position :initially_published_at])
+   :position :initially_published_at :view_count])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
@@ -266,7 +271,7 @@
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
+        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
@@ -499,7 +504,7 @@
          tabs           :tabs
          dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        collection (populate/create-collection!
+        collection (xrays/create-collection!
                     (ensure-unique-collection-name dashboard-name parent-collection-id)
                     "Automatically generated cards."
                     parent-collection-id)
@@ -569,6 +574,10 @@
   (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
+(defmethod mi/exclude-internal-content-hsql :model/Dashboard
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -612,7 +621,8 @@
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
-        (update :made_public_by_id serdes/*export-user*))))
+        (update :made_public_by_id serdes/*export-user*)
+        (dissoc :view_count))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]
@@ -674,10 +684,11 @@
        set))
 
 (defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id dashcards parameters]}]
+  [{:keys [collection_id dashcards parameters trashed_from_collection_id]}]
   (->> (map serdes-deps-dashcard dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
+       (set/union (when trashed_from_collection_id #{[{:model "Collection" :id trashed_from_collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]

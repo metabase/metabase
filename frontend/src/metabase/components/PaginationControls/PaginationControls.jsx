@@ -21,6 +21,9 @@ export default function PaginationControls({
     return null;
   }
 
+  const isLastPage = (pageIndex, pageSize, total) =>
+    pageIndex === Math.ceil(total / pageSize) - 1;
+
   const isPreviousDisabled = page === 0;
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
@@ -73,6 +76,3 @@ PaginationControls.propTypes = {
 PaginationControls.defaultProps = {
   showTotal: false,
 };
-
-export const isLastPage = (pageIndex, pageSize, total) =>
-  pageIndex === Math.ceil(total / pageSize) - 1;

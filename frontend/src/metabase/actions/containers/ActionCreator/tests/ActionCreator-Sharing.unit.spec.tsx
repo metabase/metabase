@@ -111,7 +111,7 @@ describe("ActionCreator > Sharing", () => {
           isPublicSharingEnabled: false,
         });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
         expect(
@@ -127,7 +127,7 @@ describe("ActionCreator > Sharing", () => {
           isPublicSharingEnabled: true,
         });
 
-        userEvent.click(
+        await userEvent.click(
           screen.getByRole("button", { name: "Action settings" }),
         );
         expect(

@@ -113,8 +113,11 @@
     (instance? LocalDate t)
     (recur (t/zoned-date-time t (t/local-time 0) (t/zone-id)))
 
+    (nil? t)
+    nil
+
     :else
-    (t/format "yyyy-MM-dd'T'hh:mm:ss.SSXXX" t)))
+    (t/format "yyyy-MM-dd'T'HH:mm:ss.SSXXX" t)))
 
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but

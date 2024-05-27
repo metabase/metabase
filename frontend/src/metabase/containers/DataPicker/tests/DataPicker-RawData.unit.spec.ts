@@ -22,7 +22,7 @@ describe("DataPicker — picking raw data", () => {
   it("opens the picker", async () => {
     await setup();
 
-    userEvent.click(screen.getByText(/Raw Data/i));
+    await userEvent.click(screen.getByText(/Raw Data/i));
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
@@ -36,24 +36,24 @@ describe("DataPicker — picking raw data", () => {
   it("has empty state", async () => {
     await setup({ hasEmptyDatabase: true });
 
-    userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(screen.getByText(EMPTY_DATABASE.name));
+    await userEvent.click(screen.getByText(/Raw Data/i));
+    await userEvent.click(screen.getByText(EMPTY_DATABASE.name));
 
     expect(await screen.findByText(/Nothing here/i)).toBeInTheDocument();
   });
 
   it("doesn't show saved questions database", async () => {
     await setup();
-    userEvent.click(screen.getByText("Raw Data"));
+    await userEvent.click(screen.getByText("Raw Data"));
     expect(screen.queryByText(/Saved Questions/i)).not.toBeInTheDocument();
   });
 
   it("allows to pick multiple tables", async () => {
     const { onChange } = await setup({ isMultiSelect: true });
 
-    userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
-    userEvent.click(screen.getByText(SAMPLE_TABLE_2.display_name));
+    await userEvent.click(screen.getByText(/Raw Data/i));
+    await userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+    await userEvent.click(screen.getByText(SAMPLE_TABLE_2.display_name));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: "raw-data",
@@ -66,9 +66,9 @@ describe("DataPicker — picking raw data", () => {
   it("allows to return to the data type picker", async () => {
     await setup();
 
-    userEvent.click(screen.getByText(/Raw Data/i));
+    await userEvent.click(screen.getByText(/Raw Data/i));
     await waitForLoaderToBeRemoved();
-    userEvent.click(screen.getByRole("button", { name: /Back/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(screen.getByText(/Models/i)).toBeInTheDocument();
     expect(screen.getByText(/Raw Data/i)).toBeInTheDocument();
@@ -86,9 +86,9 @@ describe("DataPicker — picking raw data", () => {
   it("allows to pick a single table", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
-    userEvent.click(screen.getByText(SAMPLE_TABLE_2.display_name));
+    await userEvent.click(screen.getByText(/Raw Data/i));
+    await userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+    await userEvent.click(screen.getByText(SAMPLE_TABLE_2.display_name));
 
     const selectedItem = screen.getByRole("menuitem", {
       name: SAMPLE_TABLE_2.display_name,
@@ -165,11 +165,11 @@ describe("DataPicker — picking raw data", () => {
 
       const { onChange } = await setup({ hasMultiSchemaDatabase: true });
 
-      userEvent.click(screen.getByText(/Raw Data/i));
-      userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
-      userEvent.click(await screen.findByText(schema1));
-      userEvent.click(await screen.findByText(schema1Table.display_name));
-      userEvent.click(await screen.findByText(schema2));
+      await userEvent.click(screen.getByText(/Raw Data/i));
+      await userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
+      await userEvent.click(await screen.findByText(schema1));
+      await userEvent.click(await screen.findByText(schema1Table.display_name));
+      await userEvent.click(await screen.findByText(schema2));
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "raw-data",
@@ -184,10 +184,10 @@ describe("DataPicker — picking raw data", () => {
     it("resets selected tables on database change", async () => {
       const { onChange } = await setup({ hasMultiSchemaDatabase: true });
 
-      userEvent.click(screen.getByText(/Raw Data/i));
-      userEvent.click(screen.getByText(SAMPLE_DATABASE.name));
-      userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
-      userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
+      await userEvent.click(screen.getByText(/Raw Data/i));
+      await userEvent.click(screen.getByText(SAMPLE_DATABASE.name));
+      await userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+      await userEvent.click(screen.getByText(MULTI_SCHEMA_DATABASE.name));
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "raw-data",
@@ -201,9 +201,9 @@ describe("DataPicker — picking raw data", () => {
   it("resets selection when going back to data type picker", async () => {
     const { onChange } = await setup();
 
-    userEvent.click(screen.getByText(/Raw Data/i));
-    userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
-    userEvent.click(screen.getByRole("button", { name: /Back/i }));
+    await userEvent.click(screen.getByText(/Raw Data/i));
+    await userEvent.click(await screen.findByText(SAMPLE_TABLE.display_name));
+    await userEvent.click(screen.getByRole("button", { name: /Back/i }));
 
     expect(onChange).toHaveBeenLastCalledWith({
       type: undefined,

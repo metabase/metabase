@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { inflect } from "inflection";
 import { jt, t } from "ttag";
 
@@ -41,9 +42,9 @@ export function Relationships({
 
   return (
     <ObjectRelationships>
-      <div className="text-bold text-medium">
+      <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
-          <span className="text-dark" key={objectName}>
+          <span className={CS.textDark} key={objectName}>
             {objectName}
           </span>
         )} is connected to:`}
@@ -74,7 +75,10 @@ export function Relationships({
 
 interface RelationshipProps {
   fk: ForeignKey;
-  fkCountInfo: { status: number; value: number } | null;
+  fkCountInfo: {
+    status: number;
+    value: number;
+  } | null;
   fkCount: number;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
@@ -94,7 +98,7 @@ function Relationship({
 
   const via =
     fkCount > 1 ? (
-      <span className="text-medium text-normal">
+      <span className={cx(CS.textMedium, CS.textNormal)}>
         {" "}
         {t`via ${fk.origin?.displayName()}`}
       </span>
@@ -108,7 +112,7 @@ function Relationship({
       >
         <div>
           <h2>{isLoaded ? fkCountValue : <LoadingSpinner size={25} />}</h2>
-          <h5 className="block">
+          <h5 className={CS.block}>
             {relationName}
             {via}
           </h5>

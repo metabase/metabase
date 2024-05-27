@@ -92,13 +92,13 @@
                              (map (fn [[_log-level _error message]] message))
                              (mt/with-log-messages-for-level :warn
                                (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)))
-                       "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
+                       "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
       (testing "should not log a warning over a secure connection."
         (is (not (contains? (into #{}
                                   (map (fn [[_log-level _error message]] message))
                                   (mt/with-log-messages-for-level :warn
                                     (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)))
-                            "Session cookies SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
+                            "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
@@ -267,7 +267,16 @@
         {:headers {"x-api-key" "abcde"}}
 
         ;; no key at all
-        {:headers {}}))))
+        {:headers {}})))
+
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
+                                            :user_id       nil
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+    (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
+      (let [req {:headers {"x-api-key" "mb_foobar"}}]
+        (is (= req (#'mw.session/merge-current-user-info req)))))))
 
 (defn- simple-auth-handler
   "A handler that just does authentication and returns a map from the dynamic variables that are bound as a result."
@@ -562,28 +571,29 @@
         (is (= [[:warn nil "Session timeout must be less than 100 years."]]
                (mt/with-log-messages-for-level :warn (set-and-get timeout))))))))
 
-(deftest session-timeout-test
+(deftest ^:parallel session-timeout-test
+  (testing "`session-timeout` setting conversion to seconds"
+    (is (= 10800
+           (mw.session/session-timeout->seconds {:amount 180
+                                                 :unit   "minutes"})))
+    (is (= 60
+           (mw.session/session-timeout->seconds {:amount 60
+                                                 :unit   "seconds"})))
+    (is (= 3600
+           (mw.session/session-timeout->seconds {:amount 1
+                                                 :unit   "hours"})))))
+
+(deftest ^:parallel session-timeout-test-2
+  (testing "The session timeout should be a minimum of 30 seconds"
+    (is (= 60
+           (mw.session/session-timeout->seconds {:amount 0
+                                                 :unit   "minutes"})))))
+
+(deftest session-timeout-test-3
   (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
         session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
         response     {:body    "some body",
                       :cookies {}}]
-
-    (testing "`session-timeout` setting conversion to seconds"
-      (is (= 10800
-             (mw.session/session-timeout->seconds {:amount 180
-                                                   :unit   "minutes"})))
-      (is (= 60
-             (mw.session/session-timeout->seconds {:amount 60
-                                                   :unit   "seconds"})))
-      (is (= 3600
-             (mw.session/session-timeout->seconds {:amount 1
-                                                   :unit   "hours"}))))
-
-    (testing "The session timeout should be a minimum of 30 seconds"
-      (is (= 60
-             (mw.session/session-timeout->seconds {:amount 0
-                                                   :unit   "minutes"}))))
-
     (testing "non-nil `session-timeout-seconds` should set the expiry of the timeout cookie relative to the request time"
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
@@ -608,15 +618,24 @@
                     :cookies {session-timeout-cookie {:value     "alive"
                                                       :path      "/"
                                                       :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
-                   (mw.session/reset-session-timeout* request response request-time)))))))
+                   (mw.session/reset-session-timeout* request response request-time)))))))))
 
+(deftest session-timeout-test-4
+  (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        response     {:body    "some body",
+                      :cookies {}}]
     (testing "If the request does not have session cookies (because they have expired), they should not be reset."
       (mt/with-temporary-setting-values [session-timeout {:amount 60
                                                           :unit   "minutes"}]
         (let [request {:cookies {}}]
           (is (= response
-                 (mw.session/reset-session-timeout* request response request-time))))))
+                 (mw.session/reset-session-timeout* request response request-time))))))))
 
+(deftest session-timeout-test-5
+  (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
+        response     {:body    "some body",
+                      :cookies {}}]
     (testing "If [[public-settings/session-cookies]] is false and the `:remember` flag is set, then the session cookie
               should have a max age attribute."
       (with-redefs [env/env (assoc env/env :max-session-age "1")]
@@ -639,8 +658,13 @@
                                                   :path      "/"
                                                   :max-age   60
                                                   :http-only true}}}
-                   (mw.session/set-session-cookies request response session request-time)))))))
+                   (mw.session/set-session-cookies request response session request-time)))))))))
 
+(deftest session-timeout-test-6
+  (let [request-time (t/zoned-date-time "2022-01-01T00:00:00.000Z")
+        session-id   "8df268ab-00c0-4b40-9413-d66b966b696a"
+        response     {:body    "some body",
+                      :cookies {}}]
     (testing "If [[public-settings/session-cookies]] is true and the `:remember` flag is set, then the session cookie
               shouldn't have a max age attribute."
       (with-redefs [env/env (assoc env/env :max-session-age "1")]

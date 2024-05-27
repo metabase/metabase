@@ -58,7 +58,7 @@ class PartialQueryBuilder extends Component {
       return;
     }
 
-    // only set the query if it doesn't already have an aggregation or filter
+    // only set the query if it doesn't already have a filter
     const question = getSegmentOrMetricQuestion(value, table, metadata);
     if (!question.legacyQuery({ useStructuredQuery: true }).isRaw()) {
       return;
@@ -88,18 +88,17 @@ class PartialQueryBuilder extends Component {
     const previewUrl = Urls.serializedQuestion(question.card());
 
     return (
-      <div className="py1">
+      <div className={CS.py1}>
         <GuiQueryEditor
           features={features}
           legacyQuery={legacyQuery}
           query={query}
           setDatasetQuery={this.setDatasetQuery}
           isShowingDataReference={false}
-          supportMultipleAggregations={false}
           canChangeTable={this.props.canChangeTable}
         >
           <div className={cx(CS.flex, CS.alignCenter, CS.mx2, CS.my2)}>
-            <span className="text-bold px3">{previewSummary}</span>
+            <span className={cx(CS.textBold, CS.px3)}>{previewSummary}</span>
             <Link
               to={previewUrl}
               target={window.OSX ? null : "_blank"}

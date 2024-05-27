@@ -4,6 +4,9 @@ import {
   filterWidget,
   popover,
   getDashboardCard,
+  chartPathWithFillColor,
+  echartsContainer,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 import {
@@ -55,13 +58,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
       getDashboardCard().contains(nativeQuestionDetails.name);
 
-      cy.get(".bar").should("have.length", 49);
+      chartPathWithFillColor("#509EE3").should("have.length", 49);
 
       assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
 
-      getXAxisValues()
-        .should("have.length", 49)
-        .and("contain", "TX")
+      echartsContainer()
+        .get("text")
+        .should("contain", "TX")
         .and("contain", "AK");
 
       openFilterOptions("State");
@@ -73,12 +76,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=");
 
-      getXAxisValues()
-        .should("have.length", 1)
-        .and("contain", "AK")
+      echartsContainer()
+        .get("text")
+        .should("contain", "AK")
         .and("not.contain", "TX");
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -99,7 +102,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -124,14 +127,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
       getDashboardCard().contains(nativeQuestionDetails.name);
 
-      cy.get(".bar").should("have.length", 49);
-
       assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
 
-      getXAxisValues()
-        .should("have.length", 49)
-        .and("contain", "TX")
-        .and("contain", "AK");
+      chartPathWithFillColor("#509EE3").should("have.length", 49);
+      echartsContainer()
+        .get("text")
+        .should("contain", "AK")
+        .and("contain", "TX");
 
       openFilterOptions("State");
 
@@ -147,12 +149,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=");
 
-      getXAxisValues()
-        .should("have.length", 1)
-        .and("contain", "AK")
+      echartsContainer()
+        .get("text")
+        .should("contain", "AK")
         .and("not.contain", "TX");
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -176,7 +178,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -198,7 +200,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 2);
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -219,7 +221,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -240,7 +242,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -261,7 +263,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.location("search").should("eq", "?state=AK&city=Anchorage");
 
-      cy.get(".bar").should("have.length", 1).realHover();
+      chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
       popover().within(() => {
         testPairedTooltipValues("STATE", "AK");
@@ -497,18 +499,10 @@ function openFilterOptions(name) {
   filterWidget().contains(name).click();
 }
 
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}
-
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
+  echartsContainer().get("text").contains(xLabel);
 
-  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
-}
-
-function getXAxisValues() {
-  return cy.get(".axis.x .tick");
+  echartsContainer().get("text").contains(yLabel);
 }
 
 function removeValueForFilter(label) {

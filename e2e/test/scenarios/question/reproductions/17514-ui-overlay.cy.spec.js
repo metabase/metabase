@@ -7,6 +7,9 @@ import {
   editDashboard,
   visitDashboard,
   openColumnOptions,
+  modal,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
@@ -146,8 +149,10 @@ describe("issue 17514", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Join data").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Products").click();
+      });
 
       cy.button("Visualize").click();
 
@@ -177,7 +182,7 @@ function hideColumn(columnName) {
 }
 
 function closeModal() {
-  cy.get(".Modal").within(() => {
+  modal().within(() => {
     cy.button("Done").click();
   });
 }

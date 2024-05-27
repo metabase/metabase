@@ -7,14 +7,14 @@
    [metabase.models.table :refer [Table]]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
+   [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
-  (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+  (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
     (sync-metadata/sync-db-metadata! db)
     (is (= #{{:name              "id"
               :database-type     "SERIAL"

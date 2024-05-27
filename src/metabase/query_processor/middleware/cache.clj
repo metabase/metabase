@@ -107,7 +107,8 @@
              min-duration-ms (:min-duration-ms strategy 0)
              eligible?       (and @has-rows?
                                   (> duration-ms min-duration-ms))]
-         (log/infof "Query took %s to run; minimum for cache eligibility is %s; %s"
+         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
+                    (i/short-hex-hash query-hash)
                     (u/format-milliseconds duration-ms)
                     (u/format-milliseconds min-duration-ms)
                     (if eligible? "eligible" "not eligible"))
@@ -169,9 +170,9 @@
                             (i/short-hex-hash query-hash) (pr-str (:cache-version metadata)))
                 (when (and (= (:cache-version metadata) cache-version)
                            reducible-rows)
-                  (log/tracef "Reducing cached rows...")
+                  (log/trace "Reducing cached rows...")
                   (let [result (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)]
-                    (log/tracef "All cached rows reduced")
+                    (log/trace "All cached rows reduced")
                     [::ok result])))
               (log/debugf "Not found cached results for hash '%s'" (i/short-hex-hash query-hash)))))
         [::miss nil])
@@ -219,8 +220,7 @@
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
-  (and (public-settings/enable-query-caching)
-       cache-strategy))
+  (some? cache-strategy))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.

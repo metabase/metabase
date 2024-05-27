@@ -106,8 +106,14 @@
                    (qp.compile/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
+(deftest ^:parallel no-initial-projection-test-2
+  (mt/test-driver :mongo
+    (testing "Don't need to create initial projections anymore (#4216)"
+      (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
+        (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
+          (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
               (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
@@ -147,8 +153,7 @@
                                       {"$project" {"_id"        false
                                                    "datetime"   "$_id.datetime"
                                                    "datetime_2" "$_id.datetime_2"
-                                                   "count"      true}}
-                                      {"$sort" {"datetime" 1}}]
+                                                   "count"      true}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))

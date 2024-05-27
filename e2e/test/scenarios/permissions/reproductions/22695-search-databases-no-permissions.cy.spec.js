@@ -1,5 +1,10 @@
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { restore, describeEE, setTokenFeatures } from "e2e/support/helpers";
+import {
+  restore,
+  describeEE,
+  setTokenFeatures,
+  commandPaletteSearch,
+} from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 
@@ -13,10 +18,10 @@ describeEE("issue 22695 ", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "block" } },
+        [SAMPLE_DB_ID]: { "view-data": "blocked" },
       },
       [DATA_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "block" } },
+        [SAMPLE_DB_ID]: { "view-data": "blocked" },
       },
     });
   });
@@ -40,7 +45,7 @@ describeEE("issue 22695 ", () => {
 function assert() {
   cy.visit("/");
 
-  cy.findByPlaceholderText("Search…").click().type("S");
+  commandPaletteSearch("S");
   cy.wait("@searchResults");
 
   cy.findAllByTestId("search-result-item-name")

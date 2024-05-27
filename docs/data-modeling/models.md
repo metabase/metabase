@@ -81,7 +81,7 @@ You can also edit the model's metadata.
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, or explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visulization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, or explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
@@ -182,7 +182,7 @@ To set up model caching:
 1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
 2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
 
-> Model caching doesn't work with [data sandboxing](../configuring-metabase/caching.md#caching-doesnt-work-with-data-sandboxing).
+> Model caching doesn't work with [data sandboxing](../permissions/data-sandboxes.md).
 
 ### Enable model caching in Metabase
 

@@ -1,5 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type {
+  CardType,
+  DatabaseId,
+  DatasetQuery,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   CardMetadata,
@@ -56,8 +61,8 @@ export function appendStage(query: Query): Query {
   return ML.append_stage(query);
 }
 
-export function dropStage(query: Query, stageIndex: number): Query {
-  return ML.drop_stage(query, stageIndex);
+export function dropStage(query: Query): Query {
+  return ML.drop_stage(query);
 }
 
 export function dropEmptyStages(query: Query): Query {
@@ -94,10 +99,21 @@ export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
-export function canRun(query: Query): boolean {
-  return ML.can_run(query);
+export function canRun(query: Query, cardType: CardType): boolean {
+  return ML.can_run(query, cardType);
 }
 
-export function canSave(query: Query): boolean {
-  return ML.can_save(query);
+export function canPreview(query: Query): boolean {
+  return ML.can_preview(query);
+}
+
+export function canSave(query: Query, cardType: CardType): boolean {
+  return ML.can_save(query, cardType);
+}
+
+export function asReturned(
+  query: Query,
+  stageIndex: number,
+): { query: Query; stageIndex: number } {
+  return ML.as_returned(query, stageIndex);
 }

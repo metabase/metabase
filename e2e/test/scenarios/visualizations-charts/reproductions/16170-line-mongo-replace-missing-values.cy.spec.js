@@ -3,6 +3,9 @@ import {
   withDatabase,
   popover,
   openSeriesSettings,
+  cartesianChartCircle,
+  echartsContainer,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const externalDatabaseId = 2;
@@ -41,7 +44,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       assertOnTheYAxis();
 
-      cy.get(".dot").eq(-2).trigger("mousemove", { force: true });
+      cartesianChartCircle().eq(-2).trigger("mousemove");
 
       popover().within(() => {
         testPairedTooltipValues("Created At", "2019");
@@ -62,11 +65,7 @@ function replaceMissingValuesWith(value) {
 }
 
 function assertOnTheYAxis() {
-  cy.get(".y-axis-label").findByText("Count");
+  echartsContainer().get("text").contains("Count");
 
-  cy.get(".axis.y .tick").should("have.length.gt", 10).and("contain", "6,000");
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
+  echartsContainer().get("text").contains("6,000");
 }

@@ -1,5 +1,5 @@
 :root {
-  --title-color: var(--color-text-medium);
+  --title-color: var(--mb-color-text-medium);
 }
 
 .field {
@@ -24,14 +24,14 @@
 }
 
 .fieldType {
-  composes: text-medium pr2 from "style";
+  composes: textMedium pr2 from "style";
   flex: 0.25;
   overflow: hidden;
   white-space: nowrap;
 }
 
 .fieldDataType {
-  composes: text-medium from "style";
+  composes: textMedium from "style";
   flex: 0.25;
 }
 
@@ -42,7 +42,7 @@
 
 .fieldActualName {
   composes: fieldNameTitle;
-  composes: text-monospace text-light from "style";
+  composes: textMonospace textLight from "style";
   font-size: 12px;
   letter-spacing: 1px;
 }

@@ -36,9 +36,13 @@ export default class ObjectRetireModal extends Component {
         onClose={this.props.onClose}
       >
         <form className={cx(CS.flex, CS.flexColumn, CS.flexFull)}>
-          <div className="Form-inputs pb4">
-            <p className="text-paragraph">{t`Saved questions and other things that depend on this ${objectType} will continue to work, but this ${objectType} will no longer be selectable from the query builder.`}</p>
-            <p className="text-paragraph">{t`If you're sure you want to retire this ${objectType}, please write a quick explanation of why it's being retired:`}</p>
+          <div className={cx("Form-inputs", CS.pb4)}>
+            <p
+              className={CS.textParagraph}
+            >{t`Saved questions and other things that depend on this ${objectType} will continue to work, but this ${objectType} will no longer be selectable from the query builder.`}</p>
+            <p
+              className={CS.textParagraph}
+            >{t`If you're sure you want to retire this ${objectType}, please write a quick explanation of why it's being retired:`}</p>
             <textarea
               ref={this.revisionMessage}
               className={cx(CS.input, CS.full)}
@@ -47,7 +51,7 @@ export default class ObjectRetireModal extends Component {
             />
           </div>
 
-          <div className="Form-actions ml-auto">
+          <div className={cx("Form-actions", CS.mlAuto)}>
             <a className={ButtonsS.Button} onClick={this.props.onClose}>
               {t`Cancel`}
             </a>

@@ -14,6 +14,7 @@ const collection = {
   name: "Collection Foo",
   description: null,
   archived: false,
+  can_restore: false,
   location: "/",
 };
 
@@ -30,6 +31,7 @@ Question.args = {
   item: {
     id: 1,
     collection_position: 1,
+    collection_id: null,
     model: "card",
     name: "Question",
     description: "This is a description of the question",
@@ -39,6 +41,7 @@ Question.args = {
     setPinned: action("setPinned"),
     copy: true,
     setCollection: action("setCollection"),
+    archived: false,
   },
   onCopy,
   onMove,
@@ -51,6 +54,7 @@ Dashboard.args = {
     id: 1,
     model: "dashboard",
     collection_position: 1,
+    collection_id: null,
     name: "Dashboard",
     description: Array(20)
       .fill("This is a description of the dashboard.")
@@ -59,6 +63,7 @@ Dashboard.args = {
     getUrl: () => "/dashboard/1",
     setArchived: action("setArchived"),
     setPinned: action("setPinned"),
+    archived: false,
   },
   onCopy,
   onMove,
@@ -71,12 +76,14 @@ Model.args = {
     id: 1,
     model: "dataset",
     collection_position: 1,
+    collection_id: null,
     name: "Model",
     description: "This is a description of the model",
     getIcon: () => ({ name: "model" }),
     getUrl: () => "/question/1",
     setArchived: action("setArchived"),
     setPinned: action("setPinned"),
+    archived: false,
   },
   onCopy,
   onMove,

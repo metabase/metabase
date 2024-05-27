@@ -11,6 +11,9 @@
 
   - Column can be filtered upon (exists in `filterableColumns`)
 
+  - If the column is an aggregation, there must be breakouts. It doesn't make sense to filter on the value of a single
+    row aggregation.
+
   - For `null` value, allow only `=` and `≠` operators, which map to `is-null` and `not-null` filter operators
 
   - For date and numeric columns, allow `<`, `>`, `=`, `≠` operators
@@ -40,13 +43,13 @@
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
@@ -54,7 +57,7 @@
   (lib.options/ensure-uuid (into [op {}] args)))
 
 (mu/defn ^:private operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
-  [column :- lib.metadata/ColumnMetadata
+  [column :- ::lib.schema.metadata/column
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
@@ -62,8 +65,11 @@
       []
 
       (= value :null)
-      [{:name "=" :filter (operator :is-null  field-ref)}
-       {:name "≠" :filter (operator :not-null field-ref)}]
+      (for [[op label] (if (or (lib.types.isa/string? column) (lib.types.isa/string-like? column))
+                         [[:is-empty "="] [:not-empty "≠"]]
+                         [[:is-null "="] [:not-null "≠"]])]
+        {:name   label
+         :filter (operator op field-ref)})
 
       (or (lib.types.isa/numeric? column)
           (lib.types.isa/temporal? column))
@@ -100,12 +106,15 @@
 
   Note that this returns a single `::drill-thru` value with 1 or more `:operators`; these are rendered as a set of small
   buttons in a single row of the drop-down."
-  [query                                           :- ::lib.schema/query
-   stage-number                                    :- :int
-   {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
+  [query                                                      :- ::lib.schema/query
+   stage-number                                               :- :int
+   {:keys [column column-ref dimensions value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
+             ;; If this is an aggregation, there must be breakouts (dimensions).
+             (or (not= (:lib/source column) :source/aggregations)
+                 (seq dimensions))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/foreign-key? column)))

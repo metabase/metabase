@@ -1,56 +1,78 @@
-import { useRegisterActions, type Action as KBarAction } from "kbar";
-import { useMemo } from "react";
+import type { Query } from "history";
+import { useRegisterActions, useKBar, Priority } from "kbar";
+import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
+import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import {
-  useRecentItemListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
-import { getIcon, getName } from "metabase/entities/recent-items";
+import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Search from "metabase/entities/search";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { getIcon } from "metabase/lib/icon";
+import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { closeModal } from "metabase/redux/ui";
 import {
   getDocsSearchUrl,
   getDocsUrl,
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Icon } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
 
-export type PalettePageId = "root" | "admin_settings";
+import type { PaletteAction } from "../types";
+import { filterRecentItems } from "../utils";
 
 export const useCommandPalette = ({
-  query,
-  debouncedSearchText,
+  locationQuery,
 }: {
-  query: string;
-  debouncedSearchText: string;
+  locationQuery: Query;
 }) => {
   const dispatch = useDispatch();
   const docsUrl = useSelector(state => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
-  const hasQuery = query.length > 0;
+  // Used for finding actions within the list
+  const { searchQuery } = useKBar(state => ({
+    searchQuery: state.searchQuery,
+  }));
+  const trimmedQuery = searchQuery.trim();
+
+  // Used for finding objects across the Metabase instance
+  const [debouncedSearchText, setDebouncedSearchText] = useState(trimmedQuery);
+
+  useDebounce(
+    () => {
+      setDebouncedSearchText(trimmedQuery);
+    },
+    SEARCH_DEBOUNCE_DURATION,
+    [trimmedQuery],
+  );
+
+  const hasQuery = searchQuery.length > 0;
 
   const {
-    data: searchResults,
+    currentData: searchResults,
+    isFetching: isSearchLoading,
     error: searchError,
-    isLoading: isSearchLoading,
-  } = useSearchListQuery<SearchResult>({
-    enabled: !!debouncedSearchText,
-    query: { q: debouncedSearchText, limit: 5 },
-    reload: true,
-  });
+  } = useSearchQuery(
+    {
+      q: debouncedSearchText,
+      context: "command-palette",
+      limit: 20,
+    },
+    {
+      skip: !debouncedSearchText || !isSearchTypeaheadEnabled,
+      refetchOnMountOrArgChange: true,
+    },
+  );
 
-  const { data: recentItems } = useRecentItemListQuery({
-    enabled: !debouncedSearchText,
-    reload: true,
+  const { data: recentItems } = useListRecentItemsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
   });
 
   const adminPaths = useSelector(getAdminPaths);
@@ -60,19 +82,19 @@ export const useCommandPalette = ({
     [],
   );
 
-  const docsAction = useMemo<KBarAction[]>(() => {
-    const ret: KBarAction[] = [
+  const docsAction = useMemo<PaletteAction[]>(() => {
+    const ret: PaletteAction[] = [
       {
         id: "search_docs",
-        name: query
-          ? `Search documentation for "${query}"`
+        name: debouncedSearchText
+          ? t`Search documentation for "${debouncedSearchText}"`
           : t`View documentation`,
         section: "docs",
-        keywords: query, // Always match the query string
-        icon: () => <Icon name="document" />,
+        keywords: debouncedSearchText, // Always match the debouncedSearchText string
+        icon: "document",
         perform: () => {
-          if (query) {
-            window.open(getDocsSearchUrl({ query }));
+          if (debouncedSearchText) {
+            window.open(getDocsSearchUrl({ debouncedSearchText }));
           } else {
             window.open(docsUrl);
           }
@@ -80,7 +102,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [query, docsUrl]);
+  }, [debouncedSearchText, docsUrl]);
 
   const showDocsAction = showMetabaseLinks && hasQuery;
 
@@ -89,90 +111,161 @@ export const useCommandPalette = ({
     showDocsAction,
   ]);
 
-  const searchResultActions = useMemo<KBarAction[]>(() => {
-    const ret: KBarAction[] = [];
-    if (isSearchLoading) {
-      ret.push({
-        id: "search-is-loading",
-        name: "Loading...",
-        keywords: query,
-        section: "search",
-      });
+  const searchResultActions = useMemo<PaletteAction[]>(() => {
+    const searchLocation = {
+      pathname: "search",
+      query: {
+        ...locationQuery,
+        q: debouncedSearchText,
+      },
+    };
+    if (!isSearchTypeaheadEnabled) {
+      return [
+        {
+          id: `search-disabled`,
+          name: t`View search results for "${debouncedSearchText}"`,
+          section: "search",
+          keywords: debouncedSearchText,
+          icon: "link" as const,
+          perform: () => {
+            dispatch(push(searchLocation));
+          },
+          priority: Priority.HIGH,
+          extra: {
+            href: searchLocation,
+          },
+        },
+      ];
+    } else if (isSearchLoading) {
+      return [
+        {
+          id: "search-is-loading",
+          name: t`Loading...`,
+          keywords: searchQuery,
+          section: "search",
+        },
+      ];
     } else if (searchError) {
-      ret.push({
-        id: "search-error",
-        name: t`Could not load search results`,
-        section: "search",
-      });
+      return [
+        {
+          id: "search-error",
+          name: t`Could not load search results`,
+          section: "search",
+        },
+      ];
     } else if (debouncedSearchText) {
-      if (searchResults?.length) {
-        ret.push(
-          ...searchResults.map(result => {
+      if (searchResults?.data.length) {
+        return [
+          {
+            id: `search-results-metadata`,
+            name: t`View and filter all ${searchResults?.total} results`,
+            section: "search",
+            keywords: debouncedSearchText,
+            icon: "link" as const,
+            perform: () => {
+              dispatch(push(searchLocation));
+            },
+            priority: Priority.HIGH,
+            extra: {
+              href: searchLocation,
+            },
+          },
+        ].concat(
+          searchResults.data.map(result => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
             return {
-              id: `search-result-${result.id}`,
+              id: `search-result-${result.model}-${result.id}`,
               name: result.name,
-              icon: <Icon {...wrappedResult.getIcon()} />,
+              subtitle: result.description || "",
+              icon: wrappedResult.getIcon().name,
               section: "search",
+              keywords: debouncedSearchText,
+              priority: Priority.NORMAL,
               perform: () => {
-                dispatch(closeModal());
                 dispatch(push(wrappedResult.getUrl()));
+              },
+              extra: {
+                parentCollection: wrappedResult.getCollection().name,
+                isVerified: result.moderated_status === "verified",
+                database: result.database_name,
+                href: wrappedResult.getUrl(),
               },
             };
           }),
         );
       } else {
-        ret.push({
-          id: "no-search-results",
-          name: t`No results for “${query}”`,
-          keywords: query,
-          section: "search",
-          perform: () => {}, // will simply close the command palette. It's possible we can remove this item
-        });
+        return [
+          {
+            id: "no-search-results",
+            name: t`No results for “${debouncedSearchText}”`,
+            keywords: debouncedSearchText,
+            section: "search",
+          },
+        ];
       }
     }
-    return ret;
+    return [];
   }, [
     dispatch,
-    query,
     debouncedSearchText,
+    searchQuery,
     isSearchLoading,
     searchError,
     searchResults,
+    locationQuery,
+    isSearchTypeaheadEnabled,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
 
-  const recentItemsActions = useMemo<KBarAction[]>(() => {
-    const ret: KBarAction[] = [];
-    recentItems?.forEach(item => {
-      ret.push({
-        id: `recent-item-${getName(item)}`,
+  const recentItemsActions = useMemo<PaletteAction[]>(() => {
+    return (
+      filterRecentItems(recentItems ?? []).map(item => ({
+        id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
         name: getName(item),
-        icon: <Icon name={getIcon(item).name} />,
+        icon: getIcon(item).name,
         section: "recent",
         perform: () => {
-          dispatch(push(Urls.modelToUrl(item) ?? ""));
+          // Need to keep this logic here for when user selects via keyboard
+          const href = Urls.modelToUrl(item);
+          if (href) {
+            dispatch(push(href));
+          }
         },
-      });
-    });
-
-    return ret;
+        extra:
+          item.model === "table"
+            ? {
+                database: item.database.name,
+                href: Urls.modelToUrl(item),
+              }
+            : {
+                parentCollection:
+                  item.parent_collection.id === null
+                    ? ROOT_COLLECTION.name
+                    : item.parent_collection.name,
+                isVerified: item.moderated_status === "verified",
+                href: Urls.modelToUrl(item),
+              },
+      })) || []
+    );
   }, [dispatch, recentItems]);
 
-  useRegisterActions(recentItemsActions, [recentItemsActions]);
+  useRegisterActions(hasQuery ? [] : recentItemsActions, [
+    recentItemsActions,
+    hasQuery,
+  ]);
 
-  const adminActions = useMemo<KBarAction[]>(() => {
+  const adminActions = useMemo<PaletteAction[]>(() => {
     return adminPaths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
-      name: `Admin - ${adminPath.name}`,
-      icon: <Icon name="link" />,
+      name: `${adminPath.name}`,
+      icon: "gear",
       perform: () => dispatch(push(adminPath.path)),
       section: "admin",
     }));
   }, [adminPaths, dispatch]);
 
-  const adminSettingsActions = useMemo<KBarAction[]>(() => {
+  const adminSettingsActions = useMemo<PaletteAction[]>(() => {
     return Object.entries(settingsSections)
       .filter(([slug, section]) => {
         if (section.getHidden?.(settingValues)) {
@@ -184,7 +277,7 @@ export const useCommandPalette = ({
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
         name: `Settings - ${section.name}`,
-        icon: <Icon name="link" />,
+        icon: "gear",
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",
       }));

@@ -6,8 +6,8 @@ import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import { useSelector } from "metabase/lib/redux";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 
-import { getHasIllustration } from "../../selectors";
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import { HomeGreeting } from "../HomeGreeting";
 
@@ -29,11 +29,17 @@ export const HomeLayout = ({
 }: HomeLayoutProps): JSX.Element => {
   const [showModal, setShowModal] = useState(false);
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasIllustration = useSelector(getHasIllustration);
+  const landingPageIllustration = useSelector(getLandingPageIllustration);
 
   return (
     <LayoutRoot data-testid="home-page">
-      {hasIllustration && <LayoutIllustration />}
+      {landingPageIllustration && (
+        <LayoutIllustration
+          data-testid="landing-page-illustration"
+          backgroundImageSrc={landingPageIllustration.src}
+          isDefault={landingPageIllustration.isDefault}
+        />
+      )}
       {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       {isAdmin && (
         <Tooltip tooltip={t`Pick a dashboard to serve as the homepage`}>

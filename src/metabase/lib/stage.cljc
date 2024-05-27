@@ -3,8 +3,10 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -14,7 +16,9 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -47,8 +51,8 @@
 
 (mu/defn ^:private existing-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
-  native stage or a source-Card stage. if it's any other sort of stage then ignore the metadata, it's probably wrong;
-  we can recalculate the correct metadata anyway."
+  native stage or a source-Card or a metric stage. If it's any other sort of stage then ignore the metadata, it's
+  probably wrong; we can recalculate the correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
@@ -70,7 +74,7 @@
 (mu/defn ^:private breakouts-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
      (assoc breakout
@@ -81,7 +85,7 @@
 (mu/defn ^:private aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      (assoc ag
@@ -94,7 +98,7 @@
 (mu/defn ^:private fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
     (not-empty
      (for [[tag :as ref-clause] fields
@@ -113,7 +117,7 @@
 (mu/defn ^:private summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (not-empty
    (into []
          (mapcat (fn [f]
@@ -125,7 +129,7 @@
   "Metadata for the previous stage, if there is one."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   unique-name-fn :- fn?]
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
      (for [col  (lib.metadata.calculation/returned-columns query
@@ -160,17 +164,37 @@
     (when-let [card (lib.metadata/card query card-id)]
       (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
 
+(mu/defn ^:private metric-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  [query         :- ::lib.schema/query
+   _stage-number :- :int
+   card          :- ::lib.schema.metadata/card
+   options       :- lib.metadata.calculation/VisibleColumnsOptions]
+  (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                         (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+    (not-empty (lib.metadata.calculation/visible-columns
+                (assoc metric-query :lib/metadata (:lib/metadata query))
+                -1
+                (lib.util/query-stage metric-query -1)
+                options))))
+
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   unique-name-fn  :- fn?]
+  [query                         :- ::lib.schema/query
+   stage-number                  :- :int
+   unique-name-fn                :- ::lib.metadata.calculation/unique-name-fn
+   {:keys [include-late-exprs?]} :- [:map [:include-late-exprs? {:optional true} :boolean]]]
   (not-empty
-   (for [expression (lib.expression/expressions-metadata query stage-number)]
-     (let [base-type (:base-type expression)]
-       (-> (assoc expression
+    (for [[clause metadata] (map vector
+                                 (:expressions (lib.util/query-stage query stage-number))
+                                 (lib.expression/expressions-metadata query stage-number))
+          ;; Only include "late" expressions when required.
+          ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
+          :when (or include-late-exprs?
+                    (not (lib.util.match/match-one clause :offset)))]
+     (let [base-type (:base-type metadata)]
+       (-> (assoc metadata
                   :lib/source               :source/expressions
-                  :lib/source-column-alias  (:name expression)
-                  :lib/desired-column-alias (unique-name-fn (:name expression)))
+                  :lib/source-column-alias  (:name metadata)
+                  :lib/desired-column-alias (unique-name-fn (:name metadata)))
            (u/assoc-default :effective-type (or base-type :type/*)))))))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
@@ -183,6 +207,8 @@
 ;;;
 ;;; 1c. Metadata associated with a Saved Question, if we have `:source-card` (`:source-table` is a `card__<id>` string
 ;;;     in legacy MBQL), OR
+;;;
+;;; 1e. Metadata associated with a Metric, if we have `:sources`, OR
 ;;;
 ;;; 1d. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
 ;;;
@@ -199,30 +225,37 @@
    stage-number                          :- :int
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
-  (mapv
-   #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)
-   (or
-    ;; 1a. columns returned by previous stage
-    (previous-stage-metadata query stage-number unique-name-fn)
-    ;; 1b or 1c
-    (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)]
-      (or
-       ;; 1b: default visible Fields for the source Table
-       (when source-table
-         (assert (integer? source-table))
-         (let [table-metadata (lib.metadata/table query source-table)]
-           (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-       ;; 1c. Metadata associated with a saved Question
-       (when source-card
-         (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
-       ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-       (for [col (:columns (:lib/stage-metadata this-stage))]
-         (assoc col
-                :lib/source :source/native
-                :lib/source-column-alias  (:name col)
-                ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                ;; that gets added later gets deduplicated from these.
-                :lib/desired-column-alias (unique-name-fn (:name col)))))))))
+  (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)
+        card (some->> source-card (lib.metadata/card query))
+        metric-based? (= (:type card) :metric)]
+    (into []
+          (if metric-based?
+            identity
+            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)))
+          (or
+           ;; 1a. columns returned by previous stage
+           (previous-stage-metadata query stage-number unique-name-fn)
+           ;; 1b or 1c
+           (or
+            ;; 1b: default visible Fields for the source Table
+            (when source-table
+              (assert (integer? source-table))
+              (let [table-metadata (lib.metadata/table query source-table)]
+                (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+            ;; 1e. Metadata associated with a Metric
+            (when metric-based?
+              (metric-metadata query stage-number card options))
+            ;; 1c. Metadata associated with a saved Question
+            (when source-card
+              (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+            (for [col (:columns (:lib/stage-metadata this-stage))]
+              (assoc col
+                     :lib/source :source/native
+                     :lib/source-column-alias  (:name col)
+                     ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                     ;; that gets added later gets deduplicated from these.
+                     :lib/desired-column-alias (unique-name-fn (:name col)))))))))
 
 (mu/defn ^:private existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
@@ -233,7 +266,7 @@
    (previous-stage-or-source-visible-columns query stage-number options)
    ;; 2: expressions (aka calculated columns) added in this stage
    (when include-expressions?
-     (expressions-metadata query stage-number unique-name-fn))
+     (expressions-metadata query stage-number unique-name-fn {}))
    ;; 3: columns added by joins at this stage
    (when include-joined?
      (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
@@ -279,7 +312,7 @@
         ;; we don't want to include all visible joined columns, so calculate that separately
         (previous-stage-or-source-visible-columns query stage-number {:include-implicitly-joinable? false
                                                                       :unique-name-fn               unique-name-fn})
-        (expressions-metadata query stage-number unique-name-fn)
+        (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
         (lib.join/all-joins-expected-columns query stage-number options))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
@@ -324,7 +357,7 @@
   (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
 
 (mu/defn append-stage :- ::lib.schema/query
-  "Adds a new blank stage to the end of the pipeline"
+  "Adds a new blank stage to the end of the pipeline."
   [query]
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
 

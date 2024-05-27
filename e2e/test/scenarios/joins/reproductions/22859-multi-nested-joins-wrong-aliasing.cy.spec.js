@@ -1,9 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
+  entityPickerModalTab,
   restore,
-  popover,
-  visualize,
   startNewQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } =
@@ -86,8 +87,8 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
   it("third level of nesting with joins should result in proper column aliasing (metabase#22859-2)", () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Saved Questions").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("22859-Q2").click();
     });
 

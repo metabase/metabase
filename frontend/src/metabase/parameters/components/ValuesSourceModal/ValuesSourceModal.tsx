@@ -9,7 +9,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 
-import ValuesSourceCardModal from "./ValuesSourceCardModal";
+import { ValuesSourceCardModal } from "./ValuesSourceCardModal";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 
 type ModalStep = "main" | "card";

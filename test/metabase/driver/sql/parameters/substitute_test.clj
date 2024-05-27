@@ -645,19 +645,94 @@
               "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
               nil))))))
 
-(deftest expand-exclude-field-filter-test
+(deftest ^:parallel expand-exclude-field-filter-test
   (mt/with-driver :h2
     (testing "exclude date parts"
       (testing "one exclusion"
-        (is (= {:query
-                "SELECT * FROM checkins WHERE ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL));",
-                :params [#t "2016-01-01T00:00Z[UTC]"]}
-               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"}))))
+        (is (= {:query ["SELECT"
+                        "  *"
+                        "FROM"
+                        "  checkins"
+                        "WHERE"
+                        "  ("
+                        "    ("
+                        "      extract("
+                        "        month"
+                        "        from"
+                        "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "      ) <> extract("
+                        "        month"
+                        "        from"
+                        "          ?"
+                        "      )"
+                        "    )"
+                        "    OR ("
+                        "      extract("
+                        "        month"
+                        "        from"
+                        "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "      ) IS NULL"
+                        "    )"
+                        "  );"]
+                :params [#t "2016-01-01"]}
+               (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"})
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
+
+(deftest ^:parallel expand-exclude-field-filter-test-2
+  (mt/with-driver :h2
+    (testing "exclude date parts"
       (testing "two exclusions"
-        (is (= {:query
-                "SELECT * FROM checkins WHERE (((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)) AND ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)));",
-                :params [#t "2016-01-01T00:00Z[UTC]" #t "2016-02-01T00:00Z[UTC]"]}
-               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})))))))
+        (is (= {:query ["SELECT"
+                        "  *"
+                        "FROM"
+                        "  checkins"
+                        "WHERE"
+                        "  ("
+                        "    ("
+                        "      ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) <> extract("
+                        "          month"
+                        "          from"
+                        "            ?"
+                        "        )"
+                        "      )"
+                        "      OR ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) IS NULL"
+                        "      )"
+                        "    )"
+                        "    AND ("
+                        "      ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) <> extract("
+                        "          month"
+                        "          from"
+                        "            ?"
+                        "        )"
+                        "      )"
+                        "      OR ("
+                        "        extract("
+                        "          month"
+                        "          from"
+                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "        ) IS NULL"
+                        "      )"
+                        "    )"
+                        "  );"]
+                :params [#t "2016-01-01"
+                         #t "2016-02-01"]}
+               (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
@@ -676,9 +751,11 @@
                          (not= driver :redshift))]
          driver)))
 
-(defn- process-native {:style/indent 0} [& kvs]
+(defn- process-native [& {:as query}]
   (qp/process-query
-    (apply assoc {:database (mt/id), :type :native} kvs)))
+   (merge
+    (mt/native-query nil)
+    query)))
 
 (deftest ^:parallel e2e-basic-test
   (mt/test-drivers (sql-parameters-engines)
@@ -703,13 +780,13 @@
              (mt/first-row
               (mt/format-rows-by [int]
                 (process-native
-                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
-                               :template-tags {"checkin_date" {:name         "checkin_date"
-                                                               :display-name "Checkin Date"
-                                                               :type         :dimension
-                                                               :widget-type  :date/all-options
-                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
-                  :parameters []))))))))
+                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+                              :template-tags {"checkin_date" {:name         "checkin_date"
+                                                              :display-name "Checkin Date"
+                                                              :type         :dimension
+                                                              :widget-type  :date/all-options
+                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
+                 :parameters []))))))))
 
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
@@ -778,28 +855,24 @@
                                 :value  "2015-07-01"}]))))))))
 
 (deftest e2e-parse-native-dates-test
-  (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
-    (is (= [(cond
-              ;; TIMEZONE FIXME — Busted
-              (= driver/*driver* :vertica)
-              "2018-04-17T00:00:00-07:00"
+  (testing "Native dates should be parsed with the report timezone"
+    (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
+      (mt/with-report-timezone-id! "America/Los_Angeles"
+        (let [query {:database   (mt/id)
+                     :type       :native
+                     :native     {:query         (if (= driver/*driver* :oracle)
+                                                   "SELECT cast({{date}} as date) from dual"
+                                                   "SELECT cast({{date}} as date)")
+                                  :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
+                     :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
+          (mt/with-native-query-testing-context query
+            (is (= [(cond
+                      (qp.test-util/supports-report-timezone? driver/*driver*)
+                      "2018-04-18T00:00:00-07:00"
 
-              (qp.test-util/supports-report-timezone? driver/*driver*)
-              "2018-04-18T00:00:00-07:00"
-
-              :else
-              "2018-04-18T00:00:00Z")]
-           (mt/with-report-timezone-id! "America/Los_Angeles"
-             (mt/first-row
-              (process-native
-                :native     {:query (case driver/*driver*
-                                      :oracle
-                                      "SELECT cast({{date}} as date) from dual"
-
-                                      "SELECT cast({{date}} as date)")
-                             :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
-                :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
-        "Native dates should be parsed with the report timezone")))
+                      :else
+                      "2018-04-18T00:00:00Z")]
+                   (mt/first-row (qp/process-query query))))))))))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 (deftest ^:parallel param-expansion-test
@@ -814,14 +887,18 @@
                                                               :dimension    [:field (meta/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/month-year
                                  :target [:dimension [:template-tag "created_at"]]
-                                 :value  "2017-03"}]})))
+                                 :value  "2017-03"}]}))))
+
+(deftest ^:parallel param-expansion-test-2
   (is (= {:query  "SELECT count(*) FROM ORDERS"
           :params []}
          (expand* {:native {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
                             :template-tags {"price" {:name         "price"
                                                      :display-name "Price"
                                                      :type         :number
-                                                     :required     false}}}})))
+                                                     :required     false}}}}))))
+
+(deftest ^:parallel param-expansion-test-3
   (is (= {:query  "SELECT count(*) FROM ORDERS WHERE price > 100"
           :params []}
          (expand* {:native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
@@ -829,7 +906,9 @@
                                                          :display-name "Price"
                                                          :type         :number
                                                          :required     false}}}
-                   :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "100"}]})))
+                   :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "100"}]}))))
+
+(deftest ^:parallel param-expansion-test-4
   (is (= {:query  "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE ?"
           :params ["%Toucan%"]}
          (expand* {:native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
@@ -837,7 +916,9 @@
                                                      :display-name "X"
                                                      :type         :text
                                                      :required     true}}}
-                   :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))
+                   :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]}))))
+
+(deftest ^:parallel param-expansion-test-5
   (testing "make sure that you can use the same parameter multiple times (#4659)"
     (is (= {:query  "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
             :params ["%Toucan%" "%Toucan%"]}
@@ -846,7 +927,10 @@
                                                        :display-name "X"
                                                        :type         :text
                                                        :required     true}}}
-                     :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))
+                     :parameters [{:type "category", :target [:variable [:template-tag "x"]], :value "%Toucan%"}]})))))
+
+(deftest ^:parallel param-expansion-test-6
+  (testing "make sure that you can use the same parameter multiple times (#4659)"
     (is (= {:query  "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
             :params ["2" "2"]}
            (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"

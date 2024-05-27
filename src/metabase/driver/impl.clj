@@ -73,12 +73,11 @@
   "`require` a driver's 'expected' namespace."
   [driver & require-options]
   (let [expected-ns (driver->expected-namespace driver)]
-    (log/debug
-     (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (log/debugf "Loading driver %s %s" (u/format-color 'blue driver) (apply list 'require expected-ns require-options))
     (try
       (apply classloader/require expected-ns require-options)
       (catch Throwable e
-        (log/error e (tru "Error loading driver namespace"))
+        (log/error e "Error loading driver namespace")
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (defn load-driver-namespace-if-needed!
@@ -153,7 +152,7 @@
         (doseq [parent parents
                 :when  (concrete? parent)]
           (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
-                   {:driver driver, :parent parent}))))
+                          {:driver driver, :parent parent}))))
       ;; validate that the registration isn't stomping on things
       (check-abstractness-hasnt-changed driver abstract?)
       ;; ok, if that was successful we can derive the driver from `:metabase.driver/driver`/`::concrete` and parent(s)
@@ -166,11 +165,12 @@
       ;; ok, log our great success
       (log/info
        (u/format-color 'blue
-           (if (metabase.driver.impl/abstract? driver)
-             (trs "Registered abstract driver {0}" driver)
-             (trs "Registered driver {0}" driver)))
+                       (format (if (metabase.driver.impl/abstract? driver)
+                                 "Registered abstract driver %s"
+                                 "Registered driver %s")
+                               driver))
        (if (seq parents)
-         (trs "(parents: {0})" (vec parents))
+         (format "(parents: %s)" (vec parents))
          "")
        (u/emoji "🚚")))))
 
@@ -208,8 +208,8 @@
         ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
         ;; whatever thread(s) we were waiting on.
         (when-not (initialized? driver)
-          (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
-          (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
+          (log/info (u/format-color :yellow "Initializing driver %s..." driver))
+          (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
 

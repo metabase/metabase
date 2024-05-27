@@ -41,9 +41,9 @@
                             column-metadatas))
             [:lib/desired-column-alias :name])
       (do
-        (log/warn (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
-                            (pr-str column-name)
-                            (pr-str (mapv :lib/desired-column-alias column-metadatas))))
+        (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
+                   (pr-str column-name)
+                   (pr-str (mapv :lib/desired-column-alias column-metadatas)))
         nil)))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
@@ -71,8 +71,8 @@
                                                 (:expressions  stage)
                                                 (:fields       stage))
                                         (lib.metadata.calculation/visible-columns query stage-number stage))
-                                      (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata"
-                                                          (pr-str column-name))))]
+                                      (log/warnf "Cannot resolve column %s: stage has no metadata"
+                                                 (pr-str column-name)))]
         (when-let [column (and (seq stage-columns)
                                (resolve-column-name-in-metadata column-name stage-columns))]
           (cond-> column
@@ -458,7 +458,8 @@
                                                                     (:lib/source metadata))
                                                               (:source-alias metadata))]
                                    {:join-alias source-alias})
-                                 (when-let [join-alias (lib.join.util/current-join-alias metadata)]
+                                 (when-let [join-alias (when-not inherited-column?
+                                                         (lib.join.util/current-join-alias metadata))]
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
@@ -466,7 +467,8 @@
                                    {::original-effective-type original-effective-type})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
-                                 (when-let [source-field-id (:fk-field-id metadata)]
+                                 (when-let [source-field-id (when-not inherited-column?
+                                                              (:fk-field-id metadata))]
                                    {:source-field source-field-id}))
         id-or-name        ((if inherited-column?
                              (some-fn :lib/desired-column-alias :name)
@@ -648,7 +650,7 @@
           ;; Default case - do nothing if we don't know about the incoming value.
           ;; Generates a warning, as we should aim to capture all the :source/* values here.
           (do
-            (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
+            (log/warnf "Cannot add-field with unknown source %s" (pr-str source))
             query))
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))
@@ -718,7 +720,7 @@
           ;; Default case: do nothing and return the query unchaged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
-            (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
+            (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))
             query))
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))

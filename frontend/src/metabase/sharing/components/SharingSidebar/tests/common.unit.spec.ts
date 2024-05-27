@@ -59,7 +59,7 @@ describe("SharingSidebar", () => {
   describe("Slack Subscription sidebar", () => {
     it("should not show advanced filter options in OSS", async () => {
       setup();
-      userEvent.click(await screen.findByText("Send it to Slack"));
+      await userEvent.click(await screen.findByText("Send it to Slack"));
 
       await screen.findByText("Send this dashboard to Slack");
 
@@ -70,7 +70,7 @@ describe("SharingSidebar", () => {
   describe("Email Subscription sidebar", () => {
     it("should not show advanced filter options in OSS", async () => {
       setup();
-      userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(await screen.findByText("Email it"));
 
       await screen.findByText("Email this dashboard");
 
@@ -80,18 +80,18 @@ describe("SharingSidebar", () => {
     it("should filter out actions and links when sending a test subscription", async () => {
       setup();
 
-      userEvent.click(await screen.findByText("Email it"));
-      userEvent.click(
+      await userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(
         await screen.findByPlaceholderText(
           "Enter user names or email addresses",
         ),
       );
 
-      userEvent.click(
+      await userEvent.click(
         await screen.findByText(`${user.first_name} ${user.last_name}`),
       );
 
-      userEvent.click(await screen.findByText("Send email now"));
+      await userEvent.click(await screen.findByText("Send email now"));
 
       const payload = await fetchMock
         ?.lastCall("path:/api/pulse/test")

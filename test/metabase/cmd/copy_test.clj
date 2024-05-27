@@ -28,7 +28,9 @@
   #{:model/ApiKey
     :model/CacheConfig
     :model/CardFavorite
+    :model/CloudMigration
     :model/DashboardFavorite
+    :model/FieldUsage
     :model/Query
     :model/QueryCache
     :model/QueryExecution

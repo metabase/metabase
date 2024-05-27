@@ -10,6 +10,7 @@ import {
   mockSlackConfigured,
   isOSS,
   visitDashboard,
+  editDashboard,
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
   addTextBox,
@@ -24,6 +25,7 @@ import {
   openPublicLinkPopoverFromMenu,
   openEmbedModalFromMenu,
   getEmbedModalSharingPane,
+  setFilter,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -214,36 +216,30 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     describe("let non-users unsubscribe from subscriptions", () => {
-      it(
-        "should allow non-user to unsubscribe from subscription",
-        { tags: "@flaky" },
-        () => {
-          const nonUserEmail = "non-user@example.com";
-          const otherUserEmail = "other-user@example.com";
-          const dashboardName = "Orders in a dashboard";
+      it("should allow non-user to unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
 
-          visitDashboard(ORDERS_DASHBOARD_ID);
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
-          setupSubscriptionWithRecipients([nonUserEmail, otherUserEmail]);
+        setupSubscriptionWithRecipients([nonUserEmail]);
 
-          emailSubscriptionRecipients();
+        emailSubscriptionRecipients();
 
-          openEmailPage(dashboardName).then(() => {
-            cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-            cy.findByText("Unsubscribe").click();
-            cy.wait("@unsubscribe");
-            cy.contains(
-              `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-            ).should("exist");
-          });
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
+        });
 
-          openDashboardSubscriptions();
-          openPulseSubscription();
+        openDashboardSubscriptions();
+        openPulseSubscription();
 
-          sidebar().findByText(nonUserEmail).should("not.exist");
-          sidebar().findByText(otherUserEmail).should("exist");
-        },
-      );
+        sidebar().findByText(nonUserEmail).should("not.exist");
+      });
 
       it("should allow non-user to undo-unsubscribe from subscription", () => {
         const nonUserEmail = "non-user@example.com";
@@ -781,13 +777,9 @@ function openRecipientsWithUserVisibilitySetting(setting) {
 }
 
 function addParametersToDashboard() {
-  // edit dashboard
-  cy.icon("pencil").click();
+  editDashboard();
 
-  // add Category > Dropdown "Name" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
 
   cy.findByText("Select…").click();
   popover().within(() => {
@@ -800,10 +792,8 @@ function addParametersToDashboard() {
   popover().findByText("Corbin Mertz").click();
   popover().contains("Add filter").click();
 
-  // add Category > Dropdown "Category" filter
-  cy.icon("filter").click();
-  cy.findByText("Text or Category").click();
-  cy.findByText("Is").click();
+  setFilter("Text or Category", "Is");
+
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("Category").click();

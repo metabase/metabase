@@ -11,7 +11,12 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
+import {
+  useShorthands,
+  adjustCase,
+  adjustOptions,
+  adjustOffset,
+} from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
@@ -150,9 +155,11 @@ export function diagnose({
   if (possibleError) {
     console.warn("diagnostic error", possibleError.message);
 
-    // diagnoseExpression should return a user friendly message, which we'll be
-    // able to return directly
-    return { message: t`Invalid expression` };
+    // diagnoseExpression returns some messages which are user-friendly and some which are not.
+    // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
+    return possibleError.friendly
+      ? possibleError
+      : { message: t`Invalid expression` };
   }
 
   return null;
@@ -223,6 +230,7 @@ function prattCompiler({
     passes: [
       adjustOptions,
       useShorthands,
+      adjustOffset,
       adjustCase,
       expression =>
         resolve({

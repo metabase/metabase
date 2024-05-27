@@ -7,7 +7,6 @@
    [metabase.async.util :as async.u]
    [metabase.server.protocols :as server.protocols]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -21,7 +20,7 @@
    (java.util.zip GZIPOutputStream)
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletResponse)
-   (org.eclipse.jetty.io EofException)
+   (org.eclipse.jetty.io EofException SocketChannelEndPoint)
    (org.eclipse.jetty.server Request)))
 
 (set! *warn-on-reflection* true)
@@ -62,7 +61,7 @@
           (json/generate-stream obj writer))
         (catch EofException _)
         (catch Throwable e
-          (log/error e (trs "Error writing error to output stream") obj))))))
+          (log/error e "Error writing error to output stream" obj))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
@@ -74,7 +73,7 @@
       (a/>!! canceled-chan ::thread-interrupted)
       nil)
     (catch Throwable e
-      (log/error e (trs "Caught unexpected Exception in streaming response body"))
+      (log/error e "Caught unexpected Exception in streaming response body")
       (write-error! os e)
       nil)))
 
@@ -87,7 +86,7 @@
                (try
                  (do-f* f os finished-chan canceled-chan)
                  (catch Throwable e
-                   (log/error e (trs "bound-fn caught unexpected Exception"))
+                   (log/error e "bound-fn caught unexpected Exception")
                    (a/>!! finished-chan :unexpected-error))
                  (finally
                    (a/>!! finished-chan (if (a/poll! canceled-chan)
@@ -131,6 +130,35 @@
   "How often to check whether the request was canceled by the client."
   1000)
 
+
+(p.types/defprotocol+ ^:private ChannelProvider
+  "Protocol to get a SocketChannel from various types of transports."
+  (^SocketChannel get-channel [transport] "Method to extract a SocketChannel."))
+
+;; Extend the protocol to SocketChannel, returning itself
+(extend-protocol ChannelProvider
+  SocketChannel
+  (get-channel [self] self)
+
+  SocketChannelEndPoint
+  (get-channel [self] (.getChannel self))
+
+  Object
+  (get-channel [_] nil))
+
+(def ^:private *reported-types
+  "A set of types returned from `.getTransport` have already been reported as errors. This is used to avoid spamming the logs with the same
+  error over and over."
+  (atom #{}))
+
+(defn log-unexpected-transport!
+  "Log an error when an unexpected transport is encountered."
+  [transport]
+  (let [transport-type (type transport)]
+    (when-not (contains? @*reported-types transport-type)
+      (log/errorf "Unexpected transport type encountered in `canceled?`: %s" transport-type))
+    (swap! *reported-types conj transport-type)))
+
 (defn- canceled?
   "Check whether the HTTP request has been canceled by the client.
 
@@ -139,17 +167,19 @@
   immediately, returning `0`."
   [^Request request]
   (try
-    (let [^SocketChannel channel (.. request getHttpChannel getEndPoint getTransport)
-          buf    (ByteBuffer/allocate 1)
-          status (.read channel buf)]
-      (log/tracef "Check cancelation status: .read returned %d" status)
-      (neg? status))
-    (catch InterruptedException _
-      false)
-    (catch ClosedChannelException _
-      true)
+    (let [transport (.. request getHttpChannel getEndPoint getTransport)]
+      (if-let [channel (get-channel transport)]
+        (let [buf        (ByteBuffer/allocate 1)
+              status     (.read channel buf)]
+          (log/tracef "Check cancelation status: .read returned %d" status)
+          (neg? status))
+        (do
+          (log-unexpected-transport! transport)
+          false)))
+    (catch InterruptedException _ false)
+    (catch ClosedChannelException _ true)
     (catch Throwable e
-      (log/error e (trs "Error determining whether HTTP request was canceled"))
+      (log/error e "Error determining whether HTTP request was canceled")
       false)))
 
 (def ^:private async-cancellation-poll-timeout-ms
@@ -173,8 +203,8 @@
           ;; was completed) then close `canceled-status-chan` which will kill the underlying thread
           (a/close! canceled-status-chan)
           (when (= port status-timeout-chan)
-            (log/debug (trs "Check cancelation status timed out after {0}"
-                            (u/format-milliseconds async-cancellation-poll-timeout-ms))))
+            (log/debugf "Check cancelation status timed out after %s"
+                        (u/format-milliseconds async-cancellation-poll-timeout-ms)))
           (when (not= port finished-chan)
             (if canceled?
               (a/>! canceled-chan ::request-canceled)
@@ -195,11 +225,11 @@
           (start-async-cancel-loop! request finished-chan canceled-chan)
           (do-f-async async-context f delay-os finished-chan canceled-chan)))
       (catch Throwable e
-        (log/error e (trs "Unexpected exception in do-f-async"))
+        (log/error e "Unexpected exception in do-f-async")
         (try
           (.sendError response 500 (.getMessage e))
           (catch Throwable e
-            (log/error e (trs "Unexpected exception writing error response"))))
+            (log/error e "Unexpected exception writing error response")))
         (a/>!! finished-chan :unexpected-error)
         (a/close! finished-chan)
         (a/close! canceled-chan)

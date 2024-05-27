@@ -18,7 +18,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -77,7 +77,7 @@
              ancestor-types)
           k
           (do
-            (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
+            (log/warnf "Invalid Field %s %s: falling back to %s" column-name k fallback-type)
             fallback-type))))))
 
 (def ^:private transform-field-base-type
@@ -145,12 +145,18 @@
 
 (defmethod mi/can-read? :model/Field
   ([instance]
-   (data-perms/user-has-permission-for-table?
-    api/*current-user-id*
-    :perms/data-access
-    :unrestricted
-    (field->db-id instance)
-    (:table_id instance)))
+   (and (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/view-data
+         :unrestricted
+         (field->db-id instance)
+         (:table_id instance))
+        (data-perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/create-queries
+         :query-builder
+         (field->db-id instance)
+         (:table_id instance))))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
@@ -392,13 +398,15 @@
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes/*export-table-fk*)
         (update :fk_target_field_id serdes/*export-field-fk*)
+        (update :parent_id          serdes/*export-field-fk*)
         (dissoc :fingerprint :last_analyzed :fingerprint_version))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
       (update :table_id           serdes/*import-table-fk*)
-      (update :fk_target_field_id serdes/*import-field-fk*)))
+      (update :fk_target_field_id serdes/*import-field-fk*)
+      (update :parent_id          serdes/*import-field-fk*)))
 
 (defmethod serdes/load-find-local "Field"
   [path]

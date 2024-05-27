@@ -262,7 +262,7 @@ export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
 
-export const visitFullAppEmbeddingUrl = ({ url, qs }) => {
+export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
   cy.visit({
     url,
     qs,
@@ -270,6 +270,7 @@ export const visitFullAppEmbeddingUrl = ({ url, qs }) => {
       // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
       // by removing the property the app would work in embedding mode
       window.Cypress = undefined;
+      onBeforeLoad?.(window);
     },
   });
 };

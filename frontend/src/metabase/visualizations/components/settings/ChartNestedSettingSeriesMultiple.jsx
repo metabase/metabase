@@ -68,7 +68,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     }
                   />
                   {objects.length > 1 ? (
-                    <IconWrapper className="ml1 p1">
+                    <IconWrapper className={cx(CS.ml1, CS.p1)}>
                       <OptionsIcon
                         name={isSelected(single) ? "chevronup" : "chevrondown"}
                         tooltip={
@@ -86,7 +86,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                 {objectSettingsWidgets &&
                 objectSettingsWidgets.length > 0 &&
                 isSelected(single) ? (
-                  <div className="mt3">{objectSettingsWidgets}</div>
+                  <div className={CS.mt3}>{objectSettingsWidgets}</div>
                 ) : null}
               </div>
             );

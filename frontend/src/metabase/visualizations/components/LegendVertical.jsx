@@ -8,7 +8,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 
-import styles from "./Legend.module.css";
+import LegendS from "./Legend.module.css";
 import LegendItem from "./LegendItem";
 
 export default class LegendVertical extends Component {
@@ -66,7 +66,7 @@ export default class LegendVertical extends Component {
       items = titles;
     }
     return (
-      <ol className={cx(className, styles.Legend, styles.vertical)}>
+      <ol className={cx(className, LegendS.Legend, LegendS.vertical)}>
         {items.map((title, index) => {
           const isMuted =
             hovered && hovered.index != null && index !== hovered.index;
@@ -99,13 +99,13 @@ export default class LegendVertical extends Component {
               {Array.isArray(title) && (
                 <span
                   className={cx(
-                    "LegendItem",
+                    LegendS.LegendItem,
                     CS.flex,
                     CS.alignCenter,
                     CS.flexAlignRight,
                     CS.pl1,
+                    { [LegendS.LegendItemMuted]: isMuted },
                   )}
-                  style={{ opacity: isMuted ? 0.4 : 1 }}
                 >
                   {title[1]}
                 </span>

@@ -6,7 +6,6 @@ import { useMount } from "react-use";
 import { getSections } from "metabase/admin/settings/selectors";
 import { initializeSettings } from "metabase/admin/settings/settings";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Icon } from "metabase/ui";
 
 type AdminSetting = {
   key: string;
@@ -54,7 +53,7 @@ export const SettingsCommandPaletteActions = () => {
                 }),
               );
             },
-            icon: <Icon name="gear" />,
+            icon: "gear",
           })),
       ];
       return acc;

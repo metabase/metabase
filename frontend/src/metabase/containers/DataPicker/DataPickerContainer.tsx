@@ -78,6 +78,7 @@ function DataPicker({
   const dataTypes = useMemo(
     () =>
       getDataTypes({
+        hasMetrics: false,
         hasModels: modelLookupResult.length > 0,
         hasSavedQuestions: allDatabases.some(
           database => database.is_saved_questions,
@@ -158,7 +159,7 @@ const DataPickerContainer = _.compose(
   // at least one model, to offer for selection
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
   }),

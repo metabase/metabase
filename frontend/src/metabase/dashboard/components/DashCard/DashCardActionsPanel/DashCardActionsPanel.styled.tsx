@@ -54,7 +54,7 @@ export const DashCardActionsPanelContainer = styled("div", {
     pointer-events: all;
   }
 
-  .Dash--dragging & {
+  .${DashboardS.DashDragging} & {
     display: none;
   }
 `;

@@ -1,13 +1,25 @@
-export function enterCustomColumnDetails({ formula, name } = {}) {
+export function expressionEditorWidget() {
+  return cy.findByTestId("expression-editor");
+}
+
+/**
+ * @param {Object} option
+ * @param {string} option.formula
+ * @param {string=} option.name
+ */
+export function enterCustomColumnDetails({ formula, name }) {
   cy.get(".ace_text-input")
     .first()
     .as("formula")
     .should("exist")
     .focus()
+    .clear()
     .type(formula);
 
   if (name) {
-    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+    cy.findByPlaceholderText("Something nice and descriptive")
+      .clear()
+      .type(name);
   }
 }
 

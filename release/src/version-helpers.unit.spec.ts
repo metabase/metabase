@@ -358,6 +358,7 @@ describe("version-helpers", () => {
       const testCases: [string, string[]][] = [
         ["v0.75.1", ["v0.75.2"]],
         ["v0.75.1.0", ["v0.75.2"]], // disregards extra .0
+        ["v0.75.10", ["v0.75.11"]], // handles multi-digit minor
         ["v0.79.99", ["v0.79.100"]],
         ["v0.79.99.0", ["v0.79.100"]],
       ];

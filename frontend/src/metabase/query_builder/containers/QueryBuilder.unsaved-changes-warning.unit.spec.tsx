@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCardCreateEndpoint,
-  setupCardQueryMetadataEndpoint,
+  setupCardEndpoints,
 } from "__support__/server-mocks";
 import {
   screen,
@@ -39,7 +39,21 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder - unsaved changes warning", () => {
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
+  });
+
   afterEach(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
     jest.resetAllMocks();
   });
 
@@ -65,7 +79,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
       await startNewNotebookModel();
 
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
@@ -76,13 +90,13 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/model/new",
       });
       setupCardCreateEndpoint();
-      setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
+      setupCardEndpoints(TEST_NATIVE_CARD);
 
       await startNewNotebookModel();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByRole("button", { name: "Save" }));
-      userEvent.click(
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(
         within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
@@ -124,8 +138,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await triggerNotebookQueryChange();
         await waitForSaveToBeEnabled();
 
-        userEvent.click(screen.getByText("Save"));
-        userEvent.click(
+        await userEvent.click(screen.getByText("Save"));
+        await userEvent.click(
           within(screen.getByTestId("save-question-modal")).getByText("Save"),
         );
 
@@ -190,7 +204,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await triggerNotebookQueryChange();
         await waitForSaveChangesToBeEnabled();
 
-        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -207,7 +221,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await revertNotebookQueryChange();
         await waitForSaveChangesToBeDisabled();
 
-        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -217,13 +231,18 @@ describe("QueryBuilder - unsaved changes warning", () => {
       it("does not show custom warning modal when saving edited query", async () => {
         const { history } = await setup({
           card: TEST_MODEL_CARD,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          initialRoute: "/",
         });
+
+        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        await waitForLoaderToBeRemoved();
 
         await triggerNotebookQueryChange();
         await waitForSaveChangesToBeEnabled();
 
-        userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Save changes" }),
+        );
 
         await waitFor(() => {
           expect(history.getCurrentLocation().pathname).toEqual(
@@ -282,7 +301,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
         await waitForLoaderToBeRemoved();
 
-        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -299,7 +318,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await triggerMetadataChange();
         await waitForSaveChangesToBeEnabled();
 
-        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -308,20 +327,25 @@ describe("QueryBuilder - unsaved changes warning", () => {
         const { history } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          initialRoute: "/",
         });
+
+        history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+        await waitForLoaderToBeRemoved();
 
         /**
          * When initialRoute is `/model/${TEST_MODEL_CARD.id}/metadata`,
          * the QueryBuilder gets incompletely intialized.
          * This seems to affect only tests.
          */
-        userEvent.click(screen.getByText("Metadata"));
+        await userEvent.click(screen.getByText("Metadata"));
 
         await triggerMetadataChange();
         await waitForSaveChangesToBeEnabled();
 
-        userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Save changes" }),
+        );
 
         await waitFor(() => {
           expect(history.getCurrentLocation().pathname).toEqual(
@@ -351,7 +375,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNotebookQueryChange();
       await waitForSaveChangesToBeEnabled();
 
-      userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
+      await userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -360,7 +384,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerMetadataChange();
       await waitForSaveChangesToBeEnabled();
 
-      userEvent.click(screen.getByTestId("editor-tabs-query-name"));
+      await userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -376,10 +400,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNotebookQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Visualize"));
+      await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByLabelText("notebook icon"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();
@@ -398,8 +422,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/",
       });
 
-      userEvent.click(screen.getByText("New"));
-      userEvent.click(
+      await userEvent.click(screen.getByText("New"));
+      await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
@@ -418,8 +442,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/",
       });
 
-      userEvent.click(screen.getByText("New"));
-      userEvent.click(
+      await userEvent.click(screen.getByText("New"));
+      await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
@@ -437,13 +461,13 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/",
       });
 
-      userEvent.click(screen.getByText("New"));
-      userEvent.click(
+      await userEvent.click(screen.getByText("New"));
+      await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(
+      await userEvent.click(
         within(screen.getByTestId("query-builder-main")).getByRole("button", {
           name: "Get Answer",
         }),
@@ -462,8 +486,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
       fetchMock.post("path:/api/card", TEST_NATIVE_CARD);
       fetchMock.get("path:/api/table/card__1/query_metadata", TEST_METADATA);
 
-      userEvent.click(screen.getByText("New"));
-      userEvent.click(
+      await userEvent.click(screen.getByText("New"));
+      await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
@@ -471,10 +495,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNativeQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
       const saveQuestionModal = screen.getByTestId("save-question-modal");
-      userEvent.type(
+      await userEvent.type(
         within(saveQuestionModal).getByLabelText("Name"),
         TEST_NATIVE_CARD.name,
       );
@@ -483,7 +507,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           within(saveQuestionModal).getByLabelText(/Which collection/),
         ).toHaveTextContent(TEST_COLLECTION.name);
       });
-      userEvent.click(within(saveQuestionModal).getByText("Save"));
+      await userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(saveQuestionModal).not.toBeInTheDocument();
@@ -522,8 +546,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Visualization" }));
-      userEvent.click(screen.getByTestId("Detail-button"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Visualization" }),
+      );
+      await userEvent.click(screen.getByTestId("Detail-button"));
       await waitForSaveToBeEnabled();
 
       history.push("/redirect");
@@ -557,7 +583,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNativeQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(
+      await userEvent.click(
         within(screen.getByTestId("query-builder-main")).getByRole("button", {
           name: "Get Answer",
         }),
@@ -577,9 +603,9 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNativeQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
-      userEvent.click(
+      await userEvent.click(
         within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
@@ -609,20 +635,20 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNativeQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
       const saveQuestionModal = screen.getByTestId("save-question-modal");
-      userEvent.click(
+      await userEvent.click(
         within(saveQuestionModal).getByText("Save as new question"),
       );
-      userEvent.type(
+      await userEvent.type(
         within(saveQuestionModal).getByPlaceholderText(
           "What is the name of your question?",
         ),
         "New question",
       );
       expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
-      userEvent.click(within(saveQuestionModal).getByText("Save"));
+      await userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(
@@ -695,10 +721,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNotebookQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Visualize"));
+      await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByLabelText("notebook icon"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();
@@ -712,15 +738,18 @@ describe("QueryBuilder - unsaved changes warning", () => {
     it("does not show custom warning modal when saving edited question", async () => {
       const { history } = await setup({
         card: TEST_STRUCTURED_CARD,
-        initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
+        initialRoute: "/",
       });
+
+      history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+      await waitForLoaderToBeRemoved();
 
       await triggerNotebookQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
-      userEvent.click(
+      await userEvent.click(
         within(screen.getByTestId("save-question-modal")).getByText("Save"),
       );
 
@@ -750,20 +779,20 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNotebookQueryChange();
       await waitForSaveToBeEnabled();
 
-      userEvent.click(screen.getByText("Save"));
+      await userEvent.click(screen.getByText("Save"));
 
       const saveQuestionModal = screen.getByTestId("save-question-modal");
-      userEvent.click(
+      await userEvent.click(
         within(saveQuestionModal).getByText("Save as new question"),
       );
-      userEvent.type(
+      await userEvent.type(
         within(saveQuestionModal).getByPlaceholderText(
           "What is the name of your question?",
         ),
         "New question",
       );
       expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
-      userEvent.click(within(saveQuestionModal).getByText("Save"));
+      await userEvent.click(within(saveQuestionModal).getByText("Save"));
 
       await waitFor(() => {
         expect(

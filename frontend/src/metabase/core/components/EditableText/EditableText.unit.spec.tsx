@@ -28,13 +28,13 @@ describe("EditableText", () => {
     expect(screen.getByText("Description")).toBeInTheDocument();
   });
 
-  it("should render input after a click", () => {
+  it("should render input after a click", async () => {
     setup({
       initialValue: "Description",
       isMarkdown: true,
     });
 
-    userEvent.click(screen.getByText("Description"));
+    await userEvent.click(screen.getByText("Description"));
 
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
@@ -45,7 +45,7 @@ describe("EditableText", () => {
       isMarkdown: true,
     });
 
-    userEvent.click(screen.getByText("Description"));
+    await userEvent.click(screen.getByText("Description"));
 
     await waitFor(() => {
       expect(screen.getByRole("textbox")).toHaveFocus();
@@ -58,25 +58,25 @@ describe("EditableText", () => {
       isMarkdown: true,
     });
 
-    userEvent.click(screen.getByTestId("editable-text"));
+    await userEvent.click(screen.getByTestId("editable-text"));
 
     await waitFor(() => {
       expect(screen.getByRole("textbox")).toHaveFocus();
     });
 
-    userEvent.tab();
+    await userEvent.tab();
 
     expect(screen.getByTestId("editable-text")).toHaveTextContent("bold link");
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("should not render input if click happened on the link", () => {
+  it("should not render input if click happened on the link", async () => {
     setup({
       initialValue: "**bold** [link](https://metabase.com)",
       isMarkdown: true,
     });
 
-    userEvent.click(screen.getByRole("link"));
+    await userEvent.click(screen.getByRole("link"));
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByTestId("editable-text")).toHaveTextContent("bold link");

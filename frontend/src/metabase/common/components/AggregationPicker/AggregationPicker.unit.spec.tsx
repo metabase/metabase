@@ -4,7 +4,6 @@ import _ from "underscore";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   createQuery,
@@ -12,11 +11,7 @@ import {
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Metric } from "metabase-types/api";
-import {
-  createMockMetric,
-  COMMON_DATABASE_FEATURES,
-} from "metabase-types/api/mocks";
+import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createOrdersTable,
@@ -24,9 +19,6 @@ import {
   createProductsTable,
   createReviewsTable,
   ORDERS,
-  ORDERS_ID,
-  PRODUCTS_ID,
-  PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
@@ -93,38 +85,16 @@ function createQueryWithInlineExpressionWithOperator() {
   });
 }
 
-const TEST_METRIC = createMockMetric({
-  id: 1,
-  table_id: ORDERS_ID,
-  name: "Total Order Value",
-  description: "The total value of all orders",
-  definition: {
-    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-    "source-table": ORDERS_ID,
-  },
-});
-
-const PRODUCT_METRIC = createMockMetric({
-  id: 2,
-  table_id: PRODUCTS_ID,
-  name: "Average Rating",
-  definition: {
-    aggregation: [["avg", ["field", PRODUCTS.RATING, null]]],
-    "source-table": PRODUCTS_ID,
-  },
-});
-
 function createMetadata({
-  metrics = [],
   hasExpressionSupport = true,
-}: { metrics?: Metric[]; hasExpressionSupport?: boolean } = {}) {
+}: { hasExpressionSupport?: boolean } = {}) {
   return createMockMetadata({
     databases: [
       createSampleDatabase({
         tables: [
-          createOrdersTable({ metrics }),
+          createOrdersTable(),
           createPeopleTable(),
-          createProductsTable({ metrics: [PRODUCT_METRIC] }),
+          createProductsTable(),
           createReviewsTable(),
         ],
         features: hasExpressionSupport
@@ -132,7 +102,6 @@ function createMetadata({
           : _.without(COMMON_DATABASE_FEATURES, "expression-aggregations"),
       }),
     ],
-    metrics: [...metrics, PRODUCT_METRIC],
   });
 }
 
@@ -195,22 +164,6 @@ function setup({
 }
 
 describe("AggregationPicker", () => {
-  it("should allow switching between aggregation approaches", () => {
-    const metadata = createMetadata({ metrics: [TEST_METRIC] });
-    const { getRecentClauseInfo } = setup({
-      query: createQueryWithCountAggregation({ metadata }),
-      metadata,
-    });
-    const metric = checkNotNull(metadata.metric(TEST_METRIC.id));
-
-    userEvent.click(screen.getByText("Common Metrics"));
-    userEvent.click(screen.getByText(TEST_METRIC.name));
-
-    expect(getRecentClauseInfo()).toMatchObject({
-      displayName: metric.displayName(),
-    });
-  });
-
   describe("basic operators", () => {
     it("should list basic operators", () => {
       setup();
@@ -232,10 +185,10 @@ describe("AggregationPicker", () => {
       });
     });
 
-    it("should apply a column-less operator", () => {
+    it("should apply a column-less operator", async () => {
       const { getRecentClauseInfo } = setup();
 
-      userEvent.click(screen.getByText("Count of rows"));
+      await userEvent.click(screen.getByText("Count of rows"));
 
       expect(getRecentClauseInfo()).toMatchObject({
         name: "count",
@@ -243,11 +196,11 @@ describe("AggregationPicker", () => {
       });
     });
 
-    it("should apply an operator requiring columns", () => {
+    it("should apply an operator requiring columns", async () => {
       const { getRecentClauseInfo } = setup();
 
-      userEvent.click(screen.getByText("Average of ..."));
-      userEvent.click(screen.getByText("Quantity"));
+      await userEvent.click(screen.getByText("Average of ..."));
+      await userEvent.click(screen.getByText("Quantity"));
 
       expect(getRecentClauseInfo()).toMatchObject({
         name: "avg",
@@ -255,12 +208,12 @@ describe("AggregationPicker", () => {
       });
     });
 
-    it("should allow picking a foreign column", () => {
+    it("should allow picking a foreign column", async () => {
       const { getRecentClauseInfo } = setup();
 
-      userEvent.click(screen.getByText("Average of ..."));
-      userEvent.click(screen.getByText("Product"));
-      userEvent.click(screen.getByText("Rating"));
+      await userEvent.click(screen.getByText("Average of ..."));
+      await userEvent.click(screen.getByText("Product"));
+      await userEvent.click(screen.getByText("Rating"));
 
       expect(getRecentClauseInfo()).toMatchObject({
         name: "avg",
@@ -292,24 +245,24 @@ describe("AggregationPicker", () => {
       );
     });
 
-    it("shouldn't list columns for column-less operators", () => {
+    it("shouldn't list columns for column-less operators", async () => {
       setup();
 
-      userEvent.click(screen.getByText("Count of rows"));
+      await userEvent.click(screen.getByText("Count of rows"));
 
       expect(screen.queryByText("Quantity")).not.toBeInTheDocument();
       // check that we're still in the same step
       expect(screen.getByText("Average of ...")).toBeInTheDocument();
     });
 
-    it("should allow to change an operator for existing aggregation", () => {
+    it("should allow to change an operator for existing aggregation", async () => {
       const { getRecentClauseInfo } = setup({
         query: createQueryWithMaxAggregation(),
       });
 
-      userEvent.click(screen.getByText("Maximum of ...")); // go back
-      userEvent.click(screen.getByText("Average of ..."));
-      userEvent.click(screen.getByText("Quantity"));
+      await userEvent.click(screen.getByText("Maximum of ...")); // go back
+      await userEvent.click(screen.getByText("Average of ..."));
+      await userEvent.click(screen.getByText("Quantity"));
 
       expect(getRecentClauseInfo()).toMatchObject({
         name: "avg",
@@ -317,54 +270,16 @@ describe("AggregationPicker", () => {
       });
     });
 
-    it("should allow to change a column for existing aggregation", () => {
+    it("should allow to change a column for existing aggregation", async () => {
       const { getRecentClauseInfo } = setup({
         query: createQueryWithMaxAggregation(),
       });
 
-      userEvent.click(screen.getByText("Discount"));
+      await userEvent.click(screen.getByText("Discount"));
 
       expect(getRecentClauseInfo()).toMatchObject({
         name: "max",
         displayName: "Max of Discount",
-      });
-    });
-  });
-
-  describe("metrics", () => {
-    function setupMetrics(opts: SetupOpts = {}) {
-      const result = setup(opts);
-
-      // Expand the metrics section
-      userEvent.click(screen.getByText("Common Metrics"));
-
-      return result;
-    }
-
-    it("shouldn't show the metrics section when there're no metics", () => {
-      setup({ metadata: createMetadata({ metrics: [] }) });
-      expect(screen.queryByText("Common Metrics")).not.toBeInTheDocument();
-    });
-
-    it("should list metrics for the query table", () => {
-      setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
-      expect(screen.getByText(TEST_METRIC.name)).toBeInTheDocument();
-    });
-
-    it("shouldn't list metrics for other tables", () => {
-      setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
-      expect(screen.queryByText(PRODUCT_METRIC.name)).not.toBeInTheDocument();
-    });
-
-    it("should allow picking a metric", () => {
-      const metadata = createMetadata({ metrics: [TEST_METRIC] });
-      const { getRecentClauseInfo } = setupMetrics({ metadata });
-      const metric = checkNotNull(metadata.metric(TEST_METRIC.id));
-
-      userEvent.click(screen.getByText(TEST_METRIC.name));
-
-      expect(getRecentClauseInfo()).toMatchObject({
-        displayName: metric.displayName(),
       });
     });
   });
@@ -376,10 +291,10 @@ describe("AggregationPicker", () => {
       const expression = "count + 1";
       const expressionName = "My expression";
 
-      userEvent.click(screen.getByText("Custom Expression"));
-      userEvent.type(screen.getByLabelText("Expression"), expression);
-      userEvent.type(screen.getByLabelText("Name"), expressionName);
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+      await userEvent.click(screen.getByText("Custom Expression"));
+      await userEvent.type(screen.getByLabelText("Expression"), expression);
+      await userEvent.type(screen.getByLabelText("Name"), expressionName);
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(getRecentClauseInfo().displayName).toBe(expressionName);
     });
 

@@ -29,6 +29,14 @@ const getLabels = (question: Question) => {
       message: t`You won't make any permanent changes to them unless you edit their query definition.`,
     };
   }
+
+  if (type === "metric") {
+    return {
+      title: t`It's okay to play around with metrics`,
+      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+    };
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
@@ -41,8 +49,8 @@ export const SavedQuestionIntroModal = ({
 
   return (
     <Modal isOpen={isShowingNewbModal}>
-      <ModalContent title={title} className="Modal-content text-centered py2">
-        <div className="px2 pb2 text-paragraph">{message}</div>
+      <ModalContent title={title} className={cx(CS.textCentered, CS.py2)}>
+        <div className={cx(CS.px2, CS.pb2, CS.textParagraph)}>{message}</div>
         <div className={cx("Form-actions", CS.flex, CS.justifyCenter, CS.py1)}>
           <button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}

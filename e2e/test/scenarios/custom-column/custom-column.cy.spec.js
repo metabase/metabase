@@ -2,18 +2,23 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
-  restore,
-  popover,
-  summarize,
-  visualize,
-  openOrdersTable,
-  openPeopleTable,
-  visitQuestionAdhoc,
+  cartesianChartCircle,
+  checkExpressionEditorHelperPopoverPosition,
+  createQuestion,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   getNotebookStep,
-  checkExpressionEditorHelperPopoverPosition,
+  openOrdersTable,
+  openPeopleTable,
+  popover,
   queryBuilderMain,
+  restore,
+  startNewQuestion,
+  summarize,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -43,7 +48,7 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
-    cy.get(".dot").eq(5).click({ force: true });
+    cartesianChartCircle().eq(5).click();
     popover()
       .findByText(/Automatic Insights/i)
       .click();
@@ -65,6 +70,24 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.findByTestId("query-visualization-root").contains("Math");
+  });
+
+  it("should not show default period in date column name (metabase#36631)", () => {
+    const name = "Base question";
+    createQuestion({ name, query: { "source-table": ORDERS_ID } });
+
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(name).click();
+    });
+    cy.button("Custom column").click();
+    enterCustomColumnDetails({ formula: "[cre" });
+
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .should("have.length", 1)
+      .and("contain.text", "Created At")
+      .and("not.contain.text", "Default period");
   });
 
   it("should not show binning for a numeric custom column", () => {
@@ -246,8 +269,11 @@ describe("scenarios > question > custom column", () => {
     // join with Products
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Products").click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
 
     // add custom column
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -262,7 +288,7 @@ describe("scenarios > question > custom column", () => {
     );
     cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"
-    cy.get(".TableInteractive-cellWrapper--firstColumn")
+    cy.get(".test-TableInteractive-cellWrapper--firstColumn")
       .eq(1) // the second cell from the top in the first column (the first one is a header cell)
       .findByText("1");
   });
@@ -336,12 +362,10 @@ describe("scenarios > question > custom column", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Sum of ${CC_NAME}`);
-    cy.findByTestId("query-visualization-root")
-      .get(".dot")
-      .should("have.length.of.at.least", 8);
+    cartesianChartCircle().should("have.length.of.at.least", 8);
   });
 
-  it.skip("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
+  it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
     cy.createQuestion(
       {
         name: "13634",
@@ -365,7 +389,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("Reported failing in v0.34.3, v0.35.4, v0.36.8.2, v0.37.0.2");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo Bar");
-    cy.findAllByText("57911");
+    cy.findAllByText("57,911");
   });
 
   it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
@@ -473,25 +497,8 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
     cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
-  });
-
-  it("should handle using `case()` with boolean expressions (metabase#38944)", () => {
-    const expression = 'case(isempty([Discount]), "true", "false")';
-    openOrdersTable({ mode: "notebook" });
-
-    addCustomColumn();
-
-    popover().within(() => {
-      enterCustomColumnDetails({
-        formula: expression,
-        name: "Discount is empty",
-      });
-
-      cy.findByRole("button", { name: "Done" }).should("be.disabled");
-      cy.findByText("Invalid expression");
-    });
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {

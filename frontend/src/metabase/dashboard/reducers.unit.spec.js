@@ -37,6 +37,9 @@ describe("dashboard reducers", () => {
         endTime: null,
         loadingStatus: "idle",
       },
+      loadingMetadata: {
+        loadingStatus: "idle",
+      },
       parameterValues: {},
       draftParameterValues: {},
       sidebar: { props: {} },
@@ -48,6 +51,7 @@ describe("dashboard reducers", () => {
         toastDashboardId: null,
       },
       tabDeletions: {},
+      theme: "light",
     });
   });
 

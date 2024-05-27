@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 
+import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -22,7 +23,7 @@ class _FilterList extends Component {
     const { filters, metadata, filterRenderer } = this.props;
     return (
       <div
-        className={cx(QueryBuilderS.QueryFilterList, "scroll-x scroll-show")}
+        className={cx(QueryBuilderS.QueryFilterList, CS.scrollX, CS.scrollShow)}
       >
         {filters.map((filter, index) => (
           <Filter

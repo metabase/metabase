@@ -1,10 +1,10 @@
 import type {
   DatabaseId,
   FieldId,
-  MetricId,
   TableId,
   SegmentId,
   TemplateTags,
+  CardId,
 } from "metabase-types/api";
 
 export interface NativeQuery {
@@ -47,23 +47,38 @@ export type PublicDatasetQuery =
   | PublicStructuredDatasetQuery
   | PublicNativeDatasetQuery;
 
+export const dateTimeAbsoluteUnits = [
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "year",
+] as const;
+
+export const dateTimeRelativeUnits = [
+  "minute-of-hour",
+  "hour-of-day",
+  "day-of-week",
+  "day-of-month",
+  "day-of-year",
+  "week-of-year",
+  "month-of-year",
+  "quarter-of-year",
+] as const;
+
+export const dateTimeUnits = [
+  ...dateTimeAbsoluteUnits,
+  ...dateTimeRelativeUnits,
+] as const;
+
+export type DateTimeAbsoluteUnit = typeof dateTimeAbsoluteUnits[number];
+export type DateTimeRelativeUnit = typeof dateTimeRelativeUnits[number];
 export type DatetimeUnit =
   | "default"
-  | "minute"
-  | "minute-of-hour"
-  | "hour"
-  | "hour-of-day"
-  | "day"
-  | "day-of-week"
-  | "day-of-month"
-  | "day-of-year"
-  | "week"
-  | "week-of-year"
-  | "month"
-  | "month-of-year"
-  | "quarter"
-  | "quarter-of-year"
-  | "year";
+  | DateTimeAbsoluteUnit
+  | DateTimeRelativeUnit;
 
 export interface ReferenceOptions {
   binning?: BinningOptions;
@@ -108,14 +123,12 @@ type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
 type OrderableValue = NumericLiteral | DatetimeLiteral;
 
 type RelativeDatetimePeriod = "current" | "last" | "next" | number;
-export type RelativeDatetimeUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "year";
+
+type OffsetOptions = {
+  "lib/uuid": string;
+  name: string;
+  "display-name": string;
+};
 
 // "card__4" like syntax meaning a query is using card 4 as a data source
 type NestedQueryTableId = string;
@@ -148,6 +161,7 @@ type StdDevAgg = ["stddev", ConcreteFieldReference];
 type SumAgg = ["sum", ConcreteFieldReference];
 type MinAgg = ["min", ConcreteFieldReference];
 type MaxAgg = ["max", ConcreteFieldReference];
+type OffsetAgg = ["offset", OffsetOptions, Aggregation, NumericLiteral];
 
 type CommonAggregation =
   | CountAgg
@@ -159,9 +173,10 @@ type CommonAggregation =
   | StdDevAgg
   | SumAgg
   | MinAgg
-  | MaxAgg;
+  | MaxAgg
+  | OffsetAgg;
 
-type MetricAgg = ["metric", MetricId];
+type MetricAgg = ["metric", CardId];
 
 type InlineExpressionAgg = [
   "aggregation-options",
@@ -245,13 +260,13 @@ type TimeIntervalFilter =
       "time-interval",
       ConcreteFieldReference,
       RelativeDatetimePeriod,
-      RelativeDatetimeUnit,
+      DateTimeAbsoluteUnit,
     ]
   | [
       "time-interval",
       ConcreteFieldReference,
       RelativeDatetimePeriod,
-      RelativeDatetimeUnit,
+      DateTimeAbsoluteUnit,
       TimeIntervalFilterOptions,
     ];
 
@@ -350,6 +365,7 @@ export type Expression =
   | boolean
   | [ExpressionOperator, ExpressionOperand]
   | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
+  | ["offset", OffsetOptions, ExpressionOperand, NumericLiteral]
   | [
       ExpressionOperator,
       ExpressionOperand,

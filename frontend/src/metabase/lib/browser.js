@@ -1,13 +1,14 @@
 import querystring from "querystring";
 
+import { safeJsonParse } from "metabase/lib/utils";
+
 function parseQueryStringOptions(s) {
   const options = querystring.parse(s);
-
   for (const name in options) {
     if (options[name] === "") {
       options[name] = true;
     } else if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {
-      options[name] = JSON.parse(options[name]);
+      options[name] = safeJsonParse(options[name]);
     }
   }
 
@@ -46,3 +47,5 @@ export function isMac() {
   const { platform = "" } = navigator;
   return Boolean(platform.match(/^Mac/));
 }
+
+export const METAKEY = isMac() ? "⌘" : "Ctrl";

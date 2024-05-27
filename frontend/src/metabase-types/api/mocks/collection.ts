@@ -8,6 +8,7 @@ export const createMockCollection = (
   description: null,
   location: "/",
   can_write: true,
+  can_restore: true,
   archived: false,
   is_personal: false,
   authority_level: null,
@@ -23,9 +24,12 @@ export const createMockCollectionItem = (
   description: null,
   collection_position: null,
   collection_preview: true,
+  collection_id: null,
   fully_parameterized: true,
+  type: null,
   getIcon: () => ({ name: "question" }),
   getUrl: () => "/question/1",
+  archived: false,
   ...opts,
 });
 

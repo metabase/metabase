@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders } from "__support__/ui";
 import { color } from "metabase/lib/colors";
+import type { ParameterValueOrArray } from "metabase-types/api";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Text } from "../Text";
 
@@ -21,8 +24,19 @@ const defaultProps = {
   isMobile: false,
 };
 
-const setup = (options = {}) => {
-  render(<Text {...defaultProps} {...options} />);
+interface SetupOpts {
+  settings?: Settings;
+  parameterValues?: Record<string, ParameterValueOrArray>;
+}
+
+const setup = ({ parameterValues, ...options }: SetupOpts = {}) => {
+  renderWithProviders(<Text {...defaultProps} {...options} />, {
+    storeInitialState: {
+      dashboard: createMockDashboardState({
+        parameterValues,
+      }),
+    },
+  });
 };
 
 describe("Text", () => {
@@ -116,27 +130,31 @@ describe("Text", () => {
     });
 
     describe("Edit/Focused", () => {
-      it("should display and focus textarea when clicked", () => {
+      it("should display and focus textarea when clicked", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
         expect(
           screen.getByTestId("editing-dashboard-text-input"),
         ).toHaveFocus();
       });
 
-      it("should have input placeholder when it has no content", () => {
+      it("should have input placeholder when it has no content", async () => {
         const options = {
           settings: getSettingsWithText(""),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
         expect(
           screen.getByPlaceholderText(
             "You can use Markdown here, and include variables {{like_this}}",
@@ -144,18 +162,20 @@ describe("Text", () => {
         ).toBeInTheDocument();
       });
 
-      it("should render input text when it has content", () => {
+      it("should render input text when it has content", async () => {
         const options = {
           settings: getSettingsWithText("text text text"),
           isEditing: true,
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
         expect(screen.getByDisplayValue("text text text")).toBeInTheDocument();
       });
 
-      it("should call onUpdateVisualizationSettings on blur", () => {
+      it("should call onUpdateVisualizationSettings on blur", async () => {
         const mockOnUpdateVisualizationSettings = jest.fn();
         const options = {
           settings: getSettingsWithText("text"),
@@ -164,9 +184,11 @@ describe("Text", () => {
         };
         setup(options);
 
-        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
-        userEvent.type(screen.getByRole("textbox"), "foo");
-        userEvent.tab();
+        await userEvent.click(
+          screen.getByTestId("editing-dashboard-text-preview"),
+        );
+        await userEvent.type(screen.getByRole("textbox"), "foo");
+        await userEvent.tab();
 
         expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
         expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({

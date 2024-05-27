@@ -2,9 +2,9 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
 import type { CollectionItemListProps } from "../types";
 
+import { CollectionItemList } from "./CollectionItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
-import { SearchItemList } from "./SearchItemList";
 
 export const CollectionItemPickerResolver = ({
   onClick,
@@ -13,6 +13,8 @@ export const CollectionItemPickerResolver = ({
   query,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   if (!query) {
     return (
@@ -22,29 +24,35 @@ export const CollectionItemPickerResolver = ({
         onClick={onClick}
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
+        shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
       />
     );
   }
 
-  if (query.collection === PERSONAL_COLLECTIONS.id) {
+  if (query.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}
         isCurrentLevel={isCurrentLevel}
+        shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
         options={options}
       />
     );
   }
 
   return (
-    <SearchItemList
+    <CollectionItemList
       query={query}
       onClick={onClick}
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
       options={options}
     />
   );

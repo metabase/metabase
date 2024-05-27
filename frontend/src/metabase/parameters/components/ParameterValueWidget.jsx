@@ -135,7 +135,12 @@ class ParameterValueWidget extends Component {
     }
 
     if (!hasNoPopover(this.props.parameter)) {
-      return <WidgetStatusIcon name="chevrondown" />;
+      return (
+        <WidgetStatusIcon
+          name="chevrondown"
+          size={this.props.mimicMantine ? 16 : undefined}
+        />
+      );
     }
   }
 
@@ -236,7 +241,7 @@ class ParameterValueWidget extends Component {
                 size={16}
               />
             )}
-            <div className="mr1 text-nowrap">
+            <div className={cx(CS.mr1, CS.textNoWrap)}>
               <FormattedParameterValue
                 parameter={parameter}
                 value={value}

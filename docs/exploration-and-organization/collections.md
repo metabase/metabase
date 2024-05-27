@@ -52,17 +52,28 @@ To share items in your personal collection, for example to add a question in you
 
 ## Pinned items
 
+In each collection, you can pin important or useful dashboards, models, and questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well.
+
 ![Pins](./images/pinned-items.png)
 
-In each collection, you can pin important or useful dashboards, models, and questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well. If you have Curate permissions for a collection, you can pin and un-pin things, and drag and drop pins to change their order.
+To pin and un-pin things in a collection, you need to have **Curate** permissions for that collection.
 
-Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
+- To pin an item, find the item on the collection page, go into the three dot menu (**...**), and select **Pin this**.
 
-If you just want to organize _your_ favorite items, you should [bookmark them](./exploration.md#bookmarks) (only you can see your bookmarks).
+- To unpin a pinned item, hover over the pinned card, go to the three dot menu (**...**), and select **Unpin**.
+
+For pinned questions, you can also choose whether to display the visualization from the three dot menu (**...**).
+
+![Show pinned viz](./images/pinned-show-viz.png)
+
+Pinned items will appear pinned for all people looking at the collection. If you just want to organize _your_ favorite items, you should [bookmark them](./exploration.md#bookmarks) (only you can see your bookmarks).
 
 ## Moving items from collection to collection
 
-To move an item from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the item and pick the **Move** action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
+To move an item from one collection to another, just click and drag it onto the collection where you want it to go.
+You can also click on the the three dot menu (**...**) menu to the right of the item and pick the **Move** action.
+
+If you're trying to move several things at once, click on the checkboxes next to the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
 
 ![Selecting questions](./images/question-checkbox.png)
 
@@ -74,25 +85,7 @@ You can add events to collections, and organize those events into timelines. See
 
 ## Uploading data
 
-You can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
-
-![Upload CSV data](../databases/images/upload-icon.png).
-
-Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
-
-Uploads will only be available if your admin has enabled uploads for your Metabase, and you're in a group with Unrestricted access to the schema used to store those uploads. See [Uploading data](../databases/uploads.md).
-
-## Appending to a model created by an upload
-
-You can upload additional CSV data to an existing model created by a previous CSV upload.
-
-![Append data to existing upload model](./images/append-data.png)
-
-The uploaded CSV must have the same column name, order, and type as the columns in the model. Metabase will look for a header row to check that the column names are the same. So if you split a large CSV into multiple CSVs, make sure to include header rows for all of the files.
-
-When appending, Metabase will simply insert the rows into the underlying table, which will update the model that sits on top of that table. If you have duplicate rows from one upload to the next, Metabase will preserve those duplicate rows.
-
-The upload icon will only be visible on models created by uploads.
+You can upload data to collections. See [Uploading data](./uploads.md)]
 
 ## Further reading
 

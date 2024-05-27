@@ -22,7 +22,7 @@ export const LoadMoreButton = styled.button`
   color: ${color("brand")};
   cursor: pointer;
   display: flex;
-  font-family: var(--default-font-family);
+  font-family: var(--mb-default-font-family);
   font-size: 14px;
   font-weight: 700;
   padding: 0.25rem 1.5rem;

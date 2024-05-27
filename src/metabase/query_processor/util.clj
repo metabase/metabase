@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -29,7 +30,7 @@
    can access the default value."
   [{{:keys [executed-by query-hash], :as _info} :info, query-type :type}]
   (str "Metabase" (when executed-by
-                    (assert (instance? (Class/forName "[B") query-hash))
+                    (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
                     (format ":: userID: %s queryType: %s queryHash: %s"
                             executed-by
                             (case (keyword query-type)
@@ -193,3 +194,31 @@
                              (get by-key (field-ref->key field_ref)))]
         (merge col (select-keys existing preserved-keys))
         col))))
+
+(def ^:dynamic *execute-async?*
+  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  true)
+
+(defn do-with-execute-async
+  "Impl of `with-execute-async`"
+  [thunk]
+  (if *execute-async?*
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
+    (thunk)))
+
+(defmacro with-execute-async
+  "Execute body asynchronously in a pooled executor.
+
+  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  [thunk]
+  `(do-with-execute-async ~thunk))
+
+(mu/defn userland-query? :- :boolean
+  "Returns true if the query is an userland query, else false."
+  [query :- ::qp.schema/qp]
+  (boolean (get-in query [:middleware :userland-query?])))
+
+(mu/defn internal-query? :- :boolean
+  "Returns `true` if query is an internal query."
+  [{query-type :type} :- ::qp.schema/qp]
+  (= :internal (keyword query-type)))

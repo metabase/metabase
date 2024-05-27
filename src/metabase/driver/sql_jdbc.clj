@@ -74,8 +74,8 @@
     ((get-method driver/db-default-timezone :metabase.driver/driver) driver database)))
 
 (defmethod driver/execute-reducible-query :sql-jdbc
-  [driver query chans respond]
-  (sql-jdbc.execute/execute-reducible-query driver query chans respond))
+  [driver query context respond]
+  (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]

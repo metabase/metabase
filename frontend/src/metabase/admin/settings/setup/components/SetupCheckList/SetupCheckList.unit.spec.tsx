@@ -62,7 +62,7 @@ describe("SetupCheckList", () => {
     const link = screen.getByRole("link", { name: ADD_DB_TASK.title });
     expect(link).not.toHaveAttribute("target");
 
-    userEvent.click(link);
+    await userEvent.click(link);
     expect(history?.getCurrentLocation().pathname).toBe(ADD_DB_TASK.link);
   });
 

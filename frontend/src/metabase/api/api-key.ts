@@ -1,54 +1,60 @@
 import type {
   ApiKey,
-  CreateApiKeyInput,
+  ApiKeyId,
+  CreateApiKeyRequest,
   CreateApiKeyResponse,
   RegenerateApiKeyResponse,
-  UpdateApiKeyInput,
+  UpdateApiKeyRequest,
   UpdateApiKeyResponse,
 } from "metabase-types/api/admin";
 
 import { Api } from "./api";
-import { API_KEY_TAG } from "./tags";
+import { provideApiKeyListTags, idTag, invalidateTags, listTag } from "./tags";
 
 export const apiKeyApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listApiKey: builder.query<ApiKey[], void>({
+    listApiKeys: builder.query<ApiKey[], void>({
       query: () => `/api/api-key`,
-      providesTags: [API_KEY_TAG],
+      providesTags: (apiKeys = []) => provideApiKeyListTags(apiKeys),
     }),
-    countApiKey: builder.query<number, void>({
+    countApiKeys: builder.query<number, void>({
       query: () => `/api/api-key/count`,
+      providesTags: provideApiKeyListTags([]),
     }),
-    createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyInput>({
-      query: input => ({
+    createApiKey: builder.mutation<CreateApiKeyResponse, CreateApiKeyRequest>({
+      query: body => ({
         method: "POST",
         url: `/api/api-key`,
-        body: input,
+        body,
       }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("api-key")]),
     }),
-    updateApiKey: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyInput>({
+    updateApiKey: builder.mutation<UpdateApiKeyResponse, UpdateApiKeyRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/api-key/${id}`,
         body,
       }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("api-key"), idTag("api-key", id)]),
     }),
-    deleteApiKey: builder.mutation<void, ApiKey["id"]>({
+    deleteApiKey: builder.mutation<void, ApiKeyId>({
       query: id => ({ method: "DELETE", url: `/api/api-key/${id}` }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("api-key"), idTag("api-key", id)]),
     }),
-    regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKey["id"]>({
+    regenerateApiKey: builder.mutation<RegenerateApiKeyResponse, ApiKeyId>({
       query: id => ({ method: "PUT", url: `/api/api-key/${id}/regenerate` }),
-      invalidatesTags: [API_KEY_TAG],
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("api-key"), idTag("api-key", id)]),
     }),
   }),
 });
 
 export const {
-  useListApiKeyQuery,
-  useCountApiKeyQuery,
+  useListApiKeysQuery,
+  useCountApiKeysQuery,
   useCreateApiKeyMutation,
   useRegenerateApiKeyMutation,
   useUpdateApiKeyMutation,

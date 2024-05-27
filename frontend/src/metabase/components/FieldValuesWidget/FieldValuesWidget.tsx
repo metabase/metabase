@@ -10,14 +10,12 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
-import TokenField, {
-  parseNumberValue,
-  parseStringValue,
-} from "metabase/components/TokenField";
+import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { parseNumberValue } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -70,7 +68,7 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
 }
 
 export interface IFieldValuesWidgetProps {
-  color?: string;
+  color?: "brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -108,7 +106,7 @@ export interface IFieldValuesWidgetProps {
 }
 
 export function FieldValuesWidgetInner({
-  color = "purple",
+  color,
   maxResults = MAX_SEARCH_RESULTS,
   alwaysShowOptions = true,
   style = {},
@@ -500,6 +498,7 @@ export function FieldValuesWidgetInner({
             }}
             onInputChange={onInputChange}
             parseFreeformValue={parseFreeformValue}
+            updateOnInputBlur
           />
         )}
       </div>

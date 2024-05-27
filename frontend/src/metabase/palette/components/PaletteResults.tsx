@@ -1,86 +1,110 @@
-import { useKBar, useMatches, KBarResults, type ActionImpl } from "kbar";
-import { useState } from "react";
-import { useDebounce } from "react-use";
+import type { Location } from "history";
+import { useKBar, useMatches } from "kbar";
+import { useMemo, useEffect } from "react";
+import { withRouter } from "react-router";
+import { useKeyPressEvent } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Flex, Box, Icon } from "metabase/ui";
+import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
-import { processResults } from "../utils";
+import type { PaletteActionImpl } from "../types";
+import { processResults, findClosestActionIndex } from "../utils";
 
-export const PaletteResults = () => {
-  // Used for finding actions within the list
-  const { search: query } = useKBar(state => ({ search: state.searchQuery }));
-  const trimmedQuery = query.trim();
+import { PaletteResultItem } from "./PaletteResultItem";
+import { PaletteResultList } from "./PaletteResultsList";
 
-  // Used for finding objects across the Metabase instance
-  const [debouncedSearchText, setDebouncedSearchText] = useState(trimmedQuery);
+const PAGE_SIZE = 4;
 
-  useDebounce(
-    () => {
-      setDebouncedSearchText(trimmedQuery);
-    },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
-  );
+export const PaletteResults = withRouter(
+  ({ location }: { location: Location }) => {
+    // Used for finding actions within the list
+    const { query } = useKBar();
 
-  useCommandPalette({
-    query: trimmedQuery,
-    debouncedSearchText,
-  });
+    useCommandPalette({ locationQuery: location.query });
 
-  const { results } = useMatches();
+    const { results } = useMatches();
 
-  const processedResults = processResults(results);
+    const processedResults = useMemo(
+      () => processResults(results as (PaletteActionImpl | string)[]),
+      [results],
+    );
 
-  return (
-    <Flex align="stretch" direction="column" p="0.75rem 0">
-      <KBarResults
-        items={processedResults}
-        maxHeight={500}
-        onRender={({
-          item,
-          active,
-        }: {
-          item: string | ActionImpl;
-          active: boolean;
-        }) => {
-          return (
-            <Flex
-              bg={active ? color("brand-light") : "none"}
-              c={active ? color("brand") : color("text-medium")}
-              lh="1rem"
-              mx="1rem"
-              fw={700}
-              style={{
-                cursor: "pointer",
-                borderRadius: "0.5rem",
-              }}
-            >
-              {typeof item === "string" ? (
-                <Box tt="uppercase" fw={700} fz="10px" p="0.5rem">
-                  {item}
-                </Box>
-              ) : (
-                <Flex
-                  p=".75rem"
-                  w="100%"
-                  align="center"
-                  justify="space-between"
-                >
-                  <Flex gap=".5rem">
-                    {item.icon || <Icon name="click" />}
-                    {item.name}
-                  </Flex>
-                  {active && <Icon name="enter_or_return" />}
-                </Flex>
-              )}
-            </Flex>
-          );
-        }}
-      />
-    </Flex>
-  );
-};
+    useEffect(() => {
+      if (processedResults[0] === t`Search results`) {
+        query.setActiveIndex(2);
+      }
+    }, [processedResults, query]);
+
+    useKeyPressEvent("End", () => {
+      const lastIndex = processedResults.length - 1;
+      query.setActiveIndex(lastIndex);
+    });
+
+    useKeyPressEvent("Home", () => {
+      query.setActiveIndex(1);
+    });
+
+    useKeyPressEvent("PageDown", () => {
+      query.setActiveIndex(i =>
+        findClosestActionIndex(processedResults, i, PAGE_SIZE),
+      );
+    });
+
+    useKeyPressEvent("PageUp", () => {
+      query.setActiveIndex(i =>
+        findClosestActionIndex(processedResults, i, -PAGE_SIZE),
+      );
+    });
+
+    return (
+      <Flex align="stretch" direction="column" p="0.75rem 0">
+        <PaletteResultList
+          items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
+          maxHeight={530}
+          onRender={({
+            item,
+            active,
+          }: {
+            item: string | PaletteActionImpl;
+            active: boolean;
+          }) => {
+            const isFirst = processedResults[0] === item;
+
+            return (
+              <Flex lh="1rem" pb="2px">
+                {typeof item === "string" ? (
+                  <Box
+                    px="1.5rem"
+                    fz="14px"
+                    pt="1rem"
+                    pb="0.5rem"
+                    style={
+                      isFirst
+                        ? undefined
+                        : {
+                            borderTop: `1px solid ${color("border")}`,
+                            marginTop: "1rem",
+                          }
+                    }
+                    w="100%"
+                  >
+                    {item}
+                  </Box>
+                ) : (
+                  <PaletteResultItem
+                    item={item}
+                    active={active}
+                    togglePalette={query.toggle}
+                  />
+                )}
+              </Flex>
+            );
+          }}
+        />
+      </Flex>
+    );
+  },
+);

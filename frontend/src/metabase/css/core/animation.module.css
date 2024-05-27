@@ -16,3 +16,13 @@
 .ProgressBarNoAnimation {
   animation: none;
 }
+
+.SpinOut {
+  transform-style: preserve-3d;
+  transform-origin: center;
+  transition: transform 1s;
+}
+
+.SpinOutActive {
+  transform: rotateY(180deg);
+}

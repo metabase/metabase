@@ -2,6 +2,8 @@ import {
   restore,
   popover,
   visitDashboard,
+  editDashboard,
+  setFilter,
   openNewPublicLinkDropdown,
 } from "e2e/support/helpers";
 
@@ -16,11 +18,9 @@ describe("issue 20393", () => {
   it("should show public dashboards with nested cards mapped to parameters (metabase#20393)", () => {
     createDashboardWithNestedCard();
 
-    // add a date parameter to the dashboard
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
-    popover().contains("Time").click();
-    popover().contains("All Options").click();
+    editDashboard();
+
+    setFilter("Time", "All Options");
 
     // map the date parameter to the card
     cy.findByTestId("dashcard-container").contains("Select").click();

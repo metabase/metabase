@@ -118,6 +118,7 @@
                [:or
                 [:ref ::id/metric]
                 ;; GA metric ref
+                ;; TODO metric v2: do we get rid of this?
                 ::common/non-blank-string]])
 
 (lib.hierarchy/derive :metric ::ref)

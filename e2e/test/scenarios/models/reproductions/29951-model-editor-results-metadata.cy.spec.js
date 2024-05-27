@@ -1,4 +1,3 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   getNotebookStep,
@@ -26,15 +25,11 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-      "publicShema",
-    );
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
     cy.createQuestion(questionDetails).then(({ body: { id } }) => {
       cy.visit(`/model/${id}/query`);
-      cy.wait("@publicShema");
     });
 
     removeExpression("CC2");
@@ -48,7 +43,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
-    cy.get(".cellData").should("contain", "37.65");
+    cy.get("[data-testid=cell-data]").should("contain", "37.65");
     cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
   });
 });

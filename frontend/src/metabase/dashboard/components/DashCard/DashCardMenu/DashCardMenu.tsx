@@ -1,9 +1,13 @@
+import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
+import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { useStore } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
@@ -29,7 +33,6 @@ interface OwnProps {
   dashcardId?: DashCardId;
   uuid?: string;
   token?: string;
-  params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
 }
 
@@ -57,14 +60,17 @@ const DashCardMenu = ({
   dashcardId,
   uuid,
   token,
-  params,
   onEditQuestion,
   onDownloadResults,
 }: DashCardMenuProps) => {
+  const store = useStore();
+
   const [{ loading }, handleDownload] = useAsyncFn(
-    async (type: string) => {
+    async (opts: { type: string; enableFormatting: boolean }) => {
+      const params = getParameterValuesBySlugMap(store.getState());
+
       await onDownloadResults({
-        type,
+        ...opts,
         question,
         result,
         dashboardId,
@@ -74,7 +80,7 @@ const DashCardMenu = ({
         params,
       });
     },
-    [question, result, dashboardId, dashcardId, uuid, token, params],
+    [store, question, result, dashboardId, dashcardId, uuid, token],
   );
 
   const handleMenuContent = useCallback(
@@ -82,9 +88,9 @@ const DashCardMenu = ({
       <QueryDownloadPopover
         question={question}
         result={result}
-        onDownload={type => {
+        onDownload={opts => {
           toggleMenu();
-          handleDownload(type);
+          handleDownload(opts);
         }}
       />
     ),
@@ -115,7 +121,7 @@ const DashCardMenu = ({
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
           name="ellipsis"
-          className={!open ? "hover-child hover-child--smooth" : undefined}
+          className={!open ? cx(CS.hoverChild, CS.hoverChildSmooth) : undefined}
           data-testid="dashcard-menu"
           onClick={onClick}
         />

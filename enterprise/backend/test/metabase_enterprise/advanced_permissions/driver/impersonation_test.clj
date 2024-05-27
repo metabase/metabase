@@ -12,6 +12,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -102,38 +103,37 @@
       (let [details (mt/dbdef->connection-details :redshift nil nil)
             spec    (sql-jdbc.conn/connection-details->spec :redshift details)
             user    (u/lower-case-en (mt/random-name))
-            schema  (u/lower-case-en (mt/random-name))]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details details}]
+            schema  (sql.tx/session-schema :redshift)]
+        (mt/with-temp [Database database {:engine :redshift, :details details}]
           (try
-            (doseq [statement [(format "CREATE SCHEMA IF NOT EXISTS %s;" schema)
-                               (format "DROP TABLE IF EXISTS %s.table_with_access;" schema)
-                               (format "DROP TABLE IF EXISTS %s.table_without_access;" schema)
-                               (format "CREATE TABLE %s.table_with_access (x INTEGER NOT NULL);" schema)
-                               (format "CREATE TABLE %s.table_without_access (y INTEGER NOT NULL);" schema)
+            (doseq [statement [(format "DROP TABLE IF EXISTS \"%s\".table_with_access;" schema)
+                               (format "DROP TABLE IF EXISTS \"%s\".table_without_access;" schema)
+                               (format "CREATE TABLE \"%s\".table_with_access (x INTEGER NOT NULL);" schema)
+                               (format "CREATE TABLE \"%s\".table_without_access (y INTEGER NOT NULL);" schema)
                                (format "CREATE USER %s WITH PASSWORD 'abcD1234';" user)
-                               (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s;" schema user)
-                               (format "REVOKE ALL PRIVILEGES ON TABLE %s.table_without_access FROM %s;" schema user)
-                               (format "GRANT SELECT ON TABLE %s.table_with_access TO %s;" schema user)]]
+                               (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO %s;" schema user)
+                               (format "REVOKE ALL PRIVILEGES ON TABLE \"%s\".table_without_access FROM %s;" schema user)
+                               (format "GRANT SELECT ON TABLE \"%s\".table_with_access TO %s;" schema user)]]
               (jdbc/execute! spec statement))
-            (mt/with-db database (sync/sync-database! database)
+            (mt/with-db database
+              (sync/sync-database! database {:scan :schema})
               (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                            :attributes     {"impersonation_attr" user}}
                 (is (= []
-                       (-> {:query (format "SELECT * FROM %s.table_with_access;" schema)}
+                       (-> {:query (format "SELECT * FROM \"%s\".table_with_access;" schema)}
                            mt/native-query
                            mt/process-query
                            mt/rows)))
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                       #"permission denied for relation table_without_access"
-                                      (-> {:query (format "SELECT * FROM %s.table_without_access;" schema)}
+                                      (-> {:query (format "SELECT * FROM \"%s\".table_without_access;" schema)}
                                           mt/native-query
                                           mt/process-query
                                           mt/rows)))))
             (finally
-             (doseq [statement [(format "DROP TABLE IF EXISTS %s.table_with_access;" schema)
-                                  (format "DROP TABLE IF EXISTS %s.table_without_access;" schema)
-                                  (format "DROP SCHEMA IF EXISTS %s;" schema)
-                                  (format "DROP USER IF EXISTS %s;" user)]]
+             (doseq [statement [(format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\"" schema user)
+                                (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\";" schema user)
+                                (format "DROP USER IF EXISTS %s;" user)]]
                  (jdbc/execute! spec [statement])))))))))
 
 (deftest conn-impersonation-test-snowflake

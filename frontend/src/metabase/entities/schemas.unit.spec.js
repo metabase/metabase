@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
+import { Api } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
 import {
@@ -11,7 +12,13 @@ import {
 describe("schema entity", () => {
   let store;
   beforeEach(() => {
-    store = getStore();
+    store = getStore(
+      {
+        [Api.reducerPath]: Api.reducer,
+      },
+      {},
+      [Api.middleware],
+    );
   });
 
   it("should save metadata from fetching a schema's tables", async () => {

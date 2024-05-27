@@ -3,8 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { useRevisionListQuery, useUserListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";

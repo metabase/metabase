@@ -22,9 +22,8 @@ import type {
 import {
   createMockCollectionItem,
   createMockCollection,
-  createMockRecentItem,
-  createMockTable,
-  createMockDashboard,
+  createMockRecentTableItem,
+  createMockRecentCollectionItem,
   createMockUser,
   createMockLinkDashboardCard,
 } from "metabase-types/api/mocks";
@@ -159,6 +158,41 @@ describe("LinkViz", () => {
       expect(screen.getByText("https://example23.com")).toBeInTheDocument();
       expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
     });
+
+    it("should open absolute links to question in the same tab", () => {
+      const dashcard = createMockLinkDashboardCard({
+        url: "http://localhost/question/1-example",
+      });
+
+      setup({
+        isEditing: false,
+        dashcard,
+        settings: dashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(window.location.origin).toBe("http://localhost");
+
+      expect(
+        screen.getByText("http://localhost/question/1-example"),
+      ).toBeInTheDocument();
+
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_self");
+    });
+
+    it("should open relative links to question in the same tab", () => {
+      const dashcard = createMockLinkDashboardCard({
+        url: "question/2-example",
+      });
+
+      setup({
+        isEditing: false,
+        dashcard,
+        settings: dashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByText("question/2-example")).toBeInTheDocument();
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_self");
+    });
   });
 
   describe("entity links", () => {
@@ -227,14 +261,14 @@ describe("LinkViz", () => {
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
-      userEvent.click(searchInput);
+      await userEvent.click(searchInput);
       // There's a race here: as soon the search input is clicked into the text
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(await screen.findByText("Question Uno"));
+      await userEvent.click(await screen.findByText("Question Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {
@@ -249,28 +283,26 @@ describe("LinkViz", () => {
     });
 
     it("clicking a recent item should update the entity", async () => {
-      const recentTableItem = createMockRecentItem({
-        cnt: 20,
-        user_id: 20,
+      const recentTableItem = createMockRecentTableItem({
         model: "table",
-        model_id: 121,
-        model_object: createMockTable({
-          id: 121,
-          name: "Table Uno",
-          display_name: "Table Uno",
-          db_id: 20,
-        }),
+        id: 121,
+        name: "Table Uno",
+        display_name: "Table Uno",
+        database: {
+          id: 20,
+          name: "Database Uno",
+          initial_sync_status: "complete",
+        },
       });
 
-      const recentDashboardItem = createMockRecentItem({
-        cnt: 20,
-        user_id: 20,
+      const recentDashboardItem = createMockRecentCollectionItem({
+        id: 131,
+        name: "Dashboard Uno",
         model: "dashboard",
-        model_id: 131,
-        model_object: createMockDashboard({
-          id: 131,
-          name: "Dashboard Uno",
-        }),
+        parent_collection: {
+          id: 1,
+          name: "Collection Uno",
+        },
       });
 
       setupRecentViewsEndpoints([recentTableItem, recentDashboardItem]);
@@ -284,10 +316,10 @@ describe("LinkViz", () => {
 
       const searchInput = screen.getByPlaceholderText("https://example.com");
 
-      userEvent.click(searchInput);
+      await userEvent.click(searchInput);
 
       await screen.findByText("Dashboard Uno");
-      userEvent.click(await screen.findByText("Table Uno"));
+      await userEvent.click(await screen.findByText("Table Uno"));
 
       expect(changeSpy).toHaveBeenCalledWith({
         link: {

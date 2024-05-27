@@ -66,7 +66,7 @@ describe("scenarios > public > question", () => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
-      cy.get(".cellData").contains("Winner");
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
       openNewPublicLinkDropdown("card");
 
@@ -83,7 +83,7 @@ describe("scenarios > public > question", () => {
 
       cy.wait("@publicQuery");
       // Name of a city from the expected results
-      cy.get(".cellData").contains("Winner");
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then(publicUid => {
@@ -129,7 +129,7 @@ describe("scenarios > public > question", () => {
               filterWidget().contains("Previous 30 Years");
               filterWidget().contains("Affiliate");
 
-              cy.get(".cellData").contains("Winner");
+              cy.get("[data-testid=cell-data]").contains("Winner");
             },
           );
         });
@@ -161,7 +161,7 @@ describe("scenarios > public > question", () => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
-          cy.get(".cellData").contains("test");
+          cy.get("[data-testid=cell-data]").contains("test");
         });
       });
     });
@@ -187,7 +187,7 @@ describe("scenarios > public > question", () => {
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
             // Check the name of the first person in the PEOPLE table
-            cy.get(".cellData").contains("Hudson Borer");
+            cy.get("[data-testid=cell-data]").contains("Hudson Borer");
           });
         });
       });

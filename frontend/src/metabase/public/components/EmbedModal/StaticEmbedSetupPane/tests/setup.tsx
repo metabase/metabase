@@ -49,7 +49,7 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
 }
 
-export function setup(
+export async function setup(
   {
     props: {
       resourceType = "dashboard",
@@ -99,8 +99,8 @@ export function setup(
   );
 
   if (activeTab && activeTab !== "Overview") {
-    userEvent.click(
-      screen.getByRole("tab", {
+    await userEvent.click(
+      await screen.findByRole("tab", {
         name: activeTab,
       }),
     );

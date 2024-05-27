@@ -4,6 +4,8 @@ import {
   visitQuestionAdhoc,
   popover,
   openSeriesSettings,
+  cartesianChartCircle,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -40,7 +42,7 @@ describe("issue 21452", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
 
-    cy.get("circle").first().realHover();
+    cartesianChartCircle().first().realHover();
 
     popover().within(() => {
       testPairedTooltipValues("Created At", "2022");
@@ -50,7 +52,3 @@ describe("issue 21452", () => {
     cy.get("@dataset.all").should("have.length", 1);
   });
 });
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}

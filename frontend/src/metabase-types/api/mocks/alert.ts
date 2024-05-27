@@ -1,6 +1,5 @@
-import type { Alert } from "../alert";
+import type { Alert, AlertCard } from "../alert";
 
-import { createMockCard } from "./card";
 import { createMockUserInfo } from "./user";
 
 export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
@@ -11,7 +10,7 @@ export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   alert_first_only: false,
   skip_if_empty: false,
 
-  card: createMockCard(),
+  card: createMockAlertCard(),
   parameters: [],
   channels: [],
 
@@ -32,3 +31,12 @@ export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
 
   ...opts,
 });
+
+export function createMockAlertCard(opts?: Partial<AlertCard>): AlertCard {
+  return {
+    id: 1,
+    include_csv: false,
+    include_xls: false,
+    ...opts,
+  };
+}

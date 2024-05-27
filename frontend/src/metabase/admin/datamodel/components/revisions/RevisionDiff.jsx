@@ -36,14 +36,7 @@ export default class RevisionDiff extends Component {
         className={cx(CS.bordered, CS.rounded, CS.my2)}
         style={{ borderWidth: 2, overflow: "hidden", maxWidth: 860 }}
       >
-        <div
-          className={cx(
-            CS.flex,
-            CS.alignCenter,
-            CS.scrollX,
-            "scroll-show scroll-show-horizontal",
-          )}
-        >
+        <div className={cx(CS.flex, CS.alignCenter, CS.scrollX, CS.scrollShow)}>
           <div className={CS.m3} style={{ lineHeight: 0 }}>
             {icon}
           </div>

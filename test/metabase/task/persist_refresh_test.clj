@@ -124,18 +124,20 @@
                                {:state :success})
                              (unpersist! [_ _database _persisted-info]))
             original-update! t2/update!]
-        (testing "If saving the `persisted` (or `error`) state fails..."
-          (with-redefs [t2/update! (fn [model id update]
-                                     (when (= "persisted" (:state update))
-                                       (throw (ex-info "simulated error" {})))
-                                     (original-update! model id update))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
-                                  (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher))))
-          (testing "the PersistedInfo is left in the `refreshing` state"
-            (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))
-          (testing "but a subsequent refresh run will refresh the table"
-            (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
-            (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info))))))))))
+        ;; ensure no EE features
+        (mt/with-premium-features #{}
+          (testing "If saving the `persisted` (or `error`) state fails..."
+            (with-redefs [t2/update! (fn [model id update]
+                                       (when (= "persisted" (:state update))
+                                         (throw (ex-info "simulated error" {})))
+                                       (original-update! model id update))]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
+                                    (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher))))
+            (testing "the PersistedInfo is left in the `refreshing` state"
+              (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))
+            (testing "but a subsequent refresh run will refresh the table"
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))))))))
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
@@ -223,3 +225,33 @@
                         (t2/select-one TaskHistory
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
+(deftest save-task-history-test
+  (mt/with-model-cleanup [TaskHistory]
+    (testing "if tasks succeed, task_details should be saved and status is sucecss"
+      (let [task-name (mt/random-name)]
+        (#'task.persist-refresh/save-task-history! task-name (mt/id)
+                                                   (fn []
+                                                     {:foo "bar"}))
+        (is (=? {:task         task-name
+                 :task_details {:foo "bar"}
+                 :status       :success}
+                (t2/select-one :model/TaskHistory :task task-name)))))
+
+    (testing "if the task fails, task history should have status is faield"
+      (let [task-name (mt/random-name)]
+        (#'task.persist-refresh/save-task-history! task-name (mt/id)
+                                                   (fn []
+                                                     {:error-details ["some-error"]}))
+        (is (=? {:task         task-name
+                 :task_details {:error-details ["some-error"]}
+                 :status       :failed}
+                (t2/select-one :model/TaskHistory :task task-name)))))
+
+    (testing "send an email if persist-refresh fails"
+      (let [email-sent (atom false)]
+       (with-redefs [task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
+                                                                                 (reset! email-sent true))]
+         (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
+                                                    (fn []
+                                                      {:error-details ["some-error"]}))
+         (is (true? @email-sent)))))))

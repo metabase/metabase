@@ -61,7 +61,7 @@ export const ActionParameterMappingForm = ({
   }, [action]);
 
   const handleParameterChange = useCallback(
-    (dashboardParameterId, target) => {
+    (dashboardParameterId: any, target: ParameterTarget) => {
       dispatch(
         setParameterMapping(
           dashboardParameterId,

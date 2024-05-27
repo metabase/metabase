@@ -17,6 +17,7 @@ import {
   isMetric,
   isSegment,
   isCase,
+  isOffset,
   formatMetricName,
   formatSegmentName,
   formatLegacyDimensionName,
@@ -58,6 +59,8 @@ export function format(mbql: any, options: Options): string {
     return formatStringLiteral(mbql, options);
   } else if (isOperator(mbql)) {
     return formatOperator(mbql, options);
+  } else if (isOffset(mbql)) {
+    return formatOffset(mbql, options);
   } else if (isFunction(mbql)) {
     return formatFunction(mbql, options);
   } else if (isDimension(mbql)) {
@@ -123,45 +126,25 @@ function formatLegacyDimension(
 }
 
 function formatMetric([, metricId]: FieldReference, options: Options) {
-  const { legacyQuery, query, stageIndex } = options;
+  const { query, stageIndex } = options;
 
   if (!query) {
-    // fallback to legacyQuery
-    if (legacyQuery) {
-      // StructuredQuery -> formatExpression
-      return formatLegacyMetric(metricId, options);
-    }
-
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableMetrics(query).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
     const [_, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
 
     return availableMetricId === metricId;
   });
 
   if (!metric) {
-    throw "metric with ID does not exist: " + metricId;
+    throw new Error(`metric with ID: ${metricId} does not exist`);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
 
   return formatMetricName(displayInfo.displayName, options);
-}
-
-function formatLegacyMetric(
-  metricId: number | string,
-  options: { legacyQuery: StructuredQuery },
-) {
-  const { legacyQuery } = options;
-  const metric = _.findWhere(checkNotNull(legacyQuery.table()).metrics ?? [], {
-    id: metricId,
-  });
-  if (!metric) {
-    throw "metric with ID does not exist: " + metricId;
-  }
-  return formatMetricName(metric.name, options);
 }
 
 function formatSegment([, segmentId]: FieldReference, options: Options) {
@@ -184,7 +167,7 @@ function formatSegment([, segmentId]: FieldReference, options: Options) {
   });
 
   if (!segment) {
-    throw "segment with ID does not exist: " + segmentId;
+    throw new Error("segment with ID does not exist: " + segmentId);
   }
 
   const displayInfo = Lib.displayInfo(query, stageIndex, segment);
@@ -202,7 +185,7 @@ function formatLegacySegment(
     { id: Number(segmentId) },
   );
   if (!segment) {
-    throw "segment with ID does not exist: " + segmentId;
+    throw new Error("segment with ID does not exist: " + segmentId);
   }
   return formatSegmentName(segment.name, options);
 }
@@ -288,6 +271,13 @@ function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }
 
+function formatOffset([_tag, _opts, expr, n]: any[], options: Options) {
+  const formattedName = getExpressionName("offset");
+  const formattedExpr = format(expr, options);
+
+  return `${formattedName}(${formattedExpr}, ${n})`;
+}
+
 const NEGATIVE_FILTERS: Record<string, string> = {
   "does-not-contain": "contains",
   "not-empty": "is-empty",
@@ -295,6 +285,10 @@ const NEGATIVE_FILTERS: Record<string, string> = {
 };
 
 function isNegativeFilter(expr: Filter) {
+  if (!Array.isArray(expr)) {
+    return false;
+  }
+
   const [fn, ...args] = expr;
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }

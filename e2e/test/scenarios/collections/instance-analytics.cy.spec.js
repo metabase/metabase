@@ -136,7 +136,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       cy.findByTestId("collection-menu").within(() => {
         cy.icon("ellipsis").click();
-        cy.contains("Archive").should("not.exist");
+        cy.contains("Move to trash").should("not.exist");
         cy.contains("Move").should("not.exist");
       });
 
@@ -153,7 +153,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       popover().within(() => {
         cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move to trash").should("not.exist");
         cy.findByText("Move").should("not.exist");
       });
 
@@ -177,7 +177,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       popover().within(() => {
         cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move to trash").should("not.exist");
         cy.findByText("Move").should("not.exist");
       });
     });

@@ -22,8 +22,19 @@ export const Content = styled.div<{ isClickable: boolean }>`
   cursor: ${props => (props.isClickable ? "pointer" : "default")};
   min-width: 0;
 
-  .List-item-content {
+  [data-element-id="list-item"]-content {
     min-width: 0;
     flex-shrink: 1;
   }
+`;
+
+export const IconWrapper = styled.span`
+  margin-left: auto;
+  font-size: 0.875rem;
+`;
+
+export const EmptyStateContainer = styled.div`
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
 `;

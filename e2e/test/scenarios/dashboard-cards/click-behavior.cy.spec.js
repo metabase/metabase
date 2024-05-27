@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
@@ -14,6 +15,7 @@ import {
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
+  cartesianChartCircle,
   modal,
   openStaticEmbeddingModal,
   popover,
@@ -24,6 +26,8 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
+  entityPickerModal,
+  filterWidget,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -961,6 +965,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
 
+      cy.log("reset filter state");
+
+      filterWidget().icon("close").click();
+
       testChangingBackToDefaultBehavior();
     });
 
@@ -1309,6 +1317,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT);
+
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -2074,7 +2083,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test that normal values still work properly
     getDashboardCard().within(() => {
-      cy.get(".bar").eq(2).click();
+      chartPathWithFillColor("#88BF4D").eq(2).click();
     });
     cy.get("@targetDashboardId").then(targetDashboardId => {
       cy.location().should(({ pathname, search }) => {
@@ -2087,7 +2096,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // test that null and "empty"s do not get passed through
     getDashboardCard().within(() => {
-      cy.get(".bar").eq(1).click();
+      chartPathWithFillColor("#88BF4D").eq(1).click();
     });
     cy.get("@targetDashboardId").then(targetDashboardId => {
       cy.location().should(({ pathname, search }) => {
@@ -2125,8 +2134,7 @@ const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
 
 const clickLineChartPoint = () => {
-  cy.findByTestId("dashcard")
-    .get("circle.dot")
+  cartesianChartCircle()
     .eq(POINT_INDEX)
     /**
      * calling .click() here will result in clicking both
@@ -2147,7 +2155,10 @@ const clickLineChartPoint = () => {
 const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
-  modal().findByText(TARGET_DASHBOARD.name).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Dashboards/ })
+    .click();
+  entityPickerModal().findByText(TARGET_DASHBOARD.name).click();
 };
 
 const addUrlDestination = () => {
@@ -2158,7 +2169,10 @@ const addUrlDestination = () => {
 const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
-  modal().findByText(TARGET_QUESTION.name).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Questions/ })
+    .click();
+  entityPickerModal().findByText(TARGET_QUESTION.name).click();
 };
 
 const addSavedQuestionCreatedAtParameter = () => {

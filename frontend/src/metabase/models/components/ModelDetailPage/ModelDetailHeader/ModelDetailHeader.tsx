@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Modal from "metabase/components/Modal";
-import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
+import { MoveModal } from "metabase/containers/MoveModal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
 import type Question from "metabase-lib/v1/Question";
-import type { Collection } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   ModelHeader,
@@ -22,7 +22,7 @@ interface Props {
   model: Question;
   hasEditDefinitionLink: boolean;
   onChangeName: (name?: string) => void;
-  onChangeCollection: (collection: Collection) => void;
+  onChangeCollection: ({ id }: { id: CollectionId }) => void;
 }
 
 type HeaderModal = "move" | "archive";
@@ -49,8 +49,8 @@ function ModelDetailHeader({
         action: () => setModal("move"),
       },
       {
-        title: t`Archive`,
-        icon: "archive",
+        title: t`Move to trash`,
+        icon: "trash",
         action: () => setModal("archive"),
       },
     ];
@@ -59,7 +59,7 @@ function ModelDetailHeader({
   const handleCloseModal = useCallback(() => setModal(null), []);
 
   const handleCollectionChange = useCallback(
-    (collection: Collection) => {
+    (collection: { id: CollectionId }) => {
       onChangeCollection(collection);
       handleCloseModal();
     },
@@ -69,7 +69,7 @@ function ModelDetailHeader({
   const renderModal = useCallback(() => {
     if (modal === "move") {
       return (
-        <CollectionMoveModal
+        <MoveModal
           title={t`Which collection should this be in?`}
           initialCollectionId={model.collectionId() || "root"}
           onMove={handleCollectionChange}

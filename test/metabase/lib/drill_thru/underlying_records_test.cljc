@@ -22,7 +22,7 @@
   (testing "underlying-records is available for non-header clicks with at least one breakout"
     (canned/canned-test
       :drill-thru/underlying-records
-      (fn [_test-case context {:keys [click]}]
+      (fn [test-case context {:keys [click column-kind]}]
         ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
         ;; never occurs in actual pivot tables!
         ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
@@ -33,7 +33,9 @@
         ;; code that should be setting the aggregation :value for cell clicks?
         ;; Tech debt issue: #39380
         (and (#{:cell #_:pivot :legend} click)
-             (seq (:dimensions context)))))))
+             (not (:native? test-case))
+             (or (seq (:dimensions context))
+                 (= column-kind :aggregation)))))))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -171,30 +173,22 @@
 
 (deftest ^:parallel underlying-records-apply-test-3
   (testing "metric over time"
-    (let [metric   {:description "Orders with a subtotal of $100 or more."
-                    :archived false
-                    :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/metric
-                    :definition
-                    {"source-table" (meta/id :orders)
-                     "aggregation" [["count"]]
-                     "filter" [">=" ["field" (meta/id :orders :subtotal) nil] 100]}
-                    :table-id (meta/id :orders)
-                    :name "Large orders"
-                    :caveats nil
-                    :entity-id "NWMNcv_yhhZIT7winoIdi"
-                    :how-is-this-calculated nil
-                    :show-in-getting-started false
-                    :id 1
-                    :database (meta/id)
-                    :points-of-interest nil
-                    :creator-id 1
-                    :created-at "2023-10-04T20:11:34.029582"}
+    (let [metric-id 101
+          metric-card {:description "Orders with a subtotal of $100 or more."
+                       :lib/type :metadata/card
+                       :type :metric
+                       :dataset-query {:type     :query
+                                       :database (meta/id)
+                                       :query    {:source-table (meta/id :orders)
+                                                  :aggregation  [[:count]]
+                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
+                       :database-id (meta/id)
+                       :name "Large orders"
+                       :id metric-id}
           provider (lib/composed-metadata-provider
                     meta/metadata-provider
-                    (providers.mock/mock-metadata-provider {:metrics [metric]}))]
-      (underlying-state (-> (lib/query provider (meta/table-metadata :orders))
-                            (lib/aggregate metric)
+                    (providers.mock/mock-metadata-provider {:cards [metric-card]}))]
+      (underlying-state (-> (lib/query provider (lib.metadata/card provider metric-id))
                             (lib/breakout (lib/with-temporal-bucket
                                             (meta/field-metadata :orders :created-at)
                                             :month)))
@@ -203,12 +197,8 @@
                         [last-month]
                         (fn [_agg-dim [breakout-dim]]
                           (let [monthly-breakout (-> (:column-ref breakout-dim)
-                                                     (lib.options/with-options {:temporal-unit :month}))
-                                subtotal         (-> (meta/field-metadata :orders :subtotal)
-                                                     lib/ref
-                                                     (lib.options/with-options {}))]
-                            [[:=  {} monthly-breakout last-month]
-                             [:>= {} subtotal 100]]))))))
+                                                     (lib.options/with-options {:temporal-unit :month}))]
+                            [[:=  {} monthly-breakout last-month]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

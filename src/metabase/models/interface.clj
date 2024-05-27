@@ -43,7 +43,6 @@
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  InstanceOf
   instance-of?
   model
   instance])
@@ -169,15 +168,13 @@
 (defn- deserialize-mlv2-query
   "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
   [query]
-  (let [{database-id :database, :as normalized} (lib/normalize query)
-        metadata-provider                       (if (lib.metadata.protocols/metadata-provider? (:lib/metadata normalized))
-                                                  ;; in case someone passes in an already-normalized query
-                                                  ;; to [[maybe-normalize-query]] below, preserve the existing metadata
-                                                  ;; provider.
-                                                  (:lib/metadata normalized)
-                                                  ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
-                                                   (u/the-id database-id)))]
-    (lib/query metadata-provider normalized)))
+  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
+                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
+                            ;; preserve the existing metadata provider.
+                            (:lib/metadata query)
+                            ((requiring-resolve 'metabase.lib.metadata.jvm/application-database-metadata-provider)
+                             (u/the-id (some #(get query %) [:database "database"]))))]
+    (lib/query metadata-provider query)))
 
 (mu/defn maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
@@ -208,8 +205,7 @@
     (try
       (doall (f query))
       (catch Throwable e
-        (log/error e (tru "Unable to normalize:") "\n"
-                   (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
         nil))))
 
 (defn normalize-parameters-list
@@ -342,22 +338,20 @@
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
-    (fn [s]
-      (when (validator s)
-        s))))
+    (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."
   {:in  validate-cron-string
    :out identity})
 
-(def ^:private MetricSegmentDefinition
+(def ^:private LegacyMetricSegmentDefinition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
+   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
-(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (let [explainer (mr/explainer MetricSegmentDefinition)]
+(def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
+  (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
     (fn [definition]
       (if-let [error (explainer definition)]
         (let [humanized (me/humanize error)]
@@ -367,16 +361,16 @@
         definition))))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
-(defn- normalize-metric-segment-definition [definition]
+(defn- normalize-legacy-metric-segment-definition [definition]
   (when (seq definition)
     (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
-      (validate-metric-segment-definition <>))))
+      (validate-legacy-metric-segment-definition <>))))
 
 
-(def transform-metric-segment-definition
+(def transform-legacy-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
-  {:in  (comp json-in normalize-metric-segment-definition)
-   :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization)})
+  {:in  (comp json-in normalize-legacy-metric-segment-definition)
+   :out (comp (catch-normalization-exceptions normalize-legacy-metric-segment-definition) json-out-with-keywordization)})
 
 (defn- blob->bytes [^Blob b]
   (.getBytes ^Blob b 0 (.length ^Blob b)))
@@ -472,10 +466,11 @@
       add-entity-id))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 
 ;; --- helper fns
-(defn pre-update-changes
-  "Returns the changes used for pre-update hooks.
+(defn changes-with-pk
+  "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
@@ -496,14 +491,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  t2.u/dispatch-on-first-arg)
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
-  something like
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
+  be something like
 
     #{\"/db/1/schema/public/table/20/\"}
 
@@ -726,3 +721,45 @@
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]
         (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))
+
+(defmulti exclude-internal-content-hsql
+  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
+   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
+   or keyword) is provided any columns will have a table alias in the returned expression."
+  {:arglists '([model & {:keys [table-alias]}])}
+  dispatch-on-model)
+
+(defmethod exclude-internal-content-hsql :default
+  [_model & _]
+  [:= [:inline 1] [:inline 1]])
+
+(defmulti parent-collection-id-for-perms
+  "What is the ID of the parent collection that should determine the perms objects set for this object?"
+  {:arglists '([instance])}
+  dispatch-on-model)
+
+(defmethod parent-collection-id-for-perms ::has-trashed-from-collection-id
+  [instance]
+  (cond
+    (not (:archived instance)) (:collection_id instance)
+    (contains? instance :trashed_from_collection_id) (:trashed_from_collection_id instance)
+    ;; If we're supposed to get permissions from the `trashed_from_collection_id` but it isn't present, we can't check
+    ;; permissions correctly.
+    :else (throw (ex-info "Missing trashed_from_collection_id" {:instance instance}))))
+
+(defmethod parent-collection-id-for-perms :default
+  [instance]
+  (:collection_id instance))
+
+(defmulti parent-collection-id-column-for-perms
+  "What column should we use to determine the perms for this model?"
+  {:arglists '([model])}
+  identity)
+
+(defmethod parent-collection-id-column-for-perms :default
+  [_model]
+  :collection_id)
+
+(defmethod parent-collection-id-column-for-perms ::has-trashed-from-collection-id
+  [_model]
+  [:coalesce :trashed_from_collection_id :collection_id])

@@ -102,6 +102,24 @@ export const many_data_types = async dbClient => {
   return null;
 };
 
+export const uuid_pk_table = async dbClient => {
+  const tableName = "uuid_pk_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+
+  await dbClient.schema.createTable(tableName, table => {
+    table.uuid("id").primary();
+    table.string("name");
+  });
+
+  await dbClient(tableName).insert([
+    { id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", name: "Duck" },
+    { id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12", name: "Rabbit" },
+  ]);
+
+  return null;
+};
+
 export const composite_pk_table = async dbClient => {
   const tableName = "composite_pk_table";
 

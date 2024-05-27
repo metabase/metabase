@@ -14,7 +14,7 @@ describe("SnippetSidebar (OSS)", () => {
   });
 
   it("should display the `New snippet` but not the `New folder` option", async () => {
-    userEvent.click(getIcon("add"));
+    await userEvent.click(getIcon("add"));
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
     expect(screen.queryByText("New folder")).not.toBeInTheDocument();

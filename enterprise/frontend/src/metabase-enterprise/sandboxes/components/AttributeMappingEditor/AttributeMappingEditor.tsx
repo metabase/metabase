@@ -35,19 +35,13 @@ const AttributeMappingEditor = ({
     keyPlaceholder={t`Pick a user attribute`}
     keyHeader={
       <div
-        className={cx(
-          CS.textUppercase,
-          "text-small",
-          "text-grey-4",
-          CS.flex,
-          CS.alignCenter,
-        )}
+        className={cx(CS.textUppercase, CS.textSmall, CS.flex, CS.alignCenter)}
       >
         {t`User attribute`}
         <Tooltip
           tooltip={t`We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the "…" menu in the People section of the Admin Panel.`}
         >
-          <Icon className="ml1" name="info_outline" />
+          <Icon className={CS.ml1} name="info_outline" />
         </Tooltip>
       </div>
     }
@@ -62,7 +56,7 @@ const AttributeMappingEditor = ({
       shouldUseSavedQuestion ? t`Pick a parameter` : t`Pick a column`
     }
     valueHeader={
-      <div className="text-uppercase text-small text-grey-4">
+      <div className={cx(CS.textUppercase, CS.textSmall)}>
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
@@ -87,7 +81,7 @@ const AttributeMappingEditor = ({
         </div>
       ) : null
     }
-    divider={<span className="px2 text-bold">{t`equals`}</span>}
+    divider={<span className={cx(CS.px2, CS.textBold)}>{t`equals`}</span>}
     addText={t`Add a filter`}
     canAdd={attributesOptions.length > 0}
     canDelete={true}

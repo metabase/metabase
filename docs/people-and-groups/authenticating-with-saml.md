@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-The open source edition of Metabase includes the option to set up with [Google Sign-in or LDAP](./google-and-ldap.md), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](./authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to set up with [Google Sign-in or LDAP](./google-and-ldap.md), but [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](./authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 - let your users access Metabase without re-authenticating.
@@ -53,9 +53,9 @@ However, the names of the fields in the Metabase SAML form won't always match th
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso/` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
 
-For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso/` as the redirect URL in your IdP's SAML form.
+For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso` as the redirect URL in your IdP's SAML form.
 
 Different IdPs use different names for the redirect URL. Here are some common examples:
 

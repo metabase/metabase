@@ -1,6 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, visitQuestion } from "e2e/support/helpers";
-import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
+import {
+  restore,
+  popover,
+  visitQuestion,
+  cartesianChartCircle,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -16,24 +20,24 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => createQuestion(id))
       .then(({ body: { id } }) => visitQuestion(id));
 
-    cy.get(".dot").eq(0).click({ force: true });
+    cartesianChartCircle().eq(0).click();
 
-    popover().findByText("See these Orders").click();
+    popover().findByText("See these Metrics").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Total is greater than 150").should("be.visible");
       cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
     });
+    // FIXME metrics v2 -- check that the values in column Total are above 150
   });
 });
 
 const createMetric = () => {
-  return apiCreateMetric({
+  return cy.createQuestion({
     name: "Metric",
     description: "Metric with a filter",
-    table_id: ORDERS_ID,
-    definition: {
+    type: "metric",
+    query: {
       "source-table": ORDERS_ID,
       filter: [">", ORDERS.TOTAL, 150],
       aggregation: [["count"]],
@@ -46,7 +50,7 @@ const createQuestion = metric_id => {
     name: "Question",
     display: "line",
     query: {
-      "source-table": ORDERS_ID,
+      "source-table": `card__${metric_id}`,
       breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
       aggregation: [["metric", metric_id]],
     },

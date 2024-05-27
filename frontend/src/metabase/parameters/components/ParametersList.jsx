@@ -34,7 +34,7 @@ function ParametersList({
   enableParameterRequiredBehavior,
 }) {
   const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 5 },
+    activationConstraint: { distance: 15 },
   });
 
   const visibleValuePopulatedParameters = useMemo(
@@ -66,7 +66,8 @@ function ParametersList({
       setEditingParameter={setEditingParameter}
       setValue={
         setParameterValue &&
-        (value => setParameterValue(valuePopulatedParameter.id, value))
+        (value =>
+          setParameterValue(valuePopulatedParameter.id, value, dashboard?.id))
       }
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}

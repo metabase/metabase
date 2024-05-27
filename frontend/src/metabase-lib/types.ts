@@ -1,10 +1,12 @@
 import type {
+  CardId,
   DatasetColumn,
   DatabaseId,
   FieldId,
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
 } from "metabase-types/api";
 
 import type {
@@ -18,6 +20,7 @@ import type {
   RELATIVE_DATE_BUCKETS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
+import type { ColumnExtractionTag } from "./extractions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -39,7 +42,9 @@ declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
 declare const MetricMetadata: unique symbol;
-export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
+export type MetricMetadata = unknown & {
+  _opaque: typeof MetricMetadata;
+};
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
@@ -127,6 +132,10 @@ export type TableDisplayInfo = {
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
+  isQuestion?: boolean;
+  isModel?: boolean;
+  isMetric?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -224,7 +233,7 @@ export type MetricDisplayInfo = {
   displayName: string;
   longDisplayName: string;
   description: string;
-  selected?: boolean;
+  aggregationPosition?: number;
 };
 
 export type ClauseDisplayInfo = Pick<
@@ -424,6 +433,7 @@ export type DrillThruType =
   | "drill-thru/automatic-insights"
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
+  | "drill-thru/combine-columns"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -441,21 +451,24 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
-export type ColumnExtraction = {
-  key: ColumnExtractionKey;
-  displayName: string;
+declare const ColumnExtraction: unique symbol;
+export type ColumnExtraction = unknown & {
+  _opaque: typeof ColumnExtraction;
 };
 
-declare const ColumnExtractionKey: unique symbol;
-export type ColumnExtractionKey = unknown & {
-  _opaque: typeof ColumnExtractionKey;
+export type ColumnExtractionInfo = {
+  tag: ColumnExtractionTag;
+  displayName: string;
 };
 
 export type ColumnExtractDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/column-extract"> & {
     displayName: string;
-    extractions: ColumnExtraction[];
+    extractions: ColumnExtractionInfo[];
   };
+
+export type CombineColumnsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/combine-columns">;
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -522,6 +535,7 @@ export type ZoomTimeseriesDrillThruInfo =
 
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
+  | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -561,7 +575,9 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
+  cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

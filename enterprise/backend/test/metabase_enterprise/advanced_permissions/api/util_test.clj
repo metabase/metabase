@@ -31,8 +31,8 @@
               ;; create new perms group
               (test.users/with-group-for-user [group test-user-name-or-user-id]
                 ;; grant full data access to the group
-                (data-perms/set-database-permission! group (data/id) :perms/data-access :unrestricted)
-                (data-perms/set-database-permission! group (data/id) :perms/native-query-editing :yes)
+                (data-perms/set-database-permission! group (data/id) :perms/view-data :unrestricted)
+                (data-perms/set-database-permission! group (data/id) :perms/create-queries :query-builder-and-native)
                 (let [{:keys [impersonations attributes]} args]
                   ;; set user login_attributes
                   (met/with-user-attributes test-user-name-or-user-id attributes

@@ -1,5 +1,4 @@
 import { css } from "@emotion/react";
-import html2canvas from "html2canvas";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
@@ -22,6 +21,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
 
   node.classList.add(SAVING_DOM_IMAGE_CLASS);
 
+  const { default: html2canvas } = await import("html2canvas");
   const canvas = await html2canvas(node, {
     useCORS: true,
   });

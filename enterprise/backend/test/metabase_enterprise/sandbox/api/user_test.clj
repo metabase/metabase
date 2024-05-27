@@ -3,8 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -15,31 +13,40 @@
 
 ;; Non-segmented users are allowed to ask for a list of all of the users in the Metabase instance. Pulse email lists
 ;; are an example usage of this. Segmented users should not have that ability. Instead they should only see
-;; themselves. This test checks that GET /api/user for a segmented user only returns themselves
+;; themselves. This test checks that GET /api/user/recipients for a segmented user only returns themselves, including
+;; for Permissions Group Managers.
 (deftest segmented-user-list-test
-  (testing "GET /api/user for a segmented user should not return data."
-    (met/with-gtaps! {:gtaps {:venues {}}}
-      ;; Now do the request
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "user")))
-      (testing "Should return themselves when the user is a segmented group manager"
-        (mt/with-premium-features #{:advanced-permissions}
-          (mt/with-group [group {:name "a group"}]
-            (let [membership (t2/select-one PermissionsGroupMembership
-                                            :group_id (u/the-id group)
+  (testing "GET /api/user/recipients"
+    (testing "sanity check: normally returns more than just me"
+      (is (seq (disj (->> (mt/user-http-request :rasta :get 200 "user/recipients")
+                          :data
+                          (map :email)
+                          set)
+                     "rasta@metabase.com"))))
+    (testing "a sandboxed user will see only themselves"
+      (met/with-gtaps! {:gtaps {:venues {}}}
+        (is (= ["rasta@metabase.com"]
+               (->> (mt/user-http-request :rasta :get 200 "user/recipients")
+                    :data
+                    (map :email))))
+        (testing "... even if they are a group manager"
+          (mt/with-premium-features #{:advanced-permissions :sandboxes}
+            (let [membership (t2/select-one :model/PermissionsGroupMembership
+                                            :group_id (u/the-id &group)
                                             :user_id (mt/user->id :rasta))]
-              (t2/update! PermissionsGroupMembership :id (:id membership)
+              (t2/update! :model/PermissionsGroupMembership :id (:id membership)
                           {:is_group_manager true}))
-            (let [result (mt/user-http-request :rasta :get 200 "user")]
+            (let [result (mt/user-http-request :rasta :get 200 "user/recipients")]
               (is (= ["rasta@metabase.com"]
                      (map :email (:data result))))
               (is (= 1 (count (:data result))))
               (is (= 1 (:total result))))))))))
 
 (deftest get-user-attributes-test
-  (testing "requires sandbox enabled"
-    (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-           (mt/user-http-request :crowberto :get 402 "mt/user/attributes"))))
+  (mt/with-premium-features #{}
+    (testing "requires sandbox enabled"
+      (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+             (mt/user-http-request :crowberto :get 402 "mt/user/attributes")))))
 
   (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"
@@ -56,9 +63,10 @@
 
 
 (deftest update-user-attributes-test
-  (testing "requires sandbox enabled"
-    (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-           (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
+  (mt/with-premium-features #{}
+    (testing "requires sandbox enabled"
+      (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+             (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {})))))
 
   (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"

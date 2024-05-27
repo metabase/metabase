@@ -112,7 +112,7 @@
   "Implementation of `with-perm-for-group`. Sets the data permission for the test dataset to the given value
   for the given permission group for the duration of the test."
   [group-or-id perm-type value thunk]
-  (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+  (with-restored-data-perms-for-group! (u/the-id group-or-id)
    (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
    (thunk)))
 
@@ -120,7 +120,7 @@
   "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given
   value for the given permission group for the duration of the test."
   [group-or-id table-or-id perm-type value thunk]
-  (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
+  (with-restored-data-perms-for-group! (u/the-id group-or-id)
     (data-perms/set-table-permission! group-or-id table-or-id perm-type value)
     (thunk)))
 

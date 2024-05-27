@@ -14,7 +14,7 @@
    [metabase.models.field :as field]
    [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -76,5 +76,5 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
-        (fingerprint/refingerprint-field field))
+        (sync.fingerprint/refingerprint-field field))
       :sync/no-connection)))

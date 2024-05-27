@@ -1,4 +1,8 @@
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  entityPickerModal,
+  modal,
+  popover,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 export function setDropdownFilterType() {
   cy.findByText("Dropdown list").click();
@@ -16,10 +20,8 @@ export function setFilterQuestionSource({ question, field }) {
     cy.findByText("Pick a model or question…").click();
   });
 
-  modal().within(() => {
-    cy.findByPlaceholderText(/Search for a question/).type(question);
+  entityPickerModal().within(() => {
     cy.findByText(question).click();
-    cy.button("Done").click();
   });
 
   modal().within(() => {

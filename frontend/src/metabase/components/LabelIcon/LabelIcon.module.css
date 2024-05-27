@@ -6,6 +6,6 @@
 }
 
 .icon {
-  composes: transition-color from "style";
+  composes: transitionColor from "style";
   color: currentColor;
 }

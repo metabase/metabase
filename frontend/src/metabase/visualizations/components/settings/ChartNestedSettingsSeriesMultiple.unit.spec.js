@@ -64,7 +64,7 @@ describe("ChartNestedSettingSeries", () => {
     expect(screen.getByRole("img", { name: /bar/i })).toBeInTheDocument();
   });
 
-  it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", () => {
+  it("should show and open 'More options' on visualizations with multiple lines (metabase#17619)", async () => {
     setup("line", 3);
     //Check that all series are present
     expect(screen.getByDisplayValue("Test 0")).toBeInTheDocument();
@@ -75,7 +75,7 @@ describe("ChartNestedSettingSeries", () => {
     const expandButtons = screen.getAllByRole("img", { name: /chevrondown/i });
     expect(expandButtons).toHaveLength(3);
 
-    expect(screen.queryByText("Line style")).not.toBeInTheDocument();
+    expect(screen.queryByText("Line shape")).not.toBeInTheDocument();
     expect(screen.queryByText("Show dots on lines")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Replace missing values with"),
@@ -86,16 +86,16 @@ describe("ChartNestedSettingSeries", () => {
     ).not.toBeInTheDocument();
 
     //Expand a section
-    userEvent.click(expandButtons[0]);
+    await userEvent.click(expandButtons[0]);
     expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
-    expect(screen.getByText("Line style")).toBeInTheDocument();
+    expect(screen.getByText("Line shape")).toBeInTheDocument();
     expect(screen.getByText("Show dots on lines")).toBeInTheDocument();
     expect(screen.getByText("Replace missing values with")).toBeInTheDocument();
     expect(screen.getByText("Y-axis position")).toBeInTheDocument();
     expect(screen.getByText("Show values for this series")).toBeInTheDocument();
 
     //Expand another section, should only be 1 open section
-    userEvent.click(expandButtons[1]);
+    await userEvent.click(expandButtons[1]);
     expect(screen.getByRole("img", { name: /chevronup/i })).toBeInTheDocument();
   });
 

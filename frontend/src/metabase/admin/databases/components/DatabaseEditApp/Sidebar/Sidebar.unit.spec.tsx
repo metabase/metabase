@@ -22,7 +22,7 @@ import Sidebar from "./Sidebar";
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 function getModal() {
-  return document.querySelector(".Modal") as HTMLElement;
+  return document.querySelector("[data-testid=modal]") as HTMLElement;
 }
 
 interface SetupOpts {
@@ -53,7 +53,6 @@ function setup({
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
   const updateDatabase = jest.fn().mockResolvedValue({});
-  const syncDatabaseSchema = jest.fn().mockResolvedValue({});
   const dismissSyncSpinner = jest.fn().mockResolvedValue({});
   const deleteDatabase = jest.fn().mockResolvedValue({});
 
@@ -63,7 +62,6 @@ function setup({
       isAdmin={isAdmin}
       isModelPersistenceEnabled={isModelPersistenceEnabled}
       updateDatabase={updateDatabase}
-      syncDatabaseSchema={syncDatabaseSchema}
       dismissSyncSpinner={dismissSyncSpinner}
       deleteDatabase={deleteDatabase}
     />,
@@ -74,22 +72,25 @@ function setup({
     ...utils,
     database,
     updateDatabase,
-    syncDatabaseSchema,
     dismissSyncSpinner,
     deleteDatabase,
   };
 }
 
 describe("DatabaseEditApp/Sidebar", () => {
-  it("syncs database schema", () => {
-    const { database, syncDatabaseSchema } = setup();
-    userEvent.click(screen.getByText(/Sync database schema now/i));
-    expect(syncDatabaseSchema).toHaveBeenCalledWith(database.id);
+  it("syncs database schema", async () => {
+    const { database } = setup();
+    await userEvent.click(screen.getByText(/Sync database schema now/i));
+    await waitFor(() => {
+      expect(
+        fetchMock.called(`path:/api/database/${database.id}/sync_schema`),
+      ).toBe(true);
+    });
   });
 
   it("re-scans database field values", async () => {
     const { database } = setup();
-    userEvent.click(screen.getByText(/Re-scan field values now/i));
+    await userEvent.click(screen.getByText(/Re-scan field values now/i));
     await waitFor(() => {
       expect(
         fetchMock.called(`path:/api/database/${database.id}/rescan_values`),
@@ -119,11 +120,13 @@ describe("DatabaseEditApp/Sidebar", () => {
         ).toBeInTheDocument();
       });
 
-      it(`can be dismissed for a database with "${initial_sync_status}" sync status (#20863)`, () => {
+      it(`can be dismissed for a database with "${initial_sync_status}" sync status (#20863)`, async () => {
         const database = createMockDatabase({ initial_sync_status });
         const { dismissSyncSpinner } = setup({ database });
 
-        userEvent.click(screen.getByText(/Dismiss sync spinner manually/i));
+        await userEvent.click(
+          screen.getByText(/Dismiss sync spinner manually/i),
+        );
 
         expect(dismissSyncSpinner).toHaveBeenCalledWith(database.id);
       });
@@ -134,8 +137,10 @@ describe("DatabaseEditApp/Sidebar", () => {
     it("discards field values", async () => {
       const { database } = setup();
 
-      userEvent.click(screen.getByText(/Discard saved field values/i));
-      userEvent.click(within(getModal()).getByRole("button", { name: "Yes" }));
+      await userEvent.click(screen.getByText(/Discard saved field values/i));
+      await userEvent.click(
+        within(getModal()).getByRole("button", { name: "Yes" }),
+      );
 
       await waitFor(() => {
         expect(
@@ -147,8 +152,8 @@ describe("DatabaseEditApp/Sidebar", () => {
     it("allows to cancel confirmation modal", async () => {
       const { database } = setup();
 
-      userEvent.click(screen.getByText(/Discard saved field values/i));
-      userEvent.click(
+      await userEvent.click(screen.getByText(/Discard saved field values/i));
+      await userEvent.click(
         within(getModal()).getByRole("button", { name: "Cancel" }),
       );
 
@@ -209,10 +214,10 @@ describe("DatabaseEditApp/Sidebar", () => {
       expect(screen.queryByText(/Model actions/i)).not.toBeInTheDocument();
     });
 
-    it("enables actions", () => {
+    it("enables actions", async () => {
       const { database, updateDatabase } = setup();
 
-      userEvent.click(screen.getByLabelText(/Model actions/i));
+      await userEvent.click(screen.getByLabelText(/Model actions/i));
 
       expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
@@ -220,13 +225,13 @@ describe("DatabaseEditApp/Sidebar", () => {
       });
     });
 
-    it("disables actions", () => {
+    it("disables actions", async () => {
       const database = createMockDatabase({
         settings: { "database-enable-actions": true },
       });
       const { updateDatabase } = setup({ database });
 
-      userEvent.click(screen.getByLabelText(/Model actions/i));
+      await userEvent.click(screen.getByLabelText(/Model actions/i));
 
       expect(updateDatabase).toHaveBeenCalledWith({
         id: database.id,
@@ -295,12 +300,17 @@ describe("DatabaseEditApp/Sidebar", () => {
 
     it("removes database", async () => {
       const { database, deleteDatabase } = setup({ isAdmin: true });
-      userEvent.click(screen.getByText(/Remove this database/i));
+      await userEvent.click(screen.getByText(/Remove this database/i));
       const modal = getModal();
 
       // Fill in database name to confirm deletion
-      userEvent.type(await within(modal).findByRole("textbox"), database.name);
-      userEvent.click(within(modal).getByRole("button", { name: "Delete" }));
+      await userEvent.type(
+        await within(modal).findByRole("textbox"),
+        database.name,
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Delete" }),
+      );
       await waitFor(() => {
         expect(getModal()).not.toBeInTheDocument();
       });
@@ -311,11 +321,11 @@ describe("DatabaseEditApp/Sidebar", () => {
 
     it("allows to dismiss confirmation modal", async () => {
       const { database, deleteDatabase } = setup({ isAdmin: true });
-      userEvent.click(screen.getByText(/Remove this database/i));
+      await userEvent.click(screen.getByText(/Remove this database/i));
       const modal = getModal();
 
       within(modal).getByText(`Delete the ${database.name} database?`);
-      userEvent.click(
+      await userEvent.click(
         await within(modal).findByRole("button", { name: "Cancel" }),
       );
 

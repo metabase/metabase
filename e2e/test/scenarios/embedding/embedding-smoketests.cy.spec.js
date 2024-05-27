@@ -185,14 +185,14 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
-          cy.get(".cellData").contains("37.65");
+          cy.get("[data-testid=cell-data]").contains("37.65");
         });
 
         cy.findByRole("contentinfo").within(() => {
           cy.findByRole("link")
             .should("have.text", "Powered by Metabase")
             .and("have.attr", "href")
-            .and("eq", "https://metabase.com/");
+            .and("contain", "https://www.metabase.com/powered-by-metabase");
         });
 
         cy.log(

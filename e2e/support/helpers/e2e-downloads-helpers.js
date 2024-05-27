@@ -29,6 +29,7 @@ export function downloadAndAssert(
     downloadUrl,
     isEmbed,
     isDashboard,
+    enableFormatting = true,
   } = {},
   callback,
 ) {
@@ -76,6 +77,9 @@ export function downloadAndAssert(
     cy.findByTestId("download-button").click();
   }
   // Initiate the file download
+  if (!enableFormatting) {
+    cy.window().trigger("keydown", { key: "Alt" });
+  }
   popover().findByText(`.${fileType}`).click();
 
   cy.wait("@fileDownload")
@@ -110,15 +114,15 @@ export function assertSheetRowsCount(expectedCount) {
 
 function getEndpoint(fileType, questionId, publicUid, dashcardId, dashboardId) {
   if (dashcardId != null && dashboardId != null) {
-    return `api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${questionId}/query/${fileType}`;
+    return `api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${questionId}/query/${fileType}**`;
   }
 
   if (publicUid) {
     return `/public/question/${publicUid}.${fileType}**`;
   }
 
-  const questionEndpoint = `/api/card/${questionId}/query/${fileType}`;
-  const queryEndpoint = `/api/dataset/${fileType}`;
+  const questionEndpoint = `/api/card/${questionId}/query/${fileType}**`;
+  const queryEndpoint = `/api/dataset/${fileType}**`;
 
   return questionId ? questionEndpoint : queryEndpoint;
 }

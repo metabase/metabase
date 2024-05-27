@@ -89,7 +89,7 @@
 
     :drill-thru/column-extract
     (for [extraction (:extractions drill)]
-      [(:key extraction)])
+      [(:tag extraction)])
 
     [nil]))
 
@@ -211,7 +211,7 @@
                   :type         :drill-thru/column-extract
                   :query        orders-query
                   :stage-number -1
-                  :extractions  (partial mc/validate [:sequential [:map [:key keyword?]]])}]
+                  :extractions  (partial mc/validate [:sequential [:map [:tag keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -428,7 +428,7 @@
                                                                 {:name "≠"}]}
                                :underlying-records {:lib/type   :metabase.lib.drill-thru/drill-thru
                                                     :type       :drill-thru/underlying-records
-                                                    :row-count  457
+                                                    :row-count  pos-int?
                                                     :table-name "Orders"}
                                :zoom-in.timeseries {:lib/type     :metabase.lib.drill-thru/drill-thru
                                                     :display-name "See this month by week"
@@ -446,7 +446,7 @@
         (let [context (merge (basic-context count-column 123)
                              {:row row})]
           (testing (str "\ncontext =\n" (u/pprint-to-str context))
-            (is (=? (map expected-drills [:pivot :quick-filter])
+            (is (=? (map expected-drills [:pivot :underlying-records])
                     (lib/available-drill-thrus query -1 context)))
             (test-drill-applications query context)))
         (testing "with :dimensions"
@@ -480,12 +480,12 @@
                                :location [{:name "CITY"}
                                           {:name "STATE"}
                                           {:name "ZIP"}]}}
-                   {:lib/type :metabase.lib.drill-thru/drill-thru
-                    :type     :drill-thru/quick-filter
-                    :operators [{:name "<"}
-                                {:name ">"}
-                                {:name "="}
-                                {:name "≠"}]}]
+                   {:lib/type   :metabase.lib.drill-thru/drill-thru
+                    :type       :drill-thru/underlying-records
+                    :row-count  pos-int?
+                    :table-name "Orders"
+                    :dimensions nil
+                    :column-ref [:aggregation {} #_uuid string?]}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -715,7 +715,7 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
                   {:type        :drill-thru/column-extract
                    :extractions (partial mc/validate [:sequential [:map
-                                                                   [:key          keyword?]
+                                                                   [:tag          keyword?]
                                                                    [:display-name string?]]])}]}))
 
 (deftest ^:parallel available-drill-thrus-test-9

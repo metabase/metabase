@@ -2,11 +2,9 @@ import type React from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
-import { Box, Center, Flex, Icon, NavLink } from "metabase/ui";
+import { Box, Center, Icon, NavLink } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
 import { getIcon, isSelectedItem } from "../../utils";
@@ -22,10 +20,12 @@ interface ItemListProps<
   items?: Item[] | null;
   isLoading?: boolean;
   error?: unknown;
-  onClick: (val: Item) => void;
+  onClick: (item: Item) => void;
   selectedItem: Item | null;
   isFolder: (item: Item) => boolean;
   isCurrentLevel: boolean;
+  shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 }
 
 export const ItemList = <
@@ -40,53 +40,43 @@ export const ItemList = <
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
+  shouldShowItem,
 }: ItemListProps<Id, Model, Item>) => {
+  const filteredItems =
+    items && shouldShowItem ? items.filter(shouldShowItem) : items;
   const activeItemIndex = useMemo(() => {
-    if (!items) {
+    if (!filteredItems) {
       return -1;
     }
 
-    return items.findIndex(item => isSelectedItem(item, selectedItem));
-  }, [items, selectedItem]);
+    return filteredItems.findIndex(item => isSelectedItem(item, selectedItem));
+  }, [filteredItems, selectedItem]);
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
   }
 
-  if (isLoading && !items) {
+  if (isLoading && !filteredItems) {
     return (
       <Box miw={310} h="100%" aria-label={t`loading`}>
         <Center p="lg" h="100%">
-          <DelayedLoadingSpinner delay={200} />
+          <DelayedLoadingSpinner delay={300} />
         </Center>
       </Box>
     );
   }
 
-  if (items && !items.length) {
-    // empty array
-    return (
-      <Flex justify="center" align="center" direction="column" h="100%">
-        <EmptyState
-          illustrationElement={
-            <Box aria-label={t`empty`}>
-              <img src={NoResults} />
-            </Box>
-          }
-        />
-      </Flex>
-    );
-  }
-
-  if (!items) {
+  if (!filteredItems || !filteredItems.length) {
     return null;
   }
 
   return (
     <VirtualizedList Wrapper={PickerColumn} scrollTo={activeItemIndex}>
-      {items.map((item: Item) => (
+      {filteredItems.map((item: Item) => (
         <div key={`${item.model}-${item.id}`}>
           <NavLink
+            disabled={shouldDisableItem?.(item)}
             rightSection={
               isFolder(item) ? <Icon name="chevronright" size={10} /> : null
             }

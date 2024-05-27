@@ -16,10 +16,15 @@
   [group-id->sandboxes {:as _sandbox :keys [group_id table_id] {:keys [db_id]} :table}]
   (let [group-id->sandboxes (dissoc group-id->sandboxes group_id)]
     (not-any? (fn [[other-group-id other-group-sandboxes]]
-                (and (= :unrestricted (data-perms/table-permission-for-group other-group-id :perms/data-access db_id table_id))
-                     ;; this other group grants unrestricted access to the table. But we should check to make sure that it
-                     ;; doesn't *also* have a sandbox on our table too.
-                     (not-any? (fn [sandbox] (= (:table_id sandbox) table_id)) other-group-sandboxes)))
+                (and
+                 ;; If the user is in another group with data access to the table, and no sandbox defined for it, then
+                 ;; we assume this sandbox should not be enforced.
+                 (data-perms/group-has-permission-for-table? other-group-id
+                                                             :perms/view-data
+                                                             :unrestricted
+                                                             db_id
+                                                             table_id)
+                 (not-any? (fn [sandbox] (= (:table_id sandbox) table_id)) other-group-sandboxes)))
               group-id->sandboxes)))
 
 (defn enforced-sandboxes-for

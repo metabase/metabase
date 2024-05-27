@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useCollectionListQuery } from "metabase/common/hooks";
+import { useListCollectionsQuery } from "metabase/api";
 import type { Collection } from "metabase-types/api";
 
 import { ItemList } from "../../EntityPicker";
@@ -11,13 +11,15 @@ export const PersonalCollectionsItemList = ({
   selectedItem,
   isFolder,
   isCurrentLevel,
+  shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   const {
     data: collections,
     error,
     isLoading,
-  } = useCollectionListQuery({
-    query: { "personal-only": true },
+  } = useListCollectionsQuery({
+    "personal-only": true,
   });
 
   const topLevelPersonalCollections = useMemo(
@@ -34,6 +36,8 @@ export const PersonalCollectionsItemList = ({
       selectedItem={selectedItem}
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
+      shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
     />
   );
 };
@@ -46,6 +50,7 @@ const getSortedTopLevelPersonalCollections = (
     .map(
       (collection: Collection): CollectionPickerItem => ({
         ...collection,
+        here: ["collection"], // until this endpoint gives this to us, pretend they all have content
         model: "collection",
       }),
     )

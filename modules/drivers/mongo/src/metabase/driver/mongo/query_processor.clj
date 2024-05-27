@@ -18,6 +18,8 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -30,8 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -48,21 +49,21 @@
 (def ^:private $addFields
   :$addFields)
 
-(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ms/NonBlankString :any]])
-(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ms/NonBlankString [:enum -1 1]]])
+(def ^:private $ProjectStage   [:map-of [:= $project]   [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $SortStage      [:map-of [:= $sort]      [:map-of ::lib.schema.common/non-blank-string [:enum -1 1]]])
 (def ^:private $MatchStage     [:map-of [:= $match]     [:map-of
                                                          [:and
-                                                          [:or ms/NonBlankString :keyword]
+                                                          [:or ::lib.schema.common/non-blank-string :keyword]
                                                           [:fn
                                                            {:error/message "not a $not condition"}
                                                            (complement #{:$not "$not"})]]
                                                          :any]])
-(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ms/NonBlankString :any]])
-(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ms/NonBlankString :any]])
-(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of ms/KeywordOrString :any]])
-(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of ms/KeywordOrString :any]])
-(def ^:private $LimitStage     [:map-of [:= $limit]     ms/PositiveInt])
-(def ^:private $SkipStage      [:map-of [:= $skip]      ms/PositiveInt])
+(def ^:private $GroupStage     [:map-of [:= $group]     [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $AddFieldsStage [:map-of [:= $addFields] [:map-of ::lib.schema.common/non-blank-string :any]])
+(def ^:private $LookupStage    [:map-of [:= $lookup]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $UnwindStage    [:map-of [:= $unwind]    [:map-of [:or :keyword :string] :any]])
+(def ^:private $LimitStage     [:map-of [:= $limit]     pos-int?])
+(def ^:private $SkipStage      [:map-of [:= $skip]      pos-int?])
 
 (def ^:private Stage
   [:and
@@ -173,12 +174,12 @@
   ([field]
    (field->name field \.))
 
-  ([field     :- lib.metadata/ColumnMetadata
+  ([field     :- ::lib.schema.metadata/column
     separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
 (mu/defmethod add/field-reference-mlv2 :mongo
-  [_driver field-inst :- lib.metadata/ColumnMetadata]
+  [_driver field-inst :- ::lib.schema.metadata/column]
   (field->name field-inst))
 
 (defmacro ^:private mongo-let
@@ -1004,7 +1005,7 @@
   (or (get-in field [2 ::add/desired-alias])
       (->lvalue field)))
 
-(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ms/NonBlankString :any]]]
+(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
@@ -1231,7 +1232,7 @@
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (mu/defn ^:private order-by->$sort :- $SortStage
-  [order-by :- [:sequential mbql.s/OrderBy]]
+  [order-by :- [:sequential ::mbql.s/OrderBy]]
   {$sort (into
           (ordered-map/ordered-map)
           (for [[direction field] order-by]

@@ -1,4 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
+import type {
+  CardId,
+  ConcreteTableId,
+  DatabaseId,
+  VirtualTableId,
+} from "metabase-types/api";
 
 import { expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
@@ -201,8 +207,9 @@ export function suggestedJoinConditions(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
+  joinPositon?: number,
 ): JoinCondition[] {
-  return ML.suggested_join_conditions(query, stageIndex, joinable);
+  return ML.suggested_join_conditions(query, stageIndex, joinable, joinPositon);
 }
 
 export type JoinFields = ColumnMetadata[] | "all" | "none";
@@ -236,12 +243,21 @@ export function joinedThing(query: Query, join: Join): Joinable {
   return ML.joined_thing(query, join);
 }
 
-export type PickerInfo = {
-  databaseId: number;
-  tableId: number;
-  cardId?: number;
-  isModel?: boolean;
+type CardPickerInfo = {
+  databaseId: DatabaseId;
+  tableId: VirtualTableId;
+  cardId: CardId;
+  isModel: boolean;
 };
+
+type TablePickerInfo = {
+  databaseId: DatabaseId;
+  tableId: ConcreteTableId;
+  cardId?: never;
+  isModel?: never;
+};
+
+export type PickerInfo = TablePickerInfo | CardPickerInfo;
 
 /**
  * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.

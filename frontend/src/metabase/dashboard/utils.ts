@@ -3,7 +3,8 @@ import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isUUID, isJWT } from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
@@ -14,24 +15,23 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  ActionDashboardCard,
+  BaseDashboardCard,
+  CacheableDashboard,
   Card,
   CardId,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  QuestionDashboardCard,
+  DashCardDataMap,
   Database,
   Dataset,
-  NativeDatasetQuery,
-  Parameter,
-  StructuredDatasetQuery,
-  ActionDashboardCard,
   EmbedDataset,
-  BaseDashboardCard,
-  DashCardDataMap,
+  Parameter,
+  QuestionDashboardCard,
   VirtualCard,
-  VirtualDashboardCard,
   VirtualCardDisplay,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -140,14 +140,18 @@ export function showVirtualDashCardInfoText(
 
 export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
   if (isDateParameter(parameter)) {
-    return t`Add a date variable to this question to connect it to a dashboard filter.`;
-  } else if (isNumberParameter(parameter)) {
-    return t`Add a number variable to this question to connect it to a dashboard filter.`;
-  } else if (isStringParameter(parameter)) {
-    return t`Add a string variable to this question to connect it to a dashboard filter.`;
-  } else {
-    return t`Add a variable to this question to connect it to a dashboard filter.`;
+    return t`A date variable in this card can only be connected to a time type with the single date option.`;
   }
+
+  if (isNumberParameter(parameter)) {
+    return t`A number variable in this card can only be connected to a number filter with Equal to operator.`;
+  }
+
+  if (isStringParameter(parameter)) {
+    return t`A text variable in this card can only be connected to a text filter with Is operator.`;
+  }
+
+  return t`Add a variable to this question to connect it to a dashboard filter.`;
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {
@@ -180,7 +184,7 @@ export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
-  } else if (isUUID(id)) {
+  } else if (isUuid(id)) {
     return "public";
   } else if (isJWT(id)) {
     return "embed";
@@ -199,27 +203,19 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   }
 }
 
-export function getDatasetQueryParams(
-  datasetQuery: Partial<StructuredDatasetQuery> &
-    Partial<NativeDatasetQuery> = {},
-) {
-  const { type, query, native, parameters = [] } = datasetQuery;
-  return { type, query, native, parameters };
-}
-
 export function isDashcardLoading(
   dashcard: BaseDashboardCard,
-  dashcardsData: DashCardDataMap,
+  dashcardsData: Record<CardId, Dataset | null | undefined>,
 ) {
   if (isVirtualDashCard(dashcard)) {
     return false;
   }
 
-  if (dashcardsData[dashcard.id] == null) {
+  if (dashcardsData == null) {
     return true;
   }
 
-  const cardData = Object.values(dashcardsData[dashcard.id]);
+  const cardData = Object.values(dashcardsData);
   return cardData.length === 0 || cardData.some(data => data == null);
 }
 
@@ -368,3 +364,7 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
     archived: false,
   };
 }
+
+export const isDashboardCacheable = (
+  dashboard: Dashboard,
+): dashboard is CacheableDashboard => typeof dashboard.id !== "string";

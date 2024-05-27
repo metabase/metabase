@@ -248,7 +248,7 @@
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
-  [query]
+  [query _card-type]
   (and
     (set/subset? (required-native-extras query)
                  (set (keys (native-extras query))))
@@ -260,18 +260,3 @@
   [query :- ::lib.schema/query]
   (assert-native-query! (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
-
-(defn- has-default?
-  "Whether the template tag has a non-empty default value.
-
-  Empty values are nil, '', []. Everything else is not empty."
-  [{value :default}]
-  (if (or (string? value) (vector? value))
-    (not-empty value)
-    (some? value)))
-
-(defmethod lib.query/can-save-method :mbql.stage/native
-  [query]
-  (every? (fn [{:keys [required] :as tag}]
-            (or (not required) (has-default? tag)))
-          (vals (template-tags query))))

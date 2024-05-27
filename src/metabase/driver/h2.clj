@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
@@ -66,16 +65,16 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:full-join                 false
-                              :regex                     true
-                              :percentile-aggregations   false
-                              :actions                   true
+(doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
                               :datetime-diff             true
+                              :full-join                 false
+                              :index-info                true
                               :now                       true
+                              :percentile-aggregations   false
+                              :regex                     true
                               :test/jvm-timezone-setting false
-                              :uploads                   true
-                              :index-info                true}]
+                              :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -277,6 +276,16 @@
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
 
+(defn- dateadd [unit amount expr]
+  (let [expr (h2x/cast-unless-type-in "datetime" #{"datetime" "timestamp" "timestamp with time zone"} expr)]
+    (-> [:dateadd
+         (h2x/literal unit)
+         (if (number? amount)
+           (sql.qp/inline-num (long amount))
+           (h2x/cast-unless-type-in "integer" #{"long" "integer"} amount))
+         expr]
+        (h2x/with-database-type-info (h2x/database-type expr)))))
+
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
   (cond
@@ -290,12 +299,7 @@
     (recur driver hsql-form (* amount 1000.0) :millisecond)
 
     :else
-    [:dateadd
-     (h2x/literal unit)
-     (h2x/cast :long (if (number? amount)
-                       (sql.qp/inline-num amount)
-                       amount))
-     (h2x/cast :datetime hsql-form)]))
+    (dateadd unit amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]
@@ -323,8 +327,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
-  [_]
-  (h2x/with-database-type-info :%now :TIMESTAMP))
+  [_driver]
+  (h2x/with-database-type-info :%now "timestamp"))
 
 (defn- add-to-1970 [expr unit-str]
   [:timestampadd
@@ -350,11 +354,17 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                [:utf8tostring expr]))
 
-;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
-(defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
+;; H2 v2 added date_trunc and extract
+(defn- date-trunc [unit expr]
+  (-> [:date_trunc (h2x/literal unit) expr]
+      ;; date_trunc returns an arg of the same type as `expr`.
+      (h2x/with-database-type-info (h2x/database-type expr))))
+
 (defn- extract [unit expr] [::h2x/extract unit expr])
 
-(def ^:private extract-integer (comp h2x/->integer extract))
+(defn- extract-integer [unit expr]
+  (-> (extract unit expr)
+      (h2x/with-database-type-info "integer")))
 
 (defmethod sql.qp/date [:h2 :default]          [_ _ expr] expr)
 (defmethod sql.qp/date [:h2 :second-of-minute] [_ _ expr] (extract-integer :second expr))
@@ -541,7 +551,7 @@
                           (Class/forName true (classloader/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
-        (mdb.jdbc-protocols/clob->str (.getObject rs i)))
+        (mdb/clob->str (.getObject rs i)))
       (fn []
         (.getObject rs i)))))
 
@@ -557,7 +567,7 @@
       (let [details (ssh/include-ssh-tunnel! db-details)
             db      (:db details)]
         (assoc details :db (str/replace-first db (str (:orig-port details)) (str (:tunnel-entrance-port details)))))
-      (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
+      (do (log/error "SSH tunnel can only be established for H2 connections using the TCP protocol")
           db-details))
     db-details))
 
@@ -588,3 +598,10 @@
   (let [f (get-method driver/add-columns! :sql-jdbc)]
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
+
+(defmethod driver/alter-columns! :h2
+  [driver db-id table-name column-definitions]
+  ;; H2 doesn't support altering multiple columns at a time, so we break it up into individual ALTER TABLE statements
+  (let [f (get-method driver/alter-columns! :sql-jdbc)]
+    (doseq [[k v] column-definitions]
+      (f driver db-id table-name {k v}))))

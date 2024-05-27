@@ -22,6 +22,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         borderRadius: theme.radius.xs,
         height: multiline ? "auto" : getSize({ size, sizes: SIZES }),
         minHeight: getSize({ size, sizes: SIZES }),
+        background: theme.fn.themeColor("bg-white"),
         "&::placeholder": {
           color: theme.fn.themeColor("text-light"),
         },
@@ -35,6 +36,11 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
             color: theme.fn.themeColor("error"),
           },
         },
+      },
+      label: {
+        color: theme.fn.themeColor("text-medium"),
+        fontSize: getSize({ size, sizes: theme.fontSizes }),
+        marginBottom: theme.spacing.xs,
       },
       icon: {
         color: theme.fn.themeColor("text-dark"),

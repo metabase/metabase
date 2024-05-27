@@ -38,8 +38,6 @@
      engines
      enum-cardinality-threshold
      follow-up-email-sent
-     ga-code
-     ga-enabled
      google-auth-auto-create-accounts-domain
      google-auth-client-id
      google-auth-configured
@@ -92,6 +90,8 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
+     notebook-native-preview-shown
+     notebook-native-preview-sidebar-width
      notification-link-base-url
      num-metabot-choices
      openai-api-key
@@ -162,7 +162,6 @@
      token-status
      toucan-name
      uncached-setting
-     uploads-table-prefix
      user-visibility
      version
      version-info

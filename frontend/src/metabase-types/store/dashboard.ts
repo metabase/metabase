@@ -1,3 +1,4 @@
+import type { DisplayTheme } from "metabase/public/lib/types";
 import type {
   Dashboard,
   DashboardId,
@@ -75,6 +76,24 @@ export type TabDeletion = {
   removedDashCardIds: DashCardId[];
 };
 
+export type DashboardLoadingStatus = "idle" | "running" | "complete";
+
+export type DashboardCardsLoadingState = {
+  loadingIds: DashCardId[];
+  loadingStatus: DashboardLoadingStatus;
+  startTime: number | null;
+  endTime: number | null;
+};
+
+export type DashboardMetadataLoadingState = {
+  loadingStatus: DashboardLoadingStatus;
+};
+
+export type DashboardLoadingControls = {
+  documentTitle?: string;
+  showLoadCompleteFavicon?: boolean;
+};
+
 export interface DashboardState {
   dashboardId: DashboardId | null;
   selectedTabId: SelectedTabId;
@@ -86,22 +105,15 @@ export interface DashboardState {
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
 
-  loadingDashCards: {
-    loadingIds: DashCardId[];
-    loadingStatus: "idle" | "running" | "complete";
-    startTime: number | null;
-    endTime: number | null;
-  };
-  loadingControls: {
-    documentTitle?: string;
-    showLoadCompleteFavicon?: boolean;
-  };
+  loadingDashCards: DashboardCardsLoadingState;
+  loadingMetadata: DashboardMetadataLoadingState;
+  loadingControls: DashboardLoadingControls;
 
   editingDashboard: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
   isNavigatingBackToDashboard: boolean;
 
-  slowCards: Record<DashCardId, unknown>;
+  slowCards: Record<DashCardId, boolean>;
 
   sidebar: DashboardSidebarState;
 
@@ -112,4 +124,6 @@ export interface DashboardState {
     toastDashboardId: number | null;
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
+
+  theme: DisplayTheme;
 }

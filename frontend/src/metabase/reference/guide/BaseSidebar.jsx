@@ -7,24 +7,19 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import S from "metabase/components/Sidebar.module.css";
 import SidebarItem from "metabase/components/SidebarItem";
+import CS from "metabase/css/core/index.css";
 
 const BaseSidebar = ({ style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div>
       <Breadcrumbs
-        className="py4 ml3"
+        className={cx(CS.py4, CS.ml3)}
         crumbs={[[t`Data Reference`]]}
         inSidebar={true}
         placeholder={t`Data Reference`}
       />
     </div>
-    <ol className="mx3">
-      <SidebarItem
-        key="/reference/metrics"
-        href="/reference/metrics"
-        icon="ruler"
-        name={t`Metrics`}
-      />
+    <ol className={CS.mx3}>
       <SidebarItem
         key="/reference/segments"
         href="/reference/segments"

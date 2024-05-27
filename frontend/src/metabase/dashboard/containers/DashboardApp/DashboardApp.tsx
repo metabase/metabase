@@ -1,7 +1,7 @@
 import cx from "classnames";
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
+import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -12,7 +12,6 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import Dashboards from "metabase/entities/dashboards";
 import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -22,44 +21,26 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Dashboard as IDashboard,
-  DashboardId,
-  DashCardDataMap,
-  DashCardId,
-  DatabaseId,
-  Parameter,
-  ParameterId,
-  ParameterValueOrArray,
-} from "metabase-types/api";
-import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
+import type { DashboardId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getCardData,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDocumentTitle,
-  getDraftParameterValues,
-  getEditingParameter,
   getFavicon,
   getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
-  getIsAutoApplyFilters,
   getIsDirty,
   getIsEditing,
   getIsEditingParameter,
@@ -69,12 +50,10 @@ import {
   getIsRunning,
   getIsSharing,
   getLoadingStartTime,
-  getParameters,
   getParameterValues,
   getSelectedTabId,
   getSidebar,
   getSlowCards,
-  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {
@@ -84,53 +63,7 @@ type OwnProps = {
   children?: ReactNode;
 };
 
-type StateProps = {
-  canManageSubscriptions: boolean;
-  isAdmin: boolean;
-  isNavbarOpen: boolean;
-  isEditing: boolean;
-  isSharing: boolean;
-  dashboardBeforeEditing: IDashboard | null;
-  isEditingParameter: boolean;
-  isDirty: boolean;
-  dashboard: IDashboard | null;
-  dashcardData: DashCardDataMap;
-  slowCards: Record<DashCardId, unknown>;
-  databases: Record<DatabaseId, Database>;
-  editingParameter?: Parameter | null;
-  parameters: UiParameter[];
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
-  metadata: Metadata;
-  loadingStartTime: number | null;
-  clickBehaviorSidebarDashcard: StoreDashcard | null;
-  isAddParameterPopoverOpen: boolean;
-  sidebar: State["dashboard"]["sidebar"];
-  pageFavicon: string | null;
-  documentTitle: string | undefined;
-  isRunning: boolean;
-  isLoadingComplete: boolean;
-  isHeaderVisible: boolean;
-  isAdditionalInfoVisible: boolean;
-  selectedTabId: SelectedTabId;
-  isAutoApplyFilters: boolean;
-  isNavigatingBackToDashboard: boolean;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
-};
-
-type DispatchProps = {
-  archiveDashboard: (id: DashboardId) => Promise<void>;
-  closeNavbar: () => void;
-  setErrorPage: (error: unknown) => void;
-  onChangeLocation: (location: Location) => void;
-};
-
-type DashboardAppProps = OwnProps & StateProps & DispatchProps;
-
-const mapStateToProps = (state: State): StateProps => {
-  const metadata = getMetadata(state);
+const mapStateToProps = (state: State) => {
   return {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
@@ -141,15 +74,8 @@ const mapStateToProps = (state: State): StateProps => {
     isEditingParameter: getIsEditingParameter(state),
     isDirty: getIsDirty(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getCardData(state),
     slowCards: getSlowCards(state),
-    databases: metadata.databases,
-    editingParameter: getEditingParameter(state),
-    parameters: getParameters(state),
     parameterValues: getParameterValues(state),
-    draftParameterValues: getDraftParameterValues(state),
-
-    metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
@@ -161,21 +87,21 @@ const mapStateToProps = (state: State): StateProps => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
-    isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-    getEmbeddedParameterVisibility: (slug: string) =>
-      getEmbeddedParameterVisibility(state, slug),
   };
 };
 
 const mapDispatchToProps = {
   ...dashboardActions,
   closeNavbar,
-  archiveDashboard: (id: DashboardId) =>
-    Dashboards.actions.setArchived({ id }, true),
   setErrorPage,
   onChangeLocation: push,
 };
+
+const connector = connect(mapStateToProps, mapDispatchToProps);
+type ReduxProps = ConnectedProps<typeof connector>;
+
+type DashboardAppProps = OwnProps & ReduxProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
@@ -245,15 +171,25 @@ const DashboardApp = (props: DashboardAppProps) => {
     onTimeout,
   });
 
+  const {
+    documentTitle: _documentTitle,
+    pageFavicon: _pageFavicon,
+    isRunning: _isRunning,
+    isLoadingComplete: _isLoadingComplete,
+    children,
+    ...dashboardProps
+  } = props;
+
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
 
+      {/* @ts-expect-error for now until we can get the prop-drilled types sorted out. Previously DashboardControls was a JS file so types weren't checked, but now there's a Pandora's box here */}
       <Dashboard
         dashboardId={getDashboardId(props)}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
-        {...props}
+        {...dashboardProps}
       />
       {/* For rendering modal urls */}
       {props.children}
@@ -265,15 +201,21 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
   if (dashboardId) {
     return dashboardId;
   }
-  return Urls.extractEntityId(params.slug);
+
+  return Urls.extractEntityId(params.slug) as DashboardId;
 }
 
 export const DashboardAppConnected = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  favicon(({ pageFavicon }: StateProps) => pageFavicon),
-  title(({ dashboard, documentTitle }: StateProps) => ({
-    title: documentTitle || dashboard?.name,
-    titleIndex: 1,
-  })),
+  connector,
+  favicon(({ pageFavicon }: Pick<ReduxProps, "pageFavicon">) => pageFavicon),
+  title(
+    ({
+      dashboard,
+      documentTitle,
+    }: Pick<ReduxProps, "dashboard" | "documentTitle">) => ({
+      title: documentTitle || dashboard?.name,
+      titleIndex: 1,
+    }),
+  ),
   titleWithLoadingTime("loadingStartTime"),
 )(DashboardApp);

@@ -15,10 +15,6 @@ Metabase gives you the ability to automatically cache question results that meet
 
 If your questions share a common model, you can enable [model caching](../data-modeling/models.md#model-caching) instead.
 
-## Caching doesn't work with data sandboxing
-
-Just something to keep in mind: if someone in a [sandboxed](../permissions/data-sandboxes.md) group views a table, Metabase will skip the cached results and query the table directly, returning only the results the person is allowed to see.
-
 ## Enabling global caching
 
 1. Go to **Admin settings** > **Caching** (in the sidebar).

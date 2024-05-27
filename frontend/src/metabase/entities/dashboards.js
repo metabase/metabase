@@ -1,14 +1,20 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { dashboardApi } from "metabase/api";
+import {
+  canonicalCollectionId,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
-import { POST, DELETE } from "metabase/lib/api";
 import { color } from "metabase/lib/colors";
-import { createEntity, undo } from "metabase/lib/entities";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/lib/entities";
 import {
   compose,
   withAction,
@@ -18,12 +24,11 @@ import {
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
 
-import forms from "./dashboards/forms";
-
-const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Dashboards = createEntity({
   name: "dashboards",
   nameOne: "dashboard",
@@ -33,10 +38,48 @@ const Dashboards = createEntity({
   displayNameMany: t`dashboards`,
 
   api: {
-    favorite: POST("/api/dashboard/:id/favorite"),
-    unfavorite: DELETE("/api/dashboard/:id/favorite"),
-    save: POST("/api/dashboard/save"),
-    copy: POST("/api/dashboard/:id/copy"),
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.listDashboards,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        { ...entityQuery, ignore_error: options?.noEvent },
+        dispatch,
+        dashboardApi.endpoints.getDashboard,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.createDashboard,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.updateDashboard,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(
+        id,
+        dispatch,
+        dashboardApi.endpoints.deleteDashboard,
+      ),
+    save: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.saveDashboard,
+      ),
+    copy: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        dashboardApi.endpoints.copyDashboard,
+      ),
   },
 
   objectActions: {
@@ -44,13 +87,16 @@ const Dashboards = createEntity({
       Dashboards.actions.update(
         { id },
         { archived },
-        undo(opts, "dashboard", archived ? "archived" : "unarchived"),
+        undo(opts, t`dashboard`, archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: ({ id }, collection, opts) =>
       Dashboards.actions.update(
         { id },
-        { collection_id: canonicalCollectionId(collection && collection.id) },
+        {
+          collection_id: canonicalCollectionId(collection && collection.id),
+          archived: isRootTrashCollection(collection),
+        },
         undo(opts, "dashboard", "moved"),
       ),
 
@@ -63,16 +109,6 @@ const Dashboards = createEntity({
         },
         opts,
       ),
-
-    setFavorited: async ({ id }, favorite) => {
-      if (favorite) {
-        await Dashboards.api.favorite({ id });
-        return { type: FAVORITE_ACTION, payload: id };
-      } else {
-        await Dashboards.api.unfavorite({ id });
-        return { type: UNFAVORITE_ACTION, payload: id };
-      }
-    },
 
     // TODO move into more common area as copy is implemented for more entities
     copy: compose(
@@ -89,11 +125,15 @@ const Dashboards = createEntity({
       (entityObject, overrides, { notify } = {}) =>
         async (dispatch, getState) => {
           const result = Dashboards.normalize(
-            await Dashboards.api.copy({
-              id: entityObject.id,
-              ...overrides,
-              is_deep_copy: !overrides.is_shallow_copy,
-            }),
+            await entityCompatibleQuery(
+              {
+                id: entityObject.id,
+                ...overrides,
+                is_deep_copy: !overrides.is_shallow_copy,
+              },
+              dispatch,
+              dashboardApi.endpoints.copyDashboard,
+            ),
           );
           if (notify) {
             dispatch(addUndo(notify));
@@ -106,7 +146,11 @@ const Dashboards = createEntity({
 
   actions: {
     save: dashboard => async dispatch => {
-      const savedDashboard = await Dashboards.api.save(dashboard);
+      const savedDashboard = await entityCompatibleQuery(
+        dashboard,
+        dispatch,
+        dashboardApi.endpoints.saveDashboard,
+      );
       dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
       return {
         type: "metabase/entities/dashboards/SAVE_DASHBOARD",
@@ -116,18 +160,13 @@ const Dashboards = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === FAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], true);
-    } else if (type === UNFAVORITE_ACTION && !error) {
-      return assocIn(state, [payload, "favorite"], false);
-    } else if (type === COPY_ACTION && !error && state[""]) {
+    if (type === COPY_ACTION && !error && state[""]) {
       return { ...state, "": state[""].concat([payload.result]) };
     }
     return state;
   },
 
   objectSelectors: {
-    getFavorited: dashboard => dashboard && dashboard.favorite,
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
@@ -140,8 +179,6 @@ const Dashboards = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
-
-  forms,
 });
 
 export default Dashboards;

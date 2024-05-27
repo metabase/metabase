@@ -218,9 +218,9 @@
   [topic event]
   (audit-log/record-event! topic event))
 
-(derive ::caching-changed-event ::event)
-(derive :event/caching-update ::caching-changed-event)
+(derive ::cache-config-changed-event ::event)
+(derive :event/cache-config-update ::cache-config-changed-event)
 
-(methodical/defmethod events/publish-event! ::caching-changed-event
+(methodical/defmethod events/publish-event! ::cache-config-changed-event
   [topic event]
   (audit-log/record-event! topic event))

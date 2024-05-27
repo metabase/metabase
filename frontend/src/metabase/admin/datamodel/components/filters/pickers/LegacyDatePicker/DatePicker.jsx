@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Calendar from "metabase/components/Calendar";
+import PopoverS from "metabase/components/Popover/Popover.module.css";
 import CS from "metabase/css/core/index.css";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
@@ -54,15 +55,15 @@ const MultiDatePicker = ({
   hideTimeSelectors,
 }) => (
   <div className={className}>
-    <div className="Grid Grid--1of2 Grid--gutters">
-      <div className="Grid-cell">
+    <div className={cx(CS.Grid, CS.Grid1of2, CS.GridGutters)}>
+      <div className={CS.GridCell}>
         <SpecificDatePicker
           value={startValue}
           hideTimeSelectors={hideTimeSelectors}
           onChange={value => onFilterChange([op, field, value, endValue])}
         />
       </div>
-      <div className="Grid-cell">
+      <div className={CS.GridCell}>
         <SpecificDatePicker
           value={endValue}
           hideTimeSelectors={hideTimeSelectors}
@@ -336,7 +337,7 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx(className, "PopoverBody--marginBottom", {
+        className={cx(className, PopoverS.PopoverBodyMarginBottom, {
           [cx(CS.flex, CS.alignCenter)]: Widget && Widget.horizontalLayout,
         })}
         style={{ minWidth: 300 }}
@@ -344,8 +345,8 @@ export default class DatePicker extends Component {
         {!disableOperatorSelection && (
           <DatePickerSelector
             className={cx({
-              mr2: Widget && Widget.horizontalLayout,
-              mb2: Widget && !Widget.horizontalLayout,
+              [CS.mr2]: Widget && Widget.horizontalLayout,
+              [CS.mb2]: Widget && !Widget.horizontalLayout,
             })}
             operator={operator && operator.name}
             operators={operators}

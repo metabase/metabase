@@ -8,33 +8,24 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
+import { setArchivedDashboard } from "metabase/dashboard/actions";
 import Collection from "metabase/entities/collections";
-import Dashboard from "metabase/entities/dashboards";
+import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 
-const mapDispatchToProps = {
-  setDashboardArchived: Dashboard.actions.setArchived,
-  push,
-};
+const mapDispatchToProps = dispatch => ({
+  setDashboardArchived: () => dispatch(setArchivedDashboard(true)),
+  push: path => dispatch(push(path)),
+});
 
 class ArchiveDashboardModal extends Component {
   static propTypes = {
     onClose: PropTypes.func,
   };
 
-  close = () => {
-    // since we need to redirect back to the parent collection when archiving
-    // we have to call this here first to unmount the modal and then push to the
-    // parent collection
-    this.props.onClose();
-    if (this.props.dashboard.archived) {
-      this.props.push(Urls.collection(this.props.collection));
-    }
-  };
-
   archive = async () => {
     const dashboardId = Urls.extractEntityId(this.props.params.slug);
-    await this.props.setDashboardArchived({ id: dashboardId }, true);
+    await this.props.setDashboardArchived(dashboardId);
   };
 
   render() {
@@ -43,11 +34,11 @@ class ArchiveDashboardModal extends Component {
       <ArchiveModal
         title={
           dashboard.is_app_age
-            ? t`Archive this page?`
-            : t`Archive this dashboard?`
+            ? t`Move this page to trash?`
+            : t`Move this dashboard to trash?`
         }
         message={t`Are you sure you want to do this?`}
-        onClose={this.close}
+        onClose={this.props.onClose}
         onArchive={this.archive}
       />
     );
@@ -56,7 +47,7 @@ class ArchiveDashboardModal extends Component {
 
 export const ArchiveDashboardModalConnected = _.compose(
   connect(null, mapDispatchToProps),
-  Dashboard.load({
+  Dashboards.load({
     id: (state, props) => Urls.extractCollectionId(props.params.slug),
   }),
   Collection.load({

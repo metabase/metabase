@@ -87,6 +87,8 @@ import close_component from "./close.svg?component";
 import close_source from "./close.svg?source";
 import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
+import combine_component from "./combine.svg?component";
+import combine_source from "./combine.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -153,6 +155,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gem_component from "./gem.svg?component";
+import gem_source from "./gem.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -201,6 +205,12 @@ import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
 import line_source from "./line.svg?source";
+import line_style_dashed_component from "./line_style-dashed.svg?component";
+import line_style_dashed_source from "./line_style-dashed.svg?source";
+import line_style_dotted_component from "./line_style-dotted.svg?component";
+import line_style_dotted_source from "./line_style-dotted.svg?source";
+import line_style_solid_component from "./line_style-solid.svg?component";
+import line_style_solid_source from "./line_style-solid.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
 import link_component from "./link.svg?component";
@@ -307,6 +317,8 @@ import sort_component from "./sort.svg?component";
 import sort_source from "./sort.svg?source";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sort_arrows_source from "./sort_arrows.svg?source";
+import split_component from "./split.svg?component";
+import split_source from "./split.svg?source";
 import sql_component from "./sql.svg?component";
 import sql_source from "./sql.svg?source";
 import star_component from "./star.svg?component";
@@ -339,6 +351,8 @@ import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
+import trash_filled_component from "./trash_filled.svg?component";
+import trash_filled_source from "./trash_filled.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -541,6 +555,10 @@ export const Icons = {
     component: compare_component,
     source: compare_source,
   },
+  combine: {
+    component: combine_component,
+    source: combine_source,
+  },
   connections: {
     component: connections_component,
     source: connections_source,
@@ -669,6 +687,10 @@ export const Icons = {
     component: gear_component,
     source: gear_source,
   },
+  gem: {
+    component: gem_component,
+    source: gem_source,
+  },
   grabber: {
     component: grabber_component,
     source: grabber_source,
@@ -772,6 +794,18 @@ export const Icons = {
   lineandbar: {
     component: lineandbar_component,
     source: lineandbar_source,
+  },
+  line_style_dashed: {
+    component: line_style_dashed_component,
+    source: line_style_dashed_source,
+  },
+  line_style_dotted: {
+    component: line_style_dotted_component,
+    source: line_style_dotted_source,
+  },
+  line_style_solid: {
+    component: line_style_solid_component,
+    source: line_style_solid_source,
   },
   list: {
     component: list_component,
@@ -900,6 +934,10 @@ export const Icons = {
   share: {
     component: share_component,
     source: share_source,
+  },
+  split: {
+    component: split_component,
+    source: split_source,
   },
   sql: {
     component: sql_component,
@@ -1040,6 +1078,10 @@ export const Icons = {
   trash: {
     component: trash_component,
     source: trash_source,
+  },
+  trash_filled: {
+    component: trash_filled_component,
+    source: trash_filled_source,
   },
   triangle_left: {
     component: triangle_left_component,

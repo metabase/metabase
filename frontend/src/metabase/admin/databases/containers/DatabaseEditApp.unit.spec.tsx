@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { IndexRoute, Route } from "react-router";
 
-import { setupEnterpriseTest } from "__support__/enterprise";
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabaseEndpoints,
@@ -111,7 +110,7 @@ describe("DatabaseEditApp", () => {
       expect(saveButton).toBeDisabled();
 
       const connectionField = await screen.findByLabelText("Connection String");
-      userEvent.type(connectionField, "Test Connection");
+      await userEvent.type(connectionField, "Test Connection");
 
       await waitFor(() => {
         expect(saveButton).toBeEnabled();
@@ -123,7 +122,7 @@ describe("DatabaseEditApp", () => {
 
       const displayNameInput = await screen.findByLabelText("Display name");
 
-      userEvent.type(displayNameInput, "Test database");
+      await userEvent.type(displayNameInput, "Test database");
       const mockEvent = await waitFor(() => {
         return callMockEvent(mockEventListener, "beforeunload");
       });
@@ -147,8 +146,8 @@ describe("DatabaseEditApp", () => {
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
-      userEvent.type(displayNameInput, "ab");
-      userEvent.type(displayNameInput, "{backspace}{backspace}");
+      await userEvent.type(displayNameInput, "ab");
+      await userEvent.type(displayNameInput, "{backspace}{backspace}");
 
       history.goBack();
 
@@ -165,7 +164,7 @@ describe("DatabaseEditApp", () => {
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
-      userEvent.type(displayNameInput, "Test database");
+      await userEvent.type(displayNameInput, "Test database");
 
       history.goBack();
 
@@ -180,16 +179,16 @@ describe("DatabaseEditApp", () => {
       await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
-      userEvent.type(displayNameInput, "Test database");
+      await userEvent.type(displayNameInput, "Test database");
       const connectionStringInput = await screen.findByLabelText(
         "Connection String",
       );
-      userEvent.type(
+      await userEvent.type(
         connectionStringInput,
         "file:/sample-database.db;USER=GUEST;PASSWORD=guest",
       );
 
-      userEvent.click(await screen.findByText("Save"));
+      await userEvent.click(await screen.findByText("Save"));
 
       await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toEqual(
@@ -197,45 +196,12 @@ describe("DatabaseEditApp", () => {
         );
       });
 
-      expect(history.getCurrentLocation().search).toEqual("?created=true");
+      expect(history.getCurrentLocation().search).toContain("created=true");
+      expect(history.getCurrentLocation().search).toContain("createdDbId"); //Enpoint doesn't return an ID
 
       expect(
         screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Cache TTL field", () => {
-    describe("OSS", () => {
-      it("is invisible", async () => {
-        await setup({ cachingEnabled: true });
-
-        expect(
-          screen.queryByText("Default result cache duration"),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("EE", () => {
-      beforeEach(() => {
-        setupEnterpriseTest();
-      });
-
-      it("is visible", async () => {
-        await setup({ cachingEnabled: true });
-
-        expect(
-          screen.getByText("Default result cache duration"),
-        ).toBeInTheDocument();
-      });
-
-      it("is invisible when caching disabled", async () => {
-        await setup({ cachingEnabled: false });
-
-        expect(
-          screen.queryByText("Default result cache duration"),
-        ).not.toBeInTheDocument();
-      });
     });
   });
 });

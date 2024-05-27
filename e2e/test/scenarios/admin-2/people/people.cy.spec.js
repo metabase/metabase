@@ -37,7 +37,7 @@ const normalUserName = getFullName(normal);
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/permissions/group").as("getGroups");
-    cy.intercept("GET", "/api/api-key").as("getApiKeys");
+    cy.intercept("GET", "/api/api-key").as("listApiKeys");
     restore();
     cy.signInAsAdmin();
   });
@@ -335,7 +335,7 @@ describe("scenarios > admin > people", () => {
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
 
       cy.visit("/admin/people/groups");
-      cy.wait(["@getGroups", "@getApiKeys"]);
+      cy.wait(["@getGroups", "@listApiKeys"]);
 
       cy.findByTestId("admin-panel").within(() => {
         cy.button("Create a group").click();
@@ -358,7 +358,7 @@ describe("scenarios > admin > people", () => {
     it("should display api keys included in a group and display a warning when deleting the group", () => {
       createApiKey("MyApiKey", COLLECTION_GROUP_ID);
       cy.visit("/admin/people/groups");
-      cy.wait(["@getGroups", "@getApiKeys"]);
+      cy.wait(["@getGroups", "@listApiKeys"]);
 
       cy.findByTestId("admin-panel")
         .findByText("collection")

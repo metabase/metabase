@@ -36,7 +36,6 @@ export function DefaultRequiredValueControl({
           parameter={parameter}
           value={tag.default}
           onValueChange={onChangeDefaultValue}
-          placeholder={t`Enter a default value…`}
         />
 
         <RequiredParamToggle

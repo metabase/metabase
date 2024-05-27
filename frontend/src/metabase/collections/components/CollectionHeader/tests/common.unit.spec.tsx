@@ -1,4 +1,4 @@
-import userEvent, { specialChars } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 
 import { getIcon, screen } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -7,7 +7,7 @@ import { setup } from "./setup";
 
 describe("CollectionHeader", () => {
   describe("collection name", () => {
-    it("should be able to edit name with write access", () => {
+    it("should be able to edit name with write access", async () => {
       const collection = {
         name: "Name",
         can_write: true,
@@ -18,8 +18,8 @@ describe("CollectionHeader", () => {
       });
 
       const input = screen.getByDisplayValue("Name");
-      userEvent.clear(input);
-      userEvent.type(input, `New name${specialChars.enter}`);
+      await userEvent.clear(input);
+      await userEvent.type(input, `New name{Enter}`);
 
       expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         name: "New name",
@@ -66,7 +66,7 @@ describe("CollectionHeader", () => {
   });
 
   describe("collection description", () => {
-    it("should be able to edit description with write access", () => {
+    it("should be able to edit description with write access", async () => {
       const collection = {
         description: "Description",
         can_write: true,
@@ -78,19 +78,19 @@ describe("CollectionHeader", () => {
 
       // show input
       const editableText = screen.getByText("Description");
-      userEvent.click(editableText);
+      await userEvent.click(editableText);
 
       const input = screen.getByDisplayValue("Description");
-      userEvent.clear(input);
-      userEvent.type(input, "New description");
-      userEvent.tab();
+      await userEvent.clear(input);
+      await userEvent.type(input, "New description");
+      await userEvent.tab();
 
       expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         description: "New description",
       });
     });
 
-    it("should be able to add description with write access", () => {
+    it("should be able to add description with write access", async () => {
       const collection = {
         description: null,
         can_write: true,
@@ -101,8 +101,8 @@ describe("CollectionHeader", () => {
       });
 
       const input = screen.getByPlaceholderText("Add description");
-      userEvent.type(input, "New description");
-      userEvent.tab();
+      await userEvent.type(input, "New description");
+      await userEvent.tab();
 
       expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         description: "New description",
@@ -121,7 +121,7 @@ describe("CollectionHeader", () => {
       expect(input).not.toBeInTheDocument();
     });
 
-    it("should be able to view the description without write access", () => {
+    it("should be able to view the description without write access", async () => {
       const collection = {
         description: "Description",
         can_write: false,
@@ -131,7 +131,7 @@ describe("CollectionHeader", () => {
 
       // show input
       const editableText = screen.getByText("Description");
-      userEvent.click(editableText);
+      await userEvent.click(editableText);
 
       const input = screen.getByDisplayValue("Description");
       expect(input).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe("CollectionHeader", () => {
   });
 
   describe("collection bookmark", () => {
-    it("should be able to bookmark a collection", () => {
+    it("should be able to bookmark a collection", async () => {
       const collection = {
         can_write: false,
       };
@@ -157,12 +157,12 @@ describe("CollectionHeader", () => {
         collection,
         isBookmarked: false,
       });
-      userEvent.click(screen.getByLabelText("bookmark icon"));
+      await userEvent.click(screen.getByLabelText("bookmark icon"));
 
       expect(onCreateBookmark).toHaveBeenCalledWith(myCollection);
     });
 
-    it("should be able to remove a collection from bookmarks", () => {
+    it("should be able to remove a collection from bookmarks", async () => {
       const collection = {
         can_write: false,
       };
@@ -171,7 +171,7 @@ describe("CollectionHeader", () => {
         collection,
         isBookmarked: true,
       });
-      userEvent.click(screen.getByLabelText("bookmark_filled icon"));
+      await userEvent.click(screen.getByLabelText("bookmark_filled icon"));
 
       expect(onDeleteBookmark).toHaveBeenCalledWith(myCollection);
     });
@@ -182,9 +182,9 @@ describe("CollectionHeader", () => {
       const collection = { can_write: true };
       setup({ collection });
 
-      userEvent.click(screen.getByLabelText("ellipsis icon"));
+      await userEvent.click(screen.getByLabelText("ellipsis icon"));
       expect(await screen.findByText("Move")).toBeInTheDocument();
-      expect(screen.getByText("Archive")).toBeInTheDocument();
+      expect(screen.getByText("Move to trash")).toBeInTheDocument();
     });
   });
 
@@ -229,7 +229,7 @@ describe("CollectionHeader", () => {
         canUpload: true,
         isAdmin: false,
       });
-      userEvent.click(screen.getByLabelText("Upload data"));
+      await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText("Uploads CSVs to Metabase")).toBeInTheDocument();
@@ -242,7 +242,7 @@ describe("CollectionHeader", () => {
         canUpload: true,
         isAdmin: true,
       });
-      userEvent.click(screen.getByLabelText("Upload data"));
+      await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText("Enable in settings")).toBeInTheDocument();
@@ -256,7 +256,7 @@ describe("CollectionHeader", () => {
         canUpload: true,
         isAdmin: false,
       });
-      userEvent.click(screen.getByLabelText("Upload data"));
+      await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText(/ask your admin to enable/i)).toBeInTheDocument();
@@ -269,10 +269,10 @@ describe("CollectionHeader", () => {
         canUpload: true,
         isAdmin: true,
       });
-      userEvent.click(screen.getByLabelText("Upload data"));
+      await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      userEvent.click(getIcon("close"));
+      await userEvent.click(getIcon("close"));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
@@ -283,10 +283,10 @@ describe("CollectionHeader", () => {
         canUpload: true,
         isAdmin: false,
       });
-      userEvent.click(screen.getByLabelText("Upload data"));
+      await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      userEvent.click(screen.getByText("Got it"));
+      await userEvent.click(screen.getByText("Got it"));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });

@@ -4,6 +4,7 @@ import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { color } from "metabase/lib/colors";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
@@ -26,6 +27,7 @@ export const DashboardLoadingAndErrorWrapper = styled(
           [DashboardS.DashboardFullscreen]: isFullscreen,
           [DashboardS.DashboardNight]: isNightMode,
           [ParametersS.DashboardNight]: isNightMode,
+          [ColorS.DashboardNight]: isNightMode,
         })}
         {...props}
       />
@@ -140,6 +142,9 @@ export const ParametersAndCardsContainer = styled.div<{
     overflow-x: clip;
   }
   padding-bottom: 40px;
+  /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
+  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     ${ParametersWidgetContainer} {

@@ -1,0 +1,175 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-05-01T23:25:14.654039Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (8053de5)",
+      "collection": null,
+      "visualization_settings": {
+        "series_settings": {
+          "Y": {
+            "line.missing": "zero"
+          }
+        },
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"]
+      },
+      "collection_preview": true,
+      "entity_id": "hr7YTZePecARmmOlJMmYM",
+      "display": "line",
+      "parameter_mappings": [],
+      "id": 197,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "query": "SELECT DATE '2020-01-01' AS x, 10 AS y\nUNION ALL\nSELECT DATE '2023-01-01', 10\nUNION ALL\nSELECT DATE '2024-01-01', 10",
+          "template-tags": {}
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-05-01T23:25:14.654039Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "replace missing values with zero",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": null,
+      "table_id": null,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2020-01-01T00:00:00-03:00", 10],
+        ["2023-01-01T00:00:00-03:00", 10],
+        ["2024-01-01T00:00:00-03:00", 10]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Date"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Date",
+          "effective_type": "type/Date"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT DATE '2020-01-01' AS x, 10 AS y\nUNION ALL\nSELECT DATE '2023-01-01', 10\nUNION ALL\nSELECT DATE '2024-01-01', 10"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Canada/Eastern",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Date"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Date",
+            "effective_type": "type/Date",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2020-01-01T00:00:00-03:00",
+                  "latest": "2024-01-01T00:00:00-03:00"
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 10,
+                  "q3": 10,
+                  "max": 10,
+                  "sd": 0,
+                  "avg": 10
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 10,
+          "unit": "year",
+          "offset": 10,
+          "last-change": 0,
+          "col": "Y",
+          "slope": 0,
+          "last-value": 10,
+          "best-fit": ["+", 10, ["*", 0, ["log", "x"]]]
+        }
+      ]
+    }
+  }
+]

@@ -14,8 +14,9 @@
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
     (canned/canned-test
       :drill-thru/zoom-in.binning
-      (fn [_test-case context {:keys [click]}]
+      (fn [test-case context {:keys [click]}]
         (and (#{:cell :pivot :legend} click)
+             (not (:native? test-case))
              (seq (for [dim (:dimensions context)
                         :when (and (isa? (:effective-type (:column dim)) :type/Number)
                                    (lib/binning (:column dim)))]
@@ -255,3 +256,41 @@
                         :dimensions [discount-dim]}
           drills       (set (map :type (lib/available-drill-thrus query context)))]
       (is (not (drills :drill-thru/zoom-in.binning))))))
+
+(deftest ^:parallel nested-zoom-test
+  (testing "repeatedly zooming in on smaller bins should work"
+    (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
+                  ;; Filtering like we'd already zoomed in once, on the 40-60 bin.
+                  (lib/filter $q (lib/>= (meta/field-metadata :orders :subtotal) 40))
+                  (lib/filter $q (lib/<  (meta/field-metadata :orders :subtotal) 60))
+                  (lib/aggregate $q (lib/count))
+                  (lib/breakout $q (lib/with-binning (meta/field-metadata :orders :subtotal)
+                                     {:strategy  :num-bins
+                                      :num-bins  8
+                                      :bin-width 2.5
+                                      :min-value 40
+                                      :max-value 60})))]
+      (lib.drill-thru.tu/test-drill-application
+        {:click-type     :cell
+         :query-type     :aggregated
+         :custom-query   query
+         :custom-row     {"count" 100
+                          "SUBTOTAL" 50} ;; Clicking the 50-52.5 bin
+         :column-name    "count"
+         :drill-type     :drill-thru/zoom-in.binning
+         :expected       {:type        :drill-thru/zoom-in.binning
+                          :column      {:name "SUBTOTAL"}
+                          :min-value   50
+                          :max-value   52.5
+                          :new-binning {:strategy :default}}
+         :expected-query {:stages [{:source-table (meta/id :orders)
+                                    :aggregation  [[:count {}]]
+                                    :breakout     [[:field
+                                                    {:binning {:strategy :default}}
+                                                    (meta/id :orders :subtotal)]]
+                                    :filters      [[:>= {}
+                                                    [:field {} (meta/id :orders :subtotal)]
+                                                    50]
+                                                   [:< {}
+                                                    [:field {} (meta/id :orders :subtotal)]
+                                                    52.5]]}]}}))))

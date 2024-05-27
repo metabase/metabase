@@ -6,6 +6,7 @@ export type TypeWithModel<Id, Model extends string> = {
   id: Id;
   model: Model;
   name: string;
+  can_write?: boolean;
 };
 
 export type IsFolder<
@@ -43,4 +44,8 @@ export type ListProps<
   isFolder: IsFolder<Id, Model, Item>;
   isCurrentLevel: boolean;
   options: Options;
+  shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 };
+
+export type FilterItemsInPersonalCollection = "only" | "exclude";

@@ -11,6 +11,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Text, Button, Group, Modal, Stack } from "metabase/ui";
+import type { CreateApiKeyRequest } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
@@ -21,9 +22,11 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const secretKey = response?.data?.unmasked_key || "";
 
   const handleSubmit = useCallback(
-    async vals => {
-      await createApiKey(vals);
-      setModal("secretKey");
+    async (vals: { group_id: number | null; name: string }) => {
+      if (vals.group_id !== null) {
+        await createApiKey(vals as CreateApiKeyRequest);
+        setModal("secretKey");
+      }
     },
     [createApiKey],
   );
@@ -42,7 +45,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
         title={t`Create a new API Key`}
       >
         <FormProvider
-          initialValues={{ name: "", group_id: "" }}
+          initialValues={{ name: "", group_id: null }}
           validationSchema={API_KEY_VALIDATION_SCHEMA}
           onSubmit={handleSubmit}
         >

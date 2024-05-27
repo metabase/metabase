@@ -68,7 +68,7 @@ export function parseMetric(
   metricName: string,
   { query, stageIndex }: { query: Lib.Query; stageIndex: number },
 ) {
-  const metrics = Lib.availableMetrics(query);
+  const metrics = Lib.availableMetrics(query, stageIndex);
 
   const metric = metrics.find(metric => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
@@ -357,4 +357,8 @@ export function isSegment(expr: unknown): boolean {
 
 export function isCase(expr: unknown): boolean {
   return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
+}
+
+export function isOffset(expr: unknown): boolean {
+  return Array.isArray(expr) && expr[0] === "offset";
 }

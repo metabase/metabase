@@ -21,9 +21,10 @@
       {:error/message "arguments should be comparable"}
       (fn [[_tag _opts & args]]
         (let [argv (vec args)]
-          (every? true? (map (fn [[i j]]
-                               (expression/comparable-expressions? (get argv i) (get argv j)))
-                             compared-position-pairs))))]]))
+          (or expression/*suppress-expression-type-check?*
+              (every? true? (map (fn [[i j]]
+                                   (expression/comparable-expressions? (get argv i) (get argv j)))
+                                 compared-position-pairs)))))]]))
 
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
@@ -68,30 +69,27 @@
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
     [:ref ::expression/expression]))
 
-;;; one-arg [:ref ::expression/string] filter clauses
-;;;
-;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]]
-;;;
-;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]]
+;;; :is-empty is sugar for [:or [:= ... nil] [:= ... ""]] for emptyable arguments
+;;; :not-empty is sugar for [:and [:!= ... nil] [:!= ... ""]] for emptyable arguments
+;;; For non emptyable arguments expansion is same with :is-null and :not-null
 (doseq [op [:is-empty :not-empty]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
-    [:ref ::expression/emptyable]))
+    [:ref ::expression/expression]))
 
 (def ^:private string-filter-options
   [:map [:case-sensitive {:optional true} :boolean]]) ; default true
 
-;; binary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option
+;; N-ary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option.
+;; Requires at least 2 string-shaped args. If there are more than 2, `[:contains x a b]` is equivalent to
+;; `[:or [:contains x a] [:contains x b]]`.
 ;;
-;; `:does-not-contain` is sugar for `[:not [:contains ...]]`:
-;;
-;; [:does-not-contain ...] = [:not [:contains ...]]
+;; `[:does-not-contain ...]` = `[:not [:contains ...]]`
 (doseq [op [:starts-with :ends-with :contains :does-not-contain]]
   (mbql-clause/define-mbql-clause op :- :type/Boolean
-    [:tuple
-     [:= {:decode/normalize common/normalize-keyword} op]
-     [:merge ::common/options string-filter-options]
-     #_whole [:ref ::expression/string]
-     #_part  [:ref ::expression/string]]))
+    [:schema [:catn {:error/message (str "Valid " op " clause")}
+              [:tag [:= {:decode/normalize common/normalize-keyword} op]]
+              [:options [:merge ::common/options string-filter-options]]
+              [:args [:repeat {:min 2} [:schema [:ref ::expression/string]]]]]]))
 
 (def ^:private time-interval-options
   [:map [:include-current {:optional true} :boolean]]) ; default false

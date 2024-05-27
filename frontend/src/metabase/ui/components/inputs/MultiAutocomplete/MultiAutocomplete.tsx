@@ -4,6 +4,10 @@ import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 
+type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
+  shouldCreate?: (query: string, selectedValues: string[]) => boolean;
+};
+
 export function MultiAutocomplete({
   data,
   value: controlledValue,
@@ -11,13 +15,13 @@ export function MultiAutocomplete({
   searchValue: controlledSearchValue,
   placeholder,
   autoFocus,
-  shouldCreate,
+  shouldCreate = defaultShouldCreate,
   onChange,
   onSearchChange,
   onFocus,
   onBlur,
   ...props
-}: MultiSelectProps) {
+}: MultiAutocompleteProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
     defaultValue,
@@ -59,7 +63,7 @@ export function MultiAutocomplete({
   const handleSearchChange = (newSearchValue: string) => {
     setSearchValue(newSearchValue);
 
-    const isValid = shouldCreate?.(newSearchValue, []);
+    const isValid = shouldCreate?.(newSearchValue, selectedValues);
     if (isValid) {
       setSelectedValues([...lastSelectedValues, newSearchValue]);
     } else {
@@ -71,10 +75,9 @@ export function MultiAutocomplete({
     const text = event.clipboardData.getData("Text");
     const values = text.split(/[\n,]/g);
     if (values.length > 1) {
-      const uniqueValues = [...new Set(values)];
-      const validValues = uniqueValues.filter(value =>
-        shouldCreate?.(value, []),
-      );
+      const validValues = [...new Set(values)]
+        .map(value => value.trim())
+        .filter(value => shouldCreate?.(value, selectedValues));
       if (validValues.length > 0) {
         event.preventDefault();
         const newSelectedValues = [...lastSelectedValues, ...validValues];
@@ -127,4 +130,10 @@ function getAvailableSelectItems(
   }, new Map<string, string>());
 
   return [...mapping.entries()].map(([value, label]) => ({ value, label }));
+}
+
+function defaultShouldCreate(query: string, selectedValues: string[]) {
+  return (
+    query.trim().length > 0 && !selectedValues.some(value => value === query)
+  );
 }

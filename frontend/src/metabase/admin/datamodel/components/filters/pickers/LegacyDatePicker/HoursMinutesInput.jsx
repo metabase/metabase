@@ -36,7 +36,7 @@ const HoursMinutesInput = ({
           : value => onChangeHours((hours >= 12 ? 12 : 0) + value)
       }
     />
-    <span className="px1">:</span>
+    <span className={CS.px1}>:</span>
     <NumericInput
       data-testid="minutes-input"
       className={CS.input}
@@ -64,7 +64,12 @@ const HoursMinutesInput = ({
     )}
     {onClear && (
       <Icon
-        className="text-light cursor-pointer text-medium-hover ml-auto"
+        className={cx(
+          CS.textLight,
+          CS.cursorPointer,
+          CS.textMediumHover,
+          CS.mlAuto,
+        )}
         name="close"
         onClick={onClear}
       />

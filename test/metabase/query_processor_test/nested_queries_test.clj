@@ -286,11 +286,11 @@
                                             :breakout    [[:expression "Price level"]]
                                             :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
                                             :limit       2})])
-        (is (= [["budget"    81]
-                ["expensive" 19]]
-               (mt/rows
-                (qp/process-query
-                 (query-with-source-card 1)))))))))
+        (let [query (query-with-source-card 1)]
+          (mt/with-native-query-testing-context query
+            (is (= [["budget"    81]
+                    ["expensive" 19]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel card-id-native-source-queries-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
@@ -378,8 +378,8 @@
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
              :where  [:and
-                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+                      [:>= [:raw "\"source\".\"BIRD.ID\""] (t/local-date-time "2017-01-01T00:00")]
+                      [:< [:raw "\"source\".\"BIRD.ID\""]  (t/local-date-time "2017-01-08T00:00")]]
              :limit  [:inline 10]})
            (qp.compile/compile
             (mt/mbql-query venues
@@ -441,7 +441,7 @@
             :params nil}
            (-> (mt/mbql-query venues
                  {:source-query {:source-table $$venues}
-                  :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                  :breakout     [[:field [:field "CATEGORY_ID" {:base-type :type/Integer}] nil]]
                   :limit        10})
                qp.compile/compile
                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
@@ -657,7 +657,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
             (mt/with-temp [Collection collection {}
                            Card       card-1 {:collection_id (u/the-id collection)
                                               :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -1288,7 +1289,8 @@
                                       "FROM \"PUBLIC\".\"ORDERS\" "
                                       "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
                                       " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
-                         :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
+                         :params [(t/offset-date-time #t "2020-02-01T00:00Z")
+                                  (t/offset-date-time #t "2020-03-01T00:00Z")]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
@@ -1313,20 +1315,21 @@
     (testing "A nested query with a Metric should work as expected (#12507)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                         (mt/application-database-metadata-provider (mt/id))
-                                        {:metrics [{:id 1
-                                                    :name "Metric 1"
-                                                    :table-id   (mt/id :checkins)
-                                                    :definition (mt/$ids checkins
-                                                                  {:source-table $$checkins
-                                                                   :aggregation  [[:count]]
-                                                                   :filter       [:not-null $id]})}]})
+                                        {:cards [{:id 1
+                                                  :type :metric
+                                                  :name "Metric 1"
+                                                  :database-id (mt/id)
+                                                  :dataset-query (mt/mbql-query checkins
+                                                                   {:source-table $$checkins
+                                                                    :aggregation  [[:count]]
+                                                                    :filter       [:not-null $id]})}]})
         (is (= [[100]]
                (mt/formatted-rows [int]
-                 (mt/run-mbql-query checkins
-                   {:source-query {:source-table $$checkins
-                                   :aggregation  [[:metric 1]]
-                                   :breakout     [$venue_id]}
-                    :aggregation  [[:count]]}))))))))
+                                  (mt/run-mbql-query checkins
+                                    {:source-query {:source-table "card__1"
+                                                    :aggregation  [[:metric 1]]
+                                                    :breakout     [$venue_id]}
+                                     :aggregation  [[:count]]}))))))))
 
 (deftest ^:parallel nested-query-with-expressions-test
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"
@@ -1404,9 +1407,12 @@
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]
                                         :aggregation  [[:count]]}
-                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -32 :year]
+                         :filter       [:time-interval
+                                        [:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]
+                                        -32
+                                        :year]
                          :aggregation  [[:sum *count/Integer]]
-                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :breakout     [[:field (mt/format-name "created_at") {:base-type :type/DateTimeWithLocalTZ}]]
                          :limit        1})]
             (mt/with-native-query-testing-context query
               (is (= [["2016-04-01T00:00:00Z" 175]]

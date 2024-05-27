@@ -1,14 +1,14 @@
 :root {
-  --title-color: var(--color-text-medium);
+  --title-color: var(--mb-color-text-medium);
 }
 
 .headerBody {
-  composes: text-dark text-bold from "style";
+  composes: textDark textBold from "style";
   flex: 1 0 auto;
   display: flex;
   overflow: hidden;
   align-items: center;
-  border-color: var(--color-border);
+  border-color: var(--mb-color-border);
 }
 
 .headerTextInput {
@@ -19,7 +19,7 @@
 }
 
 .headerSchema {
-  composes: text-light from "style";
+  composes: textLight from "style";
   position: absolute;
   top: -10px;
   font-size: 12px;

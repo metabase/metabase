@@ -16,7 +16,7 @@ describe("ModalHeader", () => {
     expect(screen.getByText("Actions")).toBeInTheDocument();
   });
 
-  it("should render with close button", () => {
+  it("should render with close button", async () => {
     const onClose = jest.fn();
 
     render(<ModalHeader title="Events" onClose={onClose} />);
@@ -24,7 +24,7 @@ describe("ModalHeader", () => {
     const closeButton = screen.getByLabelText("close icon");
     expect(closeButton).toBeInTheDocument();
 
-    userEvent.click(closeButton);
+    await userEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

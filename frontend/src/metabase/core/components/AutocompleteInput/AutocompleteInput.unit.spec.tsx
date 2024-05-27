@@ -38,7 +38,7 @@ describe("AutocompleteInput", () => {
       value: "or",
     });
 
-    userEvent.click(input);
+    await userEvent.click(input);
 
     const options = await getOptions();
     expect(options).toHaveLength(1);
@@ -53,11 +53,11 @@ describe("AutocompleteInput", () => {
       onChange,
     });
 
-    userEvent.click(input);
+    await userEvent.click(input);
 
     const options = await getOptions();
 
-    userEvent.click(options[0]);
+    await userEvent.click(options[0]);
 
     expect(onChange).toHaveBeenCalledWith("Orange");
   });
@@ -78,7 +78,7 @@ describe("AutocompleteInput", () => {
       filterOptions,
     });
 
-    userEvent.click(input);
+    await userEvent.click(input);
 
     const options = await getOptions();
     expect(options).toHaveLength(2);
@@ -97,11 +97,11 @@ describe("AutocompleteInput", () => {
       onOptionSelect,
     });
 
-    userEvent.click(input);
+    await userEvent.click(input);
 
     const options = await getOptions();
 
-    userEvent.click(options[0]);
+    await userEvent.click(options[0]);
 
     expect(onOptionSelect).toHaveBeenCalledWith("Orange");
     expect(onChange).not.toHaveBeenCalled();

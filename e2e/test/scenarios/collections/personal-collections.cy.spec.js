@@ -96,7 +96,7 @@ describe("personal collections", () => {
       // Check that it's not possible to open permissions modal via URL for personal collection
       // cy.location().then(location => {
       //   cy.visit(`${location}/permissions`);
-      //   cy.get(".Modal").should("not.exist");
+      //   modal().should("not.exist");
       //   cy.url().should("eq", String(location));
       // });
 
@@ -113,7 +113,7 @@ describe("personal collections", () => {
       // Check that it's not possible to open permissions modal via URL for personal collection child
       // cy.location().then(location => {
       //   cy.visit(`${location}/permissions`);
-      //   cy.get(".Modal").should("not.exist");
+      //   modal().should("not.exist");
       //   cy.url().should("eq", String(location));
       // });
 
@@ -168,10 +168,10 @@ describe("personal collections", () => {
 
           openCollectionMenu();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          popover().within(() => cy.findByText("Archive").click());
-          modal().findByRole("button", { name: "Archive" }).click();
+          popover().within(() => cy.findByText("Move to trash").click());
+          modal().findByRole("button", { name: "Move to trash" }).click();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Archived collection");
+          cy.findByText("Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });

@@ -9,18 +9,18 @@ describe("SlackDeleteModal", () => {
     const onClose = jest.fn();
 
     render(<SlackDeleteModal onDelete={onDelete} onClose={onClose} />);
-    userEvent.click(screen.getByText("Delete"));
+    await userEvent.click(screen.getByText("Delete"));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalled());
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("should close the modal on cancel", () => {
+  it("should close the modal on cancel", async () => {
     const onDelete = jest.fn();
     const onClose = jest.fn();
 
     render(<SlackDeleteModal onDelete={onDelete} onClose={onClose} />);
-    userEvent.click(screen.getByText("Cancel"));
+    await userEvent.click(screen.getByText("Cancel"));
 
     expect(onDelete).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();

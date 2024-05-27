@@ -7,24 +7,24 @@ import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
-  Root,
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitleContainer,
   ColumnPickerHeaderTitle,
+  ColumnPickerHeaderTitleContainer,
 } from "./AggregationPicker.styled";
 
 interface AggregationPickerProps {
   className?: string;
   query: Lib.Query;
-  clause?: Lib.AggregationClause;
   stageIndex: number;
+  clause?: Lib.AggregationClause;
+  clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
   onSelect: (operator: Lib.Aggregable) => void;
@@ -37,15 +37,17 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
 
 type MetricListItem = Lib.MetricDisplayInfo & {
   metric: Lib.MetricMetadata;
+  selected: boolean;
 };
 
 type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
-  name: string;
+  name?: string;
   key: string;
   items: ListItem[];
   icon?: string;
+  type?: string;
 };
 
 function isOperatorListItem(item: ListItem): item is OperatorListItem {
@@ -55,8 +57,9 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
-  clause,
   stageIndex,
+  clause,
+  clauseIndex,
   operators,
   hasExpressionInput = true,
   onSelect,
@@ -89,14 +92,15 @@ export function AggregationPicker({
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
-    const metrics = Lib.availableMetrics(query);
+    const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
+    const isMetricBased = Lib.isMetricBased(query, stageIndex);
 
-    if (operators.length > 0) {
+    if (operators.length > 0 && !isMetricBased) {
       sections.push({
-        key: "basic-metrics",
+        key: "operators",
         name: t`Basic Metrics`,
         items: operators.map(operator =>
           getOperatorListItem(query, stageIndex, operator),
@@ -107,12 +111,12 @@ export function AggregationPicker({
 
     if (metrics.length > 0) {
       sections.push({
-        key: "common-metrics",
-        name: t`Common Metrics`,
+        key: "metrics",
+        name: isMetricBased ? t`Metrics` : t`Common Metrics`,
         items: metrics.map(metric =>
-          getMetricListItem(query, stageIndex, metric),
+          getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
-        icon: "star",
+        icon: "metric",
       });
     }
 
@@ -122,11 +126,12 @@ export function AggregationPicker({
         name: t`Custom Expression`,
         items: [],
         icon: "sum",
+        type: "action",
       });
     }
 
     return sections;
-  }, [metadata, query, stageIndex, operators, hasExpressionInput]);
+  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -241,10 +246,9 @@ export function AggregationPicker({
   }
 
   return (
-    <Root className={className} color="summarize">
+    <Box className={className} c="summarize">
       <AccordionList
         sections={sections}
-        alwaysExpanded={false}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
         itemIsSelected={checkIsItemSelected}
@@ -253,8 +257,9 @@ export function AggregationPicker({
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
+        withBorders
       />
-    </Root>
+    </Box>
   );
 }
 
@@ -301,7 +306,12 @@ function isExpressionEditorInitiallyOpen(
   operators: Lib.AggregationOperator[],
 ): boolean {
   if (!clause) {
-    return false;
+    return (
+      Lib.isMetricBased(query, stageIndex) &&
+      Lib.availableMetrics(query, stageIndex)
+        .map(metric => Lib.displayInfo(query, stageIndex, metric))
+        .every(metricInfo => metricInfo.aggregationPosition != null)
+    );
   }
 
   const initialOperator = getInitialOperator(query, stageIndex, operators);
@@ -328,11 +338,14 @@ function getMetricListItem(
   query: Lib.Query,
   stageIndex: number,
   metric: Lib.MetricMetadata,
+  clauseIndex?: number,
 ): MetricListItem {
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
     metric,
+    selected:
+      clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
   };
 }
 

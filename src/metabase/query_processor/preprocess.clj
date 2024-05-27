@@ -37,7 +37,6 @@
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
    [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
-   [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
    [metabase.query-processor.middleware.validate :as validate]
    [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
@@ -79,15 +78,14 @@
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
-   (ensure-pmbql #'metrics/expand)
+   (ensure-pmbql #'metrics/adjust)
    (ensure-pmbql #'expand-macros/expand-macros)
    (ensure-pmbql #'qp.resolve-referenced/resolve-referenced-card-resources)
    (ensure-legacy #'parameters/substitute-parameters)
    (ensure-pmbql #'qp.resolve-source-table/resolve-source-tables)
-   (ensure-legacy #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
+   (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
-   (ensure-legacy #'upgrade-field-literals/upgrade-field-literals)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)

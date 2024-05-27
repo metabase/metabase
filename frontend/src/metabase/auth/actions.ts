@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
-import { reload, isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen, reload } from "metabase/lib/dom";
 import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -175,14 +175,5 @@ export const validatePassword = async (password: string) => {
     await UtilApi.password_check({ password });
   } catch (error) {
     return getIn(error, ["data", "errors", "password"]);
-  }
-};
-
-export const validatePasswordToken = async (token: string) => {
-  const result = await SessionApi.password_reset_token_valid({ token });
-  const valid = getIn(result, ["valid"]);
-
-  if (!valid) {
-    throw result;
   }
 };

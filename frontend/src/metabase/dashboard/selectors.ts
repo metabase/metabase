@@ -14,17 +14,22 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
   DashboardId,
   DashCardId,
   DashboardCard,
+  DashboardParameterMapping,
+  ParameterId,
+  Dashboard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
+  StoreDashboard,
 } from "metabase-types/store";
 
 import { isQuestionCard, isQuestionDashCard } from "./utils";
@@ -58,7 +63,14 @@ export const getClickBehaviorSidebarDashcard = (state: State) => {
     : null;
 };
 export const getDashboards = (state: State) => state.dashboard.dashboards;
-export const getCardData = (state: State) => state.dashboard.dashcardData;
+export const getDashcardDataMap = (state: State) =>
+  state.dashboard.dashcardData;
+
+export function getDashcardData(state: State, dashcardId: DashCardId) {
+  const dashcardData = getDashcardDataMap(state);
+  return dashcardData[dashcardId];
+}
+
 export const getSlowCards = (state: State) => state.dashboard.slowCards;
 export const getParameterValues = (state: State) =>
   state.dashboard.parameterValues;
@@ -76,6 +88,9 @@ export const getLoadingStartTime = (state: State) =>
   state.dashboard.loadingDashCards.startTime;
 export const getLoadingEndTime = (state: State) =>
   state.dashboard.loadingDashCards.endTime;
+
+export const getIsMetadataLoaded = (state: State) =>
+  state.dashboard.loadingMetadata.loadingStatus === "complete";
 
 export const getIsSlowDashboard = createSelector(
   [getLoadingStartTime, getLoadingEndTime],
@@ -196,6 +211,16 @@ const getIsParameterValuesEmpty = createSelector(
         ? parameterValue.length === 0
         : parameterValue == null,
     );
+  },
+);
+
+export const getParameterValuesBySlugMap = createSelector(
+  [getDashboardComplete, getParameterValues],
+  (dashboard, parameterValues) => {
+    if (!dashboard) {
+      return {};
+    }
+    return getParameterValuesBySlug(dashboard.parameters, parameterValues);
   },
 );
 
@@ -417,6 +442,94 @@ export const getTabs = createSelector([getDashboard], dashboard => {
   return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
 });
 
-export function getSelectedTabId(state: State) {
-  return state.dashboard.selectedTabId;
+export const getSelectedTabId = createSelector(
+  [getDashboard, state => state.dashboard.selectedTabId],
+  (dashboard, selectedTabId) => {
+    if (dashboard && selectedTabId === null) {
+      return getInitialSelectedTabId(dashboard);
+    }
+
+    return selectedTabId;
+  },
+);
+
+export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+  return dashboard.tabs?.[0]?.id || null;
 }
+
+export const getCurrentTabDashcards = createSelector(
+  [getDashboardComplete, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
+      return [];
+    }
+    if (!selectedTabId) {
+      return dashboard.dashcards;
+    }
+    return dashboard.dashcards.filter(
+      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
+    );
+  },
+);
+
+export const getHiddenParameterSlugs = createSelector(
+  [getParameters, getCurrentTabDashcards, getIsEditing],
+  (parameters, currentTabDashcards, isEditing) => {
+    if (isEditing) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const currentTabParameterIds = currentTabDashcards.flatMap(
+      (dc: DashboardCard) =>
+        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
+    );
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(p => p.slug).join(",");
+  },
+);
+
+export const getParameterMappingsBeforeEditing = createSelector(
+  [getDashboardBeforeEditing],
+  editingDashboard => {
+    if (!editingDashboard) {
+      return {};
+    }
+
+    const dashcards = editingDashboard.dashcards;
+    const map: Record<
+      ParameterId,
+      Record<DashCardId, DashboardParameterMapping>
+    > = {};
+
+    // create a map like {[parameterId]: {[dashcardId]: parameterMapping}}
+    for (const dashcard of dashcards) {
+      if (!dashcard.parameter_mappings) {
+        continue;
+      }
+
+      for (const parameterMapping of dashcard.parameter_mappings) {
+        const parameterId = parameterMapping.parameter_id;
+
+        if (!map[parameterId]) {
+          map[parameterId] = {};
+        }
+
+        map[parameterId][dashcard.id] =
+          parameterMapping as DashboardParameterMapping;
+      }
+    }
+
+    return map;
+  },
+);
+
+export const getDisplayTheme = (state: State) => state.dashboard.theme;
+
+export const getIsNightMode = createSelector(
+  [getDisplayTheme],
+  theme => theme === "night",
+);

@@ -23,10 +23,12 @@ describe("11914, 18978, 18977", () => {
     });
   });
 
-  it("should not display query editing controls and 'Browse Data' link", () => {
-    cy.log("Make sure we don't prompt user to browse data from the sidebar");
+  it("should not display query editing controls and 'Browse databases' link", () => {
+    cy.log(
+      "Make sure we don't prompt user to browse databases from the sidebar",
+    );
     openNavigationSidebar();
-    cy.findByTestId("main-navbar-root").should("not.contain", "Browse data");
+    cy.findByLabelText("Browse databases").should("not.exist");
 
     cy.log("Make sure we don't prompt user to create a new query");
     appBar().icon("add").click();
@@ -63,7 +65,7 @@ describe("11914, 18978, 18977", () => {
     assertNoOpenPopover();
 
     // No drills when clicking on a FK
-    cy.get(".Table-FK").contains("123").click();
+    cy.get(".test-Table-FK").contains("123").click();
     assertNoOpenPopover();
 
     assertIsNotAdHoc();

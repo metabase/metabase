@@ -110,7 +110,7 @@ const SegmentFieldList = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={false}
@@ -134,7 +134,16 @@ const SegmentFieldList = props => {
         {() =>
           Object.keys(entities).length > 0 ? (
             <div className={CS.wrapper}>
-              <div className="pl4 pb2 mb4 bg-white rounded bordered">
+              <div
+                className={cx(
+                  CS.pl4,
+                  CS.pb2,
+                  CS.mb4,
+                  CS.bgWhite,
+                  CS.rounded,
+                  CS.bordered,
+                )}
+              >
                 <div className={S.item}>
                   <div className={R.columnHeader}>
                     <div className={cx(S.itemTitle, F.fieldNameTitle)}>
@@ -154,7 +163,7 @@ const SegmentFieldList = props => {
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
+                        <li className={CS.relative} key={entity.id}>
                           <Field
                             field={entity}
                             foreignKeys={foreignKeys}

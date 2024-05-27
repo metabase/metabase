@@ -1,8 +1,10 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -44,7 +46,7 @@ export function DashboardEmptyState({
                 collectionId: dashboard.collection_id ?? undefined,
                 cardType: "question",
               })}
-              className="text-bold text-brand"
+              className={cx(CS.textBold, CS.textBrand)}
               onClick={closeNavbar}
             >
               {t`ask a new one`}

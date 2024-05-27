@@ -1,5 +1,9 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -21,11 +25,11 @@ describe("issue 25537", () => {
     cy.createQuestion(questionDetails);
 
     startNewQuestion();
-    cy.icon("model").click();
-    cy.wait("@getCollectionContent");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(questionDetails.name).should("exist");
+    entityPickerModal().within(() => {
+      cy.findByText(/Modelle/i).click();
+      cy.wait("@getCollectionContent");
+      cy.findByText(questionDetails.name).should("exist");
+    });
   });
 });
 
