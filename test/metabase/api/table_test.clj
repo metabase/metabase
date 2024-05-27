@@ -34,7 +34,8 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
-                         :cache_field_values_schedule :metadata_sync_schedule])
+                         :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
+                         :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -969,11 +970,11 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (mt/with-temporary-setting-values [uploads-enabled true]
+        (upload-test/with-uploads-enabled
           (is (= {:status 200, :body nil}
                  (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
-        (mt/with-temporary-setting-values [uploads-enabled false]
+        (upload-test/with-uploads-disabled
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                  (update-csv-via-api! :metabase.upload/append))))))))
 
@@ -1000,11 +1001,11 @@
   (mt/test-driver :h2
     (mt/with-empty-db
      (testing "Happy path"
-       (mt/with-temporary-setting-values [uploads-enabled true]
+       (upload-test/with-uploads-enabled
          (is (= {:status 200, :body nil}
                 (update-csv-via-api! :metabase.upload/replace)))))
      (testing "Failure paths return an appropriate status code and a message in the body"
-       (mt/with-temporary-setting-values [uploads-enabled false]
+       (upload-test/with-uploads-disabled
          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                 (update-csv-via-api! :metabase.upload/replace))))))))
 

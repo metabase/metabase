@@ -1391,3 +1391,36 @@
                             (t2/reducible-query {:select [:id :display :visualization_settings]
                                                  :from   [:report_card]
                                                  :where  [:like :visualization_settings "%stackable%"]})))))
+
+(define-reversible-migration MigrateMetricsToV2
+  (metrics-v2/migrate-up!)
+  (metrics-v2/migrate-down!))
+
+(defn- raw-setting-value [key]
+  (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
+          :value
+          encryption/maybe-decrypt))
+
+(define-reversible-migration MigrateUploadsSettings
+  (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
+        (when-let [db-id (some-> (raw-setting-value "uploads-database-id") parse-long)]
+          (let [uploads-table-prefix (raw-setting-value "uploads-table-prefix")
+                uploads-schema-name  (raw-setting-value "uploads-schema-name")]
+            (t2/query {:update :metabase_database
+                       :set    {:uploads_enabled      true
+                                :uploads_table_prefix uploads-table-prefix
+                                :uploads_schema_name  uploads-schema-name}
+                       :where  [:= :id db-id]}))))
+      (t2/query {:delete-from :setting
+                 :where       [:in :key ["uploads-enabled"
+                                         "uploads-database-id"
+                                         "uploads-schema-name"
+                                         "uploads-table-prefix"]]}))
+  (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
+    (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
+                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
+                    {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
+                    {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db))}]]
+      (->> settings
+           (filter :value)
+           (t2/insert! :setting)))))
