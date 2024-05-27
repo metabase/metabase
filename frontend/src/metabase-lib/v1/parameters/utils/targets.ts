@@ -58,19 +58,18 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const query = question.query();
-    const stageIndex = -1;
-    const fields = metadata.fieldsList();
-    const columns = fields.map(field =>
-      Lib.fromLegacyColumn(query, stageIndex, field),
+    const fieldId = fieldRef[1];
+    const resultMetadata = question.getResultMetadata();
+    const fieldMetadata = resultMetadata.find(
+      field => field.id === fieldId || field.name === fieldId,
     );
-    const [fieldIndex] = Lib.findColumnIndexesFromLegacyRefs(
-      query,
-      stageIndex,
-      columns,
-      [fieldRef],
-    );
-    return fields[fieldIndex];
+    if (fieldMetadata) {
+      return (
+        metadata.field(fieldMetadata.id, fieldMetadata.table_id) ??
+        metadata.field(fieldMetadata.id)
+      );
+    }
+    return metadata.field(fieldId);
   }
 
   return null;
