@@ -119,7 +119,8 @@
                                                 (select-keys [:base-type :effective-type]))]
      (update &match 1 merge
              {:base-type base-type}
-             (when (not= base-type effective-type)
+             (when (and (some? effective-type)
+                        (not= base-type effective-type))
                {:effective-type effective-type})))
    ;; legacy mbql fields
    [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard (some-fn map? nil?))]
@@ -127,7 +128,8 @@
                                                 (select-keys [:base-type :effective-type]))]
      (update &match 2 merge
              {:base-type base-type}
-             (when (not= base-type effective-type)
+             (when (and (some? effective-type)
+                        (not= base-type effective-type))
                {:effective-type effective-type})))
    #_(update &match 2 merge (-> (lib.metadata/field metadata-provider id)
                               (select-keys [:base-type :effective-type])))))
