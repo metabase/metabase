@@ -193,6 +193,7 @@
     metabase.public-settings       #{metabase.public-settings
                                      metabase.public-settings.premium-features}
     metabase.pulse                 #{metabase.pulse
+                                     metabase.pulse.attachment
                                      metabase.pulse.markdown
                                      metabase.pulse.parameters
                                      metabase.pulse.preview

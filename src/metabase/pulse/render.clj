@@ -14,7 +14,7 @@
    [metabase.pulse.render.style :as style]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls])
@@ -179,11 +179,11 @@
     (catch Throwable e
       (if (:card-error (ex-data e))
         (do
-          (log/error e (trs "Pulse card query error"))
+          (log/error e "Pulse card query error")
           (assoc (body/render :card-error nil nil nil nil nil)
                  :attachments (error-file-attachment card e)))
         (do
-          (log/error e (trs "Pulse card render error"))
+          (log/error e "Pulse card render error")
           (assoc (body/render :render-error nil nil nil nil nil)
                  :attachments (error-file-attachment card e)))))))
 
