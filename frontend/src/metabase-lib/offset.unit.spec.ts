@@ -11,6 +11,8 @@ import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 import type { Query } from "./types";
 
+const stageIndex = -1;
+
 const queryNoBreakout = createQueryWithClauses({
   aggregations: [{ operatorName: "count" }],
 });
@@ -47,8 +49,6 @@ const queryCategoryBreakout = createQueryWithClauses({
 });
 
 describe("offsetClause", () => {
-  const stageIndex = -1;
-
   const setup = (query: Query, offset: number) => {
     const [clause] = aggregations(query, stageIndex);
     const offsettedClause = offsetClause(query, stageIndex, clause, offset);
@@ -164,8 +164,6 @@ describe("offsetClause", () => {
 });
 
 describe("diffOffsetClause", () => {
-  const stageIndex = -1;
-
   const setup = (query: Query, offset: number) => {
     const [clause] = aggregations(query, stageIndex);
     const offsettedClause = diffOffsetClause(query, stageIndex, clause, offset);
@@ -280,8 +278,6 @@ describe("diffOffsetClause", () => {
 });
 
 describe("percentDiffOffsetClause", () => {
-  const stageIndex = -1;
-
   const setup = (query: Query, offset: number) => {
     const [clause] = aggregations(query, stageIndex);
     const offsettedClause = percentDiffOffsetClause(
