@@ -9,14 +9,19 @@ import type { ClickActionPopoverProps } from "metabase/visualizations/types/clic
 import * as Lib from "metabase-lib";
 
 export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const { query, stageIndex } = Lib.asReturned(question.query(), -1);
+
+  const { isEditable } = Lib.queryDisplayInfo(query);
+  const isExpressionable =
+    Lib.expressionableColumns(query, stageIndex).length > 0;
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     clicked.extraData?.isRawTable ||
-    !isEditable
+    !isEditable ||
+    !isExpressionable
   ) {
     return [];
   }
