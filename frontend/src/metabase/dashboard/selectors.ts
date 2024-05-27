@@ -548,8 +548,9 @@ export const getHasModelActionsEnabled = createSelector(
     }
 
     const databases = metadata.databasesList();
-    const hasModelActionsEnabled = Object.values(databases).some(
-      hasDatabaseActionsEnabled,
+    const hasModelActionsEnabled = Object.values(databases).some(database =>
+      // @ts-expect-error Schema types do not match
+      hasDatabaseActionsEnabled(database),
     );
 
     return hasModelActionsEnabled;
