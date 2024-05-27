@@ -169,9 +169,13 @@ export function getOffsettedName(
   }
 
   const firstBreakoutInfo = displayInfo(query, stageIndex, firstBreakout);
+  const isFirstBreakoutDateTime =
+    firstBreakoutInfo.effectiveType === "type/DateTime";
 
-  if (firstBreakoutInfo.effectiveType !== "type/DateTime") {
-    return t`${displayName} (previous value)`;
+  if (!isFirstBreakoutDateTime) {
+    return absoluteOffset === 1
+      ? t`${displayName} (previous value)`
+      : t`${displayName} (${absoluteOffset} rows above)`;
   }
 
   const bucket = temporalBucket(firstBreakout);
