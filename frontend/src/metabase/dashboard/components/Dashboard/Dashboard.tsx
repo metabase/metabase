@@ -313,24 +313,28 @@ function DashboardInner(props: DashboardProps) {
   );
 
   useEffect(() => {
-    if (previousDashboardId !== dashboardId) {
-      handleLoadDashboard(dashboardId).then(() => {
-        setIsInitialized(true);
-      });
+    const hasDashboardChanged = dashboardId !== previousDashboardId;
+    if (hasDashboardChanged) {
+      handleLoadDashboard(dashboardId).then(() => setIsInitialized(true));
       return;
     }
-    if (previousTabId !== selectedTabId) {
-      fetchDashboardCardData();
-      fetchDashboardCardMetadata();
+
+    if (!dashboard) {
       return;
     }
-    const didDashboardLoad = !previousDashboard && dashboard;
-    const didParameterValuesChange = !_.isEqual(
-      previousParameterValues,
+
+    const hasDashboardLoaded = !previousDashboard;
+    const hasTabChanged = selectedTabId !== previousTabId;
+    const hasParameterValueChanged = !_.isEqual(
       parameterValues,
+      previousParameterValues,
     );
-    if (didDashboardLoad || didParameterValuesChange) {
+
+    if (hasDashboardLoaded) {
       fetchDashboardCardData({ reload: false, clearCache: true });
+      fetchDashboardCardMetadata();
+    } else if (hasTabChanged || hasParameterValueChanged) {
+      fetchDashboardCardData();
     }
   }, [
     dashboard,
