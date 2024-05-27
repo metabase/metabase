@@ -1070,11 +1070,15 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-    const shortcutColumn = Number(!question?.isArchived());
     const query = question?.query();
     const info = query && Lib.queryDisplayInfo(query);
-
     const hasAggregation = cols.some(column => column.source === "aggregation");
+
+    const shortcutColumn =
+      info?.isEditable &&
+      Number(!question?.isArchived()) &&
+      !hasAggregation &&
+      !isRawTable;
 
     const tableTheme = theme?.other?.table;
     const backgroundColor = tableTheme?.cell?.backgroundColor;
@@ -1151,9 +1155,6 @@ class TableInteractive extends Component {
                 {shortcutColumn && (
                   <ColumnShortcut
                     height={headerHeight - 1}
-                    isEditable={info?.isEditable}
-                    isRawTable={isRawTable}
-                    hasAggregation={hasAggregation}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
@@ -1328,17 +1329,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
-function ColumnShortcut({
-  height,
-  onClick,
-  isEditable,
-  isRawTable,
-  hasAggregation,
-}) {
-  if (!isEditable || isRawTable || hasAggregation) {
-    return null;
-  }
-
+function ColumnShortcut({ height, onClick }) {
   return (
     <div className={TableS.shortcutsWrapper} style={{ height }}>
       <UIButton
