@@ -113,8 +113,17 @@ export function MultiAutocomplete({
 
     setSearchValue(newSearchValue);
 
-    if (shouldCreate?.(newSearchValue, lastSelectedValues)) {
-      setSelectedValues(unique([...lastSelectedValues, newSearchValue]));
+    if (newSearchValue !== "") {
+      const values = parseValues(newSearchValue);
+      if (values.length === 1) {
+        const value = values[0] ?? newSearchValue;
+        if (value && shouldCreate?.(value, lastSelectedValues)) {
+          setSelectedValues(unique([...lastSelectedValues, value]));
+        }
+      }
+    }
+    if (newSearchValue === "") {
+      setSelectedValues(unique([...lastSelectedValues]));
     }
 
     const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
@@ -130,12 +139,15 @@ export function MultiAutocomplete({
         value => value !== "" && shouldCreate?.(value, lastSelectedValues),
       );
 
-      setSearchValue("");
+      if (values.length > 0) {
+        setSearchValue("");
+      }
 
       if (validValues.length > 0) {
         const newValues = unique([...lastSelectedValues, ...validValues]);
         setSelectedValues(newValues);
         setLastSelectedValues(newValues);
+        setSearchValue("");
       }
     }
   };

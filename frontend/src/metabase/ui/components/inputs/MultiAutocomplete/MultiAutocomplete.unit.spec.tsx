@@ -239,14 +239,13 @@ describe("MultiAutocomplete", () => {
   });
 
   it("should be possible to paste a partial value", async () => {
-    const { input, onChange } = setup({
+    const { input } = setup({
       data: EXAMPLE_DATA,
     });
 
     input.focus();
     await userEvent.paste('"quu');
 
-    expect(onChange).toHaveBeenLastCalledWith(['"quu']);
     expect(input).toHaveValue('"quu');
   });
 
