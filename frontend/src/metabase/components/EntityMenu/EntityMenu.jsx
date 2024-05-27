@@ -92,11 +92,13 @@ class EntityMenu extends Component {
           {menuItemContent || (
             <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
               {items.map(item => {
-                const key = item.key ?? item.title;
-
                 if (!item) {
                   return null;
-                } else if (item.content) {
+                }
+
+                const key = item.key ?? item.title;
+
+                if (item.content) {
                   return (
                     <li key={key} data-testid={item.testId}>
                       <EntityMenuItem
@@ -114,41 +116,43 @@ class EntityMenu extends Component {
                       />
                     </li>
                   );
-                } else if (item.component) {
+                }
+
+                if (item.component) {
                   return (
                     <li key={key} data-testid={item.testId}>
                       {item.component}
                     </li>
                   );
-                } else {
-                  return (
-                    <li key={key} data-testid={item.testId}>
-                      <EntityMenuItem
-                        icon={item.icon}
-                        title={item.title}
-                        externalLink={item.externalLink}
-                        action={
-                          item.action &&
-                          (e => {
-                            item.action(e);
-                            this.toggleMenu();
-                          })
-                        }
-                        event={item.event}
-                        link={item.link}
-                        tooltip={item.tooltip}
-                        disabled={item.disabled}
-                        onClose={() => {
-                          this.toggleMenu();
-                          item?.onClose?.();
-                        }}
-                        color={item.color}
-                        hoverColor={item.hoverColor}
-                        hoverBgColor={item.hoverBgColor}
-                      />
-                    </li>
-                  );
                 }
+
+                return (
+                  <li key={key} data-testid={item.testId}>
+                    <EntityMenuItem
+                      icon={item.icon}
+                      title={item.title}
+                      externalLink={item.externalLink}
+                      action={
+                        item.action &&
+                        (e => {
+                          item.action(e);
+                          this.toggleMenu();
+                        })
+                      }
+                      event={item.event}
+                      link={item.link}
+                      tooltip={item.tooltip}
+                      disabled={item.disabled}
+                      onClose={() => {
+                        this.toggleMenu();
+                        item?.onClose?.();
+                      }}
+                      color={item.color}
+                      hoverColor={item.hoverColor}
+                      hoverBgColor={item.hoverBgColor}
+                    />
+                  </li>
+                );
               })}
             </ol>
           )}
