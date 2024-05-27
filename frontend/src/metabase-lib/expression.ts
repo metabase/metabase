@@ -4,6 +4,7 @@ import * as ML from "cljs/metabase.lib.js";
 
 import { breakouts } from "./breakout";
 import { displayInfo } from "./metadata";
+import { temporalBucket } from "./temporal_bucket";
 import type {
   AggregationClause,
   ColumnMetadata,
@@ -148,22 +149,23 @@ export function percentDiffOffsetClause(
 // TODO: should this come from inside MLv2?
 // TODO: add `offset: number` argument, see https://metaboat.slack.com/archives/C0645JP1W81/p1716556485318749?thread_ts=1716475674.712849&cid=C0645JP1W81
 export function getPeriodName(query: Query, stageIndex: number): string {
-  const firstTimeBreakout = breakouts(query, stageIndex).find(breakout => {
-    const info = displayInfo(query, stageIndex, breakout);
-    return info.effectiveType === "type/DateTime";
-  });
+  const firstBreakout = breakouts(query, stageIndex)[0];
 
-  if (!firstTimeBreakout) {
+  if (!firstBreakout) {
     return t`period`;
   }
 
-  const firstTimeBreakoutInfo = displayInfo(
-    query,
-    stageIndex,
-    firstTimeBreakout,
-  );
+  const bucket = temporalBucket(firstBreakout);
 
-  const period = firstTimeBreakoutInfo.longDisplayName.split(":").at(-1);
+  if (!bucket) {
+    return t`period`;
+  }
 
-  return period ? period.trim().toLowerCase() : t`period`;
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+
+  if (bucketInfo) {
+    return bucketInfo.shortName;
+  }
+
+  return t`value`;
 }

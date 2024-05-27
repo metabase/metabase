@@ -12,15 +12,17 @@ import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
 const offset = -1;
 
+const baseQuery = createQueryWithClauses({
+  aggregations: [{ operatorName: "count" }],
+});
+
 describe("offsetClause", () => {
   describe("offset = -1", () => {
     const offset = -1;
     const stageIndex = -1;
 
     describe("no breakout", () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
-      });
+      const query = baseQuery;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -53,33 +55,64 @@ describe("offsetClause", () => {
       });
     });
 
-    describe("breakout on non-binned datetime column", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
+    describe("breakout on binned datetime column", () => {
+      const query = createQueryWithClauses({
+        query: baseQuery,
+        breakouts: [
+          {
+            columnName: "CREATED_AT",
+            tableName: "ORDERS",
+            temporalBucketName: "Month",
+          },
+        ],
       });
+      const [clause] = aggregations(query, stageIndex);
+      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      it("gives correct name", () => {
-        expect("TODO").toBe("TODO");
+      it("produces correct name", () => {
+        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        expect(info.displayName).toBe("Count (previous month)");
       });
     });
 
-    describe("breakout on binned datetime column", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
+    describe("breakout on non-binned datetime column", () => {
+      const query = createQueryWithClauses({
+        query: baseQuery,
+        breakouts: [
+          {
+            columnName: "CREATED_AT",
+            tableName: "ORDERS",
+          },
+        ],
       });
+      const [clause] = aggregations(query, stageIndex);
+      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      it("gives correct name", () => {
-        expect("TODO").toBe("TODO");
+      it("produces correct name", () => {
+        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        expect(info.displayName).toBe("Count (previous period)");
       });
     });
 
     describe("breakout on non-datetime column", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
+      const query = createQueryWithClauses({
+        query: baseQuery,
+        breakouts: [
+          {
+            columnName: "CATEGORY",
+            tableName: "PRODUCTS",
+          },
+        ],
       });
+      const [clause] = aggregations(query, stageIndex);
+      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      it("gives correct name", () => {
-        expect("TODO").toBe("TODO");
+      it("produces correct name", () => {
+        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        expect(info.displayName).toBe("Count (previous period)");
       });
     });
   });
@@ -88,72 +121,28 @@ describe("offsetClause", () => {
     // const offset = -2;
 
     describe("no breakout", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
-      });
-
-      it("gives correct name", () => {
-        expect("TODO").toBe("TODO");
-      });
-    });
-
-    describe("breakout on non-binned datetime column", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
-      });
-
-      it("gives correct name", () => {
+      it("produces correct name", () => {
         expect("TODO").toBe("TODO");
       });
     });
 
     describe("breakout on binned datetime column", () => {
-      it("works", () => {
+      it("produces correct name", () => {
         expect("TODO").toBe("TODO");
       });
+    });
 
-      it("gives correct name", () => {
+    describe("breakout on non-binned datetime column", () => {
+      it("produces correct name", () => {
         expect("TODO").toBe("TODO");
       });
     });
 
     describe("breakout on non-datetime column", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
-      });
-
-      it("gives correct name", () => {
+      it("produces correct name", () => {
         expect("TODO").toBe("TODO");
       });
     });
-  });
-});
-
-describe("offsetClause - old", () => {
-  it("generates proper name for Count aggregation with a Month breakout", () => {
-    const stageIndex = -1;
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
-      breakouts: [
-        {
-          columnName: "CREATED_AT",
-          tableName: "ORDERS",
-          temporalBucketName: "Month",
-        },
-      ],
-    });
-    const [aggregationClause] = aggregations(query, stageIndex);
-    const offsettedClause = offsetClause(
-      query,
-      stageIndex,
-      aggregationClause,
-      offset,
-    );
-    const finalQuery = aggregate(query, stageIndex, offsettedClause);
-
-    expect(
-      displayInfo(finalQuery, stageIndex, offsettedClause).displayName,
-    ).toBe("Count (previous month)");
   });
 });
 
