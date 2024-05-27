@@ -1878,7 +1878,7 @@
 (deftest migrate-uploads-settings-test-1
   (testing "MigrateUploadsSettings with valid settings state works as expected."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-      (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
+      (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 1"))
               not-uploads-db-id (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 2"))]
           (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id))}
@@ -1911,7 +1911,7 @@
 (deftest migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-      (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
+      (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
               settings      [;; no uploads-database-id and uploads-schema-name
                              {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
@@ -1929,7 +1929,7 @@
 (deftest migrate-uploads-settings-test-3
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-enabled) doesn't set uploads_enabled on the database."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-      (impl/test-migrations ["v50.2024-05-17T19:54:26" "v50.2024-05-17T19:54:27"] [migrate!]
+      (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
         (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
               settings      [;; no uploads-enabled
                              {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
