@@ -42,6 +42,11 @@ export function isStringParameter(parameter: Parameter) {
   return type === "string";
 }
 
+export function isTemporalUnitParameter(parameter: Parameter) {
+  const type = getParameterType(parameter);
+  return type === "temporal_unit";
+}
+
 // TODO this must be wrong because it returns true
 // for parameters without fields
 export function isFieldFilterParameter(parameter: Parameter) {

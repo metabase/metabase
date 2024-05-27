@@ -168,7 +168,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
           );
         },
         parameter: parameter =>
-          columnFilterForParameter(parameter)(targetColumn),
+          columnFilterForParameter(query, stageIndex, parameter)(targetColumn),
         userAttribute: () => Lib.isString(targetColumn),
       },
     };
