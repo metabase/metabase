@@ -1608,10 +1608,10 @@
 
 (deftest public-pivot-dashcard-errors-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
-    (testing "Shouldn't be able to execute a public DashCard if public sharing is disabled"
-      (mt/test-drivers (api.pivots/applicable-drivers)
-        (do-with-temp-dashboard-and-public-pivot-card
-         (fn [dash card dashcard]
+    (mt/test-drivers (api.pivots/applicable-drivers)
+      (do-with-temp-dashboard-and-public-pivot-card
+       (fn [dash card dashcard]
+         (testing "Shouldn't be able to execute a public DashCard if public sharing is disabled"
            (mt/with-temporary-setting-values [enable-public-sharing false]
              (is (= "An error occurred."
                     (client/client :get 400 (pivot-dashcard-url dash card dashcard)))))
