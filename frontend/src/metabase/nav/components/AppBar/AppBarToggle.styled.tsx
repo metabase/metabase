@@ -27,13 +27,13 @@ export const SidebarIcon = styled(Icon)<SidebarIconProps>`
   color: ${() => color("brand")};
   display: block;
 
-  ${props =>
-    !props.isLogoVisible &&
+  ${({ isLogoVisible, theme }) =>
+    !isLogoVisible &&
     css`
-      color: ${() => color("text-medium")};
+      color: ${theme.fn.themeColor("text-medium")};
 
       &:hover {
-        color: ${() => color("brand")};
+        color: ${theme.fn.themeColor("brand")};
       }
     `}
 `;

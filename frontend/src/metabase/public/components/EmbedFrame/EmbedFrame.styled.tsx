@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -29,12 +29,12 @@ export const Root = styled.div<{
       bottom: 0;
     `}
 
-  ${props =>
-    props.isBordered &&
+  ${({ isBordered, theme }) =>
+    isBordered &&
     css`
-      border: 1px solid ${() => color("border")};
+      border: 1px solid ${theme.fn.themeColor("border")};
       border-radius: 8px;
-      box-shadow: 0 2px 2px ${() => color("shadow")};
+      box-shadow: 0 2px 2px ${theme.fn.themeColor("shadow")};
     `}
 `;
 
@@ -88,20 +88,19 @@ export const ActionButtonsContainer = styled.div`
 
 export type FooterVariant = "default" | "large";
 
-const footerVariantStyles = {
-  default: css`
-    border-top: 1px solid ${() => color("border")};
-  `,
-  large: css`
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 2rem;
+const getFooterDefaultVariantStyles = (theme: Theme) => css`
+  border-top: 1px solid ${theme.fn.themeColor("border")};
+`;
 
-    ${ActionButtonsContainer} {
-      display: none;
-    }
-  `,
-};
+const footerLargeVariantStyles = css`
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+
+  ${ActionButtonsContainer} {
+    display: none;
+  }
+`;
 
 function getParameterPanelBackgroundColor(theme?: string) {
   if (theme === "night") {
@@ -158,7 +157,10 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   flex-shrink: 0;
   align-items: center;
 
-  ${props => footerVariantStyles[props.variant]}
+  ${props =>
+    props.variant === "default"
+      ? getFooterDefaultVariantStyles(props.theme)
+      : footerLargeVariantStyles}
 
   padding: 0.5rem;
 

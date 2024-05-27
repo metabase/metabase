@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
-import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
+import { getAnimationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
 
 import type { SkeletonCaptionSize } from "./types";
 
@@ -27,7 +27,7 @@ export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
 `;
 
 export const SkeletonPlaceholder = styled.div`
-  ${animationStyles};
+  ${({ theme }) => getAnimationStyles(theme)};
   width: 40%;
   height: 1.0625rem;
   border-radius: 1rem;

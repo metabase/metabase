@@ -1,3 +1,4 @@
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color, alpha } from "metabase/lib/colors";
@@ -5,7 +6,9 @@ import { space } from "metabase/styled-components/theme";
 
 export const THUMB_SIZE = "1.2rem";
 
-const activeThumbStyle = `box-shadow: 0 0 4px 1px ${() => color("brand")}`;
+const getActiveThumbStyle = (theme: Theme) => css`
+  box-shadow: 0 0 4px 1px ${theme.fn.themeColor("brand")};
+`;
 
 export const SliderContainer = styled.div`
   position: relative;
@@ -14,19 +17,19 @@ export const SliderContainer = styled.div`
   margin-right: calc(${THUMB_SIZE} / 2);
 `;
 
-const thumbStyles = `
+const getThumbStyles = (theme: Theme) => css`
   -webkit-appearance: none;
   width: ${THUMB_SIZE};
   height: ${THUMB_SIZE};
   border-radius: 50%;
-  border: 2px solid ${() => color("brand")};
+  border: 2px solid ${theme.fn.themeColor("brand")};
   box-sizing: border-box;
-  background-color: ${() => color("white")};
+  background-color: ${theme.fn.themeColor("white")};
   cursor: pointer;
-  box-shadow: 0 0 2px 1px ${() => color("brand")};
+  box-shadow: 0 0 2px 1px ${theme.fn.themeColor("brand")};
   pointer-events: all;
   &:active {
-    ${activeThumbStyle}
+    ${getActiveThumbStyle(theme)}
   }
 `;
 
@@ -40,17 +43,17 @@ export const SliderInput = styled.input`
   background: none;
   pointer-events: none;
   &::-webkit-slider-thumb {
-    ${thumbStyles}
+    ${({ theme }) => getThumbStyles(theme)}
   }
   &::-moz-range-thumb {
-    ${thumbStyles}
+    ${({ theme }) => getThumbStyles(theme)}
   }
   &:focus {
     &::-webkit-slider-thumb {
-      ${activeThumbStyle}
+      ${({ theme }) => getActiveThumbStyle(theme)}
     }
     &::-moz-range-thumb {
-      ${activeThumbStyle}
+      ${({ theme }) => getActiveThumbStyle(theme)}
     }
   }
 `;

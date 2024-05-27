@@ -1,9 +1,8 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import BaseLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`
@@ -34,19 +33,19 @@ export const FormContainer = styled.div`
   }
 `;
 
-const titleStyle = css`
+const getTitleStyle = (theme: Theme) => css`
   font-weight: 700;
   font-size: 1.125rem;
   line-height: 1.375rem;
-  color: ${() => color("text-dark")};
+  color: ${theme.fn.themeColor("text-dark")};
 `;
 
 export const FormTitle = styled.h1`
-  ${titleStyle}
+  ${({ theme }) => getTitleStyle(theme)}
   margin-bottom: 21px;
 `;
 
 export const FormResultMessage = styled.h1`
-  ${titleStyle}
+  ${({ theme }) => getTitleStyle(theme)}
   text-align: center;
 `;

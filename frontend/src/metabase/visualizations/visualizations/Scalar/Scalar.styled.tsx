@@ -14,13 +14,13 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
   padding: 0 ${space(1)};
   max-width: 100%;
 
-  ${({ isClickable }) =>
+  ${({ isClickable, theme }) =>
     isClickable &&
     css`
       cursor: pointer;
 
       &:hover {
-        color: ${() => color("brand")};
+        color: ${theme.fn.themeColor("brand")};
       }
     `}
 `;

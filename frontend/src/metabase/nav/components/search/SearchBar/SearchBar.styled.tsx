@@ -30,17 +30,17 @@ export const SearchInputContainer = styled.div<{
   align-items: center;
   position: relative;
 
-  ${({ isActive }) => {
+  ${({ isActive, theme }) => {
     if (isActive) {
       return css`
-        background-color: ${() => color("bg-medium")};
+        background-color: ${theme.fn.themeColor("bg-medium")};
       `;
     }
     return css`
-      background-color: ${() => color("white")};
+      background-color: ${theme.fn.themeColor("white")};
 
       &:hover {
-        background-color: ${() => color("bg-light")};
+        background-color: ${theme.fn.themeColor("bg-light")};
       }
     `;
   }}
@@ -63,11 +63,11 @@ export const SearchInputContainer = styled.div<{
     height: 2rem;
     border-radius: 99px;
     border-color: transparent;
-    ${props =>
-      props.isActive &&
+    ${({ isActive, theme }) =>
+      isActive &&
       css`
         width: 100%;
-        border-color: ${() => color("border")};
+        border-color: ${theme.fn.themeColor("border")};
         ${activeInputCSS};
       `};
   }

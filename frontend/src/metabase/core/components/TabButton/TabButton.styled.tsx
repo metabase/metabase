@@ -68,10 +68,10 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
       props.isSelected && !props.disabled ? color("brand") : "transparent"};
 
   :hover {
-    ${props =>
-      !props.disabled &&
+    ${({ disabled, theme }) =>
+      !disabled &&
       css`
-        color: ${() => color("brand")};
+        color: ${theme.fn.themeColor("brand")};
       `}
   }
 `;
@@ -87,22 +87,22 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
   color: inherit;
   border: none;
 
-  ${props =>
-    props.isOpen &&
-    !props.disabled &&
+  ${({ isOpen, disabled, theme }) =>
+    isOpen &&
+    !disabled &&
     css`
-      color: ${() => color("brand")};
-      background-color: ${() => color("bg-medium")};
+      color: ${theme.fn.themeColor("brand")};
+      background-color: ${theme.fn.themeColor("bg-medium")};
     `}
   &:hover,:focus {
-    ${props =>
-      props.disabled
+    ${({ disabled, theme }) =>
+      disabled
         ? css`
-            color: ${() => color("text-dark")};
+            color: ${theme.fn.themeColor("text-dark")};
           `
         : css`
-            color: ${() => color("brand")};
-            background-color: ${() => color("bg-medium")};
+            color: ${theme.fn.themeColor("brand")};
+            background-color: ${theme.fn.themeColor("bg-medium")};
           `}
   }
 `;

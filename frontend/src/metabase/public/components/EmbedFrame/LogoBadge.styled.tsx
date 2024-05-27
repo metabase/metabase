@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -22,23 +22,25 @@ export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
     `}
 `;
 
-const messageVariantStyles = {
-  default: css`
-    color: ${() => color("text-medium")};
+const messageDefaultVariantStyles = (theme: Theme) => css`
+  color: ${theme.fn.themeColor("text-medium")};
 
-    margin-left: 0.5rem;
-    ${breakpointMinMedium} {
-      margin-left: 1rem;
-    }
-  `,
-  large: css`
-    color: ${() => color("text-dark")};
-    margin-top: 1rem;
-  `,
-};
+  margin-left: 0.5rem;
+  ${breakpointMinMedium} {
+    margin-left: 1rem;
+  }
+`;
+
+const messageLargeVariantStyles = (theme: Theme) => css`
+  color: ${theme.fn.themeColor("text-dark")};
+  margin-top: 1rem;
+`;
 
 export const Message = styled.span<{ variant: Variant }>`
-  ${props => messageVariantStyles[props.variant]}
+  ${props =>
+    props.variant === "default"
+      ? messageDefaultVariantStyles(props.theme)
+      : messageLargeVariantStyles(props.theme)}
 `;
 
 export const MetabaseName = styled.span<{ isDark: boolean; variant: Variant }>`

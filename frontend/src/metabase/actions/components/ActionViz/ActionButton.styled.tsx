@@ -1,7 +1,7 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const StyledButton = styled(Button)<{
   isFullHeight?: boolean;
@@ -10,11 +10,11 @@ export const StyledButton = styled(Button)<{
   padding: 0;
   height: ${({ isFullHeight }) => (isFullHeight ? "100%" : "auto")};
 
-  ${({ focus }) =>
+  ${({ focus, theme }) =>
     focus
-      ? `
-    border: 2px solid ${() => color("focus")};
-  `
+      ? css`
+          border: 2px solid ${theme.fn.themeColor("focus")};
+        `
       : ""}
 `;
 

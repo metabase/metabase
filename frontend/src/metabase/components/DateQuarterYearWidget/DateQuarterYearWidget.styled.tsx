@@ -20,10 +20,10 @@ export const QuarterRoot = styled.li<QuarterRootProps>`
     background-color: ${() => color("brand")};
   }
 
-  ${({ isSelected }) =>
+  ${({ isSelected, theme }) =>
     isSelected &&
     css`
-      color: ${() => color("white")};
-      background-color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("white")};
+      background-color: ${theme.fn.themeColor("brand")};
     `}
 `;

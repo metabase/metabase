@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";
@@ -15,12 +15,12 @@ export const ItemIcon = styled(Icon)<{ color?: string | null }>`
   justify-self: end;
 `;
 
-const activeItemCss = css`
-  background-color: ${() => color("brand")};
+const getActiveItemCss = (theme: Theme) => css`
+  background-color: ${theme.fn.themeColor("brand")};
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${() => color("white")};
+    color: ${theme.fn.themeColor("white")};
   }
 `;
 
@@ -44,10 +44,10 @@ export const BaseItemRoot = styled.li<{
     margin-bottom: 0;
   }
 
-  ${props => props.isSelected && activeItemCss}
+  ${props => props.isSelected && getActiveItemCss(props.theme)}
 
   &:hover {
-    ${activeItemCss}
+    ${({ theme }) => getActiveItemCss(theme)}
   }
 `;
 

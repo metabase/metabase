@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
@@ -65,53 +65,53 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-const selectedStyle = css`
+const getSelectedStyle = (theme: Theme) => css`
   ${Content},
   ${ColumnTypeIcon} {
-    background-color: ${() => color("summarize")};
-    color: ${() => color("white")};
+    background-color: ${theme.fn.themeColor("summarize")};
+    color: ${theme.fn.themeColor("white")};
   }
 
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
-    color: ${() => alpha("white", 0.65)};
+    color: ${alpha(theme.fn.themeColor("white"), 0.65)};
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
-    color: ${() => color("white")};
+    color: ${theme.fn.themeColor("white")};
     opacity: 1;
   }
 `;
 
-const unselectedStyle = css`
+const getUnselectedStyle = (theme: Theme) => css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
-    color: ${() => color("text-light")};
+    color: ${theme.fn.themeColor("text-light")};
   }
 
   ${ColumnTypeIcon} {
-    color: ${() => color("text-light")};
+    color: ${theme.fn.themeColor("text-light")};
   }
 
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
     ${AddButton} {
-      color: ${() => color("summarize")};
-      background-color: ${() => color("bg-light")};
+      color: ${theme.fn.themeColor("summarize")};
+      background-color: ${theme.fn.themeColor("bg-light")};
     }
 
     ${AddButton}:hover {
-      background-color: ${() => color("bg-medium")};
+      background-color: ${theme.fn.themeColor("bg-medium")};
     }
 
     ${BucketPickerPopover.TriggerButton} {
       opacity: 1;
-      color: ${() => color("text-light")};
+      color: ${theme.fn.themeColor("text-light")};
     }
 
     ${BucketPickerPopover.TriggerButton}:hover {
-      color: ${() => color("text-medium")};
+      color: ${theme.fn.themeColor("text-medium")};
     }
   }
 `;
@@ -124,5 +124,8 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
   position: relative;
 
-  ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
+  ${props =>
+    props.isSelected
+      ? getSelectedStyle(props.theme)
+      : getUnselectedStyle(props.theme)}
 `;

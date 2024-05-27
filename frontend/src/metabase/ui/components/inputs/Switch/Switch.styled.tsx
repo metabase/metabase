@@ -1,8 +1,6 @@
 import type { MantineThemeOverride, SwitchStylesParams } from "@mantine/core";
 import { rem, getSize, getStylesRef } from "@mantine/core";
 
-import { color } from "metabase/lib/colors";
-
 const LABEL_FONT_SIZES = {
   xs: rem(12),
   sm: rem(14),
@@ -92,7 +90,9 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
         },
         track: {
           backgroundColor: theme.fn.themeColor("bg-medium"),
-          border: error ? `1px solid ${() => color("accent3")}` : "none",
+          border: error
+            ? `1px solid ${theme.fn.themeColor("accent3")}`
+            : "none",
           boxSizing: "border-box",
           borderRadius: rem(24),
           height: getSize({ size, sizes: TRACK_HEIGHTS }),

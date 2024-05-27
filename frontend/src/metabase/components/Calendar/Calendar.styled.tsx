@@ -32,10 +32,10 @@ export const CalendarDay = styled.div<CalendarDayProps>`
     color: white;
   }
 
-  ${({ primaryColor, isSelectedStart, isSelectedEnd }) =>
+  ${({ primaryColor, isSelectedStart, isSelectedEnd, theme }) =>
     (isSelectedStart || isSelectedEnd) &&
     css`
-      color: ${() => color("white")} !important;
+      color: ${theme.fn.themeColor("white")} !important;
       background-color: ${primaryColor};
       z-index: 1;
     `}

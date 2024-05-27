@@ -18,17 +18,17 @@ export const EditorContainer = styled.div<{
   ${inputPadding()};
   transition: border 0.3s linear;
 
-  ${({ isFocused }) =>
+  ${({ isFocused, theme }) =>
     isFocused &&
     css`
-      border-color: ${() => color("brand")};
+      border-color: ${theme.fn.themeColor("brand")};
     `}
 
-  ${({ hasError }) =>
+  ${({ hasError, theme }) =>
     hasError &&
     css`
-      border-color: ${() => color("error")};
-    `}
+      border-color: ${theme.fn.themeColor("error")};
+    `};
 
   @media (prefers-reduced-motion) {
     transition: none;

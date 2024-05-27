@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
@@ -22,15 +22,19 @@ export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
   }
 `;
 
-const linkStyles = css`
+const getLinkStyles = (theme: Theme) => css`
   display: inline-flex;
   align-items: center;
-  color: ${() => color("brand")};
+  color: ${theme.fn.themeColor("brand")};
 `;
 
-export const BillingInternalLink = styled(Link)(linkStyles);
+export const BillingInternalLink = styled(Link)`
+  ${({ theme }) => getLinkStyles(theme)}
+`;
 
-export const BillingExternalLink = styled(ExternalLink)(linkStyles);
+export const BillingExternalLink = styled(ExternalLink)`
+  ${({ theme }) => getLinkStyles(theme)}
+`;
 
 export const BillingExternalLinkIcon = styled(Icon)`
   margin-left: 0.25rem;

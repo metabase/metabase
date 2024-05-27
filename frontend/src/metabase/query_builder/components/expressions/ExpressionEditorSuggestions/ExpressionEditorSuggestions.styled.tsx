@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import {
@@ -16,9 +16,9 @@ export const SuggestionMatch = styled.span`
   font-weight: bold;
 `;
 
-const highlighted = css`
-  color: ${() => color("white")};
-  background-color: ${() => color("brand")};
+const getHighlightedStyle = (theme: Theme) => css`
+  color: ${theme.fn.themeColor("white")};
+  background-color: ${theme.fn.themeColor("brand")};
 `;
 
 export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
@@ -32,10 +32,10 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   align-items: center;
 
   &:hover {
-    ${highlighted}
+    ${({ theme }) => getHighlightedStyle(theme)}
   }
 
-  ${props => props.isHighlighted && highlighted}
+  ${props => props.isHighlighted && getHighlightedStyle(props.theme)}
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
@@ -55,10 +55,10 @@ export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   padding-left: 0.875rem;
 
   &:hover {
-    ${highlighted}
+    ${({ theme }) => getHighlightedStyle(theme)}
   }
 
-  ${props => props.isHighlighted && highlighted}
+  ${props => props.isHighlighted && getHighlightedStyle(props.theme)}
 `;
 
 export const ExternalIcon = styled(Icon)`

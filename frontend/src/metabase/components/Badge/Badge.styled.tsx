@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
@@ -24,9 +24,9 @@ function RawMaybeLink({
   return to ? <Link to={to} {...props} /> : <span {...props} />;
 }
 
-const hoverStyle = (props: RawMaybeLinkProps) => css`
+const getHoverStyles = (activeColor: string, theme: Theme) => css`
   cursor: pointer;
-  color: ${() => color(props.activeColor)};
+  color: ${theme.fn.themeColor(activeColor)};
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -38,7 +38,9 @@ export const MaybeLink = styled(RawMaybeLink)`
   min-width: ${props => (props.isSingleLine ? 0 : "")};
 
   :hover {
-    ${props => (props.to || props.onClick) && hoverStyle(props)}
+    ${props =>
+      (props.to || props.onClick) &&
+      getHoverStyles(props.activeColor, props.theme)}
   }
 `;
 

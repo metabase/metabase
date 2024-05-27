@@ -55,7 +55,7 @@ export const SettingsSetting = props => {
 
       setFancyStyle({
         background: alpha("brand", 0.1),
-        boxShadow: `0 0 0 1px ${() => color("brand")}`,
+        boxShadow: `0 0 0 1px ${color("brand")}`,
       });
 
       setTimeout(() => {

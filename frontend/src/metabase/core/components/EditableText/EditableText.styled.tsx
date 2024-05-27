@@ -22,11 +22,11 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
     border-color: ${props => (props.isDisabled ? "" : color("border"))};
   }
 
-  ${props =>
-    props.isEditing &&
-    !props.isDisabled &&
+  ${({ isEditing, isDisabled, theme }) =>
+    isEditing &&
+    !isDisabled &&
     css`
-      border-color: ${() => color("border")};
+      border-color: ${theme.fn.themeColor("border")};
     `}
 
   ${({ isEditingMarkdown }) =>

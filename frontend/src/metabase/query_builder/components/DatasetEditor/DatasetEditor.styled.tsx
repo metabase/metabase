@@ -46,11 +46,11 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
 
   transition: all 0.25s;
 
-  ${props =>
-    props.isSelected &&
+  ${({ isSelected, theme }) =>
+    isSelected &&
     css`
-      color: ${() => color("text-white")};
-      background-color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("text-white")};
+      background-color: ${theme.fn.themeColor("brand")};
     `}
 
   .Icon {
@@ -105,11 +105,11 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
   z-index: 2;
   width: 100%;
 
-  ${props =>
-    props.isResizable &&
+  ${({ isResizable, theme }) =>
+    isResizable &&
     css`
       margin-bottom: 1rem;
-      border-bottom: 1px solid ${() => color("border")};
+      border-bottom: 1px solid ${theme.fn.themeColor("border")};
     `}
 `;
 

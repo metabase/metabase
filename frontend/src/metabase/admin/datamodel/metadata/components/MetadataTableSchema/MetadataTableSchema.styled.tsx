@@ -12,9 +12,7 @@ const cellStyles = (props: CellProps) => css`
   padding: 1rem 0.5rem;
   font-weight: bold;
   color: ${props.isSecondary ? color("text-medium") : color("text-dark")};
-  border-bottom: ${props.isBordered
-    ? `1px solid ${() => color("border")}`
-    : "none"};
+  border-bottom: ${props.isBordered ? `1px solid ${color("border")}` : "none"};
 `;
 
 export const ColumnNameCell = styled.td`

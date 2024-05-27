@@ -76,10 +76,10 @@ export const InputField = styled.input<InputProps>`
 
   ${props => focusOutlineStyle(props.colorScheme)};
 
-  ${props =>
-    props.hasError &&
+  ${({ hasError, theme }) =>
+    hasError &&
     css`
-      border-color: ${() => color("error")};
+      border-color: ${theme.fn.themeColor("error")};
     `};
 
   ${props =>

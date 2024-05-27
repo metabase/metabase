@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color, lighten } from "metabase/lib/colors";
@@ -12,10 +12,10 @@ import { Icon } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
 
-const openSidebarCSS = css`
+const getOpenSidebarStyle = (theme: Theme) => css`
   width: ${NAV_SIDEBAR_WIDTH};
 
-  border-inline-end: 1px solid ${() => color("border")};
+  border-inline-end: 1px solid ${theme.fn.themeColor("border")};
 
   ${breakpointMaxSmall} {
     width: 90vw;
@@ -39,7 +39,8 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   overflow-x: hidden;
   z-index: 4;
 
-  ${props => (props.isOpen ? openSidebarCSS : closeSidebarCSS)};
+  ${props =>
+    props.isOpen ? getOpenSidebarStyle(props.theme) : closeSidebarCSS};
 
   ${breakpointMaxSmall} {
     position: absolute;

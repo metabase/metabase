@@ -2,10 +2,10 @@ import { css, Global, useTheme } from "@emotion/react";
 
 import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getAceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -20,10 +20,10 @@ export const GlobalStyles = (): JSX.Element => {
   const styles = css`
     :root {
       --mb-default-font-family: "${font}";
-      --mb-color-brand: ${color("brand")};
-      --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
-      --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};
-      --mb-color-focus: ${color("focus")};
+      --mb-color-brand: ${theme.fn.themeColor("brand")};
+      --mb-color-brand-alpha-04: ${alpha(theme.fn.themeColor("brand"), 0.04)};
+      --mb-color-brand-alpha-88: ${alpha(theme.fn.themeColor("brand"), 0.88)};
+      --mb-color-focus: ${theme.fn.themeColor("focus")};
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}
@@ -38,7 +38,7 @@ export const GlobalStyles = (): JSX.Element => {
         }
       `,
     )}
-    ${aceEditorStyles}
+    ${getAceEditorStyles(theme)};
     ${saveDomImageStyles}
     body {
       font-size: 0.875em;

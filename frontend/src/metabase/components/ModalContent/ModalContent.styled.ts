@@ -70,11 +70,11 @@ export const HeaderTextContainer = styled.div<{
   flex-direction: row;
   flex-grow: 1;
 
-  ${({ onClick }) =>
+  ${({ onClick, theme }) =>
     onClick &&
     css`
       &:hover > * {
-        color: ${() => color("brand")};
+        color: ${theme.fn.themeColor("brand")};
         cursor: pointer;
       }
     `}

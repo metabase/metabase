@@ -7,7 +7,7 @@ import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
-import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getAceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getFontFiles } from "metabase/styled-components/selectors";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import type { FontFile } from "metabase-types/api";
@@ -49,7 +49,7 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
 
-  ${aceEditorStyles}
+  ${({ theme }) => getAceEditorStyles(theme)}
   ${saveDomImageStyles}
   ${({ theme }) => getRootStyle(theme)}
   ${({ theme }) => getWrapperStyle(theme)}

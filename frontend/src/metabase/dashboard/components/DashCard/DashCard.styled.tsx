@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -10,13 +10,13 @@ export interface DashCardRootProps {
   shouldForceHiddenBackground: boolean;
 }
 
-const rootNightModeStyle = css`
-  border-color: ${() => color("bg-night")};
-  background-color: ${() => color("bg-night")};
+const getRootNightModeStyle = (theme: Theme) => css`
+  border-color: ${theme.fn.themeColor("bg-night")};
+  background-color: ${theme.fn.themeColor("bg-night")};
 `;
 
-const rootSlowCardStyle = css`
-  border-color: ${() => color("accent4")};
+const getRootSlowCardStyle = (theme: Theme) => css`
+  border-color: ${theme.fn.themeColor("accent4")};
 `;
 
 const rootTransparentBackgroundStyle = css`
@@ -25,21 +25,21 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
-const hiddenBackgroundStyle = css`
-  background: ${() => color("bg-light")};
+const getHiddenBackgroundStyle = (theme: Theme) => css`
+  background: ${theme.fn.themeColor("bg-light")};
   box-shadow: none !important;
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${() => color("white")};
 
-  ${({ isNightMode }) => isNightMode && rootNightModeStyle}
-  ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
+  ${({ isNightMode, theme }) => isNightMode && getRootNightModeStyle(theme)}
+  ${({ isUsuallySlow, theme }) => isUsuallySlow && getRootSlowCardStyle(theme)}
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
 
-  ${({ shouldForceHiddenBackground }) =>
-    shouldForceHiddenBackground && hiddenBackgroundStyle}
+  ${({ shouldForceHiddenBackground, theme }) =>
+    shouldForceHiddenBackground && getHiddenBackgroundStyle(theme)}
 `;
 
 export const VirtualDashCardOverlayRoot = styled.div`

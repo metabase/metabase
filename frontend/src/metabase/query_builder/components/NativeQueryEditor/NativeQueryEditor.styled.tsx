@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
@@ -6,32 +6,32 @@ import { ResizableBox } from "react-resizable";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { color, darken } from "metabase/lib/colors";
 
-const aceEditorStyle = css`
+const getAceEditorStyle = (theme: Theme) => css`
   .ace_editor {
     height: 100%;
-    background-color: ${() => color("bg-light")};
-    color: ${() => color("text-dark")};
+    background-color: ${theme.fn.themeColor("bg-light")};
+    color: ${theme.fn.themeColor("text-dark")};
   }
 
   .ace_search {
     font-family: Lato;
-    background-color: ${() => color("bg-light")};
-    color: ${() => color("text-dark")};
-    border-color: ${() => color("border")};
+    background-color: ${theme.fn.themeColor("bg-light")};
+    color: ${theme.fn.themeColor("text-dark")};
+    border-color: ${theme.fn.themeColor("border")};
     padding-bottom: 2px;
   }
 
   .ace_search_field,
   .ace_searchbtn,
   .ace_button {
-    background-color: ${() => color("white")};
+    background-color: ${theme.fn.themeColor("white")};
     border-radius: 5px;
-    border: 1px solid ${() => color("border")};
+    border: 1px solid ${theme.fn.themeColor("border")};
   }
 
   .ace_nomatch {
     border-radius: 5px;
-    outline: 1px solid ${() => color("error")};
+    outline: 1px solid ${theme.fn.themeColor("error")};
   }
 
   .ace_searchbtn {
@@ -43,25 +43,25 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_keyword {
-    color: ${() => color("saturated-purple")};
+    color: ${theme.fn.themeColor("saturated-purple")};
   }
 
   .ace_editor .ace_function,
   .ace_editor .ace_variable {
-    color: ${() => color("saturated-blue")};
+    color: ${theme.fn.themeColor("saturated-blue")};
   }
 
   .ace_editor .ace_constant,
   .ace_editor .ace_type {
-    color: ${() => color("saturated-red")};
+    color: ${theme.fn.themeColor("saturated-red")};
   }
 
   .ace_editor .ace_string {
-    color: ${() => color("saturated-green")};
+    color: ${theme.fn.themeColor("saturated-green")};
   }
 
   .ace_editor .ace_templateTag {
-    color: ${() => color("brand")};
+    color: ${theme.fn.themeColor("brand")};
   }
 
   .react-resizable {
@@ -84,7 +84,7 @@ const aceEditorStyle = css`
     padding-top: 2px;
     font-size: 10px;
     font-weight: 700;
-    color: ${() => color("text-light")};
+    color: ${theme.fn.themeColor("text-light")};
     padding-left: 0;
     padding-right: 7px;
     display: block;
@@ -92,11 +92,11 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_gutter {
-    background-color: ${() => color("bg-light")};
+    background-color: ${theme.fn.themeColor("bg-light")};
   }
 `;
 
-export const aceEditorStyles = css`
+export const getAceEditorStyles = (theme: Theme) => css`
   .ace_editor.ace_autocomplete {
     border: none;
     box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);
@@ -108,13 +108,13 @@ export const aceEditorStyles = css`
 
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
-    background-color: ${() => color("brand-light")};
+    background-color: ${theme.fn.themeColor("brand-light")};
     border: none;
     outline: none;
   }
 
   .ace_completion-highlight {
-    color: ${() => color("brand")};
+    color: ${theme.fn.themeColor("brand")};
   }
 
   .ace_editor.ace_autocomplete .ace_line {
@@ -131,7 +131,7 @@ export const NativeQueryEditorRoot = styled.div`
   width: 100%;
   background-color: ${() => color("bg-light")};
 
-  ${aceEditorStyle}
+  ${({ theme }) => getAceEditorStyle(theme)}
 
   .${QueryBuilderS.GuiBuilderData} {
     border-right: none;

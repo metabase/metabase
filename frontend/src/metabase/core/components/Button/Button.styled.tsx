@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 export interface ButtonRootProps {
   purple?: boolean;
@@ -19,34 +19,34 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
     }
   }
 
-  ${({ purple }) =>
+  ${({ purple, theme }) =>
     purple &&
     css`
-      color: ${() => color("white")};
-      background-color: ${() => color("filter")};
-      border: 1px solid ${() => color("filter")};
+      color: ${theme.fn.themeColor("white")};
+      background-color: ${theme.fn.themeColor("filter")};
+      border: 1px solid ${theme.fn.themeColor("filter")};
 
       &:hover {
-        color: ${() => color("white")};
-        background-color: ${() => alpha("filter", 0.88)};
-        border-color: ${() => alpha("filter", 0.88)};
+        color: ${theme.fn.themeColor("white")};
+        background-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
+        border-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
       }
     `}
 
-  ${({ onlyText }) =>
+  ${({ onlyText, theme }) =>
     onlyText &&
     css`
       border: none;
       padding: 0;
 
-      color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("brand")};
 
       &:hover {
         background-color: unset;
       }
     `}
 
-  ${({ light }) =>
+  ${({ light, theme }) =>
     light &&
     css`
       border: none;
@@ -54,10 +54,10 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       line-height: 1.5rem;
       padding: 0.5rem;
 
-      color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("brand")};
 
       &:hover {
-        background-color: ${() => color("bg-light")};
+        background-color: ${theme.fn.themeColor("bg-light")};
       }
     `}
 `;

@@ -13,10 +13,10 @@ export const FilterWidgetRoot = styled.div<FilterWidgetRootProps>`
   border: 2px solid transparent;
   border-radius: 0.5rem;
 
-  ${({ isSelected }) =>
+  ${({ isSelected, theme }) =>
     isSelected &&
     css`
-      border-color: ${() => color("filter")};
+      border-color: ${theme.fn.themeColor("filter")};
     `}
 `;
 

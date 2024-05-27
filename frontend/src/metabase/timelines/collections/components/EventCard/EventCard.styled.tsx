@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Markdown from "metabase/core/components/Markdown";
@@ -49,9 +49,9 @@ export interface CardTitleProps {
   to?: string;
 }
 
-const cardTitleHoverStyles = css`
+const getCardTitleHoverStyles = (theme: Theme) => css`
   &:hover {
-    color: ${() => color("brand")};
+    color: ${theme.fn.themeColor("brand")};
   }
 `;
 
@@ -61,7 +61,7 @@ export const CardTitle = styled.div<CardTitleProps>`
   line-height: 1.25rem;
   font-weight: bold;
   word-wrap: break-word;
-  ${props => props.to && cardTitleHoverStyles};
+  ${props => props.to && getCardTitleHoverStyles(props.theme)};
 `;
 
 export const CardDescription = styled(Markdown)`

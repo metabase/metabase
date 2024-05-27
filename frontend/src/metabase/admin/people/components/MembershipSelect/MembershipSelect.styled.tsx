@@ -23,15 +23,15 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
   color: ${() => color("text-medium")};
   font-weight: 700;
 
-  ${props =>
-    !props.isDisabled &&
+  ${({ isDisabled, theme }) =>
+    !isDisabled &&
     css`
       &:hover {
-        color: ${() => color("white")};
-        background-color: ${() => color("filter")};
+        color: ${theme.fn.themeColor("white")};
+        background-color: ${theme.fn.themeColor("filter")};
 
         .Icon {
-          color: ${() => color("white")} !important;
+          color: ${theme.fn.themeColor("white")} !important;
         }
       }
     `}

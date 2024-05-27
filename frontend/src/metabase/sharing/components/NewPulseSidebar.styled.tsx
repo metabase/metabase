@@ -2,21 +2,20 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
-import { color } from "metabase/lib/colors";
 
 export interface SlackCardProps {
   isConfigured: boolean;
 }
 
 export const ChannelCard = styled(Card)<SlackCardProps>`
-  ${({ isConfigured }) =>
+  ${({ isConfigured, theme }) =>
     isConfigured &&
     css`
       cursor: pointer;
 
       &:hover {
-        color: ${() => color("white")};
-        background-color: ${() => color("brand")};
+        color: ${theme.fn.themeColor("white")};
+        background-color: ${theme.fn.themeColor("brand")};
       }
     `}
 `;

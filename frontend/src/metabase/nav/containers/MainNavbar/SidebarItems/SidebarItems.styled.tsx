@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
@@ -12,10 +12,10 @@ export const SidebarIcon = styled(Icon)<{
   color?: string | null;
   isSelected: boolean;
 }>`
-  ${props =>
-    !props.color &&
+  ${({ color, theme }) =>
+    !color &&
     css`
-      color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("brand")};
     `}
 `;
 
@@ -28,8 +28,8 @@ export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   color: ${() => color("brand")};
 `;
 
-const activeColorCSS = css`
-  color: ${() => color("brand")};
+const getActiveColorStyle = (theme: Theme) => css`
+  color: ${theme.fn.themeColor("brand")};
 `;
 
 function getTextColor(isSelected: boolean) {
@@ -48,7 +48,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
   border-radius: 4px;
 
   ${ExpandToggleButton} {
-    ${props => props.isSelected && activeColorCSS}
+    ${props => props.isSelected && getActiveColorStyle(props.theme)}
   }
 
   &:hover {
@@ -60,7 +60,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
     }
 
     ${SidebarIcon} {
-      ${props => props.hasDefaultIconStyle && activeColorCSS};
+      ${props => props.hasDefaultIconStyle && getActiveColorStyle(props.theme)};
     }
   }
 `;
@@ -69,13 +69,13 @@ NodeRoot.defaultProps = {
   hasDefaultIconStyle: true,
 };
 
-export const collectionDragAndDropHoverStyle = css`
-  color: ${() => color("text-white")};
-  background-color: ${() => color("brand")};
+export const getCollectionDragAndDropHoverStyle = (theme: Theme) => css`
+  color: ${theme.fn.themeColor("text-white")};
+  background-color: ${theme.fn.themeColor("brand")};
 `;
 
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
-  ${props => props.hovered && collectionDragAndDropHoverStyle}
+  ${props => props.hovered && getCollectionDragAndDropHoverStyle(props.theme)}
 `;
 
 // accommodate for trash collection having margin above

@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
@@ -49,16 +49,16 @@ export const CardMenu = styled.span`
   flex: 0 0 auto;
 `;
 
-const cardRootHoverStyles = css`
+const getCardRootHoverStyles = (theme: Theme) => css`
   &:hover {
-    border-color: ${() => color("brand")};
+    border-color: ${theme.fn.themeColor("brand")};
 
     ${CardIcon} {
-      color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("brand")};
     }
 
     ${CardTitle} {
-      color: ${() => color("brand")};
+      color: ${theme.fn.themeColor("brand")};
     }
   }
 `;
@@ -71,5 +71,5 @@ export const CardRoot = styled(Link)`
   border-radius: 6px;
   cursor: ${props => (props.to ? "pointer" : "default")};
 
-  ${props => props.to && cardRootHoverStyles}
+  ${props => props.to && getCardRootHoverStyles(props.theme)}
 `;

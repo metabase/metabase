@@ -21,11 +21,11 @@ export const LeftPaneContainer = styled.div<{ hasContent?: boolean }>`
   flex-direction: column;
   overflow: auto;
 
-  ${({ hasContent }) =>
+  ${({ hasContent, theme }) =>
     hasContent &&
     css`
       flex: 1;
-      border-right: 1px solid ${() => color("border")};
+      border-right: 1px solid ${theme.fn.themeColor("border")};
     `}
 
   ${Tree.Node.Root} {

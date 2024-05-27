@@ -1,26 +1,26 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import SelectList from "metabase/components/SelectList";
 import { color, lighten } from "metabase/lib/colors";
 
-const completeConditionStyle = (isOpened = false) => css`
-  color: ${() => color("white")};
+const getCompleteConditionStyle = (theme: Theme, isOpened = false) => css`
+  color: ${theme.fn.themeColor("white")};
   background-color: ${isOpened ? lighten("brand", 0.1) : "transparent"};
 
   &:hover,
   &:focus {
-    background-color: ${() => lighten("brand", 0.1)};
+    background-color: ${lighten(theme.fn.themeColor("brand"), 0.1)};
   }
 `;
 
-const incompleteConditionStyle = (isOpened = false) => css`
-  color: ${() => color("brand")};
+const getIncompleteConditionStyle = (theme: Theme, isOpened = false) => css`
+  color: ${theme.fn.themeColor("brand")};
   border: 2px solid ${isOpened ? color("brand") : "transparent"};
 
   &:hover,
   &:focus {
-    border: 2px solid ${() => color("brand")};
+    border: 2px solid ${theme.fn.themeColor("brand")};
   }
 `;
 
@@ -30,8 +30,8 @@ export const OperatorPickerButton = styled.button<{
 }>`
   ${props =>
     props.isConditionComplete
-      ? completeConditionStyle(props.isOpened)
-      : incompleteConditionStyle(props.isOpened)}
+      ? getCompleteConditionStyle(props.theme, props.isOpened)
+      : getIncompleteConditionStyle(props.theme, props.isOpened)}
 
   font-size: 16px;
   padding: 4px 8px;

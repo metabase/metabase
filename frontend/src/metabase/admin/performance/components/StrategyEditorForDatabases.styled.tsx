@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -8,7 +9,10 @@ export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   height: 100%;
 
   ${props =>
-    props.hasLeftBorder && `border-left: 1px solid ${() => color("border")};`}
+    props.hasLeftBorder &&
+    css`
+      border-left: 1px solid ${props.theme.fn.themeColor("border")};
+    `}
 `;
 
 export const RoundedBox = styled.div<{ twoColumns?: boolean }>`

@@ -1,6 +1,4 @@
-import { css, keyframes } from "@emotion/react";
-
-import { color } from "metabase/lib/colors";
+import { css, keyframes, type Theme } from "@emotion/react";
 
 export const fadingKeyframes = keyframes`
   0% {
@@ -15,7 +13,7 @@ export const fadingKeyframes = keyframes`
     opacity: 0.5;
   }
 `;
-export const animationStyles = css`
-  color: ${() => color("bg-medium")};
+export const getAnimationStyles = (theme: Theme) => css`
+  color: ${theme.fn.themeColor("bg-medium")};
   animation: ${fadingKeyframes} 1.5s infinite;
 `;

@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, MutableRefObject } from "react";
 
-import { color } from "metabase/lib/colors";
 import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 
@@ -16,12 +15,11 @@ export const PolicyToken = styled(Button)<
   padding: 1rem;
   border-width: 1px;
   border-style: solid;
-  ${({ variant }) =>
+  ${({ variant, theme }) =>
     css`
-      border-color: ${() =>
-        color(
-          ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-        )} !important;
+      border-color: ${theme.fn.themeColor(
+        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
+      )} !important;
     `};
   span {
     gap: 0.5rem;

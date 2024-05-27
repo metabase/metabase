@@ -38,11 +38,11 @@ export const InputContainer = styled.div<InputContainerProps>`
     css`
       padding-left: calc(0.75rem - 1px);
     `} // adjust for border on preview/no entered content
-  ${({ isEmpty }) =>
+  ${({ isEmpty, theme }) =>
     isEmpty &&
     css`
-      border: 1px solid ${() => color("brand")};
-      color: ${() => color("text-light")};
+      border: 1px solid ${theme.fn.themeColor("brand")};
+      color: ${theme.fn.themeColor("text-light")};
     `}
 `;
 

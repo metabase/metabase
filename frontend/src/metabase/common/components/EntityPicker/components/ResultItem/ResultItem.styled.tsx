@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -16,15 +17,21 @@ export const ChunkyListItem = styled.button<{
     isSelected ? color("white") : color("text-dark")};
 
   &:hover {
-    ${({ isSelected }) =>
+    ${({ isSelected, theme }) =>
       !isSelected
-        ? `background-color: ${() => color("brand-lighter")};
-      color: ${() => color("text-dark")};`
+        ? css`
+            background-color: ${theme.fn.themeColor("brand-lighter")};
+            color: ${theme.fn.themeColor("text-dark")};
+          `
         : ""}
   }
 
-  ${({ isLast }) =>
-    !isLast ? `border-bottom: 1px solid ${() => color("border")}` : ""};
+  ${({ isLast, theme }) =>
+    !isLast
+      ? css`
+          border-bottom: 1px solid ${theme.fn.themeColor("border")};
+        `
+      : ""};
 
   display: flex;
   gap: 1rem;

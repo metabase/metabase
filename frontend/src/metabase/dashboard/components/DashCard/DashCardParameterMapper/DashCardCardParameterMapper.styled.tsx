@@ -62,29 +62,29 @@ export const TargetButton = styled.div<{ variant: string }>`
       border-color: inherit;
     `}
 
-  ${({ variant }) =>
+  ${({ variant, theme }) =>
     variant === "mapped" &&
     css`
-      border-color: ${() => color("brand")};
-      background-color: ${() => color("brand")};
-      color: ${() => color("white")};
+      border-color: ${theme.fn.themeColor("brand")};
+      background-color: ${theme.fn.themeColor("brand")};
+      color: ${theme.fn.themeColor("white")};
     `}
 
-  ${({ variant }) =>
+  ${({ variant, theme }) =>
     variant === "unauthed" &&
     css`
       pointer-events: none;
-      border-color: ${() => color("bg-light")};
-      background-color: ${() => color("bg-light")};
-      color: ${() => color("text-medium")};
+      border-color: ${theme.fn.themeColor("bg-light")};
+      background-color: ${theme.fn.themeColor("bg-light")};
+      color: ${theme.fn.themeColor("text-medium")};
     `}
 
-  ${({ variant }) =>
+  ${({ variant, theme }) =>
     variant === "invalid" &&
     css`
-      border-color: ${() => color("error")};
-      background-color: ${() => color("error")};
-      color: ${() => color("white")};
+      border-color: ${theme.fn.themeColor("error")};
+      background-color: ${theme.fn.themeColor("error")};
+      color: ${theme.fn.themeColor("white")};
     `}
 `;
 
