@@ -16,15 +16,18 @@
 (deftest replace-names-simple-test
   (testing "columns can be renamed"
     (is (= "select cost from orders"
-           (replace-names (q "select amount from orders") {:columns {"amount" "cost"}})) ))
+           (replace-names (q "select amount from orders")
+                          {:columns {{:table "orders" :column "amount"} "cost"}}))))
   (testing "tables can be renamed"
     (is (= "select amount from purchases"
-           (replace-names (q "select amount from orders") {:tables {"orders" "purchases"}})) ))
+           (replace-names (q "select amount from orders")
+                          {:tables {{:table "orders"} "purchases"}}))))
   (testing "many things can be renamed at once"
     (is (= "select cost, tax from purchases"
-           (replace-names (q "select amount, fee from orders") {:columns {"amount" "cost"
-                                                                          "fee"    "tax"}
-                                                                :tables {"orders" "purchases"}})) )))
+           (replace-names (q "select amount, fee from orders")
+                          {:columns {{:table "orders" :column "amount"} "cost"
+                                     {:table "orders" :column "fee"}    "tax"}
+                           :tables  {{:table "orders"} "purchases"}})))))
 
 (deftest replace-names-whitespace-test
   (testing "comments, whitespace, etc. are preserved"
@@ -32,9 +35,9 @@
                 "from purchases")
            (replace-names (q "select amount, fee -- from orders\n"
                              "from orders")
-                          {:columns {"amount" "cost"
-                                     "fee"    "tax"}
-                           :tables {"orders" "purchases"}})) )))
+                          {:columns {{:table "orders" :column "amount"} "cost"
+                                     {:table "orders" :column "fee"}    "tax"}
+                           :tables  {{:table "orders"} "purchases"}})))))
 
 (deftest variables-test
   (testing "with variables (template tags)"
@@ -42,9 +45,9 @@
                 "{{birthday}}\n  OR\n  zip = {{zipcode}}")
            (replace-names (q "\n\nSELECT *\nFROM people\nWHERE\n  source = {{source}}\n  OR \n  id = {{id}}\n  OR \n"
                              "  birth_date = {{birthday}}\n  OR\n  zip = {{zipcode}}")
-                          {:columns {"source"     "referral"
-                                     "birth_date" "birthday"}
-                           :tables  {"people" "folk"}})))))
+                          {:columns {{:table "people" :column "source"}     "referral"
+                                     {:table "people" :column "birth_date"} "birthday"}
+                           :tables  {{:table "people"} "folk"}})))))
 
 (deftest field-filter-test
   (testing "with variables *and* field filters"
@@ -52,9 +55,9 @@
                 "  {{birthday}}\n  OR\n  {{zipcode}}\n  OR\n  {{city}} ")
            (replace-names (q "SELECT *\nFROM people\nWHERE\n  source = {{source}}\n   OR \n  id = {{id}} \n  OR \n"
                              "  {{birthday}}\n  OR\n  {{zipcode}}\n  OR\n  {{city}} ")
-                          {:columns {"source" "referral"
-                                     "city"   "town"}  ; make sure FFs aren't replaced
-                           :tables  {"people" "folk"}})))))
+                          {:columns {{:table "people" :column "source"} "referral"
+                                     {:table "people" :column "city"}   "town"}  ; make sure FFs aren't replaced
+                           :tables  {{:table "people"} "folk"}})))))
 
 (deftest referenced-card-test
   (testing "With a reference to a card"
@@ -63,8 +66,8 @@
                                   :dataset_query (mt/native-query {:query "SELECT total, tax FROM orders"})}]
       (is (= (format "SELECT subtotal FROM {{#%s}} LIMIT 3" card-id)
              (replace-names (q (format "SELECT total FROM {{#%s}} LIMIT 3" card-id))
-                            {:columns {"total" "subtotal"}
-                             :tables  {"orders" "purchases"}}))))))
+                            {:columns {{:table "orders" :column "total"} "subtotal"}
+                             :tables  {{:table "orders"} "purchases"}}))))))
 
 (deftest snippet-test
   (testing "With a snippet"
@@ -76,8 +79,8 @@
                              (q "SELECT total FROM orders {{snippet: a lovely snippet}}")
                              [:native :template-tags "snippet: a lovely snippet" :snippet-id]
                              snippet-id)
-                            {:columns {"total" "amount"}
-                             :tables  {"orders" "purchases"}}))))))
+                            {:columns {{:table "orders" :column "total"} "amount"}
+                             :tables  {{:table "orders"} "purchases"}}))))))
 
 (deftest optional-test
   (testing "With optional tags"
@@ -85,6 +88,6 @@
                 "[[ AND {{amazing_filter}} ]]")
            (replace-names (q "SELECT total FROM orders WHERE id IS NOT NULL [[ AND subtotal > {{subtotal}} ]] "
                              "[[ AND {{amazing_filter}} ]]")
-                          {:columns {"total"    "cost"
-                                     "subtotal" "pretax"}
-                           :tables {"orders" "purchases"}})))))
+                          {:columns {{:table "orders" :column "total"}    "cost"
+                                     {:table "orders" :column "subtotal"} "pretax"}
+                           :tables  {{:table "orders"} "purchases"}})))))
