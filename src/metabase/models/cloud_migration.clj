@@ -231,7 +231,8 @@
   [{:keys [id external_id] :as migration} & {:keys [retry?]}]
   ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
   ;; in the same process.
-  (let [dump-file (io/file (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
+  (let [dump-file (io/file (str (System/getProperty "java.io.tmpdir")
+                                "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
         (t2/update! :model/CloudMigration :id id {:state :init}))
