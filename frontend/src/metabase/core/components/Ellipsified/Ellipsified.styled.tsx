@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 const ellipsifyCss = css`
   overflow: hidden;
-  white-space: nowrap;
+  white-space: pre;
   text-overflow: ellipsis;
 `;
 
