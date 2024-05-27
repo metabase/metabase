@@ -408,7 +408,8 @@
              :display_name     (:name card)
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
-             :description      (:description card)}
+             :description      (:description card)
+             :type             (:type card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))
