@@ -15,7 +15,7 @@
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues LegacyMetric Segment Table]]
+    :refer [Card Collection Database Field FieldValues Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
@@ -222,9 +222,17 @@
                                 :type        :model
                                 :archived    true}
 
-     LegacyMetric   _                {:table_id table-id-1}
-     LegacyMetric   _                {:table_id table-id-1}
-     LegacyMetric   _                {:table_id table-id-2}
+     ;; metric
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :type        :metric
+                                :archived    true}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :type        :metric}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-2
+                                :type        :metric}
      Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."

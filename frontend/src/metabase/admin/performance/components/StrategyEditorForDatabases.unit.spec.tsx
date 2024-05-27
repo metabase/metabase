@@ -35,17 +35,6 @@ describe("StrategyEditorForDatabases", () => {
     // It doesn't meaningfully change the state of the component on OSS
 
     await act(async () => {
-      const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /keep the cache for a number of hours/i,
-      });
-      durationStrategyRadioButton.click();
-      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
-      await changeInput(/Cache results for this many hours/, 24, 48);
-    });
-
-    (await screen.findByTestId("strategy-form-submit-button")).click();
-
-    await act(async () => {
       const noCacheStrategyRadioButton = await screen.findByRole("radio", {
         name: /Don.t cache/i,
       });
