@@ -58,18 +58,35 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const fieldId = fieldRef[1];
-    const resultMetadata = question.getResultMetadata();
-    const fieldMetadata = resultMetadata.find(
-      field => field.id === fieldId || field.name === fieldId,
-    );
-    if (fieldMetadata) {
-      return (
-        metadata.field(fieldMetadata.id, fieldMetadata.table_id) ??
-        metadata.field(fieldMetadata.id)
+    const query = question.query();
+    const stageIndex = -1;
+    const columns = Lib.visibleColumns(query, stageIndex);
+    const fields = metadata.fieldsList();
+    if (columns.length > 0) {
+      const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+        query,
+        stageIndex,
+        columns,
+        [fieldRef],
       );
+      if (columnIndex >= 0) {
+        const column = columns[columnIndex];
+        const fieldIndexes = Lib.findColumnIndexesFromLegacyRefs(
+          query,
+          stageIndex,
+          [column],
+          fields.map(field => field.reference()),
+        );
+        const fieldIndex = fieldIndexes.findIndex(index => index >= 0);
+        return fields[fieldIndex];
+      }
+    } else {
+      // empty columns mean we don't have table metadata (embedding)
+      // we cannot match columns with MBQL lib in this case, so we rely on the BE returning metadata for only used fields
+      const tableId = Lib.sourceTableOrCardId(query);
+      const fieldId = fieldRef[1];
+      return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
     }
-    return metadata.field(fieldId);
   }
 
   return null;
