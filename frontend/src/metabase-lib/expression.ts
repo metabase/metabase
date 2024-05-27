@@ -113,7 +113,7 @@ export function offsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const newName = getOffsettedName(query, stageIndex, clause, offset);
+  const newName = getOffsetClauseName(query, stageIndex, clause, offset, "");
   const newClause = expressionClause("offset", [clause, offset]);
   return withExpressionName(newClause, newName);
 }
@@ -124,10 +124,12 @@ export function diffOffsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const offsettedClause = offsetClause(query, stageIndex, clause, offset);
-  const newClause = expressionClause("-", [clause, offsettedClause]);
-  // TODO: call  withExpressionName
-  return newClause;
+  const newName = getOffsetClauseName(query, stageIndex, clause, offset, "vs ");
+  const newClause = expressionClause("-", [
+    clause,
+    expressionClause("offset", [clause, offset]),
+  ]);
+  return withExpressionName(newClause, newName);
 }
 
 export function percentDiffOffsetClause(
@@ -136,20 +138,30 @@ export function percentDiffOffsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+  const prefix = "% vs ";
+  const newName = getOffsetClauseName(
+    query,
+    stageIndex,
+    clause,
+    offset,
+    prefix,
+  );
   const newClause = expressionClause("-", [
-    expressionClause("/", [clause, offsettedClause]),
+    expressionClause("/", [
+      clause,
+      expressionClause("offset", [clause, offset]),
+    ]),
     1,
   ]);
-  // TODO: call  withExpressionName
-  return newClause;
+  return withExpressionName(newClause, newName);
 }
 
-export function getOffsettedName(
+function getOffsetClauseName(
   query: Query,
   stageIndex: number,
   clause: AggregationClause | ExpressionClause,
   offset: number,
+  prefix: string,
 ): string {
   if (offset >= 0) {
     throw new Error(
@@ -163,8 +175,8 @@ export function getOffsettedName(
 
   if (!firstBreakout) {
     return absoluteOffset === 1
-      ? t`${displayName} (previous period)`
-      : t`${displayName} (${absoluteOffset} periods ago)`;
+      ? t`${displayName} (${prefix}previous period)`
+      : t`${displayName} (${prefix}${absoluteOffset} periods ago)`;
   }
 
   const firstBreakoutInfo = displayInfo(query, stageIndex, firstBreakout);
@@ -173,22 +185,22 @@ export function getOffsettedName(
 
   if (!isFirstBreakoutDateTime) {
     return absoluteOffset === 1
-      ? t`${displayName} (previous value)`
-      : t`${displayName} (${absoluteOffset} rows above)`;
+      ? t`${displayName} (${prefix}previous value)`
+      : t`${displayName} (${prefix}${absoluteOffset} rows above)`;
   }
 
   const bucket = temporalBucket(firstBreakout);
 
   if (!bucket) {
     return absoluteOffset === 1
-      ? t`${displayName} (previous period)`
-      : t`${displayName} (${absoluteOffset} periods ago)`;
+      ? t`${displayName} (${prefix}previous period)`
+      : t`${displayName} (${prefix}${absoluteOffset} periods ago)`;
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
   const period = inflect(bucketInfo.shortName, absoluteOffset);
 
   return absoluteOffset === 1
-    ? t`${displayName} (previous ${period})`
-    : t`${displayName} (${absoluteOffset} ${period} ago)`;
+    ? t`${displayName} (${prefix}previous ${period})`
+    : t`${displayName} (${prefix}${absoluteOffset} ${period} ago)`;
 }
