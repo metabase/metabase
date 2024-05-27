@@ -55,7 +55,7 @@
   "Fetch *all* `LegacyMetrics`."
   []
   (as-> (t2/select LegacyMetric, :archived false, {:order-by [:%lower.name]}) metrics
-    (t2/hydrate metrics :creator :definition_description)
+    (t2/hydrate metrics :creator)
     (add-db-ids metrics)
     (filter mi/can-read? metrics)
     metrics))

@@ -259,12 +259,10 @@
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:name                   "Metric A"
                   :id                     id-1
-                  :creator                {}
-                  :definition_description nil}
+                  :creator                {}}
                  {:name                   "Metric B"
                   :id                     id-2
-                  :creator                {}
-                  :definition_description "Venues, Sum of Category → ID, Filtered by Price is equal to 4 and Segment"}]
+                  :creator                {}}]
                 (filter (fn [{metric-id :id}]
                           (contains? #{id-1 id-2 id-3} metric-id))
                         (mt/user-http-request :rasta :get 200 "legacy-metric/"))))))))
