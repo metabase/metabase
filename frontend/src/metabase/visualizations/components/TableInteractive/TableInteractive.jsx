@@ -24,6 +24,7 @@ import {
   getRowIndexToPKMap,
   getQueryBuilderMode,
   getUiControls,
+  getIsShowingRawTable,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -86,6 +87,7 @@ const mapStateToProps = state => ({
   rowIndexToPkMap: getRowIndexToPKMap(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
   scrollToLastColumn: getUiControls(state).scrollToLastColumn,
+  isRawTable: getIsShowingRawTable(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -1055,6 +1057,7 @@ class TableInteractive extends Component {
       height,
       data: { cols, rows },
       className,
+      isRawTable,
       scrollToColumn,
       scrollToLastColumn,
       theme,
@@ -1147,6 +1150,7 @@ class TableInteractive extends Component {
                   <ColumnShortcut
                     height={headerHeight - 1}
                     isEditable={info?.isEditable}
+                    isRawTable={isRawTable}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
@@ -1321,8 +1325,8 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
-function ColumnShortcut({ height, onClick, isEditable }) {
-  if (!isEditable) {
+function ColumnShortcut({ height, onClick, isEditable, isRawTable }) {
+  if (!isEditable || isRawTable) {
     return null;
   }
 
