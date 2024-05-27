@@ -2,7 +2,8 @@ import { t } from "ttag";
 
 import { inflect } from "metabase/lib/formatting";
 
-import { breakouts } from "./breakout";
+import { breakoutColumn, breakouts } from "./breakout";
+import { isDate } from "./column_types";
 import { expressionClause, withExpressionName } from "./expression";
 import { displayInfo } from "./metadata";
 import { temporalBucket } from "./temporal_bucket";
@@ -85,11 +86,9 @@ function getOffsetClauseName(
       : t`${displayName} (${prefix}${absoluteOffset} periods ago)`;
   }
 
-  const firstBreakoutInfo = displayInfo(query, stageIndex, firstBreakout);
-  const isFirstBreakoutDateTime =
-    firstBreakoutInfo.effectiveType === "type/DateTime";
+  const firstBreakoutColumn = breakoutColumn(query, stageIndex, firstBreakout);
 
-  if (!isFirstBreakoutDateTime) {
+  if (!isDate(firstBreakoutColumn)) {
     return absoluteOffset === 1
       ? t`${displayName} (${prefix}previous value)`
       : t`${displayName} (${prefix}${absoluteOffset} rows above)`;
