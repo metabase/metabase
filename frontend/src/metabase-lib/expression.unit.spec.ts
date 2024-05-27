@@ -15,14 +15,41 @@ const offset = -1;
 describe("offsetClause", () => {
   describe("offset = -1", () => {
     const offset = -1;
+    const stageIndex = -1;
 
     describe("no breakout", () => {
-      it("works", () => {
-        expect("TODO").toBe("TODO");
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+      const [clause] = aggregations(query, stageIndex);
+      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+
+      it("produces correct aggregation name", () => {
+        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        expect(info.displayName).toBe("Count (previous period)");
       });
 
-      it("gives correct name", () => {
-        expect("TODO").toBe("TODO");
+      it("produces correct aggregation clause", () => {
+        expect(toLegacyQuery(finalQuery)).toMatchObject({
+          database: SAMPLE_DATABASE.id,
+          query: {
+            aggregation: [
+              ["count"],
+              [
+                "offset",
+                {
+                  name: "Count (previous period)",
+                  "display-name": "Count (previous period)",
+                },
+                ["count"],
+                offset,
+              ],
+            ],
+            "source-table": ORDERS_ID,
+          },
+          type: "query",
+        });
       });
     });
 
@@ -58,7 +85,7 @@ describe("offsetClause", () => {
   });
 
   describe("offset < -1", () => {
-    const offset = -2;
+    // const offset = -2;
 
     describe("no breakout", () => {
       it("works", () => {
@@ -103,45 +130,6 @@ describe("offsetClause", () => {
 });
 
 describe("offsetClause - old", () => {
-  it("offsets Count aggregation without breakout", () => {
-    const stageIndex = -1;
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
-    });
-    const [aggregationClause] = aggregations(query, stageIndex);
-    const offsettedClause = offsetClause(
-      query,
-      stageIndex,
-      aggregationClause,
-      offset,
-    );
-    const finalQuery = aggregate(query, stageIndex, offsettedClause);
-
-    expect(
-      displayInfo(finalQuery, stageIndex, offsettedClause).displayName,
-    ).toBe("Count (previous period)");
-
-    expect(toLegacyQuery(finalQuery)).toMatchObject({
-      database: SAMPLE_DATABASE.id,
-      query: {
-        aggregation: [
-          ["count"],
-          [
-            "offset",
-            {
-              name: "Count (previous period)",
-              "display-name": "Count (previous period)",
-            },
-            ["count"],
-            offset,
-          ],
-        ],
-        "source-table": ORDERS_ID,
-      },
-      type: "query",
-    });
-  });
-
   it("generates proper name for Count aggregation with a Month breakout", () => {
     const stageIndex = -1;
     const query = createQueryWithClauses({
