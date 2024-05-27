@@ -418,7 +418,7 @@ describe("scenarios > notebook > data source", () => {
   });
 });
 
-describeOSS("scenarios > notebook > data source", () => {
+describeOSS("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore("setup");
     cy.signInAsAdmin();
@@ -433,19 +433,12 @@ describeOSS("scenarios > notebook > data source", () => {
     });
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByPlaceholderText("Search for some data…");
-      cy.findAllByTestId("data-bucket-list-item")
-        .as("sources")
-        .should("have.length", 2);
-      cy.get("@sources")
-        .first()
-        .should("contain", "Models")
-        .and("have.attr", "aria-selected", "false");
-      cy.get("@sources")
-        .last()
-        .should("contain", "Raw Data")
-        .and("have.attr", "aria-selected", "false");
+    entityPickerModal().within(() => {
+      cy.findAllByRole("tab").should("have.length", 2);
+      entityPickerModalTab("Recents").should("not.exist");
+      entityPickerModalTab("Models").and("have.attr", "aria-selected", "true");
+      entityPickerModalTab("Tables").should("exist");
+      entityPickerModalTab("Saved questions").should("not.exist");
     });
   });
 });
