@@ -201,24 +201,36 @@
 
 (declare query)
 
-(defmethod query-method :metadata/card
+(defn- metric-query
   [metadata-providerable card-metadata]
   (let [card-id (u/the-id card-metadata)
         base-query (query-with-stages metadata-providerable
                                       [{:lib/type :mbql.stage/mbql
-                                        :source-card card-id}])]
-    (if (= (:type card-metadata) :metric)
-      (let [metric-query (query metadata-providerable (:dataset-query card-metadata))
-            metric-breakouts (:breakout (lib.util/query-stage metric-query -1))
-            base-query (reduce
-                        #(lib.util/add-summary-clause %1 0 :breakout %2)
-                        base-query
-                        metric-breakouts)]
-        (-> base-query
-            (lib.util/add-summary-clause
-             0 :aggregation
-             (lib.options/ensure-uuid [:metric {} card-id]))))
-      base-query)))
+                                        :source-card card-id}])
+        metric-breakouts (-> (query metadata-providerable (:dataset-query card-metadata))
+                             (lib.util/query-stage -1)
+                             :breakout)
+        base-query (reduce
+                    #(lib.util/add-summary-clause %1 0 :breakout %2)
+                    base-query
+                    metric-breakouts)]
+    (-> base-query
+        (lib.util/add-summary-clause
+         0 :aggregation
+         (lib.options/ensure-uuid [:metric {} card-id])))))
+
+(defmethod query-method :metadata/card
+  [metadata-providerable card-metadata]
+  (if (or (= (:type card-metadata) :metric)
+          (= (:lib/type card-metadata) :metdata/metric))
+    (metric-query metadata-providerable card-metadata)
+    (query-with-stages metadata-providerable
+                       [{:lib/type :mbql.stage/mbql
+                         :source-card (u/the-id card-metadata)}])))
+
+(defmethod query-method :metadata/metric
+  [metadata-providerable card-metadata]
+  (metric-query metadata-providerable card-metadata))
 
 (defmethod query-method :mbql.stage/mbql
   [metadata-providerable mbql-stage]

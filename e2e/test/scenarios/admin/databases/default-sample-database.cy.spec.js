@@ -2,10 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { modal, popover, restore } from "e2e/support/helpers";
-import {
-  createMetric,
-  createSegment,
-} from "e2e/support/helpers/e2e-table-metadata-helpers";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
@@ -132,11 +129,11 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // metric
-    createMetric({
+    cy.createQuestion({
       name: "Revenue",
       description: "Sum of orders subtotal",
-      table_id: ORDERS_ID,
-      definition: {
+      type: "metric",
+      query: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
       },

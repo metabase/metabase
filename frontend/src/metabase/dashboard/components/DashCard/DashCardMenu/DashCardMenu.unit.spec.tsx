@@ -18,10 +18,7 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { DashCardMenuConnected } from "./DashCardMenu";
 
@@ -82,14 +79,6 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
-    }),
-    dashboard: createMockDashboardState({
-      loadingDashCards: {
-        loadingIds: [],
-        loadingStatus: "complete",
-        startTime: 100,
-        endTime: 200,
-      },
     }),
   });
 

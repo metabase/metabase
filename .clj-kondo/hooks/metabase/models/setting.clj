@@ -162,7 +162,6 @@
      token-status
      toucan-name
      uncached-setting
-     uploads-table-prefix
      user-visibility
      version
      version-info

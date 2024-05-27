@@ -15,6 +15,7 @@ import {
   setParameterValueToDefault,
   setParameterValue,
   cancelFetchDashboardCardData,
+  fetchDashboardCardMetadata,
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
@@ -28,7 +29,6 @@ import type {
 } from "metabase/dashboard/hoc/types";
 import {
   getDashboardComplete,
-  getCardData,
   getSlowCards,
   getParameters,
   getParameterValues,
@@ -44,7 +44,6 @@ import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { setErrorPage } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
@@ -64,9 +63,7 @@ const mapStateToProps = (state: State, props: OwnProps) => {
     dashboardId: String(
       props.params.dashboardId || props.params.uuid || props.params.token,
     ),
-    metadata: getMetadata(state),
     dashboard: getDashboardComplete(state),
-    dashcardData: getCardData(state),
     slowCards: getSlowCards(state),
     parameters: getParameters(state),
     parameterValues: getParameterValues(state),
@@ -78,6 +75,7 @@ const mapStateToProps = (state: State, props: OwnProps) => {
 const mapDispatchToProps = {
   initialize,
   cancelFetchDashboardCardData,
+  fetchDashboardCardMetadata,
   setParameterValueToDefault,
   setParameterValue,
   setErrorPage,
@@ -109,8 +107,9 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
+      fetchDashboardCardMetadata,
       setErrorPage,
-      location,
+      queryParams,
       params: { uuid, token },
     } = this.props;
     if (uuid) {
@@ -123,7 +122,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     const result = await fetchDashboard({
       dashId: String(uuid || token),
-      queryParams: location.query,
+      queryParams,
     });
 
     if (!isSuccessfulFetchDashboardResult(result)) {
@@ -133,7 +132,10 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     try {
       if (this.props.dashboard?.tabs?.length === 0) {
-        await fetchDashboardCardData({ reload: false, clearCache: true });
+        await Promise.all([
+          fetchDashboardCardData({ reload: false, clearCache: true }),
+          fetchDashboardCardMetadata(),
+        ]);
       }
     } catch (error) {
       console.error(error);
@@ -156,6 +158,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
       this.props.fetchDashboardCardData();
+      this.props.fetchDashboardCardMetadata();
       return;
     }
 
@@ -245,10 +248,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
         dashboardTabs={
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
-            <DashboardTabs
-              dashboardId={this.props.dashboardId}
-              location={this.props.location}
-            />
+            <DashboardTabs dashboardId={this.props.dashboardId} />
           )
         }
       >
@@ -268,11 +268,8 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                   isPublic
                   mode={PublicMode as unknown as Mode}
-                  metadata={this.props.metadata}
                   navigateToNewCardFromDashboard={() => {}}
-                  dashcardData={this.props.dashcardData}
                   selectedTabId={this.props.selectedTabId}
-                  parameterValues={this.props.parameterValues}
                   slowCards={this.props.slowCards}
                   isEditing={false}
                   isEditingParameter={false}

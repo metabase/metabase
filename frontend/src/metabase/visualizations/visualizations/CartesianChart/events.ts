@@ -18,7 +18,7 @@ import {
   isTimeSeriesAxis,
 } from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   ChartDataset,
   DataKey,
   Datum,
@@ -76,7 +76,7 @@ export const parseDataKey = (dataKey: DataKey) => {
 };
 
 const findSeriesModelIndexById = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   seriesId?: string,
 ) => {
   if (seriesId == null) {
@@ -105,7 +105,7 @@ const getSameCardDataKeys = (
 };
 
 export const getEventDimensions = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   datum: Datum,
   dimensionModel: DimensionModel,
   seriesModel: SeriesModel,
@@ -143,7 +143,7 @@ export const getEventDimensions = (
 };
 
 const getEventColumnsData = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   seriesIndex: number,
   dataIndex: number,
 ): DataPoint[] => {
@@ -192,7 +192,7 @@ const getEventColumnsData = (
 };
 
 const getTooltipFooterData = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   display: string,
   seriesIndex: number,
   dataIndex: number,
@@ -261,7 +261,7 @@ const getTooltipFooterData = (
 };
 
 const getStackedTooltipModel = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   seriesIndex: number,
   dataIndex: number,
@@ -378,7 +378,7 @@ const isValidDatumElement = (
 };
 
 export const getSeriesHoverData = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   display: string,
   event: EChartsSeriesMouseEvent,
@@ -488,7 +488,7 @@ export const getGoalLineHoverData = (
 };
 
 export const getSeriesClickData = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
 ): ClickObject | undefined => {
@@ -528,7 +528,7 @@ export const getSeriesClickData = (
 export const getBrushData = (
   rawSeries: RawSeries,
   metadata: Metadata,
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
   const range = event.areas[0].coordRange;

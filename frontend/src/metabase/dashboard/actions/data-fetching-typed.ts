@@ -18,7 +18,7 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
-import type { DashboardCard } from "metabase-types/api";
+import type { DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -36,7 +36,7 @@ export const fetchDashboard = createAsyncThunk(
       queryParams,
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
-      dashId: string;
+      dashId: DashboardId;
       queryParams: Record<string, any>;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
@@ -92,7 +92,7 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "transient") {
-        const subPath = dashId.split("/").slice(3).join("/");
+        const subPath = String(dashId).split("/").slice(3).join("/");
         result = await AutoApi.dashboard(
           { subPath },
           { cancelled: fetchDashboardCancellation.promise },
@@ -137,10 +137,10 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_values) {
-        await dispatch(addParamValues(result.param_values));
+        dispatch(addParamValues(result.param_values));
       }
       if (result.param_fields) {
-        await dispatch(addFields(result.param_fields));
+        dispatch(addFields(result.param_fields));
       }
 
       const metadata = getMetadata(getState());

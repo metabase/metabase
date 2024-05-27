@@ -278,12 +278,8 @@ function combineAndVerifyMetrics(metric1, metric2) {
       visitDashboard(dashboard.id);
     },
   );
-  cy.findByTestId("dashboard-header").within(() => {
-    cy.findByLabelText("Edit dashboard").click();
-    cy.findByLabelText("Add questions").click();
-  });
-  cy.findByTestId("add-card-sidebar").findByText(metric1.name).click();
-  getDashboardCard(1).realHover().findByTestId("add-series-button").click();
+  editDashboard();
+  getDashboardCard().realHover().findByTestId("add-series-button").click();
   modal().within(() => {
     cy.findByText(metric2.name).click();
     cy.findByLabelText("Legend").within(() => {
@@ -293,7 +289,7 @@ function combineAndVerifyMetrics(metric1, metric2) {
     cy.button("Done").click();
   });
   saveDashboard();
-  getDashboardCard(1).within(() => {
+  getDashboardCard().within(() => {
     cy.findByLabelText("Legend").within(() => {
       cy.findByText(metric1.name).should("be.visible");
       cy.findByText(metric2.name).should("be.visible");
