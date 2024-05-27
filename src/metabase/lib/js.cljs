@@ -833,6 +833,16 @@
         unit (if (string? unit) (keyword unit) unit)]
     (lib.core/describe-relative-datetime n unit)))
 
+(defn ^:export date-bucket-units
+  "The temporal bucketing units for date type expressions."
+  []
+  (to-array (map clj->js [:year])))
+
+(defn ^:export time-bucket-units
+  "The temporal bucketing units for date type expressions."
+  []
+  (to-array (map clj->js [:hour-of-day])))
+
 (defn ^:export datetime-bucket-units
   "The temporal bucketing units for datetime type expressions."
   []
