@@ -23,7 +23,6 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
-    clicked?.extraData?.isRawTable ||
     !isEditable ||
     !isExtractable
   ) {
