@@ -7,7 +7,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]])
@@ -53,21 +52,20 @@
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-metadata-provider database-id
-      (binding [qp.xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.si/streaming-results-writer export-format os)
-              cols                        (-> results :data :cols)
-              viz-settings                (-> results :data :viz-settings)
-              [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-              viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.si/begin! w
-                        (assoc-in results [:data :ordered-cols] ordered-cols)
-                        viz-settings')
-          (dorun
-           (map-indexed
-            (fn [i row]
-              (qp.si/write-row! w row i ordered-cols viz-settings'))
-            rows))
-          (qp.si/finish! w results))))))
+      (let [w                           (qp.si/streaming-results-writer export-format os)
+            cols                        (-> results :data :cols)
+            viz-settings                (-> results :data :viz-settings)
+            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+            viz-settings'               (assoc viz-settings :output-order output-order)]
+        (qp.si/begin! w
+                      (assoc-in results [:data :ordered-cols] ordered-cols)
+                      viz-settings')
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.si/write-row! w row i ordered-cols viz-settings'))
+          rows))
+        (qp.si/finish! w results)))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
