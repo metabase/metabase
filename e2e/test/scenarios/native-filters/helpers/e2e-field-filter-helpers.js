@@ -156,6 +156,7 @@ export function closeEntryForm() {
  * @param {Array.<string>} options
  */
 function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
+  cy.findByText("Enter a default value…").click();
   popover().within(() => {
     cy.get("input").first().type(`${low}{enter}`);
 
@@ -180,7 +181,9 @@ function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
  */
 function enterDefaultValue(value, buttonLabel = "Add filter") {
   cy.findByText("Enter a default value…").click();
-  cy.findByPlaceholderText("Enter a default value…").type(`${value}{enter}`);
+  cy.findByPlaceholderText("Enter a default value…")
+    .type(`${value}{enter}`)
+    .blur();
   cy.button(buttonLabel).click();
 }
 

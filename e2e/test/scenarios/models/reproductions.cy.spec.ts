@@ -6,6 +6,7 @@ import {
   restore,
   hovercard,
   createNativeQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
@@ -85,13 +86,16 @@ describe("issue 29943", () => {
 
     assertColumnSelected(0, "ID");
 
-    getHeaderCell(1, "Custom").click();
+    getHeaderCell(1, "Custom");
+    tableHeaderClick("Custom");
     assertColumnSelected(1, "Custom");
 
-    getHeaderCell(2, "Total").click();
+    getHeaderCell(2, "Total");
+    tableHeaderClick("Total");
     assertColumnSelected(2, "Total");
 
-    getHeaderCell(0, "ID").click();
+    getHeaderCell(0, "ID");
+    tableHeaderClick("ID");
     assertColumnSelected(0, "ID");
   });
 });
@@ -240,10 +244,10 @@ describe("issues 25884 and 34349", () => {
 
     cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
 
-    cy.findAllByTestId("header-cell").contains("Country").click();
+    tableHeaderClick("Country");
     cy.findByLabelText("Description").should("have.text", "");
 
-    cy.findAllByTestId("header-cell").contains("ID").click();
+    tableHeaderClick("ID")
     cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
   });
 });

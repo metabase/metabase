@@ -1,6 +1,11 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore, selectFilterOperator } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  selectFilterOperator,
+  tableHeaderClick,
+} from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -38,7 +43,7 @@ describe("issue 31340", () => {
   });
 
   it("should properly display long column names in filter options search results (metabase#31340)", () => {
-    cy.findAllByTestId("header-cell").contains(LONG_COLUMN_NAME).click();
+    tableHeaderClick(LONG_COLUMN_NAME);
 
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Is");

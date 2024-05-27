@@ -26,7 +26,7 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
-    //Add a description for a check
+    // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
     });
