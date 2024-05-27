@@ -1,6 +1,7 @@
 import { ngettext, msgid } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
+import * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
@@ -9,6 +10,8 @@ import {
 import {
   isFieldFilterParameter,
   getParameterType,
+  isDateParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 
 import { formatDateValue } from "./date-formatting";
@@ -43,9 +46,12 @@ export function formatParameterValue(
 
   value = Array.isArray(value) ? value[0] : value;
 
-  const type = getParameterType(parameter);
-  if (type === "date") {
+  if (isDateParameter(parameter)) {
     return formatDateValue(String(value), parameter);
+  }
+
+  if (isTemporalUnitParameter(parameter)) {
+    return typeof value === "string" ? Lib.describeTemporalUnit(value) : null;
   }
 
   if (isFieldFilterParameter(parameter)) {

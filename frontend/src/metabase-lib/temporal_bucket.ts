@@ -84,6 +84,6 @@ export function formatRelativeDateRange({
   });
 }
 
-export function datetimeBucketUnits(): string[] {
-  return ML.datetime_bucket_units();
+export function availableTemporalUnits(): string[] {
+  return ML.available_temporal_units();
 }

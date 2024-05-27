@@ -6,7 +6,7 @@ interface TemporalUnitWidgetProps {
 }
 
 export function TemporalUnitWidget({ setValue }: TemporalUnitWidgetProps) {
-  const units = Lib.datetimeBucketUnits();
+  const units = Lib.availableTemporalUnits();
 
   return (
     <div>
