@@ -24,8 +24,6 @@ import type {
   DashboardParameterMapping,
   ParameterId,
   Dashboard,
-  DatabaseId,
-  Database,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -549,9 +547,10 @@ export const getHasModelActionsEnabled = createSelector(
       return false;
     }
 
-    const databases = metadata.databases as Record<DatabaseId, Database>;
-    const hasModelActionsEnabled = Object.values(databases).some(
-      hasDatabaseActionsEnabled,
+    const databases = metadata.databasesList();
+    const hasModelActionsEnabled = Object.values(databases).some(database =>
+      // @ts-expect-error Schema types do not match
+      hasDatabaseActionsEnabled(database),
     );
 
     return hasModelActionsEnabled;
