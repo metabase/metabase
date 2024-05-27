@@ -190,5 +190,5 @@ export function getOffsettedName(
 
   return absoluteOffset === 1
     ? t`${displayName} (previous ${period})`
-    : t`${displayName} (${absoluteOffset} ${period} ago)`; // TODO pluralize shortName
+    : t`${displayName} (${absoluteOffset} ${period} ago)`;
 }
