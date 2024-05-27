@@ -10,8 +10,39 @@ import { displayInfo } from "./metadata";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
-const baseQuery = createQueryWithClauses({
+const queryNoBreakout = createQueryWithClauses({
   aggregations: [{ operatorName: "count" }],
+});
+
+const queryDateBreakoutNoBinning = createQueryWithClauses({
+  query: queryNoBreakout,
+  breakouts: [
+    {
+      columnName: "CREATED_AT",
+      tableName: "ORDERS",
+    },
+  ],
+});
+
+const queryDateBreakoutBinning = createQueryWithClauses({
+  query: queryNoBreakout,
+  breakouts: [
+    {
+      columnName: "CREATED_AT",
+      tableName: "ORDERS",
+      temporalBucketName: "Month",
+    },
+  ],
+});
+
+const queryCategoryBreakout = createQueryWithClauses({
+  query: queryNoBreakout,
+  breakouts: [
+    {
+      columnName: "CATEGORY",
+      tableName: "PRODUCTS",
+    },
+  ],
 });
 
 describe("offsetClause", () => {
@@ -21,7 +52,7 @@ describe("offsetClause", () => {
     const offset = -1;
 
     describe("no breakout", () => {
-      const query = baseQuery;
+      const query = queryNoBreakout;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -55,16 +86,7 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on binned datetime column", () => {
-      const query = createQueryWithClauses({
-        query: baseQuery,
-        breakouts: [
-          {
-            columnName: "CREATED_AT",
-            tableName: "ORDERS",
-            temporalBucketName: "Month",
-          },
-        ],
-      });
+      const query = queryDateBreakoutBinning;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -76,15 +98,7 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on non-binned datetime column", () => {
-      const query = createQueryWithClauses({
-        query: baseQuery,
-        breakouts: [
-          {
-            columnName: "CREATED_AT",
-            tableName: "ORDERS",
-          },
-        ],
-      });
+      const query = queryDateBreakoutNoBinning;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -96,15 +110,7 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on non-datetime column", () => {
-      const query = createQueryWithClauses({
-        query: baseQuery,
-        breakouts: [
-          {
-            columnName: "CATEGORY",
-            tableName: "PRODUCTS",
-          },
-        ],
-      });
+      const query = queryCategoryBreakout;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -120,7 +126,7 @@ describe("offsetClause", () => {
     const offset = -2;
 
     describe("no breakout", () => {
-      const query = baseQuery;
+      const query = queryNoBreakout;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -132,16 +138,7 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on binned datetime column", () => {
-      const query = createQueryWithClauses({
-        query: baseQuery,
-        breakouts: [
-          {
-            columnName: "CREATED_AT",
-            tableName: "ORDERS",
-            temporalBucketName: "Month",
-          },
-        ],
-      });
+      const query = queryDateBreakoutBinning;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -153,15 +150,7 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on non-binned datetime column", () => {
-      const query = createQueryWithClauses({
-        query: baseQuery,
-        breakouts: [
-          {
-            columnName: "CREATED_AT",
-            tableName: "ORDERS",
-          },
-        ],
-      });
+      const query = queryDateBreakoutNoBinning;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
@@ -173,15 +162,7 @@ describe("offsetClause", () => {
     });
 
     describe("breakout on non-datetime column", () => {
-      const query = createQueryWithClauses({
-        query: baseQuery,
-        breakouts: [
-          {
-            columnName: "CATEGORY",
-            tableName: "PRODUCTS",
-          },
-        ],
-      });
+      const query = queryCategoryBreakout;
       const [clause] = aggregations(query, stageIndex);
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
