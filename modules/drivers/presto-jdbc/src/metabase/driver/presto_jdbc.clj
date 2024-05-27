@@ -270,8 +270,12 @@
 (defmethod sql.qp/datetime-diff [:presto-jdbc :second]  [_driver _unit x y] (date-diff :second x y))
 
 (defmethod driver/db-default-timezone :presto-jdbc
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
+  [_driver _database]
+  ;; harcoded to UTC for now. I don't know how to get the SYSTEM timezone for Presto (or if it even has one for that
+  ;; matter) and neither does Windows Copilot. The commented-out code below returns the session timezone. Maybe if we
+  ;; can figure out how to get the actual system timezone we can update it and use it.
+  "UTC"
+  #_(sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
      ;; TODO -- this is the session timezone, right? As opposed to the default timezone? Ick. Not sure how to get the
@@ -318,8 +322,8 @@
 (defn- in-report-zone
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   `AT TIME ZONE` operator. See https://prestodb.io/docs/current/functions/datetime.html"
-  [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
+  [driver expr]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (h2x/type-info expr)
         db-type     (h2x/type-info->db-type type-info)]
@@ -340,76 +344,76 @@
   expr)
 
 (defmethod sql.qp/date [:presto-jdbc :minute]
-  [_driver _unit expr]
-  [:date_trunc (h2x/literal :minute) (in-report-zone expr)])
+  [driver _unit expr]
+  [:date_trunc (h2x/literal :minute) (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :minute-of-hour]
-  [_driver _unit expr]
-  [:minute (in-report-zone expr)])
+  [driver _unit expr]
+  [:minute (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :hour]
-  [_driver _unit expr]
-  [:date_trunc (h2x/literal :hour) (in-report-zone expr)])
+  [driver _unit expr]
+  [:date_trunc (h2x/literal :hour) (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :hour-of-day]
-  [_driver _unit expr]
-  [:hour (in-report-zone expr)])
+  [driver _unit expr]
+  [:hour (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :day]
-  [_driver _unit expr]
-  [:date (in-report-zone expr)])
+  [driver _unit expr]
+  [:date (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-week]
-  [_driver _unit expr]
-  (sql.qp/adjust-day-of-week :presto-jdbc [:day_of_week (in-report-zone expr)]))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week :presto-jdbc [:day_of_week (in-report-zone driver expr)]))
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-month]
-  [_driver _unit expr]
-  [:day (in-report-zone expr)])
+  [driver _unit expr]
+  [:day (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :day-of-year]
-  [_driver _unit expr]
-  [:day_of_year (in-report-zone expr)])
+  [driver _unit expr]
+  [:day_of_year (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :week]
-  [_driver _unit expr]
+  [driver _unit expr]
   (letfn [(truncate [x]
             [:date_trunc (h2x/literal :week) x])]
-    (sql.qp/adjust-start-of-week :presto-jdbc truncate (in-report-zone expr))))
+    (sql.qp/adjust-start-of-week :presto-jdbc truncate (in-report-zone driver expr))))
 
 (defmethod sql.qp/date [:presto-jdbc :month]
-  [_driver _unit expr]
-  [:date_trunc (h2x/literal :month) (in-report-zone expr)])
+  [driver _unit expr]
+  [:date_trunc (h2x/literal :month) (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :month-of-year]
-  [_driver _unit expr]
-  [:month (in-report-zone expr)])
+  [driver _unit expr]
+  [:month (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :quarter]
-  [_driver _unit expr]
-  [:date_trunc (h2x/literal :quarter) (in-report-zone expr)])
+  [driver _unit expr]
+  [:date_trunc (h2x/literal :quarter) (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :quarter-of-year]
-  [_driver _unit expr]
-  [:quarter (in-report-zone expr)])
+  [driver _unit expr]
+  [:quarter (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :year]
-  [_driver _unit expr]
-  [:date_trunc (h2x/literal :year) (in-report-zone expr)])
+  [driver _unit expr]
+  [:date_trunc (h2x/literal :year) (in-report-zone driver expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :year-of-era]
-  [_driver _unit expr]
-  [:year (in-report-zone expr)])
+  [driver _unit expr]
+  [:year (in-report-zone driver expr)])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
-  [_driver _unit expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))]
+  [driver _unit expr]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))]
     [:from_unixtime expr (h2x/literal (or report-zone "UTC"))]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
-  [_driver _unit expr]
+  [driver _unit expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))
         millis      [::mod expr [:inline 1000]]
         expr        [:from_unixtime [:/ expr [:inline 1000]] (h2x/literal (or report-zone "UTC"))]]
     (date-add :millisecond millis expr)))
@@ -718,12 +722,12 @@
   (sql.params.substitution/make-stmt-subs "from_iso8601_timestamp(?)" [ts-str]))
 
 (defmethod sql.params.substitution/->prepared-substitution [:presto-jdbc ZonedDateTime]
-  [_ ^ZonedDateTime t]
+  [driver ^ZonedDateTime t]
   ;; for native query parameter substitution, in order to not conflict with the `PrestoConnection` session time zone
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
   #_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
+  (let [report-zone       (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))

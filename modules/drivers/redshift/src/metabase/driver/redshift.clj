@@ -458,10 +458,6 @@
        " */ "
        (qp.util/default-query->remark query)))
 
-(defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
-  [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
-
 (defmethod driver/upload-type->database-type :redshift
   [_driver upload-type]
   (case upload-type

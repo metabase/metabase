@@ -4,6 +4,29 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.51.0
+
+- If you don't have a custom implementation of `metabase.driver/notify-database-updated` you can skip this section.
+
+  A new method, `metabase.driver/notify-database-will-be-deleted!`, has been added so that you can specify behaviors
+  that happen only when a Database is deleted, such as destroying connection pools. Previously, whenever a Database
+  was updated *or* deleted, `metabase.driver/notify-database-updated` was called; now you may differentiate the two
+  situations by implementing both methods separately. The default implementation of `notify-database-will-be-deleted!`
+  calls `notify-database-updated` for backward compatibility, so by default it will still be called on Database
+  deletes. The default implementation of `notify-database-updated` is a no-op, so unless you have an implementation
+  for it the default implementation of `notify-database-will-be-deleted! is effectively a no-op as well.
+
+  `:sql-jdbc` has an implementation, `notify-database-updated` destroys cached connection pools if connection details
+  change in a meaningful way, and `notify-database-will-be-deleted!` always destroys pools. If your driver is
+  JDBC-based, you probably didn't have a custom implementation of `notify-database-updated`, so you shouldn't need to
+  change anything.
+
+  We previously recommended that `notify-database-updated` always destroy connection pools or cached resources. Now
+  that you can differentiate updates from deletes, we now instead recommend that you implement
+  `notify-database-will-be-deleted!` separately and have it always delete connection pools or cached resources, and
+  update your implementation of `notify-database-updated` to check whether connection details have changed in a
+  meaningful way and only destroy resources if actually needed.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to

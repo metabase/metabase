@@ -42,26 +42,22 @@
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
   (mt/dataset tz-test-data
-    (mt/test-drivers (timezone-aware-column-drivers)
-      (is (= [[12 "2014-07-03T01:30:00Z"]
-              [10 "2014-07-03T19:30:00Z"]]
-             (mt/formatted-rows [int identity]
-               (mt/run-mbql-query users
-                 {:fields   [$id $last_login]
-                  :filter   [:= $id 10 12]
-                  :order-by [[:asc $last_login]]})))
-          "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))
-    (mt/test-drivers (set-timezone-drivers)
-      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
-                                                      [10 "2014-07-03T19:30:00Z"]]
-                                        "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
+    (doseq [{:keys [timezone expected-rows drivers]} [{:drivers       (timezone-aware-column-drivers)
+                                                       :timezone      "UTC"
+                                                       :expected-rows [[12 "2014-07-03T01:30:00Z"]
+                                                                       [10 "2014-07-03T19:30:00Z"]]}
+                                                      {:drivers       (set-timezone-drivers)
+                                                       :timezone      "US/Pacific"
+                                                       :expected-rows [[10 "2014-07-03T12:30:00-07:00"]]}]]
+      (mt/test-drivers drivers
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
-                 (mt/formatted-rows [int identity]
-                   (mt/run-mbql-query users
-                     {:fields   [$id $last_login]
-                      :filter   [:= $last_login "2014-07-03"]
-                      :order-by [[:asc $last_login]]})))
+                 (mt/formatted-rows
+                  [int identity]
+                  (mt/run-mbql-query users
+                    {:fields   [$id $last_login]
+                     :filter   [:= $last_login "2014-07-03"]
+                     :order-by [[:asc $last_login]]})))
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test

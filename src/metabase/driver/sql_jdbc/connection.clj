@@ -220,6 +220,18 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   [database]
   (set-pool! (u/the-id database) nil nil))
 
+(defn invalidate-pool-for-db-if-needed!
+  "Invalidate the connection pool for the given database if the connection details have changed."
+  [database]
+  (when-let [old-hash (get @database-id->jdbc-spec-hash (u/the-id database))]
+    (let [new-hash (jdbc-spec-hash database)]
+      (log/tracef "Maybe invalidating connection pool for %s... old hash: %s, new hash: %s"
+                  (pr-str (select-keys database [:id :name :engine]))
+                  (pr-str old-hash)
+                  (pr-str new-hash))
+      (when-not (= old-hash new-hash)
+        (invalidate-pool-for-db! database)))))
+
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color :red "ssh tunnel for database %s looks closed; marking pool invalid to reopen it" db-id))
   nil)

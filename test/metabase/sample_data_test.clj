@@ -36,7 +36,6 @@
   {:style/indent 1}
   [[db-binding] & body]
   `(t2.with-temp/with-temp [Database db# (sample-database-db false)]
-     (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
 
@@ -83,6 +82,7 @@
   (testing (str "Make sure the Sample Database is getting synced correctly. For example PEOPLE.NAME should be "
                 "has_field_values = search instead of `list`.")
     (with-temp-sample-database-db [db]
+      (sync/sync-database! db)
       (is (= {:description      "The name of the user who owns an account"
               :database_type    "CHARACTER VARYING"
               :semantic_type    :type/Name
@@ -111,7 +111,6 @@
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
     (t2.with-temp/with-temp [Database db (sample-database-db true)]
-      (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
           (testing "update row"
@@ -154,7 +153,6 @@
 (deftest ddl-sample-database-test
   (testing "should be able to execute DDL statements on the Sample Database"
     (t2.with-temp/with-temp [Database db (sample-database-db true)]
-      (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-tables (fn [] (set (mapv :table_name (jdbc/query conn-spec "SHOW TABLES;"))))

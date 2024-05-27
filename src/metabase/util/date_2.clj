@@ -218,7 +218,7 @@
     :year})
 
 (defn- start-of-week []
-  (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
+  ((requiring-resolve 'metabase.util.date-2.start-of-week/start-of-week)))
 
 (def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
   (let [m (u.date.common/static-instances DayOfWeek)]
