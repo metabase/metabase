@@ -1658,24 +1658,33 @@
                       (map serdes/path)
                       set)))))))))
 
-(deftest foreign-key-field-test
+(deftest field-references-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   {db-id         :id}        {:name "My Database"}
-                       Table      {no-schema-id  :id}        {:name "Schemaless Table" :db_id db-id}
-                       Field      {some-field-id :id}        {:name "Some Field" :table_id no-schema-id}
-                       Table      {schema-id     :id}        {:name        "Schema'd Table"
+    (ts/with-temp-dpc [Database   {db-id          :id}        {:name "My Database"}
+                       Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
+                       Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
+                       Table      {schema-id      :id}        {:name        "Schema'd Table"
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}
-                       Field      _                          {:name "Other Field" :table_id schema-id}
-                       Field      {fk-id         :id}        {:name     "Foreign Key"
+                       Field      {other-field-id :id}        {:name "Other Field" :table_id schema-id}
+                       Field      {fk-id          :id}        {:name     "Foreign Key"
                                                               :table_id schema-id
-                                                              :fk_target_field_id some-field-id}]
+                                                              :fk_target_field_id some-field-id}
+                       Field      {nested-id      :id}        {:name "Nested Field"
+                                                              :table_id schema-id
+                                                              :parent_id other-field-id}]
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
                (->> (t2/select-one Field :id fk-id)
                     (serdes/extract-one "Field" {})
-                    :fk_target_field_id)))))))
+                    :fk_target_field_id))))
+
+      (testing "Fields that reference parents are properly exported as Field references"
+        (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
+               (->> (t2/select-one Field :id nested-id)
+                    (serdes/extract-one "Field" {})
+                    :parent_id)))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db
