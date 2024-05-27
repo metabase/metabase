@@ -1331,12 +1331,14 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
+const COLUMN_SHORTCUT_PADDING = 4;
+
 function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
   if (!totalWidth) {
     return null;
   }
 
-  const width = height + 4;
+  const width = height + COLUMN_SHORTCUT_PADDING;
   const isOverflowing = totalWidth > pageWidth;
   const left = (isOverflowing ? pageWidth : totalWidth) - width;
 
