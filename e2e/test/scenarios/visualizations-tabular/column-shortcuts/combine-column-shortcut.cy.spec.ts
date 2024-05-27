@@ -56,11 +56,12 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
     });
   });
 
-  it("should not show the shortcut button when the table is raw", function () {
+  it("should allow combining columns when aggregating", function () {
     createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
+          limit: 1,
           aggregation: [["count"]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
@@ -73,7 +74,12 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
     );
 
     cy.findByTestId("TableInteractive-root").should("exist");
-    cy.findByLabelText("Add column").should("not.exist");
+    combineColumns({
+      columns: ["Created At: Hour of day", "Count"],
+      newColumn: "Combined Created At: Hour of day, Count",
+      example: "2042-01-01 12:34:56.789 123",
+      newValue: "0 766",
+    });
   });
 });
 
