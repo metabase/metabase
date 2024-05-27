@@ -2240,7 +2240,7 @@
   - Stages later than `stage-index` are dropped.
   - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
   - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
-    `[0, clause-index]` are kept. (To keep 0, specify the earlier `clause-type`.)
+    `[0, clause-index]` are kept. (To keep no clauses, specify the earlier `clause-type`.)
 
   The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
 

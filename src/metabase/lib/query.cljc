@@ -304,7 +304,11 @@
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))
 
 (def ^:private clause-types-order
-  ;; Note that :breakout is never actually sent, but when we get :aggregation we want to drop :breakout too.
+  ;; When previewing some clause type `:x`, we drop the prefix of this list up to but excluding `:x`.
+  ;; So if previewing `:aggregation`, we drop `:limit` and `:order-by`;
+  ;; if previewing `:filters` we drop `:limit`, `:order-by`, `:aggregation` and `:breakout`.
+  ;; (In practice `:breakout` is never previewed separately, but the order is important to get the behavior above.
+  ;; There are tests for this.)
   [:limit :order-by :aggregation :breakout :filters :expressions :joins :data])
 
 (defn- preview-stage [stage clause-type clause-index]
@@ -320,7 +324,7 @@
   - Stages later than `stage-index` are dropped.
   - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
   - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
-    `[0, clause-index]` are kept. (To keep 0, specify the earlier `clause-type`.)
+    `[0, clause-index]` are kept. (To keep no clauses, specify the earlier `clause-type`.)
 
   The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
 
