@@ -231,8 +231,6 @@
                              (rank-by-similarity card)
                              interesting-mix)
      :dashboard-mates   (cards-sharing-dashboard card)
-     :similar-questions (interesting-mix similar-questions)
-     :canonical-metric  (first similar-metrics)
      :dashboards        (recommended-dashboards similar-questions)
      :collections       (recommended-collections similar-questions)}))
 

@@ -107,8 +107,9 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
+      fetchDashboardCardMetadata,
       setErrorPage,
-      location,
+      queryParams,
       params: { uuid, token },
     } = this.props;
     if (uuid) {
@@ -121,7 +122,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     const result = await fetchDashboard({
       dashId: String(uuid || token),
-      queryParams: location.query,
+      queryParams,
     });
 
     if (!isSuccessfulFetchDashboardResult(result)) {
@@ -131,7 +132,10 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     try {
       if (this.props.dashboard?.tabs?.length === 0) {
-        await fetchDashboardCardData({ reload: false, clearCache: true });
+        await Promise.all([
+          fetchDashboardCardData({ reload: false, clearCache: true }),
+          fetchDashboardCardMetadata(),
+        ]);
       }
     } catch (error) {
       console.error(error);
@@ -244,10 +248,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
         dashboardTabs={
           dashboard?.tabs &&
           dashboard.tabs.length > 1 && (
-            <DashboardTabs
-              dashboardId={this.props.dashboardId}
-              location={this.props.location}
-            />
+            <DashboardTabs dashboardId={this.props.dashboardId} />
           )
         }
       >

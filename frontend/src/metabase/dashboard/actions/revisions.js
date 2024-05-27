@@ -1,6 +1,7 @@
 import {
   fetchDashboard,
   fetchDashboardCardData,
+  fetchDashboardCardMetadata,
 } from "metabase/dashboard/actions";
 import Revision from "metabase/entities/revisions";
 import { createThunkAction } from "metabase/lib/redux";
@@ -17,9 +18,10 @@ export const revertToRevision = createThunkAction(
           queryParams: null,
         }),
       );
-      await dispatch(
-        fetchDashboardCardData({ reload: false, clearCache: true }),
-      );
+      await Promise.all([
+        dispatch(fetchDashboardCardData({ reload: false, clearCache: true })),
+        dispatch(fetchDashboardCardMetadata()),
+      ]);
     };
   },
 );

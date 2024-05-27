@@ -1,3 +1,5 @@
+import querystring from "querystring";
+
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
 }
@@ -27,4 +29,25 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
       return [key, value];
     }),
   );
+}
+
+export function buildSearchString({
+  object = {},
+  filterFn,
+}: {
+  object?: Record<string, any>;
+  filterFn: (objectKey: string) => boolean;
+}) {
+  const currentSearchParams = querystring.parse(
+    window.location.search.replace("?", ""),
+  );
+  const filteredSearchParams = Object.fromEntries(
+    Object.entries(currentSearchParams).filter(entry => filterFn(entry[0])),
+  );
+
+  const search = querystring.stringify({
+    ...filteredSearchParams,
+    ...object,
+  });
+  return search ? `?${search}` : "";
 }

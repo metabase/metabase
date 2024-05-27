@@ -3,6 +3,11 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+  EmbedThemeControls,
+} from "metabase/dashboard/types";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 import {
@@ -15,23 +20,17 @@ type GetDashboardActionsProps = {
   canManageSubscriptions?: boolean;
   dashboard: Dashboard | null;
   formInput?: any;
-  hasNightModeToggle: boolean;
   isAdmin?: boolean;
   isEditing?: boolean;
   isEmpty?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
   isPublic?: boolean;
-  onFullscreenChange: (
-    isFullscreen: boolean,
-    isBrowserFullscreen?: boolean,
-  ) => void;
-  onNightModeChange: (isNightMode: boolean) => void;
-  onRefreshPeriodChange: (period: number | null) => void;
   onSharingClick?: () => void;
-  refreshPeriod: number | null;
-  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
-};
+} & DashboardFullscreenControls &
+  DashboardRefreshPeriodControls &
+  Pick<
+    EmbedThemeControls,
+    "isNightMode" | "hasNightModeToggle" | "onNightModeChange"
+  >;
 
 export const getDashboardActions = ({
   canManageSubscriptions = false,
