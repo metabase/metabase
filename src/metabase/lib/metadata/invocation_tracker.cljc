@@ -25,7 +25,6 @@
   (let [tracking-type (case metadata-type
                         :metadata/column        ::table-fields
                         :metadata/metric        ::table-metrics
-                        :metadata/legacy-metric ::table-legacy-metrics
                         :metadata/segment       ::table-segments)]
     (track-ids! tracker tracking-type [table-id]))
   (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id))

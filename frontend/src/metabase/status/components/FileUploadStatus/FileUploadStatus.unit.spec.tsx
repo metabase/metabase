@@ -65,8 +65,11 @@ async function setupCollectionContent(overrides = {}) {
   setupBookmarksEndpoints([]);
 
   const settings = createMockSettingsState({
-    "uploads-enabled": true,
-    "uploads-database-id": 1,
+    "uploads-settings": {
+      db_id: 1,
+      schema_name: null,
+      table_prefix: null,
+    },
   });
 
   renderWithProviders(
