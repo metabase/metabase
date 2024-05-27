@@ -6612,14 +6612,6 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v50.2024-04-09T15:55:22
-      author: calherries
-      comment: Create sample content
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContent"
-
-  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -7363,6 +7355,14 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
+  - changeSet:
+      id: v50.2024-05-27T15:55:22
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
