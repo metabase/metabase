@@ -1155,6 +1155,8 @@ class TableInteractive extends Component {
                 {shortcutColumn && (
                   <ColumnShortcut
                     height={headerHeight - 1}
+                    pageWidth={width}
+                    totalWidth={this.header?.getTotalColumnsWidth()}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
@@ -1329,9 +1331,27 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
-function ColumnShortcut({ height, onClick }) {
+function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
+  if (!totalWidth) {
+    return null;
+  }
+
+  const width = height + 4;
+  const isOverflowing = totalWidth > pageWidth;
+  const left = (isOverflowing ? pageWidth : totalWidth) - width;
+
   return (
-    <div className={TableS.shortcutsWrapper} style={{ height }}>
+    <div
+      className={cx(
+        TableS.shortcutsWrapper,
+        isOverflowing && TableS.isOverflowing,
+      )}
+      style={{
+        height,
+        width,
+        left,
+      }}
+    >
       <UIButton
         variant="filled"
         compact
