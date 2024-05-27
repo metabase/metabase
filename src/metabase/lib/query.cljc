@@ -115,11 +115,21 @@
    x
    ;; pmbql fields
    [(_clause :guard #{:field "field"}) (_options :guard map?) (id :guard integer?)]
-   (update &match 1 merge (-> (lib.metadata/field metadata-provider id)
-                              (select-keys [:base-type :effective-type])))
+   (let [{:keys [base-type effective-type]} (-> (lib.metadata/field metadata-provider id)
+                                                (select-keys [:base-type :effective-type]))]
+     (update &match 1 merge
+             {:base-type base-type}
+             (when (not= base-type effective-type)
+               {:effective-type effective-type})))
    ;; legacy mbql fields
    [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard (some-fn map? nil?))]
-   (update &match 2 merge (-> (lib.metadata/field metadata-provider id)
+   (let [{:keys [base-type effective-type]} (-> (lib.metadata/field metadata-provider id)
+                                                (select-keys [:base-type :effective-type]))]
+     (update &match 2 merge
+             {:base-type base-type}
+             (when (not= base-type effective-type)
+               {:effective-type effective-type})))
+   #_(update &match 2 merge (-> (lib.metadata/field metadata-provider id)
                               (select-keys [:base-type :effective-type])))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
