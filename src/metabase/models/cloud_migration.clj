@@ -285,7 +285,7 @@
 (defn get-store-migration
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
   []
-  (-> (store-api-url)
+  (-> (migration-url)
       (http/post {:form-params  {:local_mb_version (or (migration-dump-version)
                                                        (config/mb-version-info :tag))}
                   :content-type :json})
