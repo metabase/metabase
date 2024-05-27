@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { memo } from "react";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
@@ -12,8 +13,9 @@ import type {
   DashboardControlsProps,
 } from "./types";
 
-/* This contains some state for dashboard controls on both private and embedded dashboards.
- * It should probably be in Redux?
+/**
+ * This contains some state for dashboard controls on both private and embedded
+ * dashboards. It should probably be in Redux?
  *
  * @deprecated HOCs are deprecated
  */
@@ -89,5 +91,5 @@ export const DashboardControls = <T extends DashboardControlsProps>(
     );
   }
 
-  return DashboardControlsInner;
+  return memo(DashboardControlsInner);
 };

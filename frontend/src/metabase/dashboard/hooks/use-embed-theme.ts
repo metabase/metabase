@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import { setDisplayTheme } from "metabase/dashboard/actions";
 import { getDisplayTheme } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -9,11 +11,17 @@ export const useEmbedTheme = (): EmbedThemeControls => {
   const dispatch = useDispatch();
 
   const theme = useSelector(getDisplayTheme);
-  const setTheme = (theme: DisplayTheme) => dispatch(setDisplayTheme(theme));
+  const setTheme = useCallback(
+    (theme: DisplayTheme) => dispatch(setDisplayTheme(theme)),
+    [dispatch],
+  );
 
-  const onNightModeChange = (isNightMode: boolean) => {
-    setTheme(isNightMode ? "night" : "light");
-  };
+  const onNightModeChange = useCallback(
+    (isNightMode: boolean) => {
+      setTheme(isNightMode ? "night" : "light");
+    },
+    [setTheme],
+  );
 
   const isNightMode = theme === "night";
 
