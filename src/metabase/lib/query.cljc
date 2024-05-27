@@ -155,8 +155,6 @@
         (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
-;; adding effective-type here is required because :between is converted to >= < in later stages
-;; args of those should be also comparable!
 (defmethod query-method :query ; legacy MBQL query
   [metadata-providerable legacy-query]
   (query-from-legacy-query metadata-providerable
