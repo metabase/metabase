@@ -51,13 +51,11 @@
 (mu/defn metadatas-for-table :- [:sequential [:or
                                               ::lib.schema.metadata/column
                                               ::lib.schema.metadata/metric
-                                              ::lib.schema.metadata/legacy-metric
                                               ::lib.schema.metadata/segment]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
-   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, ':metadata/legacy-metric',
-   `:metadata/segment`."
+   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/column, :metadata/metric, :metadata/legacy-metric, :metadata/segment]
+   metadata-type         :- [:enum :metadata/column :metadata/metric :metadata/segment]
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id))
 
@@ -129,12 +127,6 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    segment-id            :- ::lib.schema.id/segment]
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
-
-(mu/defn legacy-metric :- [:maybe ::lib.schema.metadata/legacy-metric]
-  "Get metadata for the Metric with `metric-id`, if it can be found."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metric-id             :- ::lib.schema.id/legacy-metric]
-  (lib.metadata.protocols/legacy-metric (->metadata-provider metadata-providerable) metric-id))
 
 (mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
   "Get metadata for the Metric with `metric-id`, if it can be found."

@@ -54,5 +54,7 @@ export const recentItemToResultItem = (item: RecentItem): ResultItemType => ({
           id: item.parent_collection.id ?? "root",
         },
       }
-    : {}),
+    : {
+        database_name: item.database.name,
+      }),
 });

@@ -45,7 +45,6 @@ export function getParameterTargetField(
   }
 
   const fieldRef = target[1];
-  const query = question.query();
   const metadata = question.metadata();
 
   // native queries
@@ -60,8 +59,12 @@ export function getParameterTargetField(
 
   if (isConcreteFieldReference(fieldRef)) {
     const fieldId = fieldRef[1];
-    const tableId = Lib.sourceTableOrCardId(query);
-    return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
+    const resultMetadata = question.getResultMetadata();
+    const fieldMetadata = resultMetadata.find(field => field.id === fieldId);
+    return (
+      metadata.field(fieldId, fieldMetadata?.table_id) ??
+      metadata.field(fieldId)
+    );
   }
 
   return null;
