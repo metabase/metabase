@@ -14,12 +14,14 @@ export function enterCustomColumnDetails({ formula, name }) {
     .should("exist")
     .focus()
     .clear()
-    .type(formula);
+    .type(formula)
+    .blur();
 
   if (name) {
     cy.findByPlaceholderText("Something nice and descriptive")
       .clear()
-      .type(name);
+      .type(name)
+      .blur();
   }
 }
 

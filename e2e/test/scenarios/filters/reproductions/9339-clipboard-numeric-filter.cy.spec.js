@@ -2,6 +2,7 @@ import {
   openOrdersTable,
   restore,
   selectFilterOperator,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 describe("issue 9339", () => {
@@ -13,8 +14,7 @@ describe("issue 9339", () => {
   it("should not paste non-numeric values into single-value numeric filters (metabase#9339)", () => {
     openOrdersTable();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total").click();
+    tableHeaderClick("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     selectFilterOperator("Greater than");

@@ -23,6 +23,7 @@ import {
   selectFilterOperator,
   expressionEditorWidget,
   cartesianChartCircleWithColors,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -406,7 +407,7 @@ describe("scenarios > question > filter", () => {
   it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
     openReviewsTable();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Reviewer").click();
+    tableHeaderClick("Reviewer");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     selectFilterOperator("Is empty");
@@ -425,7 +426,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("isempty([Reviewer])");
-    cy.get(".ace_text-input").clear().type("NOT IsEmpty([Reviewer])");
+    cy.get(".ace_text-input").clear().type("NOT IsEmpty([Reviewer])").blur();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -435,7 +436,7 @@ describe("scenarios > question > filter", () => {
   it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
     openReviewsTable();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Rating").click();
+    tableHeaderClick("Rating");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     selectFilterOperator("Is empty");
@@ -456,7 +457,8 @@ describe("scenarios > question > filter", () => {
     cy.contains("isnull([Rating])");
     cy.get(".ace_text-input")
       .clear()
-      .type("NOT IsNull([Rating])", { delay: 50 });
+      .type("NOT IsNull([Rating])", { delay: 50 })
+      .blur();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -933,10 +935,7 @@ describe("scenarios > question > filter", () => {
       beforeEach(setupBooleanQuery);
 
       it("from the column popover (metabase#16386-1)", () => {
-        cy.findAllByTestId("header-cell")
-          .contains("boolean")
-          .should("be.visible")
-          .click();
+        tableHeaderClick("boolean");
 
         popover().findByText("Filter by this column").click();
 

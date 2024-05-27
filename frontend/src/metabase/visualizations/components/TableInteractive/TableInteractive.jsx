@@ -382,6 +382,11 @@ class TableInteractive extends Component {
 
     delete this.columnNeedsResize;
 
+    // TODO: This is bad. Need to find a new way to render the measure
+    if (columnWidths.some(w => isNaN(w))) {
+      return;
+    }
+
     this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
   };
 
