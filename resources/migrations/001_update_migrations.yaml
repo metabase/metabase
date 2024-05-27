@@ -7405,7 +7405,7 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateUploadsSettings"
-            
+
   - changeSet:
       id: v50.2024-05-27T15:55:22
       author: calherries
