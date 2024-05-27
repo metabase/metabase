@@ -2,7 +2,7 @@ import { parse } from "csv-parse/browser/esm/sync";
 
 export function parseValues(str: string): string[] {
   try {
-    const values: string[] = parse(str, {
+    return parse(str, {
       delimiter: [",", "\t", "\n"],
       skip_empty_lines: true,
       relax_column_count: true,
@@ -11,21 +11,23 @@ export function parseValues(str: string): string[] {
       quote: '"',
       escape: "\\",
     }).flat();
-
-    const seen = new Set<string>();
-    const uniques = [];
-
-    for (const value of values) {
-      if (seen.has(value)) {
-        continue;
-      }
-
-      seen.add(value);
-      uniques.push(value);
-    }
-
-    return uniques;
   } catch (err) {
     return [];
   }
+}
+
+export function unique(values: string[]): string[] {
+  const seen = new Set<string>();
+  const uniques = [];
+
+  for (const value of values) {
+    if (seen.has(value)) {
+      continue;
+    }
+
+    seen.add(value);
+    uniques.push(value);
+  }
+
+  return uniques;
 }

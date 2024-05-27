@@ -8,7 +8,7 @@ import { t } from "ttag";
 import { Icon } from "metabase/ui";
 
 import styles from "./MultiAutocomplete.module.css";
-import { parseValues } from "./utils";
+import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
@@ -49,8 +49,9 @@ export function MultiAutocomplete({
   );
 
   const handleChange = (newValues: string[]) => {
-    setSelectedValues(newValues);
-    setLastSelectedValues(newValues);
+    const values = unique(newValues);
+    setSelectedValues(values);
+    setLastSelectedValues(values);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
@@ -72,7 +73,7 @@ export function MultiAutocomplete({
     setSearchValue("");
 
     if (validValues.length > 0) {
-      const newValues = [...lastSelectedValues, ...validValues];
+      const newValues = unique([...lastSelectedValues, ...validValues]);
       setSelectedValues(newValues);
       setLastSelectedValues(newValues);
     } else {
@@ -97,13 +98,13 @@ export function MultiAutocomplete({
     const validValues = values.filter(isValid);
 
     if (values.length > 0) {
-      const newValues = [...lastSelectedValues, ...validValues];
+      const newValues = unique([...lastSelectedValues, ...validValues]);
       setSelectedValues(newValues);
       setLastSelectedValues(newValues);
       setSearchValue("");
     } else {
       setSearchValue(text);
-      setSelectedValues([...lastSelectedValues, text]);
+      setSelectedValues(unique([...lastSelectedValues, text]));
     }
   };
 
@@ -112,7 +113,7 @@ export function MultiAutocomplete({
     const last = newSearchValue.at(-1);
 
     setSearchValue(newSearchValue);
-    setSelectedValues([...lastSelectedValues, newSearchValue]);
+    setSelectedValues(unique([...lastSelectedValues, newSearchValue]));
 
     const quotes = Array.from(newSearchValue).filter(ch => ch === '"').length;
 
@@ -128,7 +129,7 @@ export function MultiAutocomplete({
       );
 
       if (values.length > 0) {
-        const newValues = [...lastSelectedValues, ...validValues];
+        const newValues = unique([...lastSelectedValues, ...validValues]);
         setSelectedValues(newValues);
         setLastSelectedValues(newValues);
 
