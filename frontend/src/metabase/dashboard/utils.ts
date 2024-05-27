@@ -9,6 +9,7 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import type Database from "metabase-lib/v1/metadata/Database";
 import {
   isDateParameter,
   isNumberParameter,
@@ -24,7 +25,6 @@ import type {
   DashboardCard,
   DashboardCardLayoutAttrs,
   DashCardDataMap,
-  Database,
   Dataset,
   EmbedDataset,
   Parameter,
