@@ -328,11 +328,10 @@
   `(do-with-uploads-enabled (fn [] ~@body)))
 
 (defn do-with-uploads-disabled
-  "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
+  "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
   (mt/with-discard-model-updates [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
-    (t2/update! :model/Database (mt/id) {:uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
