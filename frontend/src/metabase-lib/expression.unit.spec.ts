@@ -10,16 +10,15 @@ import { displayInfo } from "./metadata";
 import { toLegacyQuery } from "./query";
 import { SAMPLE_DATABASE, createQueryWithClauses } from "./test-helpers";
 
-const offset = -1;
-
 const baseQuery = createQueryWithClauses({
   aggregations: [{ operatorName: "count" }],
 });
 
 describe("offsetClause", () => {
+  const stageIndex = -1;
+
   describe("offset = -1", () => {
     const offset = -1;
-    const stageIndex = -1;
 
     describe("no breakout", () => {
       const query = baseQuery;
@@ -70,7 +69,7 @@ describe("offsetClause", () => {
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      it("produces correct name", () => {
+      it("produces correct aggregation name", () => {
         const info = displayInfo(finalQuery, stageIndex, offsettedClause);
         expect(info.displayName).toBe("Count (previous month)");
       });
@@ -90,7 +89,7 @@ describe("offsetClause", () => {
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      it("produces correct name", () => {
+      it("produces correct aggregation name", () => {
         const info = displayInfo(finalQuery, stageIndex, offsettedClause);
         expect(info.displayName).toBe("Count (previous period)");
       });
@@ -110,36 +109,42 @@ describe("offsetClause", () => {
       const offsettedClause = offsetClause(query, stageIndex, clause, offset);
       const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
-      it("produces correct name", () => {
+      it("produces correct aggregation name", () => {
         const info = displayInfo(finalQuery, stageIndex, offsettedClause);
-        expect(info.displayName).toBe("Count (previous period)");
+        expect(info.displayName).toBe("Count (previous value)");
       });
     });
   });
 
-  describe("offset < -1", () => {
-    // const offset = -2;
+  describe.skip("offset < -1", () => {
+    const offset = -2;
 
     describe("no breakout", () => {
-      it("produces correct name", () => {
-        expect("TODO").toBe("TODO");
+      const query = baseQuery;
+      const [clause] = aggregations(query, stageIndex);
+      const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+      const finalQuery = aggregate(query, stageIndex, offsettedClause);
+
+      it("produces correct aggregation name", () => {
+        const info = displayInfo(finalQuery, stageIndex, offsettedClause);
+        expect(info.displayName).toBe("Count (2 periods ago)");
       });
     });
 
     describe("breakout on binned datetime column", () => {
-      it("produces correct name", () => {
+      it("produces correct aggregation name", () => {
         expect("TODO").toBe("TODO");
       });
     });
 
     describe("breakout on non-binned datetime column", () => {
-      it("produces correct name", () => {
+      it("produces correct aggregation name", () => {
         expect("TODO").toBe("TODO");
       });
     });
 
     describe("breakout on non-datetime column", () => {
-      it("produces correct name", () => {
+      it("produces correct aggregation name", () => {
         expect("TODO").toBe("TODO");
       });
     });
@@ -148,6 +153,7 @@ describe("offsetClause", () => {
 
 describe("diffOffsetClause", () => {
   it("offsets Count aggregation without breakout", () => {
+    const offset = -1;
     const stageIndex = -1;
     const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
@@ -193,6 +199,7 @@ describe("diffOffsetClause", () => {
 
 describe("percentDiffOffsetClause", () => {
   it("offsets Count aggregation without breakout", () => {
+    const offset = -1;
     const stageIndex = -1;
     const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],

@@ -112,9 +112,7 @@ export function offsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const { displayName } = displayInfo(query, stageIndex, clause);
-  const period = getPeriodName(query, stageIndex);
-  const newName = t`${displayName} (previous ${period})`;
+  const newName = getOffsettedName(query, stageIndex, clause, offset);
   const newClause = expressionClause("offset", [clause, offset]);
   return withExpressionName(newClause, newName);
 }
@@ -148,24 +146,41 @@ export function percentDiffOffsetClause(
 
 // TODO: should this come from inside MLv2?
 // TODO: add `offset: number` argument, see https://metaboat.slack.com/archives/C0645JP1W81/p1716556485318749?thread_ts=1716475674.712849&cid=C0645JP1W81
-export function getPeriodName(query: Query, stageIndex: number): string {
+export function getOffsettedName(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause,
+  offset: number,
+): string {
+  if (offset >= 0) {
+    throw new Error(
+      "non-negative offset values aren't supported in 'getPeriodName'",
+    );
+  }
+
+  const { displayName } = displayInfo(query, stageIndex, clause);
   const firstBreakout = breakouts(query, stageIndex)[0];
 
   if (!firstBreakout) {
-    return t`period`;
+    //TODO: pluralize
+    return t`${displayName} (previous period)`;
+  }
+
+  const firstBreakoutInfo = displayInfo(query, stageIndex, firstBreakout);
+
+  if (firstBreakoutInfo.effectiveType !== "type/DateTime") {
+    return t`${displayName} (previous value)`;
   }
 
   const bucket = temporalBucket(firstBreakout);
 
   if (!bucket) {
-    return t`period`;
+    //TODO: pluralize
+    return t`${displayName} (previous period)`;
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
 
-  if (bucketInfo) {
-    return bucketInfo.shortName;
-  }
-
-  return t`value`;
+  //TODO: pluralize
+  return t`${displayName} (previous ${bucketInfo.shortName})`;
 }
