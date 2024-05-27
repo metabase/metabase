@@ -14,7 +14,7 @@ export function offsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const newName = getOffsetClauseName(query, stageIndex, clause, offset, "");
+  const newName = getOffsetClauseName(query, stageIndex, clause, offset);
   const newClause = expressionClause("offset", [clause, offset]);
   return withExpressionName(newClause, newName);
 }
@@ -25,7 +25,13 @@ export function diffOffsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const newName = getOffsetClauseName(query, stageIndex, clause, offset, "vs ");
+  const newName = getOffsetClauseName(
+    query,
+    stageIndex,
+    clause,
+    offset,
+    t`vs `,
+  );
   const newClause = expressionClause("-", [
     clause,
     expressionClause("offset", [clause, offset]),
@@ -39,13 +45,12 @@ export function percentDiffOffsetClause(
   clause: AggregationClause | ExpressionClause,
   offset: number,
 ): ExpressionClause {
-  const prefix = "% vs ";
   const newName = getOffsetClauseName(
     query,
     stageIndex,
     clause,
     offset,
-    prefix,
+    t`% vs `,
   );
   const newClause = expressionClause("-", [
     expressionClause("/", [
@@ -62,7 +67,7 @@ function getOffsetClauseName(
   stageIndex: number,
   clause: AggregationClause | ExpressionClause,
   offset: number,
-  prefix: string,
+  prefix = "",
 ): string {
   if (offset >= 0) {
     throw new Error(
