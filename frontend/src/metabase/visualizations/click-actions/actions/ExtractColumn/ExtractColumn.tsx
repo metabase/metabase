@@ -34,8 +34,6 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
-    const query = question.query();
-    const stageIndex = -1;
     const dispatch = useDispatch();
 
     function handleSubmit(
