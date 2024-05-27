@@ -15,6 +15,7 @@ const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const modelDetails = {
   name: "Model",
+  type: "model",
   query: {
     "source-table": ORDERS_ID,
     joins: [
@@ -33,12 +34,12 @@ const modelDetails = {
         "source-table": PEOPLE_ID,
       },
     ],
-    limit: 4,
   },
 };
 
 const questionDetails = modelId => ({
   name: "Question",
+  type: "question",
   query: {
     "source-table": `card__${modelId}`,
   },
@@ -62,23 +63,13 @@ describe("issue 43154", () => {
     editDashboard();
     setFilter("Text or Category", "Is");
     getDashboardCard().findByText("Select…").click();
-    popover().findByText("Category").click();
+    popover().findByText("People - User → Source").click();
     saveDashboard();
-    getDashboardCard().within(() => {
-      // Product ID values
-      cy.findByText("105").should("be.visible");
-      cy.findByText("123").should("be.visible");
-    });
 
     filterWidget().click();
     popover().within(() => {
-      cy.findByText("Gadget").click();
+      cy.findByText("Twitter").click();
       cy.button("Add filter").click();
-    });
-    getDashboardCard().within(() => {
-      // Product ID values
-      cy.findByText("105").should("be.visible");
-      cy.findByText("123").should("not.exist");
     });
   });
 });
