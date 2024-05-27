@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 
-import { useSetting } from "metabase/common/hooks";
 import type {
   CloudMigration,
   CloudMigrationState,
@@ -70,13 +69,14 @@ export const defaultGetPollingInterval = (
 export const getMigrationEventTime = (isoString: string) =>
   dayjs(isoString).format("MMMM DD, YYYY, hh:mm A");
 
-export const getCheckoutUrl = (migration: CloudMigration) => {
-  // Only used from components, but passing the setting value from all callers is a PITA.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const baseUrl = useSetting("store-url");
-  return `${baseUrl}/checkout?migration-id=${migration.external_id}`;
-};
-
-export const openCheckoutInNewTab = (migration: CloudMigration) => {
-  window.open(getCheckoutUrl(migration), "_blank")?.focus();
+export const openCheckoutInNewTab = (
+  storeUrl: string,
+  migration: CloudMigration,
+) => {
+  window
+    .open(
+      `${storeUrl}/checkout?migration-id=${migration.external_id}`,
+      "_blank",
+    )
+    ?.focus();
 };

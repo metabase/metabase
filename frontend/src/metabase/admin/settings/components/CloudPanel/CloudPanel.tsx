@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   useGetCloudMigrationQuery,
   useCreateCloudMigrationMutation,
 } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -19,9 +20,9 @@ import { MigrationSuccess } from "./MigrationSuccess";
 import {
   type InternalCloudMigrationState,
   isInProgressMigration,
-  openCheckoutInNewTab,
   getStartedVisibleStates,
   defaultGetPollingInterval,
+  openCheckoutInNewTab,
 } from "./utils";
 
 interface CloudPanelProps {
@@ -31,7 +32,6 @@ interface CloudPanelProps {
 
 export const CloudPanel = ({
   getPollingInterval = defaultGetPollingInterval,
-  onMigrationStart = openCheckoutInNewTab,
 }: CloudPanelProps) => {
   const dispatch = useDispatch();
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
@@ -68,13 +68,21 @@ export const CloudPanel = ({
     [dispatch, migrationState],
   );
 
+  const storeUrl = useSetting("store-url");
+
+  const checkoutUrl = useMemo(() => {
+    return migration
+      ? `${storeUrl}/checkout?migration-id=${migration.external_id}`
+      : `${storeUrl}/checkout`;
+  }, [migration, storeUrl]);
+
   const [createCloudMigration, createCloudMigrationResult] =
     useCreateCloudMigrationMutation();
 
   const handleCreateMigration = async () => {
-    const migration = await createCloudMigration().unwrap();
+    const newMigration = await createCloudMigration().unwrap();
     await dispatch(refreshSiteSettings({}));
-    onMigrationStart(migration);
+    openCheckoutInNewTab(storeUrl, newMigration);
   };
 
   return (
@@ -91,7 +99,10 @@ export const CloudPanel = ({
 
         <Box mt="2rem">
           {migration && isInProgressMigration(migration) && (
-            <MigrationInProgress migration={migration} />
+            <MigrationInProgress
+              migration={migration}
+              checkoutUrl={checkoutUrl}
+            />
           )}
 
           {migration && migrationState === "done" && (
@@ -99,6 +110,7 @@ export const CloudPanel = ({
               migration={migration}
               restartMigration={handleCreateMigration}
               isRestarting={createCloudMigrationResult.isLoading}
+              checkoutUrl={checkoutUrl}
             />
           )}
 

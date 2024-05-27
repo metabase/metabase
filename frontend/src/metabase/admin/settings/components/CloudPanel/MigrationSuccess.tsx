@@ -6,18 +6,20 @@ import { Flex, Icon, Text, List, Button, Divider, Box } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
-import { getCheckoutUrl, getMigrationEventTime } from "./utils";
+import { getMigrationEventTime } from "./utils";
 
 interface MigrationSuccessProps {
   migration: CloudMigration;
   restartMigration: () => void;
   isRestarting: boolean;
+  checkoutUrl: string;
 }
 
 export const MigrationSuccess = ({
   migration,
   restartMigration,
   isRestarting,
+  checkoutUrl,
 }: MigrationSuccessProps) => {
   const uploadedAt = getMigrationEventTime(migration.updated_at);
 
@@ -47,7 +49,7 @@ export const MigrationSuccess = ({
           </Text>
 
           <Box mt="1.5rem">
-            <ExternalLink href={getCheckoutUrl(migration)}>
+            <ExternalLink href={checkoutUrl}>
               <Button variant="filled">{t`Go to Metabase Store`}</Button>
             </ExternalLink>
           </Box>
