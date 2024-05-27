@@ -92,11 +92,13 @@ class EntityMenu extends Component {
           {menuItemContent || (
             <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
               {items.map(item => {
+                const key = item.key ?? item.title;
+
                 if (!item) {
                   return null;
                 } else if (item.content) {
                   return (
-                    <li key={item.title} data-testid={item.testId}>
+                    <li key={key} data-testid={item.testId}>
                       <EntityMenuItem
                         icon={item.icon}
                         title={item.title}
@@ -114,13 +116,13 @@ class EntityMenu extends Component {
                   );
                 } else if (item.component) {
                   return (
-                    <li key={item.title} data-testid={item.testId}>
+                    <li key={key} data-testid={item.testId}>
                       {item.component}
                     </li>
                   );
                 } else {
                   return (
-                    <li key={item.title} data-testid={item.testId}>
+                    <li key={key} data-testid={item.testId}>
                       <EntityMenuItem
                         icon={item.icon}
                         title={item.title}
