@@ -73,9 +73,7 @@ export const getMigrationEventTime = (isoString: string) =>
 export const getCheckoutUrl = (migration: CloudMigration) => {
   // Only used from components, but passing the setting value from all callers is a PITA.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const baseUrl = useSetting("migration-use-staging")
-    ? `https://store.staging.metabase.com`
-    : `https://store.metabase.com`;
+  const baseUrl = useSetting("store-url");
   return `${baseUrl}/checkout?migration-id=${migration.external_id}`;
 };
 

@@ -33,25 +33,37 @@
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
 
-(defsetting migration-use-staging
-  (deferred-tru
-    (str "If cloud migrations should target staging, true on dev. Internal test use only."
-         "Internal test use only. Set to admin visibility so FE can use it too."))
+(defsetting store-use-staging
+  (deferred-tru "If staging store should be used instead of prod. True on dev.")
   :type       :boolean
-  :visibility :admin
+  :visibility :internal
   :default    config/is-dev?
   :doc        false
   :export?    false)
 
+(defsetting store-url
+  (deferred-tru "Store URL.")
+  :visibility :admin ;; should be :internal, but FE doesn't get internal settings
+  :default    (str "https://store" (when (store-use-staging) ".staging") ".metabase.com")
+  :doc        false
+  :export?    false)
+
+(defsetting store-api-url
+  (deferred-tru "Store API URL.")
+  :visibility :internal
+  :default    (str "https://store-api" (when (store-use-staging) ".staging") ".metabase.com")
+  :doc        false
+  :export?    false)
+
 (defsetting migration-dump-file
-  (deferred-tru "Dump file for migrations. Internal test use only.")
+  (deferred-tru "Dump file for migrations.")
   :visibility :internal
   :default    nil
   :doc        false
   :export?    false)
 
 (defsetting migration-dump-version
-  (deferred-tru "Custom dump version for migrations. Internal test use only.")
+  (deferred-tru "Custom dump version for migrations.")
   :visibility :internal
   ;; Use a known version on staging when there's no real version.
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
@@ -70,13 +82,6 @@
   :default    false
   :doc        false
   :export?    false)
-
-(defn migration-store-url
-  "Store URL for migrations."
-  []
-  (if (migration-use-staging)
-    "https://store-api.staging.metabase.com/api/v2/migration"
-    "https://store-api.metabase.com/api/v2/migration"))
 
 (def ^:private read-only-mode-inclusions
   (->> copy/entities (map t2/table-name) (into #{})))
@@ -109,8 +114,12 @@
 
 ;; Helpers
 
-(defn- migration-action-url [external-id path]
-  (str (migration-store-url) "/" external-id path))
+(defn migration-url
+  "Store API URL for migrations."
+  ([]
+   (str (store-api-url) "/api/v2/migration"))
+  ([external-id path]
+   (str (migration-url) "/" external-id path)))
 
 (def terminal-states
   "Cloud migration states that are terminal."
@@ -206,7 +215,7 @@
                                (conj file-length)))
 
             {:keys [multipart-upload-id multipart-urls]}
-            (-> (http/put (migration-action-url external_id "/multipart")
+            (-> (http/put (migration-url external_id "/multipart")
                           {:form-params  {:part_count (count parts)}
                            :content-type :json})
                 :body
@@ -219,7 +228,7 @@
                                  [:headers "ETag"])])
                       parts multipart-urls)
                  (into {}))]
-        (http/put (migration-action-url external_id "/multipart/complete")
+        (http/put (migration-url external_id "/multipart/complete")
                   {:form-params  {:multipart_upload_id multipart-upload-id
                                   :multipart_etags     etags}
                    :content-type :json})))))
@@ -257,7 +266,7 @@
       (upload migration dump-file)
 
       (log/info "Notifying store that upload is done")
-      (http/put (migration-action-url external_id "/uploaded"))
+      (http/put (migration-url external_id "/uploaded"))
 
       (log/info "Migration finished")
       (set-progress id :done 100)
@@ -276,7 +285,7 @@
 (defn get-store-migration
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
   []
-  (-> (migration-store-url)
+  (-> (store-api-url)
       (http/post {:form-params  {:local_mb_version (or (migration-dump-version)
                                                        (config/mb-version-info :tag))}
                   :content-type :json})

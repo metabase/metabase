@@ -165,7 +165,7 @@ export const tokenFeatures = [
   "email_restrict_recipients",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
@@ -236,7 +236,6 @@ interface AdminSettings {
   "google-auth-configured": boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
-  "migration-use-staging"?: boolean;
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
@@ -248,6 +247,7 @@ interface AdminSettings {
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
+  "store-url": string;
 }
 
 interface SettingsManagerSettings {
