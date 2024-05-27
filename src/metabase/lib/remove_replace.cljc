@@ -12,9 +12,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -343,10 +343,7 @@
    replacement      :- :metabase.lib.schema.expression/expression]
   (mu/disable-enforcement
     (loop [query (tweak-expression unmodified-query stage-number target replacement)]
-      (let [explanation (binding [;; Type check is suppressed for coerced fields, that are missing `:effective-type`
-                                  ;; at this point, to pass the schema checks (issue #42931).
-                                  lib.schema.expression/*suppress-expression-type-check?* true]
-                          (mr/explain ::lib.schema/query query))
+      (let [explanation (mr/explain ::lib.schema/query query)
             error-paths (->> (:errors explanation)
                              (keep #(on-stage-path query %))
                              distinct)]
@@ -370,6 +367,12 @@
 
 (declare replace-join)
 
+(defn- backfill-effective-type
+  [query]
+  (if-let [metadata (:lib/metadata query)]
+    (update query :stages #(lib.query/add-effective-type-to-coereced-fields % metadata))
+    query))
+
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage specified by `stage-number`.
   If `stage-number` is not specified, the last stage is used."
@@ -381,15 +384,16 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (cond
-     (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
-     (replace-join query stage-number target-clause new-clause)
+   (let [query (backfill-effective-type query)]
+     (cond
+       (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
+       (replace-join query stage-number target-clause new-clause)
 
-     (expression-replacement? target-clause new-clause)
-     (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
+       (expression-replacement? target-clause new-clause)
+       (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
 
-     :else
-     (remove-replace* query stage-number target-clause :replace new-clause))))
+       :else
+       (remove-replace* query stage-number target-clause :replace new-clause)))))
 
 (defn- field-clause-with-join-alias?
   [field-clause join-alias]

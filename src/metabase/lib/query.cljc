@@ -106,7 +106,7 @@
                        (not (lib.util.match/match-one (:expressions stage) :offset)))))
                (:stages query))))
 
-(defn- add-types-to-fields
+(defn add-effective-type-to-coereced-fields
   "Add `:base-type` and `:effective-type` (where applicable) to options of all fields in `x`, using `metadata-provider.
   As this function is called during normalization, also clauses that are not yet keywordized must be handled.
   `:effective-type` is required for coerced fields to pass schema checks."
@@ -115,24 +115,16 @@
    x
    ;; pmbql fields
    [(_clause :guard #{:field "field"}) (_options :guard map?) (id :guard integer?)]
-   (let [{:keys [base-type effective-type]} (-> (lib.metadata/field metadata-provider id)
-                                                (select-keys [:base-type :effective-type]))]
-     (update &match 1 merge
-             {:base-type base-type}
-             (when (and (some? effective-type)
-                        (not= base-type effective-type))
-               {:effective-type effective-type})))
+   (let [{:keys [effective-type coercion-strategy]} (-> (lib.metadata/field metadata-provider id)
+                                                        (select-keys [:coercion-strategy :effective-type]))]
+     (update &match 1 merge (when coercion-strategy
+                              {:effective-type effective-type})))
    ;; legacy mbql fields
    [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard (some-fn map? nil?))]
-   (let [{:keys [base-type effective-type]} (-> (lib.metadata/field metadata-provider id)
-                                                (select-keys [:base-type :effective-type]))]
-     (update &match 2 merge
-             {:base-type base-type}
-             (when (and (some? effective-type)
-                        (not= base-type effective-type))
-               {:effective-type effective-type})))
-   #_(update &match 2 merge (-> (lib.metadata/field metadata-provider id)
-                              (select-keys [:base-type :effective-type])))))
+   (let [{:keys [effective-type coercion-strategy]} (-> (lib.metadata/field metadata-provider id)
+                                                        (select-keys [:coercion-strategy :effective-type]))]
+     (update &match 2 merge (when coercion-strategy
+                              {:effective-type effective-type})))))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
@@ -170,7 +162,7 @@
 (defmethod query-method :query ; legacy MBQL query
   [metadata-providerable legacy-query]
   (query-from-legacy-query metadata-providerable
-                           (add-types-to-fields legacy-query metadata-providerable)))
+                           (add-effective-type-to-coereced-fields legacy-query metadata-providerable)))
 
 (defmethod query-method :native ; legacy native query
   [metadata-providerable legacy-query]
@@ -195,11 +187,17 @@
     (cond-> query
       converted?
       (assoc
-        :stages
-        (mapv (fn [[stage-number stage]]
-                (-> stage
-                    (add-types-to-fields metadata-providerable)
-                    (lib.util.match/replace
+       :stages
+       (into []
+             (map (fn [[stage-number stage]]
+                    (lib.util.match/replace stage
+                     [:field
+                      (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
+                      (field-id :guard (every-pred number? pos?))]
+                     (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                                         (select-keys [:base-type :effective-type]))]
+                                             ;; Fallback if metadata is missing
+                                             [:field (merge found-ref opts) field-id])
                      [:expression
                       (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
                       expression-name]
