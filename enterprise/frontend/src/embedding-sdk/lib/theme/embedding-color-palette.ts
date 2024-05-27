@@ -50,30 +50,23 @@ export function getEmbeddingColorPalette(
     return originalColors;
   }
 
-  const mappedThemeColors: ColorPalette = {};
+  const mappedSdkColors = Object.fromEntries(
+    Object.entries(sdkColors)
+      .map(([key, value]) => [
+        SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor],
+        value,
+      ])
+      .filter(([mappedKey]) => mappedKey),
+  );
 
-  Object.entries(sdkColors).forEach(([key, value]) => {
-    const mappedKey = SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor];
-
-    // Some colors are not 1:1 mappable, ignore them.
-    if (mappedKey) {
-      mappedThemeColors[mappedKey] = value;
-    }
-  });
-
-  // Map the chart colors
-  if (sdkColors.charts) {
-    const mappedChartColors = getEmbeddingChartColors(sdkColors.charts);
-
-    Object.entries(mappedChartColors).forEach(([key, value]) => {
-      mappedThemeColors[key as ColorName] = value;
-    });
-  }
+  const chartColors =
+    sdkColors.charts && getEmbeddingChartColors(sdkColors.charts);
 
   return {
     ...originalColors,
     ...appPalette,
-    ...mappedThemeColors,
+    ...mappedSdkColors,
+    ...chartColors,
   };
 }
 
