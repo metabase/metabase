@@ -21,7 +21,8 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
-import { Icon, type IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import type { ModelResult } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
@@ -34,6 +35,7 @@ import {
   ModelNameColumn,
   ModelTableRow,
 } from "./ModelsTable.styled";
+import { RenderGradually } from "./RenderGradually";
 import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
@@ -70,6 +72,17 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;
   const descriptionWidth = 100 - collectionWidth;
+
+  // Motivation for the RenderGradually pattern:
+  // The table loads very slowly when there are 1K+ models.
+  // It should be able to handle that many, since in large enterprises
+  // a lot of users might use the CSV upload function to create a lot of models.
+  // With this pattern, initial page load are both fast and take O(1) time.
+  // Contrast with other approaches:
+  // * Virtualization and pagination:
+  //      These prevent searching with Cmd+F.
+  // * Simplifying the the table-row component when the model count is high:
+  //      Initial page load and sorting both are semi-slow and have worse than O(1) time.
 
   return (
     <Table>
@@ -109,7 +122,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
               },
             }}
           >
-            <Ellipsified>{t`Collection`}</Ellipsified>
+            <Ellipsified lazy>{t`Collection`}</Ellipsified>
           </SortableColumnHeader>
           <SortableColumnHeader
             name="description"
@@ -126,20 +139,42 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
         </tr>
       </thead>
       <TBody>
-        {sortedModels.map((model: ModelResult) => (
-          <TBodyRow model={model} key={`${model.model}-${model.id}`} />
-        ))}
+        <RenderGradually
+          items={sortedModels}
+          Loader={ModelsLoadingIndicator}
+          key={JSON.stringify(sortingOptions)}
+          enabled={false}
+        >
+          {items =>
+            items.map((model, i) => (
+              <TBodyRow
+                model={model}
+                key={`model-${model.id}`}
+                collectionContainerName="collection-container"
+                // Rather than create a separate CSS container for each row,
+                // just create one in the first row and use it for all the rows
+                shouldCreateCollectionContainer={i === 0}
+              />
+            ))
+          }
+        </RenderGradually>
       </TBody>
     </Table>
   );
 };
 
-const TBodyRow = ({ model }: { model: ModelResult }) => {
+const TBodyRow = ({
+  model,
+  collectionContainerName,
+  shouldCreateCollectionContainer,
+}: {
+  model: ModelResult;
+  collectionContainerName: string;
+  shouldCreateCollectionContainer: boolean;
+}) => {
   const icon = getIcon(model);
-  const containerName = `collections-path-for-${model.id}`;
   const dispatch = useDispatch();
   const { id, name } = model;
-
   return (
     <ModelTableRow
       onClick={(e: React.MouseEvent) => {
@@ -149,42 +184,50 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
         } else {
           dispatch(push(url));
         }
+        trackModelClick(model.id);
       }}
       tabIndex={0}
       key={model.id}
     >
       {/* Name */}
-      <NameCell
-        model={model}
-        icon={icon}
-        onClick={() => {
-          trackModelClick(model.id);
-        }}
-      />
+      {
+        <NameCell
+          model={model}
+          icon={icon}
+          onClick={() => {
+            trackModelClick(model.id);
+          }}
+        />
+      }
 
       {/* Collection */}
-      <ModelCell
-        data-testid={`path-for-collection: ${
-          model.collection
-            ? getCollectionName(model.collection)
-            : t`Untitled collection`
-        }`}
-        {...collectionProps}
-      >
-        {model.collection && (
-          <CollectionBreadcrumbsWithTooltip
-            containerName={containerName}
-            collection={model.collection}
-          />
-        )}
-      </ModelCell>
+      {
+        <ModelCell
+          data-testid={`path-for-collection: ${
+            model.collection
+              ? getCollectionName(model.collection)
+              : t`Untitled collection`
+          }`}
+          {...collectionProps}
+        >
+          {model.collection && (
+            <CollectionBreadcrumbsWithTooltip
+              containerName={collectionContainerName}
+              collection={model.collection}
+              shouldCreateCollectionContainer={shouldCreateCollectionContainer}
+            />
+          )}
+        </ModelCell>
+      }
 
       {/* Description */}
-      <ModelCell {...descriptionProps}>
-        <EllipsifiedWithMarkdownTooltip>
-          {getModelDescription(model) || ""}
-        </EllipsifiedWithMarkdownTooltip>
-      </ModelCell>
+      {
+        <ModelCell {...descriptionProps}>
+          <EllipsifiedWithMarkdownTooltip lazy>
+            {getModelDescription(model) || ""}
+          </EllipsifiedWithMarkdownTooltip>
+        </ModelCell>
+      }
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
@@ -224,5 +267,17 @@ const NameCell = ({
         <EntityItem.Name name={model.name} variant="list" />
       </ItemLink>
     </ItemNameCell>
+  );
+};
+
+const ModelsLoadingIndicator = () => {
+  return (
+    <tr>
+      <td colSpan={99} style={{ backgroundColor: "transparent" }}>
+        <Flex fw="bold" gap="sm" justify="center" align="center">
+          {t`Loading…`}
+        </Flex>
+      </td>
+    </tr>
   );
 };

@@ -84,26 +84,52 @@ export const sortModels = (
   sortingOptions: SortingOptions,
   localeCode: string = "en",
 ) => {
-  const { sort_column, sort_direction } = sortingOptions;
+  const { sort_column: primarySortColumn, sort_direction } = sortingOptions;
 
-  if (!isValidSortColumn(sort_column)) {
-    console.error("Invalid sort column", sort_column);
+  if (!isValidSortColumn(primarySortColumn)) {
+    console.error("Invalid sort column", primarySortColumn);
     return models;
   }
 
   const compare = (a: string, b: string) =>
     a.localeCompare(b, localeCode, { sensitivity: "base" });
 
-  return [...models].sort((modelA, modelB) => {
-    const a = getValueForSorting(modelA, sort_column);
-    const b = getValueForSorting(modelB, sort_column);
+  const secondarySortColumn = getSecondarySortColumn(primarySortColumn);
 
-    let result = compare(a, b);
+  const primaryValues = Array.from(
+    new Set(models.map(model => getValueForSorting(model, primarySortColumn))),
+  );
+  const secondaryValues = Array.from(
+    new Set(
+      models.map(model => getValueForSorting(model, secondarySortColumn)),
+    ),
+  );
+
+  primaryValues.sort(compare);
+  secondaryValues.sort(compare);
+
+  const primaryOrderMap = new Map(
+    primaryValues.map((value, index) => [value, index]),
+  );
+  const secondaryOrderMap = new Map(
+    secondaryValues.map((value, index) => [value, index]),
+  );
+
+  // Use the pre-computed value orders for fast comparison
+  const comparePrimary = (a: string, b: string) =>
+    primaryOrderMap.get(a)! - primaryOrderMap.get(b)!;
+  const compareSecondary = (a: string, b: string) =>
+    secondaryOrderMap.get(a)! - secondaryOrderMap.get(b)!;
+
+  return [...models].sort((modelA, modelB) => {
+    const a = getValueForSorting(modelA, primarySortColumn);
+    const b = getValueForSorting(modelB, primarySortColumn);
+
+    let result = comparePrimary(a, b);
     if (result === 0) {
-      const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(modelA, sort_column2);
-      const b2 = getValueForSorting(modelB, sort_column2);
-      result = compare(a2, b2);
+      const a2 = getValueForSorting(modelA, secondarySortColumn);
+      const b2 = getValueForSorting(modelB, secondarySortColumn);
+      result = compareSecondary(a2, b2);
     }
 
     return sort_direction === SortDirection.Asc ? result : -result;

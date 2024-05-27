@@ -82,7 +82,17 @@ export const BrowseModelsBody = ({
       actualModelFilters,
       availableModelFilters,
     );
-    return filteredModels;
+    // FIXME: increased to test performance
+    const lots = Array(40)
+      .fill(null)
+      .flatMap((_, i) =>
+        filteredModels.map(model => ({
+          ...model,
+          // Ensure ids are distinct to avoid duplicate React keys
+          id: model.id + i * 1000,
+        })),
+      );
+    return lots;
   }, [data, actualModelFilters]);
 
   if (error || isLoading) {

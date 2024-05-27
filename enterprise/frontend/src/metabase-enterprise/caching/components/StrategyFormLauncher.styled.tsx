@@ -17,6 +17,7 @@ export const PolicyToken = styled(Button)<
   border-width: 1px;
   border-style: solid;
   ${({ variant }) =>
+    // NOTE: emotion's css function can be a memory hog
     css`
       border-color: ${color(
         ["filled", "outline"].includes(variant || "") ? "brand" : "border",

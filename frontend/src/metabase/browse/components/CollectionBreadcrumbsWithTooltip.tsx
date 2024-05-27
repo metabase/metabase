@@ -1,10 +1,9 @@
 import classNames from "classnames";
 import type { FC } from "react";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef } from "react";
 
 import { ResponsiveContainer } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
-import resizeObserver from "metabase/lib/resize-observer";
 import * as Urls from "metabase/lib/urls";
 import type { FlexProps } from "metabase/ui";
 import { Flex, Text, Tooltip } from "metabase/ui";
@@ -37,40 +36,15 @@ export const CollectionBreadcrumbsWithTooltip = ({
   const shownCollections = ellipsifyPath
     ? [collections[0], collections[collections.length - 1]]
     : collections;
-  const justOneShown = shownCollections.length === 1;
 
   const { areAnyTruncated, ref } = useAreAnyTruncated<HTMLAnchorElement>({
     tolerance: 1,
+    lazy: true,
   });
 
-  const initialEllipsisRef = useRef<HTMLDivElement | null>(null);
-  const [
-    isFirstCollectionDisplayedAsEllipsis,
-    setIsFirstCollectionDisplayedAsEllipsis,
-  ] = useState(false);
-
-  useEffect(() => {
-    const initialEllipsis = initialEllipsisRef.current;
-    if (!initialEllipsis) {
-      return;
-    }
-    const handleResize = () => {
-      // The initial ellipsis might be hidden via CSS,
-      // so we need to check whether it is displayed via getComputedStyle
-      const style = window.getComputedStyle(initialEllipsis);
-      setIsFirstCollectionDisplayedAsEllipsis(style.display !== "none");
-    };
-    resizeObserver.subscribe(initialEllipsis, handleResize);
-    return () => {
-      resizeObserver.unsubscribe(initialEllipsis, handleResize);
-    };
-  }, [initialEllipsisRef]);
-
-  const isTooltipEnabled =
-    areAnyTruncated || ellipsifyPath || isFirstCollectionDisplayedAsEllipsis;
+  const isTooltipEnabled = areAnyTruncated || ellipsifyPath;
 
   const maxWidths = getBreadcrumbMaxWidths(shownCollections, 96, ellipsifyPath);
-
   return (
     <Tooltip
       label={pathString}
@@ -81,8 +55,9 @@ export const CollectionBreadcrumbsWithTooltip = ({
       <ResponsiveContainer
         aria-label={pathString}
         data-testid={`breadcrumbs-for-collection: ${collection.name}`}
-        name={containerName}
         w="auto"
+        name={containerName}
+        // FIXME: Combine with the Flex?
       >
         <Flex align="center" w="100%" lh="1" style={{ flexFlow: "row nowrap" }}>
           <CollectionsIcon
@@ -101,18 +76,11 @@ export const CollectionBreadcrumbsWithTooltip = ({
               >
                 {index > 0 && <PathSeparator />}
                 <CollectionBreadcrumbsWrapper
-                  containerName={containerName}
                   style={{ alignItems: "center" }}
                   w="auto"
                   display="flex"
+                  containerName={containerName}
                 >
-                  {index === 0 && !justOneShown && (
-                    <Ellipsis
-                      ref={initialEllipsisRef}
-                      includeSep={false}
-                      className="initial-ellipsis"
-                    />
-                  )}
                   {index > 0 && ellipsifyPath && <Ellipsis />}
                   <Breadcrumb
                     href={Urls.collection(collection)}

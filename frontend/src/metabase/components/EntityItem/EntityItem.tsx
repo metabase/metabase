@@ -103,7 +103,7 @@ function EntityItemName({ name, variant }: { name: string; variant?: string }) {
         [CS.textList]: variant === "list",
       })}
     >
-      <Ellipsified>{name}</Ellipsified>
+      <Ellipsified lazy>{name}</Ellipsified>
     </h3>
   );
 }

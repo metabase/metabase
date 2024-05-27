@@ -1,5 +1,5 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import _ from "underscore";
 
 import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -40,16 +40,15 @@ export const Table = styled.table<{ isInDragLayer?: boolean }>`
 
 Table.defaultProps = { className: AdminS.ContentTable };
 
-export const hideResponsively = ({
-  hideAtContainerBreakpoint,
-  containerName,
-}: ResponsiveProps) =>
-  css`
-    ${getContainerQuery({
+export const hideResponsively = _.memoize(
+  ({ hideAtContainerBreakpoint, containerName }: ResponsiveProps) =>
+    getContainerQuery({
       hideAtContainerBreakpoint,
       containerName,
-    })}
-  `;
+    }),
+  ({ hideAtContainerBreakpoint, containerName }: ResponsiveProps) =>
+    `${hideAtContainerBreakpoint}-${containerName}`,
+);
 
 export const ColumnHeader = styled.th<ResponsiveProps>`
   th& {

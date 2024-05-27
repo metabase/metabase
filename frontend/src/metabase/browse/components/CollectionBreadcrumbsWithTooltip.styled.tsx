@@ -4,7 +4,7 @@ import type { AnchorHTMLAttributes } from "react";
 import { ResponsiveChild } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import { color } from "metabase/lib/colors";
 import type { AnchorProps } from "metabase/ui";
-import { Anchor, FixedSizeIcon, Group } from "metabase/ui";
+import { Anchor, Group, FixedSizeIcon } from "metabase/ui";
 
 import type { RefProp } from "./types";
 
@@ -28,31 +28,6 @@ export const Breadcrumb = styled(Anchor)<
 
 export const CollectionBreadcrumbsWrapper = styled(ResponsiveChild)`
   line-height: 1;
-  ${props => {
-    const breakpoint = "10rem";
-    return `
-    .initial-ellipsis {
-      display: none;
-    }
-    @container ${props.containerName} (width < ${breakpoint}) {
-      .ellipsis-and-separator {
-        display: none;
-      }
-      .initial-ellipsis {
-        display: inline;
-      }
-      .for-index-0:not(.sole-breadcrumb) {
-        display: none;
-      }
-      .breadcrumb {
-        max-width: calc(95cqw - 3rem) ! important;
-      }
-      .sole-breadcrumb {
-        max-width: calc(95cqw - 1rem) ! important;
-      }
-    }
-    `;
-  }}
 `;
 
 export const BreadcrumbGroup = styled(Group)`
