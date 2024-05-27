@@ -41,7 +41,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
     },
     pivotTable: {
       emphasizedCell: {
-        backgroundColor: "bg-dark",
+        backgroundColor: "#FBFAFA",
       },
     },
   },

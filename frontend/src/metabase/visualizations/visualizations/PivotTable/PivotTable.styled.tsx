@@ -33,7 +33,6 @@ interface PivotTableCellProps {
   isBorderedHeader?: boolean;
   hasTopBorder?: boolean;
   isTransparent?: boolean;
-  theme: MantineTheme;
 }
 
 const getCellBackgroundColor = ({
@@ -63,7 +62,10 @@ const getCellBackgroundColor = ({
   return color(tableTheme.cell.backgroundColor);
 };
 
-const getColor = ({ theme, isNightMode }: PivotTableCellProps) => {
+const getColor = ({
+  theme,
+  isNightMode,
+}: PivotTableCellProps & { theme: MantineTheme }) => {
   if (isNightMode) {
     return color("white");
   }
