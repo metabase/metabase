@@ -19,7 +19,6 @@ import {
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -161,7 +160,7 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      {sectionId && !isTemporalUnitParameter(parameter) && (
+      {sectionId && (
         <>
           <Box mb="xl">
             <SettingLabel>{t`Filter type`}</SettingLabel>
