@@ -106,14 +106,6 @@ export function autoWireParametersToNewCard({
       dashboardId,
     );
 
-    const dashcardWithQuestions: Array<[StoreDashcard, Question]> =
-      dashcards.map(dashcard => [
-        dashcard,
-        isQuestionDashCard(dashcard)
-          ? questions[dashcard.card.id] ?? new Question(dashcard.card, metadata)
-          : new Question(dashcard.card, metadata),
-      ]);
-
     const targetDashcard: StoreDashcard = getDashCardById(
       getState(),
       dashcard_id,
@@ -137,7 +129,7 @@ export function autoWireParametersToNewCard({
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
-    for (const [dashcard] of dashcardWithQuestions) {
+    for (const dashcard of dashcards) {
       for (const mapping of dashcard.parameter_mappings ?? []) {
         const option = getMappingOptionByTarget(
           dashcardMappingOptions,
