@@ -1526,12 +1526,13 @@
   - we're setting the value to the exact same value that already exists - just a decrypted version."
   []
   (doseq [setting (filter prohibits-encryption? (vals @registered-settings))]
-    ;; use `:setting` vs. `:model/Setting` to skip automatic decryption
-    (when-let [v (t2/select-one-fn :value :setting :key (setting-name setting))]
-      (when (not= (encryption/maybe-decrypt v) v)
-        ;; similarly, use `:setting` vs `:model/Setting` here to ensure the update is actually run even though Toucan
-        ;; thinks nothing has changed
-        (t2/update! :setting :key (setting-name setting) {:value (encryption/maybe-decrypt v)})))))
+    ;; use a raw query to use `:for :update`
+    (t2/with-transaction [_conn]
+      (when-let [v (t2/select-one-fn :value :setting :key (setting-name setting) {:for :update})]
+        (when (not= (encryption/maybe-decrypt v) v)
+          ;; similarly, use `:setting` vs `:model/Setting` here to ensure the update is actually run even though Toucan
+          ;; thinks nothing has changed
+          (t2/update! :setting :key (setting-name setting) {:value (encryption/maybe-decrypt v)}))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
