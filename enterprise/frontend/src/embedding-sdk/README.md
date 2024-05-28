@@ -239,7 +239,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
 
-Here are is full list of theme properties supported. All of them are optional.
+Here is the full list of theme properties supported. All of them are optional.
 
 ```ts
 const theme = {
@@ -270,23 +270,34 @@ const theme = {
     // The color of text that is least prominent
     "text-tertiary": "#949AAB",
 
-    /** Default background color. */
+    // Default background color
     background: "#FFFFFF",
 
-    /** Slightly darker background color used for hover and accented elements. */
+    // Slightly darker background color used for hover and accented elements
     "background-hover": "#F9FBFC",
 
-    /** Color used for borders */
+    // Color used for borders
     border: "#EEECEC",
 
-    /** Color used for filters context */
+    // Color used for filters context
     filter: "#7172AD",
 
-    /** Color used for aggregations and breakouts context */
+    // Color used for aggregations and breakouts context
     summarize: "#88BF4D",
 
-    /** Color used for popover shadows */
+    // Color used for popover shadows
     shadow: "rgba(0,0,0,0.08)",
+
+    // Overrides the chart colors. Supports up to 8 colors
+    // Limitation: this does not affect charts with custom series color
+    charts: [
+      // can either be a hex code
+      "#9b59b6",
+
+      // or a color object. tint and shade represents lighter and darker variations
+      // only base color is required, while tint and shade are optional
+      { base: "#e74c3c", tint: "#ee6b56", shade: "#cb4436" }
+    ]
   },
 
   table: {

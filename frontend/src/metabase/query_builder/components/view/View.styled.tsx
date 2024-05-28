@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { color } from "metabase/lib/colors";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import { SyncedParametersList } from "metabase/parameters/components/ParametersList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
