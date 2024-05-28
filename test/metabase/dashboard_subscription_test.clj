@@ -942,6 +942,6 @@
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"
-    (let [tmp (#'attachment/create-temp-file ".tmp")
+    (let [tmp (#'attachment/create-temp-file "tmp" ".tmp")
           {:keys [file-name]} (#'attachment/create-result-attachment-map :csv "テストSQL質問" tmp)]
       (is (= "テストSQL質問" (first (str/split file-name #"_")))))))

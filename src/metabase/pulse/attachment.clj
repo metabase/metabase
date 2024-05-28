@@ -7,7 +7,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]])
   (:import
@@ -72,7 +71,7 @@
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s_%s.%s"
-                           (or (u/slugify card-name) "query_result")
+                           (or card-name "query_result")
                            (u.date/format (t/zoned-date-time))
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
