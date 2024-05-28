@@ -27,11 +27,12 @@ import {
 
 interface CloudPanelProps {
   getPollingInterval: (migration: CloudMigration) => number | undefined;
-  onMigrationStart: (migration: CloudMigration) => void;
+  onMigrationStart: (storeUrl: string, migration: CloudMigration) => void;
 }
 
 export const CloudPanel = ({
   getPollingInterval = defaultGetPollingInterval,
+  onMigrationStart = openCheckoutInNewTab,
 }: CloudPanelProps) => {
   const dispatch = useDispatch();
   const [pollingInterval, setPollingInterval] = useState<number | undefined>(
@@ -82,7 +83,7 @@ export const CloudPanel = ({
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
     await dispatch(refreshSiteSettings({}));
-    openCheckoutInNewTab(storeUrl, newMigration);
+    onMigrationStart(storeUrl, newMigration);
   };
 
   return (
