@@ -7,6 +7,7 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
+   [metabase.server.middleware.memo :as mw.memo]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.security :as mw.security]
@@ -53,6 +54,7 @@
    #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
    #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
    #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
+   #'mw.memo/memoize-per-request-middleware     ; allow memoization of values for the duration of the request
    #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[mw.session/session-timeout]]
    #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
    #'mw.session/wrap-current-user-info          ; looks for :metabase-session-id and sets :metabase-user-id and other info if Session ID is valid

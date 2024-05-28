@@ -19,6 +19,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.server.middleware.memo :as mw.memo]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -310,13 +311,14 @@
   [:set
    [:or [:= "root"] ms/PositiveInt]])
 
-(defn- permission-id->archived&trash-operation-id []
-  (into {} (t2/select-fn-vec (juxt :id identity)
-                             :model/Collection)))
+(def ^:private collection-id->collection
+  (mw.memo/memoize-for-request
+   (fn []
+     (into {} (t2/select-fn-vec (juxt :id identity) :model/Collection)))))
 
 (defn- permissions-set->collection-id->collection
   [permissions-set & [read-or-write]]
-  (let [permission-id->archived&trash-operation-id (permission-id->archived&trash-operation-id)
+  (let [collection-id->collection (collection-id->collection)
         ids-with-perm (set
                        (for [path  permissions-set
                              :let  [[_ id-str] (case read-or-write
@@ -335,7 +337,7 @@
                           (if (contains? permissions-set "/")
                             true
                             (contains? ids-with-perm id)))]
-    (->> permission-id->archived&trash-operation-id
+    (->> collection-id->collection
          (filter has-permission?)
          (merge root-map))))
 
@@ -354,19 +356,19 @@
    [:trash-operation-id {:optional true} TrashOperationId]
    [:permission-level {:optional true} PermissionLevel]])
 
-(defn- archived-decision [include-archived collection]
+(defn- should-remove-for-archived? [include-archived collection]
   (case include-archived
     :all false
     :exclude (:archived collection)
     :only (not (or (:archived collection)
                    (is-trash? collection)))))
 
-(defn- trash-decision [include-trash? collection]
+(defn- should-remove-for-trash? [include-trash? collection]
   (if include-trash?
     false
     (is-trash? collection)))
 
-(defn- trash-operation-id-decision [trash-operation-id collection]
+(defn- should-remove-for-trash-operation-id [trash-operation-id collection]
   (and (some? trash-operation-id)
        (not= trash-operation-id (:trash_operation_id collection))))
 
@@ -377,19 +379,21 @@
   - archived: are archived collections currently visible, or not?
   - trash_operation_id: when looking at a trashed collection, we want to restrict visible collections to those that share
   that operation ID."
-  [permissions-set :- [:set :string]
-   visibility-config :- CollectionVisibilityConfig]
-  (let [visibility-config (merge {:include-archived :exclude
-                                  :include-trash? false
-                                  :trash-operation-id nil
-                                  :permission-level :read}
-                                 visibility-config)]
-    (->> (permissions-set->collection-id->collection permissions-set (:permission-level visibility-config))
-         (remove #(archived-decision (:include-archived visibility-config) (val %)))
-         (remove #(trash-operation-id-decision (:trash-operation-id visibility-config) (val %)))
-         (remove #(trash-decision (:include-trash? visibility-config) (val %)))
-         (map key)
-         (into #{}))))
+  ([permissions-set :- [:set :string]]
+   (permissions-set->visible-collection-ids permissions-set {}))
+  ([permissions-set :- [:set :string]
+    visibility-config :- CollectionVisibilityConfig]
+   (let [visibility-config (merge {:include-archived :exclude
+                                   :include-trash? false
+                                   :trash-operation-id nil
+                                   :permission-level :read}
+                                  visibility-config)]
+     (->> (permissions-set->collection-id->collection permissions-set (:permission-level visibility-config))
+          (remove #(should-remove-for-archived? (:include-archived visibility-config) (val %)))
+          (remove #(should-remove-for-trash-operation-id (:trash-operation-id visibility-config) (val %)))
+          (remove #(should-remove-for-trash? (:include-trash? visibility-config) (val %)))
+          (map key)
+          (into #{})))))
 
 (mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
