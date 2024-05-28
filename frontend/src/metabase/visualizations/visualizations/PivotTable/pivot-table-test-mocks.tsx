@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { Box } from "metabase/ui";
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTable } from "./PivotTable";
@@ -84,17 +85,19 @@ export function PivotTableTestWrapper(props?: any) {
   );
 
   return (
-    <PivotTable
-      settings={vizSettings}
-      data={{ rows, cols }}
-      width={600}
-      onVisualizationClick={() => {}}
-      onUpdateVisualizationSettings={newSettings =>
-        setVizSettings({ ...vizSettings, ...newSettings })
-      }
-      isNightMode={false}
-      isDashboard={false}
-      {...props}
-    />
+    <Box h="400px">
+      <PivotTable
+        settings={vizSettings}
+        data={{ rows, cols }}
+        width={600}
+        onVisualizationClick={() => {}}
+        onUpdateVisualizationSettings={newSettings =>
+          setVizSettings({ ...vizSettings, ...newSettings })
+        }
+        isNightMode={false}
+        isDashboard={false}
+        {...props}
+      />
+    </Box>
   );
 }
