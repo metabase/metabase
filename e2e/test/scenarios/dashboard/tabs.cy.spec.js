@@ -528,7 +528,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("not.have.been.called");
 
-    cy.wait(1000); // not sure why but this is needed to avoid flakes
+    cy.wait(1000); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
     });
