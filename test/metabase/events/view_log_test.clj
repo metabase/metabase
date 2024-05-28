@@ -88,7 +88,7 @@
                    :model/Card          card      {:name "Dashboard Test Card"}
                    :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
       (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-        (testing "A basic dashboard read event is recorded in EE, as well as events for its cards"
+        (testing "A basic dashboard read event is recorded in EE"
           (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/id user)})
           (is (partial=
                {:user_id    (u/id user)
@@ -97,12 +97,13 @@
                 :has_access true
                 :context    nil}
                (latest-view (u/id user) (u/id dashboard))))
-          (is (nil? (latest-view (u/id user) (u/id card)))))))))
+          (testing "Card read events are not recorded when viewing a dashboard"
+            (is (nil? (latest-view (u/id user) (u/id card))))))))))
 
 (deftest card-read-view-count-test
   (mt/with-temp [:model/User user {}
                  :model/Card card {:creator_id (u/id user)}]
-    (testing "A card read events are recorded by a card's view_count"
+    (testing "Card read events are recorded by a card's view_count"
       (is (= 0 (:view_count card))
           "view_count should be 0 before the event is published")
       (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user)})
@@ -116,7 +117,7 @@
                  :model/Card          card      {:name "Dashboard Test Card"}
                  :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
     (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-      (testing "A dashboard read events are recorded by a dashboard's view_count"
+      (testing "Dashboard read events are recorded by a dashboard's view_count"
         (is (= 0 (:view_count dashboard) (:view_count card))
             "view_count should be 0 before the event is published")
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
@@ -129,7 +130,7 @@
 (deftest table-read-view-count-test
   (mt/with-temp [:model/User  user  {}
                  :model/Table table {}]
-    (testing "A card read events are recorded by a card's view_count"
+    (testing "Card read events are recorded by a card's view_count"
       (is (= 0 (:view_count table))
           "view_count should be 0 before the event is published")
       (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})

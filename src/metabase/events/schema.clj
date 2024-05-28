@@ -8,7 +8,7 @@
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]
-                       [:object [:fn #(t2/instance-of? :model/Collection %)]]])]
+                       [:object   [:fn #(t2/instance-of? :model/Collection %)]]])]
   (def ^:private collection-events-schemas
     {:event/collection-read default-schema}))
 
