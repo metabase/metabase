@@ -9,13 +9,19 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.field :as api.field]
+   [metabase.api.table :as api.table]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
@@ -835,6 +841,62 @@
     :id          id
     :user-id     api/*current-user-id*
     :revision-id revision_id}))
+
+(defn- dashboard-metadata
+  [dashboard]
+  (let [dashcards (:dashcards dashboard)
+        cards (for [{:keys [card series]} dashcards
+                    :let [all (conj series card)]
+                    card all
+                    :when card]
+                card)
+        database-ids (map :database_id cards)
+        db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
+                             database-ids))
+        dependents (group-by :type (set (mapcat (fn [card]
+                                                  (let [database-id (:database_id card)
+                                                        mp (db->mp database-id)
+                                                        query (lib/query mp (:dataset_query card))]
+                                                    (lib/dependent-metadata query (:id card) (:type card)))) cards)))]
+    {:tables (into {}
+                   (keep (fn [{card-or-table-id :id}]
+                           (try
+                             [card-or-table-id
+                              (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
+                                (api.table/fetch-card-query-metadata card-id)
+                                (api.table/fetch-table-query-metadata card-or-table-id {}))]
+                             (catch Exception e
+                               (log/warnf "Error in dashboard metadata %s %s: %s" :table card-or-table-id (ex-message e))))))
+                   (:table dependents))
+     :databases (into {}
+                      (keep (fn [{database-id :id}]
+                              (try
+                                [database-id (api.database/get-database database-id {})]
+                                (catch Exception e
+                                  (log/warnf "Error in dashboard metadata %s %s: %s" :database database-id (ex-message e))))))
+                      (:database dependents))
+     :schemas (into {}
+                    (keep (fn [{database-id :id}]
+                            (try
+                              [database-id (api.database/database-schemas database-id {})]
+                              (catch Exception e
+                                (log/warnf "Error in dashboard metadata %s %s: %s" :schema database-id (ex-message e))))))
+                    (:schema dependents))
+     :fields (into {}
+                   (keep (fn [{field-id :id}]
+                           (try
+                             [field-id (api.field/get-field field-id {})]
+                             (catch Exception e
+                               (log/warnf "Error in dashboard metadata %s %s: %s" :field field-id (ex-message e))))))
+                   (:field dependents))}))
+
+
+(api/defendpoint GET "/:id/query_metadata"
+  "Get all of the required query metadata for the cards on dashboard."
+  [id]
+  {id ms/PositiveInt}
+  (let [dashboard (get-dashboard id)]
+    (dashboard-metadata dashboard)))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

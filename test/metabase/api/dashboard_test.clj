@@ -4485,3 +4485,70 @@
                                :model/Dashboard {dash-id :id} {:name          "My Dashboard"
                                                                :collection_id coll-id}]
         (is (nil? (can-restore? dash-id :crowberto)))))))
+
+(deftest dependent-metadata-test
+  (mt/with-temp
+    [Dashboard           {dashboard-id :id}  {}
+     Card                {card-id-1 :id}     {:dataset_query (mt/mbql-query products)
+                                              :database_id (mt/id)}
+     Card                {card-id-2 :id}     {:dataset_query
+                                              {:type     :native
+                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                                          :template-tags
+                                                          {"id"      {:name         "id"
+                                                                      :display-name "Id"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :id) nil]
+                                                                      :widget-type  :id
+                                                                      :default      nil}
+                                                           "name"    {:name         "name"
+                                                                      :display-name "Name"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :name) nil]
+                                                                      :widget-type  :category
+                                                                      :default      nil}
+                                                           "source"  {:name         "source"
+                                                                      :display-name "Source"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :source) nil]
+                                                                      :widget-type  :category
+                                                                      :default      nil}
+                                                           "user_id" {:name         "user_id"
+                                                                      :display-name "User"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :orders :user_id) nil]
+                                                                      :widget-type  :id
+                                                                      :default      nil}}}
+                                               :database (mt/id)}
+                                              :query_type :native
+                                              :database_id (mt/id)}
+     DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
+                                              :card_id card-id-1}
+     DashboardCard       _                   {:dashboard_id dashboard-id,
+                                              :card_id card-id-2}
+     Card                {series-id-1 :id}   {:name "Series Card 1"
+                                              :dataset_query (mt/mbql-query checkins)
+                                              :database_id (mt/id)}
+     Card                {series-id-2 :id}   {:name "Series Card 2"
+                                              :dataset_query (mt/mbql-query venues)
+                                              :database_id (mt/id)}
+     DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
+                                              :card_id series-id-1
+                                              :position 0}
+     DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
+                                              :card_id series-id-2
+                                              :position 1}]
+    (is (=?
+          {:fields {(mt/id :people :id) {:id (mt/id :people :id)}
+                    (mt/id :people :name) {:id (mt/id :people :name)}
+                    (mt/id :people :source) {:id (mt/id :people :source)}
+                    (mt/id :orders :user_id) {:id (mt/id :orders :user_id)}}
+           :tables {(mt/id :products) {:id (mt/id :products)
+                                       :fields sequential?
+                                       :db map?
+                                       :dimension_options map?}
+                    (mt/id :checkins) {:id (mt/id :checkins)}
+                    (mt/id :venues) {:id (mt/id :venues)}}
+           :databases {(mt/id) {:engine string?}}
+           :schemas {(mt/id) [(comp #{"public"} u/lower-case-en)]}}
+          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
