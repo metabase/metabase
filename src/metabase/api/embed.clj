@@ -144,7 +144,7 @@
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params)
-    (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*})))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
