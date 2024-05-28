@@ -53,6 +53,9 @@ export interface MetabaseColors {
 
   /** Color used for aggregations and breakouts context */
   summarize?: string;
+
+  /** Chart colors */
+  charts?: ChartColor[];
 }
 
 export type MetabaseColor = keyof MetabaseColors;
@@ -81,3 +84,15 @@ export interface MetabaseComponentTheme {
     };
   };
 }
+
+export type ChartColor =
+  | string
+  | {
+      base: string;
+
+      /** Lighter variation of the base color */
+      tint?: string;
+
+      /** Darker variation of the base color */
+      shade?: string;
+    };
