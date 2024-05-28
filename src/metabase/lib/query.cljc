@@ -117,7 +117,7 @@
                        [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard map?)]
                        id)]
     ;; "pre-warm" the metadata provider
-    (do (lib.metadata/bulk-metadata-or-throw metadata-provider :metadata/column field-ids)
+    (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (lib.util.match/replace
          x
          ;; pmbql fields
