@@ -86,9 +86,7 @@ export const useDashboardUrlParams = ({
     setFont,
     setHideDownloadButton,
     setHideParameters,
-    setTheme,
     setTitled,
-    theme,
     titled,
   ]);
 
