@@ -1201,7 +1201,7 @@
                (no-db?))
       (let [table-name->raw-rows  (load-edn "sample-content.edn")
             example-dashboard-id  1
-            example-collection-id 2 ; trash collection is 1
+            example-collection-id 1
             expected-sample-db-id 1
             replace-temporals     (fn [v]
                                     (if (isa? (type v) java.time.temporal.Temporal)
@@ -1276,12 +1276,6 @@
                                                                                  [:= :personal_owner_id nil]]))]]
                      [table-name (->> (t2/query query)
                                       (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
-                                      (keep (fn [x] (and (= table-name :collection)
-                                                         (= (:type x)
-                                                            ;; avoid requiring `metabase.models.collection` in this
-                                                            ;; namespace to deter others using it in migrations
-                                                            #_{:clj-kondo/ignore [:unresolved-namespace]}
-                                                            metabase.models.collection/trash-collection-type))))
                                       (sort-by :id))]))]
     (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
