@@ -86,7 +86,6 @@ export const StrategyFormLauncher = ({
         >
           <PolicyToken
             onClick={launchForm}
-            aria-label={ariaLabel}
             variant={buttonVariant}
             fw={forRoot || inheritsRootStrategy ? "normal" : "bold"}
             lh="1.5rem"
