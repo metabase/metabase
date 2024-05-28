@@ -336,7 +336,7 @@ describe("collection permissions", () => {
               cy.findByText("Orders")
                 .closest("tr")
                 .within(() => {
-                  cy.icon("table").trigger("mouseover");
+                  cy.icon("table2").trigger("mouseover");
                   cy.findByRole("checkbox").should("not.exist");
                 });
 

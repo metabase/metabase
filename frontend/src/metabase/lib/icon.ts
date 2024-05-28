@@ -29,38 +29,23 @@ const modelIconMap: Record<SearchModel, IconName> = {
   metric: "metric",
 };
 
-const secondaryModelIconMap: Partial<Record<SearchModel, IconName>> = {
-  table: "database",
-};
-
 export type IconData = {
   name: IconName;
   color?: string;
 };
 
-export type IconOptions = {
-  variant?: "primary" | "secondary";
-};
-
 /** get an Icon for any entity object, doesn't depend on the entity system */
-export const getIconBase = (
-  item: ObjectWithModel,
-  options: IconOptions = {},
-): IconData => {
+export const getIconBase = (item: ObjectWithModel): IconData => {
   if (item.model === "card" && item.display) {
     return { name: getIconForVisualizationType(item.display) };
-  }
-
-  if (options.variant === "secondary" && item.model in secondaryModelIconMap) {
-    return { name: secondaryModelIconMap[item.model] ?? "unknown" };
   }
 
   return { name: modelIconMap?.[item.model] ?? "unknown" };
 };
 
-export const getIcon = (item: ObjectWithModel, options: IconOptions = {}) => {
+export const getIcon = (item: ObjectWithModel) => {
   if (PLUGIN_COLLECTIONS) {
-    return PLUGIN_COLLECTIONS.getIcon(item, options);
+    return PLUGIN_COLLECTIONS.getIcon(item);
   }
-  return getIconBase(item, options);
+  return getIconBase(item);
 };
