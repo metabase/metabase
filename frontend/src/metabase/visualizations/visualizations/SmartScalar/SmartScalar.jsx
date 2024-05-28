@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { t, jt } from "ttag";
 
@@ -73,11 +73,12 @@ export function SmartScalar({
   height,
   totalNumGridCols,
   fontFamily,
+  onRenderError,
 }) {
   const scalarRef = useRef(null);
 
   const insights = rawSeries?.[0].data?.insights;
-  const trend = useMemo(
+  const { trend, error } = useMemo(
     () =>
       computeTrend(series, insights, settings, {
         formatValue,
@@ -85,9 +86,17 @@ export function SmartScalar({
       }),
     [series, insights, settings],
   );
+
+  useEffect(() => {
+    if (error) {
+      onRenderError(error.message);
+    }
+  }, [error, onRenderError]);
+
   if (trend == null) {
     return null;
   }
+
   const { value, clicked, comparisons, display, formatOptions } = trend;
 
   const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
