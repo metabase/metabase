@@ -262,4 +262,24 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["a", "b"]);
     expect(input).toHaveValue("");
   });
+
+  it("should respect RTL languages when pasting", async () => {
+    const { input, onChange } = setup({
+      data: EXAMPLE_DATA,
+      dir: "rtl",
+    });
+
+    input.focus();
+    await userEvent.type(input, "כּטקמ", {
+      pointerEventsCheck: 0,
+    });
+    expect(input).toHaveValue("כּטקמ");
+
+    // @ts-expect-error: input does have setSelectionRange, and testing-library does not provide a wrapper
+    input.setSelectionRange(3, 3);
+    await userEvent.paste("ץ,ף");
+
+    expect(onChange).toHaveBeenLastCalledWith(["כּטץ", "ףקמ"]);
+    expect(input).toHaveValue("");
+  });
 });
