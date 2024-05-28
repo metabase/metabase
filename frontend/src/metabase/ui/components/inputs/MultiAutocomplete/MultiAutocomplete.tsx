@@ -115,7 +115,7 @@ export function MultiAutocomplete({
 
     if (newSearchValue !== "") {
       const values = parseValues(newSearchValue);
-      if (values.length === 1) {
+      if (values.length >= 1) {
         const value = values[0] ?? newSearchValue;
         if (value && shouldCreate?.(value, lastSelectedValues)) {
           setSelectedValues(unique([...lastSelectedValues, value]));
