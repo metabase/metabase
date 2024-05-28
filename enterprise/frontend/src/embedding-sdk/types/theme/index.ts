@@ -98,6 +98,13 @@ export interface MetabaseComponentTheme {
       lineHeight?: string;
     };
   };
+
+  chart?: {
+    label?: {
+      /** Font size used in charts. */
+      fontSize?: string;
+    };
+  };
 }
 
 export type ChartColor =
