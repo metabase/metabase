@@ -611,6 +611,7 @@
                   :schema            "Everything else"
                   :db_id             (:database_id card)
                   :id                card-virtual-table-id
+                  :type              "question"
                   :moderated_status  nil
                   :description       nil
                   :dimension_options (default-dimension-options)
@@ -670,6 +671,7 @@
                     :schema            "Everything else"
                     :db_id             (:database_id card)
                     :id                card-virtual-table-id
+                    :type              "question"
                     :description       nil
                     :moderated_status  nil
                     :dimension_options (default-dimension-options)
@@ -906,6 +908,25 @@
               (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))
               (is (= (repeat 2 (var-get #'api.table/coordinate-dimension-indexes))
                      (dimension-options))))))))))
+
+(deftest card-type-and-dataset-query-are-returned-with-metadata
+  (testing "GET /api/table/card__:id/query_metadata returns card type"
+    (let [dataset-query (mt/mbql-query venues
+                          {:aggregation  [:sum $price]
+                           :filter       [:> $price 1]
+                           :source-table $$venues})
+          base-card     {:database_id   (mt/id)
+                         :dataset_query dataset-query}]
+      (t2.with-temp/with-temp [Card question base-card
+                               Card model    (assoc base-card :type :model)
+                               Card metric   (assoc base-card :type :metric)]
+        (are [card expected-type] (=? expected-type
+                                      (->> (format "table/card__%d/query_metadata" (:id card))
+                                           (mt/user-http-request :crowberto :get 200)
+                                           ((juxt :type :dataset_query))))
+          question ["question" nil]
+          model    ["model"    nil]
+          metric   ["metric"   some?])))))
 
 (deftest related-test
   (testing "GET /api/table/:id/related"

@@ -143,6 +143,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_filled_component from "./folder_filled.svg?component";
+import folder_filled_source from "./folder_filled.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -678,6 +680,10 @@ export const Icons = {
   folder: {
     component: folder_component,
     source: folder_source,
+  },
+  folder_filled: {
+    component: folder_filled_component,
+    source: folder_filled_source,
   },
   gauge: {
     component: gauge_component,
