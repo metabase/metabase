@@ -948,7 +948,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (with-redefs [render/detect-pulse-chart-type (fn [{:keys [display-type]} & _] display-type)]
+          (with-redefs [render/detect-pulse-chart-type (fn [{:keys [display]} & _] display)]
             (is (->> (run-pulse-and-return-attachments p)
                      ;; the error is attached as a .txt file so we only have to check for its existence
                      (some #(= "text" (:content-type %)))))))))))
