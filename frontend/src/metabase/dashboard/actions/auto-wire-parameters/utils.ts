@@ -7,9 +7,9 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   QuestionDashboardCard,
@@ -17,28 +17,35 @@ import type {
   DashCardId,
   ParameterId,
   ParameterTarget,
+  DashboardTabId,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 
 import type { SetMultipleDashCardAttributesOpts } from "../core";
 
 export function getAllDashboardCardsWithUnmappedParameters({
-  dashboardState,
+  dashboards,
+  dashcards,
   dashboardId,
   parameterId,
+  selectedTabId,
   excludeDashcardIds = [],
 }: {
-  dashboardState: DashboardState;
+  dashboards: DashboardState["dashboards"];
+  dashcards: DashboardState["dashcards"];
   dashboardId: DashboardId;
   parameterId: ParameterId;
+  selectedTabId: DashboardTabId;
   excludeDashcardIds?: DashCardId[];
 }): QuestionDashboardCard[] {
-  const dashCards = getExistingDashCards(
-    dashboardState.dashboards,
-    dashboardState.dashcards,
+  const existingDashcards = getExistingDashCards(
+    dashboards,
+    dashcards,
     dashboardId,
+    selectedTabId,
   );
-  return dashCards.filter(
+
+  return existingDashcards.filter(
     (dashcard): dashcard is QuestionDashboardCard =>
       isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&
@@ -51,12 +58,8 @@ export function getAllDashboardCardsWithUnmappedParameters({
 export function getMatchingParameterOption(
   targetDashcard: QuestionDashboardCard,
   targetDimension: ParameterTarget,
-  sourceDashcard: QuestionDashboardCard,
-  metadata: Metadata,
   questions: Record<CardId, Question>,
-): {
-  target: ParameterTarget;
-} | null {
+): ParameterMappingOption | null | undefined {
   if (!targetDashcard) {
     return null;
   }
@@ -80,11 +83,9 @@ export function getMatchingParameterOption(
 }
 
 export function getAutoWiredMappingsForDashcards(
-  sourceDashcard: QuestionDashboardCard,
   targetDashcards: QuestionDashboardCard[],
   parameter_id: ParameterId,
   target: ParameterTarget,
-  metadata: Metadata,
   questions: Record<CardId, Question>,
 ): SetMultipleDashCardAttributesOpts {
   if (targetDashcards.length === 0) {
@@ -96,13 +97,7 @@ export function getAutoWiredMappingsForDashcards(
   for (const targetDashcard of targetDashcards) {
     const selectedMappingOption: {
       target: ParameterTarget;
-    } | null = getMatchingParameterOption(
-      targetDashcard,
-      target,
-      sourceDashcard,
-      metadata,
-      questions,
-    );
+    } | null = getMatchingParameterOption(targetDashcard, target, questions);
 
     if (selectedMappingOption && targetDashcard.card_id) {
       targetDashcardMappings.push({

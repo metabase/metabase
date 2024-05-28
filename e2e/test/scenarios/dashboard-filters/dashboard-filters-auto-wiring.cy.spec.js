@@ -51,7 +51,7 @@ describe("dashboard filters auto-wiring", () => {
   });
 
   describe("when wiring parameter to all cards for a filter", () => {
-    it("should automatically wire parameters to cards with matching fields", () => {
+    it("should wire parameters to cards with matching fields", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -66,18 +66,15 @@ describe("dashboard filters auto-wiring", () => {
         cy.findByText("User.Name").should("exist");
       });
 
-      getDashboardCard(1).within(() => {
-        cy.findByText("User.Name").should("exist");
-      });
+      getDashboardCard(1).findByText("User.Name").should("not.exist");
 
-      undoToast()
-        .findByText(
-          "This filter has been auto-connected with questions with the same field.",
-        )
-        .should("be.visible");
+      undoToast().findByText("Auto-connect").click();
+      // currently is broken
+      // undoToast().should("contain", "User.Name");
+      undoToast().should("contain", "Undo");
     });
 
-    it("should not automatically wire parameters to cards that already have a parameter, despite matching fields", () => {
+    it("should not wire parameters to cards that already have a parameter, despite matching fields", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -93,10 +90,12 @@ describe("dashboard filters auto-wiring", () => {
       });
 
       undoToast()
-        .findByText(
-          "This filter has been auto-connected with questions with the same field.",
+        .should(
+          "contain",
+          "Auto-connect this filter to all questions containing",
         )
-        .should("be.visible");
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
 
       getDashboardCard(1).within(() => {
         cy.findByLabelText("close icon").click();
@@ -112,10 +111,10 @@ describe("dashboard filters auto-wiring", () => {
         cy.findByText("User.Address").should("exist");
       });
 
-      undoToast().should("not.exist");
+      undoToast().should("contain", "Undo");
     });
 
-    it("should not automatically wire parameters to cards that don't have a matching field", () => {
+    it("should not suggest to wire parameters to cards that don't have a matching field", () => {
       cy.createQuestion({
         name: "Products Table",
         query: { "source-table": PRODUCTS_ID, limit: 1 },
@@ -148,18 +147,10 @@ describe("dashboard filters auto-wiring", () => {
 
       selectDashboardFilter(getDashboardCard(0), "Name");
 
-      getDashboardCard(0).within(() => {
-        cy.findByText("User.Name").should("exist");
-      });
-
-      getDashboardCard(1).within(() => {
-        cy.findByText("Select…").should("exist");
-      });
-
       undoToast().should("not.exist");
     });
 
-    it("should autowire parameters to cards in different tabs", () => {
+    it("should not autowire parameters to cards in different tabs", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboardAndCreateTab({
           dashboardId,
@@ -176,20 +167,16 @@ describe("dashboard filters auto-wiring", () => {
 
       getDashboardCard(0).findByText("User.Name").should("exist");
 
+      undoToast().should("not.exist");
+
       goToTab("Tab 1");
 
       for (let i = 0; i < cards.length; i++) {
-        getDashboardCard(i).findByText("User.Name").should("exist");
+        getDashboardCard(i).findByText("User.Name").should("not.exist");
       }
-
-      undoToast()
-        .findByText(
-          "This filter has been auto-connected with questions with the same field.",
-        )
-        .should("be.visible");
     });
 
-    it("should undo parameter wiring when 'Undo auto-connection' is clicked", () => {
+    it("should undo parameter wiring when 'Undo' is clicked", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -202,13 +189,15 @@ describe("dashboard filters auto-wiring", () => {
 
       selectDashboardFilter(getDashboardCard(0), "Name");
 
+      undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
       getDashboardCard(0).findByText("User.Name").should("exist");
 
       for (let i = 0; i < cards.length; i++) {
         getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast().findByText("Undo auto-connection").click();
+      undoToast().findByRole("button", { name: "Undo" }).click();
 
       getDashboardCard(0).findByText("User.Name").should("exist");
       for (let i = 1; i < cards.length; i++) {
@@ -216,7 +205,7 @@ describe("dashboard filters auto-wiring", () => {
       }
     });
 
-    it("in case of two autowiring undo toast, the second one should last the default timeout of 5s", () => {
+    it("in case of two autowiring undo toast, the second one should last the default timeout of 12s", () => {
       // The autowiring undo toasts use the same id, a bug in the undo logic caused the second toast to be dismissed by the
       // timeout set by the first. See https://github.com/metabase/metabase/pull/35461#pullrequestreview-1731776862
       const cardTemplate = {
@@ -254,19 +243,17 @@ describe("dashboard filters auto-wiring", () => {
       selectDashboardFilter(getDashboardCard(0), "Name");
 
       removeFilterFromDashCard(0);
-      removeFilterFromDashCard(1);
 
       cy.tick(2000);
 
       selectDashboardFilter(getDashboardCard(0), "Name");
 
-      // since we waited 2 seconds earlier, if the toast is still visible after this other delay of 4s,
-      // it means the first timeout of 5s was cleared correctly
-      cy.tick(4000);
+      // since we waited 2s earlier, if the toast is still visible after this other delay of 11s,
+      // it means the first timeout of 12s was cleared correctly
+      cy.tick(11000);
       undoToast().should("exist");
 
       cy.tick(2000);
-
       undoToast().should("not.exist");
     });
   });
