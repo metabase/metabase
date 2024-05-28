@@ -169,10 +169,10 @@
 
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
-  [raw-origin approved-origins]
+  [raw-origin approved-origins-raw]
   (boolean
-   (when (and (seq raw-origin) (seq approved-origins))
-     (let [approved-list (parse-approved-origins approved-origins)
+   (when (and (seq raw-origin) (seq approved-origins-raw))
+     (let [approved-list (parse-approved-origins approved-origins-raw)
            origin        (parse-url raw-origin)]
        (some (fn [approved-origin]
                            (and
