@@ -73,17 +73,6 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   const collectionWidth = 38.5;
   const descriptionWidth = 100 - collectionWidth;
 
-  // Motivation for the RenderGradually pattern:
-  // The table loads very slowly when there are 1K+ models.
-  // It should be able to handle that many, since in large enterprises
-  // a lot of users might use the CSV upload function to create a lot of models.
-  // With this pattern, initial page load are both fast and take O(1) time.
-  // Contrast with other approaches:
-  // * Virtualization and pagination:
-  //      These prevent searching with Cmd+F.
-  // * Simplifying the the table-row component when the model count is high:
-  //      Initial page load and sorting both are semi-slow and have worse than O(1) time.
-
   return (
     <Table>
       <colgroup>
@@ -140,8 +129,19 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
       </thead>
       <TBody>
         <RenderGradually
+          // Motivation for the RenderGradually pattern:
+          // The table loads very slowly when there are 1K+ models.
+          // It should be able to handle that many, since in large enterprises
+          // a lot of users might use the CSV upload function to create a lot of models.
+          // With this pattern, page load and sorting are fast and take O(1) time.
+          // Contrast with other approaches:
+          // * Virtualization and pagination:
+          //      These might be worth exploring even though they prevent searching with Cmd+F.
+          // * Simplifying the the table-row component when the model count is high:
+          //      Easy to maintain, though with this approach, page load and
+          //      sorting both are semi-slow and have worse than O(1) time.
           items={sortedModels}
-          Loader={ModelsLoadingIndicator}
+          Loading={ModelsLoadingIndicator}
           key={JSON.stringify(sortingOptions)}
           enabled={false}
         >

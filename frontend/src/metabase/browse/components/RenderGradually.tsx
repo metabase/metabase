@@ -12,7 +12,7 @@ type NoProps = Record<string, never>;
 export const RenderGradually = <T,>({
   items,
   children,
-  Loader,
+  Loading,
   key,
   increaseFunction = defaultIncreaseFunction,
   initialBatchSize = 30,
@@ -21,7 +21,7 @@ export const RenderGradually = <T,>({
 }: {
   items: T[];
   children: (items: T[]) => ReactNode;
-  Loader: FC<NoProps>;
+  Loading: FC<NoProps>;
   key?: string;
   initialBatchSize?: number;
   increaseFunction?: (prev: number) => number;
@@ -54,7 +54,7 @@ export const RenderGradually = <T,>({
   return (
     <Fragment key={key}>
       {children(visibleItems)}
-      {visibleItems.length < items.length && <Loader />}
+      {visibleItems.length < items.length && <Loading />}
     </Fragment>
   );
 };
