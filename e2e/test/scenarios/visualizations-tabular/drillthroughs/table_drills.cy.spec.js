@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openReviewsTable, popover, restore } from "e2e/support/helpers";
+import {
+  openReviewsTable,
+  popover,
+  restore,
+  tableHeaderClick,
+} from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -7,6 +12,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.viewport(1500, 800);
   });
 
   it("should display proper drills on cell click for unaggregated query", () => {
@@ -53,7 +59,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("View details").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("ID").click({ force: true });
+    tableHeaderClick("ID");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -63,7 +69,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Distinct values").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Reviewer").click();
+    //cy.get("[data-testid=cell-data]").contains("Reviewer").click();
+    tableHeaderClick("Reviewer");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -74,7 +81,8 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Distinct values").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Rating").click();
+    // cy.get("[data-testid=cell-data]").contains("Rating").click();
+    tableHeaderClick("Rating");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -124,7 +132,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("≠").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Reviewer").click();
+    tableHeaderClick("Reviewer");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");
@@ -133,7 +141,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
       cy.findByText("Filter by this column").should("be.visible");
     });
 
-    cy.get("[data-testid=cell-data]").contains("Count").click();
+    tableHeaderClick("Count");
     popover().within(() => {
       cy.icon("arrow_down").should("be.visible");
       cy.icon("arrow_up").should("be.visible");

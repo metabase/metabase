@@ -241,10 +241,11 @@ export function dashboardCards() {
 }
 
 export function tableHeaderClick(headerString) {
-  cy.findByTestId("TableInteractive-root")
-    .findByTextEnsureVisible(headerString)
-    .trigger("mousedown");
-  cy.findByTestId("TableInteractive-root")
-    .findByTextEnsureVisible(headerString)
-    .trigger("mouseup");
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
 }
