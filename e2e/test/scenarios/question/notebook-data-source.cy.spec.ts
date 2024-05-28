@@ -205,7 +205,7 @@ describe("scenarios > notebook > data source", () => {
 
         startNewQuestion();
         entityPickerModal().within(() => {
-          entityPickerModalTab("Recents").should("not.exist");
+          entityPickerModalTab("Recents").should("exist");
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
@@ -222,7 +222,8 @@ describe("scenarios > notebook > data source", () => {
           assertDataPickerEntitySelected(2, tableName);
 
           entityPickerModalTab("Recents").click();
-          cy.findByTestId("result-item")
+
+          cy.contains("button", "Animals")
             .should("exist")
             .and("contain.text", tableName)
             .and("have.attr", "aria-selected", "true");
