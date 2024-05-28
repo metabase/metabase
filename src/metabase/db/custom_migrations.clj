@@ -1392,10 +1392,6 @@
                                                  :from   [:report_card]
                                                  :where  [:like :visualization_settings "%stackable%"]})))))
 
-(define-reversible-migration MigrateMetricsToV2
-  (metrics-v2/migrate-up!)
-  (metrics-v2/migrate-down!))
-
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
