@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { subscriptionApi } from "metabase/api";
-import { getCollectionType } from "metabase/entities/collections";
+import { getCollectionType } from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,

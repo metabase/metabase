@@ -11,7 +11,7 @@ import {
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { useSelector } from "metabase/lib/redux";

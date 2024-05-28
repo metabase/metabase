@@ -5,7 +5,7 @@ import { usePrevious } from "react-use";
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import type { TreeNodeProps } from "metabase/components/tree/types";
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import { getCollectionIcon } from "metabase/entities/collections";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";

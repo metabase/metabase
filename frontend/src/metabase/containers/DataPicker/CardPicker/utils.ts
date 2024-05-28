@@ -3,10 +3,8 @@ import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
-import {
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree as _buildCollectionTree,
-} from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
+import { buildCollectionTree as _buildCollectionTree } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionContentModel,

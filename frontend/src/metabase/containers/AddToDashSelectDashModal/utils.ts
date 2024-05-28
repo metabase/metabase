@@ -3,7 +3,7 @@ import {
   isPublicCollection,
 } from "metabase/collections/utils";
 import type { DashboardPickerItem } from "metabase/common/components/DashboardPicker";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
   Dashboard,
