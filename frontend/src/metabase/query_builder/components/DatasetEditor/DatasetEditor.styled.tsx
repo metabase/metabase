@@ -46,11 +46,11 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
 
   transition: all 0.25s;
 
-  ${({ isSelected, theme }) =>
+  ${({ isSelected }) =>
     isSelected &&
     css`
-      color: ${theme.fn.themeColor("text-white")};
-      background-color: ${theme.fn.themeColor("brand")};
+      color: var(--color-text-white);
+      background-color: var(--mb-color-brand);
     `}
 
   .Icon {

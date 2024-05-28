@@ -1,11 +1,11 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ * NOTE: KEEP SYNCRONIZED WITH COLORS/PALETTE.JS
  */
 :root {
   --color-white: #fff;
   --color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
-  --color-error: #ed6e6e;
+  --mb-color-error: #ed6e6e;
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
@@ -35,11 +35,11 @@
 
 .textError,
 .textErrorHover {
-  color: var(--color-error);
+  color: var(--mb-color-error);
 }
 
 .bgErrorHover:hover {
-  background-color: var(--color-error);
+  background-color: var(--mb-color-error);
 }
 
 .bgErrorInput {

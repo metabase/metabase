@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color, alpha } from "metabase/lib/colors";
@@ -20,12 +21,22 @@ const Card = styled.div<CardProps>`
   line-height: 24px;
   ${props =>
     props.hoverable &&
-    `&:hover {
-    box-shadow: 0 10px 22px ${() => alpha(color("shadow"), 0.09)};
-  }`};
-  ${props => props.flat && `box-shadow: none;`};
+    css`
+      &:hover {
+        box-shadow: 0 10px 22px
+          ${alpha(props.theme.fn.themeColor("shadow"), 0.09)};
+      }
+    `};
   ${props =>
-    props.compact && `box-shadow: 0 1px 2px ${() => color("shadow")};`};
+    props.flat &&
+    css`
+      box-shadow: none;
+    `};
+  ${props =>
+    props.compact &&
+    css`
+      box-shadow: 0 1px 2px ${props.theme.fn.themeColor("shadow")};
+    `};
 `;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

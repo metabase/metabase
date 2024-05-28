@@ -60,7 +60,7 @@ const SIDEBAR_WIDTH = 38;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
-// if header is dragged fewer than than this number of pixels we consider it a click instead of a drag
+// if header is dragged fewer than this number of pixels we consider it a click instead of a drag
 const HEADER_DRAG_THRESHOLD = 5;
 
 // HACK: used to get react-draggable to reset after a drag
