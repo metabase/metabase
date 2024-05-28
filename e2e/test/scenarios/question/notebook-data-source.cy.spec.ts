@@ -150,7 +150,12 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        tabsShouldBe("Tables", ["Recents", "Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Tables", [
+          "Recents",
+          "Models",
+          "Tables",
+          "Saved questions",
+        ]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -164,7 +169,12 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        tabsShouldBe("Tables", ["Recents", "Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Tables", [
+          "Recents",
+          "Models",
+          "Tables",
+          "Saved questions",
+        ]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -261,7 +271,12 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        tabsShouldBe("Models", ["Recents", "Models", "Tables", "Saved questions"]);
+        tabsShouldBe("Models", [
+          "Recents",
+          "Models",
+          "Tables",
+          "Saved questions",
+        ]);
 
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
@@ -290,7 +305,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
         entityPickerModalTab("Recents").click();
-
 
         cy.findByText("Orders Model")
           .should("exist")

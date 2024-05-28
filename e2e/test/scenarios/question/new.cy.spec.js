@@ -100,9 +100,9 @@ describe("scenarios > question > new", () => {
           "aria-selected",
           "true",
         );
-        entityPickerModalTab("Models").should( "exist" );
-        entityPickerModalTab("Tables").should( "exist" );
-        entityPickerModalTab("Saved questions").should( "exist" );
+        entityPickerModalTab("Models").should("exist");
+        entityPickerModalTab("Tables").should("exist");
+        entityPickerModalTab("Saved questions").should("exist");
 
         entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders, Count").click();
