@@ -200,7 +200,7 @@ describe("command palette", () => {
     cy.get("@database").should("be.null");
     cy.get("@search").should("be.null");
 
-    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText(/Email address/).type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message");

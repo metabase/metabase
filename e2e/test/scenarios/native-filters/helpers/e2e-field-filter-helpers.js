@@ -109,9 +109,12 @@ export function addWidgetNumberFilter(
  * @return {function}
  */
 export function addDefaultNumberFilter(value) {
-  return isBetweenFilter(value)
-    ? addBetweenFilter(value)
-    : enterDefaultValue(value);
+  if (isBetweenFilter(value)) {
+    cy.findByText("Enter a default value…").click();
+    addBetweenFilter(value);
+  } else {
+    enterDefaultValue(value);
+  }
 }
 
 // UI PATTERNS
@@ -156,7 +159,6 @@ export function closeEntryForm() {
  * @param {Array.<string>} options
  */
 function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
-  cy.findByText("Enter a default value…").click();
   popover().within(() => {
     cy.get("input").first().type(`${low}{enter}`);
 

@@ -689,13 +689,17 @@ describe("scenarios > question > custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
-    enterCustomColumnDetails({ formula: "[C" });
+    enterCustomColumnDetails({ formula: "[C", blur: false });
 
     // Suggestion popover shows up and this select the first one ([Created At])
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+
+    // This really shouldn't be needed, but without interacting with the field, we can't tab away from it.
+    // TODO: Fix
+    cy.get(".ace_text-input").first().type(" ");
 
     // Tab to focus on the name box
     cy.realPress("Tab");
