@@ -1072,17 +1072,19 @@ class TableInteractive extends Component {
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
 
-    const shortcutActions = mode.clickActions.flatMap(action =>
-      action({
-        question,
-        clicked: {
-          columnShortcuts: true,
-          extraData: {
-            isRawTable,
-          },
-        },
-      }),
-    );
+    const shortcutActions = question
+      ? mode.clickActions.flatMap(action =>
+          action({
+            question,
+            clicked: {
+              columnShortcuts: true,
+              extraData: {
+                isRawTable,
+              },
+            },
+          }),
+        )
+      : [];
     const shortcutColumn = shortcutActions.length > 0;
 
     const tableTheme = theme?.other?.table;
