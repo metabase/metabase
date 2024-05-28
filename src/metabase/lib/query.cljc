@@ -197,31 +197,31 @@
     (cond-> query
       converted?
       (assoc
-       :stages
-       (into []
-             (map (fn [[stage-number stage]]
-                    (lib.util.match/replace stage
-                     [:field
-                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                      (field-id :guard (every-pred number? pos?))]
-                     (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
-                                         (select-keys [:base-type :effective-type]))]
-                                             ;; Fallback if metadata is missing
-                                             [:field (merge found-ref opts) field-id])
-                     [:expression
-                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                      expression-name]
-                     (let [found-ref (try
-                                       (m/remove-vals
-                                        #(= :type/* %)
-                                        (-> (lib.expression/expression-ref query stage-number expression-name)
-                                            second
-                                            (select-keys [:base-type :effective-type])))
-                                       (catch #?(:clj Exception :cljs :default) _
-                                         ;; This currently does not find expressions defined in join stages
-                                         nil))]
-                       ;; Fallback if metadata is missing
-                       [:expression (merge found-ref opts) expression-name]))))
+        :stages
+        (into []
+              (map (fn [[stage-number stage]]
+                     (lib.util.match/replace stage
+                       [:field
+                        (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                        (field-id :guard (every-pred number? pos?))]
+                       (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                                           (select-keys [:base-type :effective-type]))]
+                         ;; Fallback if metadata is missing
+                         [:field (merge found-ref opts) field-id])
+                       [:expression
+                        (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                        expression-name]
+                       (let [found-ref (try
+                                         (m/remove-vals
+                                           #(= :type/* %)
+                                           (-> (lib.expression/expression-ref query stage-number expression-name)
+                                               second
+                                               (select-keys [:base-type :effective-type])))
+                                         (catch #?(:clj Exception :cljs :default) _
+                                           ;; This currently does not find expressions defined in join stages
+                                           nil))]
+                         ;; Fallback if metadata is missing
+                         [:expression (merge found-ref opts) expression-name]))))
               (m/indexed stages))))))
 
 (defmethod query-method :metadata/table
