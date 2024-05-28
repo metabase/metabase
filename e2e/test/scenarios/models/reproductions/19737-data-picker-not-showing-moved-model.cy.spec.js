@@ -1,6 +1,7 @@
 import {
   entityPickerModal,
   entityPickerModalLevel,
+  entityPickerModalTab,
   navigationSidebar,
   openNavigationSidebar,
   popover,
@@ -29,6 +30,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    entityPickerModalTab("Models").click();
+
     entityPickerModal().within(() => {
       cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
@@ -51,6 +54,7 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    entityPickerModalTab("Models").click();
     // Open question picker (this is crucial) so the collection list are loaded.
     entityPickerModal().within(() => {
       cy.findByText("First collection").click();
