@@ -42,10 +42,6 @@ export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   padding-left: 0.875rem;
   margin-top: 12px;
 
-  &:first-child {
-    margin-top: 0;
-  }
-
   ${props => props.isHighlighted && highlighted}
 `;
 
@@ -69,4 +65,9 @@ export const GroupTitle = styled(ExpressionListItem)`
   font-size: 12px;
   color: ${color("text-medium")};
   pointer-events: none;
+  margin-top: 12px;
+
+  &:first-child {
+    margin-top: 0;
+  }
 `;
