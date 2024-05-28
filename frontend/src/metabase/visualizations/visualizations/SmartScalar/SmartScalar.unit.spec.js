@@ -309,4 +309,52 @@ describe("SmartScalar", () => {
       });
     });
   });
+
+  describe("should handle errors gracefully", () => {
+    it("should show error display if error is thrown", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = [{ unit: "month", col: "Count" }];
+
+      setup(
+        series({
+          rows,
+          insights,
+          comparisonType: getPeriodsAgoComparison("hi"),
+        }),
+      );
+
+      expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No integer value supplied for periods ago comparison.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("should not error when latest value is null (metabase#42948)", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 100],
+      ["2019-11-01T00:00:00", 100],
+      ["2019-12-01T00:00:00", null],
+    ];
+    const insights = [{ unit: "month", col: "Count" }];
+
+    setup(
+      series({
+        rows,
+        insights,
+        comparisonType: getPeriodsAgoComparison(1),
+      }),
+    );
+
+    expect(screen.queryByLabelText("warning icon")).not.toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+    expect(screen.getByText("No change")).toBeInTheDocument();
+    expect(screen.getByText("vs. previous month")).toBeInTheDocument();
+  });
 });
