@@ -13,12 +13,12 @@ import {
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
 import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import { compareMappingOptionTargets } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
   DashCardId,
@@ -131,21 +131,17 @@ export function autoWireParametersToNewCard({
       targetDashcard,
     );
 
-    const targetQuestion =
-      questions[targetDashcard.card.id] ??
-      new Question(targetDashcard.card, metadata);
-
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
     for (const opt of dashcardMappingOptions) {
       for (const [dashcard, question] of dashcardWithQuestions) {
         const param = dashcard.parameter_mappings?.find(mapping =>
-          compareMappingOptionTargets(
+          getMappingOptionByTarget(
+            dashcardMappingOptions,
+            dashcard,
             mapping.target,
-            opt.target,
             question,
-            targetQuestion,
           ),
         );
 

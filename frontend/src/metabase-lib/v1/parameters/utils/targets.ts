@@ -119,19 +119,3 @@ export function buildTemplateTagVariableTarget(
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
-
-export function compareMappingOptionTargets(
-  target1: ParameterTarget,
-  target2: ParameterTarget,
-  question1: Question,
-  question2: Question,
-) {
-  if (!isDimensionTarget(target1) || !isDimensionTarget(target2)) {
-    return false;
-  }
-
-  const fieldReference1 = getParameterTargetField(target1, question1);
-  const fieldReference2 = getParameterTargetField(target2, question2);
-
-  return fieldReference1?.id === fieldReference2?.id;
-}
