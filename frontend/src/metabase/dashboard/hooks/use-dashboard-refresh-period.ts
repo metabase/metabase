@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useUnmount } from "react-use";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -15,7 +15,7 @@ export const useDashboardRefreshPeriod = ({
   initialRefreshPeriod?: RefreshPeriod;
   onRefresh: () => void;
 }): DashboardRefreshPeriodControls => {
-  const [period, setPeriod] = useState<number | null>(initialRefreshPeriod);
+  const [period, setPeriod] = useState<number | null>(null);
   const elapsedHook = useRef<((elapsed: number | null) => void) | null>(null);
   const elapsed = useRef<number | null>(0);
 
@@ -54,6 +54,12 @@ export const useDashboardRefreshPeriod = ({
     },
     [period, start, stop],
   );
+
+  useEffect(() => {
+    if (initialRefreshPeriod) {
+      onRefreshPeriodChange(initialRefreshPeriod);
+    }
+  }, [initialRefreshPeriod, onRefreshPeriodChange, period]);
 
   useUnmount(() => {
     stop();

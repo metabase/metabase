@@ -8,7 +8,7 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { setInitialUrlOptions } from "metabase/redux/embed";
+import { setOptions } from "metabase/redux/embed";
 
 import type {
   DashboardControlsPassedProps,
@@ -66,8 +66,12 @@ export const DashboardControls = <T extends DashboardControlsProps>(
     useSyncURLSlug({ location });
 
     useEffect(() => {
-      dispatch(setInitialUrlOptions(location));
-    }, [dispatch, location]);
+      dispatch(
+        setOptions({
+          font: font ?? undefined,
+        }),
+      );
+    }, [dispatch, font, location]);
 
     return (
       <ComposedComponent
