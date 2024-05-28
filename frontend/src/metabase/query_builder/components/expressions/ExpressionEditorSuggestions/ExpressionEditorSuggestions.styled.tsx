@@ -86,10 +86,4 @@ export const GroupTitle = styled(ExpressionListItem)`
   font-size: 12px;
   color: ${color("text-medium")};
   pointer-events: none;
-
-  border-top: 1px solid ${color("border")};
-
-  &:first-child {
-    border-top: none;
-  }
 `;
