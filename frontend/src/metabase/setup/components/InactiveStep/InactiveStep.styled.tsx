@@ -40,7 +40,7 @@ export const StepLabel = styled.div<Props>`
 `;
 
 export const StepLabelText = styled.span`
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 `;

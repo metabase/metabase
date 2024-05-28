@@ -39,7 +39,7 @@ export const CardLink = styled(Link)`
   font-weight: bold;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -54,12 +54,12 @@ export const ExternalLink = styled(BaseExternalLink)`
   font-weight: bold;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const BrandIconWithHorizontalMargin = styled(Icon)`
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
   margin: 0 0.5rem;
 `;
 
@@ -69,7 +69,7 @@ const searchResultsStyles = `
   min-width: 20rem;
   overflow-y: auto;
 
-  background-color: ${() => color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   line-height: 24px;
 
   max-height: 400px;

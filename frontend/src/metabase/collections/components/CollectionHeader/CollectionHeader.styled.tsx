@@ -37,7 +37,7 @@ export const CollectionHeaderButton = styled(
   width: 2rem;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
     background-color: ${() => color("bg-medium")};
   }
 

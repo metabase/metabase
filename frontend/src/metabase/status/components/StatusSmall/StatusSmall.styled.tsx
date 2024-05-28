@@ -86,5 +86,5 @@ export const StatusSpinner = styled(LoadingSpinner)`
   position: absolute;
   top: 0;
   left: 0;
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
 `;

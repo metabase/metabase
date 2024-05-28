@@ -68,7 +68,7 @@ export const SliderTrack = styled.span`
 
 export const ActiveTrack = styled.span`
   position: absolute;
-  background-color: ${() => color("brand")};
+  background-color: var(--mb-color-brand);
   height: 0.2rem;
 `;
 

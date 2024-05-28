@@ -26,11 +26,11 @@ export const InputContainer = styled.div<InputContainerProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid ${() => color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid ${() => color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   ${({ isPreviewing, isEmpty }) =>

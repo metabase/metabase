@@ -105,7 +105,7 @@ const footerLargeVariantStyles = css`
 
 function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
   if (theme === "night") {
-    return color("bg-black");
+    return `var(--mb-color-bg-black)`;
   }
   if (theme === "transparent") {
     return "transparent";

@@ -67,6 +67,6 @@ export const CloseButton = styled.a`
   margin-left: auto;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

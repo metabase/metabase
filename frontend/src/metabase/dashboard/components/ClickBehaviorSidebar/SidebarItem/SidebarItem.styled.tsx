@@ -31,7 +31,7 @@ export const BaseSidebarItemRoot = styled.div<{
   ${({ padded = true }) => padded && sidebarItemPaddingStyle}
 
   &:hover {
-    border-color: ${() => color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;
 

@@ -28,7 +28,7 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   cursor: pointer;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -53,7 +53,7 @@ export const ScalarTitleContent = styled.h3`
   font-size: 14px;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -74,6 +74,6 @@ export const ScalarDescriptionIcon = styled(Icon)`
   color: ${() => color("text-light")};
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

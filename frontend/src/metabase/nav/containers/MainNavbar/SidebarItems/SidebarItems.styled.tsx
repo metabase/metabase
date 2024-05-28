@@ -25,7 +25,7 @@ SidebarIcon.defaultProps = {
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 const getActiveColorStyle = (theme: Theme) => css`
@@ -53,10 +53,10 @@ export const NodeRoot = styled(TreeNode.Root)<{
 
   &:hover {
     background-color: ${() => alpha("brand", 0.35)};
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
 
     ${ExpandToggleButton} {
-      color: ${() => color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${SidebarIcon} {
@@ -105,7 +105,7 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
     text-align: start;
 
     &:hover {
-      color: ${() => color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

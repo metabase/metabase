@@ -65,7 +65,7 @@ export const LayoutEditButton = styled(Button)`
   right: 1rem;
 
   &:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
     background: ${() => lighten("brand", 0.6)};
   }
 `;

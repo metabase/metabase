@@ -53,5 +53,5 @@ export const JoinCellItem = styled.button<{
 `;
 
 export const JoinColumnPicker = styled(QueryColumnPicker)`
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
 `;

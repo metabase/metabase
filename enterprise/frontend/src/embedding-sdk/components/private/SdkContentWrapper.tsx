@@ -43,6 +43,7 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-focus: ${({ theme }) => theme.fn.themeColor("focus")};
   --mb-color-bg-white: ${({ theme }) => theme.fn.themeColor("bg-white")};
   --mb-color-bg-black: ${({ theme }) => theme.fn.themeColor("bg-black")};
+  --mb-color-bg-light: ${({ theme }) => theme.fn.themeColor("bg-light")};
   --mb-color-shadow: ${({ theme }) => theme.fn.themeColor("shadow")};
   --mb-color-border: ${({ theme }) => theme.fn.themeColor("border")};
   --mb-color-text-dark: ${({ theme }) => theme.fn.themeColor("text-dark")};

@@ -47,7 +47,7 @@ const getCellBackgroundColor = ({
     return isNightMode ? alpha("bg-black", 0.1) : color("white");
   }
 
-  return isNightMode ? color("bg-black") : alpha("border", 0.25);
+  return isNightMode ? `var(--mb-color-bg-black)` : alpha("border", 0.25);
 };
 
 const getColor = ({ isNightMode }: PivotTableCellProps) => {
@@ -134,10 +134,10 @@ export const ResizeHandle = styled.div`
   cursor: ew-resize;
 
   &:active {
-    background-color: ${() => color("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   &:hover {
-    background-color: ${() => color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

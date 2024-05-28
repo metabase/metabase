@@ -41,7 +41,7 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
 
   &:hover {
     color: ${() => color("white")};
-    background-color: ${() => color("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus + & {

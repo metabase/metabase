@@ -13,6 +13,6 @@ export const BackButtonLink = styled(Link)`
   background-color: ${() => color("bg-dark")};
 
   &:hover {
-    background-color: ${() => color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

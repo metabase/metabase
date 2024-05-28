@@ -19,7 +19,7 @@ export const ActionsList = styled.ul`
 export const ActionItem = styled.li<{ isSelected?: boolean }>`
   display: flex;
   font-weight: bold;
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;

@@ -62,11 +62,11 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid ${() => color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid ${() => color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   ${({ isEmpty, theme }) =>
@@ -227,7 +227,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-weight: bold;
     cursor: pointer;
     text-decoration: none;
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
   }
   .text-card-markdown a:hover {
     text-decoration: underline;

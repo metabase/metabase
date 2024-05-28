@@ -17,7 +17,7 @@ export const QuarterRoot = styled.li<QuarterRootProps>`
 
   &:hover {
     color: ${() => color("white")};
-    background-color: ${() => color("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   ${({ isSelected, theme }) =>

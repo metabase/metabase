@@ -72,7 +72,7 @@ export const DashboardHeaderContainer = styled.header<{
   position: relative;
   z-index: 2;
 
-  background-color: ${() => color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   border-bottom: 1px solid ${() => color("border")};
 
   ${({ isFullscreen }) =>
@@ -94,7 +94,7 @@ export const CardsContainer = styled(FullWidthContainer)`
 `;
 
 function getParametersWidgetBgColor(isNightMode: boolean) {
-  return isNightMode ? color("bg-black") : color("bg-light");
+  return isNightMode ? `var(--mb-color-bg-black)` : `var(--mb-color-bg-light)`;
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{

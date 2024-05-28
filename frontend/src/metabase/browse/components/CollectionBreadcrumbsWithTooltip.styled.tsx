@@ -21,7 +21,7 @@ export const Breadcrumb = styled(Anchor)<
   padding-top: 1px;
   padding-bottom: 1px;
   :hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
     text-decoration: none;
   }
 `;

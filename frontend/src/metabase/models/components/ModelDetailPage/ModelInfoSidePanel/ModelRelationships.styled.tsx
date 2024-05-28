@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 
 import { valueBlockStyle } from "./ModelInfoSidePanel.styled";
 
@@ -21,7 +21,7 @@ export const ListItemLink = styled(Link)`
   display: flex;
   align-items: center;
 
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
 
   ${ListItemName} {
     margin-left: 4px;

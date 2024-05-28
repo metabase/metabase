@@ -52,7 +52,7 @@ export const AdHocViewHeading = styled(ViewHeading)`
 `;
 
 export const BackButton = styled(Button)`
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
   padding: 0.75rem;
 `;
 
@@ -61,11 +61,11 @@ export const BackButtonContainer = styled.span`
 `;
 
 export const SaveButton = styled(Link)`
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${() => color("bg-white")};
+  background-color: var(--mb-color-bg-white);
 
   :hover {
     background-color: ${() => color("bg-light")};
@@ -197,7 +197,7 @@ export const ViewHeaderIconButtonContainer = styled.div`
     width: 2rem;
 
     &:hover {
-      color: ${() => color("brand")};
+      color: var(--mb-color-brand);
       background-color: ${() => color("bg-medium")};
     }
   }
