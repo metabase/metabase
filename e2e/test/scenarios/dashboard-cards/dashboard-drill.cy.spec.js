@@ -23,6 +23,7 @@ import {
   echartsContainer,
   entityPickerModal,
   testPairedTooltipValues,
+  editDashboard,
 } from "e2e/support/helpers";
 
 const {
@@ -225,7 +226,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         },
       );
     });
-    cy.icon("pencil").click();
+    editDashboard();
     showDashboardCardActions();
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();
@@ -282,7 +283,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
     createDashboardWithQuestion({}, dashboardId => {
       visitDashboard(dashboardId);
-      cy.icon("pencil").click();
+      editDashboard();
       showDashboardCardActions();
       cy.findByTestId("dashboardcard-actions-panel").within(() => {
         cy.icon("click").click();
@@ -319,7 +320,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
   it.skip("should handle cross-filter on a table", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
-    cy.icon("pencil").click();
+    editDashboard();
     showDashboardCardActions();
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();
@@ -752,7 +753,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         });
 
         visitDashboard(DASHBOARD_ID);
-        cy.icon("pencil").click();
+        editDashboard();
         // Edit "Visualization options"
         showDashboardCardActions();
         cy.icon("palette").click();

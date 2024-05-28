@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, saveDashboard } from "e2e/support/helpers";
+import { editDashboard, restore, saveDashboard } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -14,7 +14,7 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
     cy.wait("@dashcardQuery");
 
     // edit the dashboard and open the add series modal
-    cy.icon("pencil").click();
+    editDashboard();
     // the button is made clickable by css using :hover so we need to force it
     cy.findByTestId("add-series-button").click({ force: true });
 

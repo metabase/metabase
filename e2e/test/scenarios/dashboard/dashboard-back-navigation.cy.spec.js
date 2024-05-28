@@ -28,6 +28,7 @@ import {
   sidebar,
   saveDashboard,
   filterWidget,
+  editDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -249,7 +250,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     });
 
     // Add card to second tab
-    cy.icon("pencil").click();
+    editDashboard();
     openQuestionsSidebar();
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();

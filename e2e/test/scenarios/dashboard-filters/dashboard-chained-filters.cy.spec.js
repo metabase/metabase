@@ -222,7 +222,7 @@ describe("scenarios > dashboard > chained filter", () => {
             });
 
             visitDashboard(DASHBOARD_ID);
-            cy.icon("pencil").click();
+            editDashboard();
             showDashboardCardActions();
             getDashboardCard().icon("click").click();
             cy.findByText("UUID").click();

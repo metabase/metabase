@@ -178,7 +178,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     visitDashboard(ORDERS_DASHBOARD_ID);
     // we can't use helpers as they use english words
-    cy.icon("pencil").click();
+    editDashboard();
     cy.icon("filter").click();
 
     popover().findByText("Heure").click(); // "Time" -> "All Options"

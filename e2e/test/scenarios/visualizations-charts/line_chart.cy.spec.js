@@ -15,6 +15,7 @@ import {
   cartesianChartCircle,
   trendLine,
   testPairedTooltipValues,
+  editDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -603,7 +604,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
 
     function renameSeries(series) {
-      cy.icon("pencil").click();
+      editDashboard();
       cy.findByTestId("dashcard").realHover();
       cy.icon("palette").click();
       series.forEach(serie => {

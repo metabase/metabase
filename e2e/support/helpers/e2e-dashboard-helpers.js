@@ -104,7 +104,7 @@ export function showDashcardVisualizationSettings(index = 0) {
 }
 
 export function editDashboard() {
-  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Edit dashboard").should("be.enabled").click();
   cy.findByText("You're editing this dashboard.");
 }
 

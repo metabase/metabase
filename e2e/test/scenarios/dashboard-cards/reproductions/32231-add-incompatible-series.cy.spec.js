@@ -115,7 +115,7 @@ describe("issue 32231", () => {
 
     cy.findByTestId("dashcard").findByText(defaultError).should("exist");
 
-    cy.icon("pencil").click();
+    editDashboard();
     cy.findByTestId("add-series-button").click({ force: true });
     cy.wait("@seriesQuery");
 

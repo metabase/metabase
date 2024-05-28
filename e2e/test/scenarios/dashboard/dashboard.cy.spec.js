@@ -634,7 +634,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is looking empty.");
     // add previously created question to it
-    cy.icon("pencil").click();
+    editDashboard();
     openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
@@ -758,7 +758,7 @@ describe("scenarios > dashboard", () => {
     );
 
     // Add cross-filter click behavior manually
-    cy.icon("pencil").click();
+    editDashboard();
     showDashboardCardActions();
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();

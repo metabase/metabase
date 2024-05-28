@@ -551,7 +551,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         // change default text to sallie
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-        cy.icon("pencil").click();
+        editDashboard();
         cy.findByTestId("edit-dashboard-parameters-widget-container")
           .findByText("Text")
           .click();
@@ -643,7 +643,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         // change default text to sallie
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-        cy.icon("pencil").click();
+        editDashboard();
         cy.findByTestId("edit-dashboard-parameters-widget-container")
           .findByText("Text")
           .click();

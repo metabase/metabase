@@ -229,7 +229,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("52.72").should("not.exist");
 
     // Remove filter (metabase#17933)
-    cy.icon("pencil").click();
+    editDashboard();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).find(".Icon-gear").click();
 
@@ -345,7 +345,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
-      cy.icon("pencil").click();
+      editDashboard();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
       cy.findByText(
         /A text variable in this card can only be connected to a text filter with Is operator/,
@@ -526,7 +526,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     it("should not see mapping options", () => {
-      cy.icon("pencil").click();
+      editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
         .find(".Icon-gear")
         .click();

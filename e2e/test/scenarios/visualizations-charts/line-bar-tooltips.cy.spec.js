@@ -11,6 +11,7 @@ import {
   testPairedTooltipValues,
   testTooltipPairs,
   popover,
+  editDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -747,7 +748,7 @@ function testTooltipExcludesText(text) {
 }
 
 function openDashCardVisualizationOptions() {
-  cy.icon("pencil").click();
+  editDashboard();
   cy.findByTestId("dashcard").realHover();
   cy.icon("palette").click();
 }

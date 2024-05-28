@@ -106,7 +106,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Add card to second tab
-    cy.icon("pencil").click();
+    editDashboard();
     openQuestionsSidebar();
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
@@ -413,7 +413,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Add card to second tab
-    cy.icon("pencil").click();
+    editDashboard();
     openQuestionsSidebar();
     sidebar().within(() => {
       cy.findByText("Orders, Count").click();
