@@ -7,15 +7,17 @@ export function expressionEditorWidget() {
  * @param {string} option.formula
  * @param {string=} option.name
  */
-export function enterCustomColumnDetails({ formula, name }) {
+export function enterCustomColumnDetails({ formula, name, blur = true }) {
   cy.get(".ace_text-input")
     .first()
     .as("formula")
     .should("exist")
     .focus()
     .clear()
-    .type(formula)
-    .blur();
+    .type(formula);
+  if (blur) {
+    cy.get("@formula").blur();
+  }
 
   if (name) {
     cy.findByPlaceholderText("Something nice and descriptive")
