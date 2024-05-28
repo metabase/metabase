@@ -404,7 +404,10 @@ class TableInteractive extends Component {
     this.props.onUpdateVisualizationSettings({
       "table.column_widths": columnWidthsSetting,
     });
-    setTimeout(() => this.recomputeGridSize(), 1);
+    setTimeout(() => {
+      this.recomputeGridSize();
+      this._measure();
+    }, 1);
   }
 
   onColumnReorder(columnIndex, newColumnIndex) {
@@ -1091,8 +1094,10 @@ class TableInteractive extends Component {
     const backgroundColor = tableTheme?.cell?.backgroundColor;
 
     const totalWidth =
-      this.state.columnWidths?.reduce((sum, width) => sum + width, 0) +
-      (gutterColumn ? SIDEBAR_WIDTH : 0);
+      this.state.columnWidths?.reduce(
+        (sum, _c, index) => sum + this.getColumnWidth({ index }),
+        0,
+      ) + (gutterColumn ? SIDEBAR_WIDTH : 0);
 
     return (
       <DelayGroup>
