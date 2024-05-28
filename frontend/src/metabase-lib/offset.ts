@@ -72,7 +72,7 @@ function getOffsetClauseName(
 ): string {
   if (offset >= 0) {
     throw new Error(
-      "non-negative offset values aren't supported in 'getOffsettedName'",
+      "non-negative offset values aren't supported in 'getOffsetClauseName'",
     );
   }
 
