@@ -68,9 +68,15 @@ const getValueForSorting = (
 };
 
 export const isValidSortColumn = (
-  sort_column: string,
+  sort_column: string | undefined,
 ): sort_column is keyof ModelResult => {
-  return ["name", "collection"].includes(sort_column);
+  return !!sort_column && ["name", "collection"].includes(sort_column);
+};
+
+export const isValidSortDirection = (
+  direction: string | undefined,
+): direction is SortDirection => {
+  return !!direction && ["asc", "desc"].includes(direction);
 };
 
 export const getSecondarySortColumn = (

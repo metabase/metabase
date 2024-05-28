@@ -20,6 +20,7 @@ export const useUserSetting = <T extends keyof UserSettings>(
     debounceTimeout = 200,
     debounceOnLeadingEdge,
   }: {
+    /** Should all settings be retrieved again from the API? */
     shouldRefresh?: boolean;
     shouldDebounce?: boolean;
     debounceTimeout?: number;
