@@ -56,7 +56,7 @@ export function getParameterTargetField(
       return null;
     }
 
-    const fieldId = tag.dimension[1];
+    const fieldId = Number(tag.dimension[2]);
     return metadata.field(fieldId);
   }
 
