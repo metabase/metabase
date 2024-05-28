@@ -67,8 +67,8 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
           alwaysExpanded
           className={S.accordionList}
           maxHeight={Infinity}
-          renderItemName={renderItemName}
           renderItemDescription={renderItemDescription}
+          renderItemName={renderItemName}
           sections={sections}
           width="100%"
           onChange={handleAggregationChange}
