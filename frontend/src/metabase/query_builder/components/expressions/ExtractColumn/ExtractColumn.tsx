@@ -29,10 +29,15 @@ export function ExtractColumn({
 }: Props) {
   const [column, setColumn] = useState<Lib.ColumnMetadata | null>(null);
 
-  const { query, stageIndex } = Lib.asReturned(
-    originalQuery,
-    originalStageIndex,
-  );
+  // const { query, stageIndex } = Lib.asReturned(
+  //   originalQuery,
+  //   originalStageIndex,
+  // );
+
+  const { query, stageIndex } = {
+    query: originalQuery,
+    stageIndex: originalStageIndex,
+  };
 
   function handleSelect(column: Lib.ColumnMetadata) {
     setColumn(column);

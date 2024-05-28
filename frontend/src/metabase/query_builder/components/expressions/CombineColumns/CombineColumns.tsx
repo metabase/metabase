@@ -55,10 +55,15 @@ export function CombineColumns({
 
   const { columnsAndSeparators, isUsingDefaultSeparator } = state;
 
-  const { query, stageIndex } = Lib.asReturned(
-    originalQuery,
-    originalStageIndex,
-  );
+  // const { query, stageIndex } = Lib.asReturned(
+  //   originalQuery,
+  //   originalStageIndex,
+  // );
+
+  const { query, stageIndex } = {
+    query: originalQuery,
+    stageIndex: originalStageIndex,
+  };
 
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
 
