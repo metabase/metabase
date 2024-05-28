@@ -1202,7 +1202,7 @@
                (no-db?))
       (let [table-name->raw-rows  (load-edn "sample-content.edn")
             example-dashboard-id  1
-            example-collection-id 1
+            example-collection-id 2 ; trash collection is 1
             expected-sample-db-id 1
             replace-temporals     (fn [v]
                                     (if (isa? (type v) java.time.temporal.Temporal)
@@ -1249,7 +1249,8 @@
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
   ;; -----------------------------------------------------------------------------
-  ;; Start a fresh metabase instance without the :ee alias so instance analytics stuff is not created.
+  ;; Check out a fresh metabase instance on the branch of the major version you're targeting,
+  ;; and without the :ee alias so instance analytics content is not created.
   ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
   ;; 2. execute the following to spit out the collection to an EDN file:
   (let [pretty-spit (fn [file-name data]
@@ -1257,6 +1258,7 @@
                         (binding [*out* writer]
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/pprint data))))
+        columns-to-remove [:view_count]
         data (into {}
                    (for [table-name [:collection
                                      :metabase_database
@@ -1273,12 +1275,23 @@
                                        (= table-name :collection) (assoc :where [:and
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
                                                                                  [:= :personal_owner_id nil]]))]]
-                     [table-name (sort-by :id (map #(into {} %) (t2/query query)))]))]
+                     [table-name (->> (t2/query query)
+                                      (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
+                                      (keep (fn [x] (and (= table-name :collection)
+                                                         (= (:type x)
+                                                            ;; avoid requiring `metabase.models.collection` in this
+                                                            ;; namespace to deter others using it in migrations
+                                                            #_{:clj-kondo/ignore [:unresolved-namespace]}
+                                                            metabase.models.collection/trash-collection-type))))
+                                      (sort-by :id))]))]
     (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
+  ;; - add any columns that need removing to `columns-to-remove` above (use your common sense and list anything that
+  ;;   shouldn't be carried into new instances
+  ;;   instances), and create the EDN file again
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
-  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
+  ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
 
 

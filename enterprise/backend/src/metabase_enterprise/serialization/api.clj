@@ -155,8 +155,9 @@
                 report
                 error-message
                 callback]} (serialize&pack opts)]
-    (snowplow/track-event! ::snowplow/serialization-export api/*current-user-id*
-                           {:source          "api"
+    (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
+                           {:direction       "export"
+                            :source          "api"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
                             :collection      (str/join "," (map str collection))
@@ -194,8 +195,9 @@
                   callback]} (unpack&import (get-in raw-params ["file" :tempfile])
                                             (get-in raw-params ["file" :size]))
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (snowplow/track-event! ::snowplow/serialization-import api/*current-user-id*
-                             {:source        "api"
+      (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
+                             {:direction     "import"
+                              :source        "api"
                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                               :models        (str/join "," imported)
                               :count         (if (contains? imported "Setting")

@@ -37,18 +37,10 @@ describe("getIcon", () => {
     expect(getIcon({ model: "pikachu" })).toEqual({ name: "unknown" });
   });
 
-  describe("options", () => {
-    it("should return the correct icon for a table with the secondary variant", () => {
-      expect(getIcon({ model: "table" }, { variant: "secondary" })).toEqual({
-        name: "database",
-      });
-    });
-  });
-
   describe("card display types", () => {
     it("should return the default icon for an invalid display type", () => {
       expect(getIcon({ model: "card", display: "pikachu" })).toEqual({
-        name: "table",
+        name: "table2",
       });
     });
 
@@ -58,7 +50,7 @@ describe("getIcon", () => {
 
     it("should return the correct icon for a card with a table chare", () => {
       expect(getIcon({ model: "card", display: "table" })).toEqual({
-        name: "table",
+        name: "table2",
       });
     });
     it("should return the correct icon for a card with a bar chart", () => {
