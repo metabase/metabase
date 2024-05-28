@@ -467,7 +467,6 @@ describe("scenarios > dashboard > tabs", () => {
     // Visit first tab and confirm only first card was queried
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.wait(1000);
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
@@ -480,9 +479,8 @@ describe("scenarios > dashboard > tabs", () => {
 
     // // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
-    cy.wait(1000);
-    cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
 
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
@@ -539,9 +537,8 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
-    cy.wait(1000);
-    cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
+    cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
 
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
