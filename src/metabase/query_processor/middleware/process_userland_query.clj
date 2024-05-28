@@ -4,7 +4,6 @@
   exceptions and formatting the results."
   (:require
    [java-time.api :as t]
-   [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
@@ -105,11 +104,6 @@
        (rf))
 
       ([acc]
-       ;; We don't actually have a guarantee that it's from a card just because it's userland
-       (when (integer? (:card_id execution-info))
-         (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
-                                                   :card-id (:card_id execution-info)
-                                                   :context (:context execution-info)}))
        (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count field-usages)
        (rf (if (map? acc)
              (success-response execution-info acc)

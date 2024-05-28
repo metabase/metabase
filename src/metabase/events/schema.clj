@@ -46,11 +46,7 @@
     {:event/card-create default-schema
      :event/card-read   view-only
      :event/card-update default-schema
-     :event/card-delete default-schema
-     :event/card-query  [:map {:closed true}
-                         [:card-id pos-int?]
-                         [:user-id [:maybe pos-int?]]
-                         [:context {:optional true} :any]]}))
+     :event/card-delete default-schema}))
 
 ;; user events
 

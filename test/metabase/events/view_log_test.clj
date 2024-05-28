@@ -149,43 +149,33 @@
                  :model    model-type
                  {:order-by [[:id :desc]]}))
 
-(deftest card-query-test
+(deftest recent-view-card-read-test
   (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-      (events/publish-event! :event/card-query {:card-id (:id card)
-                                                :user-id (mt/user->id :rasta)
-                                                :context :question})
+      (events/publish-event! :event/card-read {:object-id (:id card)
+                                               :user-id   (mt/user->id :rasta)})
       (is (= {:user_id  (mt/user->id :rasta)
               :model    "card"
               :model_id (:id card)}
-             (most-recent-view (mt/user->id :rasta) (:id card) "card")))
+             (most-recent-view (mt/user->id :rasta) (:id card) "card"))))))
 
-      (testing "pinned cards should not be counted"
-        (mt/with-temp [:model/Card card-2 {:creator_id (mt/user->id :rasta)}]
-          (events/publish-event! :event/card-query {:card-id (:id card-2)
-                                                    :user-id (mt/user->id :rasta)
-                                                    :context :collection})
-          (is (nil? (most-recent-view (mt/user->id :rasta) (:id card-2) "card"))))))))
-
-(deftest table-read-test
+(deftest recent-view-table-read-test
   (mt/with-temp [:model/Table table {}]
     (mt/with-test-user :rasta
       (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})
-      (is (partial=
-           {:user_id  (mt/user->id :rasta)
-            :model    "table"
-            :model_id (:id table)}
-           (most-recent-view (mt/user->id :rasta) (:id table) "table"))))))
+      (is (= {:user_id  (mt/user->id :rasta)
+              :model    "table"
+              :model_id (:id table)}
+             (most-recent-view (mt/user->id :rasta) (:id table) "table"))))))
 
-(deftest dashboard-read-test
+(deftest recent-view-dashboard-read-test
   (mt/with-temp [:model/Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
       (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (mt/user->id :rasta)})
-      (is (partial
-           {:user_id  (mt/user->id :rasta)
-            :model    "dashboard"
-            :model_id (:id dashboard)}
-           (most-recent-view (mt/user->id :rasta) (:id dashboard) "dashboard"))))))
+      (is (= {:user_id  (mt/user->id :rasta)
+              :model    "dashboard"
+              :model_id (:id dashboard)}
+             (most-recent-view (mt/user->id :rasta) (:id dashboard) "dashboard"))))))
 
 ;;; ------------------------------------- Recent view tests end --------------------------------------
 ;;; ---------------------------------------- API tests begin -----------------------------------------
