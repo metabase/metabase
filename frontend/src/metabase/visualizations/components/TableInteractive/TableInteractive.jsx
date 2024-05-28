@@ -404,10 +404,7 @@ class TableInteractive extends Component {
     this.props.onUpdateVisualizationSettings({
       "table.column_widths": columnWidthsSetting,
     });
-    setTimeout(() => {
-      this.recomputeGridSize();
-      this._measure();
-    }, 1);
+    setTimeout(() => this.recomputeGridSize(), 1);
   }
 
   onColumnReorder(columnIndex, newColumnIndex) {
