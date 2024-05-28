@@ -64,7 +64,6 @@
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
-                              :regex                                  false
                               :schemas                                false
                               :uploads                                true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
