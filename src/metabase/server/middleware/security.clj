@@ -144,9 +144,9 @@
   "Checks if the domain is compatible with the reference one"
   [domain reference-domain]
   (or (= reference-domain "*")
-   (if (str/starts-with? reference-domain "*.")
-     (str/ends-with? domain (str/replace-first reference-domain "*." "."))
-     (= domain reference-domain))))
+      (if (str/starts-with? reference-domain "*.")
+        (str/ends-with? domain (str/replace-first reference-domain "*." "."))
+        (= domain reference-domain))))
 
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
