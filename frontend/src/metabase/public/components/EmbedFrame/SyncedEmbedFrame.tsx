@@ -6,9 +6,10 @@ import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
 import { parseHashOptions } from "metabase/lib/browser";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import type { EmbedFrameProps } from "metabase/public/components/EmbedFrame/EmbedFrame";
-import EmbedFrame from "metabase/public/components/EmbedFrame/EmbedFrame";
 import { setInitialUrlOptions } from "metabase/redux/embed";
+
+import type { EmbedFrameProps } from "./EmbedFrame";
+import EmbedFrame from "./EmbedFrame";
 
 const SyncedEmbedFrameInner = ({
   location,
@@ -26,9 +27,6 @@ const SyncedEmbedFrameInner = ({
     theme,
     hide_parameters,
     hide_download_button,
-    font,
-    fullscreen,
-    refresh,
   } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
   return (
@@ -39,9 +37,6 @@ const SyncedEmbedFrameInner = ({
       theme={theme}
       hide_parameters={hide_parameters}
       hide_download_button={hide_download_button}
-      font={font}
-      fullscreen={fullscreen}
-      refresh={refresh}
     >
       {children}
     </EmbedFrame>

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { NoDataError } from "metabase/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
-import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame/SyncedEmbedFrame";
+import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 
 export const PublicNotFound = () => (
   <SyncedEmbedFrame className={CS.spread}>

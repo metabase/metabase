@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
@@ -7,6 +7,8 @@ import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { useDispatch } from "metabase/lib/redux";
+import { setInitialUrlOptions } from "metabase/redux/embed";
 
 import type {
   DashboardControlsPassedProps,
@@ -27,6 +29,8 @@ export const DashboardControls = <T extends DashboardControlsProps>(
     location,
     ...props
   }: DashboardControlsProps) {
+    const dispatch = useDispatch();
+
     const queryParams = location.query;
 
     const { refreshDashboard } = useRefreshDashboard({
@@ -60,6 +64,10 @@ export const DashboardControls = <T extends DashboardControlsProps>(
     useDashboardNav({ isFullscreen });
 
     useSyncURLSlug({ location });
+
+    useEffect(() => {
+      dispatch(setInitialUrlOptions(location));
+    }, [dispatch, location]);
 
     return (
       <ComposedComponent
