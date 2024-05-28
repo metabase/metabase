@@ -5,5 +5,5 @@ import type { MetabaseComponentTheme } from ".";
  */
 export type EmbeddingThemeOptions = MetabaseComponentTheme & {
   /** Base font size */
-  fontSize?: string;
+  fontSize?: string | number;
 };

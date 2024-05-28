@@ -106,6 +106,11 @@ export const buildEChartsLabelOptions = (
   formatter?: LabelFormatter,
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
+  const style = renderingContext.style;
+
+  const { fontSize = CHART_STYLE.seriesLabels.size } =
+    style?.seriesLabels ?? {};
+
   return {
     silent: true,
     show: !!formatter,
@@ -113,7 +118,7 @@ export const buildEChartsLabelOptions = (
     opacity: 1,
     fontFamily: renderingContext.fontFamily,
     fontWeight: CHART_STYLE.seriesLabels.weight,
-    fontSize: CHART_STYLE.seriesLabels.size,
+    fontSize,
     color: renderingContext.getColor("text-dark"),
     textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,

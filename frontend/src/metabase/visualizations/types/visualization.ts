@@ -31,6 +31,15 @@ export interface RenderingContext {
 
   measureText: TextWidthMeasurer;
   fontFamily: string;
+
+  style?: VisualizationStyle;
+}
+
+/** Visualization styling overrides. */
+export interface VisualizationStyle {
+  seriesLabels?: {
+    fontSize?: number;
+  };
 }
 
 export type OnChangeCardAndRunOpts = {

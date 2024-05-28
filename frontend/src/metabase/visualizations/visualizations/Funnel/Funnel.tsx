@@ -205,7 +205,7 @@ export function Funnel(props: VisualizationProps) {
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
-  const renderingContext = useBrowserRenderingContext(fontFamily);
+  const renderingContext = useBrowserRenderingContext({ fontFamily });
 
   if (settings["funnel.type"] === "bar") {
     return (
