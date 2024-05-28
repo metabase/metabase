@@ -107,17 +107,12 @@ describe("command palette", () => {
 
     pressPageDown();
     commandPalette()
-      .findByRole("option", { name: "New dashboard" })
+      .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
     commandPalette()
-      .findByRole("option", { name: "New model" })
-      .should("have.attr", "aria-selected", "true");
-
-    pressPageUp();
-    commandPalette()
-      .findByRole("option", { name: "New question" })
+      .findByRole("option", { name: "Orders" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageUp();
