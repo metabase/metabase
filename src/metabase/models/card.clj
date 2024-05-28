@@ -900,8 +900,10 @@ saved later when it is ready."
         get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
                                               (remove-id (get m k))
                                               (throw (ex-info "ID not found" {:id k :available m})))))
-        column-replacements (u/update-keys-vals fields (get-or-throw-from id->field))
-        table-replacements  (u/update-keys-vals tables (get-or-throw-from id->table))]
+        ids->replacements   (fn [id->replacement-id id->row]
+                              (u/update-keys-vals id->replacement-id (get-or-throw-from id->row)))
+        column-replacements (ids->replacements fields id->field)
+        table-replacements  (ids->replacements tables id->table)]
     (query-analyzer/replace-names query {:columns column-replacements
                                          :tables  table-replacements})))
 
