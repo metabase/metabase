@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
     :refer [Action Card Collection Dashboard DashboardCard Database Field
-            FieldValues LegacyMetric NativeQuerySnippet Segment Table Timeline
+            FieldValues NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
@@ -348,80 +348,6 @@
                       :aggregation  [[:count]]}
                      (:definition @seg1d))))))))))
 
-(deftest metric-test
-  ;; Metric.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
-  ;; converted to a portable form and read back in.
-  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a metric
-  ;; to be correctly loaded with the dest IDs.
-  (testing "embedded MBQL in Metric :definition is portable"
-    (let [serialized (atom nil)
-          coll1s     (atom nil)
-          db1s       (atom nil)
-          table1s    (atom nil)
-          field1s    (atom nil)
-          metric1s   (atom nil)
-          user1s     (atom nil)
-          db1d       (atom nil)
-          table1d    (atom nil)
-          field1d    (atom nil)
-          user1d     (atom nil)
-          metric1d   (atom nil)
-          db2d       (atom nil)
-          table2d    (atom nil)
-          field2d    (atom nil)]
-
-
-      (ts/with-dbs [source-db dest-db]
-        (testing "serializing the original database, table, field and card"
-          (ts/with-db source-db
-            (reset! coll1s   (ts/create! Collection :name "pop! minis"))
-            (reset! db1s     (ts/create! Database :name "my-db"))
-            (reset! table1s  (ts/create! Table :name "orders" :db_id (:id @db1s)))
-            (reset! field1s  (ts/create! Field :name "subtotal"    :table_id (:id @table1s)))
-            (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! metric1s (ts/create! LegacyMetric :table_id (:id @table1s) :name "Revenue"
-                                         :definition {:source-table (:id @table1s)
-                                                      :aggregation [[:sum [:field (:id @field1s) nil]]]}
-                                         :creator_id (:id @user1s)))
-            (reset! serialized (into [] (serdes.extract/extract {})))))
-
-        (testing "exported form is properly converted"
-          (is (= {:source-table ["my-db" nil "orders"]
-                  :aggregation [[:sum [:field ["my-db" nil "orders" "subtotal"] nil]]]}
-                 (-> @serialized
-                     (by-model "LegacyMetric")
-                     first
-                     :definition))))
-
-        (testing "deserializing adjusts the IDs properly"
-          (ts/with-db dest-db
-            ;; A different database and tables, so the IDs don't match.
-            (reset! db2d    (ts/create! Database :name "other-db"))
-            (reset! table2d (ts/create! Table    :name "customers" :db_id (:id @db2d)))
-            (reset! field2d (ts/create! Field    :name "age" :table_id (:id @table2d)))
-            (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
-            ;; Load the serialized content.
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
-            ;; Fetch the relevant bits
-            (reset! db1d     (t2/select-one Database :name "my-db"))
-            (reset! table1d  (t2/select-one Table :name "orders"))
-            (reset! field1d  (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
-            (reset! metric1d (t2/select-one LegacyMetric :name "Revenue"))
-
-            (testing "the main Database, Table, and Field have different IDs now"
-              (is (not= (:id @db1s) (:id @db1d)))
-              (is (not= (:id @table1s) (:id @table1d)))
-              (is (not= (:id @field1s) (:id @field1d))))
-
-            (is (not= (:definition @metric1s)
-                      (:definition @metric1d)))
-            (testing "the Metric's definition is based on the new Database, Table, and Field IDs"
-              (is (= {:source-table (:id @table1d)
-                      :aggregation  [[:sum [:field (:id @field1d) nil]]]}
-                     (:definition @metric1d))))))))))
-
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test
   ;; DashboardCard.parameter_mappings and Card.parameter_mappings are JSON-encoded lists of parameter maps, which
@@ -758,63 +684,47 @@
   ;; used. However, if no such user exists, a new one is created with mostly blank fields.
   (testing "existing users are found and used; missing users are created on the fly"
     (let [serialized (atom nil)
-          metric1s   (atom nil)
-          metric2s   (atom nil)
           user1s     (atom nil)
           user2s     (atom nil)
+          dash1s     (atom nil)
+          dash2s     (atom nil)
           user1d     (atom nil)
-          metric1d   (atom nil)
-          metric2d   (atom nil)]
+          dash1d     (atom nil)
+          dash2d     (atom nil)]
 
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original entities"
           (ts/with-db source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! metric1s  (ts/create! LegacyMetric
-                                          :name "Large Users"
-                                          :table_id   (mt/id :venues)
-                                          :creator_id (:id @user1s)
-                                          :definition {:aggregation [[:count]]}))
-            (reset! metric2s  (ts/create! LegacyMetric
-                                          :name "Support Headaches"
-                                          :table_id   (mt/id :venues)
-                                          :creator_id (:id @user2s)
-                                          :definition {:aggregation [[:count]]}))
+            (reset! dash1s    (ts/create! Dashboard :name "My Dashboard" :creator_id (:id @user1s)))
+            (reset! dash2s    (ts/create! Dashboard :name "Linked dashboard" :creator_id (:id @user2s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
-        (testing "exported form is properly converted"
-          (is (= "tom@bost.on"
-                 (-> @serialized
-                     (by-model "LegacyMetric")
-                     first
-                     :creator_id))))
 
         (testing "deserializing finds the matching user and synthesizes the missing one"
           (ts/with-db dest-db
             ;; Create another random user to change the user IDs.
             (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
-            ;; Likewise, create some other metrics.
-            (ts/create! LegacyMetric :name "Other metric A" :table_id (mt/id :venues))
-            (ts/create! LegacyMetric :name "Other metric B" :table_id (mt/id :venues))
-            (ts/create! LegacyMetric :name "Other metric C" :table_id (mt/id :venues))
+            ;; Likewise, create some other dashboards.
+            (ts/create! Dashboard :name "Other dashboard A")
+            (ts/create! Dashboard :name "Other dashboard B")
+            (ts/create! Dashboard :name "Other dashboard C")
             (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
 
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
 
-            ;; Fetch the relevant bits
-            (reset! metric1d (t2/select-one LegacyMetric :name "Large Users"))
-            (reset! metric2d (t2/select-one LegacyMetric :name "Support Headaches"))
+            (reset! dash1d (t2/select-one Dashboard :name "My Dashboard"))
+            (reset! dash2d (t2/select-one Dashboard :name "Linked dashboard"))
 
-            (testing "the Metrics and Users have different IDs now"
-              (is (not= (:id @metric1s) (:id @metric1d)))
-              (is (not= (:id @metric2s) (:id @metric2d)))
+            (testing "the Dashboards and Users have different IDs now"
+              (is (not= (:id @dash1s) (:id @dash1d)))
+              (is (not= (:id @dash2s) (:id @dash2d)))
               (is (not= (:id @user1s)   (:id @user1d))))
 
             (testing "both existing User and the new one are set up properly"
-              (is (= (:id @user1d) (:creator_id @metric1d)))
-              (let [user2d-id (:creator_id @metric2d)
+              (is (= (:id @user1d) (:creator_id @dash1d)))
+              (let [user2d-id (:creator_id @dash2d)
                     user2d    (t2/select-one User :id user2d-id)]
                 (is (any? user2d))
                 (is (= (:email @user2s) (:email user2d)))))))))))

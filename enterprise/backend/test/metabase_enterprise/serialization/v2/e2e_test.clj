@@ -185,10 +185,6 @@
                                                ;; 20 with just :field_id
                                               (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                                {:field_id [:field 1000]})))
-               :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
-                                                                                     :source-table 9}}}
-                                                         {:table_id   [:t 100]
-                                                          :creator_id [:u 10]})
                :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
                                                                                      :source-table 4}}}
                                                          {:table_id   [:t 100]
@@ -286,13 +282,6 @@
                              (map (comp count dir->file-set #(io/file % "timelines")))
                              (reduce +)))))
 
-            (testing "for metrics"
-              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
-                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
-                                        :let [metrics-dir (io/file dump-dir "databases" db "tables" table "metrics")]
-                                        :when (.exists metrics-dir)]
-                                    (count (dir->file-set metrics-dir)))))))
-
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
                                         table (dir->dir-set (io/file dump-dir "databases" db "tables"))
@@ -388,13 +377,6 @@
                   (is (= (clean-entity dim)
                          (->> (t2/select-one 'Dimension :entity_id entity_id)
                               (serdes/extract-one "Dimension" {})
-                              clean-entity)))))
-
-              (testing "for metrics"
-                (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
-                  (is (= (clean-entity metric)
-                         (->> (t2/select-one 'Metric :entity_id entity_id)
-                              (serdes/extract-one "Metric" {})
                               clean-entity)))))
 
               (testing "for segments"

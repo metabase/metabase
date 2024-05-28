@@ -23,7 +23,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.legacy-metric :refer [LegacyMetric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -249,7 +248,6 @@
             :when table-id]
       (let [context (assoc context :table table-id)]
         (load! (str path "/fks") context)
-        (load! (str path "/metrics") context)
         (load! (str path "/segments") context)))))
 
 (def ^:private fully-qualified-name->card-id
@@ -279,16 +277,6 @@
 (defmethod load! "fks"
   [path context]
   (load-fields! path context))
-
-(defmethod load! "metrics"
-  [path context]
-  (maybe-upsert-many! context LegacyMetric
-    (for [metric (slurp-dir path)]
-      (-> metric
-          (assoc :table_id   (:table context)
-                 :creator_id (default-user-id))
-          (assoc-in [:definition :source-table] (:table context))
-          (update :definition mbql-fully-qualified-names->ids)))))
 
 (defmethod load! "segments"
   [path context]

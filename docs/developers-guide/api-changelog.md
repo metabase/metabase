@@ -4,6 +4,12 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.51.0
+
+- `/api/legacy-metric`
+
+   The `/api/legacy-metric` endpoints have been removed.
+
 ## Metabase 0.50.0
 
 - `GET /api/collection/tree` and `GET /api/collection/:id/items`
