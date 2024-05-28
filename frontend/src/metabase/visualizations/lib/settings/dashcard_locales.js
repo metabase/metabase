@@ -330,15 +330,15 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.book.distribution.progress.approved' : {
     'en': 'Approved School Book Demand',
-    'bn': 'বিদ্যালয়ের অনুমোদিত বইয়ের চাহিদা'
+    'bn': 'বিদ্যালয়ের বইয়ের চাহিদা অনুমোদন হয়েছে'
   },
   'admin.dashboard.book.distribution.progress.pending' : {
     'en': 'Pending School Book Demand',
-    'bn': 'বিদ্যালয়ের পেন্ডিং বইয়ের চাহিদা'
+    'bn': 'বিদ্যালয়ের বইয়ের চাহিদা পেন্ডিং আছে'
   },
   'admin.dashboard.book.distribution.progress.rejected' : {
     'en': 'Rejected School Book Demand',
-    'bn': 'বিদ্যালয়ের প্রত্যাখ্যাত বইয়ের চাহিদা'
+    'bn': 'বিদ্যালয়ের বইয়ের চাহিদা প্রত্যাখ্যাত হয়েছে'
   },
   'admin.dashboard.book.distribution.progress' : {
     'en': 'Progress of Book Demand',
