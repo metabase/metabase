@@ -21,17 +21,30 @@ export const RowToggleIconRoot = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: ${color("white")};
   padding: 4px;
   border-radius: 4px;
-  background-color: ${color("text-light")};
   transition: all 200ms;
   outline: none;
 
-  &:hover {
-    background-color: ${darken("text-light", 0.2)};
-  }
+  ${getRowToggleStyle}
 `;
+
+function getRowToggleStyle({ theme }: { theme: MantineTheme }) {
+  const { textColor, backgroundColor } = theme.other.pivotTable.rowToggle;
+
+  const hoverColor = isDark(backgroundColor)
+    ? lighten(backgroundColor, 0.2)
+    : darken(backgroundColor, 0.2);
+
+  return css`
+    color: ${color(textColor)};
+    background-color: ${color(backgroundColor)};
+
+    &:hover {
+      background-color: ${color(hoverColor)};
+    }
+  `;
+}
 
 interface PivotTableCellProps {
   isBold?: boolean;

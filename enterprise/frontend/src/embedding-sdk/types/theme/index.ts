@@ -83,6 +83,15 @@ export interface MetabaseComponentTheme {
       backgroundColor?: string;
     };
   };
+
+  /** Pivot table **/
+  pivotTable?: {
+    /** Button to toggle pivot table rows */
+    rowToggle?: {
+      textColor?: string;
+      backgroundColor?: string;
+    };
+  };
 }
 
 export type ChartColor =
