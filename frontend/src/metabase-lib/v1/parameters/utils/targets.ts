@@ -1,6 +1,7 @@
 import * as Lib from "metabase-lib";
-import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
+import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -49,20 +50,24 @@ export function getParameterTargetField(
 
   // native queries
   if (isTemplateTagReference(fieldRef)) {
-    const tagName = fieldRef[1];
-    const tags = Lib.templateTags(query);
-    const tag = tags[tagName];
-    if (!tag || !tag.dimension) {
-      return null;
-    }
-
-    const fieldId = Number(tag.dimension[2]);
-    return metadata.field(fieldId);
+    const dimension = TemplateTagDimension.parseMBQL(
+      fieldRef,
+      metadata,
+      question.legacyQuery() as NativeQuery,
+    );
+    return dimension?.field();
   }
 
   if (isConcreteFieldReference(fieldRef)) {
     const stageIndex = -1;
     const columns = Lib.visibleColumns(query, stageIndex);
+
+    // query and metadata is not available - embedding
+    if (columns.length === 0) {
+      const [_, fieldId] = fieldRef;
+      return metadata.field(fieldId);
+    }
+
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
