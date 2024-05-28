@@ -17,6 +17,7 @@ import type {
   ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["placeholder", "link"];
 
@@ -64,37 +65,45 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     );
   }
 
-  if (!question) {
+  if (!question || !isDimensionTarget(target)) {
     return;
   }
 
-  const stageIndex = -1;
   const query = question.query();
+  const stageIndex = -1;
   const columns = Lib.visibleColumns(query, stageIndex);
-  const normalizedTarget = normalize(target[1]);
-
-  const [columnByTargetIndex] = Lib.findColumnIndexesFromLegacyRefs(
+  const fieldRef = target[1];
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
     columns,
-    [normalizedTarget],
+    [fieldRef],
   );
-
-  // target not found - no need to look further
-  if (columnByTargetIndex === -1) {
+  if (columnIndex < 0) {
     return;
   }
 
-  const mappingColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+  const column = columns[columnIndex];
+  const columnMappingOptions = mappingOptions.filter(option =>
+    isDimensionTarget(option.target),
+  );
+  const columnTargetFieldRefs = columnMappingOptions
+    .map(({ target }) => target)
+    .filter(isDimensionTarget)
+    .map(target => target[1]);
+  const mappingOptionIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
-    columns,
-    mappingOptions.map(({ target }) => normalize(target[1])),
+    [column],
+    columnTargetFieldRefs,
   );
 
-  const mappingIndex = mappingColumnIndexes.indexOf(columnByTargetIndex);
-
-  if (mappingIndex >= 0) {
-    return mappingOptions[mappingIndex];
+  const mappingOptionIndex = mappingOptionIndexes.findIndex(
+    index => index >= 0,
+  );
+  if (mappingOptionIndex < 0) {
+    return;
   }
+
+  return columnMappingOptions[mappingOptionIndex];
 }

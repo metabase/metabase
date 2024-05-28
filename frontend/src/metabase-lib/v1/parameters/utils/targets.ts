@@ -45,7 +45,6 @@ export function getParameterTargetField(
   }
 
   const fieldRef = target[1];
-  const query = question.query();
   const metadata = question.metadata();
 
   // native queries
@@ -59,10 +58,11 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
+    const query = question.query();
     const stageIndex = -1;
     const columns = Lib.visibleColumns(query, stageIndex);
 
-    // query and metadata is not available - embedding
+    // query and metadata are not available
     if (columns.length === 0) {
       const [_, fieldId] = fieldRef;
       return metadata.field(fieldId);

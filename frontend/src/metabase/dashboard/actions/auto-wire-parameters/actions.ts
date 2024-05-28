@@ -131,35 +131,37 @@ export function autoWireParametersToNewCard({
       targetDashcard,
     );
 
+    const targetQuestion =
+      questions[targetDashcard.card.id] ??
+      new Question(targetDashcard.card, metadata);
+
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
-    for (const opt of dashcardMappingOptions) {
-      for (const [dashcard, question] of dashcardWithQuestions) {
-        const param = dashcard.parameter_mappings?.find(mapping =>
-          getMappingOptionByTarget(
-            dashcardMappingOptions,
-            dashcard,
-            mapping.target,
-            question,
+    for (const [dashcard] of dashcardWithQuestions) {
+      const param = dashcard.parameter_mappings?.find(mapping =>
+        getMappingOptionByTarget(
+          dashcardMappingOptions,
+          targetDashcard,
+          mapping.target,
+          targetQuestion,
+        ),
+      );
+
+      if (
+        targetDashcard.card_id &&
+        param &&
+        !processedParameterIds.has(param.parameter_id)
+      ) {
+        parametersToAutoApply.push(
+          ...getParameterMappings(
+            targetDashcard,
+            param.parameter_id,
+            targetDashcard.card_id,
+            param.target,
           ),
         );
-
-        if (
-          targetDashcard.card_id &&
-          param &&
-          !processedParameterIds.has(param.parameter_id)
-        ) {
-          parametersToAutoApply.push(
-            ...getParameterMappings(
-              targetDashcard,
-              param.parameter_id,
-              targetDashcard.card_id,
-              opt.target,
-            ),
-          );
-          processedParameterIds.add(param.parameter_id);
-        }
+        processedParameterIds.add(param.parameter_id);
       }
     }
 
