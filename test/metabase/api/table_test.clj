@@ -909,23 +909,24 @@
               (is (= (repeat 2 (var-get #'api.table/coordinate-dimension-indexes))
                      (dimension-options))))))))))
 
-(deftest card-type-is-returned-with-metadata
+(deftest card-type-and-dataset-query-are-returned-with-metadata
   (testing "GET /api/table/card__:id/query_metadata returns card type"
-    (let [base-card {:database_id   (mt/id)
-                     :dataset_query (mt/mbql-query venues
-                                      {:aggregation [:sum $price]
-                                       :filter      [:> $price 1]
-                                       :source-table $$venues})}]
+    (let [dataset-query (mt/mbql-query venues
+                          {:aggregation  [:sum $price]
+                           :filter       [:> $price 1]
+                           :source-table $$venues})
+          base-card     {:database_id   (mt/id)
+                         :dataset_query dataset-query}]
       (t2.with-temp/with-temp [Card question base-card
                                Card model    (assoc base-card :type :model)
                                Card metric   (assoc base-card :type :metric)]
-        (are [card expected-type] (= expected-type
-                                     (->> (format "table/card__%d/query_metadata" (:id card))
-                                          (mt/user-http-request :crowberto :get 200)
-                                          :type))
-          question "question"
-          model    "model"
-          metric   "metric")))))
+        (are [card expected-type] (=? expected-type
+                                      (->> (format "table/card__%d/query_metadata" (:id card))
+                                           (mt/user-http-request :crowberto :get 200)
+                                           ((juxt :type :dataset_query))))
+          question ["question" nil]
+          model    ["model"    nil]
+          metric   ["metric"   some?])))))
 
 (deftest related-test
   (testing "GET /api/table/:id/related"
