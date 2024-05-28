@@ -31,10 +31,6 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   display: flex;
   align-items: center;
 
-  &:hover {
-    ${highlighted}
-  }
-
   ${props => props.isHighlighted && highlighted}
 `;
 
@@ -53,10 +49,6 @@ export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   justify-content: space-between;
 
   padding-left: 0.875rem;
-
-  &:hover {
-    ${highlighted}
-  }
 
   ${props => props.isHighlighted && highlighted}
 `;

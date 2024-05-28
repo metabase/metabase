@@ -417,6 +417,12 @@ class ExpressionEditorTextfield extends React.Component<
     }
   };
 
+  handleHighlightSuggestion = (index: number) => {
+    this.setState({
+      highlightedSuggestionIndex: index,
+    });
+  };
+
   chooseSuggestion = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
@@ -713,6 +719,7 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={highlightedSuggestionIndex}
+          onHighlightSuggestion={this.handleHighlightSuggestion}
           open={isFocused}
         >
           <EditorContainer

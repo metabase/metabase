@@ -57,6 +57,7 @@ export function ExpressionEditorSuggestions({
   onSuggestionMouseDown,
   open,
   highlightedIndex,
+  onHighlightSuggestion,
   children,
 }: {
   query: Lib.Query;
@@ -65,6 +66,7 @@ export function ExpressionEditorSuggestions({
   onSuggestionMouseDown: (index: number) => void;
   open: boolean;
   highlightedIndex: number;
+  onHighlightSuggestion: (index: number) => void;
   children: ReactNode;
 }) {
   const ref = useRef(null);
@@ -120,6 +122,7 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
             <ExpressionEditorSuggestionsListGroup
               name="shortcuts"
@@ -128,6 +131,7 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
             <ExpressionEditorSuggestionsListGroup
               name="popularAggregations"
@@ -136,6 +140,7 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
             <ExpressionEditorSuggestionsListGroup
               name="popularExpressions"
@@ -144,6 +149,7 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
           </ExpressionList>
           {footers.map(suggestion => (
@@ -151,6 +157,7 @@ export function ExpressionEditorSuggestions({
               key={suggestion.index}
               suggestion={suggestion}
               highlightedIndex={highlightedIndex}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
           ))}
         </DelayGroup>
@@ -165,6 +172,7 @@ function ExpressionEditorSuggestionsListGroup({
   stageIndex,
   suggestions = [],
   onSuggestionMouseDown,
+  onHighlightSuggestion,
   highlightedIndex,
 }: {
   name?: GroupName;
@@ -172,6 +180,7 @@ function ExpressionEditorSuggestionsListGroup({
   stageIndex: number;
   suggestions?: Suggestion[];
   onSuggestionMouseDown: (index: number) => void;
+  onHighlightSuggestion: (index: number) => void;
   highlightedIndex: number;
 }) {
   const definition = name && GROUPS[name];
@@ -194,6 +203,7 @@ function ExpressionEditorSuggestionsListGroup({
           isHighlighted={suggestion.index === highlightedIndex}
           index={suggestion.index}
           onMouseDown={onSuggestionMouseDown}
+          onHighlightSuggestion={onHighlightSuggestion}
         />
       ))}
     </>
@@ -204,6 +214,7 @@ function ExpressionEditorSuggestionsListItem({
   query,
   stageIndex,
   suggestion,
+  onHighlightSuggestion,
   isHighlighted,
   onMouseDown,
   index,
@@ -213,6 +224,7 @@ function ExpressionEditorSuggestionsListItem({
   index: number;
   isHighlighted: boolean;
   onMouseDown: (index: number) => void;
+  onHighlightSuggestion: (index: number) => void;
   suggestion: Suggestion;
 }) {
   const { icon, helpText, range = [] } = suggestion;
@@ -238,10 +250,18 @@ function ExpressionEditorSuggestionsListItem({
     [index, onMouseDown],
   );
 
+  const handleMouseEnter = useCallback(
+    function () {
+      onHighlightSuggestion(index);
+    },
+    [index, onHighlightSuggestion],
+  );
+
   return (
     <HoverParent>
       <ExpressionListItem
         onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
         ref={ref}
         isHighlighted={isHighlighted}
         className={cx(CS.hoverParent, CS.hoverInherit)}
@@ -289,14 +309,20 @@ function ExpressionEditorSuggestionsListItem({
 function Footer({
   suggestion,
   highlightedIndex,
+  onHighlightSuggestion,
 }: {
   suggestion: WithIndex<SuggestionFooter>;
   highlightedIndex: number;
+  onHighlightSuggestion: (index: number) => void;
 }) {
   function handleMouseDownCapture(evt: MouseEvent) {
     // prevent the dropdown from closing
     evt.preventDefault();
   }
+
+  const handleMouseEnter = useCallback(() => {
+    onHighlightSuggestion(suggestion.index);
+  }, [suggestion.index, onHighlightSuggestion]);
 
   return (
     <ExpressionListFooter
@@ -304,6 +330,7 @@ function Footer({
       href={suggestion.href}
       onMouseDownCapture={handleMouseDownCapture}
       isHighlighted={highlightedIndex === suggestion.index}
+      onMouseEnter={handleMouseEnter}
     >
       {suggestion.name} <ExternalIcon name={suggestion.icon} />
     </ExpressionListFooter>
