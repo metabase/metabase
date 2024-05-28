@@ -1,5 +1,5 @@
 diff --git a/node_modules/echarts/lib/chart/line/helper.js b/node_modules/echarts/lib/chart/line/helper.js
-index fa02e2f..176bfbc 100644
+index fa02e2f..cc3cb7d 100644
 --- a/node_modules/echarts/lib/chart/line/helper.js
 +++ b/node_modules/echarts/lib/chart/line/helper.js
 @@ -108,16 +108,18 @@ function getValueStart(valueAxis, valueOrigin) {
@@ -27,8 +27,9 @@ index fa02e2f..176bfbc 100644
 +  stackedData[1 - baseDataOffset] = stackedOverValue;
    return coordSys.dataToPoint(stackedData);
  }
+\ No newline at end of file
 diff --git a/node_modules/echarts/lib/data/helper/dataStackHelper.js b/node_modules/echarts/lib/data/helper/dataStackHelper.js
-index c25de1b..f94690e 100644
+index c25de1b..a3ced22 100644
 --- a/node_modules/echarts/lib/data/helper/dataStackHelper.js
 +++ b/node_modules/echarts/lib/data/helper/dataStackHelper.js
 @@ -83,6 +83,13 @@ export function enableDataStack(seriesModel, dimensionsInput, opt) {
@@ -69,3 +70,21 @@ index c25de1b..f94690e 100644
    // Add stack dimension, they can be both calculated by coordinate system in `unionExtent`.
    // That put stack logic in List is for using conveniently in echarts extensions, but it
    // might not be a good way.
+diff --git a/node_modules/echarts/lib/label/labelLayoutHelper.js b/node_modules/echarts/lib/label/labelLayoutHelper.js
+index a75f606..57bec85 100644
+--- a/node_modules/echarts/lib/label/labelLayoutHelper.js
++++ b/node_modules/echarts/lib/label/labelLayoutHelper.js
+@@ -256,6 +256,13 @@ export function hideOverlap(labelList) {
+     var transform = labelItem.transform;
+     var label = labelItem.label;
+     var labelLine = labelItem.labelLine;
++    
++    if (label.style.text === "") {
++      hideEl(label);
++      labelLine && hideEl(labelLine);
++      continue;
++    }
++    
+     globalRect.copy(labelItem.rect);
+     // Add a threshold because layout may be aligned precisely.
+     globalRect.width -= 0.1;
