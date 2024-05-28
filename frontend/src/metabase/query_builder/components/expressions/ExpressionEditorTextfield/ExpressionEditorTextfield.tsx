@@ -78,7 +78,7 @@ export function suggestWithExtras(
     res.suggestions ?? [];
 
   if (args.showMetabaseLinks && args.source === "") {
-    suggestions.unshift(...(args.shortcuts ?? []));
+    suggestions.push(...(args.shortcuts ?? []));
 
     if (args.startRule === "aggregation") {
       suggestions.push({

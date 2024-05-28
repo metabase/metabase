@@ -123,15 +123,6 @@ export function ExpressionEditorSuggestions({
               onHighlightSuggestion={onHighlightSuggestion}
             />
             <ExpressionEditorSuggestionsListGroup
-              name="shortcuts"
-              suggestions={groups.shortcuts}
-              query={query}
-              stageIndex={stageIndex}
-              highlightedIndex={highlightedIndex}
-              onSuggestionMouseDown={onSuggestionMouseDown}
-              onHighlightSuggestion={onHighlightSuggestion}
-            />
-            <ExpressionEditorSuggestionsListGroup
               name="popularAggregations"
               suggestions={groups.popularAggregations}
               query={query}
@@ -143,6 +134,15 @@ export function ExpressionEditorSuggestions({
             <ExpressionEditorSuggestionsListGroup
               name="popularExpressions"
               suggestions={groups.popularExpressions}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="shortcuts"
+              suggestions={groups.shortcuts}
               query={query}
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
