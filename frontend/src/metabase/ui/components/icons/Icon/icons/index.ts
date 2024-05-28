@@ -1064,10 +1064,12 @@ export const Icons = {
     source: tab_source,
   },
   table: {
+    // for database tables
     component: table_component,
     source: table_source,
   },
   table2: {
+    // for questions with table visualizations
     component: table2_component,
     source: table2_source,
   },
