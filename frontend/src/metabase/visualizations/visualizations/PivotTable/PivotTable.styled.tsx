@@ -1,14 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import {
-  color,
-  alpha,
-  darken,
-  lighten,
-  isDark,
-  shade,
-} from "metabase/lib/colors";
+import { color, alpha, adjustBrightness } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
 import {
@@ -31,10 +24,7 @@ export const RowToggleIconRoot = styled.div`
 
 function getRowToggleStyle({ theme }: { theme: MantineTheme }) {
   const { textColor, backgroundColor } = theme.other.pivotTable.rowToggle;
-
-  const hoverColor = isDark(backgroundColor)
-    ? lighten(backgroundColor, 0.2)
-    : darken(backgroundColor, 0.2);
+  const hoverColor = adjustBrightness(backgroundColor, 0.2, 0.2);
 
   return css`
     color: ${color(textColor)};
@@ -61,7 +51,7 @@ const getCellBackgroundColor = ({
   isNightMode,
   isTransparent,
 }: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
-  const { backgroundColor } = theme.other.table.cell;
+  const { backgroundColor } = theme.other?.table?.cell;
 
   if (isTransparent) {
     return "transparent";
@@ -72,13 +62,11 @@ const getCellBackgroundColor = ({
       return color("bg-black");
     }
 
-    if (!backgroundColor) {
-      return alpha("border", 0.25);
+    if (backgroundColor) {
+      return adjustBrightness(backgroundColor, 0.15, 0.05);
     }
 
-    return isDark(backgroundColor)
-      ? lighten(backgroundColor, 0.15)
-      : shade(backgroundColor, 0.05);
+    return alpha("border", 0.25);
   }
 
   if (isNightMode) {
@@ -99,9 +87,7 @@ const getCellHoverBackground = (
 
   const backgroundColor = getCellBackgroundColor(props);
 
-  return isDark(backgroundColor)
-    ? lighten(backgroundColor, 0.15)
-    : shade(backgroundColor, 0.1);
+  return adjustBrightness(backgroundColor, 0.15, 0.1);
 };
 
 const getColor = ({
