@@ -116,7 +116,11 @@ export const GRAPH_DATA_SETTINGS = {
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
-    eraseDependencies: ["graph.series_order_dimension", "graph.series_order"],
+    eraseDependencies: [
+      "graph.series_order_dimension",
+      "graph.series_order",
+      "graph.x_axis.scale",
+    ],
     dashboard: false,
     useRawSeries: true,
   },

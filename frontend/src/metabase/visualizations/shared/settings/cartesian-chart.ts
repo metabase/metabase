@@ -281,6 +281,14 @@ export const isXAxisScaleValid = (
 ) => {
   const isWaterfall = series[0].card.display === "waterfall";
   const xAxisScale = settings["graph.x_axis.scale"];
+  const options = getAvailableXAxisScales(series, settings).map(
+    option => option.value,
+  );
+
+  if (xAxisScale && !options.includes(xAxisScale)) {
+    return false;
+  }
+
   return (
     !isWaterfall ||
     xAxisScale == null ||
