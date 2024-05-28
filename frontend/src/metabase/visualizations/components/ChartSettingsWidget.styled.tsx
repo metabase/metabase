@@ -96,7 +96,7 @@ export const InfoIcon = styled(Icon)<VariantProp>`
   ${props =>
     props.variant === "form-field" &&
     css`
-      color: ${props.theme.fn.themeColor("bg-dark")};
+      color: var(--mb-color-bg-dark);
 
       &:hover {
         color: ${props.theme.fn.themeColor("brand")};

@@ -57,7 +57,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       color: ${theme.fn.themeColor("brand")};
 
       &:hover {
-        background-color: ${theme.fn.themeColor("bg-light")};
+        background-color: var(--mb-color-bg-light);
       }
     `}
 `;

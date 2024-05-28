@@ -9,7 +9,7 @@ export const StaticEmbedIconRoot = styled.svg`
       color: ${theme.fn.themeColor("bg-medium")};
 
       .innerFill {
-        fill: ${theme.fn.themeColor("bg-dark")};
+        fill: var(--mb-color-bg-dark);
         fill-opacity: 0.5;
       }
 

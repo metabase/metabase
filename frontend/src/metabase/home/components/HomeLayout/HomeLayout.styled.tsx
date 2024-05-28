@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button/Button";
-import { color, hueRotate, lighten } from "metabase/lib/colors";
+import { hueRotate, lighten } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMinLarge,
@@ -12,7 +12,7 @@ export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100%;
   padding: 1rem;
-  background-color: ${() => color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;

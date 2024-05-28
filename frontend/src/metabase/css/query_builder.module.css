@@ -304,7 +304,7 @@
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
   border: 1px solid var(--mb-color-border);
   border-radius: 2px;
   white-space: pre-wrap;

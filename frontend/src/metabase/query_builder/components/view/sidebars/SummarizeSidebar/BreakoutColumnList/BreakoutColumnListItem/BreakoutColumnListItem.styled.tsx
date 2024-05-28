@@ -102,7 +102,7 @@ const getUnselectedStyle = (theme: Theme) => css`
     ${ColumnTypeIcon},
     ${AddButton} {
       color: ${theme.fn.themeColor("summarize")};
-      background-color: ${theme.fn.themeColor("bg-light")};
+      background-color: var(--mb-color-bg-light);
     }
 
     ${AddButton}:hover {

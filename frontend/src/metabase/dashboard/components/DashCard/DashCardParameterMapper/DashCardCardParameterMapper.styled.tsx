@@ -74,8 +74,8 @@ export const TargetButton = styled.div<{ variant: string }>`
     variant === "unauthed" &&
     css`
       pointer-events: none;
-      border-color: ${theme.fn.themeColor("bg-light")};
-      background-color: ${theme.fn.themeColor("bg-light")};
+      border-color: var(--mb-color-bg-light);
+      background-color: var(--mb-color-bg-light);
       color: ${theme.fn.themeColor("text-medium")};
     `}
 

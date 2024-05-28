@@ -47,7 +47,7 @@ const getCellBackgroundColor = ({
     return isNightMode ? alpha("bg-black", 0.1) : color("white");
   }
 
-  return isNightMode ? `var(--mb-color-bg-black)` : alpha("border", 0.25);
+  return isNightMode ? color("bg-black") : alpha("border", 0.25);
 };
 
 const getColor = ({ isNightMode }: PivotTableCellProps) => {
@@ -71,7 +71,9 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   box-shadow: -1px 0 0 0 ${getBorderColor} inset;
   border-bottom: 1px solid
     ${props =>
-      props.isBorderedHeader ? color("bg-dark") : getBorderColor(props)};
+      props.isBorderedHeader
+        ? `var(--mb-color-bg-dark)`
+        : getBorderColor(props)};
   background-color: ${getCellBackgroundColor};
   ${props =>
     props.hasTopBorder &&

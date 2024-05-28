@@ -29,7 +29,7 @@ export const CardRootLink = styled(ExternalLink)`
   ${({ theme }) => getCardRootStyles(theme)};
 
   &:hover {
-    background-color: ${() => color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 

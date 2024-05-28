@@ -41,7 +41,7 @@ const Progress = styled.div`
     left: 0;
     width: ${props => props.width / 4}%;
     height: 100%;
-    background-color: ${c("bg-black")};
+    background-color: var(--mb-color-bg-black);
   },
 `;
 

@@ -268,7 +268,10 @@ const SuggestionsList = ({ suggestions, section }) => (
                   <h4 className={CS.textWrap}>{item.title}</h4>
                   <ItemDescription className={CS.hoverChild}>
                     <Tooltip tooltip={item.description}>
-                      <Icon name="info_outline" color={color("bg-dark")} />
+                      <Icon
+                        name="info_outline"
+                        color={`var(--mb-color-bg-dark)`}
+                      />
                     </Tooltip>
                   </ItemDescription>
                 </ItemContent>

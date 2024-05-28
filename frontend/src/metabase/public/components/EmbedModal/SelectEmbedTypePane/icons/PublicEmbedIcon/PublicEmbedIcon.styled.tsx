@@ -12,9 +12,9 @@ export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
     color: ${theme.fn.themeColor("bg-medium")};
 
     .innerFill {
-      stroke: ${disabled
-        ? theme.fn.themeColor("text-light")
-        : theme.fn.themeColor("bg-dark")};
+      stroke: ${
+        disabled ? theme.fn.themeColor("text-light") : `var(--mb-color-bg-dark)`
+      }
       opacity: ${disabled ? 0.5 : 1};
     }
   `}
@@ -23,7 +23,7 @@ export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
     !disabled &&
     css`
       ${SharingPaneButtonContent}:hover & {
-        color: ${theme.fn.themeColor("bg-dark")};
+        color: var(--mb-color-bg-dark);
 
         .innerFill {
           stroke: ${theme.fn.themeColor("brand")};

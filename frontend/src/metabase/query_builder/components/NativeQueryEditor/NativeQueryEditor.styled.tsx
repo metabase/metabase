@@ -9,13 +9,13 @@ import { color, darken } from "metabase/lib/colors";
 const getAceEditorStyle = (theme: Theme) => css`
   .ace_editor {
     height: 100%;
-    background-color: ${theme.fn.themeColor("bg-light")};
+    background-color: var(--mb-color-bg-light);
     color: ${theme.fn.themeColor("text-dark")};
   }
 
   .ace_search {
     font-family: Lato;
-    background-color: ${theme.fn.themeColor("bg-light")};
+    background-color: var(--mb-color-bg-light);
     color: ${theme.fn.themeColor("text-dark")};
     border-color: ${theme.fn.themeColor("border")};
     padding-bottom: 2px;
@@ -92,7 +92,7 @@ const getAceEditorStyle = (theme: Theme) => css`
   }
 
   .ace_editor .ace_gutter {
-    background-color: ${theme.fn.themeColor("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
@@ -129,7 +129,7 @@ export const getAceEditorStyles = (theme: Theme) => css`
 
 export const NativeQueryEditorRoot = styled.div`
   width: 100%;
-  background-color: ${() => color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   ${({ theme }) => getAceEditorStyle(theme)}
 

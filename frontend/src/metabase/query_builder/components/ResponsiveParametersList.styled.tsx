@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 
 export const FilterButton = styled(Button)`
@@ -30,7 +29,7 @@ interface ParametersListContainerProps {
 }
 
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
-  background-color: ${() => color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   ${({ isSmallScreen, isShowingMobile, theme }) =>
     isSmallScreen &&

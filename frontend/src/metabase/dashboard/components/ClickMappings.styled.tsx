@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const TargetTrigger = styled.div`
   display: flex;
   padding: 0.5rem;
@@ -12,6 +10,6 @@ export const TargetTrigger = styled.div`
 
   &:hover {
     color: var(--mb-color-brand);
-    background-color: ${() => color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;

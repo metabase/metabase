@@ -25,8 +25,8 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
-const getHiddenBackgroundStyle = (theme: Theme) => css`
-  background: ${theme.fn.themeColor("bg-light")};
+const hiddenBackgroundStyle = css`
+  background: var(--mb-color-bg-light);
   box-shadow: none !important;
 `;
 
@@ -38,8 +38,8 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
 
-  ${({ shouldForceHiddenBackground, theme }) =>
-    shouldForceHiddenBackground && getHiddenBackgroundStyle(theme)}
+  ${({ shouldForceHiddenBackground }) =>
+    shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
 export const VirtualDashCardOverlayRoot = styled.div`
