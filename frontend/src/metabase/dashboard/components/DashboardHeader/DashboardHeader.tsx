@@ -164,11 +164,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const [showCancelWarning, setShowCancelWarning] = useState(false);
 
-  const dispatch = useDispatch();
-
   useMount(() => {
     dispatch(fetchPulseFormInput());
   });
+
+  const dispatch = useDispatch();
 
   const formInput = useSelector(getPulseFormInput);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
@@ -348,7 +348,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   };
 
   const getHeaderButtons = () => {
-    const canEdit = dashboard.can_write && !dashboard.archived;
+    const canEdit = dashboard.can_write;
     const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
     const hasModelActionsEnabled = Object.values(databases).some(
@@ -554,8 +554,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
         extraButtons.push({
-          title: t`Move to trash`,
-          icon: "trash",
+          title: t`Archive`,
+          icon: "view_archive",
           link: `${location.pathname}/archive`,
           event: "Dashboard;Archive",
         });
@@ -567,18 +567,14 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     if (!isEditing) {
       buttons.push(
         ...[
-          buttons.length > 0 && (
-            <DashboardHeaderActionDivider key="dashboard-button-divider" />
-          ),
-          !dashboard.archived && (
-            <DashboardBookmark
-              key="dashboard-bookmark-button"
-              dashboard={dashboard}
-              onCreateBookmark={handleCreateBookmark}
-              onDeleteBookmark={handleDeleteBookmark}
-              isBookmarked={isBookmarked}
-            />
-          ),
+          <DashboardHeaderActionDivider key="dashboard-button-divider" />,
+          <DashboardBookmark
+            key="dashboard-bookmark-button"
+            dashboard={dashboard}
+            onCreateBookmark={handleCreateBookmark}
+            onDeleteBookmark={handleDeleteBookmark}
+            isBookmarked={isBookmarked}
+          />,
           <Tooltip key="dashboard-info-button" label={t`More info`}>
             <DashboardHeaderButton
               icon="info"
@@ -593,14 +589,14 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         ].filter(Boolean),
       );
 
-      if (extraButtons.length > 0 && !dashboard.archived) {
+      if (extraButtons.length > 0) {
         buttons.push(
           <EntityMenu
             key="dashboard-action-menu-button"
             triggerAriaLabel="dashboard-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
-            tooltip={t`Move, trash, and more...`}
+            tooltip={t`Move, archive, and more...`}
             // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
             transitionDuration={0}
           />,

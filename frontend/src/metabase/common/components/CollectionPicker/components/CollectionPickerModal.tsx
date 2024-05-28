@@ -32,9 +32,7 @@ const canSelectItem = (
 };
 
 const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
-  return searchResults.filter(
-    result => result.can_write && result.collection.type !== "trash",
-  );
+  return searchResults.filter(result => result.can_write);
 };
 
 export const CollectionPickerModal = ({

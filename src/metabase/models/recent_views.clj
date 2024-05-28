@@ -193,7 +193,6 @@
                          :report_card.description
                          :report_card.archived
                          :report_card.collection_id
-                         :report_card.trashed_from_collection_id
                          :report_card.id
                          :report_card.display
                          [:mr.status :moderated-status]
@@ -260,7 +259,6 @@
                          :dash.description
                          :dash.archived
                          :dash.collection_id
-                         :dash.trashed_from_collection_id
                          [:c.id :collection-id]
                          [:c.name :collection-name]
                          [:c.authority_level :collection-authority-level]]

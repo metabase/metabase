@@ -10,7 +10,6 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues NativeQuerySnippet
                             Table]]
-   [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
@@ -26,8 +25,6 @@
                :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
-(def ^:private trash-dir (delay (str (:entity_id (collection/trash-collection)) "_trash")))
-
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
@@ -39,8 +36,7 @@
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{[parent-filename (str parent-filename ".yaml")]
-                     [parent-filename child-filename (str child-filename ".yaml")]
-                     [@trash-dir (str @trash-dir ".yaml")]}
+                     [parent-filename child-filename (str child-filename ".yaml")]}
                    (file-set (io/file dump-dir "collections")))
                 "collections form a tree, with same-named files")
             (is (contains? (file-set (io/file dump-dir))
@@ -51,7 +47,6 @@
             (is (= (-> (into {} (t2/select-one Collection :id (:id parent)))
                        (dissoc :id :location)
                        (assoc :parent_id nil)
-                       (assoc :trashed_from_parent_id nil)
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
                        (dissoc :serdes/meta)
@@ -60,7 +55,6 @@
             (is (= (-> (into {} (t2/select-one Collection :id (:id child)))
                        (dissoc :id :location)
                        (assoc :parent_id (:entity_id parent))
-                       (assoc :trashed_from_parent_id nil)
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" parent-filename
                                                 child-filename (str child-filename ".yaml")))
@@ -76,19 +70,18 @@
                                                   :location (str "/" (:id grandparent) "/")}
                          Collection  child       {:name     "Child Collection"
                                                   :location (str "/" (:id grandparent) "/" (:id parent) "/")}
-                         Card        c1          {:name "root card" :collection_id nil}
+                         Card        c1          {:name "root card"        :collection_id nil}
                          Card        c2          {:name "grandparent card" :collection_id (:id grandparent)}
-                         Card        c3          {:name "parent card" :collection_id (:id parent)}
-                         Card        c4          {:name "child card" :collection_id (:id child)}
-                         Dashboard   d1          {:name "parent dash" :collection_id (:id parent)}]
+                         Card        c3          {:name "parent card"      :collection_id (:id parent)}
+                         Card        c4          {:name "child card"       :collection_id (:id child)}
+                         Dashboard   d1          {:name "parent dash"      :collection_id (:id parent)}]
         (let [export (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                   p-dir  (str (:entity_id parent)      "_parent_collection")
                   c-dir  (str (:entity_id child)       "_child_collection")]
-              (is (= #{[@trash-dir (str @trash-dir ".yaml")]                                  ; Trash collection, always included
-                       [gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
+              (is (= #{[gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
                        [gp-dir p-dir (str p-dir ".yaml")]                                     ; Parent collection
                        [gp-dir p-dir c-dir (str c-dir ".yaml")]                               ; Child collection
                        ["cards" (str (:entity_id c1) "_root_card.yaml")]                      ; Root card
@@ -111,11 +104,11 @@
                          Collection         child       {:name      "Child Collection"
                                                          :namespace :snippets
                                                          :location  (str "/" (:id grandparent) "/" (:id parent) "/")}
-                         NativeQuerySnippet c1          {:name "root snippet" :collection_id nil}
+                         NativeQuerySnippet c1          {:name "root snippet"        :collection_id nil}
                          NativeQuerySnippet c2          {:name "grandparent snippet" :collection_id (:id grandparent)}
-                         NativeQuerySnippet c3          {:name "parent snippet" :collection_id (:id parent)}
-                         NativeQuerySnippet c4          {:name "child snippet" :collection_id (:id child)}]
-        (let [export (into [] (extract/extract nil))]
+                         NativeQuerySnippet c3          {:name "parent snippet"      :collection_id (:id parent)}
+                         NativeQuerySnippet c4          {:name "child snippet"       :collection_id (:id child)}]
+        (let [export          (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                 p-dir  (str (:entity_id parent)      "_parent_collection")
@@ -123,8 +116,7 @@
             (testing "collections under collections/"
               (is (= #{[gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
                        [gp-dir p-dir (str p-dir ".yaml")]                                     ; Parent collection
-                       [gp-dir p-dir c-dir (str c-dir ".yaml")]                               ; Child collection
-                       [@trash-dir (str @trash-dir ".yaml")]}
+                       [gp-dir p-dir c-dir (str c-dir ".yaml")]}                              ; Child collection
                      (file-set (io/file dump-dir "collections")))))
             (testing "snippets under snippets/"
               (is (= #{
@@ -142,7 +134,7 @@
                          Field       website {:name "Company/organization website" :table_id (:id table)}
                          FieldValues _       {:field_id (:id website)}
                          Table       _       {:name "Orders/Invoices" :db_id (:id db)}]
-        (let [export (into [] (extract/extract {:include-field-values true}))]
+        (let [export          (into [] (extract/extract {:include-field-values true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{["Company__SLASH__organization website.yaml"]
@@ -216,21 +208,20 @@
             (storage/store! export dump-dir)))))))
 
 (deftest store-error-test
-  (mt/with-empty-h2-app-db
-    (testing "destination not writable"
-      (ts/with-random-dump-dir [parent-dir "serdesv2-"]
-        (let [dump-dir (str parent-dir "/test")]
-          (testing "parent is not writable, cannot create own directory"
-            (.mkdirs (io/file parent-dir))
-            (.setWritable (io/file parent-dir) false)
-            (is (thrown-with-msg? Exception #"Destination path is not writeable: "
-                                  (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
-                                                  dump-dir))))
-          (testing "directory exists but is not writable"
-            (.setWritable (io/file parent-dir) true)
-            (.mkdirs (io/file dump-dir))
-            (io/make-parents dump-dir "inner")
-            (.setWritable (io/file dump-dir) false)
-            (is (thrown-with-msg? Exception #"Destination path is not writeable: "
-                                  (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
-                                                  dump-dir)))))))))
+  (testing "destination not writable"
+    (ts/with-random-dump-dir [parent-dir "serdesv2-"]
+      (let [dump-dir (str parent-dir "/test")]
+        (testing "parent is not writable, cannot create own directory"
+          (.mkdirs (io/file parent-dir))
+          (.setWritable (io/file parent-dir) false)
+          (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                                (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                                dump-dir))))
+        (testing "directory exists but is not writable"
+          (.setWritable (io/file parent-dir) true)
+          (.mkdirs (io/file dump-dir))
+          (io/make-parents dump-dir "inner")
+          (.setWritable (io/file dump-dir) false)
+          (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                                (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                                dump-dir))))))))

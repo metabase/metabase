@@ -184,7 +184,7 @@ describe("CollectionHeader", () => {
 
       await userEvent.click(screen.getByLabelText("ellipsis icon"));
       expect(await screen.findByText("Move")).toBeInTheDocument();
-      expect(screen.getByText("Move to trash")).toBeInTheDocument();
+      expect(screen.getByText("Archive")).toBeInTheDocument();
     });
   });
 
