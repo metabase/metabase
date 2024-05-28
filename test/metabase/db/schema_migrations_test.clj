@@ -15,7 +15,6 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -496,16 +495,16 @@
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
     (impl/test-migrations ["v48.00-019"] [migrate!]
-      (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
-                                                                                       :slug "amazing_collection"
-                                                                                       :color "#509EE3"}))]
-
+      (with-redefs [config/load-sample-content? (constantly false)]
+        (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
+                                                                                         :slug "amazing_collection"
+                                                                                         :color "#509EE3"}))]
         (testing "Collection should exist and have the color set by the user prior to migration"
           (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
 
         (migrate!)
         (testing "should drop the existing color column"
-          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
+          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))))))
 
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - end"
@@ -1479,45 +1478,6 @@
         (insert-perm! "perms/manage-database" "no")
         (migrate! :down 49)
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
-
-(deftest create-sample-content-test
-  (testing "The sample content is created iff *create-sample-content*=true"
-    (doseq [create? [true false]]
-      (testing (str "*create-sample-content* = " create?)
-        (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
-          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-            (binding [custom-migrations/*create-sample-content* create?]
-              (is (false? (sample-content-created?)))
-              (migrate!)
-              (is ((if create? true? false?) (sample-content-created?)))))))))
-  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
-    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
-      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-        (is (false? (sample-content-created?)))
-        (t2/insert-returning-pks! :metabase_database {:name       "db"
-                                                      :engine     "h2"
-                                                      :created_at :%now
-                                                      :updated_at :%now
-                                                      :details    "{}"})
-        (t2/query {:delete-from :metabase_database})
-        (migrate!)
-        (is (false? (sample-content-created?)))
-        (is (empty? (t2/query "SELECT * FROM metabase_database"))
-            "No database should have been created"))))
-  (testing "The sample content isn't created if a user existed already"
-    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
-      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-        (is (false? (sample-content-created?)))
-        (t2/insert-returning-pks!
-         :core_user
-         {:first_name       "Rasta"
-          :last_name        "Toucan"
-          :email            "rasta@metabase.com"
-          :password         "password"
-          :password_salt    "and pepper"
-          :date_joined      :%now})
-        (migrate!)
-        (is (false? (sample-content-created?)))))))
 
 (deftest cache-config-migration-test
   (testing "Caching config is correctly copied over"
