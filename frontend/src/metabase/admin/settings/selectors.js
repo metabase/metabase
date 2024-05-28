@@ -372,32 +372,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: UploadSettings,
     settings: [
       {
-        key: "uploads-enabled",
-        display_name: t`Data Uploads`,
-        description: t`Enable admins to upload data to new database tables from CSV files.`,
-        type: "boolean",
-      },
-      {
-        key: "uploads-database-id",
-        getHidden: settings => !settings["uploads-enabled"],
-        display_name: t`Database`,
-        description: t`Identify a database where upload tables will be created.`,
-        placeholder: t`Select a database`,
-      },
-      {
-        key: "uploads-schema-name",
-        display_name: t`Schema name`,
-        description: t`Identify a database schema where data upload tables will be created.`,
-        type: "string",
-        placeholder: "uploads",
-      },
-      {
-        key: "uploads-table-prefix",
-        display_name: t`Table prefix`,
-        description: t`Identify a table prefix for tables created by data uploads.`,
-        placeholder: "uploaded_",
-        type: "string",
-        required: false,
+        key: "uploads-settings",
       },
     ],
   },

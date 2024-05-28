@@ -17,13 +17,14 @@ import {
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
+import { getIsMetadataLoaded } from "metabase/dashboard/selectors";
 import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type {
   Dashboard as IDashboard,
   DashboardCard,
@@ -208,6 +209,7 @@ function DashboardInner(props: DashboardProps) {
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
+  const isMetadataLoaded = useSelector(getIsMetadataLoaded);
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -310,25 +312,28 @@ function DashboardInner(props: DashboardProps) {
   );
 
   useEffect(() => {
-    if (previousDashboardId !== dashboardId) {
-      handleLoadDashboard(dashboardId).then(() => {
-        setIsInitialized(true);
-      });
+    const hasDashboardChanged = dashboardId !== previousDashboardId;
+    if (hasDashboardChanged) {
+      handleLoadDashboard(dashboardId).then(() => setIsInitialized(true));
       return;
     }
 
-    if (previousTabId !== selectedTabId && dashboard) {
-      fetchDashboardCardData();
-      fetchDashboardCardMetadata();
+    if (!dashboard) {
       return;
     }
-    const didDashboardLoad = !previousDashboard && dashboard;
-    const didParameterValuesChange = !_.isEqual(
-      previousParameterValues,
+
+    const hasDashboardLoaded = !previousDashboard;
+    const hasTabChanged = selectedTabId !== previousTabId;
+    const hasParameterValueChanged = !_.isEqual(
       parameterValues,
+      previousParameterValues,
     );
-    if (didDashboardLoad || didParameterValuesChange) {
+
+    if (hasDashboardLoaded) {
       fetchDashboardCardData({ reload: false, clearCache: true });
+      fetchDashboardCardMetadata();
+    } else if (hasTabChanged || hasParameterValueChanged) {
+      fetchDashboardCardData();
     }
   }, [
     dashboard,
@@ -418,7 +423,7 @@ function DashboardInner(props: DashboardProps) {
       isFullHeight={isEditing || isSharing}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
-      loading={!dashboard}
+      loading={!dashboard || !isMetadataLoaded}
       error={error}
     >
       {() => {

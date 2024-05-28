@@ -1,3 +1,4 @@
+export * from "./use-click-behavior-data";
 export * from "./use-dashboard-fullscreen";
 export * from "./use-embed-display-options";
 export * from "./use-dashboard-nav";
