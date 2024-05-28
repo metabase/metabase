@@ -470,6 +470,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
     });
@@ -482,6 +483,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuery").should("have.been.calledOnce");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
     });
@@ -528,7 +530,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("not.have.been.called");
 
-    cy.wait(1000); // this is needed to avoid flakes
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
     });
@@ -541,6 +543,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
     });
@@ -626,6 +629,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
     });
@@ -637,6 +641,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuery").should("have.been.calledOnce");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
     });
