@@ -17,17 +17,5 @@ export function parseValues(str: string): string[] {
 }
 
 export function unique(values: string[]): string[] {
-  const seen = new Set<string>();
-  const uniques = [];
-
-  for (const value of values) {
-    if (seen.has(value)) {
-      continue;
-    }
-
-    seen.add(value);
-    uniques.push(value);
-  }
-
-  return uniques;
+  return Array.from(new Set(values));
 }
