@@ -111,20 +111,30 @@
   As this function is called during normalization, also clauses that are not yet keywordized must be handled.
   `:effective-type` is required for coerced fields to pass schema checks."
   [x metadata-provider]
-  (lib.util.match/replace
-   x
-   ;; pmbql fields
-   [(_clause :guard #{:field "field"}) (_options :guard map?) (id :guard integer?)]
-   (let [{:keys [effective-type coercion-strategy]} (-> (lib.metadata/field metadata-provider id)
-                                                        (select-keys [:coercion-strategy :effective-type]))]
-     (update &match 1 merge (when coercion-strategy
-                              {:effective-type effective-type})))
-   ;; legacy mbql fields
-   [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard (some-fn map? nil?))]
-   (let [{:keys [effective-type coercion-strategy]} (-> (lib.metadata/field metadata-provider id)
-                                                        (select-keys [:coercion-strategy :effective-type]))]
-     (update &match 2 merge (when coercion-strategy
-                              {:effective-type effective-type})))))
+  (if-let [field-ids (lib.util.match/match x
+                       [(_clause :guard #{:field "field"}) (_options :guard map?) (id :guard integer?)]
+                       id
+                       [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard map?)]
+                       id)]
+    ;; "pre-warm" the metadata provider
+    (do (lib.metadata/bulk-metadata-or-throw metadata-provider :metadata/column field-ids)
+        (lib.util.match/replace
+         x
+         ;; pmbql fields
+         [(_clause :guard #{:field "field"})
+          (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+          (id :guard integer?)]
+         (let [{:keys [effective-type coercion-strategy]} (-> (lib.metadata/field metadata-provider id)
+                                                              (select-keys [:coercion-strategy :effective-type]))]
+           (update &match 1 merge (when coercion-strategy
+                                    {:effective-type effective-type})))
+         ;; legacy mbql fields
+         [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard (some-fn map? nil?))]
+         (let [{:keys [effective-type coercion-strategy]} (-> (lib.metadata/field metadata-provider id)
+                                                              (select-keys [:coercion-strategy :effective-type]))]
+           (update &match 2 merge (when coercion-strategy
+                                    {:effective-type effective-type})))))
+    x))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
@@ -192,14 +202,14 @@
              (map (fn [[stage-number stage]]
                     (lib.util.match/replace stage
                      [:field
-                      (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
+                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
                       (field-id :guard (every-pred number? pos?))]
                      (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
                                          (select-keys [:base-type :effective-type]))]
                                              ;; Fallback if metadata is missing
                                              [:field (merge found-ref opts) field-id])
                      [:expression
-                      (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
+                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
                       expression-name]
                      (let [found-ref (try
                                        (m/remove-vals
