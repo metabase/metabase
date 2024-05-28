@@ -84,6 +84,7 @@ export const sortModels = (
   sortingOptions: SortingOptions,
   localeCode: string = "en",
 ) => {
+  // FIXME: This is probably over-optimized
   const { sort_column: primarySortColumn, sort_direction } = sortingOptions;
 
   if (!isValidSortColumn(primarySortColumn)) {
@@ -115,7 +116,7 @@ export const sortModels = (
     secondaryValues.map((value, index) => [value, index]),
   );
 
-  // Use the pre-computed value orders for fast comparison
+  // Use pre-computed value orders for fast comparison
   const comparePrimary = (a: string, b: string) =>
     primaryOrderMap.get(a)! - primaryOrderMap.get(b)!;
   const compareSecondary = (a: string, b: string) =>
