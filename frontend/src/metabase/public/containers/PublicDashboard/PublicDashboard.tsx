@@ -269,7 +269,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                   isPublic
                   mode={PublicMode as unknown as Mode}
-                  navigateToNewCardFromDashboard={() => {}}
                   selectedTabId={this.props.selectedTabId}
                   slowCards={this.props.slowCards}
                   isEditing={false}
