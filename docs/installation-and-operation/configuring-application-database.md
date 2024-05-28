@@ -20,7 +20,7 @@ data needed to run the application. The default settings use an embedded H2 data
 
 ## [H2](https://www.h2database.com/) (default)
 
-> **For production installations of Metabase we recommend that users [replace the H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability when Metabase is running with many users.
+> **For production installations of Metabase we recommend that people [replace the H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability when Metabase is running with many users.
 
 To use the H2 database for your Metabase instance you don't need to do anything at all. When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
 
