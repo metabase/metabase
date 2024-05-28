@@ -1287,7 +1287,9 @@
     (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
-  ;; - add any columns that need removing to `columns-to-remove` above, and create the EDN file again
+  ;; - add any columns that need removing to `columns-to-remove` above (use your common sense and list anything that
+  ;;   shouldn't be carried into new instances
+  ;;   instances), and create the EDN file again
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
   ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
