@@ -67,7 +67,7 @@ describe("scenarios > question > offset", () => {
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
-  describe.only("custom columns", () => {
+  describe("custom columns", () => {
     // This test contradicts the next 2 skipped ones.
     // Remove it once we enable offset() in custom columns.
     it("does not suggest or allow using offset()", () => {
