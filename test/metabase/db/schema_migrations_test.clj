@@ -2063,21 +2063,18 @@
         (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
 
 (deftest trash-migrations-test
-  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-17T20:44:12"] [migrate!]
+  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-23T18:44:37"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
-                                                      {:name "Silly Collection"
-                                                       :slug "silly-collection"})
+                                                      {:name     "Silly Collection"
+                                                       :archived true
+                                                       :slug     "silly-collection"})
             subcollection-id (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Subcollection"
                                                        :slug     "subcollection"
+                                                       :archived true
                                                        :location (collection/children-location (t2/select-one :model/Collection :id collection-id))})]
         (migrate!)
-        (mt/user-http-request :crowberto :put 200 (str "/collection/" subcollection-id) {:archived true})
-        (mt/user-http-request :crowberto :put 200 (str "/collection/" collection-id) {:archived true})
-        (mt/user-http-request :crowberto :delete 200 (str "/collection/" collection-id))
-        (testing "sanity check: `collection` no longer exists"
-          (is (nil? (t2/select-one :model/Collection :id collection-id))))
         (let [trash-collection-id (collection/trash-collection-id)]
           (testing "After a down-migration, it stays in the trash"
             (migrate! :down 49)
