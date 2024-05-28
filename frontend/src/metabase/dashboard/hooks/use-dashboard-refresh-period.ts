@@ -3,17 +3,19 @@ import { useUnmount } from "react-use";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { DashboardRefreshPeriodControls } from "../types";
+import type { DashboardRefreshPeriodControls, RefreshPeriod } from "../types";
 
 import { useInterval } from "./use-interval";
 
 const TICK_PERIOD = 1; // seconds
 export const useDashboardRefreshPeriod = ({
+  initialRefreshPeriod = null,
   onRefresh,
 }: {
+  initialRefreshPeriod?: RefreshPeriod;
   onRefresh: () => void;
 }): DashboardRefreshPeriodControls => {
-  const [period, setPeriod] = useState<number | null>(null);
+  const [period, setPeriod] = useState<number | null>(initialRefreshPeriod);
   const elapsedHook = useRef<((elapsed: number | null) => void) | null>(null);
   const elapsed = useRef<number | null>(0);
 
