@@ -1,6 +1,7 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders } from "__support__/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {
@@ -14,7 +15,7 @@ const { rows, cols, settings } = PIVOT_TABLE_MOCK_DATA;
 const columnIndexes = [0, 1, 2, 4, 5];
 
 function setup(options?: any) {
-  render(<PivotTableTestWrapper {...options} />);
+  renderWithProviders(<PivotTableTestWrapper {...options} />);
 }
 
 describe("Visualizations > PivotTable > PivotTable", () => {
