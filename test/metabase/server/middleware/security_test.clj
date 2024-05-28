@@ -107,11 +107,11 @@
 
 (deftest test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
-    (is (= (count (mw.security/parse-approved-origins "example.com      example.org")) 2))
-    (is (= (count (mw.security/parse-approved-origins "   example.com      example.org   ")) 2)))
+    (is (= 2 (count (mw.security/parse-approved-origins "example.com      example.org"))))
+    (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
   (testing "Should filter out invalid origins without throwing"
-    (is (= (count (mw.security/parse-approved-origins "example.org ://example.com")) 1))
-    (is (= (count (mw.security/parse-approved-origins "example.org http:/example.com")) 1))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
 
 (deftest test-approved-domain?
   (testing "Exact match"
