@@ -164,7 +164,7 @@
 (defn parse-approved-origins
     "Parses the space separated string of approved origins"
     [approved-origins-raw]
-    (let [urls (filter seq (str/split approved-origins-raw #" "))]
+    (let [urls (str/split approved-origins-raw #" +")]
      (keep parse-url urls)))
 
 (defn approved-origin?
