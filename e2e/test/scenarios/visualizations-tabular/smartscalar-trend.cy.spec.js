@@ -2,7 +2,6 @@ import Color from "color";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  cartesianChartCircle,
   createNativeQuestion,
   menu,
   popover,
@@ -494,6 +493,6 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("viz-type-button").click();
     cy.findByTestId("Line-button").click();
     cy.icon("warning").should("not.exist");
-    cartesianChartCircle().should("have.length", 3);
+    cy.get("circle.dot").should("have.length", 3);
   });
 });
