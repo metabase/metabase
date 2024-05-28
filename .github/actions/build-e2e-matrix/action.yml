@@ -15,7 +15,7 @@ runs:
         script: | # js
           const java = 11;
 
-          const defaultRunner = "ubuntu-22.04";
+          const defaultRunner = "ubuntu-latest-8-cores";
 
           const defaultOptions = {
             "java-version": java,
