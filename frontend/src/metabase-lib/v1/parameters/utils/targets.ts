@@ -70,22 +70,11 @@ export function getParameterTargetField(
       );
       if (columnIndex >= 0) {
         const column = columns[columnIndex];
-        const fields = metadata.fieldsList();
-        const fieldIndexes = Lib.findColumnIndexesFromLegacyRefs(
-          query,
-          stageIndex,
-          [column],
-          fields.map(field => field.reference()),
-        );
-        const fieldIndex = fieldIndexes.findIndex(index => index >= 0);
-        return fields[fieldIndex];
+        const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+        if (fieldValuesInfo.fieldId != null) {
+          return metadata.field(fieldValuesInfo.fieldId);
+        }
       }
-    } else {
-      // empty columns mean we don't have table metadata (embedding)
-      // we cannot match columns with MBQL lib in this case, so we rely on the BE returning metadata for only used fields
-      const tableId = Lib.sourceTableOrCardId(query);
-      const fieldId = fieldRef[1];
-      return metadata.field(fieldId, tableId) ?? metadata.field(fieldId);
     }
   }
 
