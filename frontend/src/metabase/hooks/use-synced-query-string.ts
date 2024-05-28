@@ -3,10 +3,7 @@ import { useEffect } from "react";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { buildSearchString } from "metabase/lib/urls";
 
-export function useSyncedQueryString(
-  object: Record<string, any>,
-  deps?: any[],
-) {
+export function useSyncedQueryString(object: Record<string, any>) {
   useEffect(() => {
     /**
      * We don't want to sync the query string to the URL because when previewing,
@@ -45,7 +42,7 @@ export function useSyncedQueryString(
         );
       }
     };
-  }, [deps, object]);
+  }, [object]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];

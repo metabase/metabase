@@ -31,7 +31,7 @@ export const SyncedParametersList = ({
     [parameters],
   );
 
-  useSyncedQueryString({ object: queryParams });
+  useSyncedQueryString(queryParams);
 
   return (
     <ParametersList
