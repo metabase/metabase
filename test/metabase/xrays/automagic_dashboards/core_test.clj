@@ -950,6 +950,7 @@
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
+            ;; this is usually 6 but it can be 7 sometimes in CI for some reason
             (is (contains? #{6 7} (call-count)))))))))
 
 (deftest empty-table-test
