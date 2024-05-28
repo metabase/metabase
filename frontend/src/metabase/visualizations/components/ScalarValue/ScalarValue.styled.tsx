@@ -22,7 +22,7 @@ export const ScalarValueWrapper = styled(Text)`
   cursor: pointer;
 
   &:hover {
-    color: ${({ theme }) => theme.fn?.themeColor("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
