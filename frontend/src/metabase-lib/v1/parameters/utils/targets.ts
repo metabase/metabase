@@ -83,8 +83,8 @@ export function getParameterTargetField(
 
     const column = columns[columnIndex];
     const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-    // the column does not represent to a database field, e.g. coming from an aggregation clause
     if (fieldValuesInfo.fieldId == null) {
+      // the column does not represent to a database field, e.g. coming from an aggregation clause
       return null;
     }
 
