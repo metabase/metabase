@@ -12,7 +12,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
@@ -367,12 +366,6 @@
 
 (declare replace-join)
 
-(defn- backfill-effective-type
-  [query]
-  (if-let [metadata (:lib/metadata query)]
-    (update query :stages #(lib.query/add-effective-type-to-coereced-fields % metadata))
-    query))
-
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage specified by `stage-number`.
   If `stage-number` is not specified, the last stage is used."
@@ -384,16 +377,15 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (let [query (backfill-effective-type query)]
-     (cond
-       (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
-       (replace-join query stage-number target-clause new-clause)
+   (cond
+     (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
+     (replace-join query stage-number target-clause new-clause)
 
-       (expression-replacement? target-clause new-clause)
-       (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
+     (expression-replacement? target-clause new-clause)
+     (replace-expression-removing-erroneous-parts query stage-number target-clause new-clause)
 
-       :else
-       (remove-replace* query stage-number target-clause :replace new-clause)))))
+     :else
+     (remove-replace* query stage-number target-clause :replace new-clause))))
 
 (defn- field-clause-with-join-alias?
   [field-clause join-alias]

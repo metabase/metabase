@@ -10,10 +10,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
-   [metabase.types :as types]
-   [metabase.util.malli :as mu]))
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -1426,46 +1423,3 @@
             (lib/replace-clause join-query 0
                                 (first (lib/aggregations join-query 0))
                                 (lib/min (lib/get-month (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))))
-
-(deftest ^:parallel coerced-filter-test
-  (let [effective-type (types/effective-type-for-coercion :Coercion/UNIXSeconds->DateTime)
-        mp (merged-mock/merged-mock-metadata-provider
-            meta/metadata-provider
-            {:fields [{:id                (meta/id :people :id)
-                       :coercion-strategy :Coercion/UNIXSeconds->DateTime
-                       :effective-type    effective-type}]})
-        old-clause [:=
-                    {:lib/uuid "52a5490e-78f5-44e2-80b9-e3a7a1221546"}
-                    [:field
-                     {:base-type :type/Text,
-                      :lib/uuid  "e85a9493-1e01-4ec6-b0be-717ff709c08f"}
-                     (meta/id :people :city)]
-                    "Abilene"]
-        missing-effective-type-clause [:between
-                                       {:lib/uuid "498da744-dade-4510-82fe-775c2a89939f"}
-                                       [:field
-                                        {:base-type :type/BigInteger,
-                                         :lib/uuid  "eb6b225f-7499-4218-b90f-d4d6a29cd76d"}
-                                        (meta/id :people :id)]
-                                       "1969-10-10"
-                                       "1969-11-10"]
-        query {:lib/metadata mp
-               :database (meta/id)
-               :lib/type :mbql/query
-               :stages   [{:lib/type     :mbql.stage/mbql
-                           :source-table (meta/id :people)
-                           :filters      [old-clause
-                                          missing-effective-type-clause]}]}
-        new-clause [:=
-                    {:lib/uuid "89c7eba5-d0a8-4a45-b0bf-ea44de20ee70"}
-                    [:field
-                     {:lib/uuid  "cfadec82-7727-4901-a557-5dca8530d8d9",
-                      :base-type :type/Text}
-                     (meta/id :people :city)]
-                    "Aberdeen"]]
-    (mu/disable-enforcement
-     (testing "replace-clause is able to handle missing effective types for coerced fields (issue #42931)")
-     (is (=? {:stages [{:filters [new-clause
-                                  (update-in missing-effective-type-clause [2 1] assoc
-                                             :effective-type effective-type)]}]}
-             (lib/replace-clause query old-clause new-clause))))))
