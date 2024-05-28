@@ -307,7 +307,7 @@ export const fetchCardData = createThunkAction(
 
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
-  (dispatch, getState) => {
+  async (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
 
@@ -370,7 +370,7 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      Promise.all(promises).then(() => {
+      await Promise.all(promises).then(() => {
         dispatch(loadingComplete());
       });
     }

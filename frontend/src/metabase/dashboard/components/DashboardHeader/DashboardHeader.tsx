@@ -33,6 +33,7 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
 import {
+  getIsMetadataLoaded,
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
@@ -184,6 +185,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       getSetting(state, "custom-homepage-dashboard") === dashboard?.id,
   );
   const missingRequiredParameters = useSelector(getMissingRequiredParameters);
+  const isMetadataLoaded = useSelector(getIsMetadataLoaded);
 
   const { data: collection, isLoading: isLoadingCollection } =
     useCollectionQuery({ id: dashboard.collection_id || "root" });
@@ -510,6 +512,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             key="edit"
             aria-label={t`Edit dashboard`}
             icon="pencil"
+            disabled={!isMetadataLoaded}
             onClick={() => handleEdit(dashboard)}
           />
         </Tooltip>,

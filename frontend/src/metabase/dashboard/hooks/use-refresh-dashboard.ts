@@ -28,14 +28,14 @@ export const useRefreshDashboard = ({
           options: { preserveParameters: true },
         }),
       );
-      dispatch(
+      await dispatch(
         fetchDashboardCardData({
           isRefreshing: true,
           reload: true,
           clearCache: false,
         }),
       );
-      dispatch(fetchDashboardCardMetadata());
+      await dispatch(fetchDashboardCardMetadata());
     }
   }, [dashboardId, dispatch, queryParams]);
 

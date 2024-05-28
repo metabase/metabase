@@ -18,10 +18,10 @@ export const revertToRevision = createThunkAction(
           queryParams: null,
         }),
       );
-      await Promise.all([
-        dispatch(fetchDashboardCardData({ reload: false, clearCache: true })),
-        dispatch(fetchDashboardCardMetadata()),
-      ]);
+      await dispatch(
+        fetchDashboardCardData({ reload: false, clearCache: true }),
+      );
+      await dispatch(fetchDashboardCardMetadata());
     };
   },
 );
