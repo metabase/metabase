@@ -49,6 +49,7 @@
     :model/LoginHistory
     :model/FieldUsage
     :model/FieldValues
+    :model/LegacyMetric
     :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
