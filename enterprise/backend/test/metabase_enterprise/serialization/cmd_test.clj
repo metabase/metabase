@@ -176,7 +176,8 @@
                   _card (ts/create! Card :name "card" :collection_id (:id coll))]
               (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
               (testing "Snowplow export event was sent"
-                (is (=? {"event"           "serialization_export"
+                (is (=? {"event"           "serialization"
+                         "direction"       "export"
                          "collection"      (str (:id coll))
                          "all_collections" false
                          "data_model"      false
@@ -189,12 +190,13 @@
                          "success"         true
                          "error_message"   nil}
                         (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
-                             (filter #(= "serialization_export" (get % "event")))
+                             (filter #(= "serialization" (get % "event")))
                              first))))
 
               (cmd/import dump-dir)
               (testing "Snowplow import event was sent"
-                (is (=? {"event"         "serialization_import"
+                (is (=? {"event"         "serialization"
+                         "direction"     "import"
                          "duration_ms"   pos?
                          "source"        "cli"
                          "models"        "Card,Collection,Setting"
@@ -208,7 +210,8 @@
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"
-                  (is (=? {"event"           "serialization_export"
+                  (is (=? {"event"           "serialization"
+                           "direction"       "export"
                            "collection"      (str (:id coll))
                            "all_collections" false
                            "data_model"      false
@@ -221,7 +224,7 @@
                            "success"         false
                            "error_message"   "java.lang.Exception: Cannot load settings"}
                           (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
-                               (filter #(= "serialization_export" (get % "event")))
+                               (filter #(= "serialization" (get % "event")))
                                first)))))
 
               (let [load-one! @#'v2.load/load-one!]
@@ -232,7 +235,8 @@
                   (is (thrown? Exception
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"
-                    (is (=? {"event"         "serialization_import"
+                    (is (=? {"event"         "serialization"
+                             "direction"     "import"
                              "duration_ms"   pos?
                              "source"        "cli"
                              "models"        ""

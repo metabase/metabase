@@ -29,22 +29,21 @@
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account              "1-0-1"
-   ::browse_data          "1-0-0"
-   ::invite               "1-0-1"
-   ::csvupload            "1-0-0"
-   ::dashboard            "1-1-4"
-   ::database             "1-0-1"
-   ::instance             "1-1-2"
-   ::metabot              "1-0-1"
-   ::search               "1-0-1"
-   ::model                "1-0-0"
-   ::timeline             "1-0-0"
-   ::task                 "1-0-0"
-   ::action               "1-0-0"
-   ::embed_share          "1-0-0"
-   ::serialization_export "1-0-0"
-   ::serialization_import "1-0-0"})
+  {::account       "1-0-1"
+   ::browse_data   "1-0-0"
+   ::invite        "1-0-1"
+   ::csvupload     "1-0-0"
+   ::dashboard     "1-1-4"
+   ::database      "1-0-1"
+   ::instance      "1-1-2"
+   ::metabot       "1-0-1"
+   ::search        "1-0-1"
+   ::model         "1-0-0"
+   ::timeline      "1-0-0"
+   ::task          "1-0-0"
+   ::action        "1-0-0"
+   ::embed_share   "1-0-0"
+   ::serialization "1-0-0"})
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -73,8 +72,7 @@
    ::metabot-feedback-received      ::metabot
    ::embedding-enabled              ::embed_share
    ::embedding-disabled             ::embed_share
-   ::serialization-export           ::serialization_export
-   ::serialization-import           ::serialization_import})
+   ::serialization                  ::serialization})
 
 (defsetting analytics-uuid
   (deferred-tru
