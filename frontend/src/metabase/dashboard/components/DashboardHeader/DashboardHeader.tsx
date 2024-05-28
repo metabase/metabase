@@ -513,6 +513,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
             aria-label={t`Edit dashboard`}
             icon="pencil"
             disabled={!isMetadataLoaded}
+            data-testid="dashboard-edit-button"
             onClick={() => handleEdit(dashboard)}
           />
         </Tooltip>,
