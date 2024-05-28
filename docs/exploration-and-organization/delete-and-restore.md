@@ -26,7 +26,7 @@ You;'ll be able to see the contents of deleted dashboards, questions, and models
 
 ## Search in Trash
 
-You can use [advanced search](./exploration.md) with a "Search items in trash" toggle to find items in Trash
+To find items in Trash, you can use [advanced search](./exploration.md) with a "Search items in trash" toggle.
 
 ## Deleting and restoring items
 
@@ -86,7 +86,7 @@ Deleting or restoring an item will affect other items that depend on that item.
 
 ## Permanently deleting items
 
-Moving an item to Trash is not permanent: you'll be able to restore it to the original parent collection, or move it to a non-deleted collection.
+Moving an item to Trash doesn't delete the item completely: you'll be able to restore the item from the Trash.
 
 To permanently delete an item:
 
@@ -105,7 +105,7 @@ You won't see archived Events and Timelines in Trash. To see archived events and
 
 SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../questions/native-editor/sql-snippets.md#archiving-snippets).
 
-You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the cSnippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
+You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
 
 ## Deleting metrics and segments
 
