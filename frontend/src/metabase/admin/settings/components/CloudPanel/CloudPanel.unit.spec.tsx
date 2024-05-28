@@ -3,8 +3,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type MockResponse } from "fetch-mock";
 
+import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { waitFor, renderWithProviders, screen } from "__support__/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
+import { createMockSettings } from "metabase-types/api/mocks";
 
 import { CloudPanel } from "./CloudPanel";
 
@@ -25,7 +27,7 @@ const setup = () => {
 
 describe("CloudPanel", () => {
   beforeEach(() => {
-    fetchMock.get("path:/api/session/properties", 200);
+    setupPropertiesEndpoints(createMockSettings());
     fetchMock.post(`path:/api/cloud-migration`, INIT_RESPONSE);
     fetchMock.put(`path:/api/cloud-migration/cancel`, 200);
   });
