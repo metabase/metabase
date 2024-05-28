@@ -132,12 +132,12 @@
     {:protocol nil :domain "*" :port "*"}
     (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
           matches (re-matches pattern url)]
-      (if matches
+      (if-not matches
+        (do (log/errorf "Invalid URL: %s" url) nil)
         (let [[_ protocol domain port] matches]
           {:protocol protocol
            :domain domain
-           :port port})
-        (throw (IllegalArgumentException. (str "Invalid URL '" url "'")))))))
+           :port port})))))
 
 
 (defn approved-domain?
@@ -165,12 +165,7 @@
     "Parses the space separated string of approved origins"
     [approved-origins-raw]
     (let [urls (filter seq (str/split approved-origins-raw #" "))]
-     (remove nil? (map
-      (fn [url]
-        (try
-          (parse-url url)
-          (catch Exception e (log/error e) nil)))
-      urls))))
+     (keep parse-url urls)))
 
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"

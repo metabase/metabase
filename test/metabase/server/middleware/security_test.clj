@@ -100,10 +100,10 @@
     (is (= (mw.security/parse-url "example.com:80") {:protocol nil :domain "example.com" :port "80"}))
     (is (= (mw.security/parse-url "example.com:*") {:protocol nil :domain "example.com" :port "*"})))
 
-  (testing "Should throw for invalid urls"
-    (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (mw.security/parse-url "ftp://example.com")))
-    (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (mw.security/parse-url "://example.com")))
-    (is (thrown-with-msg? IllegalArgumentException #"Invalid URL" (mw.security/parse-url "example:com")))))
+  (testing "Should return nil for invalid urls"
+    (is (nil? (mw.security/parse-url "ftp://example.com")))
+    (is (nil? (mw.security/parse-url "://example.com")))
+    (is (nil? (mw.security/parse-url "example:com")))))
 
 (deftest test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
