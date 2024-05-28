@@ -39,10 +39,10 @@ export const FormBox = styled(Box)<
   ${({ isInSidebar }) =>
     isInSidebar
       ? `
-  paddingInlineStart: 2rem;
-  paddingInlineEnd: 1rem;
+  padding-inline-start: 2rem;
+  padding-inline-end: 1rem;
   `
       : `
-  paddingInline: 2.5rem;
+  padding-inline: 2.5rem;
 `}
 `;

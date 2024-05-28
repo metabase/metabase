@@ -247,6 +247,7 @@ const FormButtonsGroup = ({
       bg={color("white")}
       className="form-buttons-group"
       style={{
+        justifyContent: isInSidebar ? undefined : "flex-end",
         paddingInlineStart: isInSidebar ? "2rem" : "2.5rem",
         paddingInlineEnd: isInSidebar ? "1rem" : "2.5rem",
       }}
@@ -298,7 +299,7 @@ const FormButtons = ({
 
   if (shouldAllowInvalidation && targetId && targetName) {
     return (
-      <FormButtonsGroup>
+      <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
           targetModel={targetModel}
@@ -351,10 +352,12 @@ const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
   buttonLabels,
+  isInSidebar,
 }: {
   dirty: boolean;
   isFormPending: boolean;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
   return (
     <>
@@ -362,7 +365,7 @@ const SaveAndDiscardButtons = ({
         {buttonLabels.discard}
       </Button>
       <FormSubmitButton
-        miw="10rem"
+        miw={isInSidebar ? undefined : "10rem"}
         h="40px"
         label={buttonLabels.save}
         successLabel={
