@@ -14,6 +14,7 @@ import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   EMBEDDING_SDK_COMPONENTS_OVERRIDES,
 } from "./default-component-theme";
+import type { MappableSdkColor } from "./embedding-color-palette";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 
 const getFontFamily = (theme: MetabaseTheme) =>
@@ -51,9 +52,10 @@ export function getEmbeddingThemeOverride(
     for (const name in theme.colors) {
       const color = theme.colors[name as MetabaseColor];
 
-      if (color) {
+      if (color && typeof color === "string") {
         const themeColorName =
-          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MetabaseColor];
+          SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
+
         override.colors[themeColorName] = colorTuple(color);
       }
     }

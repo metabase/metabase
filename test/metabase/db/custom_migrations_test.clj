@@ -1898,15 +1898,15 @@
             (is (=? {uploads-db-id     {:uploads_enabled true,  :uploads_schema_name "uploads", :uploads_table_prefix "uploads_"}
                      not-uploads-db-id {:uploads_enabled false, :uploads_schema_name  nil,      :uploads_table_prefix nil}}
                     (m/index-by :id (t2/select :metabase_database))))
-            ;; TODO: delete the rest of the test after merging because down-migrations flake with MySQL:
-            (migrate! :down 49)
-            (testing "make sure the settings contain the same decrypted values after the migrations"
-              (let [settings-after (get-settings)]
-                (is (not-empty settings-after))
-                (is (every? encryption/possibly-encrypted-string?
-                            (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+            (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+              (migrate! :down 49)
+              (testing "make sure the settings contain the same decrypted values after the migrations"
+                (let [settings-after (get-settings)]
+                  (is (not-empty settings-after))
+                  (is (every? encryption/possibly-encrypted-string?
+                              (map :value settings-after)))
+                  (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
+                         (set (map #(update % :value encryption/maybe-decrypt) settings-after)))))))))))))
 
 (deftest migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
