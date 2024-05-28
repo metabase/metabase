@@ -4,7 +4,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { buildSearchString } from "metabase/lib/urls";
 
 export function useSyncedQueryString(
-  fn: () => Record<string, any>,
+  object: Record<string, any>,
   deps?: any[],
 ) {
   useEffect(() => {
@@ -17,7 +17,6 @@ export function useSyncedQueryString(
     if (IS_EMBED_PREVIEW) {
       return;
     }
-    const object = fn();
     const searchString = buildSearchString({
       object,
       filterFn: containsAllowedParams,
@@ -46,10 +45,7 @@ export function useSyncedQueryString(
         );
       }
     };
-
-    // exhaustive-deps is enabled for useSyncedQueryString so we don't need to include `fn` as a dependency
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deps]);
+  }, [deps, object]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
