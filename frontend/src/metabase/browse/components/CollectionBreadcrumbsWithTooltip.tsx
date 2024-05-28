@@ -168,7 +168,7 @@ export const SimpleCollectionDisplay = ({
   collection: CollectionEssentials;
 }) => {
   return (
-    <Flex align="center" gap="sm">
+    <Flex align="center">
       <CollectionsIcon name="folder" />
       <Ellipsified>{getCollectionName(collection)}</Ellipsified>
     </Flex>
