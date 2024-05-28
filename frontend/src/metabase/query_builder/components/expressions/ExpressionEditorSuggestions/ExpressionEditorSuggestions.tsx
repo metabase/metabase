@@ -276,6 +276,7 @@ function ExpressionEditorSuggestionsListItem({
             stageIndex={stageIndex}
             column={suggestion.column}
             position="top-start"
+            color={isHighlighted ? color("brand-white") : color("text-light")}
             className={CS.mr1}
           />
         )}
