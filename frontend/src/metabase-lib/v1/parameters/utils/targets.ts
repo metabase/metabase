@@ -60,8 +60,35 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const [_, fieldId] = fieldRef;
-    return metadata.field(fieldId);
+    const query = question.query();
+    const stageIndex = -1;
+    const columns = Lib.visibleColumns(query, stageIndex);
+
+    if (columns.length === 0) {
+      // query and metadata are not available: 1) no data permissions 2) embedding
+      // we cannot correctly find a field in all cases this way
+      const [_, fieldId] = fieldRef;
+      return metadata.field(fieldId);
+    }
+
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      columns,
+      [fieldRef],
+    );
+    if (columnIndex < 0) {
+      return null;
+    }
+
+    const column = columns[columnIndex];
+    const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+    // the column does not represent to a database field, e.g. coming from an aggregation clause
+    if (fieldValuesInfo.fieldId == null) {
+      return null;
+    }
+
+    return metadata.field(fieldValuesInfo.fieldId);
   }
 
   return null;
