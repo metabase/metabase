@@ -78,10 +78,13 @@ const getCellBackgroundColor = ({
 const getCellHoverBackground = (
   props: PivotTableCellProps & { theme: MantineTheme },
 ) => {
-  const backgroundColor = getCellBackgroundColor(props);
-  if (!backgroundColor) {
+  const { cell: cellTheme } = props.theme.other.table;
+
+  if (!cellTheme.backgroundColor) {
     return color("border");
   }
+
+  const backgroundColor = getCellBackgroundColor(props);
 
   return isDark(backgroundColor)
     ? lighten(backgroundColor, 0.15)
