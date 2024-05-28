@@ -185,43 +185,37 @@ const TBodyRow = ({
       key={model.id}
     >
       {/* Name */}
-      {
-        <NameCell
-          model={model}
-          icon={icon}
-          onClick={() => {
-            trackModelClick(model.id);
-          }}
-        />
-      }
+      <NameCell
+        model={model}
+        icon={icon}
+        onClick={() => {
+          trackModelClick(model.id);
+        }}
+      />
 
       {/* Collection */}
-      {
-        <ModelCell
-          data-testid={`path-for-collection: ${
-            model.collection
-              ? getCollectionName(model.collection)
-              : t`Untitled collection`
-          }`}
-          {...collectionProps}
-        >
-          {model.collection && (
-            <CollectionBreadcrumbsWithTooltip
-              collection={model.collection}
-              containerName={collectionContainerName}
-            />
-          )}
-        </ModelCell>
-      }
+      <ModelCell
+        data-testid={`path-for-collection: ${
+          model.collection
+            ? getCollectionName(model.collection)
+            : t`Untitled collection`
+        }`}
+        {...collectionProps}
+      >
+        {model.collection && (
+          <CollectionBreadcrumbsWithTooltip
+            collection={model.collection}
+            containerName={collectionContainerName}
+          />
+        )}
+      </ModelCell>
 
       {/* Description */}
-      {
-        <ModelCell {...descriptionProps}>
-          <EllipsifiedWithMarkdownTooltip lazy>
-            {getModelDescription(model) || ""}
-          </EllipsifiedWithMarkdownTooltip>
-        </ModelCell>
-      }
+      <ModelCell {...descriptionProps}>
+        <EllipsifiedWithMarkdownTooltip lazy>
+          {getModelDescription(model) || ""}
+        </EllipsifiedWithMarkdownTooltip>
+      </ModelCell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
