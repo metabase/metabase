@@ -146,14 +146,11 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
           enabled={false}
         >
           {items =>
-            items.map((model, i) => (
+            items.map(model => (
               <TBodyRow
                 model={model}
                 key={`model-${model.id}`}
                 collectionContainerName="collection-container"
-                // Rather than create a separate CSS container for each row,
-                // just create one in the first row and use it for all the rows
-                shouldCreateCollectionContainer={i === 0}
               />
             ))
           }
@@ -166,11 +163,9 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
 const TBodyRow = ({
   model,
   collectionContainerName,
-  shouldCreateCollectionContainer,
 }: {
   model: ModelResult;
   collectionContainerName: string;
-  shouldCreateCollectionContainer: boolean;
 }) => {
   const icon = getIcon(model);
   const dispatch = useDispatch();
@@ -212,9 +207,8 @@ const TBodyRow = ({
         >
           {model.collection && (
             <CollectionBreadcrumbsWithTooltip
-              containerName={collectionContainerName}
               collection={model.collection}
-              shouldCreateCollectionContainer={shouldCreateCollectionContainer}
+              containerName={collectionContainerName}
             />
           )}
         </ModelCell>
