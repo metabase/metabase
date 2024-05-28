@@ -36,6 +36,8 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
   return type === "template-tag" ? tag : null;
 }
 
+// returns only real DB fields and not all mapped columns
+// for columns, use getMappingOptionByTarget
 export function getParameterTargetField(
   target: ParameterTarget,
   question: Question,
