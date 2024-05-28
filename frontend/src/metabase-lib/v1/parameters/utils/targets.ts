@@ -67,8 +67,11 @@ export function getParameterTargetField(
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
       // we cannot correctly find a field in all cases this way
-      const [_, fieldId] = fieldRef;
-      return metadata.field(fieldId);
+      const [_, fieldIdOrName] = fieldRef;
+      const fields = metadata.fieldsList();
+      return fields.find(
+        field => field.id === fieldIdOrName || field.name === fieldIdOrName,
+      );
     }
 
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
