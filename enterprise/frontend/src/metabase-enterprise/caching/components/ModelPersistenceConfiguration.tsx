@@ -2,7 +2,6 @@ import type { ChangeEventHandler } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { c, t } from "ttag";
 
-import { resolveSmoothly } from "metabase/admin/performance/utils";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
 import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -25,19 +24,6 @@ export const ModelPersistenceConfiguration = () => {
   useEffect(() => {
     setPersistenceEnabled(persistenceEnabledInAPI);
   }, [persistenceEnabledInAPI]);
-
-  const onSwitchChanged = useCallback<ChangeEventHandler<HTMLInputElement>>(
-    async e => {
-      const shouldEnable = e.target.checked;
-      setPersistenceEnabled(shouldEnable);
-      if (shouldEnable) {
-        await PersistedModelsApi.enablePersistence();
-      } else {
-        await PersistedModelsApi.disablePersistence();
-      }
-    },
-    [],
-  );
 
   const modelCachingSchedule = useSetting(
     "persisted-model-refresh-cron-schedule",
@@ -109,7 +95,37 @@ export const ModelPersistenceConfiguration = () => {
     dispatch(addUndo({ message: "Saved" }));
   }, [dispatch]);
 
+  const resolveWithToasts = useCallback(
+    async (promises: Promise<any>[]) => {
+      let loadingToastId;
+      try {
+        loadingToastId = await showLoadingToast();
+        await Promise.all(promises);
+        showSuccessToast();
+      } catch (e) {
+        showErrorToast();
+      } finally {
+        if (loadingToastId !== undefined) {
+          dismissLoadingToast(loadingToastId);
+        }
+      }
+    },
+    [showLoadingToast, showSuccessToast, showErrorToast, dismissLoadingToast],
+  );
+
   const applicationName = useSelector(getApplicationName);
+
+  const onSwitchChanged = useCallback<ChangeEventHandler<HTMLInputElement>>(
+    async e => {
+      const shouldEnable = e.target.checked;
+      setPersistenceEnabled(shouldEnable);
+      const promise = shouldEnable
+        ? PersistedModelsApi.enablePersistence()
+        : PersistedModelsApi.disablePersistence();
+      await resolveWithToasts([promise]);
+    },
+    [resolveWithToasts, setPersistenceEnabled],
+  );
 
   return (
     <Stack spacing="xl" maw="40rem">
@@ -124,10 +140,13 @@ export const ModelPersistenceConfiguration = () => {
           )
             .t`This will create a table for each of your models in a dedicated schema. ${applicationName} will refresh them on a schedule. Questions and queries that use your models will query these tables.`}
           {showMetabaseLinks && (
-            <ExternalLink
-              key="model-caching-link"
-              href={MetabaseSettings.docsUrl("data-modeling/models")}
-            >{t`Learn more`}</ExternalLink>
+            <>
+              {" "}
+              <ExternalLink
+                key="model-caching-link"
+                href={MetabaseSettings.docsUrl("data-modeling/models")}
+              >{t`Learn more`}</ExternalLink>
+            </>
           )}
         </p>
         <Switch
@@ -146,24 +165,10 @@ export const ModelPersistenceConfiguration = () => {
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}
             onChange={async value => {
-              let loadingToastId;
-              try {
-                loadingToastId = await showLoadingToast();
-                await resolveSmoothly(
-                  [
-                    PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                    dispatch(refreshSiteSettings({})),
-                  ],
-                  500,
-                );
-                showSuccessToast();
-              } catch (e) {
-                showErrorToast();
-              } finally {
-                if (loadingToastId !== undefined) {
-                  dismissLoadingToast(loadingToastId);
-                }
-              }
+              await resolveWithToasts([
+                PersistedModelsApi.setRefreshSchedule({ cron: value }),
+                dispatch(refreshSiteSettings({})),
+              ]);
             }}
           />
         </div>
