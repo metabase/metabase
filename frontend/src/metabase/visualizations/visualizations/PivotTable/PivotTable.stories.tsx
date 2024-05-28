@@ -2,7 +2,15 @@ import type { Story } from "@storybook/react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 
+import { PivotTable } from "./PivotTable";
 import { PivotTableTestWrapper } from "./pivot-table-test-mocks";
+
+// TODO: waiting for test helpers in [https://github.com/metabase/metabase/pull/42915/files]
+
+export default {
+  title: "viz/PivotTable",
+  component: PivotTable,
+};
 
 export const Default: Story = () => {
   return <PivotTableTestWrapper />;

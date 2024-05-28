@@ -1,4 +1,3 @@
-import isPropValid from "@emotion/is-prop-valid";
 import styled from "@emotion/styled";
 import type { ButtonHTMLAttributes } from "react";
 
@@ -11,8 +10,12 @@ type FilterButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
     isExpanded: boolean;
   };
 
+const shouldForwardProp = (propName: string) => {
+  return propName !== "isExpanded";
+};
+
 export const FilterButton = styled(Button, {
-  shouldForwardProp: isPropValid,
+  shouldForwardProp,
 })<FilterButtonProps>`
   color: ${({ isExpanded }) => (isExpanded ? color("white") : color("filter"))};
   background-color: ${({ isExpanded }) =>
