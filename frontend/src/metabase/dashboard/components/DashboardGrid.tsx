@@ -18,8 +18,8 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
-  isQuestionDashCard,
   getVisibleCardIds,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
@@ -32,6 +32,7 @@ import {
 } from "metabase/lib/dashboard_grid";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
@@ -62,7 +63,8 @@ import {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 } from "../actions";
-import { getDashcardDataMap } from "../selectors";
+import { getNewCardUrl } from "../actions/getNewCardUrl";
+import { getDashcardDataMap, getParameterValues } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
@@ -101,6 +103,8 @@ interface DashboardGridState {
 }
 
 const mapStateToProps = (state: State) => ({
+  metadata: getMetadata(state),
+  parameterValues: getParameterValues(state),
   dashcardData: getDashcardDataMap(state),
 });
 
@@ -471,6 +475,34 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     this.setState({ replaceCardModalDashCard: dashcard });
   };
 
+  getNewCardUrl = ({
+    nextCard,
+    previousCard,
+    dashcard,
+    objectId,
+  }: {
+    nextCard: Card;
+    previousCard: Card;
+    dashcard: DashboardCard;
+    objectId?: number | string;
+  }) => {
+    if (!isQuestionDashCard(dashcard)) {
+      return undefined;
+    }
+
+    const { dashboard, metadata, parameterValues } = this.props;
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard,
+      previousCard,
+      objectId,
+    });
+  };
+
   renderDashCard(
     dc: DashboardCard,
     {
@@ -507,6 +539,11 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           this.props.onReplaceAllDashCardVisualizationSettings
         }
         mode={this.props.mode}
+        getNewCardUrl={
+          this.props.navigateToNewCardFromDashboard
+            ? this.getNewCardUrl
+            : undefined
+        }
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }

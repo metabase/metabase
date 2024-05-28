@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import {
   fetchDashboard,
   fetchDashboardCardData,
@@ -17,7 +19,7 @@ export const useRefreshDashboard = ({
 } => {
   const dispatch = useDispatch();
 
-  const refreshDashboard = async () => {
+  const refreshDashboard = useCallback(async () => {
     if (dashboardId) {
       await dispatch(
         fetchDashboard({
@@ -35,7 +37,7 @@ export const useRefreshDashboard = ({
       );
       dispatch(fetchDashboardCardMetadata());
     }
-  };
+  }, [dashboardId, dispatch, queryParams]);
 
   return { refreshDashboard };
 };
