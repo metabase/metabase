@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useSearchQuery } from "metabase/api";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
@@ -77,8 +78,11 @@ export const BrowseModelsBody = ({
 
   const filteredModels = useMemo(() => {
     const unfilteredModels = (data?.data as ModelResult[]) ?? [];
+    const modelsWithoutInstanceAnalytics = unfilteredModels.filter(
+      model => !isInstanceAnalyticsCollection(model.collection),
+    );
     const filteredModels = filterModels(
-      unfilteredModels,
+      modelsWithoutInstanceAnalytics,
       actualModelFilters,
       availableModelFilters,
     );
