@@ -291,8 +291,7 @@ export const isXAxisScaleValid = (
 
   return (
     !isWaterfall ||
-    xAxisScale == null ||
-    !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)
+    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
   );
 };
 
