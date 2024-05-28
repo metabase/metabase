@@ -621,7 +621,10 @@ export const applyVisualizationSettingsDataTransformations = (
     isTimeSeriesAxis(xAxisModel) ||
     xAxisModel.isHistogram
   ) {
-    dataset = filterNullDimensionValues(dataset, showWarning);
+    const filteredDataset = filterNullDimensionValues(dataset, showWarning);
+    if (filteredDataset.length > 0) {
+      dataset = filteredDataset;
+    }
   }
 
   if (settings["graph.y_axis.scale"] === "log") {
