@@ -1,13 +1,12 @@
 import {
-  PERSONAL_COLLECTIONS,
-  buildCollectionTree as _buildCollectionTree,
-} from "metabase/entities/collections";
-import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
-
+import {
+  PERSONAL_COLLECTIONS,
+  buildCollectionTree as _buildCollectionTree,
+} from "metabase/entities/collections";
 import type {
   Collection,
   CollectionContentModel,
@@ -33,7 +32,7 @@ export function buildCollectionTree({
   targetModel = "question",
 }: {
   collections: Collection[];
-  rootCollection: Collection;
+  rootCollection: Collection | undefined;
   currentUser: User;
   targetModel?: "model" | "question";
 }) {
@@ -52,7 +51,7 @@ export function buildCollectionTree({
   if (currentUser.is_superuser) {
     const otherPersonalCollections = collections.filter(
       collection =>
-        isPersonalCollection(collection) &&
+        isRootPersonalCollection(collection) &&
         collection.personal_owner_id !== currentUser.id,
     );
 

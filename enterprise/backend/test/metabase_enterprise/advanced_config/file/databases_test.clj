@@ -2,23 +2,24 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
+   [metabase.driver.h2 :as h2]
    [metabase.models :refer [Database Table]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-                        (premium-features-test/with-premium-features #{:advanced-config}
+                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
+                                h2/*allow-testing-h2-connections*         true]
+                        (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (def ^:private test-db-name (u/qualified-name ::test-db))
 
 (deftest init-from-config-file-test
   (mt/with-temporary-setting-values [config-from-file-sync-databases true]
-    (let [db-type     (mdb.connection/db-type)
+    (let [db-type     (mdb/db-type)
           original-db (mt/with-driver db-type (mt/db))]
       (try
         (binding [advanced-config.file/*config* {:version 1

@@ -1,0 +1,43 @@
+.formula {
+  composes: bordered rounded from "style";
+  background-color: var(--color-bg-light);
+  cursor: pointer;
+}
+
+.formulaHeader {
+  composes: textBrand py1 px2 from "style";
+  align-items: center;
+  display: flex;
+}
+
+.formulaTitle {
+  composes: ml2 from "style";
+  font-size: 16px;
+}
+
+.formulaDefinitionInner {
+  composes: p2 from "style";
+}
+
+.formulaDefinition {
+  overflow: hidden;
+}
+
+.formulaDefinitionEnter {
+  max-height: 0;
+}
+
+.formulaDefinitionEnter.formulaDefinitionEnterActive {
+  /* using 100% max-height breaks the transition */
+  max-height: 150px;
+  transition: max-height 300ms ease-out;
+}
+
+.formulaDefinitionExit {
+  max-height: 150px;
+}
+
+.formulaDefinitionExit.formulaDefinitionExitActive {
+  max-height: 0;
+  transition: max-height 300ms ease-out;
+}

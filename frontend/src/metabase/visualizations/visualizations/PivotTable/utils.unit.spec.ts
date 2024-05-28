@@ -1,8 +1,12 @@
-import type { Column } from "metabase-types/types/Dataset";
-import type { Card } from "metabase-types/types/Card";
+import type { Card, DatasetColumn } from "metabase-types/api";
 
+import {
+  MAX_HEADER_CELL_WIDTH,
+  MIN_HEADER_CELL_WIDTH,
+  CELL_PADDING,
+  ROW_TOGGLE_ICON_WIDTH,
+} from "./constants";
 import type { PivotSetting, HeaderItem } from "./types";
-
 import {
   isColumnValid,
   isFormattablePivotColumn,
@@ -11,13 +15,6 @@ import {
   getLeftHeaderWidths,
   getColumnValues,
 } from "./utils";
-
-import {
-  MAX_HEADER_CELL_WIDTH,
-  MIN_HEADER_CELL_WIDTH,
-  CELL_PADDING,
-  ROW_TOGGLE_ICON_WIDTH,
-} from "./constants";
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
   const cols = [
@@ -34,16 +31,16 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
       field_ref: ["aggregation", 2],
       name: "aggregation-2",
     },
-  ] as Column[];
+  ] as DatasetColumn[];
 
   describe("isColumnValid", () => {
     it("should return true if a column is an aggregation", () => {
-      const result = isColumnValid({ source: "aggregation" } as Column);
+      const result = isColumnValid({ source: "aggregation" } as DatasetColumn);
       expect(result).toBe(true);
     });
 
     it("should return true if a column is a breakout", () => {
-      const result = isColumnValid({ source: "breakout" } as Column);
+      const result = isColumnValid({ source: "breakout" } as DatasetColumn);
       expect(result).toBe(true);
     });
 
@@ -51,12 +48,12 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
       const result = isColumnValid({
         source: "fields",
         name: "pivot-grouping",
-      } as Column);
+      } as DatasetColumn);
       expect(result).toBe(true);
     });
 
     it("should return false if a column is a field", () => {
-      const result = isColumnValid({ source: "fields" } as Column);
+      const result = isColumnValid({ source: "fields" } as DatasetColumn);
       expect(result).toBe(false);
     });
   });
@@ -65,12 +62,14 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     it("should return true if a column is an aggregation", () => {
       const result = isFormattablePivotColumn({
         source: "aggregation",
-      } as Column);
+      } as DatasetColumn);
       expect(result).toBe(true);
     });
 
     it("should return false if a column is a breakout", () => {
-      const result = isFormattablePivotColumn({ source: "breakout" } as Column);
+      const result = isFormattablePivotColumn({
+        source: "breakout",
+      } as DatasetColumn);
       expect(result).toBe(false);
     });
   });

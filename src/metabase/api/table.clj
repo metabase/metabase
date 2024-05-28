@@ -1,48 +1,57 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
+   [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
-   #_:clj-kondo/ignore
+   #_{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
+   [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private TableVisibilityType
   "Schema for a valid table visibility type."
-  (apply s/enum (map name table/visibility-types)))
+  (into [:enum] (map name table/visibility-types)))
 
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
-  (apply s/enum (map name table/field-orderings)))
+  (into [:enum] (map name table/field-orderings)))
+
+(defn- fix-schema [table]
+  (update table :schema str))
 
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
   (as-> (t2/select Table, :active true, {:order-by [[:name :asc]]}) tables
-    (hydrate tables :db)
-    (filterv mi/can-read? tables)))
+    (t2/hydrate tables :db)
+    (into [] (comp (filter mi/can-read?)
+                   (map fix-schema))
+          tables)))
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
@@ -53,7 +62,8 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn Table id)
-        (hydrate :db :pk_field))))
+        (t2/hydrate :db :pk_field)
+        fix-schema)))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -69,7 +79,7 @@
     (if changed-field-order?
       (do
         (table/update-field-positions! updated-table)
-        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+        (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -79,12 +89,15 @@
     (sync.concurrent/submit-task
      (fn []
        (let [database (table/database (first newly-unhidden))]
-         (if (driver.u/can-connect-with-details? (:engine database) (:details database))
+         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+         ;; purposes of creating a new H2 database.
+         (if (binding [h2/*allow-testing-h2-connections* true]
+               (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
-             (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
+             (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
              (sync/sync-table! table))
-           (log/warn (u/format-color 'red (trs "Cannot connect to database ''{0}'' in order to sync unhidden tables"
-                                               (:name database))))))))))
+           (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
+                                     (:name database)))))))))
 
 (defn- update-tables!
   [ids {:keys [visibility_type] :as body}]
@@ -97,34 +110,33 @@
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
                    show_in_getting_started field_order], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)
-   field_order             (s/maybe FieldOrder)}
+  {id                      ms/PositiveInt
+   display_name            [:maybe ms/NonBlankString]
+   entity_type             [:maybe ms/EntityTypeKeywordOrString]
+   visibility_type         [:maybe TableVisibilityType]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   field_order             [:maybe FieldOrder]}
   (first (update-tables! [id] body)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/"
+(api/defendpoint PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
                 show_in_getting_started], :as body} :body}]
-  {ids                     (su/non-empty [su/IntGreaterThanZero])
-   display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe s/Str)
-   caveats                 (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)}
+  {ids                     [:sequential ms/PositiveInt]
+   display_name            [:maybe ms/NonBlankString]
+   entity_type             [:maybe ms/EntityTypeKeywordOrString]
+   visibility_type         [:maybe TableVisibilityType]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]}
   (update-tables! ids body))
 
 
@@ -139,7 +151,7 @@
 (def ^:private time-options
   [[minute-str "minute"]
    [hour-str "hour"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]])
 
 (def ^:private datetime-options
   [[minute-str "minute"]
@@ -149,14 +161,14 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-   [(deferred-tru "Hour of Day") "hour-of-day"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]
+   [(deferred-tru "Hour of day") "hour-of-day"]
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private date-options
   [[day-str "day"]
@@ -164,12 +176,12 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -266,10 +278,11 @@
 (def ^:private coordinate-default-index
   (dimension-index-for-type :type/Coordinate #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
-(defn- supports-numeric-binning? [driver]
-  (and driver (driver/supports? driver :binning)))
+(defn- supports-numeric-binning? [db]
+  (and db (driver/database-supports? (:engine db) :binning db)))
 
-(defn- assoc-field-dimension-options [driver {:keys [base_type semantic_type fingerprint] :as field}]
+;; TODO: Remove all this when the FE is fully ported to [[metabase.lib.binning/available-binning-strategies]].
+(defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond
                                        (types/field-is-type? :type/Time field)
@@ -283,13 +296,13 @@
 
                                        (and min_value max_value
                                             (isa? semantic_type :type/Coordinate)
-                                            (supports-numeric-binning? driver))
+                                            (supports-numeric-binning? db))
                                        [coordinate-default-index coordinate-dimension-indexes]
 
                                        (and min_value max_value
                                             (isa? base_type :type/Number)
                                             (not (isa? semantic_type :Relation/*))
-                                            (supports-numeric-binning? driver))
+                                            (supports-numeric-binning? db))
                                        [numeric-default-index numeric-dimension-indexes]
 
                                        :else
@@ -298,11 +311,11 @@
            :default_dimension_option default-option
            :dimension_options        all-options)))
 
-(defn- assoc-dimension-options [resp driver]
+(defn- assoc-dimension-options [resp db]
   (-> resp
       (assoc :dimension_options dimension-options-for-response)
       (update :fields (fn [fields]
-                        (mapv #(assoc-field-dimension-options driver %) fields)))))
+                        (mapv #(assoc-field-dimension-options % db) fields)))))
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
@@ -316,25 +329,23 @@
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
-  (if (Boolean/parseBoolean include-editable-data-model?)
+  (if include-editable-data-model?
     (api/write-check table)
     (api/read-check table))
-  (let [driver                    (driver.u/database->driver (:db_id table))
-        include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
-        include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
+  (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
-        (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
+        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
-        (assoc-dimension-options driver)
+        (assoc-dimension-options db)
         format-fields-for-response
+        fix-schema
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/query_metadata"
+(api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
@@ -346,9 +357,10 @@
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
-  {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+  {id                          ms/PositiveInt
+   include_sensitive_fields    [:maybe ms/BooleanValue]
+   include_hidden_fields       [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]}
   (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
                                                       :include-hidden-fields?       include_hidden_fields
                                                       :include-editable-data-model? include_editable_data_model}))
@@ -357,7 +369,7 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
-  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
+  (let [db (t2/select-one Database :id database-id)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
                                      (t2/select Field :id [:in ids])))
         fields (for [{col-id :id :as col} metadata]
@@ -374,9 +386,9 @@
                       ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     add-field-dimension-options))
+                     (assoc-field-dimension-options db)))
         field->annotated (let [with-ids (filter (comp number? :id) fields)]
-                           (zipmap with-ids (hydrate with-ids [:target :has_field_values] :has_field_values)))]
+                           (zipmap with-ids (t2/hydrate with-ids [:target :has_field_values] :has_field_values)))]
     (map #(field->annotated % %) fields)))
 
 (defn root-collection-schema-name
@@ -390,7 +402,7 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (hydrate card :collection)]
+  (let [card (t2/hydrate card :collection)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
@@ -404,9 +416,10 @@
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
-  [{:keys [fields] :as metadata-response}]
+  [{:keys [fields] :as metadata-response} {:keys [trust-semantic-keys?]}]
   (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
-                                     (if (and (or (isa? semantic_type :type/PK)
+                                     (if (and (not trust-semantic-keys?)
+                                              (or (isa? semantic_type :type/PK)
                                                   (isa? semantic_type :type/FK))
                                               ;; if they have a user entered id let it stay
                                               (or (nil? id)
@@ -414,13 +427,14 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card__:id/query_metadata"
+(api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                       :collection_id :database_id]
-                                         :id id)
+  {id ms/PositiveInt}
+  (let [{:keys [database_id] :as card} (api/check-404
+                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                        :collection_id :database_id :type]
+                                                       :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
                                                              :where    [:and
@@ -429,18 +443,24 @@
                                                                         [:= :most_recent true]]
                                                              :order-by [[:id :desc]]
                                                              :limit    1}
-                                                            :id id)
-                                           first :status)]
+                                             :id id)
+                                           first :status)
+        db (t2/select-one Database :id database_id)
+        ;; a native model can have columns with keys as semantic types only if a user configured them
+        trust-semantic-keys? (and (= (:type card) :model)
+                                     (= (-> card :dataset_query :type) :native))]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
-        (assoc-dimension-options (driver.u/database->driver database_id))
-        remove-nested-pk-fk-semantic-types)))
+        (assoc-dimension-options db)
+        (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
+
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
-  []
+  [id]
+  {id ms/PositiveInt}
   []) ; return empty array
 
 (api/defendpoint GET "/:id/fks"
@@ -453,9 +473,9 @@
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (hydrate origin-field [:table :db])
+       :origin         (t2/hydrate origin-field [:table :db])
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (hydrate (t2/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (t2/select-one Field :id (:fk_target_field_id origin-field)) :table)})))
 
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
@@ -463,10 +483,11 @@
   [id]
   {id ms/PositiveInt}
   (let [table (api/write-check (t2/select-one Table :id id))]
-    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
+    ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (mw.session/as-admin
       ;; async so as not to block the UI
       (sync.concurrent/submit-task
        (fn []
@@ -495,5 +516,39 @@
   {id ms/PositiveInt
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
+
+(mu/defn ^:private update-csv!
+  "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
+  [options :- [:map
+               [:table-id ms/PositiveInt]
+               [:file (ms/InstanceOfClass java.io.File)]
+               [:action upload/update-action-schema]]]
+  (try
+    (let [_result (upload/update-csv! options)]
+      {:status 200
+       ;; There is scope to return something more interesting.
+       :body   nil})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})
+    (finally (io/delete-file (:file options) :silently))))
+
+(api/defendpoint ^:multipart POST "/:id/append-csv"
+  "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/append}))
+
+(api/defendpoint ^:multipart POST "/:id/replace-csv"
+  "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (update-csv! {:table-id id
+                :file     (get-in raw-params ["file" :tempfile])
+                :action   ::upload/replace}))
 
 (api/define-routes)

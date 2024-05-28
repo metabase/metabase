@@ -1,0 +1,138 @@
+name: Slowest dashboards
+description: Time (seconds) to run the slowest query in a dashboard
+entity_id: mm8k37Rgk7ChMNwAUdXK2
+created_at: '2023-11-01T11:20:54.119762Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_query_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - max
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - running_time_seconds
+        - base-type: type/Float
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Dashboard Qualified
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - dashboard_id
+      - base-type: type/Integer
+    filter:
+    - and
+    - - time-interval
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - started_at
+        - base-type: type/DateTimeWithLocalTZ
+      - -12
+      - week
+      - include-current: false
+    - - not-empty
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - dashboard_qualified_id
+        - base-type: type/Text
+    joins:
+    - alias: Content - Dashboard Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - dashboard_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Dashboard Qualified
+      fields: all
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    - alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      fields: all
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
+    limit: 300
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    source-table: QOtZaiTLf2FDD4AT6Oinb
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - started_at
+  - name
+  graph.metrics:
+  - max
+  graph.series_order: null
+  graph.series_order_dimension: null
+serdes/meta:
+- id: mm8k37Rgk7ChMNwAUdXK2
+  label: slowest_dashboards
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-15T20:43:58.953195Z'
+metabase_version: vUNKNOWN (901f705)
+type: question

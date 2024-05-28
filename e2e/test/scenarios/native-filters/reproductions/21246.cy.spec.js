@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -57,14 +57,14 @@ describe("issue 21246", () => {
         cy.visit(`/question/${id}`);
         cy.wait("@dataset");
 
-        cy.get(".ScalarValue").invoke("text").should("eq", "18,760");
+        cy.findByTestId("scalar-value").invoke("text").should("eq", "18,760");
       });
     });
   });
 
   it("should be able to use sub-query referencing a GUI question and date based filters (metabase#21246)", () => {
-    const fieldFilterValue = "filter=2018-02";
-    const dateFilterValue = "datevariable=2018-02-19";
+    const fieldFilterValue = "filter=2024-02";
+    const dateFilterValue = "datevariable=2024-02-19";
 
     cy.get("@questionId").then(id => {
       // Let's set filter values directly through URL, rather than through the UI
@@ -83,5 +83,5 @@ describe("issue 21246", () => {
 });
 
 function resultAssertion(res) {
-  cy.get(".ScalarValue").invoke("text").should("eq", res);
+  cy.findByTestId("scalar-value").invoke("text").should("eq", res);
 }

@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-The open source edition of Metabase includes the option to set up with [Google Sign-in or LDAP](./google-and-ldap.md), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](./authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to set up with [Google Sign-in or LDAP](./google-and-ldap.md), but [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](./authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 - let your users access Metabase without re-authenticating.
@@ -20,8 +20,6 @@ Before beginning your SAML set-up, make sure you know the password for your Meta
 To get started, head over to the Settings section of the Admin Panel, then click on the **Authentication** tab. Click the **Configure** button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
-
-At the top, **make sure to click the toggle to enable SAML authentication**, otherwise things won't work even if all of your settings are right.
 
 The form itself is broken up into three parts:
 

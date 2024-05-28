@@ -1,11 +1,18 @@
-import React, { useState, useEffect } from "react";
+import cx from "classnames";
+import { useState, useEffect } from "react";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import LogoIcon from "metabase/components/LogoIcon";
-import Icon from "metabase/components/Icon";
-import { User } from "metabase-types/api";
-import { AdminPath } from "metabase-types/store";
+import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { Button, Icon } from "metabase/ui";
+import type { User } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
+
 import StoreLink from "../StoreLink";
+
+import { AdminNavItem } from "./AdminNavItem";
 import {
   AdminExitLink,
   AdminLogoContainer,
@@ -17,7 +24,6 @@ import {
   AdminMobileNavBarItems,
   MobileHide,
 } from "./AdminNavbar.styled";
-import { AdminNavItem } from "./AdminNavItem";
 
 interface AdminNavbarProps {
   path: string;
@@ -29,11 +35,17 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
+  const isPaidPlain = useSelector(getIsPaidPlan);
+
   return (
-    <AdminNavbarRoot className="Nav" aria-label={t`Navigation bar`}>
-      <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
+    <AdminNavbarRoot
+      data-element-id="navbar-root"
+      aria-label={t`Navigation bar`}
+    >
+      <AdminLogoLink to="/admin">
         <AdminLogoContainer>
-          <LogoIcon className="text-brand my2" dark />
+          <LogoIcon className={cx(CS.textBrand, CS.my2)} dark />
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
         </AdminLogoContainer>
       </AdminLogoLink>
@@ -52,10 +64,10 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+        {!isPaidPlain && <StoreLink />}
         <AdminExitLink
           to="/"
-          data-metabase-event="Navbar;Exit Admin"
+          data-testid="exit-admin"
         >{t`Exit admin`}</AdminExitLink>
       </MobileHide>
     </AdminNavbarRoot>
@@ -80,11 +92,13 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
 
   return (
     <AdminMobileNavbar>
-      <Icon
-        name="burger"
-        size={20}
+      <Button
         onClick={() => setMobileNavOpen(prev => !prev)}
-      />
+        variant="subtle"
+        p="0.25rem"
+      >
+        <Icon name="burger" size={32} color="white" />
+      </Button>
       {mobileNavOpen && (
         <AdminMobileNavBarItems>
           {adminPaths.map(({ name, key, path }) => (
@@ -95,9 +109,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               currentPath={currentPath}
             />
           ))}
-          <AdminExitLink to="/" data-metabase-event="Navbar;Exit Admin">
-            {t`Exit admin`}
-          </AdminExitLink>
+          <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>
       )}
     </AdminMobileNavbar>

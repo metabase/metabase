@@ -1,1 +1,1 @@
-export { default } from "./DateSingleWidget";
+export { DateSingleWidget } from "./DateSingleWidget";

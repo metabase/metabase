@@ -1,0 +1,49 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Schema for tracking embedding enabled and disabled events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embed_share",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "embedding_enabled",
+        "embedding_disabled"
+      ],
+      "maxLength": 1024
+    },
+    "authorized_origins_set": {
+      "description": "Boolean indicating whether authorized origins are set for embedding",
+      "type": [
+        "boolean",
+        "null"
+      ],
+    },
+    "number_embedded_questions": {
+      "description": "The number of embedded questions",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "number_embedded_dashboards": {
+      "description": "The number of embedded dashboards",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": ["event"],
+  "additionalProperties": true
+}

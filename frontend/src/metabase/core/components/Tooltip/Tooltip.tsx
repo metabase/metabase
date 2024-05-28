@@ -1,12 +1,13 @@
-import React, { useMemo } from "react";
-import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
+import PropTypes from "prop-types";
+import { useMemo } from "react";
+import * as React from "react";
 import * as ReactIs from "react-is";
 
-import { isReactDOMTypeElement } from "metabase-types/guards";
-
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReactDOMTypeElement } from "metabase-types/guards";
 
 const TippyComponent = Tippy.default;
 
@@ -59,6 +60,15 @@ function getTargetProps(
   }
 }
 
+function appendTo() {
+  return (
+    document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID) || document.body
+  );
+}
+
+/**
+ * @deprecated: use Tooltip from "metabase/ui"
+ */
 function Tooltip({
   tooltip,
   children,
@@ -70,7 +80,7 @@ function Tooltip({
   isOpen,
   isPadded = true,
   preventOverflow = false,
-  maxWidth = 200,
+  maxWidth = 300,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
@@ -103,7 +113,7 @@ function Tooltip({
       <TippyComponent
         theme={theme}
         className="popover"
-        appendTo={() => document.body}
+        appendTo={appendTo}
         content={tooltip}
         visible={visible}
         disabled={disabled}
@@ -123,4 +133,5 @@ function Tooltip({
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Tooltip;

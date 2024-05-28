@@ -1,15 +1,16 @@
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_GROUP_MANAGERS,
 } from "metabase/plugins";
-import { UserTypeCell } from "./components/UserTypeCell";
-import { UserTypeToggle } from "./components/UserTypeToggle";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+
 import {
   confirmDeleteMembership,
   confirmUpdateMembership,
   deleteGroup,
 } from "./actions";
+import { UserTypeCell } from "./components/UserTypeCell";
+import { UserTypeToggle } from "./components/UserTypeToggle";
 import {
   getChangeMembershipConfirmation,
   getRemoveMembershipConfirmation,

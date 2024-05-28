@@ -1,40 +1,47 @@
-import React from "react";
+import type { ChangeEvent, FocusEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import LimitInput from "metabase/query_builder/components/LimitInput";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell } from "../../NotebookCell";
+import type { NotebookStepUiComponentProps } from "../../types";
 
-function LimitStep({
-  topLevelQuery,
+export function LimitStep({
+  query,
   step,
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const limit = Lib.currentLimit(topLevelQuery, step.stageIndex);
-  const value = typeof limit === "number" ? limit : "";
+  const { stageIndex } = step;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextLimit = parseInt(e.target.value, 0);
+  const limit = Lib.currentLimit(query, stageIndex);
+  const [value, setValue] = useState(typeof limit === "number" ? limit : "");
+
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    const nextLimit = parseInt(event.target.value, 0);
     if (nextLimit >= 1) {
-      updateQuery(Lib.limit(topLevelQuery, step.stageIndex, nextLimit));
+      updateQuery(Lib.limit(query, stageIndex, nextLimit));
     }
+  };
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setValue(event.target.value);
   };
 
   return (
     <NotebookCell color={color}>
       <LimitInput
-        className="mb1"
+        className={CS.mb1}
         type="number"
         value={value}
         placeholder={t`Enter a limit`}
         small
+        onBlur={handleBlur}
         onChange={handleChange}
       />
     </NotebookCell>
   );
 }
-
-export default LimitStep;

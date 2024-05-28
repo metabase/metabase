@@ -1,0 +1,25 @@
+.noDecoration {
+  text-decoration: none;
+}
+
+.link {
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--mb-color-brand);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus {
+  outline: 2px solid var(--mb-color-focus);
+}
+
+.link:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.linkWrappable {
+  word-break: break-all;
+}

@@ -1,0 +1,28 @@
+.button {
+  .inner {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .example {
+    font-weight: normal;
+  }
+
+  .content,
+  .example {
+    font-family: var(--mb-default-font-family) !important;
+  }
+
+  &:hover {
+    background: var(--mb-color-brand);
+
+    .content,
+    .example {
+      color: var(--color-white);
+    }
+  }
+
+  .label {
+    width: 100%;
+  }
+}

@@ -1,28 +1,26 @@
-import React, { useMemo } from "react";
 import { getIn } from "icepick";
+import { useMemo } from "react";
 
+import { getDashcardData } from "metabase/dashboard/selectors";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import { useSelector } from "metabase/lib/redux";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
-  DashboardOrderedCard,
-  DashCardId,
-  CardId,
+  QuestionDashboardCard,
   ClickBehavior,
-  DatasetData,
   DatasetColumn,
 } from "metabase-types/api";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { getClickBehaviorForColumn } from "./utils";
-import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
-import TableClickBehaviorView from "./TableClickBehaviorView";
-import TypeSelector from "./TypeSelector";
 import { SidebarContent } from "./ClickBehaviorSidebar.styled";
+import { ClickBehaviorSidebarMainView } from "./ClickBehaviorSidebarMainView/ClickBehaviorSidebarMainView";
+import { TableClickBehaviorView } from "./TableClickBehaviorView/TableClickBehaviorView";
+import { TypeSelector } from "./TypeSelector/TypeSelector";
+import { getClickBehaviorForColumn } from "./utils";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  dashcard: QuestionDashboardCard;
   parameters: UiParameter[];
   clickBehavior?: ClickBehavior;
   isTypeSelectorVisible: boolean | null;
@@ -32,10 +30,9 @@ interface Props {
   onTypeSelectorVisibilityChange: (isVisible: boolean) => void;
 }
 
-function ClickBehaviorSidebar({
+export function ClickBehaviorSidebarContent({
   dashboard,
   dashcard,
-  dashcardData,
   parameters,
   clickBehavior,
   isTypeSelectorVisible,
@@ -48,8 +45,12 @@ function ClickBehaviorSidebar({
     if (clickBehavior) {
       return clickBehavior;
     }
+    // drill-through menu
     return { type: "actionMenu" };
   }, [clickBehavior]);
+  const dashcardData = useSelector(state =>
+    getDashcardData(state, dashcard.id),
+  );
 
   if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
@@ -65,7 +66,7 @@ function ClickBehaviorSidebar({
     );
   }
 
-  if (isTypeSelectorVisible) {
+  if (isTypeSelectorVisible || finalClickBehavior.type === "actionMenu") {
     return (
       <SidebarContent>
         <TypeSelector
@@ -90,5 +91,3 @@ function ClickBehaviorSidebar({
     />
   );
 }
-
-export default ClickBehaviorSidebar;

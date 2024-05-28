@@ -1,17 +1,20 @@
-import React from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import {
+  LoadingAndErrorContainer,
+  LoadingAndErrorContent,
+  LoadingAndErrorTitle,
+} from "./MainNavbar.styled";
 
-function NavbarLoadingView() {
+export function NavbarLoadingView() {
   return (
-    <LoadingContainer>
-      <LoadingSpinner />
-      <LoadingTitle>{t`Loading…`}</LoadingTitle>
-    </LoadingContainer>
+    <LoadingAndErrorContainer>
+      <LoadingAndErrorContent>
+        <LoadingSpinner />
+        <LoadingAndErrorTitle>{t`Loading…`}</LoadingAndErrorTitle>
+      </LoadingAndErrorContent>
+    </LoadingAndErrorContainer>
   );
 }
-
-export default NavbarLoadingView;

@@ -1,18 +1,18 @@
-import { createAction } from "redux-actions";
-import { push } from "react-router-redux";
 import { merge } from "icepick";
+import { push } from "react-router-redux";
+import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { addUndo } from "metabase/redux/undo";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
-
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
+
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
-import { runDirtyQuestionQuery } from "./querying";
+import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
@@ -42,16 +42,22 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
       {
         id: question.id(),
       },
-      question.setDataset(true).setPinned(true).setDisplay("table").card(),
+      question.setType("model").setPinned(true).setDisplay("table").card(),
     ),
   );
 
   const metadata = getMetadata(getState());
   const dataset = metadata.question(question.id());
 
-  await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
+  await dispatch(loadMetadataForCard(dataset.card()));
 
-  dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
+  await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
+
+  await dispatch(
+    runQuestionQuery({
+      shouldUpdateUrl: true,
+    }),
+  );
 
   dispatch(
     addUndo({
@@ -63,7 +69,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
 export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
-  const question = dataset.setDataset(false);
+  const question = dataset.setType("question");
   await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
 
   dispatch(

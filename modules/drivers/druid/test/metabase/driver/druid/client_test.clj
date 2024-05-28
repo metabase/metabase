@@ -1,12 +1,13 @@
 (ns metabase.driver.druid.client-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.driver.util :as driver.u]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context.default :as default]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.driver.util :as driver.u]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,11 +24,11 @@
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
 
-            (let [out-chan (qp/process-query-async query)]
-              ;; wait for query to start running, then close `out-chan`
+            (let [futur (future (qp/process-query query))]
+              ;; wait for query to start running, then kill the thread running the query
               (a/go
                 (a/<! running-chan)
-                (a/close! out-chan)))
+                (future-cancel futur)))
             (is (= ::cancel
                    (mt/wait-for-result cancel-chan 2000)))))))))
 
@@ -39,8 +40,8 @@
         (with-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
                                                                 (reset! executed-query query)
                                                                 [])]
-          (qp/process-query-sync query)
-          (is (partial= {:context {:timeout default/query-timeout-ms}}
+          (qp/process-query query)
+          (is (partial= {:context {:timeout qp.pipeline/*query-timeout-ms*}}
                         @executed-query)))))))
 
 (deftest ssh-tunnel-test
@@ -70,3 +71,36 @@
               (or (when (instance? java.net.ConnectException e)
                     (throw e))
                   (some-> (.getCause e) recur)))))))))
+
+(defn- test-request
+  ([request-fn]
+   (test-request request-fn true))
+  ([request-fn basic-auth?]
+   (try
+     (request-fn "http://localhost:8082/druid/v2"
+       :auth-enabled basic-auth?
+       :auth-username "nbotelho"
+       :auth-token-value "12345678910")
+     (catch Exception e
+       (ex-data e)))))
+
+(defn- get-auth-header [m]
+  (select-keys (:request-options m) [:basic-auth]))
+
+(deftest basic-auth-test
+  (let [get-request    (test-request druid.client/GET)
+        post-request   (test-request druid.client/POST)
+        delete-request (test-request druid.client/DELETE)]
+    (is (= {:basic-auth "nbotelho:12345678910"}
+          (get-auth-header get-request)
+          (get-auth-header post-request)
+          (get-auth-header delete-request)) "basic auth header included with successfully"))
+
+  (let [no-auth-basic false
+        get-request    (test-request druid.client/GET no-auth-basic)
+        post-request   (test-request druid.client/POST no-auth-basic)
+        delete-request (test-request druid.client/DELETE no-auth-basic)]
+    (is (= no-auth-basic
+           (contains? (get-auth-header get-request)    :basic-auth)
+           (contains? (get-auth-header post-request)   :basic-auth)
+           (contains? (get-auth-header delete-request) :basic-auth)) "basic auth header not included")))

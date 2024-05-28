@@ -1,0 +1,104 @@
+name: Dashboards with more questions in the same tab
+description: Try to keep fewer than 25 questions per tab
+entity_id: r8r6O1VedjAjSD2MPxJs6
+created_at: '2023-11-01T11:28:39.771028Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_dashboardcard
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Dashboard Qualified
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Dashboard Qualified
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - dashboardtab_id
+      - base-type: type/Text
+    filter:
+    - not-empty
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - card_qualified_id
+      - base-type: type/Text
+    joins:
+    - alias: Content - Dashboard Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_dashboardcard
+          - dashboard_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Dashboard Qualified
+      fields: all
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    limit: 100
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    source-table: pKdvc0pwu1zDi8NqnyJkt
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings:
+    '["name","count"]':
+      column_title: Count of questions
+      show_mini_bar: true
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
+    : column_title: Question ID
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
+    : column_title: Dashboard name
+  table.cell_column: size_x
+  table.pivot_column: dashboardtab_id
+serdes/meta:
+- id: r8r6O1VedjAjSD2MPxJs6
+  label: dashboards_with_more_questions_in_the_same_tab
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-15T20:43:54.773216Z'
+metabase_version: vUNKNOWN (901f705)
+type: question

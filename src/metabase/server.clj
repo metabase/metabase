@@ -7,10 +7,9 @@
    [metabase.config :as config]
    [metabase.server.protocols :as server.protocols]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [ring.adapter.jetty9 :as ring-jetty]
-   [ring.adapter.jetty9.servlet :as servlet])
+   [ring.adapter.jetty :as ring-jetty]
+   [ring.util.jakarta.servlet :as servlet])
   (:import
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletRequest HttpServletResponse)
@@ -22,13 +21,15 @@
 (defn- jetty-ssl-config []
   (m/filter-vals
    some?
-   {:ssl-port       (config/config-int :mb-jetty-ssl-port)
-    :keystore       (config/config-str :mb-jetty-ssl-keystore)
-    :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
-    :truststore     (config/config-str :mb-jetty-ssl-truststore)
-    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)
-    :client-auth    (when (config/config-bool :mb-jetty-ssl-client-auth)
-                      :need)}))
+   {:ssl-port        (config/config-int :mb-jetty-ssl-port)
+    :keystore        (config/config-str :mb-jetty-ssl-keystore)
+    :key-password    (config/config-str :mb-jetty-ssl-keystore-password)
+    :truststore      (config/config-str :mb-jetty-ssl-truststore)
+    :trust-password  (config/config-str :mb-jetty-ssl-truststore-password)
+    :client-auth     (when (config/config-bool :mb-jetty-ssl-client-auth)
+                       :need)
+    :sni-host-check? (when (config/config-str :mb-jetty-skip-sni)
+                       false)}))
 
 (defn- jetty-config []
   (cond-> (m/filter-vals
@@ -46,8 +47,7 @@
                                              (merge (jetty-ssl-config)))))
 
 (defn- log-config [jetty-config]
-  (log/info (trs "Launching Embedded Jetty Webserver with config:")
-            "\n"
+  (log/info "Launching Embedded Jetty Webserver with config:\n"
             (u/pprint-to-str (m/filter-keys
                               #(not (str/includes? % "password"))
                               jetty-config))))
@@ -67,11 +67,11 @@
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
             raise                 (fn raise [^Throwable e]
-                                    (log/error e (trs "Unexpected exception in endpoint"))
+                                    (log/error e "Unexpected exception in endpoint")
                                     (try
                                       (.sendError response 500 (.getMessage e))
                                       (catch Throwable e
-                                        (log/error e (trs "Unexpected exception writing error response"))))
+                                        (log/error e "Unexpected exception writing error response")))
                                     (.complete context))]
         (try
           (handler
@@ -84,7 +84,7 @@
                                                              :response-map  response-map}))
            raise)
           (catch Throwable e
-            (log/error e (trs "Unexpected Exception in API request handler"))
+            (log/error e "Unexpected Exception in API request handler")
             (raise e))
           (finally
             (.setHandled base-request true)))))))
@@ -96,11 +96,8 @@
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)
-  ;;
-  ;; TODO - I suppose the default value should be moved to the `metabase.config` namespace?
-  (let [timeout (or (config/config-int :mb-jetty-async-response-timeout)
-                    (* 10 60 1000))
-        handler (async-proxy-handler handler timeout)
+  (let [timeout       (config/config-int :mb-jetty-async-response-timeout)
+        handler       (async-proxy-handler handler timeout)
         stats-handler (doto (StatisticsHandler.)
                         (.setHandler handler))]
     (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
@@ -128,6 +125,6 @@
   []
   (let [[^Server old-server] (reset-vals! instance* nil)]
     (when old-server
-      (log/info (trs "Shutting Down Embedded Jetty Webserver"))
+      (log/info "Shutting Down Embedded Jetty Webserver")
       (.stop old-server)
       :stopped)))

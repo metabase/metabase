@@ -1,0 +1,107 @@
+/* center */
+.textCentered {
+  text-align: center;
+}
+
+.textLeft {
+  text-align: left;
+}
+
+.textRight {
+  text-align: right;
+}
+
+.textUppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.textNormal {
+  font-weight: 400;
+}
+
+.textBold {
+  font-weight: 700;
+}
+
+.textHeavy {
+  font-weight: 900;
+}
+
+/* text style */
+
+.textItalic {
+  font-style: italic;
+}
+
+/* larger text size used for descriptions  */
+.textBody {
+  font-size: 1.286em;
+  line-height: 1.457em;
+  color: var(--mb-color-text-medium); /* TODO - is this bad? */
+}
+
+.textList {
+  font-size: 1em;
+}
+
+.textParagraph {
+  font-size: 1.143em;
+  line-height: 1.5em;
+}
+
+.textSpaced {
+  line-height: 1.5em;
+}
+
+.textUnspaced {
+  line-height: normal;
+}
+
+.textSmall {
+  font-size: 0.875em;
+}
+
+.textSmaller {
+  font-size: 0.8em;
+}
+
+.textEllipsis {
+  text-overflow: ellipsis;
+}
+
+.textWrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
+}
+
+.textNoWrap {
+  white-space: nowrap;
+}
+
+.textCode {
+  font-family: monospace;
+  color: var(--mb-color-text-medium);
+  background-color: var(--color-bg-medium);
+  border-radius: 2px;
+  padding: 0.2em 0.4em;
+  line-height: 1.4em;
+  white-space: pre-wrap;
+}
+
+.textMonospace {
+  font-family: Monaco, monospace;
+}
+
+.textPreWrap {
+  white-space: pre-wrap;
+}
+
+.textMeasure {
+  max-width: 620px;
+}
+
+.breakAnywhere {
+  line-break: anywhere;
+}

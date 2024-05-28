@@ -1,9 +1,9 @@
-import MetabaseSettings from "metabase/lib/settings";
 import {
   getActivePulseParameters,
   getPulseParameters,
   recipientIsValid,
 } from "metabase/lib/pulse";
+import MetabaseSettings from "metabase/lib/settings";
 
 describe("recipientIsValid", () => {
   let originalDomains;
@@ -61,31 +61,29 @@ describe("getActivePulseParameters", () => {
   beforeEach(() => {
     pulse = {
       parameters: [
-        {
-          id: "no default value",
-          value: ["foo"],
-        },
-        {
-          id: "overridden default value",
-          default: ["bar"],
-          value: ["baz"],
-        },
+        { id: "no default value", value: ["foo"] },
+        { id: "overridden default value", value: ["baz"] },
         { id: "does not exist", value: ["does not exist"] },
-        { id: "null value that should be overridden", value: null },
+        { id: "null value that should be filtered out", value: null },
+        {
+          id: "undefined value that should be overridden by default",
+          value: undefined,
+        },
       ],
     };
 
     parametersList = [
-      {
-        id: "no default value",
-      },
+      { id: "no default value" },
       { id: "unused", value: ["unused"] },
-
       { id: "foo" },
       { id: "overridden default value", default: ["bar"] },
       { id: "unadded default value", default: [123] },
       {
-        id: "null value that should be overridden",
+        id: "null value that should be filtered out",
+        default: ["not null value"],
+      },
+      {
+        id: "undefined value that should be overridden by default",
         default: ["not null value"],
       },
     ];
@@ -109,7 +107,7 @@ describe("getActivePulseParameters", () => {
       },
       {
         default: ["not null value"],
-        id: "null value that should be overridden",
+        id: "undefined value that should be overridden by default",
         value: ["not null value"],
       },
     ]);

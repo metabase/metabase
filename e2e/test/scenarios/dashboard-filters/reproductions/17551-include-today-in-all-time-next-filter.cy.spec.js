@@ -1,4 +1,5 @@
 import { restore, filterWidget, visitDashboard } from "e2e/support/helpers";
+
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("issue 17551", () => {
@@ -65,7 +66,9 @@ describe("issue 17551", () => {
 
     cy.url().should("include", "?date_filter=next30days~");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("tomorrow");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("today");
   });
 });

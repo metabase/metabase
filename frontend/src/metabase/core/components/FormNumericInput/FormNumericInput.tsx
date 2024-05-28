@@ -1,10 +1,11 @@
-import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import NumericInput, {
-  NumericInputProps,
-} from "metabase/core/components/NumericInput";
+import type { ReactNode, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import FormField from "metabase/core/components/FormField";
+import type { NumericInputProps } from "metabase/core/components/NumericInput";
+import NumericInput from "metabase/core/components/NumericInput";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormNumericInputProps
   extends Omit<
@@ -13,17 +14,22 @@ export interface FormNumericInputProps
   > {
   name: string;
   title?: string;
+  actions?: ReactNode;
   description?: ReactNode;
   nullable?: boolean;
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormNumberInput from "metabase/forms"
+ */
 const FormNumericInput = forwardRef(function FormNumericInput(
   {
     name,
     className,
     style,
     title,
+    actions,
     description,
     nullable,
     optional,
@@ -47,6 +53,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
       className={className}
       style={style}
       title={title}
+      actions={actions}
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
@@ -66,4 +73,5 @@ const FormNumericInput = forwardRef(function FormNumericInput(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormNumericInput;

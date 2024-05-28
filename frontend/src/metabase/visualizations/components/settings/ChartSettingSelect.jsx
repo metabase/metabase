@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import cx from "classnames";
+
 import { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 
 import { SelectWithHighlightingIcon } from "./ChartSettingSelect.styled";
 
@@ -16,10 +16,11 @@ const ChartSettingSelect = ({
   className,
   placeholder,
   placeholderNoOptions,
+  id,
   ...props
 }) => (
   <SelectWithHighlightingIcon
-    className={cx(className, "block")}
+    className={cx(className, CS.block)}
     disabled={
       options.length === 0 ||
       (options.length === 1 && options[0].value === value)
@@ -28,6 +29,7 @@ const ChartSettingSelect = ({
     onChange={e => onChange(e.target.value)}
     placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
     isInitiallyOpen={isInitiallyOpen}
+    buttonProps={{ id }}
     {...props}
   >
     {options.map(option => (

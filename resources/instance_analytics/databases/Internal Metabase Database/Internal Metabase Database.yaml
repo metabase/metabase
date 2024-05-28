@@ -1,0 +1,9 @@
+name: Internal Metabase Database
+creator_id: internal@metabase.com
+is_sample: false
+is_on_demand: false
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+initial_sync_status: complete
+is_audit: true

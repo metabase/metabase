@@ -1,5 +1,11 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  editDashboard,
+  sidebar,
+} from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -46,14 +52,14 @@ describe("issues 15119 and 16112", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         // Connect filters to the card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 9,
               visualization_settings: {},
               parameter_mappings: [
@@ -74,16 +80,13 @@ describe("issues 15119 and 16112", () => {
 
         // Actually need to setup the linked filter:
         visitDashboard(dashboard_id);
-        cy.get('[data-metabase-event="Dashboard;Edit"]').click();
+        editDashboard();
         cy.findByText("Rating Filter").click();
         cy.findByText("Linked filters").click();
-        // cy.findByText("Reviewer Filter").click();
-        cy.findByText("Limit this filter's choices")
-          .parent()
-          .within(() => {
-            // turn on the toggle
-            cy.get("input").click();
-          });
+
+        // turn on the toggle
+        sidebar().findByRole("switch").parent().get("label").click();
+
         cy.findByText("Save").click();
 
         cy.signIn("nodata");
@@ -91,20 +94,22 @@ describe("issues 15119 and 16112", () => {
       },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(reviewerFilter.name).click();
     popover().contains("adam").click();
     cy.button("Add filter").click();
 
-    cy.get(".DashCard").should("contain", "adam");
-    cy.location("search").should("eq", "?reviewer=adam");
+    cy.findByTestId("dashcard-container").should("contain", "adam");
+    cy.location("search").should("eq", "?reviewer=adam&rating=");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
 
     popover().contains("5").click();
     cy.button("Add filter").click();
 
-    cy.get(".DashCard").should("contain", "adam");
-    cy.get(".DashCard").should("contain", "5");
+    cy.findByTestId("dashcard-container").should("contain", "adam");
+    cy.findByTestId("dashcard-container").should("contain", "5");
     cy.location("search").should("eq", "?reviewer=adam&rating=5");
   });
 });

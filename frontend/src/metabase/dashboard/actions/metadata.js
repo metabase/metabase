@@ -1,8 +1,7 @@
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getLinkTargets } from "metabase/lib/click-behavior";
-import Question from "metabase-lib/Question";
+import { loadMetadataForCards } from "metabase/questions/actions";
+
 import { isVirtualDashCard } from "../utils";
 
 export const loadMetadataForDashboard = dashCards => async dispatch => {
@@ -11,24 +10,15 @@ export const loadMetadataForDashboard = dashCards => async dispatch => {
     .flatMap(dc => [dc.card].concat(dc.series || []));
 
   await Promise.all([
-    dispatch(loadMetadataForCards(cards)),
+    dispatch(loadMetadataForAvailableCards(cards)),
     dispatch(loadMetadataForLinkedTargets(dashCards)),
   ]);
 };
 
-const loadMetadataForCards = cards => (dispatch, getState) => {
-  const metadata = getMetadata(getState());
-
-  const questions = cards
-    .filter(card => card.dataset_query) // exclude queries without perms
-    .map(card => new Question(card, metadata));
-
-  return dispatch(
-    loadMetadataForQueries(
-      questions.map(question => question.query()),
-      questions.map(question => question.dependentMetadata()),
-    ),
-  );
+const loadMetadataForAvailableCards = cards => dispatch => {
+  // exclude queries without perms
+  const availableCards = cards.filter(card => card.dataset_query);
+  return dispatch(loadMetadataForCards(availableCards));
 };
 
 const loadMetadataForLinkedTargets =
@@ -47,9 +37,9 @@ const loadMetadataForLinkedTargets =
     const cards = linkTargets
       .filter(({ entityType }) => entityType === "question")
       .map(({ entityId }) =>
-        Questions.selectors.getObject(getState(), { entityId }),
+        Questions.selectors.getObject(getState(), { entityId })?.card(),
       )
       .filter(card => card != null);
 
-    await dispatch(loadMetadataForCards(cards));
+    await dispatch(loadMetadataForAvailableCards(cards));
   };

@@ -1,6 +1,6 @@
-import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -30,10 +30,10 @@ describe("issue 28874", () => {
   it("should allow to modify a pivot question in the notebook (metabase#28874)", () => {
     visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
-    cy.findByText("Product ID")
-      .parent()
-      .within(() => cy.icon("close").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Product ID").parent().icon("close").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("not.exist");
   });
 });

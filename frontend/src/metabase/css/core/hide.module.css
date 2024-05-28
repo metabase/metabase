@@ -1,0 +1,34 @@
+.hide {
+  display: none !important;
+}
+
+.show {
+  display: inherit;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.smShow {
+  display: none;
+}
+
+/* small */
+
+@media screen and (--breakpoint-min-sm) {
+  .smShow {
+    display: inherit !important;
+  }
+}
+
+.TableInteractiveDetailButton {
+  color: var(--mb-color-brand);
+  transition: opacity 0.2s ease-in-out;
+  margin: 0 4px;
+  opacity: 0;
+}
+
+.show .TableInteractiveDetailButton {
+  opacity: 1;
+}

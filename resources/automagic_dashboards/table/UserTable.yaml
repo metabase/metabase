@@ -1,5 +1,5 @@
-title: A look at your [[this]]
-transient_title: "Here''s an overview of the people in your [[this]]"
+title: A look at [[this]]
+transient_title: "Here''s an overview of the people in [[this]]"
 description: An exploration of your users to get you started.
 metrics:
 - Count:
@@ -46,10 +46,13 @@ filters:
 groups:
 - Overview:
     title: Overview
+    score: 90
 - Geographical:
     title: Where these [[this.short-name]] are
+    score: 80
 - General:
     title: How these [[this.short-name]] are distributed
+    score: 70
 dashboard_filters:
 - JoinDate
 - GenericCategoryMedium

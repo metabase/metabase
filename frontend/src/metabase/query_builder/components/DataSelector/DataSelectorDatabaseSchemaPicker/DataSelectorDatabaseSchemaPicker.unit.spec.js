@@ -1,13 +1,40 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
+
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+
+const setup = opts => {
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases: [opts.database] }),
+  });
+  const metadata = getMetadata(state);
+  const database = checkNotNull(metadata.database(opts.database.id));
+  const schemas = database.getSchemas();
+
+  renderWithProviders(
+    <DataSelectorDatabaseSchemaPicker
+      selectedDatabase={database}
+      selectedSchema={schemas[0]}
+      databases={[database]}
+      schemas={schemas}
+      onChangeSchema={jest.fn()}
+      onChangeDatabase={jest.fn()}
+    />,
+    { storeInitialState: state },
+  );
+};
 
 describe("DataSelectorDatabaseSchemaPicker", () => {
   it("displays loading message when it has no databases", () => {
     render(<DataSelectorDatabaseSchemaPicker databases={[]} />);
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   describe("displays picker when it has databases", () => {
@@ -19,7 +46,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
         {
           id: 1,
           name: databaseName,
-          schemas: [
+          getSchemas: () => [
             {
               displayName: () => schemaName,
             },
@@ -45,7 +72,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
           id: 1,
           is_saved_questions: true,
           name: databaseName,
-          schemas: [
+          getSchemas: () => [
             {
               displayName: () => schemaName,
             },
@@ -62,5 +89,20 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       expect(screen.queryByText(schemaName)).not.toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
+  });
+
+  it("doesn't display a loading spinner next to a schema when the database has initial_sync_status='incomplete'", () => {
+    const database = createMockDatabase({
+      initial_sync_status: "incomplete",
+      schemas: [
+        createMockSchema({ id: 1, name: "Schema 1" }),
+        createMockSchema({ id: 2, name: "Schema 2" }),
+      ],
+    });
+    setup({ database });
+    // There should only be one loading-spinner next to the database name, and not the schema names
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByText("Schema 1")).toBeInTheDocument();
+    expect(screen.getByText("Schema 2")).toBeInTheDocument();
   });
 });

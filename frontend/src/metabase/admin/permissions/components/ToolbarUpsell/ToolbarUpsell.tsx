@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 
@@ -6,9 +5,10 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 import { ToolbarButton } from "../ToolbarButton";
+
 import { UpsellContent } from "./ToolbarUpsell.styled";
 
 interface StateProps {
@@ -29,11 +29,14 @@ const ToolbarUpsell = ({ upgradeUrl }: ToolbarUpsellProps) => {
     >
       <UpsellContent>
         {jt`${(
-          <ExternalLink href={upgradeUrl}>
+          <ExternalLink key="upsell-cta-link" href={upgradeUrl}>
             {t`Upgrade to Pro or Enterprise`}
           </ExternalLink>
         )} and disable download results, control access to the data model, promote group managers, ${(
-          <ExternalLink href={MetabaseSettings.docsUrl("permissions/start")}>
+          <ExternalLink
+            key="upsell-more-link"
+            href={MetabaseSettings.docsUrl("permissions/start")}
+          >
             {t`and more`}
           </ExternalLink>
         )}.`}
@@ -42,4 +45,5 @@ const ToolbarUpsell = ({ upgradeUrl }: ToolbarUpsellProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(ToolbarUpsell);

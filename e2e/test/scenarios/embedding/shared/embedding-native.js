@@ -46,7 +46,6 @@ export const questionDetails = {
         dimension: ["field", ORDERS.TOTAL, null],
         "widget-type": "number/>=",
         default: [0],
-        required: true,
       },
       source: {
         id: "44038e73-f909-1bed-0974-2a42ce8979e8",

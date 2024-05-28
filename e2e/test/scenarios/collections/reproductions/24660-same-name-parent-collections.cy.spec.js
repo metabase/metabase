@@ -1,10 +1,19 @@
-import { restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const collectionName = "Parent";
 
 const questions = {
-  1: "Orders",
-  2: "Orders, Count",
+  [ORDERS_QUESTION_ID]: "Orders",
+  [ORDERS_COUNT_QUESTION_ID]: "Orders, Count",
 };
 
 describe("issue 24660", () => {
@@ -12,20 +21,19 @@ describe("issue 24660", () => {
     restore();
     cy.signInAsAdmin();
 
-    createParentCollectionAndMoveQuestionToIt(1);
-    createParentCollectionAndMoveQuestionToIt(2);
+    createParentCollectionAndMoveQuestionToIt(ORDERS_QUESTION_ID);
+    createParentCollectionAndMoveQuestionToIt(ORDERS_COUNT_QUESTION_ID);
   });
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findAllByTestId("tree-item-name")
-      .contains(collectionName)
-      .first()
-      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findAllByText(collectionName).first().click();
 
-    cy.findByText(questions[1]);
-    cy.findByText(questions[2]).should("not.exist");
+      cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
+      cy.findByText(questions[ORDERS_COUNT_QUESTION_ID]).should("not.exist");
+    });
   });
 });
 

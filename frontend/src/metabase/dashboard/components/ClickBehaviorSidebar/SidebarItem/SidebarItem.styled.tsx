@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { color, darken } from "metabase/lib/colors";
 
 const disabledStyle = css`
@@ -66,6 +67,8 @@ export const IconContainer = styled.div`
 `;
 
 export const CloseIconContainer = styled.span`
+  display: flex;
+  align-items: center;
   margin-left: auto;
   padding: 1rem;
   border-left: 1px solid ${darken("brand", 0.2)};

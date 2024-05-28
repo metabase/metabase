@@ -1,20 +1,19 @@
-import React, { useContext } from "react";
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import { useContext } from "react";
+
 import { TabContext } from "../Tab/TabContext";
 import { getTabButtonInputId } from "../Tab/utils";
-import {
-  TabButtonMenuAction,
-  TabButtonMenuItem,
-  TabButtonValue,
-} from "./TabButton";
+
+import type { TabButtonMenuAction, TabButtonMenuItem } from "./TabButton";
 import { MenuContent, MenuItem } from "./TabButton.styled";
 
 interface TabButtonMenuProps {
   menuItems: TabButtonMenuItem[];
-  value?: TabButtonValue;
+  value: UniqueIdentifier | null;
   closePopover: () => void;
 }
 
-export default function TabButtonMenu({
+export function TabButtonMenu({
   menuItems,
   value,
   closePopover,

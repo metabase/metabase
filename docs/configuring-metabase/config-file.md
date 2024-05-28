@@ -6,21 +6,71 @@ title: "Configuration file"
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. This file should either be in the current directory (the directory where the running Metabase JAR is located), or in a path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md). In this config file, you can specify:
+On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
 
-- Settings
-- Users
-- Databases
+- The current directory (the directory where the running Metabase JAR is located).
+- The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
 
-The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file). 
+The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
 
-The config file settings are not treated as a hardcoded source of truth like [environment variables](./environment-variables.md) are.
+The config file settings are not treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
 
-## Example `config.yml` file
+## Config setup
 
-This file sets up a user account and two database connections.
+The config file is split up into sections: `version` and `config.` Under `config`, you can specify:
+
+- [Users](#users)
+- [Databases](#databases)
+- [Settings](#settings)
+
+Like so:
 
 ```
+version: 1
+config:
+  settings:
+    - ...
+  users:
+    - ...
+  databases:
+    - ...
+```
+
+The config file must also include a `version` key, which is just a convenience field for you to help you keep track of your config file versions.
+
+## Users
+
+The first user created in a Metabase instance is an Admin. The first user listed in the config file may be designated an admin, but not necessarily. If someone has already spun up and logged into that Metabase for the first time, Metabase will make that first user an admin. Additionally, you can specify a user account as an admin by using the `is_superuser: true` key.
+
+In the following example, assuming that the Metabase hasn't already been set up (which creates the first user) both users `first@example.com` and `admin@example.com` will be admins: `first@example.com` because it's the first user account on the list, and `admin@example.com` because that user has the `is_superuser` flag set to true.
+
+```
+version: 1
+config:
+  users:
+    - first_name: First
+      last_name: Person
+      password: metabot1
+      email: first@example.com
+    - first_name: Normal
+      last_name: Person
+      password: metabot1
+      email: normal@example.com
+    - first_name: Admin
+      last_name: Person
+      password: metabot1
+      is_superuser: true
+      email: admin@example.com
+```
+
+If the Metabase has already been set up, then `first @example.com` will be loaded as a normal user.
+
+## Databases
+
+On a new Metabase, the example below sets up an admin user account and one database connection.
+
+```
+{% raw %}
 version: 1
 config:
   users:
@@ -34,25 +84,23 @@ config:
       details:
         host: localhost
         port: 5432
-        password: {% raw %} "{{ env POSTGRES_TEST_DATA_PASSWORD }}" {% endraw %}
+        user: dbuser
+        password: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
         dbname: test-data
-    - name: Sample Dataset (Copy)
-      engine: h2
-      details:
-        db: "/home/cam/metabase/resources/sample-database.db;USER=GUEST;PASSWORD={{env SAMPLE_DATASET_PASSWORD}}"
+{% endraw %}
 ```
 
-To determine which keys you can specify, simply look at the fields available in Metabase itself.
+To determine which keys you can specify for a database, check out the fields available in Metabase itself for the database that you want to add.
 
 ## Referring to environment variables in the `config.yml`
 
-Environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
+As shown in the Databases example above, environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
 ## Disable initial database sync
 
-When loading a data model from a serialized dump, you want to disable the scheduler so that the Metabase doesn't try to sync.
+When loading a data model from a serialized export, you want to disable the scheduler so that the Metabase doesn't try to sync.
 
 To disable the initial database sync, you can add `config-from-file-sync-database` to the `settings` list and set the value to `false`. The setting `config-from-file-sync-database` must come _before_ the databases list, like so:
 
@@ -63,15 +111,15 @@ config:
     config-from-file-sync-databases: false
   databases:
     - name: my-database
-      engine: h2
+      engine: postgres
       details: ...
 ```
 
-## List of settings
+## Settings
 
-In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md).
+In this config file, you can specify _any_ Admin setting.
 
-The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
+In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md), so check them out to see which settings you can use in your config file. The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
 
 ```
 MB_NAME_OF_VARIABLE
@@ -83,7 +131,7 @@ Whereas in the config file, you'd translate that to:
 name-of-variable
 ```
 
-So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` not in an environment variable, but instead in the `config.yml` file:
+So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` in the `config.yml` file:
 
 ```
 version: 1
@@ -97,29 +145,50 @@ config:
       details: ...
 ```
 
-## Users and Admins
+Just to give you an idea for some settings, here's an incomplete list of settings you can set via the config file:
 
-The first user created in a Metabase instance is an Admin. The first user listed in the config file may be designated an admin, but not necessarily, for example if someone has already spun up and logged into that Metabase for the first time, that user would be the automatically designated admin. Additionally, you can specify a user account as an admin by using the `is_superuser: true` key.
-
-In the following example:
 ```
-version: 1
-config:
-  users:
-    - first_name: a
-      last_name: b
-      password: metabot1
-      email: a@b.com
-    - first_name: b
-      last_name: a
-      password: metabot1
-      email: b@a.com
-    - first_name: c
-      last_name: a
-      password: metabot1
-      is_superuser: true
-      email: c@a.com
+application-colors
+config-from-file-sync-databases
+check-for-updates
+experimental-enable-actions
+persisted-model-refresh-cron-schedule
+email-smtp-host
+enable-query-caching
+email-smtp-username
+start-of-week
+email-smtp-password
+email-smtp-port
+query-caching-min-ttl
+email-from-name
+email-from-address
+email-reply-to
+premium-embedding-token
+follow-up-email-sent
+persisted-models-enabled
+site-locale
+application-name
+settings-last-updated
+instance-creation
+enable-public-sharing
+enable-embedding
+embedding-secret-key
+jwt-group-sync
+anon-tracking-enabled
+snowplow-available
+jwt-enabled
+google-auth-enabled
+redirect-all-requests-to-https
+site-url
+site-name
 ```
-both users a@b.com and c@a.com will be admins: a@b.com because it's the first one on the list (if the instance is not yet configured) and c@a.com because it has the is_superuser flag. If an instance has already been configured, then a@b.com will be loaded as a normal user.
 
- 
+But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./config-file.md) to see what you can configure.
+
+## Loading a new Metabase from a config file
+
+Since loading from a config file is a paid feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
+
+```
+MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar
+```

@@ -1,0 +1,11 @@
+:root {
+  --default-border-radius: 8px;
+}
+
+.rounded {
+  border-radius: var(--default-border-radius);
+}
+
+.circular {
+  border-radius: 99px !important;
+}

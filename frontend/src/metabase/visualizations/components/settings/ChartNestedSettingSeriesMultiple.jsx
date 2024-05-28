@@ -1,16 +1,19 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import cx from "classnames";
+import { Component } from "react";
 
-import { getAccentColors } from "metabase/lib/colors/groups";
-import ColorSelector from "metabase/core/components/ColorSelector";
 import IconWrapper from "metabase/components/IconWrapper";
+import ColorSelector from "metabase/core/components/ColorSelector";
+import CS from "metabase/css/core/index.css";
+import { getAccentColors } from "metabase/lib/colors/groups";
+
 import {
   OptionsIcon,
   SeriesNameInput,
 } from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingSeriesMultiple extends React.Component {
+export default class ChartNestedSettingSeriesMultiple extends Component {
   render() {
     const {
       objects,
@@ -35,9 +38,15 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
             return (
               <div
                 key={key}
-                className="px4 pt2 mt2 border-top align-self-stretch"
+                className={cx(
+                  CS.px4,
+                  CS.pt2,
+                  CS.mt2,
+                  CS.borderTop,
+                  CS.alignSelfStretch,
+                )}
               >
-                <div className="flex align-center">
+                <div className={cx(CS.flex, CS.alignCenter)}>
                   <ColorSelector
                     value={settings.color}
                     colors={getAccentColors()}
@@ -46,7 +55,7 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
                     }
                   />
                   <SeriesNameInput
-                    className="flex-full ml1 align-self-stretch"
+                    className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     aria-label="series-name-input"
@@ -59,7 +68,7 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
                     }
                   />
                   {objects.length > 1 ? (
-                    <IconWrapper className="ml1 p1">
+                    <IconWrapper className={cx(CS.ml1, CS.p1)}>
                       <OptionsIcon
                         name={isSelected(single) ? "chevronup" : "chevrondown"}
                         tooltip={
@@ -77,7 +86,7 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
                 {objectSettingsWidgets &&
                 objectSettingsWidgets.length > 0 &&
                 isSelected(single) ? (
-                  <div className="mt3">{objectSettingsWidgets}</div>
+                  <div className={CS.mt3}>{objectSettingsWidgets}</div>
                 ) : null}
               </div>
             );

@@ -2,13 +2,13 @@
   (:require
    [clojure.walk :as walk]
    [metabase.api.common :as api]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
@@ -23,10 +23,10 @@
     (and (every? empty? [breakouts aggregations])
          (or (empty? fields)
              (and (= (count fields) (count nested-source-metadata))
-                  (every? #(mbql.u/match-one % [:field (_ :guard string?) _])
+                  (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
+(mu/defn ^:private native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -39,18 +39,17 @@
     ;; a native source query
     (do
       (when-not qp.i/*disable-qp-logging*
-        (log/warn
-         (trs "Cannot infer `:source-metadata` for source query with native source query without source metadata.")
-         {:source-query source-query}))
+        (log/warn "Cannot infer `:source-metadata` for source query with native source query without source metadata."
+                  {:source-query source-query}))
       nil)))
 
-(s/defn mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
     (let [cols (binding [api/*current-user-id* nil]
-                 ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-                  {:database (:id (qp.store/database))
+                 ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
+                  {:database (:id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
                    ;; to end up adding it again when the middleware runs at the top level
@@ -59,11 +58,14 @@
         (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
                           :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
     (catch Throwable e
-      (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
+      (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
 
-(s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
-  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
+(mu/defn ^:private add-source-metadata :- [:map
+                                           [:source-metadata
+                                            {:optional true}
+                                            [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                      native-source-query->metadata
                      mbql-source-query->metadata) source-query)]
@@ -73,8 +75,9 @@
 (defn- legacy-source-metadata?
   "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
   `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
-  ignoring legacy source metadata and using `qp/query->expected-cols` to infer the source metadata rather than relying
-  on old stuff that can produce incorrect queries. See #14788 for more information."
+  ignoring legacy source metadata and using [[metabase.query-processor.preprocess/query->expected-cols]] to infer the
+  source metadata rather than relying on old stuff that can produce incorrect queries. See #14788 for more
+  information."
   [source-metadata]
   (and (seq source-metadata)
        (every? nil? (map :field_ref source-metadata))))

@@ -1,15 +1,15 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
-
 import { useMount } from "react-use";
+
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { setErrorPage } from "metabase/redux/app";
 import { PublicApi } from "metabase/services";
-
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor } from "metabase-types/store";
 
 import EmbedFrame from "../../components/EmbedFrame";
+
 import PublicAction from "./PublicAction";
 import {
   LoadingAndErrorWrapper,
@@ -70,4 +70,5 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(PublicActionLoader);

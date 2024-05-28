@@ -1,5 +1,3 @@
-import React from "react";
-
 interface CheckMarkIconProps {
   size: number;
   color: string;

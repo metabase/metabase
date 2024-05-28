@@ -1,0 +1,71 @@
+.CalendarWeeks {
+  padding-bottom: 14px;
+}
+
+.CalendarWeek {
+  display: flex;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.CalendarHeader {
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+.CalendarHeader h4 {
+  font-weight: 700;
+}
+
+.CalendarDayNames {
+  opacity: 0.12;
+}
+
+.CalendarDay,
+.CalendarDayName {
+  flex: 1;
+}
+
+.CalendarDay {
+  color: var(--mb-color-text-light);
+  position: relative;
+  border-radius: 99px;
+  font-weight: 700;
+  font-size: 12px;
+  background-color: transparent;
+  padding: 10px;
+}
+
+.CalendarDayName {
+  cursor: inherit;
+  color: inherit !important;
+}
+
+.CalendarDayThisMonth {
+  color: currentcolor;
+}
+
+.CalendarRange .CalendarDaySelected {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.CalendarRange .CalendarDaySelectedEnd {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.CalendarDayInRange {
+  border-radius: 0;
+  background-color: var(--color-bg-medium);
+}
+
+.CalendarNoContext.CalendarDay {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.CalendarNoContext.CalendarDayThisMonth {
+  visibility: visible;
+  pointer-events: all;
+}

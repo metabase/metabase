@@ -1,0 +1,199 @@
+name: System tasks
+description: Describes the last 14 days of Metabase internal processes tasks
+entity_id: PKhlEfegdbTozSMfj0aLB
+created_at: '2023-11-13T18:43:58.096941Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: 19
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_tasks
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_tasks
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: ''
+  display_name: ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - id
+  name: id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Task
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - task
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - task
+  name: task
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Database Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - database_qualified_id
+  - null
+  fk_target_field_id: 1048
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - database_qualified_id
+  name: database_qualified_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Started At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - started_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - started_at
+  name: started_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Ended At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - ended_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - ended_at
+  name: ended_at
+  semantic_type: null
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Float
+  coercion_strategy: null
+  description: null
+  display_name: Duration Seconds
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - duration_seconds
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - duration_seconds
+  name: duration_seconds
+  semantic_type: type/Quantity
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Details
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - details
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - details
+  name: details
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+  table.cell_column: duration_seconds
+serdes/meta:
+- id: PKhlEfegdbTozSMfj0aLB
+  label: system_tasks
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-15T20:34:49.850139Z'
+metabase_version: vUNKNOWN (1308cef)
+type: model

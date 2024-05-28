@@ -1,9 +1,11 @@
 import { connect } from "react-redux";
+
 import {
   getOriginalQuestion,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
+
 import QuestionLineage from "../../components/QuestionLineage";
 
 const mapStateToProps = (state: State) => ({
@@ -11,4 +13,5 @@ const mapStateToProps = (state: State) => ({
   originalQuestion: getOriginalQuestion(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(QuestionLineage);

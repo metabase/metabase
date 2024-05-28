@@ -13,8 +13,6 @@
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
 
-(defmethod tx/has-questionable-timezone-support? :postgres [_] true) ; TODO - What?
-
 (defmethod tx/sorts-nil-first? :postgres [_ _] false)
 
 (defmethod sql.tx/pk-sql-type :postgres [_] "SERIAL")
@@ -104,3 +102,5 @@
 
 (defmethod sql.tx/standalone-table-comment-sql :postgres [& args]
   (apply sql.tx/standard-standalone-table-comment-sql args))
+
+(defmethod sql.tx/session-schema :postgres [_driver] "public")

@@ -4,7 +4,6 @@ import {
   createAction,
   createThunkAction,
 } from "metabase/lib/redux";
-
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 
 export const UPDATE_PREVIEW_SUMMARY =

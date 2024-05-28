@@ -1,9 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
-
-import { DashboardOrderedCard } from "metabase-types/api";
+import type { DashboardCard, QuestionDashboardCard } from "metabase-types/api";
 
 import {
   Root,
@@ -14,17 +13,17 @@ import {
 } from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardWidth: number;
   showClickBehaviorSidebar: (
-    dashCardId: DashboardOrderedCard["id"] | null,
+    dashCardId: QuestionDashboardCard["id"] | null,
   ) => void;
   isShowingThisClickBehaviorSidebar: boolean;
 }
 
 const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 
-function ClickBehaviorSidebarOverlay({
+export function ClickBehaviorSidebarOverlay({
   dashcard,
   dashcardWidth,
   showClickBehaviorSidebar,
@@ -54,5 +53,3 @@ function ClickBehaviorSidebarOverlay({
     </Root>
   );
 }
-
-export default ClickBehaviorSidebarOverlay;

@@ -1,40 +1,45 @@
-import React from "react";
 import { t } from "ttag";
 
+import { useListCardsQuery } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import Icon from "metabase/components/Icon";
-
+import { getIcon } from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
-import Questions, {
-  getIcon as getQuestionIcon,
-} from "metabase/entities/questions";
-
-import type { Card } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-import type { Card as LegacyCardType } from "metabase-types/types/Card";
-import type Question from "metabase-lib/Question";
+import type { IconName } from "metabase/ui";
+import { Center, Icon, Loader } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
 
 import {
+  EmptyStateActionContainer,
   EmptyStateContainer,
   EmptyStateTitle,
-  EmptyStateActionContainer,
 } from "../EmptyState.styled";
 
 import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
-interface OwnProps {
+type ModelUsageDetailsProps = {
   model: Question;
   hasNewQuestionLink: boolean;
-}
+};
 
-interface EntityLoaderProps {
-  cards: Card[];
-}
+export function ModelUsageDetails({
+  model,
+  hasNewQuestionLink,
+}: ModelUsageDetailsProps) {
+  const { data: cards = [], isLoading } = useListCardsQuery({
+    f: "using_model",
+    model_id: model.id(),
+  });
 
-type Props = OwnProps & EntityLoaderProps;
+  if (isLoading) {
+    return (
+      <Center h="100%">
+        <Loader />
+      </Center>
+    );
+  }
 
-function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
   if (cards.length === 0) {
     return (
       <EmptyStateContainer>
@@ -43,7 +48,7 @@ function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
           <EmptyStateActionContainer>
             <Button
               as={Link}
-              to={model.composeDataset().getUrl()}
+              to={ML_Urls.getUrl(model)}
               icon="add"
             >{t`Create a new question`}</Button>
           </EmptyStateActionContainer>
@@ -56,11 +61,8 @@ function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
     <ul>
       {cards.map(card => (
         <li key={card.id}>
-          <CardListItem
-            to={Urls.question(card as LegacyCardType)}
-            aria-label={card.name}
-          >
-            <Icon name={getQuestionIcon(card).name} />
+          <CardListItem to={Urls.question(card)} aria-label={card.name}>
+            <Icon name={getIcon(card).name as IconName} />
             <CardTitle>{card.name}</CardTitle>
           </CardListItem>
         </li>
@@ -68,15 +70,3 @@ function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
     </ul>
   );
 }
-
-function getCardListingQuery(state: State, { model }: OwnProps) {
-  return {
-    f: "using_model",
-    model_id: model.id(),
-  };
-}
-
-export default Questions.loadList({
-  listName: "cards",
-  query: getCardListingQuery,
-})(ModelUsageDetails);

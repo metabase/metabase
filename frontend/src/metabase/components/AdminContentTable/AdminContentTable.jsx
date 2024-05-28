@@ -1,8 +1,8 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import AdminS from "metabase/css/admin.module.css";
 
+/* eslint-disable react/prop-types */
 const AdminContentTable = ({ columnTitles, children }) => (
-  <table className="ContentTable">
+  <table data-testid="admin-content-table" className={AdminS.ContentTable}>
     <thead>
       <tr>
         {columnTitles &&

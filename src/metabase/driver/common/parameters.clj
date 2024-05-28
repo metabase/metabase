@@ -2,8 +2,7 @@
   "Various record types below are used as a convenience for differentiating the different param types."
   (:require
    [potemkin.types :as p.types]
-   [pretty.core :as pretty]
-   [schema.core :as s]))
+   [pretty.core :as pretty]))
 
 ;; "FieldFilter" is something that expands to a clause like "some_field BETWEEN 1 AND 10"
 ;;
@@ -74,38 +73,10 @@
   (pretty [_]
     (list (pretty/qualify-symbol-for-*ns* `->DateRange) start end)))
 
-;; List of numbers to faciliate things like using params in a SQL `IN` clause. This is supported by both regular
-;; filter clauses (e.g. `IN ({{ids}})` and in field filters. Field filters also support sequences of values other than
-;; numbers, but these don't have a special record type. (TODO - we don't need a record type here, either. Just use a
-;; sequence)
-;;
-;; `numbers` are a sequence of `[java.lang.Number]`
-(p.types/defrecord+ CommaSeparatedNumbers [numbers]
-  pretty/PrettyPrintable
-  (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->CommaSeparatedNumbers) numbers)))
-
 (def no-value
   "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
   values."
   ::no-value)
-
-(def SingleValue
-  "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
-  (s/cond-pre (s/eq no-value)
-              CommaSeparatedNumbers
-              FieldFilter
-              Date
-              s/Num
-              s/Str
-              s/Bool))
-
-;; Sequence of multiple values for generating a SQL IN() clause. vales
-;; `values` are a sequence of `[SingleValue]`
-(p.types/defrecord+ MultipleValues [values]
-  pretty/PrettyPrintable
-  (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->MultipleValues) values)))
 
 (p.types/defrecord+ Param [k]
   pretty/PrettyPrintable

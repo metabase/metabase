@@ -1,0 +1,16 @@
+name: Custom reports
+description: Save your Metabase analytics custom questions and dashboards here
+entity_id: okNLSZKdSxaoG58JSQY54
+slug: custom_reports
+created_at: '2024-02-21T14:26:42.881678Z'
+archived: false
+type: null
+parent_id: vG58R8k-QddHWA7_47umn
+personal_owner_id: null
+namespace: analytics
+authority_level: null
+serdes/meta:
+- id: okNLSZKdSxaoG58JSQY54
+  label: custom_reports
+  model: Collection
+is_sample: false

@@ -1,14 +1,13 @@
 (ns metabase.api.metabot
+  "These Metabot endpoints are for an experimental feature."
   (:require
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
-   [metabase.metabot.feedback :as metabot-feedback]
-   [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -16,7 +15,7 @@
 (defn- check-database-support
   "Do a preliminary check to ensure metabot will work. Throw an exception if not."
   [database-id]
-  (when-not (metabot-util/supported? database-id)
+  (when-not (metabot/supported? database-id)
     (throw
      (let [message "Metabot is not supported for this database type."]
        (ex-info
@@ -47,37 +46,35 @@
       prompt_template_version
       (update :prompt_template_versions conj prompt_template_version))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/model/:model-id"
+(api/defendpoint POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
   [model-id :as {{:keys [question]} :body}]
-  ;{model-id ms/PositiveInt
-  ; question string?}
+  {model-id ms/PositiveInt
+   question ms/NonBlankString}
   (log/infof
    "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
    model-id
    question)
-  (let [model   (api/check-404 (t2/select-one Card :id model-id :dataset true))
+  (let [model   (api/check-404 (t2/select-one Card :id model-id :type :model))
         _       (check-database-support (:database_id model))
-        context {:model       (metabot-util/denormalize-model model)
+        context {:model       (metabot/denormalize-model model)
                  :user_prompt question
                  :prompt_task :infer_sql}
         dataset (infer-sql-or-throw context question)]
     (add-viz-to-dataset context dataset)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/database/:database-id"
+(api/defendpoint POST "/database/:database-id"
   "Ask Metabot to generate a native question given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
-  {database-id su/IntGreaterThanZero
-   question    su/NonBlankString}
+  {database-id ms/PositiveInt
+   question    ms/NonBlankString}
   (log/infof
    "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
    database-id
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
-        context {:database    (metabot-util/denormalize-database database)
+        context {:database    (metabot/denormalize-database database)
                  :user_prompt question
                  :prompt_task :infer_model}]
     (if-some [model (metabot/infer-model context)]
@@ -96,28 +93,26 @@
           {:status-code 400
            :message     message}))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/database/:database-id/query"
+(api/defendpoint POST "/database/:database-id/query"
   "Ask Metabot to generate a SQL query given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
-  {database-id su/IntGreaterThanZero
-   question    su/NonBlankString}
+  {database-id ms/PositiveInt
+   question    ms/NonBlankString}
   (log/infof
    "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
    database-id
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
-        context {:database    (metabot-util/denormalize-database database)
+        context {:database    (metabot/denormalize-database database)
                  :user_prompt question
                  :prompt_task :infer_native_sql}]
     (metabot/infer-native-sql-query context)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/feedback"
+(api/defendpoint POST "/feedback"
   "Record feedback on metabot results."
   [:as {feedback :body}]
-  (if-some [stored-feedback (metabot-feedback/submit-feedback feedback)]
+  (if-some [stored-feedback (metabot/submit-feedback feedback)]
     {:feedback stored-feedback
      :message  "Thanks for your feedback"}
     (throw

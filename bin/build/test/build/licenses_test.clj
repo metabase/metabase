@@ -1,7 +1,6 @@
 (ns build.licenses-test
   (:require
    [build.licenses :as lic]
-   [clojure.data.xml :as xml]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -12,7 +11,7 @@
    (java.io StringWriter)
    (java.nio.file Files FileSystems LinkOption Path Paths)))
 
-(defn- parse [rdr] (xml/parse rdr :skip-whitespace true))
+(set! *warn-on-reflection* true)
 
 (def clojure-xml "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
@@ -33,25 +32,9 @@
 </project>")
 
 
-(def ^:private clojure-jdbc-xml
-  "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
-  <modelVersion>4.0.0</modelVersion>
-  <artifactId>java.jdbc</artifactId>
-  <version>0.7.11</version>
-  <name>java.jdbc</name>
-
-  <parent>
-    <groupId>org.clojure</groupId>
-    <artifactId>pom.contrib</artifactId>
-    <version>0.2.2</version>
-  </parent>
-</project>")
-
-
 (defn jar->path
   "Return a Path for a jar."
-   ^Path [filename]
+  ^Path [filename]
   (let [path (Paths/get filename (into-array String []))]
     (if (Files/exists path (into-array LinkOption []))
       path
@@ -119,7 +102,7 @@
                                        '[org.clojure/clojure
                                          org.apache.commons/commons-math3
                                          net.redhogs.cronparser/cron-parser-core])
-          normalize-entry (fn [[jar {:keys [coords license error]}]]
+          normalize-entry (fn [[_jar {:keys [coords license error]}]]
                             [((juxt :group :artifact) coords)
                              (cond-> {:license (not (str/blank? license))}
                                error (assoc :error error))])
@@ -165,8 +148,8 @@
               "This software contains the following license and notice below:\n\n\n"
               "license text\n\n\n----------\n\n")
          (let [os (StringWriter.)]
-           (lic/write-license os ['a/a {:coords  {:group "a" :artifact "a" :version "1.0"}
-                                        :license "license text"}])
+           (#'lic/write-license os ['a/a {:coords  {:group "a" :artifact "a" :version "1.0"}
+                                          :license "license text"}])
            (str os)))))
 
 (defn- loop-until-success [f max step-name]

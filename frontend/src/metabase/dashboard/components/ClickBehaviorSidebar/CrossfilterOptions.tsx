@@ -1,24 +1,23 @@
-import React from "react";
 import { t } from "ttag";
 
-import ClickMappings from "metabase/dashboard/components/ClickMappings";
-
+import CS from "metabase/css/core/index.css";
+import { ClickMappingsConnected } from "metabase/dashboard/components/ClickMappings";
 import type {
   ClickBehavior,
   Dashboard,
-  DashboardOrderedCard,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { Heading, SidebarContent } from "./ClickBehaviorSidebar.styled";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: QuestionDashboardCard;
   clickBehavior: ClickBehavior;
   updateSettings: (settings: ClickBehavior) => void;
 }
 
-function CrossfilterOptions({
+export function CrossfilterOptions({
   clickBehavior,
   dashboard,
   dashcard,
@@ -26,11 +25,13 @@ function CrossfilterOptions({
 }: Props) {
   return (
     <SidebarContent>
-      <Heading className="text-medium">{t`Pick one or more filters to update`}</Heading>
-      <ClickMappings
+      <Heading
+        className={CS.textMedium}
+      >{t`Pick one or more filters to update`}</Heading>
+      <ClickMappingsConnected
         object={dashboard}
         dashcard={dashcard}
-        isDash
+        isDashboard
         clickBehavior={clickBehavior}
         updateSettings={updateSettings}
         excludeParametersSources
@@ -38,5 +39,3 @@ function CrossfilterOptions({
     </SidebarContent>
   );
 }
-
-export default CrossfilterOptions;

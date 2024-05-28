@@ -33,7 +33,8 @@
    :position           0
    :visibility_type    :normal
    :preview_display    true
-   :created_at         true})
+   :created_at         true
+   :json_unfolding     false})
 
 (def pulse-channel-defaults
   {:schedule_frame nil

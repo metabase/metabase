@@ -17,9 +17,11 @@ describe("issue 21513", () => {
     summarize({ mode: "notebook" });
     popover().findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().findByText("Category").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
       formula: "[Count] * 2",

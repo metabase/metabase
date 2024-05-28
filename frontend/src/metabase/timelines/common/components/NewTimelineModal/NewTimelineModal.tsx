@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { getDefaultTimelineIcon } from "metabase/lib/timelines";
+
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { Collection, TimelineData } from "metabase-types/api";
-import ModalBody from "../ModalBody";
-import ModalHeader from "../ModalHeader";
+import ModalContent from "metabase/components/ModalContent";
+import { getDefaultTimelineIcon } from "metabase/lib/timelines";
+import type { Collection, TimelineData } from "metabase-types/api";
+
 import TimelineForm from "../TimelineForm";
 
 export interface NewTimelineModalProps {
@@ -35,16 +36,13 @@ const NewTimelineModal = ({
   );
 
   return (
-    <div>
-      <ModalHeader title={t`New event timeline`} onClose={onClose} />
-      <ModalBody>
-        <TimelineForm
-          initialValues={initialValues}
-          onSubmit={handleSubmit}
-          onCancel={onCancel}
-        />
-      </ModalBody>
-    </div>
+    <ModalContent title={t`New event timeline`} onClose={onClose}>
+      <TimelineForm
+        initialValues={initialValues}
+        onSubmit={handleSubmit}
+        onCancel={onCancel}
+      />
+    </ModalContent>
   );
 };
 
@@ -57,4 +55,5 @@ const getInitialValues = (collection: Collection): TimelineData => ({
   archived: false,
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewTimelineModal;

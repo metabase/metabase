@@ -1,4 +1,5 @@
-import React, { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+
 import { ArchiveButton } from "./FormDangerButton.styled";
 
 export interface FormArchiveButtonProps {
@@ -17,4 +18,5 @@ const FormArchiveButton = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormArchiveButton;

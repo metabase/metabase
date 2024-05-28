@@ -1,7 +1,12 @@
-import _ from "underscore";
 import { assoc } from "icepick";
-import { restore, visitDashboard } from "e2e/support/helpers";
+import _ from "underscore";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  updateDashboardCards,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;
@@ -17,7 +22,6 @@ describe("scenarios > dashboard > permissions", () => {
 
     cy.request("POST", "/api/collection", {
       name: "locked down collection",
-      color: "#509EE3",
       parent_id: null,
     }).then(({ body: { id: collection_id } }) => {
       cy.request("GET", "/api/collection/graph").then(
@@ -65,20 +69,12 @@ describe("scenarios > dashboard > permissions", () => {
     cy.createDashboard().then(({ body: { id: dashId } }) => {
       dashboardId = dashId;
 
-      cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-        cardId: firstQuestionId,
-        row: 0,
-        col: 0,
-        size_x: 6,
-        size_y: 6,
-      }).then(({ body: { id: dashCardIdA } }) => {
-        cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-          cardId: secondQuestionId,
-          row: 0,
-          col: 6,
-          size_x: 6,
-          size_y: 6,
-        });
+      updateDashboardCards({
+        dashboard_id: dashId,
+        cards: [
+          { card_id: firstQuestionId, row: 0, col: 0, size_x: 8, size_y: 6 },
+          { card_id: secondQuestionId, row: 0, col: 6, size_x: 8, size_y: 6 },
+        ],
       });
     });
   });
@@ -86,23 +82,31 @@ describe("scenarios > dashboard > permissions", () => {
   it("should let admins view all cards in a dashboard", () => {
     visitDashboard(dashboardId);
     // Admin can see both questions
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
     visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
     visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });

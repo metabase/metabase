@@ -1,15 +1,12 @@
-import React from "react";
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import Tooltip from "metabase/core/components/Tooltip";
+import { ListRoot } from "metabase/components/tree/TreeNodeList.styled";
 import Link from "metabase/core/components/Link";
-
+import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-
-import { darken, color, alpha } from "metabase/lib/colors";
+import { Icon, Tooltip } from "metabase/ui";
 
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;
@@ -18,17 +15,17 @@ export const SidebarIcon = styled(Icon)<{
   ${props =>
     !props.color &&
     css`
-      color: ${props.isSelected ? color("brand") : color("brand-light")};
+      color: ${color("brand")};
     `}
 `;
 
 SidebarIcon.defaultProps = {
-  size: 14,
+  size: 16,
 };
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
-  color: ${color("brand-light")};
+  color: ${color("brand")};
 `;
 
 const activeColorCSS = css`
@@ -81,6 +78,17 @@ export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
   ${props => props.hovered && collectionDragAndDropHoverStyle}
 `;
 
+// accommodate for trash collection having margin above
+export const CollectionLinkRoot = styled.div`
+  ${ListRoot} > &:last-child {
+    margin-top: 1rem;
+  }
+
+  ${ListRoot} ${ListRoot} > &:last-child {
+    margin-top: 0;
+  }
+`;
+
 const itemContentStyle = css`
   display: flex;
   align-items: center;
@@ -89,8 +97,8 @@ const itemContentStyle = css`
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
   cursor: pointer;
-  ${itemContentStyle}
 
+  ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
     color: ${props => getTextColor(props.isSelected)};
@@ -120,7 +128,7 @@ export const ItemName = styled(TreeNode.NameContainer)`
 export function NameContainer({ children: itemName }: { children: string }) {
   if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
     return (
-      <Tooltip tooltip={itemName} maxWidth="none">
+      <Tooltip label={itemName} withArrow maw="none">
         <ItemName>{itemName}</ItemName>
       </Tooltip>
     );

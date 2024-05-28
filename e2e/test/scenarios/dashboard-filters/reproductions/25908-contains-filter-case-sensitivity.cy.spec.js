@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -38,14 +38,14 @@ describe("issue 25908", () => {
           `/api/dashboard/${dashboard_id}/dashcard/${id}/card/${card_id}/query`,
         ).as("dashcardQuery");
 
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 13,
+              size_x: 17,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -69,10 +69,13 @@ describe("issue 25908", () => {
   });
 
   it("`contains` dashboard filter should respect case insensitivity on a title-drill-through (metabase#25908)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Title contains Li");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Showing ${CASE_INSENSITIVE_ROWS} rows`);
   });
 });

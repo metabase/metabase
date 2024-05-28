@@ -32,8 +32,8 @@
 
 (deftest env-test
   (testing "default values for host and port"
-    (mt/with-temp-env-var-value [mb-db-host nil
-                                 mb-db-port nil]
+    (mt/with-temp-env-var-value! [mb-db-host nil
+                                  mb-db-port nil]
       (testing ":h2 -- don't supply defaults for host/port"
         (is (partial= {:mb-db-port nil
                        :mb-db-host nil}
@@ -47,7 +47,7 @@
                        :mb-db-port 3306}
                       (#'mdb.env/env* :mysql))))
       (testing "Don't override values specified in environment variables with defaults."
-        (mt/with-temp-env-var-value [mb-db-port "3307"]
+        (mt/with-temp-env-var-value! [mb-db-port "3307"]
           (doseq [db-type [:mysql :postgres]]
             (testing db-type
               (is (partial= {:mb-db-port 3307}

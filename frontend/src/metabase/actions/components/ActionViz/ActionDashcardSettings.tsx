@@ -1,22 +1,18 @@
-import React from "react";
+import { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import EmptyState from "metabase/components/EmptyState";
-
-import MetabaseSettings from "metabase/lib/settings";
-
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker/ActionPicker";
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
-
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import { ConnectedActionParameterMappingForm } from "./ActionParameterMapper";
 import {
   ActionSettingsWrapper,
   ParameterMapperContainer,
@@ -24,9 +20,17 @@ import {
   ActionSettingsLeft,
   ActionSettingsRight,
   ModalActions,
-  ExplainerText,
-  BrandLinkWithLeftMargin,
 } from "./ActionDashcardSettings.styled";
+import {
+  ActionParameterMappingForm,
+  getTargetKey,
+} from "./ActionParameterMapping";
+import { ExplainerText } from "./ExplainerText";
+import {
+  getParameterDefaultValue,
+  isParameterHidden,
+  isParameterRequired,
+} from "./utils";
 
 const mapDispatchToProps = {
   setActionForDashcard,
@@ -55,11 +59,34 @@ export function ActionDashcardSettings({
   };
 
   const hasParameters = !!action?.parameters?.length;
+  const currentMappings = useMemo(
+    () =>
+      Object.fromEntries(
+        dashcard.parameter_mappings?.map(mapping => [
+          getTargetKey(mapping),
+          mapping.parameter_id,
+        ]) ?? [],
+      ),
+    [dashcard.parameter_mappings],
+  );
+
+  const isFormInvalid =
+    !!action &&
+    action.parameters.some(actionParameter => {
+      const isHidden = isParameterHidden(action, actionParameter);
+      const isRequired = isParameterRequired(action, actionParameter);
+      const isParameterMapped =
+        currentMappings[getTargetKey(actionParameter)] != null;
+      const defaultValue = getParameterDefaultValue(action, actionParameter);
+      const hasDefaultValue = defaultValue != null;
+
+      return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
+    });
 
   return (
     <ActionSettingsWrapper>
       <ActionSettingsLeft>
-        <h4 className="pb2">{t`Action Library`}</h4>
+        <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />
       </ActionSettingsLeft>
       <ActionSettingsRight>
@@ -70,21 +97,15 @@ export function ActionDashcardSettings({
                 <ActionSettingsHeader>
                   {t`Where should the values for '${action.name}' come from?`}
                 </ActionSettingsHeader>
-                <ExplainerText>
-                  {t`You can either ask users to enter values, or use the value of a dashboard filter.`}
-                  <BrandLinkWithLeftMargin
-                    href={MetabaseSettings.docsUrl("dashboards/actions")}
-                  >
-                    {t`Learn more.`}
-                  </BrandLinkWithLeftMargin>
-                </ExplainerText>
+                <ExplainerText />
               </>
             )}
             <ParameterMapperContainer>
-              <ConnectedActionParameterMappingForm
+              <ActionParameterMappingForm
                 dashcard={dashcard}
                 dashboard={dashboard}
-                action={dashcard.action}
+                action={action}
+                currentMappings={currentMappings}
               />
             </ParameterMapperContainer>
           </>
@@ -94,7 +115,7 @@ export function ActionDashcardSettings({
           </ParameterMapperContainer>
         )}
         <ModalActions>
-          <Button primary onClick={onClose}>
+          <Button primary onClick={onClose} disabled={isFormInvalid}>
             {t`Done`}
           </Button>
         </ModalActions>
@@ -104,7 +125,7 @@ export function ActionDashcardSettings({
 }
 
 const EmptyActionState = () => (
-  <EmptyState className="p3" message={t`Select an action to get started`} />
+  <EmptyState className={CS.p3} message={t`Select an action to get started`} />
 );
 
 export const ConnectedActionDashcardSettings = connect(

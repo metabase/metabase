@@ -1,165 +1,190 @@
-import { createMetadata } from "__support__/sample_database_fixture";
-import { createMockTable } from "metabase-types/api/mocks";
-import { createProductsTitleField } from "metabase-types/api/mocks/presets";
-import { createQuery } from "./test-helpers";
-import * as ML from "./v2";
+import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createProductsTitleField,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
-// This is a convenience for finding an orderable column (as an opaque object) by name
-const findOrderableColumn = (
-  query: ML.Query,
-  tableName: string,
-  fieldName: string,
-): ML.ColumnMetadata => {
-  const column = ML.orderableColumns(query).find(
-    (column: ML.ColumnMetadata) => {
-      const displayInfo = ML.displayInfo(query, column);
-      return (
-        displayInfo?.table?.name === tableName &&
-        displayInfo?.name === fieldName
-      );
-    },
-  );
-
-  if (!column) {
-    throw new Error(`Could not find ${tableName}.${fieldName}`);
-  }
-
-  return column;
-};
+import { columnFinder, createQuery } from "./test-helpers";
 
 describe("order by", () => {
   describe("orderableColumns", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(
+      query,
+      Lib.orderableColumns(query, 0),
+    );
 
     it("returns metadata for columns in the source table", () => {
-      const ordersID = findOrderableColumn(query, "ORDERS", "ID");
+      const ordersID = findOrderableColumn("ORDERS", "ID");
 
-      expect(ML.displayInfo(query, ordersID)).toEqual(
+      expect(Lib.displayInfo(query, 0, ordersID)).toEqual(
         expect.objectContaining({
           name: "ID",
-          display_name: "ID",
-          effective_type: "type/BigInteger",
-          semantic_type: "type/PK",
-          is_calculated: false,
-          is_from_join: false,
-          is_from_previous_stage: false,
-          is_implicitly_joinable: false,
+          displayName: "ID",
+          longDisplayName: "ID",
+          effectiveType: "type/BigInteger",
+          semanticType: "type/PK",
+          isCalculated: false,
+          isFromJoin: false,
+          isFromPreviousStage: false,
+          isImplicitlyJoinable: false,
           table: {
             name: "ORDERS",
-            display_name: "Orders",
-            is_source_table: true,
+            displayName: "Orders",
+            longDisplayName: "Orders",
+            isSourceTable: true,
+            schema: "1:PUBLIC",
           },
         }),
       );
     });
 
     it("returns metadata for columns in implicitly joinable tables", () => {
-      const productsTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
+      const productsTitle = findOrderableColumn("PRODUCTS", "TITLE");
 
-      expect(ML.displayInfo(query, productsTitle)).toEqual(
+      expect(Lib.displayInfo(query, 0, productsTitle)).toEqual(
         expect.objectContaining({
           name: "TITLE",
-          display_name: "Title",
-          effective_type: "type/Text",
-          semantic_type: "type/Category",
-          is_calculated: false,
-          is_from_join: false,
-          is_from_previous_stage: false,
-          is_implicitly_joinable: true,
+          displayName: "Title",
+          longDisplayName: "Product → Title",
+          effectiveType: "type/Text",
+          semanticType: "type/Title",
+          isCalculated: false,
+          isFromJoin: false,
+          isFromPreviousStage: false,
+          isImplicitlyJoinable: true,
           table: {
             name: "PRODUCTS",
-            display_name: "Products",
-            is_source_table: false,
+            displayName: "Products",
+            longDisplayName: "Products",
+            isSourceTable: false,
+            schema: "1:PUBLIC",
           },
         }),
       );
     });
 
     it("returns metadata for columns in source question/model", () => {
-      const table_id = "card__1";
-      const field = createProductsTitleField({ table_id });
-      const table = createMockTable({
-        id: table_id,
+      const field = createProductsTitleField();
+      const card = createMockCard({
         name: "Product Model",
-        display_name: "Product Model",
-        fields: [field],
+        result_metadata: [field],
       });
-      const metadata = createMetadata(state =>
-        state.assocIn(["entities", "tables", table.id], table),
-      );
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      });
 
       const query = createQuery({
-        databaseId: table.db_id,
+        databaseId: SAMPLE_DB_ID,
         metadata,
         query: {
           type: "query",
-          database: table.db_id,
-          query: { "source-table": table_id },
+          database: SAMPLE_DB_ID,
+          query: { "source-table": `card__${card.id}` },
         },
       });
 
-      const columns = ML.orderableColumns(query);
+      const columns = Lib.orderableColumns(query, 0);
 
       const productsTitle = columns.find(
-        (columnMetadata: ML.ColumnMetadata) => {
-          const displayInfo = ML.displayInfo(query, columnMetadata);
+        (columnMetadata: Lib.ColumnMetadata) => {
+          const displayInfo = Lib.displayInfo(query, 0, columnMetadata);
           return (
-            displayInfo.display_name === "Title" &&
-            displayInfo.table?.display_name === "Product Model"
+            displayInfo.displayName === "Title" &&
+            displayInfo.table?.displayName === "Product Model"
           );
         },
       );
 
-      expect(ML.displayInfo(query, productsTitle as ML.ColumnMetadata)).toEqual(
+      expect(
+        Lib.displayInfo(query, 0, productsTitle as Lib.ColumnMetadata),
+      ).toEqual(
         expect.objectContaining({
           name: field.name,
-          display_name: field.display_name,
-          effective_type: field.base_type,
-          table: { name: "Product Model", display_name: "Product Model" },
+          displayName: field.display_name,
+          effectiveType: field.base_type,
+          table: { name: "Product Model", displayName: "Product Model" },
         }),
       );
+    });
+
+    it("should preserve order-by positions between v1-v2 roundtrip", () => {
+      const query = createQuery();
+      const taxColumn = findOrderableColumn("ORDERS", "TAX");
+      const nextQuery = Lib.orderBy(query, 0, taxColumn);
+      const nextQueryColumns = Lib.orderableColumns(nextQuery, 0);
+      const nextTaxColumn = columnFinder(nextQuery, nextQueryColumns)(
+        "ORDERS",
+        "TAX",
+      );
+
+      expect(Lib.displayInfo(nextQuery, 0, nextTaxColumn).orderByPosition).toBe(
+        0,
+      );
+
+      const roundtripQuery = createQuery({
+        query: Lib.toLegacyQuery(nextQuery),
+      });
+      const roundtripQueryColumns = Lib.orderableColumns(roundtripQuery, 0);
+      const roundtripTaxColumn = columnFinder(
+        roundtripQuery,
+        roundtripQueryColumns,
+      )("ORDERS", "TAX");
+
+      expect(
+        Lib.displayInfo(roundtripQuery, 0, roundtripTaxColumn).orderByPosition,
+      ).toBe(0);
     });
   });
 
   describe("add order by", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(
+      query,
+      Lib.orderableColumns(query, 0),
+    );
 
     it("should handle no order by clauses", () => {
-      expect(ML.orderBys(query)).toHaveLength(0);
+      expect(Lib.orderBys(query, 0)).toHaveLength(0);
     });
 
     it("should update the query", () => {
-      const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
-      const nextQuery = ML.orderBy(query, productTitle);
-      const orderBys = ML.orderBys(nextQuery);
+      const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
+      const nextQuery = Lib.orderBy(query, 0, productTitle);
+      const orderBys = Lib.orderBys(nextQuery, 0);
 
       expect(orderBys).toHaveLength(1);
-      expect(ML.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
+      expect(Lib.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
     });
   });
 
   describe("replace order by", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(
+      query,
+      Lib.orderableColumns(query, 0),
+    );
 
     it("should update the query", () => {
-      const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
-      const productCategory = findOrderableColumn(
-        query,
-        "PRODUCTS",
-        "CATEGORY",
-      );
+      const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
+      const productCategory = findOrderableColumn("PRODUCTS", "CATEGORY");
 
-      const orderedQuery = ML.orderBy(query, productTitle);
-      const orderBys = ML.orderBys(orderedQuery);
+      const orderedQuery = Lib.orderBy(query, 0, productTitle);
+      const orderBys = Lib.orderBys(orderedQuery, 0);
 
       expect(orderBys).toHaveLength(1);
-      const nextQuery = ML.replaceClause(
+      const nextQuery = Lib.replaceClause(
         orderedQuery,
+        0,
         orderBys[0],
-        ML.orderByClause(orderedQuery, -1, productCategory, "desc"),
+        Lib.orderByClause(productCategory, "desc"),
       );
-      const nextOrderBys = ML.orderBys(nextQuery);
-      expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
+      const nextOrderBys = Lib.orderBys(nextQuery, 0);
+      expect(Lib.displayName(nextQuery, nextOrderBys[0])).toBe(
         "Category descending",
       );
       expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
@@ -168,16 +193,20 @@ describe("order by", () => {
 
   describe("remove order by", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(
+      query,
+      Lib.orderableColumns(query, 0),
+    );
 
     it("should update the query", () => {
-      const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
+      const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
 
-      const orderedQuery = ML.orderBy(query, productTitle);
-      const orderBys = ML.orderBys(orderedQuery);
+      const orderedQuery = Lib.orderBy(query, 0, productTitle);
+      const orderBys = Lib.orderBys(orderedQuery, 0);
       expect(orderBys).toHaveLength(1);
 
-      const nextQuery = ML.removeClause(orderedQuery, orderBys[0]);
-      expect(ML.orderBys(nextQuery)).toHaveLength(0);
+      const nextQuery = Lib.removeClause(orderedQuery, 0, orderBys[0]);
+      expect(Lib.orderBys(nextQuery, 0)).toHaveLength(0);
     });
   });
 });

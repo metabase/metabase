@@ -1,33 +1,36 @@
 import {
-  restore,
-  modal,
-  popover,
+  entityPickerModal,
+  entityPickerModalLevel,
   navigationSidebar,
+  openNavigationSidebar,
+  popover,
+  restore,
 } from "e2e/support/helpers";
 
 const modelName = "Orders Model";
+const personalCollectionName = "Bobby Tables's Personal Collection";
 
 describe("issue 19737", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    cy.request("PUT", "/api/card/1", { name: modelName, dataset: true });
   });
 
   it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
     cy.visit("/collection/root");
 
-    moveModel(modelName, "My personal collection");
+    moveModel(modelName, personalCollectionName);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Your personal collection").click();
+    entityPickerModal().within(() => {
+      cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
   });
@@ -38,16 +41,18 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "First collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
     // Close the modal so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
-    popover().within(() => {
-      cy.findByText("Models").click();
+    entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -56,30 +61,35 @@ describe("issue 19737", () => {
     cy.go("back");
 
     // move "Orders Model" from a custom collection ("First collection") to another collection
+    openNavigationSidebar();
     navigationSidebar().findByText("First collection").click();
 
-    moveModel(modelName, "My personal collection");
+    moveModel(modelName, personalCollectionName);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("First collection").click();
-      cy.findByText("Nothing here");
+    entityPickerModal().within(() => {
+      cy.findByText("First collection").should("not.exist");
+      entityPickerModalLevel(1).should("not.exist");
+      entityPickerModalLevel(2).should("not.exist");
     });
   });
 });
 
 function moveModel(modelName, collectionName) {
   openEllipsisMenuFor(modelName);
-  popover().contains("Move").click();
+  popover().findByText("Move").click();
 
-  modal().within(() => {
+  entityPickerModal().within(() => {
+    cy.findByRole("tab", { name: /Collections/ }).click();
     cy.findByText(collectionName).click();
-    cy.findByText("Move").click();
+    cy.button("Move").click();
   });
 }
 

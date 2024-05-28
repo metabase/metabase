@@ -1,23 +1,31 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { cloneElement, Children } from "react";
+
+import CS from "metabase/css/core/index.css";
 
 const SidebarLayout = ({ className, style, sidebar, children }) => (
   <div
     className={className}
     style={{ ...style, display: "flex", flexDirection: "row" }}
   >
-    {React.cloneElement(
+    {cloneElement(
       sidebar,
       {
         style: { flexShrink: 0, alignSelf: "stretch" },
-        className: "scroll-y scroll-show scroll--light scroll-show--hover",
+        className: cx(
+          CS.scrollY,
+          CS.scrollShow,
+          CS.scrollLight,
+          CS.scrollShowHover,
+        ),
       },
       sidebar.props.children,
     )}
     {children &&
-      React.cloneElement(
-        React.Children.only(children),
+      cloneElement(
+        Children.only(children),
         {
           style: {
             flex: 1,
@@ -27,7 +35,7 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
             height: "100%",
           },
         },
-        React.Children.only(children).props.children,
+        Children.only(children).props.children,
       )}
   </div>
 );

@@ -3,10 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.test :as mt]
-   [schema.core :as s]))
+   [metabase.test :as mt]))
 
-(deftest order-by-test
+(deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[1 12 375]
             [1  9 139]
@@ -26,7 +25,7 @@
                            [:asc $id]]
                 :limit    10}))))))
 
-(deftest order-by-aggregate-fields-test
+(deftest ^:parallel order-by-aggregate-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing :count
       (is (= [[4  6]
@@ -37,8 +36,10 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]
                   :breakout    [$price]
-                  :order-by    [[:asc [:aggregation 0]]]})))))
+                  :order-by    [[:asc [:aggregation 0]]]})))))))
 
+(deftest ^:parallel order-by-aggregate-fields-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing :sum
       (is (= [[2 2855]
               [1 1211]
@@ -48,9 +49,10 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:sum $id]]
                   :breakout    [$price]
-                  :order-by    [[:desc [:aggregation 0]]]})))))
+                  :order-by    [[:desc [:aggregation 0]]]})))))))
 
-
+(deftest ^:parallel order-by-aggregate-fields-test-3
+  (mt/test-drivers (mt/normal-drivers)
     (testing :distinct
       (is (= [[4  6]
               [3 13]
@@ -60,8 +62,10 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:distinct $id]]
                   :breakout    [$price]
-                  :order-by    [[:asc [:aggregation 0]]]})))))
+                  :order-by    [[:asc [:aggregation 0]]]})))))))
 
+(deftest ^:parallel order-by-aggregate-fields-test-4
+  (mt/test-drivers (mt/normal-drivers)
     (testing :avg
       (let [driver-floors-average? (#{:redshift :sqlserver} driver/*driver*)]
         (is (= [[3 22.0]
@@ -72,24 +76,26 @@
                  (mt/run-mbql-query venues
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
-                    :order-by    [[:asc [:aggregation 0]]]})))))))
+                    :order-by    [[:asc [:aggregation 0]]]}))))))))
 
-  (testing :stddev
-    (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+(deftest ^:parallel order-by-aggregate-fields-test-5
+  (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+    (testing :stddev
       ;; standard deviation calculations are always NOT EXACT (normal behavior) so just test that the results are in a
       ;; certain RANGE.
       (letfn [(row-schema [price lower-bound upper-bound]
-                (s/one [(s/one (s/eq price)
-                               (format "price = %d" price))
-                        (s/one (s/pred #(< lower-bound % upper-bound))
-                               (format "%.1f < value < %.1f" lower-bound upper-bound))]
-                       "row"))]
-        (is (schema= [(row-schema 3 23.0 27.0)
-                      (row-schema 1 22.0 26.0)
-                      (row-schema 2 19.0 23.0)
-                      (row-schema 4 12.0 16.0)]
-                     (mt/formatted-rows [int 1.0]
-                       (mt/run-mbql-query venues
-                         {:aggregation [[:stddev $category_id]]
-                          :breakout    [$price]
-                          :order-by    [[:desc [:aggregation 0]]]}))))))))
+                [:tuple
+                 [:= price]
+                 [:fn
+                  {:error/message (format "%.1f < value < %.1f" lower-bound upper-bound)}
+                  #(< lower-bound % upper-bound)]])]
+        (is (malli= [:tuple
+                     (row-schema 3 23.0 27.0)
+                     (row-schema 1 22.0 26.0)
+                     (row-schema 2 19.0 23.0)
+                     (row-schema 4 12.0 16.0)]
+                    (mt/formatted-rows [int 1.0]
+                      (mt/run-mbql-query venues
+                        {:aggregation [[:stddev $category_id]]
+                         :breakout    [$price]
+                         :order-by    [[:desc [:aggregation 0]]]}))))))))

@@ -23,7 +23,7 @@ import "./commands/user/authentication";
 import "./commands/permissions/updatePermissions";
 import "./commands/permissions/sandboxTable";
 
-import "./commands/database/addH2SampleDatabase";
+import "./commands/database/addSQLiteDatabase";
 
 import "./commands/visibility/isVisibleInPopover";
 import "./commands/visibility/findByTextEnsureVisible";
@@ -31,4 +31,4 @@ import "./commands/visibility/isRenderedWithinViewport";
 
 import "./commands/overwrites/log";
 
-import "./commands/percy/createPercySnapshot";
+require("./commands/downloads/downloadUtils").addCustomCommands();

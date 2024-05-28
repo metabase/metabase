@@ -1,1 +1,1 @@
-export { default } from "./LimitStep";
+export { LimitStep } from "./LimitStep";

@@ -1,0 +1,36 @@
+:root {
+  --title-color: var(--mb-color-text-medium);
+  --subtitle-color: var(--mb-color-text-medium);
+  --icon-width: 60px;
+}
+
+.columnHeader {
+  flex: 1 0 auto;
+  display: flex;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.revisionsWrapper {
+  padding-top: 20px;
+  padding-left: var(--icon-width);
+}
+
+.schemaSeparator {
+  composes: textLight mt2 from "style";
+  margin-left: var(--icon-width);
+  font-size: 18px;
+}
+
+.tableActualName {
+  font-family: "Lucida Console", Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.4em;
+  letter-spacing: 1px;
+  white-space: pre-wrap;
+  color: var(--mb-color-text-medium);
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--mb-color-text-light);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+}

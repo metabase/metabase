@@ -1,35 +1,34 @@
-import React from "react";
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { renderWithProviders } from "__support__/ui";
-import {
-  MetabotEntityId,
-  MetabotEntityType,
-} from "metabase-types/store/metabot";
-import {
-  createMockCard,
-  createMockDatabase,
-  createMockField,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
-  createMockTable,
-} from "metabase-types/api/mocks";
-import {
-  setupCardDataset,
-  setupDatabaseEndpoints,
-} from "__support__/server-mocks";
+
 import {
   API_ERROR,
+  setupCardDataset,
+  setupDatabaseEndpoints,
   setupBadRequestMetabotDatabaseEndpoint,
   setupBadRequestMetabotModelEndpoint,
   setupMetabotDatabaseEndpoint,
   setupMetabotModelEndpoint,
-} from "__support__/server-mocks/metabot";
-import Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
-import { getStructuredModel } from "metabase-lib/mocks";
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import registerVisualizations from "metabase/visualizations/register";
+import type { Card, Database } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
+import type { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
+
 import Metabot from "./Metabot";
+
+registerVisualizations();
 
 const PROMPT = "average orders total";
 
@@ -55,13 +54,15 @@ const ORDERS_DATABASE = createMockDatabase({
   tables: [ORDERS_TABLE],
 });
 
-const MODEL = getStructuredModel({
+const MODEL = createStructuredModelCard({
   id: 1,
+  name: "Q1",
   result_metadata: [FIELD],
-  dataset_query: createMockStructuredDatasetQuery({
+  dataset_query: {
     database: ORDERS_DATABASE_ID,
-    query: createMockStructuredQuery({ "source-table": ORDERS_TABLE_ID }),
-  }),
+    type: "query",
+    query: { "source-table": ORDERS_TABLE_ID },
+  },
 });
 
 const GENERATED_CARD = createMockCard({ id: undefined, display: "table" });
@@ -84,13 +85,16 @@ const setupMetabotDatabaseEndpoints = (couldGenerateCard = true) => {
 
 const setupMetabotModelEndpoints = (couldGenerateCard = true) => {
   if (couldGenerateCard) {
-    setupMetabotModelEndpoint(MODEL.id(), GENERATED_CARD);
-    setupCardDataset({
-      row_count: 1,
-      data: { rows: [[RESULT_VALUE]] },
-    });
+    setupMetabotModelEndpoint(MODEL.id, GENERATED_CARD, true);
+    setupCardDataset(
+      {
+        row_count: 1,
+        data: { rows: [[RESULT_VALUE]] },
+      },
+      true,
+    );
   } else {
-    setupBadRequestMetabotModelEndpoint(MODEL.id());
+    setupBadRequestMetabotModelEndpoint(MODEL.id);
   }
 };
 
@@ -98,7 +102,7 @@ interface SetupOpts {
   entityId?: MetabotEntityId;
   entityType: MetabotEntityType;
   initialPrompt?: string;
-  model?: Question;
+  model?: Card;
   database?: Database;
   databases?: Database[];
 }
@@ -108,17 +112,26 @@ const setup = ({
   entityType,
   initialPrompt,
   model,
-  database = new Database(ORDERS_DATABASE),
-  databases = [new Database(ORDERS_DATABASE)],
+  database = ORDERS_DATABASE,
+  databases = [ORDERS_DATABASE],
 }: SetupOpts) => {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: databases,
+      questions: model ? [model] : [],
+    }),
+  });
+
+  const metadata = getMetadata(state);
+
   renderWithProviders(
     <Metabot
       entityId={entityId}
       entityType={entityType}
       initialPrompt={initialPrompt}
-      model={model}
-      database={database}
-      databases={databases}
+      model={model ? checkNotNull(metadata.question(model.id)) : undefined}
+      database={checkNotNull(metadata.database(database.id))}
+      databases={[checkNotNull(metadata.database(database.id))]}
     />,
   );
 };
@@ -129,7 +142,7 @@ describe("Metabot", () => {
       setupMetabotDatabaseEndpoints();
       setup({ entityType: "database" });
 
-      enterPromptAndGetResults("Ask something…");
+      await enterPromptAndGetResults("Ask something…");
 
       expect(await screen.findByText("Here you go!")).toBeInTheDocument();
       expect(await screen.findByText(RESULT_VALUE)).toBeInTheDocument();
@@ -140,7 +153,7 @@ describe("Metabot", () => {
       setupMetabotDatabaseEndpoints(false);
       setup({ entityType: "database" });
 
-      enterPromptAndGetResults("Ask something…");
+      await enterPromptAndGetResults("Ask something…");
 
       expect(await screen.findByText(API_ERROR)).toBeInTheDocument();
       expect(screen.queryByText("How did I do?")).not.toBeInTheDocument();
@@ -152,7 +165,7 @@ describe("Metabot", () => {
       setupMetabotModelEndpoints();
       setup({ entityType: "model", model: MODEL });
 
-      enterPromptAndGetResults(
+      await enterPromptAndGetResults(
         "Ask something like, how many Q1 have we had over time?",
       );
       expect(await screen.findByText("Here you go!")).toBeInTheDocument();
@@ -160,15 +173,24 @@ describe("Metabot", () => {
       expect(screen.getByText("How did I do?")).toBeInTheDocument();
     });
 
-    it("should show an error when a query could not be generates", async () => {
+    it("should show an error when a query could not be generated", async () => {
       setupMetabotModelEndpoints(false);
       setup({ entityType: "model", model: MODEL });
 
-      enterPromptAndGetResults(
+      await enterPromptAndGetResults(
         "Ask something like, how many Q1 have we had over time?",
       );
       expect(await screen.findByText(API_ERROR)).toBeInTheDocument();
       expect(screen.queryByText("How did I do?")).not.toBeInTheDocument();
+
+      // The error state get cleared
+      setupMetabotModelEndpoints(true);
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /get answer/i }),
+      );
+      expect(await screen.findByText("Here you go!")).toBeInTheDocument();
+      expect(await screen.findByText(RESULT_VALUE)).toBeInTheDocument();
     });
   });
 
@@ -180,24 +202,22 @@ describe("Metabot", () => {
     setupMetabotModelEndpoints();
     setup({ entityType, model: MODEL });
 
-    enterPromptAndGetResults(
+    await enterPromptAndGetResults(
       "Ask something like, how many Q1 have we had over time?",
     );
 
     expect(await screen.findByText("How did I do?")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("This is great!"));
+    await userEvent.click(screen.getByText("This is great!"));
 
     expect(await screen.findByText("Glad to hear it!")).toBeInTheDocument();
   });
 });
 
-function enterPromptAndGetResults(inputPlaceholder: string) {
+async function enterPromptAndGetResults(inputPlaceholder: string) {
   // Empty state
   screen.getByRole("img", { name: /insight icon/i });
 
-  userEvent.type(screen.getByPlaceholderText(inputPlaceholder), PROMPT);
-  userEvent.click(screen.getByRole("button", { name: /get answer/i }));
-
-  expect(screen.getByText("Doing science...")).toBeInTheDocument();
+  await userEvent.type(screen.getByPlaceholderText(inputPlaceholder), PROMPT);
+  await userEvent.click(screen.getByRole("button", { name: /get answer/i }));
 }

@@ -1,12 +1,13 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
+import PropTypes from "prop-types";
+import { t } from "ttag";
+
 import { getTextColorForBackground } from "metabase/lib/colors";
-import { formatNumber, formatPercent } from "../../lib/numbers";
+
 import { DIMENSION_ACCESSORS } from "../../constants/accessors";
+import { formatNumber, formatPercent } from "../../lib/numbers";
 
 const propTypes = {
   data: PropTypes.array,
@@ -64,7 +65,11 @@ const CategoricalDonutChart = ({
   const shouldShowTotal = settings?.show_total ?? true;
 
   return (
-    <svg width={layout.width} height={layout.height}>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={layout.width}
+      height={layout.height}
+    >
       <Group top={centerY} left={centerX}>
         <Pie
           data={data}

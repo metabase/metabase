@@ -1,18 +1,20 @@
-import React from "react";
 import PropTypes from "prop-types";
-import { useSelector, useDispatch } from "react-redux";
-import { Motion, spring } from "react-motion";
+import { useState } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { capitalize, inflect } from "metabase/lib/formatting";
-import { dismissUndo, performUndo } from "metabase/redux/undo";
-
 import BodyComponent from "metabase/components/BodyComponent";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { capitalize, inflect } from "metabase/lib/formatting";
+import { useSelector, useDispatch } from "metabase/lib/redux";
+import { dismissUndo, performUndo } from "metabase/redux/undo";
+import { Transition } from "metabase/ui";
 
 import {
   CardContent,
   CardContentSide,
   CardIcon,
+  ControlsCardContent,
   DefaultText,
   DismissIcon,
   ToastCard,
@@ -50,46 +52,68 @@ UndoToast.propTypes = {
   onDismiss: PropTypes.func.isRequired,
 };
 
+const slideIn = {
+  in: { opacity: 1, transform: "translateY(0)" },
+  out: { opacity: 0, transform: "translateY(100px)" },
+  common: { transformOrigin: "top" },
+  transitionProperty: "transform, opacity",
+};
+
 function UndoToast({ undo, onUndo, onDismiss }) {
+  const [mounted, setMounted] = useState(false);
+
+  useMount(() => {
+    setMounted(true);
+  });
+
   return (
-    <Motion
-      defaultStyle={{ opacity: 0, translateY: 100 }}
-      style={{ opacity: spring(1), translateY: spring(0) }}
+    <Transition
+      mounted={mounted}
+      transition={slideIn}
+      duration={300}
+      timingFunction="ease"
     >
-      {({ translateY }) => (
+      {styles => (
         <ToastCard
           dark
           data-testid="toast-undo"
-          translateY={translateY}
           color={undo.toastColor}
+          role="status"
+          style={styles}
         >
           <CardContent>
-            <CardContentSide>
-              <CardIcon name={undo.icon || "check"} color="white" />
-              {renderMessage(undo)}
+            <CardContentSide maw="75ch">
+              {undo.icon && <CardIcon name={undo.icon} color="white" />}
+              <Ellipsified showTooltip={false}>
+                {renderMessage(undo)}
+              </Ellipsified>
             </CardContentSide>
-            <CardContentSide>
+            <ControlsCardContent>
               {undo.actions?.length > 0 && (
-                <UndoButton
-                  role="button"
-                  onClick={onUndo}
-                >{t`Undo`}</UndoButton>
+                <UndoButton role="button" onClick={onUndo}>
+                  {undo.actionLabel ?? t`Undo`}
+                </UndoButton>
               )}
-              <DismissIcon name="close" onClick={onDismiss} />
-            </CardContentSide>
+              {undo.canDismiss && (
+                <DismissIcon
+                  color={undo.dismissIconColor || "inherit"}
+                  name="close"
+                  onClick={onDismiss}
+                />
+              )}
+            </ControlsCardContent>
           </CardContent>
         </ToastCard>
       )}
-    </Motion>
+    </Transition>
   );
 }
-
 function UndoListingInner() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);
 
   return (
-    <UndoList>
+    <UndoList data-testid="undo-list" aria-label="undo-list">
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}

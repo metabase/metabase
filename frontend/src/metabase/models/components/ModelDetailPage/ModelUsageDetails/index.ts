@@ -1,1 +1,1 @@
-export { default } from "./ModelUsageDetails";
+export * from "./ModelUsageDetails";

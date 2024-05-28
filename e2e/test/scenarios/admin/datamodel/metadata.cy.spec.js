@@ -1,14 +1,16 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  getNotebookStep,
   restore,
   openOrdersTable,
   openReviewsTable,
   popover,
   summarize,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -20,15 +22,19 @@ describe("scenarios > admin > datamodel > metadata", () => {
     // go directly to Data Model page for Sample Database
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Product ID" column in "Orders" table
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
     cy.findByTestId("column-PRODUCT_ID").find(".Icon-gear").click();
 
     // remap its original value to use foreign key
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use original value").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use foreign key").click();
     popover().within(() => {
       cy.findByText("Title").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
@@ -51,12 +57,16 @@ describe("scenarios > admin > datamodel > metadata", () => {
     // go directly to Data Model page for Sample Database
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Rating" values in "Reviews" table
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Reviews").click();
     cy.findByTestId("column-RATING").find(".Icon-gear").click();
 
     // apply custom remapping for "Rating" values 1-5
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use original value").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom mapping").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
     );
@@ -64,6 +74,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     Object.entries(customMap).forEach(([key, value]) => {
       cy.findByDisplayValue(key).click().clear().type(value);
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.log("Numeric ratings should be remapped to custom strings");
@@ -92,9 +103,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At: Hour of day");
 
     cy.log("Reported failing in v0.37.2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^3:00 AM$/);
   });
 
@@ -110,17 +123,50 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     openReviewsTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    cy.get(".List-section-header").contains("Created At").click();
-    cy.get(".List-section--expanded .List-item-title")
+    cy.get("[data-element-id=list-section-header]")
+      .contains("Created At")
+      .click();
+    cy.get("[data-element-id=list-section] [data-element-id=list-item-title]")
       .contains("Created At")
       .should("have.length", 1);
   });
 
+  it("should display breakouts group for all FKs (metabase#36122)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: PRODUCTS.ID,
+    });
+
+    openReviewsTable({ mode: "notebook" });
+    summarize({ mode: "notebook" });
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover().within(() => {
+      cy.findAllByTestId("dimension-list-item")
+        .eq(3)
+        .should("have.text", "Rating");
+      cy.get("[data-element-id=list-section-header]").should("have.length", 3);
+      cy.get("[data-element-id=list-section-header]")
+        .eq(0)
+        .should("have.text", "Review");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(1)
+        .should("have.text", "Product");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(2)
+        .should("have.text", "Rating");
+    });
+  });
+
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`,
     );
 
     openOptionsForSection("Filtering on this field");
@@ -134,6 +180,76 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     openOptionsForSection("Display values");
     popover().findByText("Custom mapping");
+  });
+
+  describe("column formatting options", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/field/*").as("updateField");
+      cy.intercept("GET", "/api/field/*").as("getField");
+    });
+
+    it("should only show currency formatting options for currency fields", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.DISCOUNT}/formatting`,
+      );
+
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByText("Unit of currency");
+        cy.findByText("Currency label style");
+      });
+
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").within(() => {
+        // shouldnt show currency settings by default for quantity field
+        cy.findByText("Unit of currency").should("not.be.visible");
+        cy.findByText("Currency label style").should("not.be.visible");
+
+        cy.get("#number_style").click();
+      });
+
+      // if you change the style to currency, currency settings should appear
+      popover().findByText("Currency").click();
+      cy.wait("@updateField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByText("Unit of currency");
+        cy.findByText("Currency label style");
+      });
+    });
+
+    it("should save and obey field prefix formatting settings", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByTestId("prefix").type("about ").blur();
+      });
+
+      cy.wait("@updateField");
+
+      visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.QUANTITY, null]]],
+          },
+          type: "query",
+        },
+      });
+
+      cy.findByTestId("visualization-root").findByText("about 69,540");
+    });
   });
 });
 

@@ -1,18 +1,15 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { SearchResults } from "metabase/query_builder/components/DataSelector/data-search";
-
-import type { Collection } from "metabase-types/api";
-
 import {
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
+import type { Collection } from "metabase-types/api";
 
 import { useDataPicker } from "../DataPickerContext";
-
 import type { DataPickerValue, DataPickerDataType } from "../types";
 
 interface DataSearchProps {
@@ -30,12 +27,13 @@ type TableSearchResult = {
   collection: Collection | null;
 };
 
-type SearchModel = "card" | "dataset" | "table";
+type SearchModel = "card" | "dataset" | "table" | "metric";
 
 const DATA_TYPE_SEARCH_MODEL_MAP: Record<DataPickerDataType, SearchModel> = {
   "raw-data": "table",
   models: "dataset",
   questions: "card",
+  metrics: "metric",
 };
 
 function getDataTypeForSearchResult(
@@ -113,4 +111,5 @@ function DataSearch({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSearch;

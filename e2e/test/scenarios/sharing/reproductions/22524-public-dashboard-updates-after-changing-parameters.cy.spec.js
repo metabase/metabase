@@ -5,6 +5,7 @@ import {
   saveDashboard,
   editDashboard,
   setFilter,
+  openNewPublicLinkDropdown,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -31,6 +32,9 @@ describe("issue 22524", () => {
   it("update dashboard cards when changing parameters on publicly shared dashboards (metabase#22524)", () => {
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { dashboard_id } }) => {
+        cy.intercept("POST", `/api/dashboard/${dashboard_id}/public_link`).as(
+          "publicLink",
+        );
         visitDashboard(dashboard_id);
       },
     );
@@ -38,27 +42,27 @@ describe("issue 22524", () => {
     editDashboard();
     setFilter("Text or Category", "Is");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("City").click();
 
     saveDashboard();
 
     // Share dashboard
-    cy.icon("share").click();
-    cy.findByRole("switch").click();
+    openNewPublicLinkDropdown("dashboard");
 
-    cy.findByText("Public link")
-      .parent()
-      .within(() => {
-        cy.get("input").then(input => {
-          cy.visit(input.val());
-        });
-      });
+    cy.wait("@publicLink").then(({ response: { body } }) => {
+      const { uuid } = body;
+
+      cy.signOut();
+      cy.visit(`/public/dashboard/${uuid}`);
+    });
 
     // Set parameter value
     cy.findByPlaceholderText("Text").clear().type("Rye{enter}");
 
     // Check results
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2-7900 Cuerno Verde Road");
   });
 });

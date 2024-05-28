@@ -1,11 +1,15 @@
+/* eslint-disable import/order */
+import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
+
 // NOTE: need to load visualizations first for getSettings to work
 import "metabase/visualizations/index";
 
 import {
+  getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
   mergeSettings,
-  getClickBehaviorSettings,
 } from "metabase/visualizations/lib/settings";
 
 describe("settings framework", () => {
@@ -195,6 +199,81 @@ describe("settings framework", () => {
       expect(
         mergeSettings({}, { column_settings: { col1: { set1: "val" } } }),
       ).toEqual({ column_settings: { col1: { set1: "val" } } });
+    });
+
+    describe("table.columns", () => {
+      const ID_COLUMN = createMockTableColumnOrderSetting({
+        name: "ID",
+        fieldRef: ["field", ORDERS.ID, null],
+      });
+
+      const QUANTITY_COLUMN = createMockTableColumnOrderSetting({
+        name: "QUANTITY",
+        fieldRef: ["field", ORDERS.QUANTITY, null],
+      });
+
+      const TAX_COLUMN = createMockTableColumnOrderSetting({
+        name: "TAX",
+        fieldRef: ["field", ORDERS.TAX, null],
+      });
+
+      const DISCOUNT_COLUMN = createMockTableColumnOrderSetting({
+        name: "DISCOUNT",
+        fieldRef: ["field", ORDERS.DISCOUNT, null],
+      });
+
+      it("should remove columns that don't appear in the first settings", () => {
+        expect(
+          mergeSettings(
+            {
+              "table.columns": [ID_COLUMN, QUANTITY_COLUMN],
+            },
+            {
+              "table.columns": [ID_COLUMN, QUANTITY_COLUMN, TAX_COLUMN],
+            },
+          ),
+        ).toEqual({
+          "table.columns": [ID_COLUMN, QUANTITY_COLUMN],
+        });
+      });
+      it("should add new columns that don't appear in the second settings", () => {
+        expect(
+          mergeSettings(
+            {
+              "table.columns": [ID_COLUMN, QUANTITY_COLUMN, DISCOUNT_COLUMN],
+            },
+            {
+              "table.columns": [ID_COLUMN, QUANTITY_COLUMN],
+            },
+          ),
+        ).toEqual({
+          "table.columns": [ID_COLUMN, QUANTITY_COLUMN, DISCOUNT_COLUMN],
+        });
+      });
+
+      it("should preserve settings and order from the second settings", () => {
+        expect(
+          mergeSettings(
+            {
+              "table.columns": [ID_COLUMN, QUANTITY_COLUMN, DISCOUNT_COLUMN],
+            },
+            {
+              "table.columns": [
+                DISCOUNT_COLUMN,
+                { ...ID_COLUMN, enabled: false },
+                QUANTITY_COLUMN,
+                TAX_COLUMN,
+              ],
+            },
+          ),
+        ).toEqual({
+          "table.columns": [
+            DISCOUNT_COLUMN,
+            { ...ID_COLUMN, enabled: false },
+            QUANTITY_COLUMN,
+          ],
+        });
+      });
     });
   });
 

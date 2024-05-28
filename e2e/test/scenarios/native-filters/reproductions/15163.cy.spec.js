@@ -1,6 +1,6 @@
-import { restore } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 const { COLLECTION_GROUP } = USER_GROUPS;
@@ -49,14 +49,14 @@ const dashboardDetails = {
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
         // Connect filter to the dashboard card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 10,
+              size_x: 13,
               size_y: 8,
               series: [],
               visualization_settings: {
@@ -76,7 +76,10 @@ const dashboardDetails = {
         if (test === "nosql") {
           cy.updatePermissionsGraph({
             [COLLECTION_GROUP]: {
-              1: { data: { schemas: "all", native: "none" } },
+              1: {
+                "view-data": "unrestricted",
+                "create-queries": "query-builder",
+              },
             },
           });
         }
@@ -89,6 +92,7 @@ const dashboardDetails = {
     });
 
     it(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New Title").click();
 
       cy.wait("@cardQuery", { timeout: 5000 }).then(xhr => {
@@ -96,7 +100,8 @@ const dashboardDetails = {
       });
 
       cy.get(".ace_content").should("not.be.visible");
-      cy.get(".cellData").should("contain", "51");
+      cy.get("[data-testid=cell-data]").should("contain", "51");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });
   });

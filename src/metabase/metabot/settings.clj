@@ -1,16 +1,15 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.core.memoize :as memoize]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.util :as u]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [wkok.openai-clojure.api :as openai.api]))
 
 (defsetting openai-model
-  (deferred-tru "The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo')")
+  (deferred-tru "The OpenAI Model (e.g. 'gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo')")
   :visibility :settings-manager
-  :default "gpt-4")
+  :default "gpt-4-turbo-preview")
 
 (defsetting openai-api-key
   (deferred-tru "The OpenAI API Key.")
@@ -19,6 +18,11 @@
 (defsetting openai-organization
   (deferred-tru "The OpenAI Organization ID.")
   :visibility :settings-manager)
+
+(defsetting metabot-default-embedding-model
+  (deferred-tru "The default embeddings model to be used for metabot.")
+  :visibility :internal
+  :default "text-embedding-ada-002")
 
 (defsetting metabot-get-prompt-templates-url
   (deferred-tru "The URL in which metabot versioned prompt templates are stored.")
@@ -33,7 +37,9 @@
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
-  :visibility :authenticated
+  :visibility :public
+  :getter  (fn []
+             (boolean (setting/env-var-value :is-metabot-enabled)))
   :default false)
 
 (defsetting num-metabot-choices
@@ -45,29 +51,11 @@
 (defn- select-models
   "Downselect the available openai models to only the latest version of each GPT family."
   [models]
-  (->> models
-       (map (fn [{:keys [id] :as m}]
-              (when-some [[_ v r] (re-matches #"gpt-([\d\.]+)(.*)"
-                                              (u/lower-case-en id))]
-                (let [version (parse-double v)]
-                  (assoc m
-                    :version version
-                    :version-string v
-                    :generation (int version)
-                    :details r)))))
-       ;; Drop anything that doesn't match
-       (filter identity)
-       ;; Order by generation (asc), version (desc),
-       ;; length of details string (asc), length of version string (desc)
-       (sort-by (juxt :generation
-                      (comp - :version)
-                      (comp count :details)
-                      (comp - count :version-string)))
-       ;; Split out each generation
-       (partition-by :generation)
-       ;; Take the top item in each partition and select what we want
-       (map (comp #(select-keys % [:id :owned_by]) first))
-       reverse))
+  (let [selectable-models ["gpt-4-turbo-preview"
+                           "gpt-4"
+                           "gpt-3.5-turbo"]
+        available-models (zipmap (map :id models) (map #(select-keys % [:id :owned_by]) models))]
+    (keep available-models selectable-models)))
 
 (def ^:private memoized-fetch-openai-models
   (memoize/ttl
@@ -104,3 +92,9 @@
   :type :integer
   :visibility :internal
   :default 60)
+
+(defsetting metabot-prompt-generator-token-limit
+  (deferred-tru "When attempting to assemble prompts, the threshold at which prompt will no longer be appended to.")
+  :type :integer
+  :visibility :internal
+  :default 6000)

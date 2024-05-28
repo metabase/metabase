@@ -1,5 +1,11 @@
-import { modal, popover, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  popover,
+  restore,
+} from "e2e/support/helpers";
+
 import { turnIntoModel } from "../helpers/e2e-models-helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -7,14 +13,13 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 const modelDetails = {
   name: "Old model",
   query: { "source-table": PRODUCTS_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 26091", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
     cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
@@ -23,32 +28,37 @@ describe("issue 26091", () => {
     cy.visit("/");
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.wait("@getCollectionContent");
-    });
-
-    startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Raw Data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    modal().within(() => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").clear().type("New model");
-      cy.button("Save").click();
+      cy.findByText("Save").click();
       cy.wait("@saveQuestion");
     });
-    modal().within(() => {
+    cy.get("#QuestionSavedModal").within(() => {
       cy.button("Not now").click();
     });
     turnIntoModel();
 
     startNewQuestion();
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Old model").should("be.visible");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Recents").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.findByText("New model").should("be.visible");
+      cy.findByText("Old model").should("not.exist");
+      cy.findByText("Orders Model").should("not.exist");
+
+      entityPickerModalTab("Models").click();
+      cy.findByText("New model").should("be.visible");
+      cy.findByText("Old model").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
     });
   });
 });

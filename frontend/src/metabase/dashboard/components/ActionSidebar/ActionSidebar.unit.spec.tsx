@@ -1,36 +1,61 @@
-import React from "react";
-import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "__support__/ui";
+import type * as React from "react";
 
+import {
+  setupActionsEndpoints,
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import {
+  screen,
+  waitFor,
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockQueryAction,
+  createMockCard,
+  createMockDatabase,
+  createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import { ActionSidebarFn } from "./ActionSidebar";
+import { ActionSidebar } from "./ActionSidebar";
 
-const dashcard = createMockDashboardOrderedCard();
+const dashcard = createMockDashboardCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
 const actionDashcardWithAction = createMockActionDashboardCard({
   id: 3,
   action: createMockQueryAction(),
 });
 
+const collectionItem = createMockCollectionItem({
+  model: "dataset",
+});
+const modelCard = createMockCard();
+const actionsDatabase = createMockDatabase({
+  settings: { "database-enable-actions": true },
+});
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
 });
 
 const setup = (
-  options?: Partial<React.ComponentProps<typeof ActionSidebarFn>>,
+  options?: Partial<React.ComponentProps<typeof ActionSidebar>>,
 ) => {
+  setupDatabasesEndpoints([actionsDatabase]);
+  setupSearchEndpoints([collectionItem]);
+  setupActionsEndpoints([]);
+  setupCardsEndpoints([modelCard]);
+
   const vizUpdateSpy = jest.fn();
   const closeSpy = jest.fn();
 
   renderWithProviders(
-    <ActionSidebarFn
+    <ActionSidebar
       onUpdateVisualizationSettings={vizUpdateSpy}
       onClose={closeSpy}
       dashboard={dashboard}
@@ -40,6 +65,14 @@ const setup = (
   );
 
   return { vizUpdateSpy, closeSpy };
+};
+
+const navigateToActionCreatorModal = async () => {
+  await userEvent.click(screen.getByText("Pick an action"));
+  await waitForLoaderToBeRemoved();
+  await userEvent.click(screen.getByText(collectionItem.name));
+  await userEvent.click(screen.getByText("Create new action"));
+  await waitForLoaderToBeRemoved();
 };
 
 describe("Dashboard > ActionSidebar", () => {
@@ -59,8 +92,8 @@ describe("Dashboard > ActionSidebar", () => {
     expect(textInput).toHaveValue(
       actionDashcard.visualization_settings["button.label"] as string,
     );
-    userEvent.clear(textInput);
-    userEvent.type(textInput, "xyz");
+    await userEvent.clear(textInput);
+    await userEvent.type(textInput, "xyz");
 
     await waitFor(() =>
       expect(vizUpdateSpy).toHaveBeenLastCalledWith({ "button.label": "xyz" }),
@@ -73,8 +106,8 @@ describe("Dashboard > ActionSidebar", () => {
     const dropdown = screen.getByLabelText("Button variant");
 
     expect(screen.getByText("Primary")).toBeInTheDocument();
-    userEvent.click(dropdown);
-    userEvent.click(screen.getByText("Danger"));
+    await userEvent.click(dropdown);
+    await userEvent.click(screen.getByText("Danger"));
 
     await waitFor(() =>
       expect(vizUpdateSpy).toHaveBeenLastCalledWith({
@@ -87,7 +120,7 @@ describe("Dashboard > ActionSidebar", () => {
     const { closeSpy } = setup();
 
     const closeButton = screen.getByRole("button", { name: "Close" });
-    userEvent.click(closeButton);
+    await userEvent.click(closeButton);
 
     await waitFor(() => expect(closeSpy).toHaveBeenCalledTimes(1));
   });
@@ -96,5 +129,33 @@ describe("Dashboard > ActionSidebar", () => {
     setup({ dashcardId: 3 });
 
     expect(screen.getByText("Change action")).toBeInTheDocument();
+  });
+
+  describe("ActionCreator Modal", () => {
+    it("should not close modal on outside click", async () => {
+      setup();
+      await navigateToActionCreatorModal();
+
+      await userEvent.click(document.body);
+
+      const mockNativeQueryEditor = screen.getByTestId(
+        "mock-native-query-editor",
+      );
+
+      expect(mockNativeQueryEditor).toBeInTheDocument();
+    });
+
+    it("should close modal when clicking 'Cancel'", async () => {
+      setup();
+      await navigateToActionCreatorModal();
+
+      const cancelButton = screen.getByRole("button", { name: "Cancel" });
+
+      await userEvent.click(cancelButton);
+
+      expect(
+        screen.queryByTestId("mock-native-query-editor"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

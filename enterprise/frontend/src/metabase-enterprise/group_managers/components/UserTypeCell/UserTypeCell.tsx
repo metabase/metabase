@@ -1,6 +1,7 @@
-import React from "react";
 import { t } from "ttag";
+
 import { UserTypeToggle } from "../UserTypeToggle";
+
 import { ChangeTypeButton, UserTypeCellRoot } from "./UserTypeCell.styled";
 
 interface UserTypeCellProps {

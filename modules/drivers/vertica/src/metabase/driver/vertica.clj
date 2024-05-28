@@ -3,8 +3,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
@@ -29,19 +28,12 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
-
-(defmethod driver/database-supports? [:vertica :datetime-diff] [_ _ _] true)
-
-(defmethod driver/supports? [:vertica :now] [_ _] true)
-
-(defmethod driver/database-supports? [:vertica :convert-timezone]
-  [_driver _feature _database]
-  true)
-
-(defmethod driver/database-supports? [:vertica :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:convert-timezone          true
+                              :datetime-diff             true
+                              :now                       true
+                              :percentile-aggregations   false
+                              :test/jvm-timezone-setting false}]
+  (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
   [_]
@@ -79,10 +71,6 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/honey-sql-version :vertica
-  [_driver]
-  2)
-
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_driver]
   (h2x/with-database-type-info [:current_timestamp [:inline 6]] "timestamptz"))
@@ -97,13 +85,17 @@
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
   no-op."
   [expr]
+  ;; TODO -- this seems clearly wrong for LocalTimes and OffsetTimes
   (if (instance? java.time.temporal.Temporal expr)
     (h2x/cast :timestamp expr)
     expr))
 
-(defn- date-trunc [unit expr] [:date_trunc   (h2x/literal unit) (cast-timestamp expr)])
-(defn- extract    [unit expr] [::h2x/extract unit               (cast-timestamp expr)])
-(defn- datediff   [unit a b]  [:datediff     (h2x/literal unit) (cast-timestamp a) (cast-timestamp b)])
+(defn- date-trunc [unit expr]
+  (-> [:date_trunc (h2x/literal unit) (cast-timestamp expr)]
+      (h2x/with-database-type-info (h2x/database-type expr))))
+
+(defn- extract  [unit expr] [::h2x/extract unit               (cast-timestamp expr)])
+(defn- datediff [unit a b]  [:datediff     (h2x/literal unit) (cast-timestamp a) (cast-timestamp b)])
 
 (def ^:private extract-integer (comp h2x/->integer extract))
 
@@ -232,6 +224,35 @@
   [driver [_ arg]]
   [:approximate_median (sql.qp/->honeysql driver arg)])
 
+(defmethod sql.qp/->honeysql [:vertica java.time.LocalDate]
+  [_driver t]
+  (-> [:raw (format "date '%s'" (u.date/format t))]
+      (h2x/with-database-type-info "date")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.LocalTime]
+  [_driver t]
+  (-> [:raw (format "time '%s'" (u.date/format "HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "time")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.OffsetTime]
+  [_driver t]
+  (-> [:raw (format "time with time zone '%s'" (u.date/format "HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timetz")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.LocalDateTime]
+  [_driver t]
+  (-> [:raw (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "timestamp")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.OffsetDateTime]
+  [_driver t]
+  (-> [:raw (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timestamptz")))
+
+(defmethod sql.qp/->honeysql [:vertica java.time.ZonedDateTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time t)))
+
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
   ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add inteval for month, or year
@@ -252,24 +273,19 @@
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                         ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
        (catch Throwable e
-         (log/error e (trs "Failed to fetch materialized views for this database")))))
+         (log/error e "Failed to fetch materialized views for this database"))))
 
 (defmethod driver/describe-database :vertica
   [driver database]
   (-> ((get-method driver/describe-database :sql-jdbc) driver database)
       (update :tables set/union (materialized-views database))))
 
-(defmethod driver.common/current-db-time-date-formatters :vertica
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
-
-(defmethod driver.common/current-db-time-native-query :vertica
-  [_]
-  "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
-
-(defmethod driver/current-db-time :vertica
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :vertica
+  [_driver _database]
+  ;; There is no Database default timezone in Vertica, you can change the SESSION timezone with `SET TIME ZONE TO ...`,
+  ;; but TIMESTAMP WITH TIMEZONEs are all stored in UTC. See
+  ;; https://www.vertica.com/docs/9.0.x/HTML/index.htm#Authoring/InstallationGuide/AppendixTimeZones/UsingTimeZonesWithHPVertica.htm
+  "UTC")
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 

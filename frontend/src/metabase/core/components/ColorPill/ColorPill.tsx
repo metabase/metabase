@@ -1,12 +1,8 @@
-import React, {
-  forwardRef,
-  MouseEvent,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-} from "react";
+import type { MouseEvent, HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+
 import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";
-import { PillSize } from "./types";
+import type { PillSize } from "./types";
 
 export type ColorPillAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -57,6 +53,7 @@ const ColorPill = forwardRef(function ColorPill(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(ColorPill, {
   Content: ColorPillContent,
   Root: ColorPillRoot,

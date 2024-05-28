@@ -1,1 +1,1 @@
-export { default } from "./PreviewQueryModal";
+export { PreviewQueryModal } from "./PreviewQueryModal";

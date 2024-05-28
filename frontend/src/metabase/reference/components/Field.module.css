@@ -1,0 +1,56 @@
+:root {
+  --title-color: var(--mb-color-text-medium);
+}
+
+.field {
+  align-items: center;
+  display: flex;
+}
+
+.fieldNameTitle {
+  composes: pr2 from "style";
+  flex: 0.5;
+}
+
+.fieldName {
+  composes: fieldNameTitle;
+}
+
+.fieldNameTextInput {
+  composes: input p1 from "style";
+  color: var(--title-color);
+  width: 100%;
+  font-size: 14px;
+}
+
+.fieldType {
+  composes: textMedium pr2 from "style";
+  flex: 0.25;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.fieldDataType {
+  composes: textMedium from "style";
+  flex: 0.25;
+}
+
+.fieldSecondary {
+  composes: field;
+  font-size: 13px;
+}
+
+.fieldActualName {
+  composes: fieldNameTitle;
+  composes: textMonospace textLight from "style";
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.fieldForeignKey {
+  composes: fieldType;
+}
+
+.fieldOther {
+  composes: fieldDataType;
+}

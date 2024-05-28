@@ -1,29 +1,65 @@
+import { createMockMetadata } from "__support__/metadata";
+import Question from "metabase-lib/v1/Question";
+import Segment from "metabase-lib/v1/metadata/Segment";
+import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
-  SAMPLE_DATABASE,
-  ANOTHER_DATABASE,
+  createMockDatabase,
+  createMockSegment,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  createOrdersCreatedAtField,
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsCreatedAtField,
+  createProductsIdField,
+  createProductsPriceField,
+  createProductsTable,
+  createReviewsTable,
+  createSampleDatabase,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
-  MAIN_METRIC_ID,
-  createMetadata,
-} from "__support__/sample_database_fixture";
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
-import Segment from "metabase-lib/metadata/Segment";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Question from "metabase-lib/Question";
+const ANOTHER_DB_ID = SAMPLE_DB_ID + 1;
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase(),
+    createMockDatabase({ id: ANOTHER_DB_ID }),
+  ],
+  segments: [
+    createMockSegment({
+      id: 1,
+      table_id: ORDERS_ID,
+      name: "Expensive Things",
+      definition: {
+        filter: [">", ["field", ORDERS.TOTAL, null], 30],
+        "source-table": ORDERS_ID,
+      },
+    }),
+  ],
+});
+
+const ordersTable = metadata.table(ORDERS_ID);
 
 function makeDatasetQuery(query = {}) {
   return {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": query["source-query"] ? undefined : ORDERS.id,
+      "source-table": query["source-query"] ? undefined : ORDERS_ID,
       ...query,
     },
   };
 }
 
 function makeQuery(query) {
-  return new StructuredQuery(ORDERS.question(), makeDatasetQuery(query));
+  return new StructuredQuery(ordersTable.question(), makeDatasetQuery(query));
 }
 
 function makeQueryWithAggregation(agg) {
@@ -38,63 +74,94 @@ function makeQueryWithoutNumericFields() {
     visualization_settings: {},
     dataset_query: {
       type: "query",
-      database: SAMPLE_DATABASE.id,
+      database: SAMPLE_DB_ID,
       query: {
         "source-table": virtualCardId,
       },
     },
   };
 
-  const metadata = createMetadata(state => {
-    const tableWithWithoutNumericFields = {
-      id: virtualCardId,
-      db_id: SAMPLE_DATABASE.id,
-      fields: [ORDERS.ID.id, ORDERS.CREATED_AT.id],
-    };
-    return state.assocIn(
-      ["entities", "tables", virtualCardId],
-      tableWithWithoutNumericFields,
-    );
+  const tableWithWithoutNumericFields = createMockTable({
+    id: virtualCardId,
+    db_id: SAMPLE_DB_ID,
+    fields: [createOrdersIdField(), createOrdersCreatedAtField()],
   });
 
-  return new Question(questionDetail, metadata).query();
+  const metadata = createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [
+          createProductsTable(),
+          createPeopleTable(),
+          createReviewsTable(),
+          tableWithWithoutNumericFields,
+        ],
+      }),
+    ],
+  });
+
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 // no numeric fields, but have linked table (FK) with a numeric field
 function makeQueryWithLinkedTable() {
   const tableId = "card__123";
+  const linkedTableId = "card__456";
 
   const questionDetail = {
     display: "table",
     visualization_settings: {},
     dataset_query: {
       type: "query",
-      database: SAMPLE_DATABASE.id,
+      database: SAMPLE_DB_ID,
       query: {
         "source-table": tableId,
       },
     },
   };
 
-  const metadata = createMetadata(state => {
-    const tableWithWithoutNumericFields = {
-      id: tableId,
-      db_id: SAMPLE_DATABASE.id,
-      fields: [ORDERS.ID.id, ORDERS.PRODUCT_ID.id, ORDERS.CREATED_AT.id],
-    };
-    const linkedTableId = "card__456";
-    const linkedTable = {
-      id: linkedTableId,
-      db_id: SAMPLE_DATABASE.id,
-      fields: [PRODUCTS.ID.id, PRODUCTS.PRICE.id, PRODUCTS.CREATED_AT.id],
-    };
-
-    return state
-      .assocIn(["entities", "tables", tableId], tableWithWithoutNumericFields)
-      .assocIn(["entities", "tables", linkedTableId], linkedTable);
+  const tableWithWithoutNumericFields = createMockTable({
+    id: tableId,
+    db_id: SAMPLE_DB_ID,
+    fields: [
+      createOrdersIdField({ table_id: tableId }),
+      createOrdersProductIdField({
+        table_id: tableId,
+        fk_target_field_id: `${linkedTableId}:${PRODUCTS.ID}`,
+      }),
+      createOrdersCreatedAtField({ table_id: tableId }),
+    ],
   });
 
-  return new Question(questionDetail, metadata).query();
+  const linkedTable = createMockTable({
+    id: linkedTableId,
+    db_id: SAMPLE_DB_ID,
+    fields: [
+      createProductsIdField({ table_id: linkedTableId }),
+      createProductsPriceField({ table_id: linkedTableId }),
+      createProductsCreatedAtField({ table_id: linkedTableId }),
+    ],
+  });
+
+  const metadata = createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [
+          createOrdersTable(),
+          createProductsTable(),
+          createPeopleTable(),
+          tableWithWithoutNumericFields,
+          linkedTable,
+        ],
+      }),
+    ],
+  });
+
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 const getShortName = aggregation => aggregation.short;
@@ -111,27 +178,6 @@ const processAggregationOperator = operator =>
 
 const query = makeQuery({});
 
-describe("StructuredQuery behavioral tests", () => {
-  it("is able to filter by field which is already used for the query breakout", () => {
-    const breakoutDimensionOptions = query.breakoutOptions().dimensions;
-    const breakoutDimension = breakoutDimensionOptions.find(
-      d => d.field().id === ORDERS.TOTAL.id,
-    );
-
-    expect(breakoutDimension).toBeDefined();
-
-    const queryWithBreakout = query.breakout(breakoutDimension.mbql());
-
-    const filterDimensionOptions =
-      queryWithBreakout.filterDimensionOptions().dimensions;
-    const filterDimension = filterDimensionOptions.find(
-      d => d.field().id === ORDERS.TOTAL.id,
-    );
-
-    expect(filterDimension).toBeDefined();
-  });
-});
-
 describe("StructuredQuery", () => {
   describe("DB METADATA METHODS", () => {
     describe("tables", () => {
@@ -144,128 +190,32 @@ describe("StructuredQuery", () => {
     });
     describe("table", () => {
       it("Return the table wrapper object for the query", () => {
-        expect(query.table()).toBe(ORDERS);
+        expect(query.table()).toBe(ordersTable);
       });
     });
-    describe("databaseId", () => {
+    describe("_databaseId", () => {
       it("returns the Database ID of the wrapped query", () => {
-        expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
+        expect(query._databaseId()).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("database", () => {
+    describe("_database", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(SAMPLE_DATABASE.id);
-      });
-    });
-    describe("engine", () => {
-      it("identifies the engine of a query", () => {
-        // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("h2");
-      });
-    });
-    describe("dependentMetadata", () => {
-      it("should include db schemas and source table with foreignTables = true", () => {
-        expect(query.dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DATABASE.id },
-          { type: "table", id: ORDERS.id, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and source table for nested queries with foreignTables = true", () => {
-        expect(query.nest().dependentMetadata()).toEqual([
-          { type: "schema", id: SAMPLE_DATABASE.id },
-          { type: "table", id: ORDERS.id, foreignTables: true },
-        ]);
-      });
-
-      it("should include db schemas and joined tables with foreignTables = false", () => {
-        expect(
-          query
-            .join({
-              alias: "x",
-              "source-table": PRODUCTS.id,
-            })
-            .dependentMetadata(),
-        ).toEqual([
-          { type: "schema", id: SAMPLE_DATABASE.id },
-          { type: "table", id: ORDERS.id, foreignTables: true },
-          { type: "table", id: PRODUCTS.id, foreignTables: false },
-        ]);
-      });
-
-      describe("when the query is missing a database", () => {
-        it("should not include db schemas in dependent  metadata", () => {
-          const dependentMetadata = query
-            .setDatabaseId(null)
-            .dependentMetadata();
-
-          expect(dependentMetadata.some(({ type }) => type === "schema")).toBe(
-            false,
-          );
-        });
+        expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
   });
 
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
-    describe("reset", () => {
-      it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset().database()).toBe(null);
-      });
-      it("Expect a reset query to not be runnable", () => {
-        expect(query.reset().canRun()).toBe(false);
-      });
-    });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
-        expect(query.query()["source-table"]).toBe(ORDERS.id);
+        expect(
+          query.legacyQuery({ useStructuredQuery: true })["source-table"],
+        ).toBe(ORDERS_ID);
       });
     });
-    describe("setDatabase", () => {
-      it("allows you to set a new database", () => {
-        expect(query.setDatabase(ANOTHER_DATABASE).database().id).toBe(
-          ANOTHER_DATABASE.id,
-        );
-      });
-    });
-    describe("setTable", () => {
-      it("allows you to set a new table", () => {
-        expect(query.setTable(PRODUCTS).tableId()).toBe(PRODUCTS.id);
-      });
-
-      it("retains the correct database id when setting a new table", () => {
-        expect(query.setTable(PRODUCTS).table().database.id).toBe(
-          SAMPLE_DATABASE.id,
-        );
-      });
-    });
-    describe("tableId", () => {
+    describe("_sourceTableId", () => {
       it("Return the right table id", () => {
-        expect(query.tableId()).toBe(ORDERS.id);
-      });
-    });
-  });
-
-  describe("QUERY STATUS METHODS", () => {
-    describe("canRun", () => {
-      it("runs a valid query", () => {
-        expect(query.canRun()).toBe(true);
-      });
-    });
-    describe("isEditable", () => {
-      it("A valid query should be editable", () => {
-        expect(query.isEditable()).toBe(true);
-      });
-
-      it("should be not editable when database object is missing", () => {
-        const q = makeQuery();
-        q.database = () => null;
-        expect(q.isEditable()).toBe(false);
-      });
-    });
-    describe("isEmpty", () => {
-      it("tells that a non-empty query is not empty", () => {
-        expect(query.isEmpty()).toBe(false);
+        expect(query._sourceTableId()).toBe(ORDERS_ID);
       });
     });
   });
@@ -296,7 +246,7 @@ describe("StructuredQuery", () => {
         expect(
           query
             .aggregate(["count"])
-            .aggregate(["sum", ["field", ORDERS.TOTAL.id, null]])
+            .aggregate(["sum", ["field", ORDERS.TOTAL, null]])
             .canRemoveAggregation(),
         ).toBe(true);
       });
@@ -312,13 +262,6 @@ describe("StructuredQuery", () => {
     });
 
     describe("aggregation name", () => {
-      it("returns a saved metric's name", () => {
-        expect(
-          makeQueryWithAggregation(["metric", MAIN_METRIC_ID])
-            .aggregations()[0]
-            .displayName(),
-        ).toBe("Total Order Value");
-      });
       it("returns a standard aggregation name", () => {
         expect(
           makeQueryWithAggregation(["count"]).aggregations()[0].displayName(),
@@ -326,7 +269,7 @@ describe("StructuredQuery", () => {
       });
       it("returns a standard aggregation name with field", () => {
         expect(
-          makeQueryWithAggregation(["sum", ["field", ORDERS.TOTAL.id, null]])
+          makeQueryWithAggregation(["sum", ["field", ORDERS.TOTAL, null]])
             .aggregations()[0]
             .displayName(),
         ).toBe("Sum of Total");
@@ -335,11 +278,7 @@ describe("StructuredQuery", () => {
         expect(
           makeQueryWithAggregation([
             "sum",
-            [
-              "field",
-              PRODUCTS.TITLE.id,
-              { "source-field": ORDERS.PRODUCT_ID.id },
-            ],
+            ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
           ])
             .aggregations()[0]
             .displayName(),
@@ -350,7 +289,7 @@ describe("StructuredQuery", () => {
           makeQueryWithAggregation([
             "+",
             1,
-            ["sum", ["field", ORDERS.TOTAL.id, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
           ])
             .aggregations()[0]
             .displayName(),
@@ -360,7 +299,7 @@ describe("StructuredQuery", () => {
         expect(
           makeQueryWithAggregation([
             "aggregation-options",
-            ["sum", ["field", ORDERS.TOTAL.id, null]],
+            ["sum", ["field", ORDERS.TOTAL, null]],
             { "display-name": "Named" },
           ])
             .aggregations()[0]
@@ -371,8 +310,10 @@ describe("StructuredQuery", () => {
 
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
-        expect(query.aggregate(["count"]).query()).toEqual({
-          "source-table": ORDERS.id,
+        expect(
+          query.aggregate(["count"]).legacyQuery({ useStructuredQuery: true }),
+        ).toEqual({
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
       });
@@ -421,36 +362,6 @@ describe("StructuredQuery", () => {
           ).toEqual(["rows", "count", "distinct", "cum-count", "min", "max"]);
         });
 
-        it('shows "avg" aggregation when having a numeric custom field', () => {
-          const query = makeQueryWithoutNumericFields().addExpression(
-            "custom_numeric_field",
-            // Expression: case([ID] = 1, 11, 99)
-            ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
-          );
-
-          expect(
-            query.aggregationOperators().map(processAggregationOperator),
-          ).not.toEqual(
-            query
-              .table()
-              .aggregationOperators()
-              .map(processAggregationOperator),
-          );
-          expect(query.aggregationOperators().map(getShortName)).toEqual([
-            "rows",
-            "count",
-            "sum",
-            "avg",
-            "median",
-            "distinct",
-            "cum-sum",
-            "cum-count",
-            "stddev",
-            "min",
-            "max",
-          ]);
-        });
-
         it("shows aggregation operators for linked tables fields", () => {
           const queryWithoutNumericFields = makeQueryWithLinkedTable();
           const operators = queryWithoutNumericFields.aggregationOperators();
@@ -489,88 +400,6 @@ describe("StructuredQuery", () => {
 
         expect(query.aggregationOperator(short)).toBeUndefined();
       });
-
-      it("can find `avg` aggregation when having a numeric custom field on table without numeric fields", () => {
-        const query = makeQueryWithoutNumericFields().addExpression(
-          "custom_numeric_field",
-          // Expression: case([ID] = 1, 11, 99)
-          ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
-        );
-        const short = "avg";
-
-        expect(query.aggregationOperator(short)).not.toBeUndefined();
-      });
-    });
-  });
-
-  // BREAKOUTS:
-  describe("BREAKOUT METHODS", () => {
-    describe("breakoutOptions", () => {
-      it("returns the correct count of dimensions", () => {
-        expect(query.breakoutOptions().all().length).toBe(28);
-      });
-
-      it("excludes the already used breakouts", () => {
-        const queryWithBreakout = query.breakout([
-          "field",
-          ORDERS.TOTAL.id,
-          null,
-        ]);
-        expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
-      });
-
-      it("excludes the already used fk breakouts", () => {
-        const queryWithBreakout = query.breakout(
-          ORDERS.PRODUCT_ID.foreign(PRODUCTS.CATEGORY),
-        );
-        expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
-      });
-
-      it("includes an explicitly provided breakout although it has already been used", () => {
-        const breakout = ["field", ORDERS.TOTAL.id, null];
-        const queryWithBreakout = query.breakout(breakout);
-        expect(queryWithBreakout.breakoutOptions().all().length).toBe(27);
-        expect(queryWithBreakout.breakoutOptions(breakout).all().length).toBe(
-          28,
-        );
-      });
-    });
-    describe("hasValidBreakout", () => {
-      it("should return false if there are no breakouts", () => {
-        expect(query.hasValidBreakout()).toBe(false);
-      });
-      it("should return true if there is at least one breakout", () => {
-        expect(query.breakout(ORDERS.PRODUCT_ID).hasValidBreakout()).toBe(true);
-      });
-    });
-
-    it("excludes breakout that has the same base dimension as what is already used", () => {
-      const breakout = [
-        "field",
-        ORDERS.CREATED_AT.id,
-        { "temporal-unit": "month" },
-      ];
-      const queryWithBreakout = query.breakout(breakout);
-      const createdAtBreakoutDimension = queryWithBreakout
-        .breakouts()
-        .map(breakout => breakout.dimension());
-
-      //Ensure dimension added is not present in breakout options
-      expect(queryWithBreakout.breakoutOptions().all()).toEqual(
-        expect.not.arrayContaining(createdAtBreakoutDimension),
-      );
-
-      expect(
-        queryWithBreakout
-          .breakoutOptions()
-          .all()
-          .some(dimension => dimension.field().id === ORDERS.CREATED_AT.id),
-      ).toBe(false);
-
-      //Ensure that only 1 breakout option was removed after adding our breakout
-      expect(queryWithBreakout.breakoutOptions().all().length).toBe(
-        query.breakoutOptions().all().length - 1,
-      );
     });
   });
 
@@ -587,54 +416,18 @@ describe("StructuredQuery", () => {
     });
   });
 
-  describe("SORT METHODS", () => {
-    describe("sorts", () => {
-      it("return an empty array", () => {
-        expect(query.sorts()).toEqual([]);
-      });
-      it("return an array with the sort clause", () => {
-        expect(
-          makeQuery({
-            "order-by": [["asc", ["field", ORDERS.TOTAL.id, null]]],
-          }).sorts(),
-        ).toEqual([["asc", ["field", ORDERS.TOTAL.id, null]]]);
-      });
-    });
-
-    describe("sortOptions", () => {
-      it("returns the correct count of dimensions", () => {
-        expect(query.sortOptions().dimensions.length).toBe(7);
-      });
-
-      it("excludes the already used sorts", () => {
-        const queryWithBreakout = query.sort([
-          "asc",
-          ["field", ORDERS.TOTAL.id, null],
-        ]);
-        expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
-      });
-
-      it("includes an explicitly provided sort although it has already been used", () => {
-        const sort = ["asc", ["field", ORDERS.TOTAL.id, null]];
-        const queryWithBreakout = query.sort(sort);
-        expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
-        expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(7);
-      });
-    });
-  });
-
   describe("DIMENSION METHODS", () => {
     describe("fieldOptions", () => {
       it("includes the correct number of dimensions", () => {
         // Should just include the non-fk keys from the current table
-        expect(query.fieldOptions().dimensions.length).toBe(7);
+        expect(query.fieldOptions().dimensions.length).toBe(9);
       });
 
       it("returns correct count of foreign keys", () => {
         expect(query.fieldOptions().fks.length).toBe(2);
       });
       it("returns a correct count of fields", () => {
-        expect(query.fieldOptions().count).toBe(28);
+        expect(query.fieldOptions().count).toBe(30);
       });
     });
   });
@@ -643,7 +436,7 @@ describe("StructuredQuery", () => {
     describe("setDatasetQuery", () => {
       it("replaces the previous dataset query with the provided one", () => {
         const newDatasetQuery = makeDatasetQuery({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
 

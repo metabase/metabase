@@ -1,6 +1,6 @@
 (ns metabase.driver.googleanalytics.query-processor-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
+            [java-time.api :as t]
             [metabase.driver.googleanalytics-test :as ga.test]
             [metabase.driver.googleanalytics.query-processor :as ga.qp]
             [metabase.test :as mt]
@@ -20,7 +20,7 @@
            (#'ga.qp/built-in-segment {:filter [:and [:segment 100] [:segment "ga::B"]]})))))
 
 (deftest filter-test
-  (mt/with-report-timezone-id nil
+  (mt/with-report-timezone-id! nil
     (testing "\nabsolute datetimes"
       (doseq [[filter-type expected] {:=  {:start-date "2019-11-18", :end-date "2019-11-18"}
                                       :<  {:end-date "2019-11-17"}
@@ -74,7 +74,7 @@
                         (#'ga.qp/parse-filter:interval [:= [:field 'field {:temporal-unit :week}] [:relative-datetime 0 :week]])))))
           (testing (str "\nthis week at Saturday 6PM local time (Saturday 11PM UTC) should be the same as this week "
                         "Saturday 8PM local time (Sunday 1 AM UTC)")
-            (mt/with-report-timezone-id "US/Eastern"
+            (mt/with-report-timezone-id! "US/Eastern"
               (doseq [system-timezone ["US/Eastern" "UTC"]]
                 (testing "\nGoogle Analytics should prefer report timezone (if set) to system timezone"
                   (testing (format "\nSystem timezone = %s" system-timezone)
@@ -131,7 +131,7 @@
                             [:!=
                              [:field (u/the-id event-action-field) nil]
                              [:value "B" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR"}]]]}]
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (is (= {:filters "ga:eventLabel==A;ga:eventAction!=B"}
                  (#'ga.qp/handle-filter:filters query))))))))
 
@@ -140,7 +140,7 @@
     (ga.test/with-some-fields
       #_:clj-kondo/ignore
       [{:keys [table event-label-field]}]
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (is (= "ga:eventLabel=~(?i)acon/manager---community-partnerships-and-population-programs"
                (-> (ga.qp/mbql->native
                     {:query {:source-table (u/the-id table)

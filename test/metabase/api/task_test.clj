@@ -1,15 +1,15 @@
 (ns metabase.api.task-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil})
+  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success"})
 
 (defn- generate-tasks
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
@@ -18,7 +18,8 @@
   (let [now        (t/zoned-date-time)
         task-names (repeatedly n mt/random-name)]
     (map-indexed (fn [idx task-name]
-                   {:task       task-name
+                   {:status     :success
+                    :task       task-name
                     :started_at now
                     :ended_at   (t/plus now (t/seconds idx))})
                  task-names)))
@@ -34,8 +35,8 @@
           task-hist-1 (assoc task-hist-1 :duration 100)
           task-hist-2 (assoc task-hist-1 :duration 200 :task_details {:some "complex", :data "here"})
           task-names (set (map :task [task-hist-1 task-hist-2]))]
-      (mt/with-temp* [TaskHistory [_ task-hist-1]
-                      TaskHistory [_ task-hist-2]]
+      (mt/with-temp [TaskHistory _ task-hist-1
+                     TaskHistory _ task-hist-2]
         (is (= (set (map (fn [task-hist]
                            (merge default-task-history (select-keys task-hist [:task :duration :task_details])))
                          [task-hist-2 task-hist-1]))
@@ -48,8 +49,8 @@
                 "later `:ended_at` date and should be returned first")
     (let [[task-hist-1 task-hist-2 :as task-histories] (generate-tasks 2)
           task-names                                   (set (map :task task-histories))]
-      (mt/with-temp* [TaskHistory [_ task-hist-1]
-                      TaskHistory [_ task-hist-2]]
+      (mt/with-temp [TaskHistory _ task-hist-1
+                     TaskHistory _ task-hist-2]
         (is (= (map (fn [{:keys [task]}]
                       (assoc default-task-history :task task))
                     [task-hist-2 task-hist-1])
@@ -70,10 +71,10 @@
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! TaskHistory)
     (let [[task-hist-1 task-hist-2 task-hist-3 task-hist-4] (generate-tasks 4)]
-      (mt/with-temp* [TaskHistory [_ task-hist-1]
-                      TaskHistory [_ task-hist-2]
-                      TaskHistory [_ task-hist-3]
-                      TaskHistory [_ task-hist-4]]
+      (mt/with-temp [TaskHistory _ task-hist-1
+                     TaskHistory _ task-hist-2
+                     TaskHistory _ task-hist-3
+                     TaskHistory _ task-hist-4]
         (is (= {:total 4, :limit 2, :offset 0
                 :data  (map (fn [{:keys [task]}]
                               (assoc default-task-history :task task))
@@ -94,14 +95,14 @@
 
 (deftest fetch-perms-test
   (testing "Regular users can't query for a specific TaskHistory"
-    (mt/with-temp TaskHistory [task]
+    (t2.with-temp/with-temp [TaskHistory task]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "task/%s" (u/the-id task))))))))
 
 (deftest fetch-test
   (testing "Superusers querying for specific TaskHistory will get that task info"
-    (mt/with-temp TaskHistory [task {:task     "Test Task"
-                                     :duration 100}]
+    (t2.with-temp/with-temp [TaskHistory task {:task     "Test Task"
+                                               :duration 100}]
       (is (= (merge default-task-history {:task "Test Task", :duration 100})
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))
@@ -112,6 +113,8 @@
            (mt/user-http-request :rasta :get 403 "task/info"))))
 
   (testing "Superusers could get task info"
-    (is (schema= {:scheduler s/Any
-                  :jobs      [{s/Any s/Any}]}
-                 (mt/user-http-request :crowberto :get 200 "task/info")))))
+    (is (malli= [:map
+                 [:scheduler :any]
+                 [:jobs      [:sequential
+                              [:map-of :any :any]]]]
+                (mt/user-http-request :crowberto :get 200 "task/info")))))

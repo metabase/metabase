@@ -1,6 +1,12 @@
-import React, { ReactNode } from "react";
+import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
+
+import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
+
 import SidebarHeader from "../SidebarHeader";
+
 import {
   SidebarContentRoot,
   SidebarContentMain,
@@ -10,7 +16,7 @@ import {
 type Props = {
   className?: string;
   title?: string;
-  icon?: string;
+  icon?: IconName;
   color?: string;
   onBack?: () => void;
   onClose?: () => void;
@@ -18,6 +24,7 @@ type Props = {
   doneButtonText?: string;
   footer?: ReactNode;
   children?: ReactNode;
+  "data-testid"?: string;
 };
 
 function SidebarContent({
@@ -35,13 +42,14 @@ function SidebarContent({
     </FooterButton>
   ) : null,
   children,
+  "data-testid": dataTestId,
 }: Props) {
   return (
-    <SidebarContentRoot className={className}>
+    <SidebarContentRoot data-testid={dataTestId} className={className}>
       <SidebarContentMain data-testid="sidebar-content">
         {(title || icon || onBack) && (
           <SidebarHeader
-            className="mx3 my2 pt1"
+            className={cx(CS.mx3, CS.my2, CS.pt1)}
             title={title}
             icon={icon}
             onBack={onBack}
@@ -55,6 +63,7 @@ function SidebarContent({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarContent, {
   Root: SidebarContentRoot,
   Header: SidebarHeader,

@@ -1,10 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
   popover,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -59,11 +59,14 @@ describe("issue 25248", () => {
     createDashboard();
     editDashboard();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
     cy.findAllByText("Select…").first().click();
     popover().findAllByText("Created At").first().click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Order.Created At").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").should("be.visible");
   });
 });
@@ -74,15 +77,15 @@ const createDashboard = () => {
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
     cy.createQuestion(question2Details).then(({ body: { id: card_2_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,
             series: [{ id: card_2_id }],
             row: 0,
             col: 0,
-            size_x: 12,
+            size_x: 16,
             size_y: 8,
           },
         ],

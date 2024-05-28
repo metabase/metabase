@@ -1,4 +1,6 @@
-import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
+
 import { ButtonGroupRoot } from "./ButtonGroup.styled";
 
 export interface ButtonGroupProps extends HTMLAttributes<HTMLDivElement> {
@@ -16,4 +18,5 @@ const ButtonGroup = forwardRef(function ButtonGroup(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ButtonGroup;

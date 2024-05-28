@@ -1,19 +1,15 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  MouseEvent,
-  ReactNode,
-  Ref,
-  useCallback,
-  useContext,
-} from "react";
-import { TabContext } from "./TabContext";
+import type { HTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useContext } from "react";
+
+import type { IconName } from "metabase/ui";
+
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
+import { TabContext } from "./TabContext";
 import { getTabId, getTabPanelId } from "./utils";
 
 export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {
   value?: T;
-  icon?: string;
+  icon?: IconName;
   children?: ReactNode;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
@@ -52,4 +48,5 @@ const Tab = forwardRef(function Tab<T>(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Tab;

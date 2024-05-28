@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import SelectButton from "metabase/core/components/SelectButton";
+import { color } from "metabase/lib/colors";
 
 export const StyledSelectButton = styled(SelectButton)`
   ${props =>

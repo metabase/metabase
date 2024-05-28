@@ -1,14 +1,10 @@
-import React from "react";
 import PropTypes from "prop-types";
 
-import { iconPropTypes } from "metabase/components/Icon";
+import CS from "metabase/css/core/index.css";
 
 import { BadgeIcon, BadgeText, MaybeLink } from "./Badge.styled";
 
-const iconProp = PropTypes.oneOfType([
-  PropTypes.string,
-  PropTypes.shape(iconPropTypes),
-]);
+const iconProp = PropTypes.oneOfType([PropTypes.string, PropTypes.object]);
 
 const propTypes = {
   to: PropTypes.string,
@@ -20,7 +16,7 @@ const propTypes = {
   children: PropTypes.node,
 };
 
-const DEFAULT_ICON_SIZE = 12;
+const DEFAULT_ICON_SIZE = 16;
 
 function getIconProps(iconProp) {
   if (!iconProp) {
@@ -48,9 +44,9 @@ function Badge({
       isSingleLine={isSingleLine}
       {...props}
     >
-      {icon && <BadgeIcon {...getIconProps(icon)} $hasMargin={!!children} />}
+      {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
       {children && (
-        <BadgeText className="text-wrap" isSingleLine={isSingleLine}>
+        <BadgeText className={CS.textWrap} isSingleLine={isSingleLine}>
           {children}
         </BadgeText>
       )}

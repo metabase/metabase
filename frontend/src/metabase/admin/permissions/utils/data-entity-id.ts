@@ -1,7 +1,9 @@
+import { checkNotNull } from "metabase/lib/types";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type { ConcreteTableId } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
-import type Schema from "metabase-lib/metadata/Schema";
-import type Table from "metabase-lib/metadata/Table";
+
 import type { EntityId, PermissionSubject } from "../types";
 
 export const getDatabaseEntityId = (databaseEntity: Database) => ({
@@ -9,7 +11,7 @@ export const getDatabaseEntityId = (databaseEntity: Database) => ({
 });
 
 export const getSchemaEntityId = (schemaEntity: Schema) => ({
-  databaseId: schemaEntity.database.id,
+  databaseId: checkNotNull(schemaEntity.database).id,
   schemaName: schemaEntity.name,
 });
 

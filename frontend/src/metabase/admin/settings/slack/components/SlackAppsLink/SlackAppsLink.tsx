@@ -1,5 +1,8 @@
-import React from "react";
+import cx from "classnames";
 import { t } from "ttag";
+
+import ButtonsS from "metabase/css/components/buttons.module.css";
+
 import { LinkIcon, LinkRoot, LinkText } from "./SlackAppsLink.styled";
 
 export interface SlackAppsLinkProps {
@@ -13,7 +16,7 @@ const SlackAppsLink = ({ manifest }: SlackAppsLinkProps): JSX.Element => {
 
   return (
     <LinkRoot
-      className="Button Button--primary"
+      className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
       href={`https://api.slack.com${link}`}
     >
       <LinkText>{t`Create Slack App`}</LinkText>
@@ -22,4 +25,5 @@ const SlackAppsLink = ({ manifest }: SlackAppsLinkProps): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackAppsLink;

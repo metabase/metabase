@@ -1,5 +1,5 @@
-import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+
 import UnsubscribeModal from "./UnsubscribeModal";
 
 const getAlert = ({ creator = getUser({ id: 1 }) } = {}) => ({

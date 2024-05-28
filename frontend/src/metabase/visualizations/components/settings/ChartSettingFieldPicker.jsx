@@ -1,16 +1,17 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
+
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import ChartSettingSelect from "./ChartSettingSelect";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+
 import {
   SettingsIcon,
   SettingsButton,
   ChartSettingFieldPickerRoot,
   FieldPickerColorPicker,
 } from "./ChartSettingFieldPicker.styled";
+import ChartSettingSelect from "./ChartSettingSelect";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -52,9 +53,7 @@ const ChartSettingFieldPicker = ({
       disabled={options.length === 1 && options[0].value === value}
       data-testid="chartsettings-field-picker"
     >
-      {showDragHandle && (
-        <SettingsIcon name="grabber2" size={12} noPointer noMargin />
-      )}
+      {showDragHandle && <SettingsIcon name="grabber" noPointer noMargin />}
       {showColorPicker && seriesKey && (
         <FieldPickerColorPicker
           pillSize="small"
@@ -94,7 +93,6 @@ const ChartSettingFieldPicker = ({
         <SettingsButton
           data-testid={`remove-${value}`}
           icon="close"
-          iconSize={14}
           onlyIcon
           onClick={onRemove}
         />

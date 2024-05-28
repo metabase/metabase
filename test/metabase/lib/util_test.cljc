@@ -1,10 +1,16 @@
 (ns metabase.lib.util-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util :as lib.util]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]))
+
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected
@@ -134,7 +140,7 @@
   (is (=? {:database 1
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1
-                       :aggregation  [[:count]]}]}
+                       :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}
           (lib.util/update-query-stage {:database 1
                                         :type     :query
                                         :query    {:source-table 1}}
@@ -142,7 +148,7 @@
                                        update
                                        :aggregation
                                        conj
-                                       [:count])))
+                                       [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}])))
   (are [stage expected] (=? expected
                             (lib.util/update-query-stage {:database 1
                                                           :type     :query
@@ -151,22 +157,22 @@
                                                          update
                                                          :aggregation
                                                          conj
-                                                         [:count]))
+                                                         [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]))
     0 {:database 1
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1
-                   :aggregation  [[:count]]}
+                   :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}
                   {:lib/type :mbql.stage/mbql}]}
     1 {:database 1
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1}
                   {:lib/type    :mbql.stage/mbql
-                   :aggregation [[:count]]}]}
+                   :aggregation [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}
     -1 {:database 1
         :stages   [{:lib/type     :mbql.stage/mbql
                     :source-table 1}
                    {:lib/type    :mbql.stage/mbql
-                    :aggregation [[:count]]}]})
+                    :aggregation [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]})
   (testing "out of bounds"
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs js/Error)
@@ -178,7 +184,7 @@
                                       update
                                       :aggregation
                                       conj
-                                      [:count])))))
+                                      [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}])))))
 
 (deftest ^:parallel ensure-mbql-final-stage-test
   (is (=? {:database 1
@@ -294,7 +300,7 @@
                (truncate-alias s max-bytes)))))))
 
 (deftest ^:parallel unique-name-generator-test
-  (let [unique-name-fn (lib.util/unique-name-generator)]
+  (let [unique-name-fn (lib.util/unique-name-generator meta/metadata-provider)]
     (is (= "wow"
            (unique-name-fn "wow")))
     (is (= "wow_2"
@@ -305,5 +311,99 @@
     (testing "should truncate long names"
       (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_2dc86ef1"
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
-      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_fc11882d"
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))
+
+(deftest ^:parallel unique-name-generator-idempotence-test
+  (testing "idempotence (2-arity calls to generated function)"
+    (let [unique-name (lib.util/unique-name-generator meta/metadata-provider)]
+      (is (= ["A" "B" "A" "A_2" "A_2"]
+             [(unique-name :x "A")
+              (unique-name :x "B")
+              (unique-name :x "A")
+              (unique-name :y "A")
+              (unique-name :y "A")])))))
+
+(deftest ^:parallel unique-name-use-database-methods-test
+  (testing "Should use database :lib/methods"
+    (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:database {:lib/methods {:escape-alias #(lib.util/truncate-alias % 15)}}})
+          unique-name        (lib.util/unique-name-generator metadata-provider)]
+      (is (= "catego_ef520013"
+             (unique-name "categories__via__category_id__name")))
+      (is (= "catego_ec940c72"
+             (unique-name "categories__via__category_id__name"))))))
+
+(deftest ^:parallel strip-id-test
+  (are [exp in] (= exp (lib.util/strip-id in))
+    "foo"            "foo"
+    "Fancy Name"     "Fancy Name"
+    "Customer"       "Customer ID"
+    "Customer"       "Customer id"
+    "some id number" "some id number"))
+
+(deftest ^:parallel original-isa?
+  (are [exp typ] (lib.util/original-isa? exp typ)
+    (lib/ref (meta/field-metadata :products :id))
+    :type/Number
+
+    (lib/ref (meta/field-metadata :products :created-at))
+    :type/Temporal
+
+    (-> (meta/field-metadata :products :created-at)
+        (lib/with-temporal-bucket :day-of-week)
+        lib/ref)
+    :type/Temporal
+
+    (-> (meta/field-metadata :products :created-at)
+        lib/ref
+        (lib/with-temporal-bucket :day-of-week))
+    :type/Temporal))
+
+(deftest ^:parallel top-level-expression-clause-do-not-wrap-values-test
+  (testing "named-expression-clause should not wrap a :value clause in another :value clause"
+    (is (=? [:value {:semantic-type :type/Country, :base-type :type/Text, :lib/expression-name "Country"}
+             "United States"]
+            (lib.util/top-level-expression-clause
+             [:value {:semantic-type :type/Country, :base-type :type/Text, :lib/uuid (str (random-uuid))}
+              "United States"]
+             "Country")))))
+
+(deftest ^:parallel fresh-uuids-test
+  (is (=? [:=
+           {:lib/uuid (partial not= "8044c5a1-10ab-4122-8663-aa544074c082")}
+           [:field {:lib/uuid (partial not= "36a2abff-e4ae-4752-b232-4885e08f52ea")} 5]
+           "abc"]
+          (lib.util/fresh-uuids
+           [:=
+            {:lib/uuid "8044c5a1-10ab-4122-8663-aa544074c082"}
+            [:field {:lib/uuid "36a2abff-e4ae-4752-b232-4885e08f52ea"} 5]
+            "abc"]))))
+
+(deftest ^:parallel fresh-query-instance-test
+  (let [query {:lib/type :mbql/query,
+               :stages
+               [{:lib/type :mbql.stage/mbql,
+                 :breakout
+                 [[:field {:base-type :type/DateTime, :temporal-unit :month,
+                           :lib/uuid "7ec788fb-3eb2-4ed0-88fa-5f6b53a09094"}
+                   38]
+                  [:field {:base-type :type/Text, :source-field 37,
+                           :lib/uuid "65135c9c-fec5-4f51-b111-fadbb6af4522"}
+                   64]],
+                 :aggregation [[:metric {:lib/uuid "aa83c834-9a7c-4d7b-b408-3e17668d5ecc"} 84]],
+                 :order-by
+                 [[:asc
+                   #:lib{:uuid "2712fc42-d13e-4810-9ae9-a126d536376e"}
+                   [:aggregation {:lib/uuid "a1d73928-05db-4cb7-bb05-5123d2dbc261"}
+                    "aa83c834-9a7c-4d7b-b408-3e17668d5ecc"]]],
+                 :source-card 84}],
+               :database 1}
+        fresh-query (lib.util/fresh-query-instance query)
+        aggregation-ref-path [:stages 0 :order-by 0 2 2]]
+    (is (= (get-in fresh-query [:stages 0 :aggregation 0 1 :lib/uuid])
+           (get-in fresh-query aggregation-ref-path)))
+    (is (not= (get-in query       aggregation-ref-path)
+              (get-in fresh-query aggregation-ref-path)))
+    (is (lib.equality/= query fresh-query))))

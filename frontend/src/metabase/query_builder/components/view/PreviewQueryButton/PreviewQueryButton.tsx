@@ -1,16 +1,19 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
+
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+
 import { PreviewButton, PreviewButtonIcon } from "./PreviewQueryButton.styled";
 
 interface PreviewQueryButtonProps {
   onOpenModal?: (modalType: string) => void;
 }
 
-const PreviewQueryButton = ({
+export const PreviewQueryButton = ({
   onOpenModal,
 }: PreviewQueryButtonProps): JSX.Element => {
   const handleClick = useCallback(() => {
@@ -31,13 +34,11 @@ interface PreviewQueryButtonOpts {
 }
 
 PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
-  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   return (
+    isNative &&
     question.canRun() &&
-    query instanceof NativeQuery &&
-    query.hasVariableTemplateTags()
+    (question.legacyQuery() as NativeQuery).hasVariableTemplateTags()
   );
 };
-
-export default PreviewQueryButton;

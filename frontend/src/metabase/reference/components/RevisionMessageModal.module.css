@@ -1,0 +1,16 @@
+.modalBody {
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+}
+
+.modalTextArea {
+  composes: textDark input p2 from "style";
+  flex: 1 0 auto;
+  resize: none;
+  font-size: 16px;
+  min-height: 100px;
+}

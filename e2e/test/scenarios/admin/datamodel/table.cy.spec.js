@@ -1,6 +1,7 @@
-import { restore, filter, visitQuestion } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { restore, filter, visitQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -12,17 +13,23 @@ describe("scenarios > admin > databases > table", () => {
 
   it("should see 8 tables in sample database", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
-    cy.get(".AdminList-item").should("have.length", 8);
+    cy.findAllByTestId("admin-metadata-table-list-item").should(
+      "have.length",
+      8,
+    );
   });
 
   it("should be able to see details of each table", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Select any table to see its schema and add or edit metadata.",
     );
 
     // Orders
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Select any table to see its schema and add or edit metadata.",
     ).should("not.exist");
@@ -33,14 +40,21 @@ describe("scenarios > admin > databases > table", () => {
 
   it("should show 404 if database does not exist (metabase#14652)", () => {
     cy.visit("/admin/datamodel/database/54321");
-    cy.get(".AdminList-item").should("have.length", 0);
-    cy.findByText("The page you asked for couldn't be found.");
+    cy.findAllByTestId("admin-metadata-table-list-item").should(
+      "have.length",
+      0,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Not found.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database");
   });
 
   describe("in orders table", () => {
     beforeEach(() => {
-      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+      );
     });
 
     it("should see multiple fields", () => {
@@ -51,6 +65,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findAllByText("No semantic type");
 
       cy.get("input[value='Discount']");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Discount");
     });
 
@@ -61,6 +76,7 @@ describe("scenarios > admin > databases > table", () => {
 
     it("should see the created_at timestamp field", () => {
       cy.get("input[value='Created At']");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Creation timestamp");
     });
   });
@@ -68,7 +84,7 @@ describe("scenarios > admin > databases > table", () => {
   describe.skip("turning table visibility off shouldn't prevent editing related question (metabase#15947)", () => {
     it("simple question (metabase#15947-1)", () => {
       turnTableVisibilityOff(ORDERS_ID);
-      visitQuestion(1);
+      visitQuestion(ORDERS_QUESTION_ID);
       filter();
     });
 

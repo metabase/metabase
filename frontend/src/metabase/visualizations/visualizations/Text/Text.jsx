@@ -1,23 +1,30 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeExternalLinks from "rehype-external-links";
-
-import _ from "underscore";
 import cx from "classnames";
+import { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import rehypeExternalLinks from "rehype-external-links";
+import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
-import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
-import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
+import CS from "metabase/css/core/index.css";
+import { getParameterValues } from "metabase/dashboard/selectors";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
+import { isEmpty } from "metabase/lib/validate";
+import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 
-import styles from "./Text.css";
+import {
+  DisplayContainer,
+  EditModeContainer,
+  ReactMarkdownStyleWrapper,
+  TextInput,
+} from "./Text.styled";
 
 const getSettingsStyle = settings => ({
-  "align-center": settings["text.align_horizontal"] === "center",
-  "align-end": settings["text.align_horizontal"] === "right",
-  "justify-center": settings["text.align_vertical"] === "middle",
-  "justify-end": settings["text.align_vertical"] === "bottom",
+  [CS.alignCenter]: settings["text.align_horizontal"] === "center",
+  [CS.alignStart]: settings["text.align_horizontal"] === "right",
+  [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
+  [CS.justifyEnd]: settings["text.align_vertical"] === "bottom",
 });
 
 const REMARK_PLUGINS = [remarkGfm];
@@ -25,188 +32,127 @@ const REHYPE_PLUGINS = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
 
-export default class Text extends Component {
-  constructor(props) {
-    super(props);
+export function Text({
+  onUpdateVisualizationSettings,
+  className,
+  dashboard,
+  dashcard,
+  gridSize,
+  settings,
+  isEditing,
+  isMobile,
+}) {
+  const parameterValues = useSelector(getParameterValues);
+  const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
+  const [textValue, setTextValue] = useState(settings.text);
 
-    this.state = {
-      text: "",
-    };
-  }
+  const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
+    useToggle(justAdded);
+  const isPreviewing = !isFocused;
 
-  static uiName = "Text";
-  static identifier = "text";
-  static iconName = "text";
-  static canSavePng = false;
+  const preventDragging = e => e.stopPropagation();
 
-  static disableSettingsConfig = false;
-  static noHeader = true;
-  static supportsSeries = false;
-  static hidden = true;
-  static supportPreviewing = true;
+  const isSingleRow = gridSize?.height === 1;
 
-  static minSize = { width: 1, height: 1 };
-  static defaultSize = { width: 4, height: 4 };
+  // handles a case when settings are updated externally
+  useEffect(() => {
+    setTextValue(settings.text);
+  }, [settings.text]);
 
-  static checkRenderable() {
-    // text can always be rendered, nothing needed here
-  }
+  const content = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: settings.text,
+        escapeMarkdown: true,
+      }),
+    [dashcard, dashboard, parameterValues, settings.text],
+  );
 
-  static settings = {
-    "card.title": {
-      dashboard: false,
-      default: t`Text card`,
-    },
-    "card.description": {
-      dashboard: false,
-    },
-    text: {
-      value: "",
-      default: "",
-    },
-    "text.align_vertical": {
-      section: t`Display`,
-      title: t`Vertical Alignment`,
-      widget: "select",
-      props: {
-        options: [
-          { name: t`Top`, value: "top" },
-          { name: t`Middle`, value: "middle" },
-          { name: t`Bottom`, value: "bottom" },
-        ],
-      },
-      default: "top",
-    },
-    "text.align_horizontal": {
-      section: t`Display`,
-      title: t`Horizontal Alignment`,
-      widget: "select",
-      props: {
-        options: [
-          { name: t`Left`, value: "left" },
-          { name: t`Center`, value: "center" },
-          { name: t`Right`, value: "right" },
-        ],
-      },
-      default: "left",
-    },
-    "dashcard.background": {
-      section: t`Display`,
-      title: t`Show background`,
-      dashboard: true,
-      inline: true,
-      widget: "toggle",
-      default: true,
-    },
-  };
+  const hasContent = !isEmpty(settings.text);
+  const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
-  handleTextChange(text) {
-    this.props.onUpdateVisualizationSettings({ text: text });
-  }
-
-  preventDragging = e => e.stopPropagation();
-
-  render() {
-    const {
-      className,
-      dashboard,
-      dashcard,
-      gridSize,
-      settings,
-      isEditing,
-      isPreviewing,
-      parameterValues,
-    } = this.props;
-    const isSingleRow = gridSize && gridSize.height === 1;
-
-    let parametersByTag = {};
-    if (dashcard && dashcard.parameter_mappings) {
-      parametersByTag = dashcard.parameter_mappings.reduce((acc, mapping) => {
-        const tagId = mapping.target[1];
-        const parameter = dashboard.parameters.find(
-          p => p.id === mapping.parameter_id,
-        );
-        if (parameter) {
-          const parameterValue = parameterValues[parameter.id];
-          return {
-            ...acc,
-            [tagId]: { ...parameter, value: parameterValue },
-          };
-        } else {
-          return acc;
-        }
-      }, {});
-    }
-
-    let content = settings["text"];
-    if (!_.isEmpty(parametersByTag)) {
-      // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
-      // translated the same way.
-      content = withInstanceLanguage(() =>
-        substitute_tags(content, parametersByTag, siteLocale()),
-      );
-    }
-
-    if (isEditing) {
-      return (
-        <div
-          className={cx(className, styles.Text, {
-            [styles.padded]: !isPreviewing,
-          })}
-        >
-          {isPreviewing ? (
+  if (isEditing) {
+    return (
+      <EditModeContainer
+        data-testid="editing-dashboard-text-container"
+        className={cx(className)}
+        isEmpty={!hasContent}
+        isPreviewing={isPreviewing}
+        onClick={toggleFocusOn}
+        isSingleRow={isSingleRow}
+        isMobile={isMobile}
+      >
+        {isPreviewing ? (
+          <ReactMarkdownStyleWrapper
+            data-testid="editing-dashboard-text-preview"
+            onMouseDown={preventDragging}
+          >
+            {/* ReactMarkdown does not allow adding an onMouseDown event handler */}
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
               className={cx(
-                "full flex-full flex flex-column text-card-markdown",
-                styles["text-card-markdown"],
+                CS.full,
+                CS.flexFull,
+                CS.flex,
+                CS.flexColumn,
+                "text-card-markdown",
+                "cursor-text",
                 getSettingsStyle(settings),
               )}
             >
-              {content}
+              {hasContent ? settings.text : placeholder}
             </ReactMarkdown>
-          ) : (
-            <textarea
-              className={cx(
-                "full flex-full flex flex-column bg-light bordered drag-disabled",
-                styles["text-card-textarea"],
-              )}
-              name="text"
-              placeholder={t`You can use Markdown here, and include variables {{like_this}}`}
-              value={settings.text}
-              onChange={e => this.handleTextChange(e.target.value)}
-              // Prevents text cards from dragging when you actually want to select text
-              // See: https://github.com/metabase/metabase/issues/17039
-              onMouseDown={this.preventDragging}
-            />
-          )}
-        </div>
-      );
-    }
+          </ReactMarkdownStyleWrapper>
+        ) : (
+          <TextInput
+            data-testid="editing-dashboard-text-input"
+            name="text"
+            placeholder={placeholder}
+            value={textValue}
+            autoFocus={justAdded || isFocused}
+            onChange={e => setTextValue(e.target.value)}
+            onMouseDown={preventDragging}
+            onBlur={() => {
+              toggleFocusOff();
 
-    return (
-      <div
-        className={cx(className, styles.Text, {
-          // if the card is not showing a background
-          // we should adjust the left padding
-          // to help align the titles with the wrapper
-          pl0: !settings["dashcard.background"],
-          "Text--single-row": isSingleRow,
-        })}
-      >
+              if (settings.text !== textValue) {
+                onUpdateVisualizationSettings({ text: textValue });
+              }
+            }}
+            isMobile={isMobile}
+            isSingleRow={isSingleRow}
+          />
+        )}
+      </EditModeContainer>
+    );
+  }
+
+  return (
+    <DisplayContainer
+      className={cx(className)}
+      isSingleRow={isSingleRow}
+      isMobile={isMobile}
+    >
+      <ReactMarkdownStyleWrapper>
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
           className={cx(
-            "full flex-full flex flex-column text-card-markdown",
-            styles["text-card-markdown"],
+            CS.full,
+            CS.flexFull,
+            CS.flex,
+            CS.flexColumn,
+            "text-card-markdown",
             getSettingsStyle(settings),
           )}
         >
           {content}
         </ReactMarkdown>
-      </div>
-    );
-  }
+      </ReactMarkdownStyleWrapper>
+    </DisplayContainer>
+  );
 }

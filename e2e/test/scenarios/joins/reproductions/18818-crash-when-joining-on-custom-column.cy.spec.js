@@ -1,6 +1,5 @@
-import { restore } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -11,7 +10,7 @@ describe("issue 18818", () => {
     cy.signInAsAdmin();
   });
 
-  it("should normally open notebook editor for queries joining on custom columns (metabase#18630)", () => {
+  it("should normally open notebook editor for queries joining on custom columns (metabase#18818)", () => {
     cy.createQuestion(
       {
         query: {

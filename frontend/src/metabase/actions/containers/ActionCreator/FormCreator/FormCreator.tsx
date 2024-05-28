@@ -1,44 +1,39 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
-import { jt, t } from "ttag";
-import _ from "underscore";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-
+import { useEffect, useCallback, useMemo, useState } from "react";
 import type {
   DraggableProvided,
   DroppableProvided,
   DropResult,
 } from "react-beautiful-dnd";
+import { Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
+import _ from "underscore";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-
-import MetabaseSettings from "metabase/lib/settings";
-
+import { DragDropContext } from "metabase/core/components/DragDropContext";
+import { Form, FormProvider } from "metabase/forms";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-
 import type {
   ActionFormSettings,
   FieldSettings,
   Parameter,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
   getForm,
   getFormValidationSchema,
   getDefaultFormSettings,
-  sortActionParams,
 } from "../../../utils";
 import { syncFieldsWithParameters } from "../utils";
-import { reorderFields } from "./utils";
 
+import { Description } from "./Description";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import FormFieldEditor from "./FormFieldEditor";
 import {
   FormContainer,
   FormFieldEditorDragContainer,
-  InfoText,
+  WarningBanner,
 } from "./FormCreator.styled";
+import FormFieldEditor from "./FormFieldEditor";
+import { reorderFields } from "./utils";
 
 // FormEditor's can't be submitted as it serves as a form preview
 const ON_SUBMIT_NOOP = _.noop;
@@ -47,13 +42,15 @@ interface FormCreatorProps {
   parameters: Parameter[];
   formSettings?: ActionFormSettings;
   isEditable: boolean;
+  actionType: WritebackAction["type"];
   onChange: (formSettings: ActionFormSettings) => void;
 }
 
-function FormCreator({
+export function FormCreator({
   parameters,
   formSettings: passedFormSettings,
   isEditable,
+  actionType,
   onChange,
 }: FormCreatorProps) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
@@ -72,8 +69,8 @@ function FormCreator({
   }, [parameters, formSettings]);
 
   const form = useMemo(
-    () => getForm(parameters, formSettings?.fields),
-    [parameters, formSettings?.fields],
+    () => getForm(parameters, formSettings.fields),
+    [parameters, formSettings.fields],
   );
 
   // Validation schema here should only be used to get default values
@@ -86,11 +83,6 @@ function FormCreator({
   const displayValues = useMemo(
     () => validationSchema.getDefault(),
     [validationSchema],
-  );
-
-  const sortedParams = useMemo(
-    () => parameters.sort(sortActionParams(formSettings)),
-    [parameters, formSettings],
   );
 
   const handleDragEnd = useCallback(
@@ -132,7 +124,7 @@ function FormCreator({
     [formSettings],
   );
 
-  if (!sortedParams.length) {
+  if (!parameters.length) {
     return (
       <SidebarContent>
         <FormContainer>
@@ -144,19 +136,36 @@ function FormCreator({
 
   const fieldSettings = formSettings.fields || {};
 
-  const docsLink = (
-    <ExternalLink
-      key="learn-more"
-      href={MetabaseSettings.docsUrl("actions/custom")}
-    >{t`Learn more`}</ExternalLink>
-  );
+  const showWarning = form.fields.some(field => {
+    const settings = fieldSettings[field.name];
+
+    if (!settings) {
+      return false;
+    }
+
+    if (actionType === "implicit") {
+      const parameter = parameters.find(
+        parameter => parameter.id === settings.id,
+      );
+
+      return parameter?.required && settings.hidden;
+    }
+
+    return (
+      settings.hidden && settings.required && settings.defaultValue == null
+    );
+  });
 
   return (
     <SidebarContent title={t`Action parameters`}>
       <FormContainer>
-        <InfoText>
-          {jt`Configure your parameters' types and properties here. The values for these parameters can come from user input, or from a dashboard filter. ${docsLink}`}
-        </InfoText>
+        <Description />
+        {showWarning && (
+          <WarningBanner>
+            <b>{t`Heads up.`}</b>{" "}
+            {t`Your action has a hidden required field with no default value. There's a good chance this will cause the action to fail.`}
+          </WarningBanner>
+        )}
         <FormProvider
           enableReinitialize
           initialValues={displayValues}
@@ -200,5 +209,3 @@ function FormCreator({
     </SidebarContent>
   );
 }
-
-export default FormCreator;

@@ -1,9 +1,9 @@
-import { t } from "ttag";
 import { isValidCronExpression } from "cron-expression-validator";
 import cronstrue from "cronstrue";
+import { t } from "ttag";
 
-import { has24HourModeSetting } from "metabase/lib/time";
 import MetabaseSettings from "metabase/lib/settings";
+import { has24HourModeSetting } from "metabase/lib/time";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {
@@ -18,7 +18,7 @@ function translateErrorMessage(message: string) {
     "Start year must be less than stop year": t`Start year must be less than stop year`,
     "(Year) - Unsupported value for field. Possible values are 1970-2099 , - * /": t`Unsupported year value. Possible values are 1970-2099 , - * /`,
     "Minute and Second values must be between 0 and 59 and Hour Values must be between 0 and 23": t`Minute and second values must be between 0 and 59 and hour values must be between 0 and 23`,
-    "? can only be specfied for Day-of-Month -OR- Day-of-Week": t`You must use ? in the day-of-week or day-of-month field`,
+    "? can only be specified for Day-of-Month -OR- Day-of-Week": t`You must use ? in the day-of-week or day-of-month field`,
     "Unexpected end of expression": t`Invalid cron expression`,
   };
   return errorMessageMap[message];
@@ -27,18 +27,14 @@ function translateErrorMessage(message: string) {
 export function validateCronExpression(
   cronExpression: string,
 ): string | undefined {
-  const result = isValidCronExpression(cronExpression, { error: true });
+  const result = isValidCronExpression<boolean>(cronExpression, {
+    error: true,
+  });
 
-  // cron-expression-validator's typing is not exactly correct
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   if (result === true) {
     return;
   }
 
-  // cron-expression-validator's typing is not exactly correct
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   if (result === false) {
     return t`Invalid cron expression`;
   }
@@ -64,9 +60,7 @@ export function validateCronExpression(
 export function explainCronExpression(cronExpression: string) {
   return cronstrue.toString(cronExpression, {
     verbose: false,
-    locale:
-      MetabaseSettings.get("user-locale") ||
-      MetabaseSettings.get("site-locale"),
+    locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
   });
 }

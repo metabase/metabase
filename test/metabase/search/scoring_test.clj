@@ -2,8 +2,8 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [java-time :as t]
-   [metabase.search.config :as search-config]
+   [java-time.api :as t]
+   [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]))
 
 (defn- result-row
@@ -137,7 +137,7 @@
         (is (= (map :result items)
                (scoring/top-results items large xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (->> (+ small search-config/max-filtered-results)
+      (let [sorted-items (->> (+ small search.config/max-filtered-results)
                               range
                               reverse ;; descending order
                               (map (fn [i]
@@ -218,7 +218,7 @@
                   reverse
                   (map :id)))))
     (testing "it treats stale items as being equally old"
-      (let [stale search-config/stale-time-in-days]
+      (let [stale search.config/stale-time-in-days]
         (is (= [1 2 3 4]
                (->> [(item 1 (days-ago (+ stale 1)))
                      (item 2 (days-ago (+ stale 50)))
@@ -280,14 +280,16 @@
                   :database 1}
           result {:name          "card"
                   :model         "card"
-                  :dataset_query (json/generate-string query)}]
-      (is (= query (-> result (#'scoring/serialize {} {}) :dataset_query)))))
+                  :dataset_query (json/generate-string query)
+                  :all-scores {}
+                  :relevant-scores {}}]
+      (is (= query (-> result scoring/serialize :dataset_query)))))
   (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard"}
-                  (#'scoring/serialize {} {})
+    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
+                  (#'scoring/serialize)
                   :dataset_query)))))
 
-(deftest force-weight-test
+(deftest ^:parallel force-weight-test
   (is (= [{:weight 10}]
          (scoring/force-weight [{:weight 1}] 10)))
 

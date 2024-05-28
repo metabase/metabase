@@ -1,19 +1,21 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
+import { color } from "metabase/lib/colors";
 
 export interface EntityMenuIconButtonProps {
+  className?: string;
   color?: string;
   hover?: {
     color: string;
     backgroundColor: string;
   };
+  "data-testid"?: string;
 }
 
 export const EntityMenuIconButton = styled(Button)<EntityMenuIconButtonProps>`
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 
   ${({ color }) => (color ? `color: ${color}` : null)};
 

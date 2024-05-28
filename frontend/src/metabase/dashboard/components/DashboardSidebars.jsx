@@ -1,40 +1,41 @@
-import React, { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
-import SharingSidebar from "metabase/sharing/components/SharingSidebar";
+import {
+  getEditingParameter,
+  getParameters,
+} from "metabase/dashboard/selectors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
-import DashboardInfoSidebar from "./DashboardInfoSidebar";
-import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
-import { ActionSidebar } from "./ActionSidebar";
+import { useSelector } from "metabase/lib/redux";
+import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
+import { hasMapping } from "metabase/parameters/utils/dashboards";
+import SharingSidebar from "metabase/sharing/components/SharingSidebar";
+
+import { ActionSidebarConnected } from "./ActionSidebar";
+import { AddCardSidebar } from "./AddCardSidebar";
+import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
+import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
-  parameters: PropTypes.array,
   showAddParameterPopover: PropTypes.func.isRequired,
   removeParameter: PropTypes.func.isRequired,
   addCardToDashboard: PropTypes.func.isRequired,
-  editingParameter: PropTypes.object,
-  isEditingParameter: PropTypes.bool.isRequired,
   clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
-  setEditingParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
+  setParameterType: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
   setParameterQueryType: PropTypes.func.isRequired,
   setParameterSourceType: PropTypes.func.isRequired,
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
-  dashcardData: PropTypes.object,
-  isSharing: PropTypes.bool.isRequired,
-  isEditing: PropTypes.bool.isRequired,
+  setParameterRequired: PropTypes.func.isRequired,
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
@@ -44,45 +45,48 @@ DashboardSidebars.propTypes = {
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
-  saveDashboardAndCards: PropTypes.func,
+  selectedTabId: PropTypes.number,
 };
 
 export function DashboardSidebars({
   dashboard,
-  parameters,
   showAddParameterPopover,
   removeParameter,
   addCardToDashboard,
-  editingParameter,
   clickBehaviorSidebarDashcard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   setParameterName,
+  setParameterType,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
   setParameterQueryType,
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
-  dashcardData,
+  setParameterRequired,
   isFullscreen,
   onCancel,
   params,
   sidebar,
   closeSidebar,
   setDashboardAttribute,
-  saveDashboardAndCards,
+  selectedTabId,
 }) {
+  const parameters = useSelector(getParameters);
+  const editingParameter = useSelector(getEditingParameter);
+
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
         dashId: dashboard.id,
         cardId: cardId,
+        tabId: selectedTabId,
       });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
-    [addCardToDashboard, dashboard.id],
+    [addCardToDashboard, dashboard.id, selectedTabId],
   );
 
   if (isFullscreen) {
@@ -91,12 +95,7 @@ export function DashboardSidebars({
 
   switch (sidebar.name) {
     case SIDEBAR_NAME.addQuestion:
-      return (
-        <AddCardSidebar
-          initialCollection={dashboard.collection_id}
-          onSelect={handleAddCard}
-        />
-      );
+      return <AddCardSidebar onSelect={handleAddCard} onClose={closeSidebar} />;
     case SIDEBAR_NAME.action: {
       const onUpdateVisualizationSettings = settings =>
         onUpdateDashCardVisualizationSettings(
@@ -105,7 +104,7 @@ export function DashboardSidebars({
         );
 
       return (
-        <ActionSidebar
+        <ActionSidebarConnected
           dashboard={dashboard}
           dashcardId={sidebar.props.dashcardId}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
@@ -119,7 +118,6 @@ export function DashboardSidebars({
           dashboard={dashboard}
           dashcard={clickBehaviorSidebarDashcard}
           parameters={parameters}
-          dashcardData={dashcardData[clickBehaviorSidebarDashcard.id]}
           onUpdateDashCardVisualizationSettings={
             onUpdateDashCardVisualizationSettings
           }
@@ -141,6 +139,7 @@ export function DashboardSidebars({
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={setParameterName}
+          onChangeType={setParameterType}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
           onChangeQueryType={setParameterQueryType}
@@ -150,6 +149,8 @@ export function DashboardSidebars({
           onRemoveParameter={removeParameter}
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
+          onChangeRequired={setParameterRequired}
+          hasMapping={hasMapping(parameter, dashboard)}
         />
       );
     }
@@ -165,7 +166,6 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
-          saveDashboardAndCards={saveDashboardAndCards}
           setDashboardAttribute={setDashboardAttribute}
         />
       );

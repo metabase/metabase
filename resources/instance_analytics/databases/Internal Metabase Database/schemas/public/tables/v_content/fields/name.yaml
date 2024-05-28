@@ -1,0 +1,41 @@
+name: name
+display_name: Name
+description: null
+created_at: '2023-06-08T14:05:43.635833Z'
+active: true
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_content
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Name
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 6
+custom_position: 0
+database_position: 6
+has_field_values: list
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_content
+  model: Table
+- id: name
+  model: Field
+database_indexed: null
+database_partitioned: null

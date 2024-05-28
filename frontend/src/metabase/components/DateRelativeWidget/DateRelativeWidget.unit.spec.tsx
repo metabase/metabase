@@ -1,7 +1,6 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import DateRelativeWidget from "./DateRelativeWidget";
+import { DateRelativeWidget } from "./DateRelativeWidget";
 
 describe("DateRelativeWidget", () => {
   it("should render correctly", () => {

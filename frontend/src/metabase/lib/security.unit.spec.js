@@ -1,4 +1,5 @@
 import MetabaseSettings from "metabase/lib/settings";
+
 import { generatePassword } from "./security";
 
 describe("generatePassword", () => {

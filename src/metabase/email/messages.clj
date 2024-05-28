@@ -2,37 +2,41 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
    [hiccup.core :refer [html]]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
+   [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as params]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
-   [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.pulse.render.style :as style]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -53,7 +57,7 @@
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
-  (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
+  (alter-meta! #'stencil/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
 (defn- logo-url []
@@ -92,7 +96,7 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn- common-context
+(defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
@@ -102,7 +106,6 @@
    :colorTextLight            style/color-text-light
    :colorTextMedium           style/color-text-medium
    :colorTextDark             style/color-text-dark
-   :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
@@ -124,10 +127,10 @@
                                                   :logoHeader    true
                                                   :sentFromSetup sent-from-setup?}))]
     (email/send-message!
-     :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
-     :recipients   [(:email invited)]
-     :message-type :html
-     :message      message-body)))
+     {:subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
+      :recipients   [(:email invited)]
+      :message-type :html
+      :message      message-body})))
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
@@ -145,50 +148,51 @@
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
-     :subject      (str (if google-auth?
-                          (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
-                          (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
-     :recipients   recipients
-     :message-type :html
-     :message      (stencil/render-file "metabase/email/user_joined_notification"
-                                        (merge (common-context)
-                                               {:logoHeader        true
-                                                :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                                :joinedViaSSO      google-auth?
-                                                :joinedUserEmail   (:email new-user)
-                                                :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
-                                                :adminEmail        (first recipients)
-                                                :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")})))))
+     {:subject      (str (if google-auth?
+                           (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
+                           (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
+      :recipients   recipients
+      :message-type :html
+      :message      (stencil/render-file "metabase/email/user_joined_notification"
+                                         (merge (common-context)
+                                                {:logoHeader        true
+                                                 :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                                 :joinedViaSSO      google-auth?
+                                                 :joinedUserEmail   (:email new-user)
+                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
+                                                 :adminEmail        (first recipients)
+                                                 :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? non-google-sso? password-reset-url is-active?]
-  {:pre [(m/boolean? google-auth?)
-         (m/boolean? non-google-sso?)
-         (u/email? email)
+  [email sso-source password-reset-url is-active?]
+  {:pre [(u/email? email)
          ((some-fn string? nil?) password-reset-url)]}
-  (let [message-body (stencil/render-file
+  (let [google-sso? (= "google" sso-source)
+        message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :google           google-auth?
-                              :nonGoogleSSO     non-google-sso?
+                              :google           google-sso?
+                              :nonGoogleSSO     (and (not google-sso?) (some? sso-source))
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
     (email/send-message!
-     :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+     {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
+      :recipients   [email]
+      :message-type :html
+      :message      message-body})))
 
-(defn send-login-from-new-device-email!
+(mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
-  [{user-id :user_id, :keys [timestamp], :as login-history}]
-  (let [user-info    (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
+  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+                         (throw (ex-info (tru "User {0} does not exist" user-id)
+                                         {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)
@@ -199,10 +203,10 @@
         message-body (stencil/render-file "metabase/email/login_from_new_device"
                                           context)]
     (email/send-message!
-     :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
-     :recipients   [(:email user-info)]
-     :message-type :html
-     :message      message-body)))
+     {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
+      :recipients   [(:email user-info)]
+      :message-type :html
+      :message      message-body})))
 
 (defn- admin-or-ee-monitoring-details-emails
   "Find emails for users that have an interest in monitoring the database.
@@ -210,25 +214,22 @@
    If ee that also means users with monitoring and details permissions."
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
-        db-details (perms/feature-perms-path :details :yes database-id)
-        user-ids (when (premium-features/enable-advanced-permissions?)
-                   (->> {:select   [:pgm.user_id]
-                         :from     [[:permissions_group_membership :pgm]]
-                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                         :where    [:and
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object monitoring]]}]
-                                    [:exists {:select [1]
-                                              :from [[:permissions :p]]
-                                              :where [:and
-                                                      [:= :p.group_id :pg.id]
-                                                      [:= :p.object db-details]]}]]
-                         :group-by [:pgm.user_id]}
-                        mdb.query/query
-                        (mapv :user_id)))]
+        user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
+                                   (->> {:select   [:pgm.user_id]
+                                         :from     [[:permissions_group_membership :pgm]]
+                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                                         :where    [:and
+                                                    [:exists {:select [1]
+                                                              :from [[:permissions :p]]
+                                                              :where [:and
+                                                                      [:= :p.group_id :pg.id]
+                                                                      [:= :p.object monitoring]]}]]
+                                         :group-by [:pgm.user_id]}
+                                        mdb.query/query
+                                        (mapv :user_id)))
+        user-ids (filter
+                  #(data-perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
+                  user-ids-with-monitoring)]
     (into
       []
       (distinct)
@@ -267,10 +268,10 @@
                                           (merge (common-context) context))]
     (when (seq emails)
       (email/send-message!
-        :subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
-        :recipients   (vec emails)
-        :message-type :html
-        :message      message-body))))
+        {:subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
+         :recipients   (vec emails)
+         :message-type :html
+         :message      message-body}))))
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
@@ -288,6 +289,30 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
+(defn send-creator-sentiment-email!
+  "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
+  and then base64 encoded."
+  [{:keys [email first_name]} blob]
+  {:pre [(u/email? email)]}
+  (let [encoded-info    (when blob
+                          (-> blob
+                              json/generate-string
+                              .getBytes
+                              codecs/bytes->b64-str))
+        context (merge (common-context)
+                       {:emailType  "notification"
+                        :logoHeader true
+                        :first-name first_name
+                        :link       (cond-> "https://metabase.com/feedback/creator"
+                                      encoded-info (str "?context=" encoded-info))}
+                       (when-not (premium-features/is-hosted?)
+                         {:self-hosted (public-settings/site-url)}))
+        message {:subject      "Metabase would love your take on something"
+                 :recipients   [email]
+                 :message-type :html
+                 :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
+    (email/send-message! message)))
+
 (defn- make-message-attachment [[content-id url]]
   {:type         :inline
    :content-id   content-id
@@ -300,15 +325,37 @@
                               (some :dashboard_id cards))]
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
-(defn- pulse-context [pulse dashboard]
-  (merge (common-context)
-         {:emailType                 "pulse"
-          :title                     (:name pulse)
-          :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
-          :dashboardDescription      (:description dashboard)
-          :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (style/style (style/section-style))}
-         (pulse-link-context pulse)))
+(defn generate-pulse-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  [pulse-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                           :email    email
+                           :pulse-id pulse-id}))))
+
+(defn- pulse-context [pulse dashboard non-user-email]
+  (let [dashboard-id (:id dashboard)]
+   (merge (common-context)
+          {:emailType                 "pulse"
+           :title                     (:name pulse)
+           :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
+           :dashboardDescription      (:description dashboard)
+           ;; There are legacy pulses that exist without being tied to a dashboard
+           :dashboardHasTabs          (when dashboard-id
+                                        (boolean (seq (t2/hydrate dashboard :tabs))))
+           :creator                   (-> pulse :creator :common_name)
+           :sectionStyle              (style/style (style/section-style))
+           :notificationText          (if (nil? non-user-email)
+                                        "Manage your subscriptions"
+                                        "Unsubscribe")
+           :notificationManagementUrl (if (nil? non-user-email)
+                                        (urls/notification-management-url)
+                                        (str (urls/unsubscribe-url)
+                                             "?hash=" (generate-pulse-unsubscribe-hash (:id pulse) non-user-email)
+                                             "&email=" non-user-email
+                                             "&pulse-id=" (:id pulse)))}
+          (pulse-link-context pulse))))
 
 (defn- create-temp-file
   "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
@@ -330,95 +377,77 @@
   (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name (name export-type))
+     :file-name    (format "%s_%s.%s"
+                           (or card-name "query_result")
+                           (u.date/format (t/zoned-date-time))
+                           (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
-(defn- include-csv-attachment?
-  "Should this `card` and `results` include a CSV attachment?"
-  [{include-csv? :include_csv, include-xls? :include_xls, card-name :name, :as card} {:keys [cols rows], :as result-data}]
-  (letfn [(yes [reason & args]
-            (log/tracef "Including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
-            true)
-          (no [reason & args]
-            (log/tracef "NOT including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
-            false)]
-    (cond
-      include-csv?
-      (yes "it has `:include_csv`")
-
-      include-xls?
-      (no "it has `:include_xls`")
-
-      (some (complement body/show-in-table?) cols)
-      (yes "some columns are not included in rendered results")
-
-      (not= :table (render/detect-pulse-chart-type card nil result-data))
-      (no "we've determined it should not be rendered as a table")
-
-      (= (count (take body/rows-limit rows)) body/rows-limit)
-      (yes "the results have >= %d rows" body/rows-limit)
-
-      :else
-      (no "less than %d rows in results" body/rows-limit))))
-
 (defn- stream-api-results-to-export-format
-  "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
+  "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
   format.
 
-  TODO -- this function is provided mainly because rewriting all of the Pulse/Alert code to stream results directly
+  TODO -- this function is provided mainly because rewriting all the Pulse/Alert code to stream results directly
   was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
   point in the future; for now, this function is a stopgap.
 
-  Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
-  [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
+  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! database-id)
-      (binding [qp.xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.si/streaming-results-writer export-format os)
-              cols                        (-> results :data :cols)
-              viz-settings                (-> results :data :viz-settings)
-              [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-              viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.si/begin! w
-                        (assoc-in results [:data :ordered-cols] ordered-cols)
-                        viz-settings')
-          (dorun
-           (map-indexed
-            (fn [i row]
-              (qp.si/write-row! w row i ordered-cols viz-settings'))
-            rows))
-          (qp.si/finish! w results))))))
+    (qp.store/with-metadata-provider database-id
+      (let [w                           (qp.si/streaming-results-writer export-format os)
+            cols                        (-> results :data :cols)
+            viz-settings                (-> results :data :viz-settings)
+            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
+            viz-settings'               (assoc viz-settings :output-order output-order)]
+        (qp.si/begin! w
+                      (-> results
+                          (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :ordered-cols] ordered-cols))
+                      viz-settings')
+        (dorun
+         (map-indexed
+          (fn [i row]
+            (qp.si/write-row! w row i ordered-cols viz-settings'))
+          rows))
+        (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
+  [{{card-name :name format-rows :format_rows :as card} :card
+    {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
-    [(when-let [temp-file (and (include-csv-attachment? card result-data)
+    [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv os result))
+         (stream-api-results-to-export-format :csv format-rows os result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx os result))
+         (stream-api-results-to-export-format :xlsx format-rows os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
-(defn- result-attachments [results]
-  (filter some? (mapcat result-attachment results)))
+(defn- part-attachments [parts]
+  (filter some? (mapcat result-attachment parts)))
 
-(defn- render-result-card
-  [timezone result]
-  (if (:card result)
-    (render/render-pulse-section timezone result)
-    {:content (markdown/process-markdown (:text result) :html)}))
+(defn- render-part
+  [timezone part]
+  (case (:type part)
+    :card
+    (render/render-pulse-section timezone part)
+
+    :text
+    {:content (markdown/process-markdown (:text part) :html)}
+
+    :tab-title
+    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
 
 (defn- render-filters
   [notification dashboard]
-  (let [filters (params/parameters notification dashboard)
+  (let [filters (pulse-params/parameters notification dashboard)
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
@@ -443,7 +472,7 @@
                                              :width "50%"
                                              :padding "4px 16px 4px 8px"
                                              :vertical-align "baseline"})}
-                       (params/value-string filter)]]]])
+                       (pulse-params/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
@@ -459,9 +488,9 @@
         [:tr {} row])])))
 
 (defn- render-message-body
-  [notification message-type message-context timezone dashboard results]
+  [notification message-type message-context timezone dashboard parts]
   (let [rendered-cards  (binding [render/*include-title* true]
-                          (mapv #(render-result-card timezone %) results))
+                          (mapv #(render-part timezone %) parts))
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
@@ -475,24 +504,24 @@
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                  (map make-message-attachment attachments)
                  [icon-attachment]
-                 (result-attachments results)))))
+                 (part-attachments parts)))))
 
 (defn- assoc-attachment-booleans [pulse results]
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
       result)))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse dashboard results]
+  [timezone pulse dashboard parts non-user-email]
   (render-message-body pulse
                        :pulse
-                       (pulse-context pulse dashboard)
+                       (pulse-context pulse dashboard non-user-email)
                        timezone
                        dashboard
-                       (assoc-attachment-booleans pulse results)))
+                       (assoc-attachment-booleans pulse parts)))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
@@ -566,12 +595,18 @@
 
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
-  [alert channel]
+  [alert channel non-user-email]
   (let [{card-id :id, card-name :name} (first-card alert)]
-    {:title         card-name
-     :titleUrl      (urls/card-url card-id)
-     :alertSchedule (alert-schedule-text channel)
-     :creator       (-> alert :creator :common_name)}))
+    {:title                     card-name
+     :titleUrl                  (urls/card-url card-id)
+     :alertSchedule             (alert-schedule-text channel)
+     :notificationManagementUrl (if (nil? non-user-email)
+                                  (urls/notification-management-url)
+                                  (str (urls/unsubscribe-url)
+                                       "?hash=" (generate-pulse-unsubscribe-hash (:id alert) non-user-email)
+                                       "&email=" non-user-email
+                                       "&pulse-id=" (:id alert)))
+     :creator                   (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
   {:meets (format "This question has reached its goal of %s." goal-value)
@@ -579,10 +614,10 @@
 
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone {:keys [alert_first_only] :as alert} channel results goal-value]
+  [timezone {:keys [alert_first_only] :as alert} channel results goal-value non-user-email]
   (let [message-ctx  (merge
                       (common-alert-context alert (alert-results-condition-text goal-value))
-                      (alert-context alert channel))]
+                      (alert-context alert channel non-user-email))]
     (render-message-body alert
                          :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)
@@ -600,7 +635,7 @@
   [user subject template-path template-context]
   (future
     (try
-      (email/send-message-or-throw!
+      (email/send-email-retrying!
        {:recipients   [(:email user)]
         :message-type :html
         :subject      subject
@@ -617,6 +652,7 @@
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
 (def ^:private added-template              (template-path "alert_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
+(def ^:private archived-template           (template-path "alert_archived"))
 
 (defn send-new-alert-email!
   "Send out the initial 'new alert' email to the `creator` of the alert"
@@ -648,9 +684,10 @@
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
   [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [deletion-text (format "the question was archived by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause deletion-text))))
-
+  (let [{card-id :id card-name :name} (first-card alert)]
+    (send-email! user not-working-subject archived-template {:archiveURL   (urls/archive-url)
+                                                             :questionName (format "%s (#%d)" card-name card-id)
+                                                             :archiverName (format "%s %s" first_name last_name)})))
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [alert user {:keys [first_name last_name] :as _archiver}]
@@ -668,3 +705,38 @@
                                  (merge (common-context)
                                         {:logoHeader  true
                                          :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
+
+(defn send-broken-subscription-notification!
+  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters]}]
+  (let [{:keys [siteUrl] :as context} (common-context)]
+    (email/send-message!
+      :subject (trs "Subscription to {0} removed" dashboard-name)
+      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+      :message-type :html
+      :message (stencil/render-file
+                 "metabase/email/broken_subscription_notification.mustache"
+                 (merge context
+                        {:dashboardName            dashboard-name
+                         :badParameters            (map
+                                                     (fn [{:keys [value] :as param}]
+                                                       (cond-> param
+                                                         (coll? value)
+                                                         (update :value #(lib.util/join-strings-with-conjunction
+                                                                           (i18n/tru "or")
+                                                                           %))))
+                                                     bad-parameters)
+                         :affectedUsers            (map
+                                                     (fn [{:keys [notification-type] :as m}]
+                                                       (cond-> m
+                                                         notification-type
+                                                         (update :notification-type name)))
+                                                     (into
+                                                       [{:notification-type :email
+                                                         :recipient         (:common_name dashboard-creator)
+                                                         :role              "Dashboard Creator"}
+                                                        {:notification-type :email
+                                                         :recipient         (:common_name pulse-creator)
+                                                         :role              "Subscription Creator"}]
+                                                       (map #(assoc % :role "Subscriber") affected-users)))
+                         :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)})))))

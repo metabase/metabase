@@ -1,5 +1,5 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
+
 import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 
 function setup({ resultMetadata } = {}) {

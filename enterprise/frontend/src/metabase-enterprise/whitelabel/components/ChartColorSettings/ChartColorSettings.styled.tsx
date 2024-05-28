@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color, darken } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 

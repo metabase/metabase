@@ -1,64 +1,59 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
+
+import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import AuthLayout from "../../containers/AuthLayout";
-import ResetPasswordForm from "../ResetPasswordForm";
-import { ResetPasswordData } from "../../types";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
+
+import { resetPassword, validatePassword } from "../../actions";
+import type { ResetPasswordData } from "../../types";
+import { AuthLayout } from "../AuthLayout";
+import { ResetPasswordForm } from "../ResetPasswordForm";
+
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
-type ViewType = "none" | "form" | "success" | "expired";
-
-export interface ResetPasswordProps {
+interface ResetPasswordQueryParams {
   token: string;
-  onResetPassword: (token: string, password: string) => void;
-  onValidatePassword: (password: string) => Promise<string | undefined>;
-  onValidatePasswordToken: (token: string) => void;
-  onShowToast: (toast: { message: string }) => void;
-  onRedirect: (url: string) => void;
 }
 
-const ResetPassword = ({
-  token,
-  onResetPassword,
-  onValidatePassword,
-  onValidatePasswordToken,
-  onShowToast,
-  onRedirect,
-}: ResetPasswordProps): JSX.Element | null => {
-  const [view, setView] = useState<ViewType>("none");
+interface ResetPasswordProps {
+  params: ResetPasswordQueryParams;
+}
 
-  const handleLoad = useCallback(async () => {
-    try {
-      await onValidatePasswordToken(token);
-      setView("form");
-    } catch (error) {
-      setView("expired");
-    }
-  }, [token, onValidatePasswordToken]);
+export const ResetPassword = ({
+  params,
+}: ResetPasswordProps): JSX.Element | null => {
+  const { token } = params;
+  const dispatch = useDispatch();
+  const { data: status, isLoading } =
+    useGetPasswordResetTokenStatusQuery(token);
 
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
-      await onResetPassword(token, password);
-      onRedirect("/");
-      onShowToast({ message: t`You've updated your password.` });
+      await dispatch(resetPassword({ token, password })).unwrap();
+      dispatch(replace("/"));
+      dispatch(addUndo({ message: t`You've updated your password.` }));
     },
-    [onResetPassword, token, onRedirect, onShowToast],
+    [token, dispatch],
   );
 
-  useEffect(() => {
-    handleLoad();
-  }, [handleLoad]);
+  if (isLoading) {
+    return <AuthLayout />;
+  }
 
   return (
     <AuthLayout>
-      {view === "form" && (
+      {status?.valid ? (
         <ResetPasswordForm
-          onValidatePassword={onValidatePassword}
+          onValidatePassword={validatePassword}
           onSubmit={handlePasswordSubmit}
         />
+      ) : (
+        <ResetPasswordExpired />
       )}
-      {view === "expired" && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };
@@ -76,5 +71,3 @@ const ResetPasswordExpired = (): JSX.Element => {
     </InfoBody>
   );
 };
-
-export default ResetPassword;

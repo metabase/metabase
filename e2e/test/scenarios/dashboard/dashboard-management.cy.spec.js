@@ -1,20 +1,37 @@
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS } from "e2e/support/cypress_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
+  openNavigationSidebar,
+  navigationSidebar,
   visitDashboard,
   modal,
   rightSidebar,
   appBar,
+  getDashboardCard,
+  undoToast,
+  openDashboardMenu,
+  toggleDashboardInfoSidebar,
+  entityPickerModal,
+  collectionOnTheGoModal,
 } from "e2e/support/helpers";
-
-import { USERS } from "e2e/support/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
   no: ["nocollection", "nosql", "none"],
 };
+
+const questionDetails = {
+  name: "Q1",
+  native: { query: "SELECT  '42' as ANSWER" },
+  display: "scalar",
+};
+
+const dashboardName = "FooBar";
 
 describe("managing dashboard from the dashboard's edit menu", () => {
   beforeEach(() => {
@@ -27,100 +44,258 @@ describe("managing dashboard from the dashboard's edit menu", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
-              cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-              cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+              cy.signInAsAdmin();
+              cy.createNativeQuestionAndDashboard({
+                questionDetails,
+                dashboardDetails: { name: dashboardName },
+              }).then(({ body: { dashboard_id } }) => {
+                cy.wrap(dashboard_id).as("originalDashboardId");
+                cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(
+                  "getDashboard",
+                );
+                cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(
+                  "updateDashboard",
+                );
 
-              cy.signIn(user);
-              visitDashboard(1);
-              assertOnRequest("getDashboard");
-              cy.get("main header").within(() => {
-                cy.icon("ellipsis").click();
+                cy.signIn(user);
+
+                visitDashboard(dashboard_id);
+                assertOnRequest("getDashboard");
               });
+
+              openDashboardMenu();
             });
 
             it("should be able to change title and description", () => {
-              cy.findByTestId("dashboard-name-heading")
-                .click()
-                .type("1")
-                .blur();
+              cy.findByTestId("dashboard-name-heading").type("1").blur();
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");
 
-              cy.get("main header").within(() => {
-                cy.icon("info").click();
-              });
+              toggleDashboardInfoSidebar();
 
-              rightSidebar().within(() => {
-                cy.findByPlaceholderText("Add description")
-                  .click()
-                  .type("Foo")
-                  .blur();
-              });
+              rightSidebar()
+                .findByPlaceholderText("Add description")
+                .type("Foo")
+                .blur();
 
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");
 
               cy.reload();
               assertOnRequest("getDashboard");
-              cy.findByDisplayValue("Orders in a dashboard1");
+              cy.findByDisplayValue(`${dashboardName}1`);
             });
 
-            it("should be able to duplicate a dashboard", () => {
-              cy.intercept("POST", "/api/dashboard/1/copy").as("copyDashboard");
+            it("should shallow duplicate a dashboard but not its cards", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
 
-              cy.findByText("Duplicate").click();
-              cy.location("pathname").should("eq", "/dashboard/1/copy");
-              cy.get(".Modal").within(() => {
-                clickButton("Duplicate");
-                cy.findByText("Failed").should("not.exist");
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = `${originalQuestionName} - Duplicate`;
+                const newDashboardId = id + 1;
+
+                popover().findByText("Duplicate").should("be.visible").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard")
+                    .as("shallowCopyCheckbox")
+                    .should("not.be.checked")
+                    .click();
+                  cy.get("@shallowCopyCheckbox").should("be.checked");
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}"`,
+                  });
+                  cy.button("Duplicate").click();
+                  assertOnRequest("copyDashboard");
+                });
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                appBar().findByText("Our analytics").click();
+
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", newDashboardName)
+                  .and("contain", originalQuestionName)
+                  .and("not.contain", newQuestionName);
               });
-              assertOnRequest("copyDashboard");
-              cy.location("pathname").should(
-                "eq",
-                "/dashboard/2-orders-in-a-dashboard-duplicate",
-              );
-              cy.findByText(`Orders in a dashboard - Duplicate`);
             });
 
-            it("should be able to move/undo move a dashboard (metabase#13059)", () => {
-              appBar().contains("Our analytics");
+            it("should deep duplicate a dashboard and its cards", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = `${originalQuestionName} - Duplicate`;
+                const newDashboardId = id + 1;
 
-              popover().within(() => {
-                cy.findByText("Move").click();
+                popover().findByText("Duplicate").should("be.visible").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard").should(
+                    "not.be.checked",
+                  );
+                  cy.button("Duplicate").click();
+                  assertOnRequest("copyDashboard");
+                });
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                appBar().findByText("Our analytics").click();
+
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", newDashboardName)
+                  .and("contain", originalQuestionName)
+                  .and("contain", newQuestionName);
               });
-              cy.location("pathname").should("eq", "/dashboard/1/move");
+            });
 
-              modal().within(() => {
-                cy.findByText("First collection").click();
-                clickButton("Move");
+            it("should deep duplicate a dashboard and its cards to a collection created on the go", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = originalQuestionName;
+                const newDashboardId = id + 1;
+
+                popover().findByText("Duplicate").should("be.visible").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard").should(
+                    "not.be.checked",
+                  );
+                  cy.findByTestId("collection-picker-button").click();
+                });
+
+                if (user === "admin") {
+                  // admin has recents tab
+                  entityPickerModal()
+                    .findByRole("tab", { name: /Collections/ })
+                    .click();
+                }
+
+                entityPickerModal()
+                  .findByText("Create a new collection")
+                  .click();
+                const NEW_COLLECTION = "Foo Collection";
+                collectionOnTheGoModal().within(() => {
+                  cy.findByPlaceholderText("My new collection").type(
+                    NEW_COLLECTION,
+                  );
+                  cy.button("Create").click();
+                });
+                cy.button("Select").click();
+                cy.button("Duplicate").click();
+                assertOnRequest("copyDashboard");
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                appBar().findByText(NEW_COLLECTION).click();
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", newDashboardName)
+                  .and("contain", newQuestionName);
+
+                openNavigationSidebar();
+                navigationSidebar().findByText("Our analytics").click();
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", originalQuestionName);
               });
+            });
 
-              assertOnRequest("updateDashboard");
-              cy.contains("37.65");
-              // it should update dashboard's collection after the move without the page reload (metabase#13059)
-              appBar().contains("First collection");
+            it("should be able to move/undo move a dashboard (metabase#13059, metabase#25705)", () => {
+              cy.get("@originalDashboardId").then(id => {
+                appBar().contains("Our analytics");
 
-              // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
-              cy.findByText("Dashboard moved to");
-              cy.findByText("Undo").click();
-              assertOnRequest("updateDashboard");
+                popover().findByText("Move").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/move`);
 
-              appBar().contains("Our analytics");
+                entityPickerModal().within(() => {
+                  cy.findByText("First collection").click();
+                  cy.button("Move").click();
+                });
+
+                assertOnRequest("updateDashboard");
+                getDashboardCard().contains("42");
+
+                cy.log(
+                  "it should update dashboard's collection after the move without the page reload (metabase#13059)",
+                );
+                appBar().contains("First collection");
+                appBar().should("not.contain", "Our analytics");
+
+                undoToast().within(() => {
+                  cy.contains("Dashboard moved to First collection");
+                  cy.button("Undo").click();
+                });
+                assertOnRequest("updateDashboard");
+
+                appBar().contains("Our analytics");
+                appBar().should("not.contain", "First collection");
+              });
             });
 
             it("should be able to archive/unarchive a dashboard", () => {
-              popover().within(() => {
-                cy.findByText("Archive").click();
+              cy.get("@originalDashboardId").then(id => {
+                popover()
+                  .findByText("Move to trash")
+                  .should("be.visible")
+                  .click();
+
+                cy.location("pathname").should(
+                  "eq",
+                  `/dashboard/${id}/archive`,
+                );
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: "Move this dashboard to trash?",
+                  }); //Without this, there is some race condition and the button click fails
+                  cy.button("Move to trash").click();
+                  assertOnRequest("updateDashboard");
+                });
+
+                cy.location("pathname").should("eq", `/dashboard/${id}`);
+
+                cy.findByTestId("archive-banner").should("exist");
+
+                undoToast().within(() => {
+                  cy.findByText("FooBar has been moved to the trash.");
+                  cy.button("Undo").click();
+                  assertOnRequest("updateDashboard");
+                });
+
+                cy.visit("/collection/root");
+                cy.findAllByTestId("collection-entry-name").should(
+                  "contain",
+                  dashboardName,
+                );
               });
-              cy.location("pathname").should("eq", "/dashboard/1/archive");
-              cy.findByText("Archive this dashboard?"); //Without this, there is some race condition and the button click fails
-              clickButton("Archive");
-              assertOnRequest("updateDashboard");
-              cy.location("pathname").should("eq", "/collection/root");
-              cy.findByText("Orders in a dashboard").should("not.exist");
-              cy.findByText("Archived dashboard");
-              cy.findByText("Undo").click();
-              assertOnRequest("updateDashboard");
             });
           });
         });
@@ -129,7 +304,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           beforeEach(() => {
             cy.signIn(user);
 
-            visitDashboard(1);
+            visitDashboard(ORDERS_DASHBOARD_ID);
 
             cy.get("main header").within(() => {
               cy.icon("ellipsis").should("be.visible").click();
@@ -139,14 +314,15 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           it("should not be offered to edit dashboard details or archive the dashboard for dashboard in collections they have `read` access to (metabase#15280)", () => {
             popover().findByText("Edit dashboard details").should("not.exist");
 
-            popover().findByText("Archive").should("not.exist");
+            popover().findByText("Move to trash").should("not.exist");
           });
 
           it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
             const { first_name, last_name } = USERS[user];
 
             popover().findByText("Duplicate").click();
-            cy.findByTestId("select-button").findByText(
+            cy.findByTestId("collection-picker-button").should(
+              "have.text",
               `${first_name} ${last_name}'s Personal Collection`,
             );
           });
@@ -156,10 +332,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
   });
 });
 
-function clickButton(name) {
-  cy.findByRole("button", { name }).should("not.be.disabled").click();
-}
-
 function assertOnRequest(xhr_alias) {
   cy.wait("@" + xhr_alias).then(xhr => {
     expect(xhr.status).not.to.eq(403);
@@ -167,5 +339,5 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-  cy.get(".Modal").should("not.exist");
+  modal().should("not.exist");
 }

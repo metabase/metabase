@@ -1,9 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
-export const InfoBanner = styled.div`
-  padding: 0.75rem;
-  border-radius: 6px;
-  color: ${color("text-medium")};
-  background-color: ${color("bg-light")};
+import Banner from "metabase/components/Banner";
+
+export const InfoBanner = styled(Banner)`
+  margin-bottom: 0.5rem;
 `;

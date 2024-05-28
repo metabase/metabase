@@ -1,10 +1,11 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   visualize,
   startNewQuestion,
+  selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -20,24 +21,11 @@ describe("issue 18512", () => {
   });
 
   it("should join two saved questions with the same implicit/explicit grouped field (metabase#18512)", () => {
-    cy.intercept("/api/table/card__*/query_metadata").as("cardQueryMetadata");
-
     cy.createQuestion(question1);
     cy.createQuestion(question2);
 
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
-
-    cy.findByText("18512#1").click();
-    cy.wait("@cardQueryMetadata");
-
-    cy.icon("join_left_outer").click();
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-      cy.findByText("18512#2").click();
-      cy.wait("@cardQueryMetadata");
-    });
+    selectSavedQuestionsToJoin("18512#1", "18512#2");
 
     popover().findByText("Products → Created At").click();
     popover().findByText("Products → Created At").click();
@@ -46,6 +34,7 @@ describe("issue 18512", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products → Created At");
   });
 });

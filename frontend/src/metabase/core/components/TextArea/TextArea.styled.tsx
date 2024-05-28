@@ -1,7 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
+
 import { focusOutlineStyle } from "metabase/core/style/input";
+import { color } from "metabase/lib/colors";
 
 export interface TextAreaRootProps {
   readOnly?: boolean;

@@ -1,34 +1,37 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import CompletedStep, { CompletedStepProps } from "./CompletedStep";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/setup/types";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
-const NewsletterFormMock = () => <div>Metabase Newsletter</div>;
-jest.mock("../../containers/NewsletterForm", () => NewsletterFormMock);
+import { CompletedStep } from "./CompletedStep";
+
+interface SetupOpts {
+  step?: SetupStep;
+}
+
+const setup = ({ step = "completed" }: SetupOpts = {}) => {
+  const state = createMockState({
+    setup: createMockSetupState({
+      step,
+    }),
+  });
+
+  renderWithProviders(<CompletedStep />, { storeInitialState: state });
+};
 
 describe("CompletedStep", () => {
   it("should render in inactive state", () => {
-    const props = getProps({
-      isStepActive: false,
-    });
-
-    render(<CompletedStep {...props} />);
+    setup({ step: "user_info" });
 
     expect(screen.queryByText("You're all set up!")).not.toBeInTheDocument();
   });
 
   it("should show a newsletter form and a link to the app", () => {
-    const props = getProps({
-      isStepActive: true,
-    });
-
-    render(<CompletedStep {...props} />);
+    setup({ step: "completed" });
 
     expect(screen.getByText("Metabase Newsletter")).toBeInTheDocument();
     expect(screen.getByText("Take me to Metabase")).toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<CompletedStepProps>): CompletedStepProps => ({
-  isStepActive: false,
-  ...opts,
 });

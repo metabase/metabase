@@ -1,10 +1,13 @@
-import _ from "underscore";
-import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
-import type { Series as D3Series } from "d3-shape";
 import d3 from "d3";
-import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+import type { Series as D3Series } from "d3-shape";
+import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
+import _ from "underscore";
+
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { BarData, Series, SeriesData, StackOffset } from "../types";
+import type { SeriesInfo } from "metabase/visualizations/shared/types/data";
+import type { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+
+import type { BarData, Series, SeriesData, StackOffset } from "../types";
 
 export const StackOffsetFn = {
   diverging: stackOffsetDiverging,
@@ -13,31 +16,33 @@ export const StackOffsetFn = {
 
 export const calculateNonStackedBars = <TDatum>(
   data: TDatum[],
-  multipleSeries: Series<TDatum>[],
+  multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
   xScaleType: ContinuousScaleType,
-): SeriesData<TDatum>[] => {
+) => {
   const defaultXValue = xScaleType === "log" ? 1 : 0;
   return multipleSeries.map((series, seriesIndex) => {
-    const bars: BarData<TDatum>[] = data.map((datum, datumIndex) => {
-      const yValue = formatNullable(series.yAccessor(datum));
-      const xValue = series.xAccessor(datum);
-      const isNegative = xValue != null && xValue < 0;
+    const bars: BarData<TDatum, SeriesInfo>[] = data.map(
+      (datum, datumIndex) => {
+        const yValue = formatNullable(series.yAccessor(datum));
+        const xValue = series.xAccessor(datum);
+        const isNegative = xValue != null && xValue < 0;
 
-      const xStartValue = isNegative ? xValue : defaultXValue;
-      const xEndValue = isNegative ? defaultXValue : xValue;
+        const xStartValue = isNegative ? xValue : defaultXValue;
+        const xEndValue = isNegative ? defaultXValue : xValue;
 
-      return {
-        isNegative,
-        xStartValue,
-        xEndValue,
-        yValue,
-        datum,
-        datumIndex,
-        series,
-        seriesIndex,
-      };
-    });
+        return {
+          isNegative,
+          xStartValue,
+          xEndValue,
+          yValue,
+          datum,
+          datumIndex,
+          series,
+          seriesIndex,
+        };
+      },
+    );
 
     return {
       bars,
@@ -65,7 +70,7 @@ const patchD3StackDataForLogScale = <TDatum>(
 
 export const calculateStackedBars = <TDatum>(
   data: TDatum[],
-  multipleSeries: Series<TDatum>[],
+  multipleSeries: Series<TDatum, SeriesInfo>[],
   stackOffset: StackOffset,
   seriesColors: Record<string, string>,
   xScaleType: ContinuousScaleType,
@@ -96,32 +101,37 @@ export const calculateStackedBars = <TDatum>(
     (_series, datumIndex) => datumIndex,
   );
 
-  const seriesData: SeriesData<TDatum>[] = multipleSeries.map(
+  const seriesData: SeriesData<TDatum, SeriesInfo>[] = multipleSeries.map(
     (series, seriesIndex) => {
-      const bars: BarData<TDatum>[] = data.map((datum, datumIndex) => {
-        const [datumMin, datumMax] = getDatumExtent(stackedSeries, datumIndex);
-        const stackedDatum = stackedSeries[seriesIndex][datumIndex];
+      const bars: BarData<TDatum, SeriesInfo>[] = data.map(
+        (datum, datumIndex) => {
+          const [datumMin, datumMax] = getDatumExtent(
+            stackedSeries,
+            datumIndex,
+          );
+          const stackedDatum = stackedSeries[seriesIndex][datumIndex];
 
-        const [xStartValue, xEndValue] = stackedDatum;
+          const [xStartValue, xEndValue] = stackedDatum;
 
-        const yValue = formatNullable(series.yAccessor(stackedDatum.data));
-        const isNegative = xStartValue < 0;
-        const isBorderValue =
-          (isNegative && xStartValue === datumMin) ||
-          (!isNegative && xEndValue === datumMax);
+          const yValue = formatNullable(series.yAccessor(stackedDatum.data));
+          const isNegative = xStartValue < 0;
+          const isBorderValue =
+            (isNegative && xStartValue === datumMin) ||
+            (!isNegative && xEndValue === datumMax);
 
-        return {
-          xStartValue,
-          xEndValue,
-          yValue,
-          isNegative,
-          isBorderValue,
-          datum,
-          datumIndex,
-          series,
-          seriesIndex,
-        };
-      });
+          return {
+            xStartValue,
+            xEndValue,
+            yValue,
+            isNegative,
+            isBorderValue,
+            datum,
+            datumIndex,
+            series,
+            seriesIndex,
+          };
+        },
+      );
 
       return {
         bars,

@@ -1,45 +1,66 @@
+import { createMockEntitiesState } from "__support__/store";
+import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
-import { createMockDataset } from "metabase-types/api/mocks";
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
-import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
-import { QueryBuilderMode } from "metabase-types/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import registerVisualizations from "metabase/visualizations/register";
+import Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
+  Card,
+  ConcreteFieldReference,
+  Join,
+  NativeDatasetQuery,
+  StructuredDatasetQuery,
+  TemplateTag,
+  UnsavedCard,
+} from "metabase-types/api";
+import {
+  createMockDataset,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
+  createMockSavedQuestionsDatabase,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  createAdHocCard,
+  createSavedStructuredCard,
+  createAdHocNativeCard,
+  createSavedNativeCard,
+  createStructuredModelCard,
+  createNativeModelCard,
+  createComposedModelCard,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PEOPLE,
+  SAMPLE_DB_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} from "metabase-types/api/mocks/presets";
+import type { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  PEOPLE,
-  PRODUCTS,
-  state as entitiesState,
-  metadata,
-} from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Join from "metabase-lib/queries/structured/Join";
-import {
-  getAdHocQuestion,
-  getSavedStructuredQuestion,
-  getSavedNativeQuestion,
-  getUnsavedNativeQuestion,
-  getStructuredModel,
-  getNativeModel,
-  getComposedModel,
-} from "metabase-lib/mocks";
 
-import * as navigation from "../navigation";
 import * as native from "../native";
+import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
 
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
 
+registerVisualizations();
+
+type TestCard = Card | UnsavedCard;
+
 type SetupOpts = {
-  question: Question;
-  originalQuestion?: Question;
+  card: TestCard;
+  originalCard?: Card;
   run?: boolean;
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
@@ -47,40 +68,83 @@ type SetupOpts = {
   isShowingTemplateTagsEditor?: boolean;
 };
 
-function getDefaultOriginalQuestion(question: Question) {
-  if (question.isNative()) {
-    const query = question.query() as NativeQuery;
-    return query.setQueryText("select * from products limit 5").question();
+const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
+
+function getDefaultOriginalQuestion(card: TestCard) {
+  if (card.dataset_query.type === "native") {
+    return createSavedNativeCard({
+      ...card,
+      dataset_query: createMockNativeDatasetQuery({
+        ...card.dataset_query,
+        database: SAMPLE_DB_ID,
+        native: createMockNativeQuery({
+          ...card.dataset_query.native,
+          query: "select * from products limit 5",
+        }),
+      }),
+    });
   }
-  const query = question.query() as StructuredQuery;
-  return query.filter(["=", ORDERS.TAX.reference(), 5]).question();
+  return createSavedStructuredCard({
+    ...card,
+    dataset_query: createMockStructuredDatasetQuery({
+      database: SAMPLE_DB_ID,
+      query: createMockStructuredQuery({
+        "source-table": ORDERS_ID,
+        filter: ["=", ["field", ORDERS.TAX, null], 5],
+      }),
+    }),
+  });
+}
+
+function getModelVirtualTable(card: Card) {
+  return createMockTable({
+    id: getQuestionVirtualTableId(card.id),
+    db_id: SAVED_QUESTIONS_DB.id,
+    name: card.name,
+    display_name: card.name,
+    fields: card.result_metadata,
+  });
 }
 
 async function setup({
-  question,
-  originalQuestion = getDefaultOriginalQuestion(question),
+  card,
+  originalCard = getDefaultOriginalQuestion(card),
   queryBuilderMode = "view",
   isShowingTemplateTagsEditor = false,
   run,
   shouldUpdateUrl,
   shouldStartAdHocQuestion,
 }: SetupOpts) {
-  if (originalQuestion.id()) {
-    metadata.questions = {
-      [originalQuestion.id()]: originalQuestion,
-    };
-  }
+  const isSavedCard = "id" in card;
+  const isModel = (card as Card).type === "model";
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
+  const cards = originalCard ? [originalCard] : [];
+  if (isSavedCard) {
+    cards.push(card);
+  }
+
+  const entitiesState = createMockEntitiesState({
+    databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
+    tables: isModel ? [getModelVirtualTable(card as Card)] : [],
+    questions: cards,
+  });
+
+  const metadata = getMetadata(createMockState({ entities: entitiesState }));
+  const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+  const question = isSavedCard
+    ? checkNotNull(metadata.question(card.id))
+    : new Question(card, metadata);
+
   const queryResult = createMockDataset({
     data: {
-      cols: ORDERS.fields.map(field => field.column()),
+      cols: ordersTable.getFields().map(field => field.column()),
     },
   });
 
   const qbState = createMockQueryBuilderState({
-    card: originalQuestion.card(),
+    card: originalCard,
     queryResults: [queryResult],
     uiControls: createMockQueryBuilderUIControlsState({
       queryBuilderMode,
@@ -90,7 +154,7 @@ async function setup({
 
   const getState = () => ({
     ...createMockState(),
-    ...entitiesState,
+    entities: entitiesState,
     qb: qbState,
   });
 
@@ -106,44 +170,44 @@ async function setup({
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
 
-  return { dispatch, result };
+  return { question, dispatch, result };
 }
 
-const PRODUCTS_JOIN_CLAUSE = {
+const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
   condition: [
     "=",
-    ORDERS.PRODUCT_ID.reference(),
-    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+    ["field", ORDERS.ID, null],
+    ["field", REVIEWS.ID, { "join-alias": "Reviews" }],
   ],
-  "source-table": PRODUCTS.id,
+  "source-table": REVIEWS_ID,
 };
 
-const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteField = [
+const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
   "field",
-  ORDERS.CREATED_AT.id,
+  ORDERS.CREATED_AT,
   { "temporal-unit": "year" },
 ];
 
-const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteField = [
+const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteFieldReference = [
   "field",
-  PEOPLE.SOURCE.id,
-  { "source-field": ORDERS.USER_ID.id },
+  PEOPLE.SOURCE,
+  { "source-field": ORDERS.USER_ID },
 ];
 
-const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteField = [
+const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteFieldReference = [
   "field",
-  PRODUCTS.CATEGORY.id,
-  { "source-field": ORDERS.PRODUCT_ID.id },
+  PRODUCTS.CATEGORY,
+  { "source-field": ORDERS.PRODUCT_ID },
 ];
 
-const PIVOT_TABLE_QUESTION: Card<StructuredDatasetQuery> = {
+const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   display: "pivot",
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE?.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
       aggregation: [["count"]],
       breakout: [
         PIVOT_TABLE_ORDER_CREATED_AT_FIELD,
@@ -176,34 +240,34 @@ describe("QB Actions > updateQuestion", () => {
 
   const TEST_CASE = {
     SAVED_STRUCTURED_QUESTION: {
-      question: getSavedStructuredQuestion(),
+      getCard: createSavedStructuredCard,
       questionType: "saved structured question",
     },
     UNSAVED_STRUCTURED_QUESTION: {
-      question: getAdHocQuestion(),
+      getCard: createAdHocCard,
       questionType: "ad-hoc structured question",
     },
 
     SAVED_NATIVE_QUESTION: {
-      question: getSavedNativeQuestion(),
+      getCard: createSavedNativeCard,
       questionType: "saved native question",
     },
     UNSAVED_NATIVE_QUESTION: {
-      question: getUnsavedNativeQuestion(),
+      getCard: createAdHocNativeCard,
       questionType: "unsaved native question",
     },
 
     STRUCTURED_MODEL: {
-      question: getStructuredModel(),
+      getCard: createStructuredModelCard,
       questionType: "structured model",
     },
     NATIVE_MODEL: {
-      question: getNativeModel(),
+      getCard: createNativeModelCard,
       questionType: "native model",
     },
     COMPOSED_MODEL: {
-      question: getComposedModel(),
-      questionType: "model",
+      getCard: createComposedModelCard,
+      questionType: "composed model",
     },
   };
 
@@ -220,10 +284,14 @@ describe("QB Actions > updateQuestion", () => {
     TEST_CASE.COMPOSED_MODEL,
   ];
 
-  const STRUCTURED_TEST_CASES = [
+  const STRUCTURED_MODEL_TEST_CASES = [
+    TEST_CASE.STRUCTURED_MODEL,
+    TEST_CASE.COMPOSED_MODEL,
+  ];
+
+  const STRUCTURED_QUESTIONS_TEST_CASES = [
     TEST_CASE.SAVED_STRUCTURED_QUESTION,
     TEST_CASE.UNSAVED_STRUCTURED_QUESTION,
-    TEST_CASE.COMPOSED_MODEL,
   ];
 
   const NATIVE_TEST_CASES = [
@@ -233,14 +301,14 @@ describe("QB Actions > updateQuestion", () => {
 
   describe("common", () => {
     ALL_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
         it("runs query if `run: true` option provided", async () => {
           jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(true);
           const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
 
-          await setup({ question, run: true });
+          await setup({ card: getCard(), run: true });
 
           expect(runQuerySpy).toHaveBeenCalledTimes(1);
         });
@@ -249,7 +317,7 @@ describe("QB Actions > updateQuestion", () => {
           jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(true);
           const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
 
-          await setup({ question, run: false });
+          await setup({ card: getCard(), run: false });
 
           expect(runQuerySpy).not.toHaveBeenCalled();
         });
@@ -258,20 +326,20 @@ describe("QB Actions > updateQuestion", () => {
           jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(false);
           const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
 
-          await setup({ question, run: true });
+          await setup({ card: getCard(), run: true });
 
           expect(runQuerySpy).not.toHaveBeenCalled();
         });
 
         it("updates URL if `shouldUpdateUrl: true` option provided", async () => {
           const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
-          await setup({ question, shouldUpdateUrl: true });
+          await setup({ card: getCard(), shouldUpdateUrl: true });
           expect(updateUrlSpy).toHaveBeenCalledTimes(1);
         });
 
         it("doesn't update URL if `shouldUpdateUrl: false` option provided", async () => {
           const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
-          await setup({ question, shouldUpdateUrl: false });
+          await setup({ card: getCard(), shouldUpdateUrl: false });
           expect(updateUrlSpy).not.toHaveBeenCalled();
         });
       });
@@ -281,11 +349,11 @@ describe("QB Actions > updateQuestion", () => {
   describe("saved questions and models", () => {
     describe("common", () => {
       [...SAVED_QUESTION_TEST_CASES, ...MODEL_TEST_CASES].forEach(testCase => {
-        const { question, questionType } = testCase;
+        const { getCard, questionType } = testCase;
 
         describe(questionType, () => {
           it("turns question into ad-hoc", async () => {
-            const { result } = await setup({ question });
+            const { question, result } = await setup({ card: getCard() });
             expect(result.card.id).toBeUndefined();
             expect(result.card.name).toBeUndefined();
             expect(result.card.description).toBeUndefined();
@@ -296,8 +364,8 @@ describe("QB Actions > updateQuestion", () => {
           });
 
           it("doesn't turn question into ad-hoc if `shouldStartAdHocQuestion` option is disabled", async () => {
-            const { result } = await setup({
-              question,
+            const { question, result } = await setup({
+              card: getCard(),
               shouldStartAdHocQuestion: false,
             });
 
@@ -316,17 +384,19 @@ describe("QB Actions > updateQuestion", () => {
     describe("structured questions and models", () => {
       [TEST_CASE.SAVED_STRUCTURED_QUESTION, TEST_CASE.STRUCTURED_MODEL].forEach(
         testCase => {
-          const { question, questionType } = testCase;
+          const { getCard, questionType } = testCase;
 
           describe(questionType, () => {
             it("doesn't turn read-only questions into ad-hoc", async () => {
-              const readOnly = question.clone();
-              readOnly.query().isEditable = () => false;
-              readOnly.query().readOnly = () => true;
+              const card = getCard({
+                dataset_query: createMockStructuredDatasetQuery({
+                  database: null,
+                }),
+              });
 
-              const { result } = await setup({ question: readOnly });
+              const { result } = await setup({ card });
 
-              expect(result.card).toEqual(readOnly.card());
+              expect(result.card).toEqual(card);
             });
           });
         },
@@ -336,18 +406,20 @@ describe("QB Actions > updateQuestion", () => {
     describe("native questions and models", () => {
       [TEST_CASE.SAVED_NATIVE_QUESTION, TEST_CASE.NATIVE_MODEL].forEach(
         testCase => {
-          const { question, questionType } = testCase;
+          const { getCard, questionType } = testCase;
 
           describe(questionType, () => {
             it("doesn't turn read-only questions into ad-hoc", async () => {
-              const readOnly = question.clone();
-              readOnly.query().isEditable = () => false;
-              readOnly.query().readOnly = () => true;
+              const card = getCard({
+                dataset_query: createMockNativeDatasetQuery({
+                  database: null,
+                }),
+              });
 
-              const { result } = await setup({ question: readOnly });
+              const { result } = await setup({ card });
 
               expect(result.card).toEqual({
-                ...readOnly.card(),
+                ...card,
                 parameters: [],
               });
             });
@@ -359,12 +431,12 @@ describe("QB Actions > updateQuestion", () => {
 
   describe("saved questions", () => {
     SAVED_QUESTION_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
         it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
           const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
-          await setup({ question, isShowingTemplateTagsEditor: true });
+          await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
           expect(closeSidebarSpy).not.toHaveBeenCalled();
         });
       });
@@ -374,17 +446,19 @@ describe("QB Actions > updateQuestion", () => {
   describe("models", () => {
     describe("common", () => {
       MODEL_TEST_CASES.forEach(testCase => {
-        const { question, questionType } = testCase;
+        const { getCard, questionType } = testCase;
 
         describe(questionType, () => {
           it("un-marks new ad-hoc question as model", async () => {
-            const { result } = await setup({ question });
-            expect(result.card.dataset).toBe(false);
+            const card = getCard();
+            const { result } = await setup({ card });
+            expect(card.type).toBe("model");
+            expect(result.card.type).toBe("question");
           });
 
           it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
             const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
-            await setup({ question, isShowingTemplateTagsEditor: true });
+            await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
             expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
           });
         });
@@ -392,41 +466,34 @@ describe("QB Actions > updateQuestion", () => {
     });
 
     describe("structured", () => {
-      const { question } = TEST_CASE.STRUCTURED_MODEL;
+      const { getCard } = TEST_CASE.STRUCTURED_MODEL;
 
       it("doesn't turn into ad-hoc in 'dataset' QB mode", async () => {
-        const { result } = await setup({
-          question,
-          queryBuilderMode: "dataset",
-        });
-        expect(result.card).toEqual(question.card());
+        const card = getCard();
+        const { result } = await setup({ card, queryBuilderMode: "dataset" });
+        expect(result.card).toEqual(card);
       });
     });
 
     describe("native", () => {
-      const { question } = TEST_CASE.NATIVE_MODEL;
+      const { getCard } = TEST_CASE.NATIVE_MODEL;
 
       it("doesn't turn into ad-hoc in 'dataset' QB mode", async () => {
-        const { result } = await setup({
-          question,
-          queryBuilderMode: "dataset",
-        });
-        expect(result.card).toEqual({
-          ...question.card(),
-          parameters: [],
-        });
+        const card = getCard();
+        const { result } = await setup({ card, queryBuilderMode: "dataset" });
+        expect(result.card).toEqual({ ...card, parameters: [] });
       });
     });
   });
 
   describe("native", () => {
     NATIVE_TEST_CASES.forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
         it("forces 'view' query builder mode", async () => {
           const setModeSpy = jest.spyOn(ui, "setQueryBuilderMode");
-          await setup({ question, queryBuilderMode: "notebook" });
+          await setup({ card: getCard(), queryBuilderMode: "notebook" });
           expect(setModeSpy).toHaveBeenCalledWith("view", {
             shouldUpdateUrl: false,
           });
@@ -436,54 +503,47 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("structured", () => {
-    const modelTestCases = STRUCTURED_TEST_CASES.filter(testCase => {
-      return testCase.question.isDataset();
-    });
-    const structuredQuestionTestCases = STRUCTURED_TEST_CASES.filter(
-      testCase => {
-        return !testCase.question.isDataset();
-      },
-    );
-
-    modelTestCases.forEach(testCase => {
-      const { question, questionType } = testCase;
+    STRUCTURED_MODEL_TEST_CASES.forEach(testCase => {
+      const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
-        it("loads metadata for the model", async () => {
-          const loadMetadataSpy = jest.spyOn(
-            questionActions,
-            "loadMetadataForCard",
-          );
-
-          await setup({ question });
-          expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
-        });
-
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
             questionActions,
             "loadMetadataForCard",
           );
-          const join = new Join(PRODUCTS_JOIN_CLAUSE);
-          const query = question.query() as StructuredQuery;
-          const questionWithJoin = query.join(join).question();
+
+          const originalCard = getCard();
+          const originalQuery =
+            originalCard.dataset_query as StructuredDatasetQuery;
+
+          const cardWithJoin = {
+            ...originalCard,
+            dataset_query: createMockStructuredDatasetQuery({
+              ...originalQuery,
+              query: createMockStructuredQuery({
+                ...originalQuery.query,
+                joins: [REVIEW_JOIN_CLAUSE],
+              }),
+            }),
+          };
 
           await setup({
-            question: questionWithJoin,
-            originalQuestion: question,
+            card: cardWithJoin,
+            originalCard,
           });
 
           expect(loadMetadataSpy).toHaveBeenCalledWith(
             expect.objectContaining({
-              dataset_query: questionWithJoin.datasetQuery(),
+              dataset_query: cardWithJoin.dataset_query,
             }),
           );
         });
       });
     });
 
-    structuredQuestionTestCases.forEach(testCase => {
-      const { question, questionType } = testCase;
+    STRUCTURED_QUESTIONS_TEST_CASES.forEach(testCase => {
+      const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
         it("doesn't refresh question metadata if dependent metadata doesn't change", async () => {
@@ -492,7 +552,7 @@ describe("QB Actions > updateQuestion", () => {
             "loadMetadataForCard",
           );
 
-          await setup({ question });
+          await setup({ card: getCard() });
           expect(loadMetadataSpy).not.toHaveBeenCalled();
         });
 
@@ -501,29 +561,31 @@ describe("QB Actions > updateQuestion", () => {
             questionActions,
             "loadMetadataForCard",
           );
-          const join = new Join(PRODUCTS_JOIN_CLAUSE);
-          const query = question.query() as StructuredQuery;
-          const questionWithJoin = query.join(join).question();
+          const originalCard = getCard();
+          const originalQuery =
+            originalCard.dataset_query as StructuredDatasetQuery;
+
+          const cardWithJoin = {
+            ...originalCard,
+            dataset_query: createMockStructuredDatasetQuery({
+              ...originalQuery,
+              query: createMockStructuredQuery({
+                ...originalQuery.query,
+                joins: [REVIEW_JOIN_CLAUSE],
+              }),
+            }),
+          };
 
           await setup({
-            question: questionWithJoin,
-            originalQuestion: question,
+            card: cardWithJoin,
+            originalCard: originalCard as Card,
           });
 
           expect(loadMetadataSpy).toHaveBeenCalledWith(
             expect.objectContaining({
-              dataset_query: questionWithJoin.datasetQuery(),
+              dataset_query: cardWithJoin.dataset_query,
             }),
           );
-        });
-
-        it("converts the question into a model if the query builder is in 'dataset' mode", async () => {
-          const { result } = await setup({
-            question,
-            queryBuilderMode: "dataset",
-          });
-
-          expect(result.card.dataset).toBe(true);
         });
       });
     });
@@ -561,11 +623,12 @@ describe("QB Actions > updateQuestion", () => {
     };
 
     async function setupTemplateTags({
-      question,
+      card,
       tagsBefore,
       tagsAfter,
       ...opts
-    }: SetupOpts & {
+    }: Omit<SetupOpts, "card"> & {
+      card: Card<NativeDatasetQuery> | UnsavedCard<NativeDatasetQuery>;
       tagsBefore: Record<string, TemplateTag>;
       tagsAfter: Record<string, TemplateTag>;
     }) {
@@ -574,28 +637,33 @@ describe("QB Actions > updateQuestion", () => {
         "setIsShowingTemplateTagsEditor",
       );
 
-      let questionWithTags = question.clone();
-      let originalQuestion = getDefaultOriginalQuestion(question);
-
-      Object.keys(tagsBefore).forEach(tagName => {
-        const query = originalQuestion.query() as NativeQuery;
-        originalQuestion = query
-          .setTemplateTag(tagName, tagsBefore[tagName])
-          .question();
+      const originalCard = getDefaultOriginalQuestion({
+        ...card,
+        dataset_query: {
+          ...card.dataset_query,
+          native: {
+            ...card.dataset_query.native,
+            "template-tags": tagsBefore,
+          },
+        },
       });
 
-      Object.keys(tagsAfter).forEach(tagName => {
-        const query = questionWithTags.query() as NativeQuery;
-        questionWithTags = query
-          .setTemplateTag(tagName, tagsAfter[tagName])
-          .question();
-      });
+      const cardWithTags = {
+        ...card,
+        dataset_query: {
+          ...card.dataset_query,
+          native: {
+            ...card.dataset_query.native,
+            "template-tags": tagsAfter,
+          },
+        },
+      };
 
       const result = await setup({
         ...opts,
-        question: questionWithTags,
-        originalQuestion,
-        queryBuilderMode: question.isDataset() ? "dataset" : "view",
+        card: cardWithTags,
+        originalCard,
+        queryBuilderMode: (card as Card).type === "model" ? "dataset" : "view",
       });
 
       return {
@@ -605,10 +673,10 @@ describe("QB Actions > updateQuestion", () => {
     }
 
     describe("native models", () => {
-      const { question } = TEST_CASE.NATIVE_MODEL;
+      const { getCard } = TEST_CASE.NATIVE_MODEL;
       it("doesn't open tags editor bar after adding a variable tag", async () => {
         const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-          question,
+          card: getCard(),
           tagsBefore: {},
           tagsAfter: { foo: VARIABLE_TAG_1 },
           isShowingTemplateTagsEditor: false,
@@ -619,12 +687,12 @@ describe("QB Actions > updateQuestion", () => {
     });
 
     [...NATIVE_TEST_CASES].forEach(testCase => {
-      const { question, questionType } = testCase;
+      const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
         it("opens tags editor bar after adding first variable tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: {},
             tagsAfter: { foo: VARIABLE_TAG_1 },
             isShowingTemplateTagsEditor: false,
@@ -635,7 +703,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("opens tags editor bar after adding a new template tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: { foo: VARIABLE_TAG_1 },
             tagsAfter: { foo: VARIABLE_TAG_1, bar: VARIABLE_TAG_2 },
             isShowingTemplateTagsEditor: false,
@@ -646,7 +714,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("doesn't open tags editor bar after adding a snippet", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: {},
             tagsAfter: { snippet: SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
@@ -657,7 +725,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("doesn't open tags editor bar after adding a card tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: {},
             tagsAfter: { foo: CARD_TAG },
             isShowingTemplateTagsEditor: false,
@@ -668,7 +736,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("doesn't open tags editor bar after removing a template tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: { foo: VARIABLE_TAG_1, bar: VARIABLE_TAG_2 },
             tagsAfter: { foo: VARIABLE_TAG_1 },
             isShowingTemplateTagsEditor: false,
@@ -679,7 +747,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("doesn't open tags editor bar after removing the last template tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: { foo: VARIABLE_TAG_1 },
             tagsAfter: {},
             isShowingTemplateTagsEditor: false,
@@ -690,7 +758,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("doesn't open tags editor after removing a snippet", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: {},
             tagsAfter: { snippet: SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
@@ -701,7 +769,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("doesn't close tags editor bar after removing a variable tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: { foo: VARIABLE_TAG_1, bar: VARIABLE_TAG_2 },
             tagsAfter: { foo: VARIABLE_TAG_1 },
             isShowingTemplateTagsEditor: true,
@@ -712,7 +780,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("closes tags editor bar after removing the last variable tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
-            question,
+            card: getCard(),
             tagsBefore: { foo: VARIABLE_TAG_1 },
             tagsAfter: {},
             isShowingTemplateTagsEditor: true,
@@ -725,16 +793,17 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("pivot tables", () => {
-    const question = getSavedStructuredQuestion(PIVOT_TABLE_QUESTION);
+    const card = createSavedStructuredCard(PIVOT_TABLE_QUESTION);
 
     it("forces query rerun after recomputing pivot table viz settings", async () => {
       jest.spyOn(Question.prototype, "canAutoRun").mockReturnValue(true);
       const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-      const pivotTableSettings = question.setting("pivot_table.column_split");
+      const pivotTableSettings =
+        card.visualization_settings["pivot_table.column_split"];
 
       const { result } = await setup({
-        question,
-        originalQuestion: getDefaultOriginalQuestion(question),
+        card: card,
+        originalCard: getDefaultOriginalQuestion(card),
         run: false,
       });
 
@@ -749,8 +818,8 @@ describe("QB Actions > updateQuestion", () => {
       const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
 
       await setup({
-        question,
-        originalQuestion: getSavedStructuredQuestion(),
+        card: card,
+        originalCard: createSavedStructuredCard(),
         run: false,
       });
 
@@ -762,8 +831,8 @@ describe("QB Actions > updateQuestion", () => {
       const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
 
       await setup({
-        question: getSavedStructuredQuestion(),
-        originalQuestion: question,
+        card: createSavedStructuredCard(),
+        originalCard: card,
         run: false,
       });
 
@@ -775,17 +844,21 @@ describe("QB Actions > updateQuestion", () => {
       const runQuerySpy = jest.spyOn(querying, "runQuestionQuery");
 
       await setup({
-        question: question.setSettings({
-          "pivot_table.column_split": {
-            columns: [PIVOT_TABLE_ORDER_CREATED_AT_FIELD],
-            rows: [
-              PIVOT_TABLE_PRODUCT_CATEGORY_FIELD,
-              PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
-            ],
-            values: [["aggregation", 0]],
+        card: {
+          ...card,
+          visualization_settings: {
+            ...card.visualization_settings,
+            "pivot_table.column_split": {
+              columns: [PIVOT_TABLE_ORDER_CREATED_AT_FIELD],
+              rows: [
+                PIVOT_TABLE_PRODUCT_CATEGORY_FIELD,
+                PIVOT_TABLE_PEOPLE_SOURCE_FIELD,
+              ],
+              values: [["aggregation", 0]],
+            },
           },
-        }),
-        originalQuestion: question,
+        },
+        originalCard: card,
         run: false,
       });
 

@@ -1,8 +1,7 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import { isEmail } from "metabase/lib/utils";
 
-import MetabaseUtils from "metabase/lib/utils";
-import { Avatar as StyledAvatar, AvatarProps } from "./UserAvatar.styled";
+import type { AvatarProps } from "./UserAvatar.styled";
+import { Avatar as StyledAvatar } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
   user: User;
@@ -23,6 +22,7 @@ interface Group {
   first_name: string;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UserAvatar({
   user,
   ...props
@@ -57,7 +57,7 @@ function nameInitials(user: User | Group) {
 
 function emailInitials(user: User) {
   const email = [user.email, user.common_name].find(maybeEmail =>
-    MetabaseUtils.isEmail(maybeEmail),
+    isEmail(maybeEmail),
   );
   if (email) {
     const emailUsername = email.split("@")[0];

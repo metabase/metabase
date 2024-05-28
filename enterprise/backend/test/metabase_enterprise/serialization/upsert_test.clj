@@ -3,8 +3,7 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
-   [metabase.db.util :as mdb.u]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field Metric NativeQuerySnippet
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric NativeQuerySnippet
                             Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -44,8 +43,8 @@
 ;; the new style. Feel free to give them better names - Cam
 (deftest maybe-upsert-many!-skip-test
   (mt/with-model-cleanup [Card]
-    (let [existing-ids (t2/insert-returning-pks! Card @cards)
-          inserted-ids (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards))]
+    (let [existing-ids (sort (t2/insert-returning-pks! Card @cards))
+          inserted-ids (sort (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards)))]
       (is (= existing-ids inserted-ids)))))
 
 (deftest maybe-upsert-many!-same-objects-test
@@ -81,6 +80,9 @@
                   :visualization_settings (if (= 1 instance-num) {:column_settings {}}
                                                                  {:click_behavior {}}))
 
+    (isa? model LegacyMetric)
+    (assoc entity :table_id (mt/id :checkins))
+
     :else
     entity))
 
@@ -90,11 +92,11 @@
           [e1 e2] (if (contains? (set id-cond) :name)
                     [{:name "a"} {:name "b"}]
                     [{} {}])]
-      (mt/with-temp* [Dashboard [dashboard {:name "Dummy Dashboard"}]
-                      ;; create an additional entity so we're sure whe get the right one
-                      model     [_ (dummy-entity dashboard model e1 1)]
-                      model     [{id :id} (dummy-entity dashboard model e2 2)]]
-        (let [e (t2/select-one model (mdb.u/primary-key model) id)]
+      (mt/with-temp [Dashboard dashboard {:name "Dummy Dashboard"}
+                     ;; create an additional entity so we're sure whe get the right one
+                     model     _ (dummy-entity dashboard model e1 1)
+                     model     {id :id} (dummy-entity dashboard model e2 2)]
+        (let [e (t2/select-one model (first (t2/primary-keys model)) id)]
           ;; make sure that all columns in identity-condition actually exist in the model
           (is (= (set id-cond) (-> e
                                    (select-keys id-cond)
@@ -111,7 +113,7 @@
                  Card
                  Table
                  Field
-                 Metric
+                 LegacyMetric
                  NativeQuerySnippet
                  Segment
                  Dashboard
@@ -126,4 +128,4 @@
   (is (= true
          (#'upsert/has-post-insert? User)))
   (is (= false
-         (#'upsert/has-post-insert? Table))))
+         (#'upsert/has-post-insert? LegacyMetric))))

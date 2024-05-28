@@ -1,12 +1,16 @@
-import { restore, startNewQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  entityPickerModal,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "Orders model",
   query: { "source-table": ORDERS_ID },
-  dataset: true,
+  type: "model",
 };
 
 describe("issue 25537", () => {
@@ -21,10 +25,11 @@ describe("issue 25537", () => {
     cy.createQuestion(questionDetails);
 
     startNewQuestion();
-    cy.icon("model").click();
-    cy.wait("@getCollectionContent");
-
-    cy.findByText(questionDetails.name).should("exist");
+    entityPickerModal().within(() => {
+      cy.findByText(/Modelle/i).click();
+      cy.wait("@getCollectionContent");
+      cy.findByText(questionDetails.name).should("exist");
+    });
   });
 });
 

@@ -1,0 +1,167 @@
+/* afaik popover needs a positioning context to be able to calculate the transform */
+.PopoverContainer {
+  position: absolute;
+  z-index: 4;
+}
+
+.PopoverBody {
+  pointer-events: auto;
+  min-width: 1em; /* ewwwwwwww */
+  display: flex;
+  flex-direction: column;
+
+  /* add a max-width so that long strings don't cause the popover to expand
+   * see metabase#4930 */
+  max-width: 500px;
+}
+
+.PopoverBody.PopoverBodyWithBackground {
+  border: 1px solid #edf2f5;
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  background-color: var(--mb-color-bg-white);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+/* Global classes from tippy.js */
+:global(.tippy-box),
+:global(.tippy-content) {
+  max-height: inherit;
+  transition: transform 0s, visibility 0.3s, opacity 0.3s;
+}
+
+:global(.tippy-box[data-theme~="tooltip"]) {
+  color: white;
+  font-weight: bold;
+  background-color: var(--mb-color-bg-black);
+  border: none;
+  pointer-events: none;
+  line-height: 1.26;
+  font-size: 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  overflow-wrap: break-word;
+}
+
+:global(.tippy-box[data-theme~="tooltip"] .tippy-content) {
+  padding: 10px 12px;
+}
+
+:global(.tippy-box[data-theme~="no-padding"] .tippy-content) {
+  padding: 0;
+}
+
+:global(.tippy-box[data-theme~="popover"]) {
+  font-size: inherit;
+  border: 1px solid var(--mb-color-border);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  background-color: var(--mb-color-bg-white);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+:global(.tippy-box[data-theme~="popover"] .tippy-content) {
+  padding: 0;
+}
+
+/* remove the max-width in cases where the popover content needs to expand
+ * initially added  for date pickers so the dual date picker can fully
+ * expand as necessary - metabase#5971
+ */
+.PopoverBody.PopoverBodyAutoWidth {
+  max-width: none;
+}
+
+/* shared arrow styles */
+.PopoverBodyWithArrow::before,
+.PopoverBodyWithArrow::after {
+  position: absolute;
+  content: "";
+  display: block;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  pointer-events: none;
+}
+
+/* As Popover footer uses absolute positioning
+ * to stick to bottom, options lists and other
+ * middle content need extra margin-bottom
+ */
+.PopoverBodyMarginBottom {
+  margin-bottom: 60px;
+}
+
+.PopoverBody .FormField {
+  margin-bottom: 0.75rem;
+}
+
+.PopoverFooter {
+  background: white;
+  position: absolute;
+  bottom: 0;
+  border-top: 1px solid var(--mb-color-border);
+  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 6px;
+  padding-top: 8px;
+  width: 100%;
+
+  /* Without z-index; calendar days, if selected, scroll above this component */
+  z-index: 1;
+}
+
+/* Global tether (tippy.js dependency) classes */
+/* create a slightly larger arrow on the top for border purposes */
+:global(.tether-element-attached-top) .PopoverBodyWithArrow::before {
+  top: -20px;
+  border-bottom-color: var(--mb-color-border);
+}
+
+/* create a smaller inset arrow on the top */
+:global(.tether-element-attached-top) .PopoverBodyWithArrow::after {
+  top: -18px;
+  border-bottom-color: var(--mb-color-bg-white);
+}
+
+/* create a slightly larger arrow on the bottom for border purposes */
+:global(.tether-element-attached-bottom) .PopoverBodyWithArrow::before {
+  bottom: -20px;
+  border-top-color: var(--mb-color-border);
+}
+
+/* create a smaller inset arrow on the bottom */
+:global(.tether-element-attached-bottom) .PopoverBodyWithArrow::after {
+  bottom: -18px;
+  border-top-color: var(--mb-color-bg-white);
+}
+
+/* if the tether element is attached right, move our arrows right */
+:global(.tether-target-attached-right) .PopoverBodyWithArrow::before,
+:global(.tether-target-attached-right) .PopoverBodyWithArrow::after {
+  right: 12px;
+}
+
+/* if the tether element is attached center, move our arrows to the center */
+:global(.tether-element-attached-center) .PopoverBodyWithArrow::before,
+:global(.tether-element-attached-center) .PopoverBodyWithArrow::after {
+  margin-left: 50%;
+  left: -10px;
+}
+
+:global(.tether-element-attached-right) .PopoverBodyWithArrow::before,
+:global(.tether-element-attached-right) .PopoverBodyWithArrow::after {
+  right: 12px;
+}
+
+:global(.tether-element-attached-left) .PopoverBodyWithArrow::before,
+:global(.tether-element-attached-left) .PopoverBodyWithArrow::after {
+  left: 12px;
+}
+
+:global(#popover-event-target) {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  pointer-events: none;
+}

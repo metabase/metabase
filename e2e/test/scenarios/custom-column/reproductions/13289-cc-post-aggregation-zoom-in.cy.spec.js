@@ -5,6 +5,7 @@ import {
   enterCustomColumnDetails,
   visualize,
   summarize,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const CC_NAME = "Math";
@@ -17,6 +18,7 @@ describe("issue 13289", () => {
 
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     // Add custom column that will be used later in summarize (group by)
@@ -26,8 +28,10 @@ describe("issue 13289", () => {
 
   it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289) (metabase#13289)", () => {
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     popover().findByText(CC_NAME).click();
@@ -40,17 +44,20 @@ describe("issue 13289", () => {
 
     visualize();
 
-    cy.get(".Visualization").within(() => {
-      cy.get("circle")
+    cy.findByTestId("query-visualization-root").within(() => {
+      cartesianChartCircle()
         .eq(5) // random circle in the graph (there is no specific reason for this index)
-        .click({ force: true });
+        .click();
     });
 
-    cy.findByText("Zoom in").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
 
-    cy.findByText(`${CC_NAME} is equal to 2`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Created At is Sep 1–30, 2022");
   });
 });

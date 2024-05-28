@@ -1,13 +1,15 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "outDir": "build",
     "paths": {
       "*": [
         "./frontend/src/*",
         "./frontend/test/*",
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
-      ]
+      ],
+      "cljs/*": ["./target/cljs_dev/*"]
     }
   },
   "include": [

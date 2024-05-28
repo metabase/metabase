@@ -30,7 +30,7 @@ Fetch a Card you're considering embedding by passing a JWT `token`.
 
 ### PARAMS:
 
-*  **`token`**
+*  **`token`** value must be a non-blank string.
 
 ## `GET /api/preview-embed/card/:token/query`
 
@@ -38,7 +38,7 @@ Fetch the query results for a Card you're considering embedding by passing a JWT
 
 ### PARAMS:
 
-*  **`token`** 
+*  **`token`** value must be a non-blank string.
 
 *  **`&`** 
 
@@ -50,7 +50,7 @@ Fetch a Dashboard you're considering embedding by passing a JWT `token`. .
 
 ### PARAMS:
 
-*  **`token`**
+*  **`token`** value must be a non-blank string.
 
 ## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
@@ -58,11 +58,11 @@ Fetch the results of running a Card belonging to a Dashboard you're considering 
 
 ### PARAMS:
 
-*  **`token`** 
+*  **`token`** value must be a non-blank string.
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** 
+*  **`card-id`** value must be an integer greater than zero.
 
 *  **`&`** 
 
@@ -74,7 +74,7 @@ Fetch the query results for a Card you're considering embedding by passing a JWT
 
 ### PARAMS:
 
-*  **`token`** 
+*  **`token`** value must be a non-blank string.
 
 *  **`&`** 
 
@@ -86,11 +86,11 @@ Fetch the results of running a Card belonging to a Dashboard you're considering 
 
 ### PARAMS:
 
-*  **`token`** 
+*  **`token`** value must be a non-blank string.
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** 
+*  **`card-id`** value must be an integer greater than zero.
 
 *  **`&`** 
 

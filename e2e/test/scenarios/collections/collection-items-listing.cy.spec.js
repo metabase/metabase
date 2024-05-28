@@ -1,6 +1,7 @@
 import _ from "underscore";
-import { restore } from "e2e/support/helpers";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -34,15 +35,7 @@ describe("scenarios > collection items listing", () => {
     beforeEach(() => {
       // Removes questions and dashboards included in the default database,
       // so the test won't fail if we change the default database
-      cy.request("GET", "/api/collection/root/items").then(response => {
-        response.body.data.forEach(({ model, id }) => {
-          if (model !== "collection") {
-            cy.request("PUT", `/api/${model}/${id}`, {
-              archived: true,
-            });
-          }
-        });
-      });
+      archiveAll();
 
       _.times(ADDED_DASHBOARDS, i =>
         cy.createDashboard({ name: `dashboard ${i}` }),
@@ -59,25 +52,28 @@ describe("scenarios > collection items listing", () => {
       visitRootCollection();
 
       // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
 
-      cy.findByTestId("next-page-btn").click();
+      cy.findByLabelText("Next page").click();
       cy.wait("@getCollectionItems");
 
       // Second page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should(
         "have.length",
         TOTAL_ITEMS - PAGE_SIZE,
       );
-      cy.findByTestId("next-page-btn").should("be.disabled");
+      cy.findByLabelText("Next page").should("be.disabled");
 
-      cy.findByTestId("previous-page-btn").click();
+      cy.findByLabelText("Previous page").click();
 
       // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
@@ -88,15 +84,7 @@ describe("scenarios > collection items listing", () => {
     beforeEach(() => {
       // Removes questions and dashboards included in a default dataset,
       // so it's easier to test sorting
-      cy.request("GET", "/api/collection/root/items").then(response => {
-        response.body.data.forEach(({ model, id }) => {
-          if (model !== "collection") {
-            cy.request("PUT", `/api/${model}/${id}`, {
-              archived: true,
-            });
-          }
-        });
-      });
+      archiveAll();
     });
 
     it("should allow to sort unpinned items by columns asc and desc", () => {
@@ -146,6 +134,7 @@ describe("scenarios > collection items listing", () => {
         const dashboardsFirst = _.chain(sortedNames)
           .sortBy(name => name.toLowerCase().includes("question"))
           .sortBy(name => name.toLowerCase().includes("collection"))
+          .sortBy(name => name.toLowerCase().includes("metabase analytics"))
           .value();
         expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
@@ -208,6 +197,7 @@ describe("scenarios > collection items listing", () => {
           .reverse()
           .sortBy(name => name.toLowerCase().includes("collection"))
           .sortBy(name => name.toLowerCase().includes("personal"))
+          .sortBy(name => name.toLowerCase().includes("metabase analytics"))
           .value();
         expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
       });
@@ -224,14 +214,16 @@ describe("scenarios > collection items listing", () => {
 
       visitRootCollection();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
 
-      cy.findByTestId("next-page-btn").click();
+      cy.findByLabelText("Next page").click();
       cy.wait("@getCollectionItems");
 
       toggleSortingFor(/Last edited at/i);
       cy.wait("@getCollectionItems");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
     });
   });
@@ -254,4 +246,20 @@ function getAllCollectionItemNames() {
 function visitRootCollection() {
   cy.visit("/collection/root");
   cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+}
+
+function archiveAll() {
+  cy.request("GET", "/api/collection/root/items").then(response => {
+    response.body.data.forEach(({ model, id }) => {
+      if (model !== "collection") {
+        cy.request(
+          "PUT",
+          `/api/${model === "dataset" ? "card" : model}/${id}`,
+          {
+            archived: true,
+          },
+        );
+      }
+    });
+  });
 }

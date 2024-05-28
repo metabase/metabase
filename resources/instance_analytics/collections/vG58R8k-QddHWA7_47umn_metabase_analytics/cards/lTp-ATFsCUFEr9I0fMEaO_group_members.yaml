@@ -1,0 +1,107 @@
+name: Group Members
+description: Metabase group membership
+entity_id: lTp-ATFsCUFEr9I0fMEaO
+created_at: '2023-06-08T14:32:26.114293Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_group_members
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_group_members
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - user_id
+  - null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - user_id
+  name: user_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Group ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - group_id
+  - null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - group_id
+  name: group_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Group Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - group_name
+  - null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - group_name
+  name: group_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+  table.cell_column: group_name
+  table.pivot_column: group_id
+serdes/meta:
+- id: lTp-ATFsCUFEr9I0fMEaO
+  label: group_members
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-15T20:43:59.203362Z'
+metabase_version: null
+type: model

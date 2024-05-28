@@ -1,1 +1,1 @@
-export { default } from "./UserStep";
+export * from "./UserStep";

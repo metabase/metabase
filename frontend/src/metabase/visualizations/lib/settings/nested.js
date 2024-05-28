@@ -1,8 +1,8 @@
-/* eslint-disable react/prop-types */
-import _ from "underscore";
 import { t } from "ttag";
+import _ from "underscore";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
+
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 export function nestedSettings(

@@ -3,7 +3,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -13,7 +13,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -23,18 +22,23 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Secret :secret)
+(def Secret
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Secret)
+
+(methodical/defmethod t2/table-name :model/Secret [_model] :secret)
 
 (doto Secret
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(mi/define-methods
- Secret
- {:types      (constantly {:value  :secret-value
-                           :kind   :keyword
-                           :source :keyword})
-  :properties (constantly {::mi/timestamped? true})})
+(t2/deftransforms :model/Secret
+  {:value  mi/transform-secret-value
+   :kind   mi/transform-keyword
+   :source mi/transform-keyword})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -139,6 +143,12 @@
   "Regex for parsing base64 encoded file uploads."
   #"^data:application/([^;]*);base64,")
 
+(defn latest-for-id
+  "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
+  {:added "0.42.0"}
+  [id]
+  (t2/select-one Secret :id id {:order-by [[:version :desc]]}))
+
 (defn db-details-prop->secret-map
   "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
   name of a connection property having `:type` `:secret`, and the relevant sub-properties (ex: -value, -path, etc.) will
@@ -181,14 +191,14 @@
                              {:invalid-db-details-entry (select-keys details [path-kw])}))))
 
                  (id-kw details)
-                 (:value (t2/select-one Secret :id (id-kw details))))
+                 (:value (latest-for-id (id-kw details))))
         source (cond
                  ;; set the :source due to the -path suffix (see above))
                  (and (not= "uploaded" (options-kw details)) (path-kw details))
                  :file-path
 
                  (id-kw details)
-                 (:source (t2/select-one Secret :id (id-kw details))))]
+                 (:source (latest-for-id (id-kw details))))]
     (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
       value
       (assoc :value value
@@ -199,11 +209,21 @@
   [details secret-property]
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
         id (id-kw details)
-        value (if id
-                (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")
-                (value-kw details))]
+        ;; When a secret is updated, we get both a new value as well as the ID of old secret.
+        value (or (when-let [value (value-kw details)]
+                    (if (string? value)
+                      value
+                      (String. ^bytes value "UTF-8")))
+                  (when id
+                    (String. ^bytes (:value (latest-for-id id)) "UTF-8")))]
     (case (options-kw details)
-      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+      "uploaded" (try
+                   ;; When a secret is updated, the value has already been decoded
+                   ;; instead of checking if the string is base64 encoded, we just
+                   ;; try to decoded it and leave it as is if the attempt fails.
+                   (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+                   (catch IllegalArgumentException _
+                     value))
       "local" (slurp (if id value (path-kw details)))
       value)))
 
@@ -211,12 +231,6 @@
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
   bump-version-keys
   [:kind :source :value])
-
-(defn latest-for-id
-  "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
-  {:added "0.42.0"}
-  [id]
-  (t2/select-one Secret :id id {:order-by [[:version :desc]]}))
 
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
@@ -291,7 +305,7 @@
   (let [subprop (fn [prop-nm]
                   (keyword (str conn-prop-nm prop-nm)))
         secret* (cond (int? secret-or-id)
-                      (t2/select-one Secret :id secret-or-id)
+                      (latest-for-id secret-or-id)
 
                       (mi/instance-of? Secret secret-or-id)
                       secret-or-id

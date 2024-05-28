@@ -1,24 +1,22 @@
-import React, { ReactNode } from "react";
-import { CardIcon, CardLink, CardText, TextLink } from "./AuthButton.styled";
+import type { ReactNode } from "react";
 
-export interface AuthButtonProps {
+import { CardLink, CardText, TextLink } from "./AuthButton.styled";
+
+interface AuthButtonProps {
   link?: string;
-  icon?: string;
   isCard?: boolean;
   children?: ReactNode;
   onClick?: () => void;
 }
 
-const AuthButton = ({
+export const AuthButton = ({
   link = "",
-  icon,
   isCard,
   children,
   onClick,
 }: AuthButtonProps): JSX.Element => {
   return isCard ? (
     <CardLink to={link} onClick={onClick}>
-      {icon && <CardIcon name={icon} />}
       <CardText>{children}</CardText>
     </CardLink>
   ) : (
@@ -27,5 +25,3 @@ const AuthButton = ({
     </TextLink>
   );
 };
-
-export default AuthButton;

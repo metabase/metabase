@@ -1,5 +1,5 @@
 title: "[[this]] per country"
-transient_title: Here''s a closer look at your [[this]] per country
+transient_title: Here''s a closer look at [[this]] per country
 description: A deeper look at how different countries are performing for you.
 applies_to: TransactionTable
 metrics:
@@ -72,10 +72,13 @@ filters:
 groups:
 - Top10:
     title: Top performers
+    score: 90
 - Transactions:
     title: Transactions per country
+    score: 80
 - Users:
     title: User acquisition by country
+    score: 70
 dashboard_filters:
   - Timestamp
   - Source

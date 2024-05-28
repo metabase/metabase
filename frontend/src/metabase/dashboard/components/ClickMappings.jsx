@@ -1,26 +1,32 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-import { connect } from "react-redux";
-import _ from "underscore";
-import { t } from "ttag";
+import cx from "classnames";
 import { getIn, assocIn, dissocIn } from "icepick";
+import { Component } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
+import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
 import Select from "metabase/core/components/Select";
-
-import MetabaseSettings from "metabase/lib/settings";
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { GTAPApi } from "metabase/services";
-
-import { loadMetadataForQuery } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
+import CS from "metabase/css/core/index.css";
 import { getParameters } from "metabase/dashboard/selectors";
-import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
+import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import MetabaseSettings from "metabase/lib/settings";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { getMetadata } from "metabase/selectors/metadata";
+import { GTAPApi } from "metabase/services";
+import { Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import {
+  getTargetsForDashboard,
+  getTargetsForQuestion,
+} from "metabase-lib/v1/parameters/utils/click-behavior";
 
-class ClickMappingsInner extends React.Component {
+import { TargetTrigger } from "./ClickMappings.styled";
+
+class ClickMappings extends Component {
   render() {
-    const { setTargets, unsetTargets } = this.props;
+    const { setTargets, unsetTargets, question } = this.props;
     const sourceOptions = {
       ...this.props.sourceOptions,
       userAttribute: this.props.userAttributes,
@@ -32,7 +38,11 @@ class ClickMappingsInner extends React.Component {
         sourceOptions: _.chain(sourceOptions)
           .mapObject((sources, sourceType) =>
             sources
-              .filter(target.sourceFilters[sourceType])
+              .filter(source => {
+                const sourceFilter = target.sourceFilters[sourceType];
+
+                return sourceFilter(source, question);
+              })
               .map(getSourceOption[sourceType]),
           )
           .pairs()
@@ -45,11 +55,13 @@ class ClickMappingsInner extends React.Component {
 
     if (unsetTargetsWithSourceOptions.length === 0 && setTargets.length === 0) {
       return (
-        <p className="text-centered text-medium">{t`No available targets`}</p>
+        <p
+          className={cx(CS.textCentered, CS.textMedium)}
+        >{t`No available targets`}</p>
       );
     }
     return (
-      <div>
+      <div data-testid="click-mappings">
         <div>
           {setTargets.map(target => {
             return (
@@ -64,7 +76,7 @@ class ClickMappingsInner extends React.Component {
         </div>
         {unsetTargetsWithSourceOptions.length > 0 && (
           <div>
-            <p className="mb2 text-medium">
+            <p className={cx(CS.mb2, CS.textMedium)}>
               {this.getTargetsHeading(setTargets)}
             </p>
             <div>
@@ -113,15 +125,16 @@ class ClickMappingsInner extends React.Component {
   }
 }
 
-const ClickMappings = _.compose(
+export const ClickMappingsConnected = _.compose(
   loadQuestionMetadata((state, props) =>
-    props.isDash || props.isAction ? null : props.object,
+    props.isDashboard ? null : props.object,
   ),
   withUserAttributes,
   connect((state, props) => {
-    const { object, isDash, dashcard, clickBehavior } = props;
-    const metadata = getMetadata(state, props);
+    const { object, isDashboard, dashcard, clickBehavior } = props;
     let parameters = getParameters(state, props);
+    const metadata = getMetadata(state);
+    const question = new Question(dashcard.card, metadata);
 
     if (props.excludeParametersSources) {
       // Remove parameters as possible sources.
@@ -137,13 +150,9 @@ const ClickMappings = _.compose(
     }
 
     const [setTargets, unsetTargets] = _.partition(
-      getTargetsWithSourceFilters({
-        isAction: props.isAction,
-        isDash,
-        dashcard,
-        object,
-        metadata,
-      }),
+      isDashboard
+        ? getTargetsForDashboard(object, dashcard)
+        : getTargetsForQuestion(object),
       ({ id }) =>
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );
@@ -151,9 +160,9 @@ const ClickMappings = _.compose(
       column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
       parameter: parameters,
     };
-    return { setTargets, unsetTargets, sourceOptions };
+    return { setTargets, unsetTargets, sourceOptions, question };
   }),
-)(ClickMappingsInner);
+)(ClickMappings);
 
 const getKeyForSource = o => (o.type == null ? null : `${o.type}-${o.id}`);
 const getSourceOption = {
@@ -161,6 +170,7 @@ const getSourceOption = {
   parameter: p => ({ type: "parameter", id: p.id, name: p.name }),
   userAttribute: name => ({ type: "userAttribute", name, id: name }),
 };
+
 function TargetWithoutSource({
   target,
   sourceOptions,
@@ -172,11 +182,7 @@ function TargetWithoutSource({
   return (
     <Select
       key={id}
-      triggerElement={
-        <div className="flex p1 rounded align-center full mb1 text-bold bg-light-hover text-brand-hover">
-          {name}
-        </div>
-      }
+      triggerElement={<TargetTrigger>{name}</TargetTrigger>}
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
         name: {
@@ -214,9 +220,16 @@ function TargetWithSource({
   const source =
     getIn(clickBehavior, ["parameterMapping", id, "source"]) || null;
   return (
-    <div className="mb2">
+    <div className={CS.mb2}>
       <div
-        className="bordered rounded p2 text-medium flex align-center"
+        className={cx(
+          CS.bordered,
+          CS.rounded,
+          CS.p2,
+          CS.textMedium,
+          CS.flex,
+          CS.alignCenter,
+        )}
         style={{ borderColor: "#E2E4E8" }}
       >
         <svg
@@ -242,7 +255,7 @@ function TargetWithSource({
         </svg>
         <div>
           <div>
-            <span className="text-bold text-dark">{source.name}</span>{" "}
+            <span className={cx(CS.textBold, CS.textDark)}>{source.name}</span>{" "}
             {
               {
                 column: t`column`,
@@ -252,11 +265,12 @@ function TargetWithSource({
             }
           </div>
           <div style={{ marginTop: 9 }}>
-            <span className="text-brand text-bold">{name}</span> {targetName}
+            <span className={cx(CS.textBrand, CS.textBold)}>{name}</span>{" "}
+            {targetName}
           </div>
         </div>
         <div
-          className="cursor-pointer ml-auto"
+          className={cx(CS.cursorPointer, CS.mlAuto)}
           onClick={() =>
             updateSettings(dissocIn(clickBehavior, ["parameterMapping", id]))
           }
@@ -268,10 +282,14 @@ function TargetWithSource({
   );
 }
 
-// TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
+/**
+ * TODO: Extract this to a more general HOC. It can probably also take care of withTableMetadataLoaded.
+ *
+ * @deprecated HOCs are deprecated
+ */
 function loadQuestionMetadata(getQuestion) {
   return ComposedComponent => {
-    class MetadataLoader extends React.Component {
+    class MetadataLoader extends Component {
       componentDidMount() {
         if (this.props.question) {
           this.fetch();
@@ -286,14 +304,13 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       fetch() {
-        const { question, metadata, loadMetadataForQuery } = this.props;
+        const { question, loadMetadataForCard } = this.props;
         if (question) {
-          loadMetadataForQuery(new Question(question, metadata).query());
+          loadMetadataForCard(question.card());
         }
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { question, metadata, ...rest } = this.props;
         return <ComposedComponent {...rest} />;
       }
@@ -301,16 +318,15 @@ function loadQuestionMetadata(getQuestion) {
 
     return connect(
       (state, props) => ({
-        metadata: getMetadata(state),
         question: getQuestion && getQuestion(state, props),
       }),
-      { loadMetadataForQuery },
+      { loadMetadataForCard },
     )(MetadataLoader);
   };
 }
 
 export function withUserAttributes(ComposedComponent) {
-  return class WithUserAttributes extends React.Component {
+  return class WithUserAttributes extends Component {
     state = { userAttributes: [] };
 
     async componentDidMount() {
@@ -318,6 +334,7 @@ export function withUserAttributes(ComposedComponent) {
         this.setState({ userAttributes: await GTAPApi.attributes() });
       }
     }
+
     render() {
       return (
         <ComposedComponent
@@ -335,13 +352,12 @@ export function isMappableColumn(column) {
 }
 
 export function clickTargetObjectType(object) {
-  if (!object.dataset_query) {
+  if (!(object instanceof Question)) {
     return "dashboard";
-  } else if (new Question(object).isNative()) {
-    return "native";
-  } else {
-    return "gui";
   }
-}
 
-export default ClickMappings;
+  const query = object.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+
+  return isNative ? "native" : "gui";
+}

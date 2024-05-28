@@ -1,19 +1,22 @@
-/* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { getFullName } from "metabase/lib/user";
-import Icon from "metabase/components/Icon";
+import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PaginationControls from "metabase/components/PaginationControls";
-
-import User from "metabase/entities/users";
-
-import { Group, Member, User as IUser } from "metabase-types/api";
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
+import Users from "metabase/entities/users";
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { isNotNull } from "metabase/lib/types";
+import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { State } from "metabase-types/store";
-import { isNotNull } from "metabase/core/utils/types";
+import { Tooltip, Text, Icon } from "metabase/ui";
+import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import AddMemberRow from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>
@@ -57,12 +60,17 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
+  const { isLoading, data: apiKeys } = useListApiKeysQuery();
+  const groupApiKeys = useMemo(() => {
+    return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
+  }, [apiKeys, group.id]);
+
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
   const canRemove = (user: IUser) =>
     !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
-  const hasMembers = groupMemberships.length > 0;
+  const hasMembers = group.members.length > 0;
 
   const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
     async userIds => {
@@ -86,8 +94,12 @@ function GroupMembersTable({
     [groupMemberships],
   );
 
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading={isLoading} />;
+  }
+
   return (
-    <React.Fragment>
+    <>
       <AdminContentTable columnTitles={columnTitles}>
         {showAddUser && (
           <AddMemberRow
@@ -97,6 +109,9 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
+        {groupApiKeys?.map((apiKey: ApiKey) => (
+          <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
+        ))}
         {groupUsers.map((user: IUser) => {
           return (
             <UserRow
@@ -112,7 +127,7 @@ function GroupMembersTable({
         })}
       </AdminContentTable>
       {hasMembers && (
-        <div className="flex align-center justify-end p2">
+        <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.p2)}>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -124,15 +139,18 @@ function GroupMembersTable({
         </div>
       )}
       {!hasMembers && (
-        <div className="mt4 pt4 flex layout-centered">
-          <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
+        <div className={cx(CS.mt4, CS.pt4, CS.flex, CS.layoutCentered)}>
+          <h2
+            className={CS.textMedium}
+          >{t`A group is only as good as its members.`}</h2>
         </div>
       )}
-    </React.Fragment>
+    </>
   );
 }
 
-export default User.loadList({
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Users.loadList({
   reload: true,
   pageSize: 25,
   listName: "groupUsers",
@@ -175,7 +193,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{getName(user)}</td>
+      <td className={CS.textBold}>{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -186,10 +204,10 @@ const UserRow = ({
       <td>{user.email}</td>
       {canRemove ? (
         <td
-          className="text-right cursor-pointer"
+          className={cx(CS.textRight, CS.cursorPointer)}
           onClick={() => onMembershipRemove(groupMembership?.membership_id)}
         >
-          <Icon name="close" className="text-light" size={16} />
+          <Icon name="close" className={CS.textLight} size={16} />
         </td>
       ) : null}
     </tr>
@@ -205,3 +223,24 @@ function getName(user: IUser): string {
 
   return name;
 }
+
+const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
+  return (
+    <tr>
+      <td>
+        <Text weight="bold">{apiKey.name}</Text>
+      </td>
+      <td>
+        <Text weight="bold" color="text-medium">{t`API Key`}</Text>
+      </td>
+      <td>{/* api keys don't have real emails */}</td>
+      <td className={CS.textRight}>
+        <Link to="/admin/settings/authentication/api-keys">
+          <Tooltip label={t`Manage API keys`} position="left">
+            <Icon name="link" size={16} />
+          </Tooltip>
+        </Link>
+      </td>
+    </tr>
+  );
+};

@@ -5,6 +5,8 @@ import {
   startNewQuestion,
   openNavigationSidebar,
   navigationSidebar,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const QUESTION_NAME = "Foo";
@@ -15,15 +17,16 @@ describe("issue 9027", () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
-
-    // Wait for the existing questions to load
-    cy.findByText("Orders");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("Orders").should("exist");
+      cy.button("Close").click();
+    });
 
     openNativeEditor({ fromCurrentPage: true });
 
     cy.get(".ace_content").type("select 0");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     saveQuestion(QUESTION_NAME);
   });
@@ -41,16 +44,22 @@ describe("issue 9027", () => {
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   startNewQuestion();
-  cy.findByText("Saved Questions").click();
-
-  cy.findByText(questionName).should(exists ? "exist" : "not.exist");
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Saved questions").click();
+    cy.findByText(questionName).should(exists ? "exist" : "not.exist");
+    cy.button("Close").click();
+  });
 }
 
 function saveQuestion(name) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByText("Save").click();
-  cy.findByLabelText("Name").clear().type(name);
-  cy.button("Save").click();
+
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByLabelText("Name").clear().type(name);
+    cy.findByText("Save").click();
+  });
+
   cy.button("Not now").click();
   cy.wait("@saveQuestion");
 }
@@ -58,19 +67,15 @@ function saveQuestion(name) {
 function archiveQuestion(questionName) {
   navigationSidebar().findByText("Our analytics").click();
   openEllipsisMenuFor(questionName);
-  popover().findByText("Archive").click();
+  popover().findByText("Move to trash").click();
 }
 
 function unarchiveQuestion(questionName) {
   navigationSidebar().within(() => {
-    cy.icon("ellipsis").click();
+    cy.findByText("Trash").click();
   });
-  popover().findByText("View archive").click();
-  cy.findByText(questionName)
-    .parent()
-    .within(() => {
-      cy.icon("unarchive").click({ force: true });
-    });
+  openEllipsisMenuFor(questionName);
+  popover().findByText("Restore").click();
 }
 
 function openEllipsisMenuFor(item) {

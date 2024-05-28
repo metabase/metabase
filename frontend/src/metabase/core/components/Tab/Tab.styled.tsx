@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
+
+import { focusOutlineStyle } from "metabase/core/style/input";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Icon from "metabase/components/Icon";
-import { focusOutlineStyle } from "metabase/core/style/input";
+import { Icon } from "metabase/ui";
 
 export interface TabProps {
   isSelected?: boolean;
@@ -10,6 +11,7 @@ export interface TabProps {
 
 export const TabRoot = styled.button<TabProps>`
   display: flex;
+  align-items: end;
   width: 100%;
   flex: 1;
   text-align: left;
@@ -32,9 +34,8 @@ export const TabRoot = styled.button<TabProps>`
 `;
 
 export const TabIcon = styled(Icon)`
-  width: 0.8rem;
-  height: 0.8rem;
-  margin-top: 0.2rem;
+  width: 1rem;
+  height: 1rem;
   margin-right: 0.5rem;
 `;
 

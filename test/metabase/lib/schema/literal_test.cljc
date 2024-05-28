@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.literal :as literal]))
 
@@ -58,3 +59,68 @@
       ::expression/time
       ::expression/datetime
       ::expression/temporal)))
+
+(deftest ^:parallel value-test
+  ;; we're using (not (me/humanize (mc/explain ...))) here rather than `(mc/validate ...)` because it makes test
+  ;; failures much easier to debug.
+  (are [clause schema] (not (me/humanize (mc/explain schema clause)))
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
+    :mbql.clause/value
+
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
+    ::expression/string
+
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Float} nil]
+    ::expression/number
+
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Float} nil]
+    ::expression/non-integer-real
+
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Float} 1.0]
+    :mbql.clause/value
+
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Float} 1.0]
+    ::expression/number
+
+    ;; the schema doesn't actually need to validate that the type of its argument makes any sense, I guess the QP can
+    ;; do that. Just go by the type information.
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
+    :mbql.clause/value
+
+    [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
+    ::expression/number
+
+    #?@(:clj
+        ([:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} (Object.)]
+         :mbql.clause/value
+
+         [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} (Object.)]
+         ::expression/number))))
+
+(deftest ^:parallel invalid-value-test
+  (testing "invalid :value clauses"
+    (testing "not enough args"
+      (is (me/humanize
+           (mc/explain :mbql.clause/value
+                       [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text}]))))
+    (testing "too many args"
+      (is (me/humanize
+           (mc/explain :mbql.clause/value
+                       [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} 1 2]))))
+    (testing "missing `:effective-type`"
+      (is (me/humanize
+           (mc/explain :mbql.clause/value
+                       [:value {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]))))))
+
+(deftest ^:parallel type-of-value-test
+  (testing "should not validate against different type"
+    (are [clause schema] (me/humanize (mc/explain schema clause))
+      [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
+      ::expression/number
+
+      [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Float} nil]
+      ::expression/string
+
+      ;; look at the `:effective-type` and/or `:effective-type`, not the wrapped literal type.
+      [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Number} "Not a number"]
+      ::expression/string)))

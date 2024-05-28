@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -8,8 +9,6 @@ import {
   visitQuestion,
   visitDashboard,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -32,18 +31,19 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       filterWidget().click();
       addWidgetStringFilter("15");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
 
     it("when set as the default filter", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
       saveDashboard();
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
       });
     });
@@ -60,18 +60,19 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       filterWidget().click();
       addWidgetStringFilter("4");
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
     });
 
     it("when set as the default filter", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
       saveDashboard();
 
-      cy.get(".Card").within(() => {
+      cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
       });
     });

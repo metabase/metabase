@@ -1,9 +1,18 @@
-import React from "react";
 import { render, fireEvent, screen, within } from "@testing-library/react";
 
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
 import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
+import registerVisualizations from "metabase/visualizations/register";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+
+registerVisualizations();
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const DATA = {
   rows: [[1]],
@@ -11,11 +20,15 @@ const DATA = {
 };
 
 const setup = props => {
-  const question = SAMPLE_DATABASE.question().setDisplay("gauge");
+  const question = metadata
+    .database(SAMPLE_DB_ID)
+    .question()
+    .setDisplay("gauge");
+
   render(
     <ChartTypeSidebar
       question={question}
-      query={question.query()}
+      query={question.legacyQuery({ useStructuredQuery: true })}
       result={{ data: DATA }}
       {...props}
     />,

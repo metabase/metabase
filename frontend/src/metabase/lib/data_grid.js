@@ -1,9 +1,9 @@
-import _ from "underscore";
 import { getIn } from "icepick";
 import { t } from "ttag";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import _ from "underscore";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -356,7 +356,7 @@ function formatValuesInTree(
     value: formatter(value),
     rawValue: value,
     children: formatValuesInTree(children, formatters, columns),
-    clicked: { value, column },
+    clicked: { value, column, data: [{ value, col: column }] },
   }));
 }
 

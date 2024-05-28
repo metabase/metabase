@@ -1,8 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import _ from "underscore";
 
-import { CreateQueryActionParams } from "metabase/entities/actions";
-
+import type { CreateQueryActionParams } from "metabase/entities/actions";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
+  Card,
   ActionFormSettings,
   DatabaseId,
   NativeDatasetQuery,
@@ -10,23 +15,17 @@ import type {
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { Card as LegacyCard } from "metabase-types/types/Card";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-
-import Question from "metabase-lib/Question";
-import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import { getDefaultFormSettings } from "../../../../utils";
-
+import type { ActionContextType } from "../ActionContext";
 import { ActionContext } from "../ActionContext";
 import type { ActionContextProviderProps, EditorBodyProps } from "../types";
 
+import QueryActionEditor from "./QueryActionEditor";
 import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
-import QueryActionEditor from "./QueryActionEditor";
 
 export interface QueryActionContextProviderProps
   extends ActionContextProviderProps<WritebackQueryAction> {
@@ -54,15 +53,31 @@ function newQuestion(metadata: Metadata, databaseId?: DatabaseId) {
 
 function convertActionToQuestionCard(
   action: WritebackQueryAction,
-): LegacyCard<NativeDatasetQuery> {
+): Card<NativeDatasetQuery> {
   return {
     id: action.id,
+    created_at: action.created_at,
+    updated_at: action.updated_at,
     name: action.name,
     description: action.description,
-    dataset_query: action.dataset_query as NativeDatasetQuery,
+    dataset_query: action.dataset_query,
     display: "action",
     visualization_settings:
       action.visualization_settings as VisualizationSettings,
+    type: "question",
+    can_write: true,
+    can_restore: false,
+    public_uuid: null,
+    collection_id: null,
+    collection_position: null,
+    result_metadata: [],
+    cache_ttl: null,
+    last_query_start: null,
+    average_query_time: null,
+    archived: false,
+    enable_embedding: false,
+    embedding_params: null,
+    initially_published_at: null,
   };
 }
 
@@ -91,7 +106,7 @@ function convertQuestionToAction(
     id: question.id(),
     name: question.displayName() as string,
     description: question.description(),
-    dataset_query: question.datasetQuery() as NativeDatasetQuery,
+    dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,
@@ -113,15 +128,22 @@ function QueryActionContextProvider({
   databaseId,
   children,
 }: QueryActionContextProviderProps) {
-  const [question, setQuestion] = useState(
+  const [initialQuestion, setInitialQuestion] = useState(
     resolveQuestion(initialAction, { metadata, databaseId }),
   );
-
-  const query = useMemo(() => question.query() as NativeQuery, [question]);
-
-  const [formSettings, setFormSettings] = useState(
-    getDefaultFormSettings(initialAction?.visualization_settings),
+  const initialFormSettings = useMemo(
+    () => getDefaultFormSettings(initialAction?.visualization_settings),
+    [initialAction?.visualization_settings],
   );
+
+  const [question, setQuestion] = useState(initialQuestion);
+
+  const query = useMemo(
+    () => question.legacyQuery() as NativeQuery,
+    [question],
+  );
+
+  const [formSettings, setFormSettings] = useState(initialFormSettings);
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
@@ -136,7 +158,12 @@ function QueryActionContextProvider({
   const canSave = !query.isEmpty();
 
   useEffect(() => {
-    setQuestion(resolveQuestion(initialAction, { metadata, databaseId }));
+    const newQuestion = resolveQuestion(initialAction, {
+      metadata,
+      databaseId,
+    });
+    setInitialQuestion(newQuestion);
+    setQuestion(newQuestion);
     // we do not want to update this any time
     // the props or metadata change, only if action id changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,19 +196,27 @@ function QueryActionContextProvider({
     ({ isEditable }: EditorBodyProps) => (
       <QueryActionEditor
         query={query}
+        question={question}
         isEditable={isEditable}
         onChangeQuestionQuery={handleQueryChange}
       />
     ),
-    [query, handleQueryChange],
+    [query, question, handleQueryChange],
   );
 
+  const isDirty = useMemo(() => {
+    const isQuestionDirty = question.isDirtyComparedTo(initialQuestion);
+    const areFormSettingsDirty = !_.isEqual(formSettings, initialFormSettings);
+    return isQuestionDirty || areFormSettingsDirty;
+  }, [question, initialQuestion, formSettings, initialFormSettings]);
+
   const value = useMemo(
-    () => ({
+    (): ActionContextType => ({
       action,
       formSettings,
       isNew,
       canSave,
+      isDirty,
       ui: {
         canRename: true,
         canChangeFieldSettings: true,
@@ -195,8 +230,8 @@ function QueryActionContextProvider({
       formSettings,
       isNew,
       canSave,
+      isDirty,
       handleActionChange,
-      setFormSettings,
       renderEditorBody,
     ],
   );
@@ -206,4 +241,5 @@ function QueryActionContextProvider({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryActionContextProvider;

@@ -1,1 +1,1 @@
-export { default } from "./TextWidget";
+export { TextWidget } from "./TextWidget";

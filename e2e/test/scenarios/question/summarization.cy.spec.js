@@ -1,3 +1,5 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   changeBinningForDimension,
@@ -10,9 +12,11 @@ import {
   openOrdersTable,
   enterCustomColumnDetails,
   visualize,
+  checkExpressionEditorHelperPopoverPosition,
+  rightSidebar,
+  interceptIfNotPreviouslyDefined,
+  expressionEditorWidget,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -23,7 +27,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     summarize();
   });
 
@@ -41,8 +45,13 @@ describe("scenarios > question > summarize sidebar", () => {
   it("selected dimensions becomes pinned to the top of the dimensions list", () => {
     getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
-      .click()
-      .should("have.attr", "aria-selected", "true");
+      .click({ position: "left" });
+
+    getDimensionByName({ name: "Total" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
 
     cy.button("Done").click();
 
@@ -88,11 +97,12 @@ describe("scenarios > question > summarize sidebar", () => {
 
     getRemoveDimensionButton({ name: "User → State" }).click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User → State").should("not.exist");
   });
 
   it("selecting a binning adds a dimension", () => {
-    getDimensionByName({ name: "Total" }).click();
+    getDimensionByName({ name: "Total" }).click({ position: "left" });
 
     changeBinningForDimension({
       name: "Quantity",
@@ -139,38 +149,28 @@ describe("scenarios > question > summarize sidebar", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.54");
-  });
-
-  it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-    cy.visit("/question/1/notebook");
-    summarize({ mode: "notebook" });
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    cy.findByText("Created At")
-      .closest(".List-item")
-      .findByText("by month")
-      .click({ force: true });
-    // First a reality check - "Minute" is the only string visible in UI and this should pass
-    cy.findAllByText("Minute")
-      .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
-      .isVisibleInPopover();
-    // The actual check that will fail until this issue gets fixed
-    cy.findAllByText("Week").first().isVisibleInPopover();
   });
 
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
     popover().contains("Custom Expression").click();
-    popover().within(() => {
-      enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-      cy.findByPlaceholderText("Something nice and descriptive").type("twice max total");
+    expressionEditorWidget().within(() => {
+      enterCustomColumnDetails({
+        formula: "2 * Max([Total])",
+        name: "twice max total",
+      });
       cy.findByText("Done").click();
     });
+    cy.findByTestId("aggregate-step")
+      .contains("twice max total")
+      .should("exist");
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("318.7");
   });
 
@@ -179,7 +179,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize({ mode: "notebook" });
 
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula:
           "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
@@ -212,27 +212,23 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
-    // Go straight to orders table in custom questions
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
     popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.log(
-        "**Test fails at this point as there isn't an extra field next to 'Created At'**",
-      );
-      // instead of relying on DOM structure that might change
-      // (i.e. find "Created At" -> parent -> parent -> parent -> find "by month")
-      // access it directly from the known common parent
-      cy.get(".List-item").contains("by month").click({ force: true });
+      cy.findByLabelText("Temporal bucket").click();
     });
-    // this should be among the granular selection choices
-    cy.findByText("Hour of Day").click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.button("More…").click();
+        cy.findByText("Hour of day").click();
+      });
   });
 
-  it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    cy.intercept("POST", `/api/dataset`).as("dataset");
-
+  it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
     cy.createQuestion(
       {
         name: "12625",
@@ -252,24 +248,26 @@ describe("scenarios > question > summarize sidebar", () => {
 
     summarize();
 
-    // CSS class of a sorted header cell
-    cy.get("[class*=TableInteractive-headerCellData--sorted]").as("sortedCell");
+    cy.findAllByTestId("header-cell").should("have.length", 4);
+    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
 
-    // At this point only "Sum of Subtotal" should be sorted
+    cy.log('At this point only "Sum of Subtotal" should be sorted');
     cy.get("@sortedCell").its("length").should("eq", 1);
+
+    cy.log("Remove the sorted metric");
     removeMetricFromSidebar("Sum of Subtotal");
 
-    cy.wait("@dataset");
-    cy.findByText("Sum of Subtotal").should("not.exist");
+    cy.log('"Sum of Total" should not be sorted, nor any other header cell');
+    cy.get("@sortedCell").should("not.exist");
 
-    // "Sum of Total" should not be sorted, nor any other header cell
-    cy.get("@sortedCell").its("length").should("eq", 0);
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 3)
+      .and("not.contain", "Sum of Subtotal");
 
     removeMetricFromSidebar("Sum of Total");
 
-    cy.wait("@dataset");
-    cy.findByText(/No results!/i).should("not.exist");
-    cy.contains("744"); // `Count` for year 2016
+    cy.findAllByTestId("header-cell").should("have.length", 2);
+    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2022
   });
 
   // flaky test (#19454)
@@ -277,6 +275,7 @@ describe("scenarios > question > summarize sidebar", () => {
     openReviewsTable();
 
     summarize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Group by")
       .parent()
       .findByText("Title")
@@ -285,13 +284,36 @@ describe("scenarios > question > summarize sidebar", () => {
     popover().contains("Title");
     popover().contains("199 distinct values");
   });
+
+  // TODO: fixme!
+  it.skip("should render custom expression helper near the custom expression field", () => {
+    openReviewsTable({ mode: "notebook" });
+    summarize({ mode: "notebook" });
+
+    popover().within(() => {
+      cy.findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
+  });
 });
 
 function removeMetricFromSidebar(metricName) {
-  cy.get("[class*=SummarizeSidebar__AggregationToken]")
-    .contains(metricName)
-    .parent()
-    .find(".Icon-close")
-    .should("be.visible")
-    .click();
+  interceptIfNotPreviouslyDefined({
+    method: "POST",
+    url: "/api/dataset",
+    alias: "dataset",
+  });
+
+  rightSidebar().within(() => {
+    cy.findByLabelText(metricName)
+      .find(".Icon-close")
+      .should("be.visible")
+      .click();
+    cy.wait("@dataset");
+
+    cy.findByLabelText(metricName).should("not.exist");
+  });
 }

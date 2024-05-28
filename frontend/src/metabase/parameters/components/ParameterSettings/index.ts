@@ -1,1 +1,1 @@
-export { default } from "./ParameterSettings";
+export { ParameterSettings } from "./ParameterSettings";

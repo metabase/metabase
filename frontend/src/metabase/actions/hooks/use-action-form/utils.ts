@@ -1,21 +1,18 @@
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { slugify, humanize } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
-
+import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
-
+import { isEmpty } from "metabase/lib/validate";
+import Field from "metabase-lib/v1/metadata/Field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
+  FieldSettings,
   FieldSettingsMap,
   InputSettingType,
   Parameter,
   ParameterId,
   ParametersForActionExecution,
 } from "metabase-types/api";
-import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
-
-import Field from "metabase-lib/metadata/Field";
-import { TYPE } from "metabase-lib/types/constants";
 
 export function stripTZInfo(dateOrTimeString: string) {
   // strip everything after a trailing tz (e.g. +08:00)
@@ -37,6 +34,7 @@ export const formatInitialValue = (
       return moment(stripTZInfo(`2020-01-10T${value}`)).format("HH:mm:ss");
     }
   }
+
   return value;
 };
 
@@ -46,15 +44,17 @@ export const formatSubmitValues = (
 ) => {
   const values: ParametersForActionExecution = {};
 
-  Object.entries(rawValues).forEach(([fieldId, fieldValue]) => {
-    values[fieldId] = fieldValue;
+  Object.entries(rawValues)
+    .filter(([fieldId]) => !fieldSettings[fieldId].hidden)
+    .forEach(([fieldId, fieldValue]) => {
+      values[fieldId] = fieldValue;
 
-    const formField = fieldSettings[fieldId];
-    const isNumericField = formField?.fieldType === "number";
-    if (isNumericField && !isEmpty(fieldValue)) {
-      values[fieldId] = Number(fieldValue) ?? null;
-    }
-  });
+      const formField = fieldSettings[fieldId];
+      const isNumericField = formField?.fieldType === "number";
+      if (isNumericField && !isEmpty(fieldValue)) {
+        values[fieldId] = Number(fieldValue);
+      }
+    });
 
   return values;
 };
@@ -65,8 +65,10 @@ export const getChangedValues = (
 ) => {
   const changedValues = Object.entries(values).filter(([key, value]) => {
     const initialValue = initialValues[key];
+
     return value !== initialValue;
   });
+
   return Object.fromEntries(changedValues);
 };
 
@@ -113,45 +115,67 @@ export const getInputType = (param: Parameter, field?: Field) => {
   if (field.isCategory() && field.semantic_type !== TYPE.Name) {
     return "string";
   }
+
   return "string";
 };
 
-export const generateFieldSettingsFromParameters = (
+// TODO: @uladzimirdev remove this method once the migration of implicit action fields generating to the BE is complete
+export const getOrGenerateFieldSettings = (
   params: Parameter[],
-  fields?: Field[],
+  fields?: Record<
+    ParameterId,
+    Partial<FieldSettings> & Pick<FieldSettings, "id" | "hidden">
+  >,
 ) => {
+  if (!fields) {
+    return generateFieldSettingsFromParameters(params);
+  }
+
+  const fieldValues = Object.values(fields);
+  const isGeneratedImplicitActionField =
+    fieldValues.length > 0 && Object.keys(fieldValues[0]).length === 2;
+
+  if (isGeneratedImplicitActionField) {
+    const generatedFieldSettings = generateFieldSettingsFromParameters(params);
+
+    fieldValues.forEach(fieldValue => {
+      const singleFieldSettings = generatedFieldSettings[fieldValue.id];
+      // this is the only field we sync with BE
+      singleFieldSettings.hidden = fieldValue.hidden;
+    });
+
+    return generatedFieldSettings;
+  }
+
+  // settings are in sync with BE
+  return fields as FieldSettingsMap;
+};
+
+export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
   const fieldSettings: Record<ParameterId, LocalFieldSettings> = {};
 
-  const fieldMetadataMap = Object.fromEntries(
-    fields?.map(f => [slugify(f.name), f]) ?? [],
-  );
-
   params.forEach((param, index) => {
-    const field = fieldMetadataMap[param.id]
-      ? new Field(fieldMetadataMap[param.id])
-      : new Field({
-          id: param.id,
-          name: param.id,
-          slug: param.id,
-          display_name: humanize(param.id),
-          base_type: param.type,
-          semantic_type: param.type,
-        });
-
-    const name = param["display-name"] ?? param.name ?? param.id;
-    const displayName = field?.displayName?.() ?? name;
+    const field = new Field({
+      id: param.id,
+      name: param.id,
+      slug: param.id,
+      display_name: param["display-name"],
+      base_type: param.type,
+      semantic_type: param.type,
+    });
 
     fieldSettings[param.id] = getDefaultFieldSettings({
       id: param.id,
-      name,
-      title: displayName,
-      placeholder: displayName,
-      required: !!param?.required,
+      name: param.name,
+      title: field.displayName(),
+      placeholder: field.displayName(),
+      required: !!param.required,
       order: index,
-      description: field?.description ?? "",
+      description: "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
     });
   });
+
   return fieldSettings;
 };

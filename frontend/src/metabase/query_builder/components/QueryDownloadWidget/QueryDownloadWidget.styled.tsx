@@ -1,22 +1,13 @@
 import styled from "@emotion/styled";
 
-export interface WidgetRootProps {
-  isExpanded?: boolean;
-}
+import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
-export const WidgetRoot = styled.div<WidgetRootProps>`
-  padding: 1rem;
-  width: ${props => (props.isExpanded ? "300px" : "260px")};
-`;
+export const DownloadIcon = styled(Icon)`
+  color: ${color("text-medium")};
 
-export const WidgetHeader = styled.div`
-  padding: 0.5rem;
-`;
-
-export const WidgetMessage = styled.div`
-  padding: 0 0.5rem;
-`;
-
-export const WidgetFormat = styled.div`
-  width: 100%;
+  &:hover {
+    color: ${color("brand")};
+    cursor: pointer;
+  }
 `;

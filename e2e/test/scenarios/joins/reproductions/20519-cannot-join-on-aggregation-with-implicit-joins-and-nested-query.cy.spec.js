@@ -1,11 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   enterCustomColumnDetails,
   visualize,
+  getNotebookStep,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -41,7 +40,7 @@ describe("issue 20519", () => {
     cy.signInAsAdmin();
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    switchToNotebookView();
+    cy.icon("notebook").click();
   });
 
   // Tightly related issue: metabase#17767
@@ -55,20 +54,15 @@ describe("issue 20519", () => {
 
     cy.button("Done").click();
 
+    getNotebookStep("expression", { stage: 1 }).contains("Two").should("exist");
+
     visualize(response => {
       expect(response.body.error).not.to.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Doohickey");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Two");
   });
 });
-
-function switchToNotebookView() {
-  cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-    "publicSchema",
-  );
-
-  cy.icon("notebook").click();
-  cy.wait("@publicSchema");
-}

@@ -1,29 +1,64 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
-import { createSelector } from "reselect";
 
-import { GET } from "metabase/lib/api";
-import { createEntity, undo } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
-
+import { collectionApi } from "metabase/api";
+import {
+  isRootTrashCollection,
+  canonicalCollectionId,
+} from "metabase/collections/utils";
+import {
+  createEntity,
+  undo,
+  entityCompatibleQuery,
+} from "metabase/lib/entities";
+import * as Urls from "metabase/lib/urls/collections";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-
-import { canonicalCollectionId } from "metabase/collections/utils";
-
-import type { Collection } from "metabase-types/api";
-import type { GetState, ReduxAction } from "metabase-types/store";
+import type {
+  ListCollectionsRequest,
+  ListCollectionsTreeRequest,
+  Collection,
+  CreateCollectionRequest,
+  UpdateCollectionRequest,
+  DeleteCollectionRequest,
+} from "metabase-types/api";
+import type { GetState, ReduxAction, Dispatch } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";
 import { getCollectionIcon, getCollectionType } from "./utils";
 
-const listCollectionsTree = GET("/api/collection/tree");
-const listCollections = GET("/api/collection");
+const listCollectionsTree = (
+  entityQuery: ListCollectionsTreeRequest,
+  dispatch: Dispatch,
+) =>
+  entityCompatibleQuery(
+    entityQuery,
+    dispatch,
+    collectionApi.endpoints.listCollectionsTree,
+  );
+
+const listCollections = (
+  entityQuery: ListCollectionsRequest,
+  dispatch: Dispatch,
+) =>
+  entityCompatibleQuery(
+    entityQuery,
+    dispatch,
+    collectionApi.endpoints.listCollections,
+  );
 
 type EntityInCollection = {
   collection?: Collection;
 };
 
+type ListParams = {
+  tree?: boolean;
+} & (ListCollectionsRequest | ListCollectionsTreeRequest);
+
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
@@ -33,10 +68,36 @@ const Collections = createEntity({
   displayNameMany: t`collections`,
 
   api: {
-    list: async (params: { tree?: boolean }, ...args: any) =>
-      params?.tree
-        ? listCollectionsTree(params, ...args)
-        : listCollections(params, ...args),
+    list: async (params: ListParams, dispatch: Dispatch) => {
+      const { tree, ...entityQuery } = params;
+      return tree
+        ? listCollectionsTree(entityQuery, dispatch)
+        : listCollections(entityQuery, dispatch);
+    },
+    get: (entityQuery: { id: number }, options: unknown, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        collectionApi.endpoints.getCollection,
+      ),
+    create: (entityQuery: CreateCollectionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        collectionApi.endpoints.createCollection,
+      ),
+    update: (entityQuery: UpdateCollectionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        collectionApi.endpoints.updateCollection,
+      ),
+    delete: (entityQuery: DeleteCollectionRequest, dispatch: Dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        collectionApi.endpoints.deleteCollection,
+      ),
   },
 
   objectActions: {
@@ -48,7 +109,7 @@ const Collections = createEntity({
       Collections.actions.update(
         { id },
         { archived },
-        undo(opts, "collection", archived ? "archived" : "unarchived"),
+        undo(opts, t`collection`, archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: (
@@ -58,11 +119,12 @@ const Collections = createEntity({
     ) =>
       Collections.actions.update(
         { id },
-        { parent_id: canonicalCollectionId(collection?.id) },
+        {
+          parent_id: canonicalCollectionId(collection?.id),
+          archived: isRootTrashCollection(collection),
+        },
         undo(opts, "collection", "moved"),
       ),
-
-    delete: null,
   },
 
   objectSelectors: {
@@ -80,11 +142,16 @@ const Collections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      [state => state.entities.collections || {}, getUserPersonalCollectionId],
-      (collections, currentUserPersonalCollectionId) =>
+      [
+        state => Collections.selectors.getList(state),
+        getUserPersonalCollectionId,
+        (_state, props) => props?.collectionFilter,
+      ],
+      (collections, currentUserPersonalCollectionId, collectionFilter) =>
         getExpandedCollectionsById(
-          Object.values(collections),
+          collections || [],
           currentUserPersonalCollectionId,
+          collectionFilter,
         ),
     ),
     getInitialCollectionId,
@@ -92,7 +159,7 @@ const Collections = createEntity({
 
   getAnalyticsMetadata(
     [object]: [Collection],
-    { action }: { action: ReduxAction },
+    { action: _action }: { action: ReduxAction },
     getState: GetState,
   ) {
     const type = object && getCollectionType(object.parent_id, getState());
@@ -102,4 +169,5 @@ const Collections = createEntity({
 
 export { getExpandedCollectionsById };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections;

@@ -1,7 +1,8 @@
-import { UnrestrictedLinkEntity } from "metabase-types/api";
+import type { IconName } from "metabase/ui";
+import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
 type WrappedEntity = {
-  getIcon: () => { name: string };
+  getIcon: () => { name: IconName };
   getUrl: () => string;
 };
 

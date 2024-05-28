@@ -1,33 +1,64 @@
-import React, { HTMLAttributes } from "react";
-import { t } from "ttag";
-
-import { IconProps } from "metabase/components/Icon";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-
 import type {
-  DatabaseEntityId,
-  PermissionSubject,
-} from "metabase/admin/permissions/types";
+  ComponentType,
+  Dispatch,
+  HTMLAttributes,
+  ReactNode,
+  SetStateAction,
+} from "react";
+import { t } from "ttag";
+import _ from "underscore";
+import type { AnySchema } from "yup";
 
+import noResultsSource from "assets/img/no_results.svg";
+import { strategies } from "metabase/admin/performance/constants/complex";
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import {
+  DataPermissionValue,
+  type DatabaseEntityId,
+  type DataPermission,
+  type EntityId,
+  type PermissionSubject,
+} from "metabase/admin/permissions/types";
+import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type {
+  ActualModelFilters,
+  AvailableModelFilters,
+  ModelFilterControlsProps,
+} from "metabase/browse/utils";
+import { getIconBase } from "metabase/lib/icon";
+import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
+  CacheableDashboard,
+  CacheableModel,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionEssentials,
+  CollectionInstanceAnaltyicsConfig,
+  Dashboard,
   Dataset,
   Group,
+  GroupPermissions,
   GroupsPermissions,
+  Revision,
+  SearchResult,
   User,
+  UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
 
-import { PluginGroupManagersType } from "./types";
-
-// Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
-const array = () => [];
+import type {
+  GetAuthProviders,
+  PluginGroupManagersType,
+  PluginLLMAutoDescription,
+} from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS = [];
 
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
@@ -51,36 +82,102 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 // functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
+export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
+  sections: typeof ADMIN_SETTINGS_SECTIONS,
+) => void)[] = [];
 
 // admin permissions
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS = {
+  impersonated: null,
+};
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
+  impersonated: [],
+};
+
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [] as Array<
+  (
+    _permissions: GroupsPermissions,
+    _groupId: number,
+    _entityId: EntityId,
+    _value: DataPermissionValue,
+  ) => any
+>;
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS = {
-  controlled: [],
+  sandboxed: [],
 };
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
-  controlled: null,
-};
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
-  controlled: null,
+  sandboxed: null,
 };
 
-export const PLUGIN_DATA_PERMISSIONS = {
-  getPermissionsPayloadExtraData: (_state: State) => ({}),
-  hasChanges: (_state: State) => false,
+export const PLUGIN_DATA_PERMISSIONS: {
+  permissionsPayloadExtraSelectors: ((
+    state: State,
+  ) => Record<string, unknown>)[];
+  hasChanges: ((state: State) => boolean)[];
+  shouldRestrictNativeQueryPermissions: (
+    permissions: GroupsPermissions,
+    groupId: number,
+    entityId: EntityId,
+    permission: DataPermission,
+    value: DataPermissionValue,
+    database: Database,
+  ) => boolean;
+
+  upgradeViewPermissionsIfNeeded:
+    | ((
+        permissions: GroupsPermissions,
+        groupId: number,
+        { databaseId }: DatabaseEntityId,
+        value: any,
+        database: Database,
+        permission: DataPermission,
+      ) => GroupPermissions)
+    | null;
+} = {
+  permissionsPayloadExtraSelectors: [],
+  hasChanges: [],
+  upgradeViewPermissionsIfNeeded: null,
+  shouldRestrictNativeQueryPermissions: () => false,
 };
 
 // user form fields, e.x. login attributes
-export const PLUGIN_ADMIN_USER_FORM_FIELDS = [];
+export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
+  FormLoginAttributes: PluginPlaceholder,
+};
 
 // menu items in people management tab
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
-export const PLUGIN_AUTH_PROVIDERS = [] as any;
+export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
+
+export const PLUGIN_LDAP_FORM_FIELDS = {
+  formFieldAttributes: [] as string[],
+  defaultableFormFieldAttributes: [] as string[],
+  formFieldsSchemas: {} as Record<string, AnySchema>,
+  UserProvisioning: (() => null) as ComponentType<{
+    settings: {
+      [setting: string]: {
+        display_name?: string | undefined;
+        warningMessage?: string | undefined;
+        description?: string | undefined;
+        note?: string | undefined;
+      };
+    };
+    fields: {
+      [field: string]: {
+        name: string;
+        default: boolean;
+      };
+    };
+  }>,
+};
 
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
@@ -88,12 +185,39 @@ export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getHasCustomColors: (state: State) => false,
-  canWhitelabel: (state: State) => false,
-  getLoadingMessage: (state: State) => t`Doing science...`,
+  canWhitelabel: (_state: State) => false,
+  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
+    isSlow ? t`Waiting for results...` : t`Doing science...`,
+  getIsWhiteLabeling: (_state: State) => false,
+  // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
+  getApplicationName: (_state: State) => "Metabase",
+  getShowMetabaseLinks: (_state: State) => true,
+  getLoginPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getLandingPageIllustration: (_state: State): IllustrationValue => {
+    return {
+      src: "app/img/bridge.svg",
+      isDefault: true,
+    };
+  },
+  getNoDataIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
+  getNoObjectIllustration: (_state: State): string => {
+    return noResultsSource;
+  },
 };
 
-export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {};
+export type IllustrationValue = {
+  src: string;
+  isDefault: boolean;
+} | null;
+
+export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
@@ -103,6 +227,11 @@ export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
+};
+
+export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
+  isEnabled: () => false,
+  LLMSuggestQuestionInfo: PluginPlaceholder,
 };
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
@@ -121,16 +250,40 @@ export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  COLLECTION_TYPES: {
+    [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
+  },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Collection | Bookmark) => true,
+  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  getCollectionType: (
+    _: Partial<Collection>,
+  ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
+    AUTHORITY_LEVEL_REGULAR,
+  getInstanceAnalyticsCustomCollection: (
+    _collections: Collection[],
+  ): Collection | null => null,
+  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
+  INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
+  getIcon: getIconBase,
 };
 
-type CollectionAuthorityLevelIcon = React.ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+export type CollectionAuthorityLevelIcon = ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & {
+    collection: Pick<Collection, "authority_level">;
+    tooltip?: "default" | "belonging";
+    archived?: boolean;
+  }
+>;
+
+type CollectionInstanceAnalyticsIcon = React.ComponentType<
+  Omit<IconProps, "name"> & {
+    collection: Collection;
+    entity: "collection" | "question" | "model" | "dashboard" | "metric";
+  }
 >;
 
 type FormCollectionAuthorityLevelPicker = React.ComponentType<
@@ -142,6 +295,16 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
+  CollectionInstanceAnalyticsIcon:
+    PluginPlaceholder as CollectionInstanceAnalyticsIcon,
+};
+
+export type RevisionOrModerationEvent = {
+  title: string;
+  timestamp: string;
+  icon: IconName | { name: IconName; color: string } | Record<string, never>;
+  description?: string;
+  revision?: Revision;
 };
 
 export const PLUGIN_MODERATION = {
@@ -151,42 +314,83 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
+  getQuestionIcon: PluginPlaceholder,
+  getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
     undefined,
-  getModerationTimelineEvents: array,
+  getModerationTimelineEvents: (
+    _reviews: any,
+    _usersById: Record<string, UserListResult>,
+    _currentUser: User | null,
+  ) => [] as RevisionOrModerationEvent[],
   getMenuItems: (
-    question?: Question,
-    isModerator?: boolean,
-    reload?: () => void,
-  ) => ({}),
+    _question?: Question,
+    _isModerator?: boolean,
+    _reload?: () => void,
+  ) => [],
 };
 
+export type InvalidateNowButtonProps = {
+  targetId: number;
+  targetModel: CacheableModel;
+  targetName: string;
+};
+
+export type SidebarCacheSectionProps = {
+  item: CacheableDashboard | Question;
+  model: CacheableModel;
+  setPage: Dispatch<SetStateAction<"default" | "caching">>;
+};
+
+export type SidebarCacheFormProps = {
+  item: CacheableDashboard | Question;
+  model: CacheableModel;
+  setPage: (page: "default" | "caching") => void;
+} & GroupProps;
+
 export const PLUGIN_CACHING = {
+  cacheTTLFormField: null as any,
   dashboardCacheTTLFormField: null,
-  databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (question?: any) => null,
-  QuestionCacheSection: PluginPlaceholder,
-  DashboardCacheSection: PluginPlaceholder,
-  DatabaseCacheTimeField: PluginPlaceholder,
+  getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
+  StrategyFormLauncherPanel: PluginPlaceholder as any,
+  GranularControlsExplanation: PluginPlaceholder as any,
+  DashboardStrategySidebar: PluginPlaceholder as any,
+  SidebarCacheSection:
+    PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
+  InvalidateNowButton:
+    PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   isEnabled: () => false,
+  hasQuestionCacheSection: (_question: Question) => false,
+  canOverrideRootStrategy: false,
+  strategies: strategies,
 };
 
 export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
+  shared: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
+  shared: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
-  addDatabasePermissionOptions: (permissions: any[]) => permissions,
+  addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
+    permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>
     permissions,
-  isBlockPermission: (_value: string) => false,
+  getDatabaseLimitedAccessPermission: (_value: string) => null,
+  isAccessPermissionDisabled: (
+    _value: string,
+    _subject: "schemas" | "tables" | "fields",
+  ) => false,
+  isRestrictivePermission: (_value: string) => false,
+  shouldShowViewDataColumn: false,
+  defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
@@ -195,7 +399,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _groupId: number,
     _isAdmin: boolean,
     _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: string,
+    _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
   ) => {
@@ -209,7 +413,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
 };
 
 export const PLUGIN_APPLICATION_PERMISSIONS = {
-  getRoutes: (): React.ReactNode => null,
+  getRoutes: (): ReactNode => null,
   tabs: [] as any,
   selectors: {
     canManageSubscriptions: (_state: any) => true,
@@ -231,5 +435,41 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
-  getMenuItems: (question?: any, onChange?: any) => ({}),
+  getMenuItems: (_question?: any, _onChange?: any) => ({}),
+};
+
+export const PLUGIN_EMBEDDING = {
+  isEnabled: () => false,
+};
+
+export const PLUGIN_CONTENT_VERIFICATION = {
+  VerifiedFilter: {} as SearchFilterComponent<"verified">,
+  availableModelFilters: {} as AvailableModelFilters,
+  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
+  sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
+  sortCollectionsByVerification: (
+    _a: CollectionEssentials,
+    _b: CollectionEssentials,
+  ) => 0,
+  useModelFilterSettings: () =>
+    [{}, _.noop] as [
+      ActualModelFilters,
+      Dispatch<SetStateAction<ActualModelFilters>>,
+    ],
+};
+
+export const PLUGIN_DASHBOARD_HEADER = {
+  extraButtons: (_dashboard: Dashboard) => [],
+};
+
+export const PLUGIN_QUERY_BUILDER_HEADER = {
+  extraButtons: (_question: Question) => [],
+};
+
+export const PLUGIN_UPLOAD_MANAGEMENT = {
+  UploadManagementTable: PluginPlaceholder,
+};
+
+export const PLUGIN_IS_EE_BUILD = {
+  isEEBuild: () => false,
 };

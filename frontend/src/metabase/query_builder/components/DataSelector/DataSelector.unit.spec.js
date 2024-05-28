@@ -1,22 +1,38 @@
-import React from "react";
 import fetchMock from "fetch-mock";
 
-import _ from "underscore";
-
-import { delay } from "metabase/lib/promise";
-
-import { render, fireEvent, screen, getIcon } from "__support__/ui";
+import { createMockMetadata } from "__support__/metadata";
 import {
-  SAMPLE_DATABASE,
-  ANOTHER_DATABASE,
-  MULTI_SCHEMA_DATABASE,
-  OTHER_MULTI_SCHEMA_DATABASE,
-  metadata,
-  makeMetadata,
-  state as fixtureData,
-} from "__support__/sample_database_fixture";
-
+  fireEvent,
+  getIcon,
+  render,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import { delay } from "metabase/lib/promise";
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
+import {
+  createMockDatabase,
+  createMockSavedQuestionsDatabase,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
+
+const MULTI_SCHEMA_DB_ID = 2;
+const MULTI_SCHEMA_TABLE1_ID = 100;
+const MULTI_SCHEMA_TABLE2_ID = 101;
+
+const OTHER_MULTI_SCHEMA_DB_ID = 3;
+const OTHER_MULTI_SCHEMA_TABLE1_ID = 200;
+const OTHER_MULTI_SCHEMA_TABLE2_ID = 201;
+
+const EMPTY_DB_ID = 4;
 
 describe("DataSelector", () => {
   beforeEach(() => {
@@ -35,15 +51,64 @@ describe("DataSelector", () => {
     );
   });
 
-  const emptyMetadata = {
-    databases: {},
-    schemas: {},
-    tables: {},
-    fields: {},
-    metrics: {},
-    segments: {},
-    questions: {},
-  };
+  const databases = [
+    createSampleDatabase(),
+    createMockDatabase({
+      id: MULTI_SCHEMA_DB_ID,
+      name: "Multi-schema Database",
+      tables: [
+        createMockTable({
+          id: MULTI_SCHEMA_TABLE1_ID,
+          db_id: MULTI_SCHEMA_DB_ID,
+          schema: "first_schema",
+          display_name: "Table in First Schema",
+        }),
+        createMockTable({
+          id: MULTI_SCHEMA_TABLE2_ID,
+          db_id: MULTI_SCHEMA_DB_ID,
+          schema: "second_schema",
+          display_name: "Table in Second Schema",
+        }),
+      ],
+    }),
+    createMockDatabase({
+      id: OTHER_MULTI_SCHEMA_DB_ID,
+      name: "Other Multi-schema Database",
+      tables: [
+        createMockTable({
+          id: OTHER_MULTI_SCHEMA_TABLE1_ID,
+          db_id: OTHER_MULTI_SCHEMA_DB_ID,
+          schema: "other_first_schema",
+        }),
+        createMockTable({
+          id: OTHER_MULTI_SCHEMA_TABLE2_ID,
+          db_id: OTHER_MULTI_SCHEMA_DB_ID,
+          schema: "other_second_schema",
+        }),
+      ],
+    }),
+    createMockDatabase({
+      id: EMPTY_DB_ID,
+      name: "Sample Empty Database",
+      tables: [],
+    }),
+  ];
+
+  const metadata = createMockMetadata({ databases });
+  const emptyMetadata = createMockMetadata({});
+  const storeInitialState = createMockState({
+    settings: createMockSettingsState({
+      "enable-nested-queries": true,
+    }),
+  });
+
+  const SAMPLE_DATABASE = metadata.database(SAMPLE_DB_ID);
+  const ANOTHER_DATABASE = metadata.database(EMPTY_DB_ID);
+  const MULTI_SCHEMA_DATABASE = metadata.database(MULTI_SCHEMA_DB_ID);
+  const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
+    OTHER_MULTI_SCHEMA_DB_ID,
+  );
+  const SAVED_QUESTIONS_DATABASE = createMockSavedQuestionsDatabase();
 
   it("should allow selecting db, schema, and table", () => {
     const setTable = jest.fn();
@@ -80,7 +145,7 @@ describe("DataSelector", () => {
 
     // db and schema are still visible
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
-    expect(screen.getByText("- First Schema")).toBeInTheDocument();
+    expect(screen.getByText("First Schema")).toBeInTheDocument();
 
     // but other schema is hidden
     expect(screen.queryByText("Second Schema")).not.toBeInTheDocument();
@@ -88,7 +153,7 @@ describe("DataSelector", () => {
     // clicking on the table
     fireEvent.click(screen.getByText("Table in First Schema"));
     const [tableId] = setTable.mock.calls[0];
-    expect(tableId).toEqual(5);
+    expect(tableId).toEqual(MULTI_SCHEMA_TABLE1_ID);
   });
 
   it("should fetch db, schema, and table progressively", async () => {
@@ -101,23 +166,21 @@ describe("DataSelector", () => {
       combineDatabaseSchemaSteps: true,
       triggerElement: <div />,
       databases: [],
-      metadata: makeMetadata(emptyMetadata),
+      metadata: emptyMetadata,
       isOpen: true,
       fetchDatabases,
       fetchSchemas,
       fetchSchemaTables,
     };
-    const { databases, schemas, tables } = unconnectedFixtureData();
 
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = data => {
-      const metadata = makeMetadata({ ...emptyMetadata, ...data });
+    const rerenderWith = nextMetadata => {
       rerender(
         <DataSelector
           {...props}
-          metadata={metadata}
+          metadata={nextMetadata}
           databases={Object.values(metadata.databases)}
         />,
       );
@@ -127,10 +190,15 @@ describe("DataSelector", () => {
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
     rerender(<DataSelector {...props} loading />);
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
 
     // select a db
-    rerenderWith({ databases });
+    let nextMetadata = createMockMetadata({ databases });
+    nextMetadata.schemas = {};
+    nextMetadata.tables = {};
+    nextMetadata.fields = {};
+    rerenderWith(nextMetadata);
+
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Multi-schema Database"));
@@ -140,7 +208,10 @@ describe("DataSelector", () => {
     expect(fetchSchemas).toHaveBeenCalled();
 
     // select a schema
-    rerenderWith({ databases, schemas });
+    nextMetadata = createMockMetadata({ databases });
+    nextMetadata.tables = {};
+    nextMetadata.fields = {};
+    rerenderWith(nextMetadata);
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Second Schema"));
@@ -150,7 +221,7 @@ describe("DataSelector", () => {
     expect(fetchSchemaTables).toHaveBeenCalled();
 
     // table is displayed
-    rerenderWith({ databases, schemas, tables });
+    rerenderWith(metadata);
     expect(screen.getByText("Table in Second Schema")).toBeInTheDocument();
   });
 
@@ -175,7 +246,7 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["DATABASE"]}
         triggerElement={<div>button</div>}
-        metadata={makeMetadata(emptyMetadata)}
+        metadata={emptyMetadata}
         databases={[]}
         fetchDatabases={fetchDatabases}
       />,
@@ -342,7 +413,7 @@ describe("DataSelector", () => {
 
     expect(
       screen.getByText("Sample Database", {
-        selector: ".List-item--selected h4",
+        selector: "[data-element-id=list-item] h4",
       }),
     ).toBeInTheDocument();
   });
@@ -409,22 +480,42 @@ describe("DataSelector", () => {
       screen.getByText("To pick some data, you'll need to add some first"),
     ).toBeInTheDocument();
   });
+
+  it("should show 'Saved Questions' option when there are saved questions", async () => {
+    renderWithProviders(
+      <DataSelector
+        steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        databases={[SAMPLE_DATABASE, SAVED_QUESTIONS_DATABASE]}
+        hasNestedQueriesEnabled
+        hasTableSearch
+        loaded
+        search={[{}]}
+        triggerElement={<div />}
+        isOpen
+      />,
+      { storeInitialState },
+    );
+
+    expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+  });
+
+  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
+    renderWithProviders(
+      <DataSelector
+        steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        databases={[SAMPLE_DATABASE]}
+        hasNestedQueriesEnabled
+        hasTableSearch
+        loaded
+        search={[{}]}
+        triggerElement={<div />}
+        isOpen
+      />,
+      { storeInitialState },
+    );
+
+    expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+  });
 });
-
-// removes associated ids from entities so we can load only some of them
-function unconnectedFixtureData() {
-  const { entities } = fixtureData;
-
-  // removes "tables" from something like: {"1": {name:"foo", tables: [1,2,3]}}
-  const stripKeysFromValues = (entity, keys) =>
-    _.mapObject(entity, o => _.omit(o, keys));
-
-  const databases = stripKeysFromValues(entities.databases, ["tables"]);
-  const { schemas } = entities;
-  const tables = stripKeysFromValues(entities.tables, [
-    "fields",
-    "metrics",
-    "segments",
-  ]);
-  return { databases, schemas, tables };
-}

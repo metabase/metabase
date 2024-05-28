@@ -194,7 +194,6 @@ describe("Collection selectors", () => {
       });
 
       it("does not suggest a read-only root collection when others collections permissions had not been loaded yet", () => {
-        // eslint-disable-next-line no-unused-vars
         const { can_write, ...personalCollectionWithoutPermissionsLoaded } =
           PERSONAL_COLLECTION;
 

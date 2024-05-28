@@ -1,0 +1,16 @@
+name: Metabase analytics
+description: Your instance data. To customize these questions and dashboards, you can duplicate them and save them in the custom reports collection.
+entity_id: vG58R8k-QddHWA7_47umn
+slug: metabase_analytics
+created_at: '2023-06-08T14:12:32.4457Z'
+archived: false
+type: instance-analytics
+parent_id: null
+personal_owner_id: null
+namespace: analytics
+authority_level: null
+serdes/meta:
+- id: vG58R8k-QddHWA7_47umn
+  label: metabase_analytics
+  model: Collection
+is_sample: false

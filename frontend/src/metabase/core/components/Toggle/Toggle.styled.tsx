@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { focusOutlineStyle } from "metabase/core/style/input";
 import { color } from "metabase/lib/colors";
 
@@ -43,6 +44,12 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;
   flex-shrink: 0;
+
+  &[disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background-color: ${color("bg-medium")};
+  }
 
   &:after {
     content: "";

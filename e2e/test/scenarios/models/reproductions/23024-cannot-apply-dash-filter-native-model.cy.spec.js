@@ -1,11 +1,14 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
   editDashboard,
   popover,
   restore,
   visitDashboard,
+  setModelMetadata,
+  getDashboardCard,
+  setFilter,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { setModelMetadata } from "../helpers/e2e-models-metadata-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -20,9 +23,10 @@ describe("issue 23024", () => {
     cy.createNativeQuestion(
       {
         native: {
-          query: `select * from products limit 5`,
+          query: `select *
+                  from products limit 5`,
         },
-        dataset: true,
+        type: "model",
       },
       { wrapId: true, idAlias: "modelId" },
     );
@@ -48,16 +52,12 @@ describe("issue 23024", () => {
   it("should be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
     editDashboard();
 
-    cy.icon("filter").click();
+    setFilter("Text or Category", "Is");
 
-    cy.findByText("Text or Category").click();
-    cy.findByText("Is").click();
-
-    cy.findByText("Column to filter on")
-      .parent()
-      .within(() => {
-        cy.findByText("Select…").click();
-      });
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
 
     popover().contains("Category");
   });
@@ -66,12 +66,9 @@ describe("issue 23024", () => {
 function addModelToDashboardAndVisit() {
   cy.createDashboard().then(({ body: { id } }) => {
     cy.get("@modelId").then(cardId => {
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId,
-        row: 0,
-        col: 0,
-        size_x: 16,
-        size_y: 10,
+      addOrUpdateDashboardCard({
+        dashboard_id: id,
+        card_id: cardId,
       });
     });
 

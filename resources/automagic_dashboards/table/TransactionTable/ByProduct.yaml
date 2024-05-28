@@ -1,6 +1,6 @@
 title: "[[this]] per product"
-transient_title: Here''s a closer look at your [[this]] by products
-description: How your different products are performing.
+transient_title: Here''s a closer look at [[this]] by products
+description: How different products are performing.
 applies_to: TransactionTable
 metrics:
 - TotalOrders: [count]

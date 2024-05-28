@@ -1,11 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openTable,
   visualize,
   changeBinningForDimension,
   summarize,
+  chartPathWithFillColor,
+  cartesianChartCircle,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -26,7 +28,8 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
 
@@ -40,8 +43,9 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      cy.get("circle");
-      cy.findByText("Q1 - 2017");
+      cartesianChartCircle();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q1 2023");
     });
 
     it("should work for longitude/latitude", () => {
@@ -54,7 +58,8 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
   });
@@ -71,7 +76,8 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
 
@@ -86,8 +92,9 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      cy.get("circle");
-      cy.findByText("Q1 - 2017");
+      cartesianChartCircle();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q1 2023");
     });
 
     it("should work for longitude/latitude", () => {
@@ -101,7 +108,8 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
   });
@@ -109,34 +117,43 @@ describe("scenarios > binning > binning options", () => {
   context("via column popover", () => {
     it("should work for number", () => {
       openTable({ table: ORDERS_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Total: Auto binned");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("60");
     });
 
     it("should work for time series", () => {
       openTable({ table: ORDERS_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Created At: Month");
 
-      cy.get("circle");
-      cy.findByText("January, 2017");
+      cartesianChartCircle();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("January 2023");
     });
 
     it("should work for longitude/latitude", () => {
       openTable({ table: PEOPLE_ID });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Longitude").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Longitude: Auto binned");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
   });

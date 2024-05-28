@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-/*eslint-disable import/no-commonjs */
 
-const process = require("process");
 const jwt = require("jsonwebtoken");
+const process = require("process");
 
 const payload = process.argv[2];
 const METABASE_SECRET_KEY = process.argv[3];

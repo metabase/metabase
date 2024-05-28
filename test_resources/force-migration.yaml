@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: '1'
+      author: qnkhuat
+      comment: Added 0.47.0 - Add a dummy table
+      remarks: A record of all the ancient civilizations
+      changes:
+        - createTable:
+            tableName: ancient_civilization
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: char(21)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: '2'
+      author: qnkhuat
+      comment: Added 0.47.0 - Add ancient_civilization.period
+      changes:
+        - addColumn:
+            tableName: ancient_civilization
+            columns:
+              - column:
+                  name: period
+                  type: char(128)
+
+  # add the same column as v47.00-002 -- this migrations is intended to fail
+  - changeSet:
+      id: '3'
+      author: qnkhuat
+      comment: Added 0.47.0 - Add ancient_civilization.period
+      changes:
+        - addColumn:
+            tableName: ancient_civilization
+            columns:
+              - column:
+                  name: period
+                  type: char(128)
+
+  - changeSet:
+      id: '4'
+      author: qnkhuat
+      comment: Added 0.47.0 - Custom migration to add a record to the table, but it'll fail when execute
+      changes:
+        - customChange:
+            class: "metabase.db.force_migration_test.FailCustomMigration"
+
+  # This migration will depend on the `002` migration,
+  # it's deliberately set up so in order to test that we execute migrations in the order we define it
+  - changeSet:
+      id: '5'
+      author: qnkhuat
+      comment: Added 0.47.0 - Custom migraiton that successfully adds a record to the table
+      changes:
+        - customChange:
+            class: "metabase.db.force_migration_test.SuccessCustomMigration"

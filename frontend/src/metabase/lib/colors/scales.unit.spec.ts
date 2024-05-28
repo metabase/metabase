@@ -1,5 +1,5 @@
-import { getColorScale } from "./scales";
 import { color } from "./palette";
+import { getColorScale } from "./scales";
 
 describe("scales", () => {
   const colors = [color("white"), color("black")];

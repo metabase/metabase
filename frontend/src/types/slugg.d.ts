@@ -8,6 +8,7 @@ declare module "slugg" {
     toLowerCase?: boolean;
   };
 
+  // eslint-disable-next-line import/no-default-export -- deprecated usage
   export default function slugg(
     str: string,
     separatorOrOptions?: Separator | Options,

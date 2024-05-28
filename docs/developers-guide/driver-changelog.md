@@ -4,6 +4,261 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.0
+
+- The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
+  use these namespaces in your driver, but if you did, please update them.
+
+- The multimethod `metabase.driver/truncate!` has been added. This method is used to delete a table's rows in the most
+  efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
+  a default implementation for JDBC-based drivers.
+
+- New feature `:window-functions/cumulative` has been added. Drivers that implement this method are expected to
+  implement the cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native
+  query language. For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is
+  set to `false` by default; the old (broken) post-processing implementations of cumulative aggregations will continue
+  to be used. (See issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+  [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
+  broken.)
+
+  Non-SQL drivers should be updated to implement cumulative aggregations natively if possible.
+
+  The SQL implementation uses `OVER (...)` expressions. It will automatically move `GROUP BY` expressions like
+  `date_trunc()` into a `SUBSELECT` so fussy databases like BigQuery can reference plain column identifiers. The
+  actual SQL generated will look something like
+
+  ```sql
+  SELECT
+    created_at_month,
+    sum(sum(total) OVER (ORDER BY created_at_month ROWS UNBOUNDED PRECEDING) AS cumulative_sum
+  FROM (
+    SELECT
+      date_trunc('month', created_at) AS created_at_month,
+      total
+    FROM
+      my_table
+    ) source
+  GROUP BY
+    created_at_month
+  ORDER BY
+    created_at_month
+  ```
+
+  Non-SQL drivers can use
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation`
+  if they want to leverage the same query transformation. See the default `:sql` implementation of
+  `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
+
+  You can run the new tests in `metabase.query-processor-test.cumulative-aggregation-test` to verify that your driver
+  implementation is working correctly.
+
+- `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
+- New feature `:window-functions/offset` has been added to signify that a driver supports the new MBQL `:offset`
+  clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
+  drivers. Other drivers should add an implementation for this clause and enable the feature flag.
+
+- `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
+  logic, to determine whether a specific field should have its field values computed or not. At the time of writing
+  that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
+  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
+  of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
+  `metabase.types` namespace for an example.
+
+- New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
+  key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
+  (Presto, Athena, etc.) support *querying* over foreign key relationships (`:foreign-keys`) but do not track or enforce
+  those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
+  first-party SparkSQL, Presto and Athena drivers.
+
+- New feature `:connection/multiple-databases` has been added to indicate whether a *connection* to this driver
+  corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
+  This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
+  Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+## Metabase 0.49.9
+
+- Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
+  is optional to support. Drivers support this feature by default, and can choose not to support it if there is no way
+  to create a table with an auto-incrementing integer column. The driver can override the default using
+  `driver/database-supports?`.
+
+## Metabase 0.49.1
+
+- Another driver feature has been added: `describe-fields`. If a driver opts-in to supporting this feature, The
+  multimethod `metabase.driver/describe-fields` must be implemented, as a replacement for
+  `metabase.driver/describe-table`.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fields-sql` has been added. The method needs
+  to be implemented if the driver supports `describe-fields` and you want to use the default JDBC implementation of
+  `metabase.driver/describe-fields`.
+
+## Metabase 0.49.0
+
+- The multimethod `metabase.driver/describe-table-fks` has been deprecated in favor of `metabase.driver/describe-fks`.
+  `metabase.driver/describe-table-fks` will be removed in 0.52.0.
+
+- The multimethod `metabase.driver/describe-fks` has been added. The method needs to be implemented if the database
+  supports the `:foreign-keys` and `:describe-fks` features. It replaces the `metabase.driver/describe-table-fks`
+  method, which is now deprecated.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` has been added. The method needs
+  to be implemented if you want to use the default JDBC implementation of `metabase.driver/describe-fks`.
+
+- The multimethod `metabase.driver/alter-columns!` has been added. This method is used to alter a table's columns in the
+  database. This is currently only required for drivers that support the `:uploads` feature, and has a default
+  implementation for JDBC-based drivers.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/alter-columns-sql` has been added. The method
+  allows you to customize the query used by the default JDBC implementation of `metabase.driver/alter-columns!`.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/current-user-table-privileges` has been added.
+  JDBC-based drivers can implement this to improve the performance of the default SQL JDBC implementation of
+  `metabase.driver/describe-database`. It needs to be implemented if the database supports the `:table-privileges`
+  feature and the driver is JDBC-based.
+
+- The multimethod `metabase.driver/create-table!` can take an additional optional map with an optional key `primary-key`.
+  `metabase.driver/upload-type->database-type` must also be changed, so that if
+  `:metabase.upload/auto-incrementing-int-pk` is provided as the `upload-type` argument, the function should return a
+  type without the primary-key constraint included. See PR [#22166](https://github.com/metabase/metabase/pull/37505/)
+  for more information. These changes only need to be implemented if the database supports the `:uploads` feature.
+
+- The multimethod `metabase.driver/create-auto-pk-with-append-csv?` has been added. The method only needs to be
+  implemented if the database supported the `:uploads` feature in 47 or earlier, and should return true if so.
+
+- The multimethod `metabase.driver/add-columns!` has been added. This method is used to add columns to a table in the
+  database. It only needs to be implemented if the database supported the `:uploads` feature in 47 or earlier.
+
+- A new driver method has been added `metabase.driver/describe-table-indexes` along with a new feature `:index-info`.
+  This method is used to get a set of column names that are indexed or are the first columns in a composite index.
+
+- `metabase.util.honeysql-extensions`, deprecated in 0.46.0, has been removed. SQL-based drivers using Honey SQL 1
+  are no longer supported. See 0.46.0 notes for more information.
+  `metabase.driver.sql.query-processor/honey-sql-version` is now deprecated and no longer called. All drivers are
+  assumed to use Honey SQL 2.
+
+- The method `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type` is now deprecated.
+  Use `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type-and-value` instead,
+  which has access to `value` and therefore provides more flexibility for choosing the right conversion unit.
+
+## Metabase 0.48.0
+- The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
+  [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
+  want to update your code to use Malli instead.
+
+- Another driver feature has been added: `:table-privileges`. This feature signals whether we can store
+  the table-level privileges for the database on database sync.
+
+- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get
+  the set of privileges the database connection's current user has. It needs to be implemented if the database
+  supports the `:table-privileges` feature.
+
+- The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
+
+  * `qp.store/database`
+  * `qp.store/table`
+  * `qp.store/field`
+
+  Update usages of the to the corresponding functions in `metabase.lib.metadata` (`lib.metadata`):
+
+  ```clj
+  (qp.store/database)       => (lib.metadata/database (qp.store/metadata-provider))
+  (qp.store/table table-id) => (lib.metadata/table (qp.store/metadata-provider) table-id)
+  (qp.store/field field-id) => (lib.metadata/field (qp.store/metadata-provider) field-id)
+  ```
+
+  Note that the new methods return keys as `kebab-case` rather than `snake_case`.
+
+- Similarly, drivers should NOT access the application database directly (via `toucan` functions or otherwise); use
+  `lib.metadata` functions instead. This access may be blocked in a future release.
+
+- SQL drivers that implement `metabase.driver.sql.query-processor/->honeysql` for
+  `metabase.models.table/Table`/`:model/Table` should be updated to implement it for `:metadata/table` instead. As
+  with the changes above, the main difference is that the new metadata maps use `kebab-case` keys rather than
+  `snake_case` keys.
+
+* `metabase.driver.sql.query-processor/cast-field-if-needed` now expects a `kebab-case`d field as returned by
+  `lib.metadata/field`.
+
+- `metabase.query-processor.store/fetch-and-store-database!`,
+  `metabase.query-processor.store/fetch-and-store-tables!`, and
+  `metabase.query-processor.store/fetch-and-store-fields!` have been removed. Things are now fetched automatically as
+  needed and these calls are no longer necessary.
+
+- `metabase.models.field/json-field?` has been removed, use `metabase.lib.field/json-field?` instead. Note that the
+  new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
+
+- Tests should try to avoid using any of the `with-temp` helpers or application database objects; instead, use the
+  metadata functions above and and the helper *metadata providers* in `metabase.lib`, `metabase.lib.test-util`, and
+  `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
+  `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
+
+- `metabase.query-processor.util.add-alias-info/field-reference` is now deprecated. If your driver implemented it,
+  implement `metabase.query-processor.util.add-alias-info/field-reference-mlv2` instead. The only difference between
+  the two is that the latter is passed Field metadata with `kebab-case` keys while the former is passed legacy
+  metadata with `snake_case` keys.
+
+- `metabase.driver/current-db-time`, deprecated in 0.34, and related methods and helper functions, have been removed.
+  Implement `metabase.driver/db-default-timezone` instead.
+
+- `metabase.driver.sql-jdbc.sync.interface/db-default-timezone`, a helper for writing
+  `metabase.driver/db-default-timezone` implementations for JDBC-based drivers, has been deprecated, and will be
+  removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
+  `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
+
+- Added a new multimethod `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, which returns
+  a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
+  will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
+
+- The multimethod `metabase.driver.sql-jdbc.execute/inject-remark` has been added. It allows JDBC-based drivers to
+  override the default behavior of how SQL query remarks are added to queries (prepending them as a comment).
+
+- The arity of multimethod `metabase.driver.sql-jdbc.sync.interface/fallback-metadata-query` has been updated from 3 to 4,
+  it now takes an additional `db` argument. The new function arguments are: `[driver db-name-or-nil schema table]`.
+
+## Metabase 0.47.0
+
+- A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
+  schemas (also known as namespaces) or not. Most databases have schemas so this feature is on by default.
+  An implementation of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  database doesn't store tables in schemas.
+
+- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports
+  uploading CSV files to tables in the database. To support the uploads feature, implement the following new
+  multimethods: `metabase.driver/create-table!` (creates a table), `metabase.driver/drop-table!` (drops
+  a table), and `metabase.driver/insert-into!` (inserts values into a table).
+
+- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
+  CSVs to, and it should include all schemas that can be synced. Currently it only needs to be implemented
+  if the database has schema, and the database supports the `:uploads` feature.
+
+- The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`.
+  The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in
+  0.50.0.
+
+- `metabase.driver.sql-jdbc.execute/connection-with-timezone` has been marked deprecated and is scheduled for removal
+  in Metabase 0.50.0. The new method `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` replaces it.
+  Migration to the new method is straightforward. See PR [#22166](https://github.com/metabase/metabase/pull/22166) for
+  more information. You should use `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` instead of
+  `clojure.java.jdbc/with-db-connection` or `clojure.java.jdbc/get-connection` going forward.
+
+- The multimethods `set-role!`, `set-role-statement`, and `default-database-role` have been added. These methods are
+  used to enable connection impersonation, which is a new feature added in 0.47.0. Connection impersonation allows users
+  to be assigned to specific database roles which are set before any queries are executed, so that access to tables can
+  be restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
+  of a set.
+
+- The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
+  `database` argument for the arity which previously had one argument. This function might be used in the implementation
+  of a driver's multimethods.
+
+- `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
+  specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
+
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
@@ -212,6 +467,9 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 
 - `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
   the default behavior for fetching field metadata (such as types) for a table.
+
+- `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` has been added. This methods is used to get a set of pks
+  given a table.
 
 - `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
   the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.

@@ -1,146 +1,183 @@
-import React from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-
-import type {
-  Field as IField,
-  OrderBy as IOrderBy,
-} from "metabase-types/types/Query";
-import type DimensionOptions from "metabase-lib/DimensionOptions";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import type OrderBy from "metabase-lib/queries/structured/OrderBy";
+import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
-import { SortDirectionButton, SortFieldList } from "./SortStep.styled";
+import { ClauseStep } from "../ClauseStep";
+
+import { SortDirectionButton } from "./SortStep.styled";
 
 function SortStep({
   query,
+  step,
   color,
   isLastOpened,
   readOnly,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const handleUpdateSort = (sort: IOrderBy, index: number) => {
-    updateQuery(query.updateSort(index, sort));
+  const { stageIndex } = step;
+
+  const clauses = useMemo(() => {
+    return Lib.orderBys(query, stageIndex);
+  }, [query, stageIndex]);
+
+  const handleAddOrderBy = (column: Lib.ColumnMetadata) => {
+    const nextQuery = Lib.orderBy(query, stageIndex, column, "asc");
+    updateQuery(nextQuery);
   };
 
-  const handleAddSort = (sort: IOrderBy) => {
-    updateQuery(query.sort(sort));
+  const handleToggleOrderByDirection = (clause: Lib.OrderByClause) => {
+    const nextQuery = Lib.changeDirection(query, clause);
+    updateQuery(nextQuery);
   };
 
-  const handleRemoveSort = (sort: OrderBy, index: number) => {
-    return updateQuery(query.removeSort(index));
+  const handleUpdateOrderByColumn = (
+    clause: Lib.OrderByClause,
+    column: Lib.ColumnMetadata,
+  ) => {
+    const nextClause = Lib.orderByClause(column);
+    const nextQuery = Lib.replaceClause(query, stageIndex, clause, nextClause);
+    updateQuery(nextQuery);
+  };
+
+  const handleReorderOrderBy = (
+    sourceClause: Lib.OrderByClause,
+    targetClause: Lib.OrderByClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+    updateQuery(nextQuery);
+  };
+
+  const handleRemoveOrderBy = (clause: Lib.OrderByClause) => {
+    const nextQuery = Lib.removeClause(query, stageIndex, clause);
+    updateQuery(nextQuery);
   };
 
   return (
     <ClauseStep
-      color={color}
-      items={query.sorts()}
+      items={clauses}
       readOnly={readOnly}
+      color={color}
       isLastOpened={isLastOpened}
-      renderName={(sort, index) => (
+      renderName={clause => (
         <SortDisplayName
-          sort={sort}
-          index={index}
-          onChange={handleUpdateSort}
+          displayInfo={Lib.displayInfo(query, stageIndex, clause)}
+          onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={(sort, index) => (
+      renderPopover={({ item: orderBy, index, onClose }) => (
         <SortPopover
           query={query}
-          sort={sort}
-          onChangeSort={newSort => {
-            const isUpdate = sort && typeof index === "number";
-            return isUpdate
-              ? handleUpdateSort(newSort, index)
-              : handleAddSort(newSort);
-          }}
+          stageIndex={stageIndex}
+          orderBy={orderBy}
+          orderByIndex={index}
+          onAddOrderBy={handleAddOrderBy}
+          onUpdateOrderByColumn={handleUpdateOrderByColumn}
+          onClose={onClose}
         />
       )}
-      onRemove={handleRemoveSort}
+      onReorder={handleReorderOrderBy}
+      onRemove={handleRemoveOrderBy}
     />
-  );
-}
-
-interface SortDisplayNameProps {
-  sort: OrderBy;
-  index: number;
-  onChange: (newSort: IOrderBy, index: number) => void;
-}
-
-function SortDisplayName({ sort, index, onChange }: SortDisplayNameProps) {
-  const [direction, fieldRef] = sort;
-
-  const displayName = sort.dimension().displayName();
-  const icon = direction === "asc" ? "arrow_up" : "arrow_down";
-
-  const handleToggleDirection = (event: React.MouseEvent<HTMLSpanElement>) => {
-    event.stopPropagation();
-    const nextDirection = direction === "asc" ? "desc" : "asc";
-    const nextSortClause: IOrderBy = [nextDirection, fieldRef];
-    onChange(nextSortClause, index);
-  };
-
-  return (
-    <SortDirectionButton
-      aria-label={t`Change direction`}
-      onClick={handleToggleDirection}
-    >
-      <Icon name={icon} />
-      <span>{displayName}</span>
-    </SortDirectionButton>
   );
 }
 
 interface SortPopoverProps {
-  sort?: OrderBy;
-  query: StructuredQuery;
-  sortOptions?: DimensionOptions;
-  maxHeight?: number;
-  alwaysExpanded?: boolean;
-  onChangeSort: (clause: IOrderBy) => void;
-  onClose?: () => void;
+  query: Lib.Query;
+  stageIndex: number;
+  orderBy: Lib.OrderByClause | undefined;
+  orderByIndex: number | undefined;
+  onAddOrderBy: (column: Lib.ColumnMetadata) => void;
+  onUpdateOrderByColumn: (
+    orderBy: Lib.OrderByClause,
+    column: Lib.ColumnMetadata,
+  ) => void;
+  onClose: () => void;
 }
 
 const SortPopover = ({
-  sort: sortProp,
-  onChangeSort,
-  onClose,
   query,
-  sortOptions,
-  maxHeight,
-  alwaysExpanded,
+  stageIndex,
+  orderBy,
+  orderByIndex,
+  onAddOrderBy,
+  onUpdateOrderByColumn,
+  onClose,
 }: SortPopoverProps) => {
-  const sort = sortProp || ["asc", null];
-  const [direction, field] = sort;
-  const table = query.table();
+  const columnGroups = useMemo(() => {
+    const columns = Lib.orderableColumns(query, stageIndex);
 
-  const handleChangeField = (nextField: IField) => {
-    onChangeSort([direction, nextField]);
-    onClose?.();
-  };
+    const filteredColumns = columns.filter(column => {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      const isAlreadyUsed = columnInfo.orderByPosition != null;
+      const isSelected = checkColumnSelected(columnInfo, orderByIndex);
+      return isSelected || !isAlreadyUsed;
+    });
 
-  // FieldList requires table
-  if (!table) {
-    return null;
-  }
-
-  const fieldOptions = sortOptions || query.sortOptions(field);
+    return Lib.groupColumns(filteredColumns);
+  }, [query, stageIndex, orderByIndex]);
 
   return (
-    <SortFieldList
-      maxHeight={maxHeight}
-      field={field}
-      fieldOptions={fieldOptions}
-      onFieldChange={handleChangeField}
-      table={table}
-      enableSubDimensions={false}
-      useOriginalDimension={true}
-      alwaysExpanded={alwaysExpanded}
+    <QueryColumnPicker
+      query={query}
+      stageIndex={stageIndex}
+      columnGroups={columnGroups}
+      color="text-dark"
+      checkIsColumnSelected={item => checkColumnSelected(item, orderByIndex)}
+      onSelect={(column: Lib.ColumnMetadata) => {
+        const isUpdate = orderBy != null;
+        if (isUpdate) {
+          onUpdateOrderByColumn(orderBy, column);
+        } else {
+          onAddOrderBy(column);
+        }
+      }}
+      onClose={onClose}
     />
   );
 };
 
+const checkColumnSelected = (
+  columnInfo: Lib.ColumnDisplayInfo,
+  orderByIndex?: number,
+) => {
+  return (
+    typeof orderByIndex === "number" &&
+    columnInfo.orderByPosition === orderByIndex
+  );
+};
+
+interface SortDisplayNameProps {
+  displayInfo: Lib.OrderByClauseDisplayInfo;
+  onToggleSortDirection: () => void;
+}
+
+function SortDisplayName({
+  displayInfo,
+  onToggleSortDirection,
+}: SortDisplayNameProps) {
+  const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
+  return (
+    <SortDirectionButton
+      aria-label={t`Change direction`}
+      onClick={event => {
+        event.stopPropagation();
+        onToggleSortDirection();
+      }}
+    >
+      <Icon name={icon} />
+      <span>{displayInfo.longDisplayName}</span>
+    </SortDirectionButton>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SortStep;

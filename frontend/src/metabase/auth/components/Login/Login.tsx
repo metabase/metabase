@@ -1,43 +1,57 @@
-import React from "react";
+import type { Location } from "history";
 import { t } from "ttag";
-import AuthLayout from "../../containers/AuthLayout";
-import { AuthProvider } from "../../types";
-import {
-  ActionList,
-  ActionListItem,
-  LoginPanel,
-  LoginTitle,
-} from "./Login.styled";
 
-export interface LoginProps {
-  providers: AuthProvider[];
-  providerName?: string;
-  redirectUrl?: string;
+import { useSelector } from "metabase/lib/redux";
+import type { AuthProvider } from "metabase/plugins/types";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box } from "metabase/ui";
+
+import { getAuthProviders } from "../../selectors";
+import { AuthLayout } from "../AuthLayout";
+
+interface LoginQueryString {
+  redirect?: string;
 }
 
-const Login = ({
-  providers,
-  providerName,
-  redirectUrl,
-}: LoginProps): JSX.Element => {
-  const selection = getSelectedProvider(providers, providerName);
+interface LoginQueryParams {
+  provider?: string;
+}
 
+interface LoginProps {
+  params?: LoginQueryParams;
+  location?: Location<LoginQueryString>;
+}
+
+export const Login = ({ params, location }: LoginProps): JSX.Element => {
+  const providers = useSelector(getAuthProviders);
+  const selection = getSelectedProvider(providers, params?.provider);
+  const redirectUrl = location?.query?.redirect;
+  const applicationName = useSelector(getApplicationName);
   return (
     <AuthLayout>
-      <LoginTitle>{t`Sign in to Metabase`}</LoginTitle>
+      <Box
+        role="heading"
+        c="text-dark"
+        fz="1.25rem"
+        fw="bold"
+        lh="1.5rem"
+        ta="center"
+      >
+        {t`Sign in to ${applicationName}`}
+      </Box>
       {selection && selection.Panel && (
-        <LoginPanel>
+        <Box mt="2.5rem">
           <selection.Panel redirectUrl={redirectUrl} />
-        </LoginPanel>
+        </Box>
       )}
       {!selection && (
-        <ActionList>
+        <Box mt="3.5rem">
           {providers.map(provider => (
-            <ActionListItem key={provider.name}>
+            <Box key={provider.name} mt="2rem" ta="center">
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
-            </ActionListItem>
+            </Box>
           ))}
-        </ActionList>
+        </Box>
       )}
     </AuthLayout>
   );
@@ -54,5 +68,3 @@ const getSelectedProvider = (
 
   return provider?.Panel ? provider : undefined;
 };
-
-export default Login;

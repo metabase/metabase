@@ -1,0 +1,45 @@
+:root {
+  --input-border-color: var(--mb-color-border);
+  --input-border-radius: 8px;
+}
+
+.input {
+  color: var(--mb-color-text-dark);
+  font-size: 1.12em;
+  padding: 0.75rem 0.75rem;
+  border: 1px solid var(--input-border-color);
+  border-radius: var(--input-border-radius);
+  transition: border 0.3s linear;
+}
+
+/* React doesn't receive events from IE11:s input clear button so don't show it */
+.input::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.input:focus {
+  outline: none;
+  border: 1px solid var(--mb-color-brand);
+  transition: border 0.3s linear;
+  color: var(--mb-color-text-dark);
+}
+
+.inputBorderless,
+.inputBorderless:focus {
+  box-shadow: none;
+  outline: 0;
+  border: none !important;
+  background: transparent;
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* prevent safari from forcing type="search" styles - metabase#5225 */
+.input[type="search"] {
+  -webkit-appearance: none;
+}

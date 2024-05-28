@@ -1,6 +1,9 @@
 (ns metabase.lib.options
+  (:refer-clojure :exclude [uuid])
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 ;;; TODO -- not 100% sure we actually need all of this stuff anymore.
@@ -40,7 +43,9 @@
 
 (mu/defn with-options
   "Update `x` so its [[options]] are `new-options`. If the clause or map already has options, this will
-  *replace* the old options; if it does not, this will the new options.
+  *replace* the old options; if it does not, this will set the new options.
+
+  If `x` is a map with `:lib/options` and `new-options` is `empty?`, this will drop `:lib/options` entirely.
 
   You should probably prefer [[update-options]] to using this directly, so you don't stomp over existing stuff
   unintentionally. Implement this if you need to teach Metabase lib how to support something that doesn't follow the
@@ -48,7 +53,7 @@
   [x new-options :- [:maybe map?]]
   (cond
     (map? x)
-    (assoc x :lib/options new-options)
+    (u/assoc-dissoc x :lib/options (not-empty new-options))
 
     (mbql-clause? x)
     (if ((some-fn nil? map?) (second x))
@@ -76,3 +81,8 @@
                       (cond-> options-map
                         (not (:lib/uuid options-map))
                         (assoc :lib/uuid (str (random-uuid)))))))
+
+(mu/defn uuid :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
+  [x]
+  (:lib/uuid (options x)))

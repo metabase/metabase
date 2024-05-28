@@ -41,7 +41,7 @@ const dashboardDetails = {
 
 describe("issue 25374", () => {
   beforeEach(() => {
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     restore();
     cy.signInAsAdmin();
@@ -51,14 +51,14 @@ describe("issue 25374", () => {
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       // Connect filter to the card
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,
             row: 0,
             col: 0,
-            size_x: 8,
+            size_x: 11,
             size_y: 6,
             parameter_mappings: [
               {
@@ -86,10 +86,13 @@ describe("issue 25374", () => {
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
     // Drill-through and go to the question
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
-    cy.get(".cellData").should("contain", "COUNT(*)").and("contain", "3");
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });

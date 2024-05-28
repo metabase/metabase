@@ -1,7 +1,8 @@
-import React, { useCallback } from "react";
 import PropTypes from "prop-types";
+import { useCallback } from "react";
 import { t } from "ttag";
-import Settings from "metabase/lib/settings";
+
+import Link from "metabase/core/components/Link";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import {
   canArchive,
@@ -9,13 +10,14 @@ import {
   formatLink,
   formatTitle,
 } from "metabase/lib/notifications";
+import Settings from "metabase/lib/settings";
+
 import {
   NotificationContent,
   NotificationIcon,
   NotificationDescription,
   NotificationCardRoot,
   NotificationMessage,
-  NotificationTitle,
 } from "./NotificationCard.styled";
 
 const propTypes = {
@@ -48,9 +50,9 @@ const NotificationCard = ({
   return (
     <NotificationCardRoot>
       <NotificationContent>
-        <NotificationTitle to={formatLink(item, type)}>
+        <Link variant="brandBold" to={formatLink(item, type)}>
           {formatTitle(item, type)}
-        </NotificationTitle>
+        </Link>
         <NotificationDescription>
           {item.channels.map((channel, index) => (
             <NotificationMessage key={index}>

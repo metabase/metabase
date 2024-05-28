@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 import Input from "metabase/core/components/Input";
 
@@ -20,8 +20,7 @@ export default function ListSearchField({ autoFocus, ...props }) {
 
   return (
     <Input
-      autoFocus
-      ref={inputRef}
+      inputRef={inputRef}
       data-testid="list-search-field"
       {...props}
       leftIcon="search"

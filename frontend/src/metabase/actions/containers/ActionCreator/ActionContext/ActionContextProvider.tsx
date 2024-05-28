@@ -1,12 +1,9 @@
-import React from "react";
 import type { WritebackAction } from "metabase-types/api";
 
-import ImplicitActionContextProvider, {
-  ImplicitActionContextProviderProps,
-} from "./ImplicitActionContextProvider";
-import QueryActionContextProvider, {
-  QueryActionContextProviderProps,
-} from "./QueryActionContextProvider";
+import type { ImplicitActionContextProviderProps } from "./ImplicitActionContextProvider";
+import ImplicitActionContextProvider from "./ImplicitActionContextProvider";
+import type { QueryActionContextProviderProps } from "./QueryActionContextProvider";
+import QueryActionContextProvider from "./QueryActionContextProvider";
 
 type Props = Omit<ImplicitActionContextProviderProps, "initialAction"> &
   Omit<QueryActionContextProviderProps, "initialAction"> & {
@@ -30,4 +27,5 @@ function ActionContextProvider({ initialAction, ...props }: Props) {
   return <QueryActionContextProvider {...props} />;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionContextProvider;

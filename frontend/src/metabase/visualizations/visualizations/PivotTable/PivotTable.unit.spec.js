@@ -1,17 +1,28 @@
-import React, { useState } from "react";
-import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import { useState } from "react";
+
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
-
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  PEOPLE,
-  metadata,
-} from "__support__/sample_database_fixture";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import registerVisualizations from "metabase/visualizations/register";
+import Question from "metabase-lib/v1/Question";
+import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createProductsCategoryDatasetColumn,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
-import Question from "metabase-lib/Question";
+registerVisualizations();
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const setup = () => {
   const Container = () => {
@@ -21,19 +32,19 @@ const setup = () => {
           dataset_query: {
             type: "query",
             query: {
-              "source-table": ORDERS.id,
+              "source-table": ORDERS_ID,
               aggregation: ["count"],
               breakout: [
-                ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "year" }],
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
 
                 [
                   "field",
-                  PEOPLE.SOURCE.id,
-                  { "source-field": ORDERS.USER_ID.id },
+                  PRODUCTS.CREATED_AT,
+                  { "source-field": ORDERS.PRODUCT_ID },
                 ],
               ],
             },
-            database: SAMPLE_DATABASE.id,
+            database: SAMPLE_DB_ID,
           },
           display: "pivot",
           visualization_settings: {},
@@ -57,21 +68,26 @@ const setup = () => {
             card: question.card(),
             data: {
               rows: [],
-              // Need to add missing sources so that the setting displays
               cols: [
-                ...question
-                  .query()
-                  .columns()
-                  .map(c => ({ ...c, source: c.source || "breakout" })),
-                {
+                createOrdersCreatedAtDatasetColumn({ source: "breakout" }),
+                createProductsCategoryDatasetColumn({ source: "breakout" }),
+                createMockColumn({
+                  name: "count",
+                  display_name: "Count",
+                  field_ref: ["aggregation", "0"],
+                  source: "aggregation",
                   base_type: "type/Integer",
+                  effective_type: "type/Integer",
+                }),
+                createMockColumn({
                   name: "pivot-grouping",
                   display_name: "pivot-grouping",
                   expression_name: "pivot-grouping",
                   field_ref: ["expression", "pivot-grouping"],
                   source: "breakout",
+                  base_type: "type/Integer",
                   effective_type: "type/Integer",
-                },
+                }),
               ],
             },
           },
@@ -89,9 +105,14 @@ const setup = () => {
 describe("table settings", () => {
   it("should allow you to update a column name", async () => {
     setup();
-    userEvent.click(await screen.findByTestId("Source-settings-button"));
-    userEvent.type(await screen.findByDisplayValue("Source"), " Updated");
-    userEvent.click(await screen.findByText("Count"));
-    expect(await screen.findByText("Source Updated")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByTestId("Category-settings-button"),
+    );
+    await userEvent.type(
+      await screen.findByDisplayValue("Category"),
+      " Updated",
+    );
+    await userEvent.click(await screen.findByText("Count"));
+    expect(await screen.findByText("Category Updated")).toBeInTheDocument();
   });
 });

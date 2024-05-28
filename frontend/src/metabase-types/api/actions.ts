@@ -1,13 +1,7 @@
-import type { ParameterTarget } from "metabase-types/types/Parameter";
-import type { Parameter, ParameterId } from "./parameters";
-import type { NativeDatasetQuery } from "./query";
-import type { ClickBehavior } from "./click-behavior";
-import type {
-  BaseDashboardOrderedCard,
-  DashboardParameterMapping,
-} from "./dashboard";
-import type { Card, CardId } from "./card";
+import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
+import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
+import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {
@@ -32,11 +26,12 @@ export interface WritebackActionBase {
   created_at: string;
   public_uuid: string | null;
   database_id?: DatabaseId;
+  database_enabled_actions?: boolean;
 }
 
 export type PublicWritebackAction = Pick<
   WritebackActionBase,
-  "id" | "name" | "parameters" | "visualization_settings"
+  "id" | "name" | "parameters" | "visualization_settings" | "database_id"
 >;
 
 export interface QueryAction {
@@ -86,7 +81,7 @@ export type ActionFormInitialValues = ParametersForActionExecution;
 export interface ActionFormSubmitResult {
   success: boolean;
   message?: string;
-  error?: string;
+  error?: unknown;
 }
 
 export type OnSubmitActionForm = (
@@ -166,22 +161,6 @@ export type ActionFormOption = {
   value: string | number;
 };
 
-export type ActionParametersMapping = Pick<
-  DashboardParameterMapping,
-  "parameter_id" | "target"
->;
-
-export interface ActionDashboardCard
-  extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
-  action?: WritebackAction;
-  card_id?: CardId | null; // model card id for the associated action
-  card?: Card;
-
-  parameter_mappings?: ActionParametersMapping[] | null;
-  visualization_settings: {
-    [key: string]: unknown;
-    "button.label"?: string;
-    click_behavior?: ClickBehavior;
-    actionDisplayType?: ActionDisplayType;
-  };
+export interface WritebackActionListQuery {
+  "model-id"?: CardId;
 }

@@ -3,7 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -24,7 +24,6 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
   (:import
@@ -37,15 +36,17 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
+(driver/register! :oracle, :parent #{:sql-jdbc
+                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+(doseq [[feature supported?] {:datetime-diff    true
+                              :now              true
+                              :convert-timezone true}]
+  (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:oracle :datetime-diff] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:oracle :convert-timezone]
-  [_driver _feat _db]
-  true)
+(defmethod driver/prettify-native-form :oracle
+  [_ native-form]
+  (sql.u/format-sql-and-fix-params :plsql native-form))
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -180,11 +181,7 @@
   [_driver]
   :oracle)
 
-(defmethod sql.qp/honey-sql-version :oracle
-  [_driver]
-  2)
-
-;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
+;;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
 (defn- format-mod
   [_fn [x y]]
   (let [[x-sql & x-args] (sql/format-expr x {:nested true})
@@ -508,47 +505,45 @@
   [driver query context respond]
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context (partial remove-rownum-column respond)))
 
-(defmethod driver.common/current-db-time-date-formatters :oracle
+(defmethod driver/db-default-timezone :oracle
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT DBTIMEZONE FROM dual")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
+
+(defmethod sql-jdbc.sync/excluded-schemas :oracle
   [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :oracle
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
-
-(defmethod driver/current-db-time :oracle [& args]
-  (apply driver.common/current-db-time args))
-
-;; don't redef if already definied -- test extensions override this impl
-(when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
-  (defmethod sql-jdbc.sync/excluded-schemas :oracle
-    [_]
-    #{"ANONYMOUS"
-      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
-      "APEX_040200"
-      "APPQOSSYS"
-      "AUDSYS"
-      "CTXSYS"
-      "DBSNMP"
-      "DIP"
-      "GSMADMIN_INTERNAL"
-      "GSMCATUSER"
-      "GSMUSER"
-      "LBACSYS"
-      "MDSYS"
-      "OLAPSYS"
-      "ORDDATA"
-      "ORDSYS"
-      "OUTLN"
-      "RDSADMIN"
-      "SYS"
-      "SYSBACKUP"
-      "SYSDG"
-      "SYSKM"
-      "SYSTEM"
-      "WMSYS"
-      "XDB"
-      "XS$NULL"}))
+  #{"ANONYMOUS"
+    ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+    "APEX_040200"
+    "APPQOSSYS"
+    "AUDSYS"
+    "CTXSYS"
+    "DBSNMP"
+    "DIP"
+    "DVSYS"
+    "GSMADMIN_INTERNAL"
+    "GSMCATUSER"
+    "GSMUSER"
+    "LBACSYS"
+    "MDSYS"
+    "OLAPSYS"
+    "ORDDATA"
+    "ORDSYS"
+    "OUTLN"
+    "RDSADMIN"
+    "SYS"
+    "SYSBACKUP"
+    "SYSDG"
+    "SYSKM"
+    "SYSTEM"
+    "WMSYS"
+    "XDB"
+    "XS$NULL"})
 
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
@@ -557,9 +552,9 @@
 (defmethod sql-jdbc.describe-table/get-table-pks :oracle
   [_driver ^Connection conn _ table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into #{} (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata nil nil (:name table))
-               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+    (into [] (sql-jdbc.sync.common/reducible-results
+              #(.getPrimaryKeys metadata nil nil (:name table))
+              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]
@@ -575,7 +570,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -592,7 +587,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -623,14 +618,14 @@
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]
-  (let [s (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
-              ;; Oracle doesn't like `Z` to mean UTC
-              (str/replace #"Z$" "UTC"))]
-    (format "timestamp '%s'" s)))
+  ;; Oracle doesn't like `Z` to mean UTC
+  (format "timestamp '%s'" (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
+                               (str/replace #" Z$" " UTC"))))
 
 (defmethod unprepare/unprepare-value [:oracle ZonedDateTime]
   [_ t]
-  (format "timestamp '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)))
+  (format "timestamp '%s'" (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)
+                               (str/replace #" Z$" " UTC"))))
 
 (defmethod unprepare/unprepare-value [:oracle Instant]
   [driver t]

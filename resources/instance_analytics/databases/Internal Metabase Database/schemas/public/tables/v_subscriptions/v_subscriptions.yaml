@@ -1,0 +1,24 @@
+name: v_subscriptions
+display_name: V Subscriptions
+description: null
+created_at: '2023-11-01T02:10:33.27391Z'
+db_id: Internal Metabase Database
+schema: public
+entity_type: entity/SubscriptionTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: null
+caveats: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_subscriptions
+  model: Table
+database_require_filter: null
+estimated_row_count: null

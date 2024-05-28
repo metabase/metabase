@@ -1,6 +1,7 @@
 (ns hooks.common
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.pprint]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.pprint]))
 
 (defn with-macro-meta
   "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
@@ -138,6 +139,84 @@
                   (or b (hooks/token-node '_)) (hooks/token-node 'nil)
                   (or c (hooks/token-node '_)) (hooks/token-node 'nil)
                   (or d (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-five-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-six-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e f]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil, f nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e f] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or f (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-seven-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e f g]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil, f nil, g nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e f g] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or f (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or g (hooks/token-node '_)) (hooks/token-node 'nil)])
                 body))]
     {:node node*}))
 
@@ -291,3 +370,33 @@
                                       arg])
                   body))]
     {:node node*}))
+
+(defn node->qualified-symbol [node]
+  (try
+    (when (hooks/token-node? node)
+      (let [sexpr (hooks/sexpr node)]
+        (when (symbol? sexpr)
+          (when-let [resolved (hooks/resolve {:name sexpr})]
+            (symbol (name (:ns resolved)) (name (:name resolved)))))))
+    ;; some symbols like `*count/Integer` aren't resolvable.
+    (catch Exception _
+      nil)))
+
+(defn format-string-specifier-count
+  "Number of things like `%s` in a format string, not counting newlines (`%n`) or escaped percent signs (`%%`). For
+  checking the number of args to something that takes a format string."
+  [format-string]
+  (count (re-seq #"(?<!%)%(?![%n])" format-string)))
+
+(comment
+  ;; should be 1
+  (format-string-specifier-count "%s %%")
+
+  ;; should be 2
+  (format-string-specifier-count "%s %%%n%s")
+
+  ;; should be 0
+  (format-string-specifier-count "%n%%%%")
+
+  ;; should be 1
+  (format-string-specifier-count "%-02d"))

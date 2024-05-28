@@ -1,1 +1,2 @@
-export { default } from "./BulkActionBar";
+export * from "./BulkActionBar";
+export * from "./BulkActionBar.styled";

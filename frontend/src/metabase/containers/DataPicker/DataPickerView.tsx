@@ -1,18 +1,18 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { MIN_SEARCH_LENGTH } from "./constants";
-
-import type { DataPickerProps, DataPickerDataType } from "./types";
-import type { DataTypeInfoItem } from "./utils";
-
 import CardPicker from "./CardPicker";
-import DataTypePicker from "./DataTypePicker";
-import DataSearch from "./DataSearch";
-import RawDataPicker from "./RawDataPicker";
-
-import EmptyState from "./EmptyState";
 import { Root } from "./DataPickerView.styled";
+import DataSearch from "./DataSearch";
+import DataTypePicker from "./DataTypePicker";
+import EmptyState from "./EmptyState";
+import RawDataPicker from "./RawDataPicker";
+import { MIN_SEARCH_LENGTH } from "./constants";
+import type {
+  DataPickerProps,
+  DataPickerDataType,
+  DataTypeInfoItem,
+} from "./types";
 
 interface DataPickerViewProps extends DataPickerProps {
   dataTypes: DataTypeInfoItem[];
@@ -82,4 +82,5 @@ function DataPickerView(props: DataPickerViewProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataPickerView;

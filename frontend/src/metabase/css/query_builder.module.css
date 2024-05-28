@@ -1,0 +1,335 @@
+/* @layout */
+.QueryBuilder {
+  transition: margin-right 0.35s;
+}
+
+/* a section of the graphical query itself */
+.QuerySection {
+  display: flex;
+  align-items: center;
+}
+
+.QueryLabel {
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mb-color-text-medium);
+}
+
+.QueryFilters {
+  max-width: 400px;
+}
+
+.QueryFilterList {
+  display: flex;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.FilterSection {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.TooltipFilterList .QueryFilterList {
+  flex-direction: column;
+}
+
+.TooltipFilterList .QuerySection {
+  margin-left: -0.5rem;
+}
+
+.SelectionModule {
+  color: var(--mb-color-brand);
+}
+
+.SelectionList {
+  padding-top: 5px;
+  overflow-y: auto;
+  max-height: 340px;
+}
+
+.SelectionItems {
+  max-width: 320px;
+}
+
+.SelectionItems.SelectionItemsOpen {
+  opacity: 1;
+  transition: opacity 0.3s linear;
+  pointer-events: all;
+}
+
+.SelectionItems.SelectionItemsExpanded {
+  max-height: inherit;
+}
+
+.SelectionItem {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.75rem 1.5rem 0.75rem 0.75rem;
+  background-color: var(--mb-color-bg-white);
+}
+
+.SelectionItem:hover {
+  background-color: currentColor;
+}
+
+.SelectionItem :global(.Icon) {
+  margin-left: 0.5rem;
+  margin-right: 0.75rem;
+  color: currentcolor;
+}
+
+.SelectionItem :global(.Icon-check) {
+  opacity: 0;
+}
+
+.SelectionItem :global(.Icon-chevrondown) {
+  opacity: 1;
+}
+
+.SelectionItem:hover :global(.Icon) {
+  color: var(--color-text-white) !important;
+}
+
+.SelectionItem:hover .SelectionModuleDisplay {
+  color: var(--color-text-white);
+}
+
+.SelectionItem:hover .SelectionModuleDescription {
+  color: var(--color-text-white);
+}
+
+.SelectionItem.SelectionItemSelected :global(.Icon-check) {
+  opacity: 1;
+}
+
+.SelectionModuleDisplay {
+  color: currentColor;
+  margin-bottom: 0.25em;
+}
+
+.SelectionModuleDescription {
+  color: var(--mb-color-text-medium);
+  font-size: 0.8rem;
+}
+
+.Visualization {
+  transition: background 0.3s linear;
+}
+
+.Visualization.VisualizationLoading {
+  transition: background 0.3s linear;
+}
+
+.Loading {
+  background-color: color-mod(var(--mb-color-bg-white) alpha(-28%));
+  transition: opacity 0.5s;
+}
+
+.Loading.LoadingHidden {
+  background-color: transparent;
+  pointer-events: none;
+}
+
+.Loading.LoadingHidden * {
+  pointer-events: none;
+}
+
+.QueryError {
+  flex-direction: column;
+  justify-content: center;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.QueryErrorImage {
+  background-repeat: no-repeat;
+  margin-bottom: 1rem;
+}
+
+.QueryErrorImageQueryError {
+  width: 120px;
+  height: 120px;
+  background-image: url("~assets/img/no_understand.svg");
+}
+
+.QueryErrorImageServerError {
+  width: 120px;
+  height: 148px;
+  background-image: url("~assets/img/blown_up.svg");
+}
+
+.QueryErrorImageTimeout {
+  width: 120px;
+  height: 120px;
+  background-image: url("~assets/img/stopwatch.svg");
+}
+
+.QueryErrorMessageText {
+  line-height: 1.4;
+}
+
+.QueryErrorAdminEmail {
+  position: relative;
+  display: inline-block;
+  border-radius: var(--default-border-radius);
+  border: 1px solid var(--mb-color-border);
+  margin-top: var(--margin-2);
+  padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
+}
+
+.QueryError-adminEmail::before {
+  content: "Admin Email";
+  font-size: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  background-color: white;
+  padding-left: var(--padding-1);
+  padding-right: var(--padding-1);
+  position: absolute;
+  top: -0.75em;
+  left: 50%;
+  margin-left: -41px; /* ugh */
+}
+
+.QueryError2 {
+  padding-top: 4rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.QueryError2Details {
+  max-width: 500px;
+}
+
+.GuiBuilder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9em;
+  z-index: 2;
+  background-color: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
+}
+
+/* for medium breakpoint only expand if data reference is not shown */
+@media screen and (--breakpoint-min-md) {
+  .GuiBuilder {
+    font-size: 1em;
+  }
+}
+
+/* un-expanded (default) */
+.GuiBuilderRow {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.GuiBuilderRow:last-child {
+  border-bottom-color: transparent;
+}
+
+.GuiBuilderData {
+  border-right: 1px solid var(--mb-color-border);
+  z-index: 1; /* moved the arrow thingy above the filter outline */
+}
+
+.GuiBuilderFilteredBy {
+  border-right: 1px solid transparent;
+}
+
+.GuiBuilderView {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+/* expanded */
+.GuiBuilder.GuiBuilderExpand {
+  flex-direction: row;
+}
+
+.GuiBuilder.GuiBuilderExpand .GuiBuilderRow:last-child {
+  border-right-color: transparent;
+  border-bottom-color: var(--mb-color-border);
+}
+
+.GuiBuilder.GuiBuilderExpand .GuiBuilderFilteredBy {
+  border-right-color: var(--mb-color-border);
+}
+
+.GuiBuilderSection {
+  position: relative;
+  min-height: 55px;
+  min-width: 100px;
+}
+
+.GuiBuilderSectionLabel {
+  background-color: white;
+  position: absolute;
+  top: -7px;
+  left: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* VISUALIZATION SETTINGS */
+
+.RunButton {
+  opacity: 1;
+  transition: transform 0.25s, opacity 0.25s;
+}
+
+.RunButton.RunButtonCompact {
+  padding: 16px 32px;
+}
+
+.RunButton.RunButtonHidden {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion) {
+  .RunButton,
+  .RunButton.RunButtonCompact,
+  .RunButton.RunButtonHidden {
+    transition-duration: 10ms;
+  }
+}
+
+/* DATA REFERENCE */
+
+.ObjectJSON {
+  max-height: 200px;
+  overflow: scroll;
+  padding: 1em;
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 2px;
+  white-space: pre-wrap;
+}
+
+.QuestionTooltipTarget {
+  color: var(--mb-color-text-light);
+  border: 2px solid currentColor;
+  border-radius: 99px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.QuestionTooltipTarget::after {
+  content: "?";
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* need to do this ugliness to override the locally scoped font size from Scalar.css */
+.QueryBuilder .ScalarValue {
+  font-size: 5em;
+}

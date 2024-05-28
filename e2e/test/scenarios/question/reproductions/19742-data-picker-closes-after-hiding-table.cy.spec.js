@@ -1,4 +1,10 @@
-import { restore, popover, openNavigationSidebar } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  openNavigationSidebar,
+  entityPickerModal,
+  entityPickerModalTab,
+} from "e2e/support/helpers";
 
 describe("issue 19742", () => {
   beforeEach(() => {
@@ -10,27 +16,37 @@ describe("issue 19742", () => {
   // and don't refresh the app state (like by doing cy.visit)
   it("shouldn't auto-close the data selector after a table was hidden", () => {
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
-    selectFromDropdown("Question");
-    selectFromDropdown("Sample Database");
+
+    popover().findByText("Question").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").should("exist");
+      cy.button("Close").click();
+    });
 
     openNavigationSidebar();
     cy.icon("gear").click();
     selectFromDropdown("Admin settings");
 
-    cy.findByText("Data Model").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Table Metadata").click();
     hideTable("Orders");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
-    selectFromDropdown("Question");
-    selectFromDropdown("Sample Database");
+    popover().findByText("Question").click();
 
-    popover().within(() => {
-      cy.findByText("Products");
-      cy.findByText("Reviews");
-      cy.findByText("People");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+
       cy.findByText("Orders").should("not.exist");
+      cy.findByText("Products").should("exist");
+      cy.findByText("Reviews").should("exist");
+      cy.findByText("People").should("exist");
     });
   });
 });

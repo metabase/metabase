@@ -14,7 +14,7 @@ Execute a query and retrieve the results in the usual format. The query will not
 
 ### PARAMS:
 
-*  **`database`** value may be nil, or if non-nil, value must be an integer.
+*  **`database`** nullable integer
 
 *  **`query`**
 
@@ -24,7 +24,7 @@ Execute a query and download the result data as a file in the specified format.
 
 ### PARAMS:
 
-*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
+*  **`export-format`** enum of csv, api, xlsx, json
 
 *  **`query`** value must be a valid JSON string.
 
@@ -58,7 +58,7 @@ Return parameter values for cards or dashboards that are being edited. Expects a
 
 ### PARAMS:
 
-*  **`query`** string
+*  **`query`** value must be a non-blank string.
 
 *  **`parameter`** parameter must be a map with :id and :type keys
 
@@ -80,7 +80,7 @@ Generate a pivoted dataset for an ad-hoc query.
 
 ### PARAMS:
 
-*  **`database`** value may be nil, or if non-nil, value must be an integer.
+*  **`database`** nullable value must be an integer greater than zero.
 
 *  **`query`**
 

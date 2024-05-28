@@ -1,5 +1,3 @@
-import React from "react";
-
 import { HAS_LOCAL_STORAGE } from "metabase/lib/dom";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out
@@ -38,19 +36,28 @@ const obfuscateString = (original, string) => {
 
 export function enableTranslatedStringReplacement() {
   const c3po = require("ttag");
+
   const _t = c3po.t;
   const _jt = c3po.jt;
   const _ngettext = c3po.ngettext;
+  const _c = c3po.c;
+
   c3po.t = (...args) => {
     return obfuscateString(args[0][0], _t(...args));
   };
   c3po.ngettext = (...args) => {
     return obfuscateString(args[0][0], _ngettext(...args));
   };
-  // eslint-disable-next-line react/display-name
   c3po.jt = (...args) => {
     const elements = _jt(...args);
     return <span style={{ backgroundColor: "currentcolor" }}>{elements}</span>;
+  };
+  c3po.c = (...args) => {
+    return Object.assign(_c(...args), {
+      t: c3po.t,
+      jt: c3po.jt,
+      ngettext: c3po.ngettext,
+    });
   };
 }
 

@@ -2,12 +2,13 @@
   (:require
    [cheshire.core :as json]
    [clojure.math.combinatorics :as math.combo]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.scoring :as scoring]))
+   [metabase.search.scoring :as scoring]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel verified-score-test
   (let [score #'ee-scoring/verified-score
@@ -23,14 +24,12 @@
 
 (defn- ee-score
   [search-string item]
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]}
-                premium-features/enable-enhancements? (constantly true)]
+  (mt/with-premium-features #{:official-collections :content-verification}
     (-> (scoring/score-and-result search-string item) :score)))
 
 (defn- oss-score
   [search-string item]
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]}
-                premium-features/enable-enhancements? (constantly false)]
+  (mt/with-premium-features #{}
     (-> (scoring/score-and-result search-string item) :score)))
 
 (deftest official-collection-tests
@@ -49,7 +48,10 @@
       (doseq [item [a b c d]]
         (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
                (ee-score search-string item))
-            (str "Score should be greater for item: " item " vs " (assoc item :collection_authority_level "official"))))
+            (str "On EE, should be greater for item: " item " vs " (assoc item :collection_authority_level "official")))
+        (is (= (oss-score search-string (assoc item :collection_authority_level "official"))
+               (oss-score search-string item))
+            (str "On OSS, should be the same for item: " item " vs " (assoc item :collection_authority_level "official"))))
       (is (= ["customer examples of bad sorting"
               "customer success stories"
               "examples of custom expressions"
@@ -119,7 +121,7 @@
              (-> (scoring/top-results
                   results
                   1
-                  (map #(metabase.search.scoring/score-and-result search-string %)))
+                  (map #(scoring/score-and-result search-string %)))
                  first
                  :name))))))
 
@@ -127,3 +129,23 @@
   (test-corups ["foo" "bar"])
   (test-corups ["foo" "bar" "baz"])
   (test-corups ["foo" "bar" "baz" "quux"]))
+
+(deftest score-result-test
+  (let [score-result-names (fn [] (set (map :name (scoring/score-result {}))))]
+    (testing "does not include scores for official collection or verified if features are disabled"
+      (mt/with-premium-features #{}
+        (is (= #{}
+               (set/intersection #{"official collection score" "verified"}
+                                 (score-result-names))))))
+
+    (testing "includes official collection score if :official-collections is enabled"
+      (mt/with-premium-features #{:official-collections}
+        (is (set/subset? #{"official collection score"} (score-result-names)))))
+
+    (testing "includes verified if :content-verification is enabled"
+      (mt/with-premium-features #{:content-verification}
+        (is (set/subset? #{"verified"} (score-result-names)))))
+
+    (testing "includes both if has both features"
+      (mt/with-premium-features #{:official-collections :content-verification}
+        (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))

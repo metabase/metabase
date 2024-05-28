@@ -1,13 +1,15 @@
 (ns metabase.lib.metadata
   (:require
-   [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
+
+;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
 ;;; Column vs Field?
 ;;;
@@ -16,249 +18,62 @@
 ;;; includes not only `Field`s but also the columns returned by a stage of a query, e.g. `SELECT count(*) AS count`
 ;;; returns a `Column` called `count`, but it's not a `Field` because it's not associated with an actual Field in the
 ;;; application database.
-;;;
-;;; Column = any column returned by a query or stage of a query
-;;; Field  = a Column that is associated with a capital-F Field in the application database, i.e. has an `:id`
-;;;
-;;; All Fields are Columns, but not all Columns are Fields.
-;;;
-;;; Also worth a mention: we also have `Dimension`s, associated with the `dimension` table in the application
-;;; database, which can act like psuedo-Fields or affect how we treat normal Fields. For example, Dimensions are used
-;;; to implement column remapping, e.g. the GUI might display values of `categories.name` when it presents filter
-;;; options for `venues.category_id` -- you can remap a meaningless integer FK column to something more helpful.
-;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
-;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
-;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
-(mr/def ::column-source
-  [:enum
-   ;; these are for things from some sort of source other than the current stage;
-   ;; they must be referenced with string names rather than Field IDs
-   :source/card
-   :source/native
-   :source/previous-stage
-   ;; these are for things that were introduced by the current stage of the query; `:field` references should be
-   ;; referenced with Field IDs if available.
-   ;;
-   ;; default columns returned by the `:source-table` for the current stage.
-   :source/table-defaults
-   ;; specifically introduced by the corresponding top-level clauses.
-   :source/fields
-   :source/aggregations
-   :source/breakouts
-   ;; introduced by a join, not necessarily ultimately returned.
-   :source/joins
-   ;; Introduced by `:expressions`; not necessarily ultimately returned.
-   :source/expressions
-   ;; Not even introduced, but 'visible' because this column is implicitly joinable.
-   :source/implicitly-joinable])
+(mu/defn ->metadata-provider :- ::lib.schema.metadata/metadata-provider
+  "Get a MetadataProvider from something that can provide one."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (if (lib.metadata.protocols/metadata-provider? metadata-providerable)
+    metadata-providerable
+    (some-> metadata-providerable :lib/metadata ->metadata-provider)))
 
-(def ColumnMetadata
-  "Malli schema for a valid map of column metadata, which can mean one of two things:
-
-  1. Metadata about a particular Field in the application database. This will always have an `:id`
-
-  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor
-     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns
-     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`
-     and thus will not have an `:id`.
-
-  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides
-  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
-  to differentiate between the two versions."
-  [:map
-   [:lib/type  [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
-   [:name      ::lib.schema.common/non-blank-string]
-   ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-   [:base_type ::lib.schema.common/base-type]
-   [:id             {:optional true} ::lib.schema.id/field]
-   [:display_name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   ;; if this is a field from another table (implicit join), this is the field in the current table that should be
-   ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
-   ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
-   ;; `:source-field`.
-   [:fk_field_id    {:optional true} [:maybe ::lib.schema.id/field]]
-   ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-   ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-   ;; remove it.
-   [:source_alias   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; what top-level clause in the query this metadata originated from, if it is calculated (i.e., if this metadata
-   ;; was generated by [[metabase.lib.metadata.calculation/metadata]])
-   [:lib/source     {:optional true} [:ref ::column-source]]
-   ;;
-   ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
-   ;; the [[metabase.lib.metadata.calculation/metadata]]
-   ;;
-   ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
-   ;; name of this clause as exported by the previous stage, source table, or join.
-   [:lib/source-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
-   ;; guaranteed to be unique in each stage of the query.
-   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]])
-
-(def ^:private CardMetadata
-  [:map
-   [:lib/type [:= :metadata/card]]
-   [:id ::lib.schema.id/card]
-   [:name ::lib.schema.common/non-blank-string]])
-
-(def ^:private SegmentMetadata
-  [:map
-   [:lib/type [:= :metadata/segment]]
-   [:id ::lib.schema.id/segment]
-   [:name ::lib.schema.common/non-blank-string]])
-
-(def ^:private MetricMetadata
-  [:map
-   [:lib/type [:= :metadata/metric]]
-   [:id ::lib.schema.id/metric]
-   [:name ::lib.schema.common/non-blank-string]])
-
-(def ^:private TableMetadata
-  [:map
-   [:lib/type [:= :metadata/table]]
-   [:id ::lib.schema.id/table]
-   [:name ::lib.schema.common/non-blank-string]
-   [:display_name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; This is now optional! If the [[MetadataProvider]] provides it, great, but if not we can always make the
-   ;; subsequent request to fetch fields separately.
-   [:fields   {:optional true} [:maybe [:sequential ColumnMetadata]]]
-   [:segments {:optional true} [:maybe [:sequential SegmentMetadata]]]
-   [:metrics  {:optional true} [:maybe [:sequential MetricMetadata]]]])
-
-(def DatabaseMetadata
-  "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
-  the frontend Query Builder."
-  [:map
-   [:lib/type [:= :metadata/database]]
-   [:id ::lib.schema.id/database]
-   ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
-   [:tables {:optional true} [:sequential TableMetadata]]])
-
-(def MetadataProvider
-  "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/metadata-provider?])
-
-(defmulti ^:private ->metadata-provider*
-  {:arglists '([x])}
-  lib.dispatch/dispatch-value
-  :hierarchy lib.hierarchy/hierarchy)
-
-(defmethod ->metadata-provider* :default
-  [x]
-  x)
-
-(defmethod ->metadata-provider* :mbql/query
-  [query]
-  (->metadata-provider* (:lib/metadata query)))
-
-(mu/defn ^:private ->metadata-provider :- MetadataProvider
-  [x :- some?]
-  (if (lib.metadata.protocols/metadata-provider? x)
-    x
-    (->metadata-provider* x)))
-
-(mu/defn database :- DatabaseMetadata
+(mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."
-  [metadata-provider]
-  (lib.metadata.protocols/database (->metadata-provider metadata-provider)))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (lib.metadata.protocols/database (->metadata-provider metadata-providerable)))
 
-(mu/defn tables :- [:sequential TableMetadata]
+(mu/defn tables :- [:sequential ::lib.schema.metadata/table]
   "Get metadata about all Tables for the Database we're querying."
-  [metadata-provider]
-  (lib.metadata.protocols/tables (->metadata-provider metadata-provider)))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (lib.metadata.protocols/tables (->metadata-provider metadata-providerable)))
 
-(mu/defn table :- [:or TableMetadata CardMetadata]
+(mu/defn table :- ::lib.schema.metadata/table
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
-  ([metadata-provider
-    table-id :- [:or
-                 ::lib.schema.id/table
-                 ::lib.schema.id/table-card-id-string]]
-   (if-let [card-id (lib.util/string-table-id->card-id table-id)]
-     (lib.metadata.protocols/card  (->metadata-provider metadata-provider) card-id)
-     (lib.metadata.protocols/table (->metadata-provider metadata-provider) table-id)))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
-  ([metadata-provider
-    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name        :- ::lib.schema.common/non-blank-string]
-   (some (fn [table-metadata]
-           (when (and (or (nil? table-schema)
-                          (= (:schema table-metadata) table-schema))
-                      (= (:name table-metadata) table-name))
-             table-metadata))
-         (tables metadata-provider))))
-
-(mu/defn fields :- [:sequential ColumnMetadata]
+(mu/defn fields :- [:sequential ::lib.schema.metadata/column]
   "Get metadata about all the Fields belonging to a specific Table."
-  ([metadata-provider
-    table-id          :- ::lib.schema.id/table]
-   (lib.metadata.protocols/fields (->metadata-provider metadata-provider) table-id))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
-  ([metadata-provider
-    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name        :- ::lib.schema.common/non-blank-string]
-   (fields metadata-provider
-           (:id (table metadata-provider table-schema table-name)))))
+(mu/defn metadatas-for-table :- [:sequential [:or
+                                              ::lib.schema.metadata/column
+                                              ::lib.schema.metadata/metric
+                                              ::lib.schema.metadata/segment]]
+  "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
+   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- [:enum :metadata/column :metadata/metric :metadata/segment]
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id))
 
-(mu/defn field :- ColumnMetadata
+(mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
-  ([metadata-provider
-    field-id          :- ::lib.schema.id/field]
-   (lib.metadata.protocols/field (->metadata-provider metadata-provider) field-id))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   field-id              :- ::lib.schema.id/field]
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
 
-  ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
-  ([metadata-provider
-    table-id          :- ::lib.schema.id/table
-    field-name        :- ::lib.schema.common/non-blank-string]
-   (some (fn [field-metadata]
-           (when (= (:name field-metadata) field-name)
-             field-metadata))
-         (fields metadata-provider table-id)))
-
-  ([metadata-provider
-    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name        :- ::lib.schema.common/non-blank-string
-    field-name        :- ::lib.schema.common/non-blank-string]
-   (let [table-metadata (table metadata-provider table-schema table-name)]
-     (field metadata-provider (:id table-metadata) field-name))))
+(mu/defn setting :- any?
+  "Get the value of a Metabase setting for the instance we're querying."
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    setting-key           :- [:or string? keyword?]]
+   (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
 
 ;;;; Stage metadata
 
-(def StageMetadata
-  "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
-  like
-
-    {:database 1
-     :lib/type :mbql/query
-     :stages   [{:lib/type :mbql.stage/mbql
-                 :native   \"SELECT id, name FROM VENUES;\"}]}
-
-  might have stage metadata like
-
-    {:columns [{:name \"id\", :base-type :type/Integer}
-               {:name \"name\", :base-type :type/Text}]}
-
-  associated with the query's lone stage.
-
-  At some point in the near future we will hopefully attach this metadata directly to each stage in a query, so a
-  multi-stage query will have `:lib/stage-metadata` for each stage. The main goal is to facilitate things like
-  returning lists of visible or filterable columns for a given stage of a query. This is TBD, see #28717 for a WIP
-  implementation of this idea.
-
-  This is the same format as the results metadata returned with QP results in `data.results_metadata`. The `:columns`
-  portion of this (`data.results_metadata.columns`) is also saved as `Card.result_metadata` for Saved Questions.
-
-  Note that queries currently actually come back with both `data.results_metadata` AND `data.cols`; it looks like the
-  Frontend actually *merges* these together -- see `applyMetadataDiff` in
-  `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
-  `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
-  [:map
-   [:lib/type [:= :metadata/results]]
-   [:columns [:sequential ColumnMetadata]]])
-
-(mu/defn stage :- [:maybe StageMetadata]
+(mu/defn stage :- [:maybe ::lib.schema.metadata/stage]
   "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative
   index.
 
@@ -268,11 +83,11 @@
    stage-number :- :int]
   (:lib/stage-metadata (lib.util/query-stage query stage-number)))
 
-(mu/defn stage-column :- [:maybe ColumnMetadata]
+(mu/defn stage-column :- [:maybe ::lib.schema.metadata/column]
   "Metadata about a specific column returned by a specific stage of the query, e.g. perhaps the first stage of the
   query has an expression `num_cans`, then
 
-    (lib.metadata/stage-column-metadata query stage \"num_cans\")
+    (lib.metadata/stage-column query stage \"num_cans\")
 
   should return something like
 
@@ -293,20 +108,120 @@
              column))
          (:columns (stage query stage-number)))))
 
-(mu/defn card :- [:maybe CardMetadata]
+(mu/defn card :- [:maybe ::lib.schema.metadata/card]
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."
-  [metadata-provider
-   card-id :- ::lib.schema.id/card]
-  (lib.metadata.protocols/card (->metadata-provider metadata-provider) card-id))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-id               :- ::lib.schema.id/card]
+  (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
 
-(mu/defn segment :- [:maybe SegmentMetadata]
+(mu/defn card-or-throw :- ::lib.schema.metadata/card
+  "Like [[card]], but throws if the Card is not found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-id               :- ::lib.schema.id/card]
+  (or (card metadata-providerable card-id)
+      (throw (ex-info (i18n/tru "Card {0} does not exist, or belongs to a different Database." (pr-str card-id))
+                      {:card-id card-id}))))
+
+(mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the Segment with `segment-id`, if it can be found."
-  [metadata-provider
-   segment-id :- ::lib.schema.id/segment]
-  (lib.metadata.protocols/segment (->metadata-provider metadata-provider) segment-id))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   segment-id            :- ::lib.schema.id/segment]
+  (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
 
-(mu/defn metric :- [:maybe MetricMetadata]
+(mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
   "Get metadata for the Metric with `metric-id`, if it can be found."
-  [metadata-provider
-   metric-id :- ::lib.schema.id/metric]
-  (lib.metadata.protocols/metric (->metadata-provider metadata-provider) metric-id))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metric-id             :- ::lib.schema.id/metric]
+  (when-let [card-meta (lib.metadata.protocols/card (->metadata-provider metadata-providerable) metric-id)]
+    (when (= (:type card-meta) :metric)
+      (assoc card-meta :lib/type :metadata/metric))))
+
+(mu/defn table-or-card :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
+  "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
+  `card__<id>` strings as well. Throws an Exception (Clj-only, due to Malli validation) if passed an integer Table ID
+  and the Table does not exist, since this is a real error; however if passed a `card__<id>` that does not exist,
+  simply returns `nil` (since we do not have a strict expectation that Cards always be present in the
+  MetadataProvider)."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- [:or ::lib.schema.id/table :string]]
+  (if-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+    (card metadata-providerable card-id)
+    (table metadata-providerable table-id)))
+
+(mu/defn editable? :- :boolean
+  "Given a query, returns whether it is considered editable.
+
+  There's no editable flag! Instead, a query is **not** editable if:
+  - Database is missing from the metadata (no permissions at all);
+  - Database is present but it doesn't have native write permissions;
+  - Database is present but tables (at least the `:source-table`) are missing (missing table permissions); or
+  - Similarly, the card specified by `:source-card` is missing from the metadata.
+  If metadata for the `:source-table` or `:source-card` can be found, then the query is editable."
+  [query :- ::lib.schema/query]
+  (let [{:keys [source-table source-card] :as stage0} (lib.util/query-stage query 0)]
+    (boolean (and (when-let [{:keys [id]} (database query)]
+                    (= (:database query) id))
+                  (or (and source-table (table query source-table))
+                      (and source-card  (card  query source-card))
+                      (and
+                       (= (:lib/type stage0) :mbql.stage/native)
+                       ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
+                       ;; TODO Find a way to unify has-write-permissions and this function?
+                       (= :write (:native-permissions (database query)))))))))
+
+;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
+;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use
+;;; this (like QP middleware). Maybe we should only have a throwing version.
+(mu/defn bulk-metadata :- [:maybe [:sequential [:map
+                                                [:lib/type :keyword]
+                                                [:id pos-int?]]]]
+  "Fetch multiple objects in bulk. If our metadata provider is a bulk provider (e.g., the application database
+  metadata provider), does a single fetch with [[lib.metadata.protocols/bulk-metadata]] if not (i.e., if this is a
+  mock provider), fetches them with repeated calls to the appropriate single-object method,
+  e.g. [[lib.metadata.protocols/field]].
+
+  The order of the returned objects will match the order of `ids`, but does check that all objects are returned. If
+  you want that behavior, use [[bulk-metadata-or-throw]] instead.
+
+  This can also be called for side-effects to warm the cache."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- ::lib.schema.metadata/type
+   ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
+  (when-let [ids (not-empty (cond-> ids
+                              (not (set? ids)) distinct))] ; remove duplicates but preserve order.
+    (let [provider   (->metadata-provider metadata-providerable)
+          results    (lib.metadata.protocols/metadatas provider metadata-type ids)
+          id->result (into {} (map (juxt :id identity)) results)]
+      (into []
+            (comp (map id->result)
+                  (filter some?))
+            ids))))
+
+(defn- missing-bulk-metadata-error [metadata-type id]
+  (ex-info (i18n/tru "Failed to fetch {0} {1}: either it does not exist, or it belongs to a different Database"
+                     (pr-str metadata-type)
+                     (pr-str id))
+           {:status-code   400
+            :metadata-type metadata-type
+            :id            id}))
+
+(mu/defn bulk-metadata-or-throw :- [:maybe [:sequential [:map
+                                                         [:lib/type :keyword]
+                                                         [:id pos-int?]]]]
+  "Like [[bulk-metadata]], but verifies that all the requested objects were returned; throws an Exception otherwise."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- ::lib.schema.metadata/type
+   ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
+  (let [results     (bulk-metadata metadata-providerable metadata-type ids)
+        fetched-ids (into #{} (keep :id) results)]
+    (doseq [id ids]
+      (when-not (contains? fetched-ids id)
+        (throw (missing-bulk-metadata-error metadata-type id))))
+    results))
+
+;; Invocation tracker provider
+(mu/defn invoked-ids :- [:maybe [:sequential :any]]
+  "Get all invoked ids of a metadata type."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-type         :- ::lib.schema.metadata/type]
+  (lib.metadata.protocols/invoked-ids metadata-providerable metadata-type))

@@ -8,90 +8,107 @@ redirect_from:
 
 This page covers permissions for databases and tables. If you haven't already, check out our [Permissions overview][permissions-overview].
 
-## Permissions view
+## Setting permissions on a database, schema, or table
 
-Now that you have some groups, you’ll want to control their data access by going to **Admin settings** > **Permissions**. You’ll see an interactive table that displays all of your databases and all of your groups, and the level of access your groups have for each database.
+To set data permissions on a database, schema, or table for a group:
 
-## Setting permissions on a database
+1. Hit Cmd/Ctrl + K. Search for **Permissions** and click on the Permissions settings result. Metabase will default to the **Data** tab.
 
-You can set various levels of permissions on a data source, from querying access to managing the database connection.
+Or
 
-- [Data access](#data-access)
-- [Native querying](#native-query-editing)
-- [Download results](#download-results)\*
-- [Manage data model](#manage-data-model)\*
-- [Manage database](#manage-database)\*
+1. Click on the **gear** icon in the upper right.
 
-\* Available on paid plans.
+2. Select **Admin settings**.
 
-## Data access
+3. Click on the **Permissions** tab, which defaults to the **Data** tab.
 
-You can click on any cell in the permissions table to change a group’s access level. When you’re done making your changes, just click the **Save changes** button in the top-right, and you’ll see a confirmation dialog summarizing the changes.
+You can view permissions either by group or by database.
 
-### Unrestricted access
+## Data permission types
 
-Members of the group can create questions using the graphical query builder on data from all tables (within all namespaces/schemas, if your database uses those), including any tables that might get added to this database in the future.
+You can set the following types of permissions on a database, schema, or table:
 
-To grant a group the ability to write native/SQL questions or create [actions](../actions/start.md), you must additionally set [Native query editing](#native-query-editing) to **Yes**.
+- [View data](#view-data-permissions)
+- [Create queries](#create-queries-permissions)
+- [Download results](#download-results-permissions)
+- [Manage table metadata](#manage-table-metadata-permissions)
+- [Manage database](#manage-database-permissions)
 
-### Granular access
+## View data permissions
 
-**Granular access** allows administrators to explicitly set data access to tables or schemas within a database, with "data access" here meaning the ability to create questions using the graphical query builder. In practice, this means that:
+The **View data** permission determines what data people can see. Permission levels include:
 
-- Admins can set the group's access to individual tables to either **Unrestricted**, **No self-service**, or **Sandboxed** access.
-- If a new table gets added to this database in the future, the group won't get access to that new table. An administrator would need to explicitly grant access to that table.
+- [Can view](#can-view-data-permission)
+- [Granular](#granular-view-data-permission)
+- [Sandboxed](#sandboxed-view-data-permission)
+- [Impersonated](#impersonated-view-data-permission)
+- [Blocked](#blocked-view-data-permission)
 
-Note that [Block](#block-access) access is unavailable for individual tables/schemas. Block is a database-level setting; you can only block the entire database.
+For which questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
 
-### No self-service access
+### Can view data permission
 
-**No self-service** prevents people in a group from using the graphical query builder to create new questions that query that database, or from seeing this database in the Browse Data section of your Metabase. Groups with No self-service access can still see saved questions that query this data if they 1) have access to the appropriate collection, and 2) aren't in a group with [blocked access](#block-access) to the database.
+Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
 
-### Block access
+In order to view the data in the [Browse databases](../exploration-and-organization/exploration.md#browse-your-data) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
 
-{% include plans-blockquote.html feature="Block access" %}
+### Granular view data permission
 
-**Block** ensures people in a group can’t see the data from this database, regardless of their permissions at the collection level.
+{% include plans-blockquote.html feature="Granular view data permission" %}
 
-Even if a question is in a collection that the group has access to, but that question queries a database that is blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the relevant data permissions. Essentially, what Block does is make collections permissions insufficient to view a question.
+This option lets you set View data permissions for individual schemas or tables. Available only for databases and schemas. If you select Granular for a database or schema, Metabase will open that data source and ask you to set permissions for each individual schema or table.
 
-If a person in that blocked group belongs to _another_ group that _does_ have the corresponding data access, that more privileged access will take precedence (overruling the block), and they'll be able to view that question.
+For tables, you have the option to set either **Can view** or **Sandboxed**.
 
-"Corresponding data access" here refers to whether the saved question was created using the graphical query builder, or the native/SQL editor, as the required permissions to overrule a block differ depending on how the question was created.
+### Sandboxed view data permission
 
-- If the question was created using the [graphical query builder](../questions/query-builder/introduction.md), the person would also need to be in a group with **Unrestricted data access** or **Sandboxed access** to the relevant database (or table) to view that question.
-- If the question was created using the [native/SQL editor](../questions/native-editor/writing-sql.md), the person would need to be a member of a group with both **Unrestricted data access** and **Native query editing** set to **YES** to view that question.
+{% include plans-blockquote.html feature="Sandboxed view data permission" %}
 
-### Table permissions
+Allows you to set row-level permissions based on user attributes.
 
-When you select [Granular access](#granular-access) for a database, you'll be prompted to set permissions on the tables (or schemas) within that database. Here you'll have some options, which differ depending on your Metabase plan.
+See [Data sandboxes](./data-sandboxes.md).
 
-#### Unrestricted access to the table
+### Impersonated view data permission
 
-Groups with unrestricted access can use the [graphical query builder](../questions/query-builder/introduction.md) to ask questions about this table.
+{% include plans-blockquote.html feature="Impersonated view data permission" %}
 
-#### No self-service access to the table
+The **Impersonated** option lets you use a role in your database to specify what data people can view and query. Impersonation can only be set at the database level, as Metabase will defer to the permissions granted to the database role.
 
-Groups with no self-service access to a table can’t access the table at all. They can, however, view questions that use data from that table, provided the group has access to the question's collection, and they're not in a group with [blocked access](#block-access) for that table's database.
+See [impersonated view data permissions](./impersonation.md)
 
-#### Sandboxed access to the table
+### Blocked view data permission
 
-{% include plans-blockquote.html feature="Data sandboxing" %}
+{% include plans-blockquote.html feature="Blocked view data permission" %}
 
-Sandboxed access to a table can restrict access to columns and rows of a table. Check out [data sandboxing][data-sandboxing].
+**Blocked** ensures people in a group can’t see the data from this database, regardless of their permissions at the collection level.
 
-## Native query editing
+The Blocked view data permission can only be set at the database level.
 
-Members of a group with Native query editing set to "Yes" can:
+Essentially, what Block does is make collections permissions insufficient to view a question. For example, even if a question is in a collection that the group has access to, but that question queries a data source that is blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the relevant data permissions.
 
-- Write new SQL/native queries using the [native query editor](../questions/native-editor/writing-sql.md).
-- Create and edit [custom actions](../actions/custom.md).
+If a person in a blocked group belongs to _another_ group that _does_ have View data access to the data source, that more privileged access will take precedence (overruling the block), and they'll be able to view that question.
 
-This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+## Create queries permissions
 
-People in a group without Native query editing permissions will still be able to view the results of questions created from SQL/native queries (though just the results, not the query), or run an action, provided they 1) have collection access to the question or model, and 2) it doesn't query a database that is [blocked](#block-access) for that group.
+Specifies whether people can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results.
 
-## Download results
+To enable Create queries permissions for a group, that group must be able to view the data source ("Can view" permission.)
+
+Create query levels include:
+
+### Query builder and native create queries permission
+
+People can use Metabase's query builder or its native/SQL editor.
+
+### Query builder only create queries permission
+
+People can create new questions and drill-through existing questions using Metabase's query builder.
+
+### Granular
+
+The granular option lets you define Create queries permissions for each schema and/or table in the database.
+
+## Download results permissions
 
 {% include plans-blockquote.html feature="Download permissions" %}
 
@@ -102,17 +119,17 @@ You can set permissions on whether people in a group can download results (and h
 - 10 thousand rows
 - 1 million rows
 
-## Manage data model
+## Manage table metadata permissions
 
 {% include plans-blockquote.html feature="Data model permissions" %}
 
-You can define whether a group can [edit metadata](../data-modeling/metadata-editing.md). Options are:
+You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No
 - Granular (to set permissions specific to each table).
 
-## Manage database
+## Manage database permissions
 
 {% include plans-blockquote.html feature="Database management permissions" %}
 
@@ -120,19 +137,25 @@ The **Manage database** permission grants access to the settings page for a give
 
 On the database settings page, you can:
 
-- Edit any of the [connection options](../databases/connecting.md) for the data source,
-- [sync schemas](../databases/sync-scan.md#manually-syncing-tables-and-columns), and
-- [scan field values](../databases/sync-scan.md#manually-scanning-column-values).
+- Edit any of the [connection options](../databases/connecting.md) for the data source.
+- [Sync schemas](../databases/sync-scan.md#manually-syncing-tables-and-columns).
+- [Scan field values](../databases/sync-scan.md#manually-scanning-column-values).
 
 Note that only admins can delete database connections in your Metabase, so people with **Manage database** permissions won't see the **Remove database** button.
+
+## Revoke access even though "All Users" has greater access
+
+If you see this modal pop-up, Metabase is telling you that the people in the All Users group (that is, everyone in your Metabase), have a higher level of access to the database, schema, or table that you're setting permissions on. To limit your current group to your preferred permission level, the All Users group must have a less permissive level of access to the data source in question.
 
 ## Further reading
 
 - [Permissions introduction](./introduction.md)
+- [Impersonation](./impersonation.md)
 - [Learn permissions](https://www.metabase.com/learn/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
+- [Users, roles, and privileges](../databases/users-roles-privileges.md)
 
 [collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

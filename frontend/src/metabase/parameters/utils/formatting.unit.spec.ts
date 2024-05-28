@@ -1,18 +1,32 @@
-import { PRODUCTS, ORDERS } from "__support__/sample_database_fixture";
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+  ORDERS,
+} from "metabase-types/api/mocks/presets";
 
-import Field from "metabase-lib/metadata/Field";
 import { formatParameterValue } from "./formatting";
 
-const numberField = ORDERS.TOTAL;
-const textField = PRODUCTS.TITLE;
-const categoryField = PRODUCTS.CATEGORY;
+const REMAPPED_FIELD_ID = 100;
 
-const remappedField = new Field({
-  base_type: "type/Text",
-  human_readable_field_id: numberField.id,
-  remapping: new Map([[123456789, 0]]),
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  fields: [
+    createMockField({
+      id: REMAPPED_FIELD_ID,
+      base_type: "type/Text",
+      remappings: [[123456789, "A"]],
+    }),
+  ],
 });
+
+const numberField = checkNotNull(metadata.field(ORDERS.TOTAL));
+const textField = checkNotNull(metadata.field(PRODUCTS.TITLE));
+const categoryField = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
+const remappedField = checkNotNull(metadata.field(REMAPPED_FIELD_ID));
 
 describe("metabase/parameters/utils/formatting", () => {
   describe("formatParameterValue", () => {
@@ -35,17 +49,42 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/month-year",
         value: "2018-01",
-        expected: "January, 2018",
+        expected: "January 2018",
       },
       {
         type: "date/quarter-year",
         value: "Q1-2018",
-        expected: "Q1, 2018",
+        expected: "Q1 2018",
       },
       {
         type: "date/relative",
         value: "past30days",
         expected: "Past 30 Days",
+      },
+      {
+        type: "date/month-year",
+        value: "thisday",
+        expected: "Today",
+      },
+      {
+        type: "date/month-year",
+        value: "thisweek",
+        expected: "This Week",
+      },
+      {
+        type: "date/month-year",
+        value: "past1days",
+        expected: "Yesterday",
+      },
+      {
+        type: "date/month-year",
+        value: "past1weeks",
+        expected: "Last Week",
+      },
+      {
+        type: "date/month-year",
+        value: "2023-10-02~2023-10-24",
+        expected: "October 2, 2023 - October 24, 2023",
       },
       {
         type: "number/=",
@@ -119,7 +158,7 @@ describe("metabase/parameters/utils/formatting", () => {
         type: "number/=",
         fields: [remappedField],
       });
-      expect(formatParameterValue(123456789, parameter)).toEqual(0);
+      expect(formatParameterValue(123456789, parameter)).toEqual("A");
     });
   });
 });

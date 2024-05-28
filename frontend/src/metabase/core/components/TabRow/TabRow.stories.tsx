@@ -1,13 +1,17 @@
-import React, { useState } from "react";
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
+import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import { useState } from "react";
 
-import TabButton, {
-  TabButtonMenuItem,
-  TabButtonMenuAction,
-} from "../TabButton";
+import { color } from "metabase/lib/colors";
+
+import { Sortable } from "../Sortable";
+import type { TabButtonMenuItem, TabButtonMenuAction } from "../TabButton";
+import { TabButton } from "../TabButton";
 import TabLink from "../TabLink";
-import TabRow from "./TabRow";
+
+import { TabRow } from "./TabRow";
 
 export default {
   title: "Core/TabRow",
@@ -21,6 +25,7 @@ const sampleStyle = {
   width: "100%",
   padding: "10px",
   border: "1px solid #ccc",
+  backgroundColor: "white",
 };
 
 const Template: ComponentStory<typeof TabRow> = args => {
@@ -64,6 +69,11 @@ const Template: ComponentStory<typeof TabRow> = args => {
         <TabButton label="Tab 5" value={5} menuItems={menuItems} />
         <TabButton label="Tab 6" value={6} disabled />
         <TabButton label="Tab 7" value={7} menuItems={menuItems} disabled />
+        <TabButton
+          label="Tab 8 with a very long name"
+          value={8}
+          menuItems={menuItems}
+        />
       </TabRow>
       {message}
     </div>
@@ -82,27 +92,11 @@ const LinkTemplate: ComponentStory<typeof TabRow> = args => {
   return (
     <div style={sampleStyle}>
       <TabRow {...args} value={value} onChange={handleChange}>
-        <TabLink value={1} to="">
-          Tab 1
-        </TabLink>
-        <TabLink value={2} to="">
-          Tab 2
-        </TabLink>
-        <TabLink value={3} to="">
-          Tab 3
-        </TabLink>
-        <TabLink value={4} to="">
-          Tab 4
-        </TabLink>
-        <TabLink value={5} to="">
-          Tab 5
-        </TabLink>
-        <TabLink value={6} to="">
-          Tab 6
-        </TabLink>
-        <TabLink value={7} to="">
-          Tab 7
-        </TabLink>
+        {[1, 2, 3, 4, 5, 6, 7].map(num => (
+          <TabLink value={num} to="" key={num}>
+            Tab {num}
+          </TabLink>
+        ))}
       </TabRow>
     </div>
   );
@@ -110,5 +104,48 @@ const LinkTemplate: ComponentStory<typeof TabRow> = args => {
 
 export const WithLinks = LinkTemplate.bind({});
 WithLinks.args = {
+  value: 1,
+};
+
+const DraggableTemplate: ComponentStory<typeof TabRow> = args => {
+  const [{ value }, updateArgs] = useArgs();
+  const handleChange = (value: unknown) => updateArgs({ value });
+
+  const [ids, setIds] = useState<UniqueIdentifier[]>(["1", "2", "3", "4", "5"]);
+
+  return (
+    <div style={sampleStyle}>
+      <TabRow
+        {...args}
+        value={value}
+        onChange={handleChange}
+        itemIds={ids}
+        handleDragEnd={(activeId, overId) =>
+          setIds(arrayMove(ids, ids.indexOf(activeId), ids.indexOf(overId)))
+        }
+      >
+        {ids.map(num => (
+          <Sortable id={num} key={num}>
+            <TabButton value={num} label={`Tab ${num}`} />
+          </Sortable>
+        ))}
+      </TabRow>
+      <span>
+        Drag and drop to reorder the tabs, powered by{" "}
+        <a
+          href="https://docs.dndkit.com/presets/sortable"
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: color("brand") }}
+        >
+          dnd-kit.
+        </a>
+      </span>
+    </div>
+  );
+};
+
+export const Draggable = DraggableTemplate.bind({});
+Draggable.args = {
   value: 1,
 };

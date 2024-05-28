@@ -1,42 +1,65 @@
-import React, { HTMLAttributes } from "react";
+import type { HTMLAttributes } from "react";
+
+import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
-  SkeletonRoot,
-  SkeletonTitle,
-  SkeletonDescription,
+  LegendDescriptionIcon,
+  LegendRightContent,
+} from "metabase/visualizations/components/legend/LegendCaption.styled";
+import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+
+import {
+  SkeletonCaptionRoot,
+  SkeletonCaptionTitle,
+  SkeletonCaptionDescription,
   SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
-import { SkeletonCaptionSize } from "./types";
+import type { SkeletonCaptionSize } from "./types";
 
-export interface SkeletonCaptionProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string | null;
-  description?: string | null;
-  size?: SkeletonCaptionSize;
-}
+export type SkeletonCaptionProps = HTMLAttributes<HTMLDivElement> &
+  VisualizationSkeletonProps & {
+    size?: SkeletonCaptionSize;
+  };
 
 const SkeletonCaption = ({
   name,
   description,
+  actionMenu,
+  className,
   size = "medium",
-  ...props
 }: SkeletonCaptionProps): JSX.Element => {
   return (
-    <SkeletonRoot {...props}>
+    <SkeletonCaptionRoot className={className}>
       {name ? (
-        <SkeletonTitle size={size}>{name}</SkeletonTitle>
+        <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>
       ) : (
         <SkeletonPlaceholder />
       )}
-      {description && (
-        <Tooltip tooltip={description} maxWidth="22em">
-          <SkeletonDescription name="info" />
-        </Tooltip>
-      )}
-    </SkeletonRoot>
+      <LegendRightContent>
+        {description && (
+          <Tooltip
+            maxWidth="22em"
+            tooltip={
+              <Markdown dark disallowHeading unstyleLinks>
+                {description}
+              </Markdown>
+            }
+          >
+            <LegendDescriptionIcon
+              data-testid="skeleton-description-icon"
+              name="info"
+            />
+          </Tooltip>
+        )}
+
+        {actionMenu}
+      </LegendRightContent>
+    </SkeletonCaptionRoot>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SkeletonCaption, {
-  Title: SkeletonTitle,
-  Description: SkeletonDescription,
+  Title: SkeletonCaptionTitle,
+  Description: SkeletonCaptionDescription,
 });

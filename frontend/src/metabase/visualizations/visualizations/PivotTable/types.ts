@@ -1,15 +1,16 @@
-import type { FieldReference, AggregationReference } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
-
-export type FieldOrAggregationReference = FieldReference | AggregationReference;
+import type {
+  DatasetColumn,
+  FieldReference,
+  AggregateFieldReference,
+} from "metabase-types/api";
 
 export type PivotSetting = {
   columns: FieldReference[];
   rows: FieldReference[];
-  values: AggregationReference[];
+  values: AggregateFieldReference[];
 };
 
-export type PivotTableClicked = { value: string; column: Column };
+export type PivotTableClicked = { value: string; column: DatasetColumn };
 export interface HeaderItem {
   clicked: PivotTableClicked;
 

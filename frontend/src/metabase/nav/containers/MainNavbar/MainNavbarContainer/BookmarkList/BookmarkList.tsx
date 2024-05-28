@@ -1,22 +1,30 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { t } from "ttag";
-import { connect } from "react-redux";
-
+import type { DragEndEvent } from "@dnd-kit/core";
+import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
 import {
-  SortableContainer,
-  SortableElement,
-} from "metabase/components/sortable";
-import CollapseSection from "metabase/components/CollapseSection";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
+  restrictToVerticalAxis,
+  restrictToParentElement,
+} from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useCallback, useEffect, useState } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 
-import { Bookmark } from "metabase-types/api";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import CollapseSection from "metabase/components/CollapseSection";
+import { Sortable } from "metabase/core/components/Sortable";
+import Tooltip from "metabase/core/components/Tooltip";
+import GrabberS from "metabase/css/components/grabber.module.css";
+import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { Icon } from "metabase/ui";
+import type { Bookmark } from "metabase-types/api";
 
-import { SelectedItem } from "../../types";
 import { SidebarHeading } from "../../MainNavbar.styled";
+import type { SelectedItem } from "../../types";
 
 import { SidebarBookmarkItem } from "./BookmarkList.styled";
 
@@ -37,6 +45,8 @@ interface CollectionSidebarBookmarksProps {
     newIndex: number;
     oldIndex: number;
   }) => void;
+  onToggle: (isExpanded: boolean) => void;
+  initialState: "expanded" | "collapsed";
 }
 
 interface BookmarkItemProps {
@@ -47,9 +57,6 @@ interface BookmarkItemProps {
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
-
-const BOOKMARKS_INITIALLY_VISIBLE =
-  localStorage.getItem("shouldDisplayBookmarks") !== "false";
 
 function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
   if (!selectedItem) {
@@ -62,7 +69,6 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 
 const BookmarkItem = ({
   bookmark,
-  index,
   isSorting,
   selectedItem,
   onSelect,
@@ -77,8 +83,10 @@ const BookmarkItem = ({
     bookmark.type === "collection" &&
     !PLUGIN_COLLECTIONS.isRegularCollection(bookmark);
 
+  const iconName = isSelected ? "bookmark_filled" : "bookmark";
+
   return (
-    <SortableBookmarkItem index={index} key={bookmark.id}>
+    <Sortable id={bookmark.id} key={bookmark.id}>
       <SidebarBookmarkItem
         key={`bookmark-${bookmark.id}`}
         url={url}
@@ -90,14 +98,14 @@ const BookmarkItem = ({
         right={
           <button onClick={onRemove}>
             <Tooltip tooltip={t`Remove bookmark`} placement="bottom">
-              <Icon name="bookmark" />
+              <Icon name={iconName} />
             </Tooltip>
           </button>
         }
       >
         {bookmark.name}
       </SidebarBookmarkItem>
-    </SortableBookmarkItem>
+    </Sortable>
   );
 };
 
@@ -107,6 +115,8 @@ const BookmarkList = ({
   onSelect,
   onDeleteBookmark,
   reorderBookmarks,
+  onToggle,
+  initialState,
 }: CollectionSidebarBookmarksProps) => {
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
@@ -115,60 +125,68 @@ const BookmarkList = ({
     setOrderedBookmarks(bookmarks);
   }, [bookmarks]);
 
-  const onToggleBookmarks = useCallback(isVisible => {
-    localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
-  }, []);
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 15 },
+  });
 
   const handleSortStart = useCallback(() => {
-    document.body.classList.add("grabbing");
+    document.body.classList.add(GrabberS.grabbing);
     setIsSorting(true);
   }, []);
 
   const handleSortEnd = useCallback(
-    ({ newIndex, oldIndex }) => {
-      document.body.classList.remove("grabbing");
+    (input: DragEndEvent) => {
+      document.body.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
+      const newIndex = bookmarks.findIndex(b => b.id === input.over?.id);
+      const oldIndex = bookmarks.findIndex(b => b.id === input.active.id);
       reorderBookmarks({ newIndex, oldIndex });
     },
-    [reorderBookmarks],
+    [reorderBookmarks, bookmarks],
   );
+
+  const bookmarkIds = bookmarks.map(b => b.id);
+
+  const headerId = "headingForBookmarksSectionOfSidebar";
 
   return (
     <CollapseSection
-      header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
-      initialState={BOOKMARKS_INITIALLY_VISIBLE ? "expanded" : "collapsed"}
+      aria-labelledby={headerId}
+      header={<SidebarHeading id={headerId}>{t`Bookmarks`}</SidebarHeading>}
+      initialState={initialState}
       iconPosition="right"
       iconSize={8}
-      headerClass="mb1"
-      onToggle={onToggleBookmarks}
+      headerClass={CS.mb1}
+      onToggle={onToggle}
     >
-      <SortableBookmarkList
-        distance={9}
-        onSortStart={handleSortStart}
-        onSortEnd={handleSortEnd}
-        lockAxis="y"
-        helperClass="sorting"
+      <DndContext
+        onDragEnd={handleSortEnd}
+        onDragStart={handleSortStart}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        sensors={[pointerSensor]}
       >
-        {orderedBookmarks.map((bookmark, index) => (
-          <BookmarkItem
-            bookmark={bookmark}
-            isSorting={isSorting}
-            key={index}
-            index={index}
-            selectedItem={selectedItem}
-            onSelect={onSelect}
-            onDeleteBookmark={onDeleteBookmark}
-          />
-        ))}
-      </SortableBookmarkList>
+        <SortableContext
+          items={bookmarkIds ?? []}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul>
+            {orderedBookmarks.map((bookmark, index) => (
+              <BookmarkItem
+                bookmark={bookmark}
+                isSorting={isSorting}
+                key={index}
+                index={index}
+                selectedItem={selectedItem}
+                onSelect={onSelect}
+                onDeleteBookmark={onDeleteBookmark}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
     </CollapseSection>
   );
 };
 
-const List = ({ children }: { children: JSX.Element[] }) => <ul>{children}</ul>;
-const Item = ({ children }: { children: JSX.Element }) => <>{children}</>;
-
-const SortableBookmarkItem = SortableElement(Item);
-const SortableBookmarkList = SortableContainer(List);
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(BookmarkList);

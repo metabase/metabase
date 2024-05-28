@@ -1,12 +1,11 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   visualize,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS, REVIEWS_ID, PRODUCTS, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -74,6 +73,7 @@ describe("issue 20809", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 });

@@ -1,0 +1,87 @@
+name: Prepare Docker containers
+description: Prepare Docker containers for E2E tests.
+inputs:
+  username:
+    description: DockerHub username
+    required: true
+  password:
+    description: DockerHub password/token
+    required: true
+  maildev:
+    description: Maildev container
+    required: true
+    default: 'false'
+  openldap:
+    description: OpenLDAP container
+    required: true
+    default: 'false'
+  postgres:
+    description: Postgres container
+    required: true
+    default: 'false'
+  mysql:
+    description: MySQL container
+    required: true
+    default: 'false'
+  mongo:
+    description: Mongo container
+    required: true
+    default: 'false'
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: Authenticate to prevent API rate limit
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
+
+    - name: Start Containers
+      run: |
+        Y='\033[33m'
+        G='\033[1;32m'
+
+        if ${{ inputs.maildev }}; then
+          echo -e "${Y}Starting maildev container..." &&
+          docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5 &&
+          while ! nc -z localhost 1080; do sleep 1; done &&
+          while ! nc -z localhost 1025; do sleep 1; done &&
+          echo -e "${G}Maildev is up and running!"
+        fi
+
+        if ${{ inputs.openldap }}; then
+          echo -e "${Y}Starting openldap container..." &&
+          docker run -d -p 389:389 \
+            --env LDAP_ADMIN_PASSWORD=adminpass \
+            --env LDAP_USERS=user01@example.org,user02@example.org \
+            --env LDAP_PASSWORDS=123456,123465 \
+            --env LDAP_ROOT=dc=example,dc=org \
+            --env LDAP_PORT_NUMBER=389 \
+            bitnami/openldap:2.6.4 &&
+          while ! nc -z localhost 389; do sleep 1; done &&
+          echo -e "${G}Openldap is up and running!"
+        fi
+
+        if ${{ inputs.postgres }}; then
+          echo -e "${Y}Starting postgres container..." &&
+          docker run -d -p 5404:5432 -e TZ='US/Pacific' metabase/qa-databases:postgres-sample-12 &&
+          while ! nc -z localhost 5404; do sleep 1; done &&
+          echo -e "${G}Postgres is up and running!"
+        fi
+
+        if ${{ inputs.mysql }}; then
+          echo -e "${Y}Starting mysql container..." &&
+          docker run -d -p 3304:3306 -e TZ='US/Pacific' metabase/qa-databases:mysql-sample-8 &&
+          while ! nc -z localhost 3304; do sleep 1; done &&
+          echo -e "${G}MySQL is up and running!"
+        fi
+
+        if ${{ inputs.mongo }}; then
+          echo -e "${Y}Starting mongo container..." &&
+          docker run -d -p 27004:27017 metabase/qa-databases:mongo-sample-4.4 &&
+          while ! nc -z localhost 27004; do sleep 1; done &&
+          echo -e "${G}Mongo is up and running!"
+        fi
+      shell: bash

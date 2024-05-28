@@ -1,4 +1,6 @@
 import { assoc, assocIn } from "icepick";
+
+import { createMockEntitiesState } from "__support__/store";
 import {
   getQuestion,
   getIsResultDirty,
@@ -6,29 +8,36 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
+import Question from "metabase-lib/v1/Question";
+import { createMockTable } from "metabase-types/api/mocks";
 import {
+  createSampleDatabase,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
-  state as sampleState,
-} from "__support__/sample_database_fixture";
-import Question from "metabase-lib/Question";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import Breakout from "metabase-lib/queries/structured/Breakout";
-import Filter from "metabase-lib/queries/structured/Filter";
-import Join from "metabase-lib/queries/structured/Join";
-import OrderBy from "metabase-lib/queries/structured/OrderBy";
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import {
+  createMockState,
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+} from "metabase-types/store/mocks";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
-  return {
-    ...sampleState,
-    qb: {
+  return createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      tables: [createMockTable({ id: "card__1" })],
+    }),
+    qb: createMockQueryBuilderState({
       ...state,
-      uiControls: {
+      uiControls: createMockQueryBuilderUIControlsState({
         queryBuilderMode: "view",
         ...uiControls,
-      },
-    },
-  };
+      }),
+    }),
+  });
 }
 
 function getBaseCard(opts) {
@@ -67,13 +76,13 @@ describe("getQuestion", () => {
 
   it("should return composed dataset when dataset is open", () => {
     const card = {
-      id: 5,
-      dataset: true,
+      id: 1,
+      type: "model",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
-          "source-table": 1,
+          "source-table": ORDERS_ID,
         },
       },
     };
@@ -81,14 +90,14 @@ describe("getQuestion", () => {
     const question = getQuestion(getBaseState({ card }));
 
     expect(question.card()).toEqual(
-      assocIn(card, ["dataset_query", "query", "source-table"], "card__5"),
+      assocIn(card, ["dataset_query", "query", "source-table"], "card__1"),
     );
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
     const card = {
       id: 5,
-      dataset: true,
+      type: "model",
       dataset_query: {
         database: 1,
         type: "query",
@@ -144,32 +153,31 @@ describe("getIsResultDirty", () => {
 
     it("converts clauses into plain MBQL objects", () => {
       const aggregation = ["count"];
-      const breakout = ORDERS.CREATED_AT.reference();
-      const filter = [">=", ORDERS.TOTAL.reference(), 20];
-      const orderBy = ["asc", ["aggregation", 0]];
+      const breakout = ["field", ORDERS.CREATED_AT, null];
+      const filter = [">", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
+        fields: "all",
+        "source-table": PRODUCTS_ID,
         condition: [
           "=",
-          ["field", ORDERS.PRODUCT_ID.id, null],
-          ["field", PRODUCTS.ID.id, null],
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, null],
         ],
       };
 
       const state = getState(
         {
-          aggregation: [new Aggregation(aggregation)],
-          breakout: [new Breakout(breakout)],
-          filter: [new Filter(filter)],
-          joins: [new Join(join)],
-          "order-by": [new OrderBy(orderBy)],
+          aggregation: [aggregation],
+          breakout: [breakout],
+          filter,
+          joins: [join],
         },
         {
           aggregation: [aggregation],
           breakout: [breakout],
-          filter: [filter],
+          filter,
           joins: [join],
-          "order-by": [orderBy],
         },
       );
 
@@ -217,19 +225,18 @@ describe("getIsResultDirty", () => {
     });
 
     it("should not be dirty if fields were just made explicit", () => {
+      const orderTableFieldIds = Object.values(ORDERS);
+      const orderTableFieldRefs = orderTableFieldIds.map(id => [
+        "field",
+        id,
+        null,
+      ]);
+
       const state = getState(
-        { "source-table": 1 },
+        { "source-table": ORDERS_ID },
         {
-          "source-table": 1,
-          fields: [
-            ["field", 1, null],
-            ["field", 2, null],
-            ["field", 3, null],
-            ["field", 4, null],
-            ["field", 5, null],
-            ["field", 6, null],
-            ["field", 7, null],
-          ],
+          "source-table": ORDERS_ID,
+          fields: orderTableFieldRefs,
         },
       );
       expect(getIsResultDirty(state)).toBe(false);
@@ -308,7 +315,7 @@ describe("getIsResultDirty", () => {
     function getDataset(query) {
       return getBaseCard({
         id: 1,
-        dataset: true,
+        type: "model",
         dataset_query: { type: "query", query },
       });
     }

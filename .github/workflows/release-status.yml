@@ -1,0 +1,40 @@
+name: Release Status Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 11 * * 1-5' # every weekday at 6am US eastern time
+
+jobs:
+  check-release-status:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn --frozen-lockfile && yarn build
+    - name: Check release status and post to Slack
+      uses: actions/github-script@v7
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+      with:
+        script: | # js
+          const { checkReleaseStatus } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          if (!process.env.SLACK_BOT_TOKEN) {
+            throw new Error('SLACK_BOT_TOKEN is required');
+          }
+
+          if (!process.env.SLACK_RELEASE_CHANNEL) {
+            throw new Error('SLACK_RELEASE_CHANNEL is required');
+          }
+
+          const ossReleased = await checkReleaseStatus({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            channelName: process.env.SLACK_RELEASE_CHANNEL,
+          });

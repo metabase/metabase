@@ -16,7 +16,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/`
 
@@ -26,13 +26,6 @@ Fetch all `Databases`.
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
-  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
-    be removed in a future release.
-
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead.
-
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
@@ -40,19 +33,21 @@ Fetch all `Databases`.
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
+
 ### PARAMS:
-
-*  **`include_tables`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
-
-*  **`include_cards`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`include`** include must be either empty or the value tables
 
-*  **`saved`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`saved`** nullable boolean
 
-*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_editable_data_model`** nullable boolean
 
-*  **`exclude_uneditable_details`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`exclude_uneditable_details`** nullable boolean
+
+*  **`include_only_uploadable`** nullable boolean
+
+*  **`include_analytics`** nullable boolean
 
 ## `GET /api/database/:id`
 
@@ -68,9 +63,9 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`include`** value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`.
+*  **`include`** nullable enum of tables, tables.fields
 
 *  **`include_editable_data_model`** 
 
@@ -90,11 +85,11 @@ Return a list of autocomplete suggestions for a given `prefix`, or `substring`. 
 
 ### PARAMS:
 
-*  **`id`** value must be an integer.
+*  **`id`** value must be an integer greater than zero.
 
-*  **`prefix`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`prefix`** nullable value must be a non-blank string.
 
-*  **`substring`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`substring`** nullable value must be a non-blank string.
 
 ## `GET /api/database/:id/card_autocomplete_suggestions`
 
@@ -104,7 +99,7 @@ Return a list of `Card` autocomplete suggestions for a given `query` in a given 
 
 ### PARAMS:
 
-*  **`id`** value must be an integer.
+*  **`id`** value must be an integer greater than zero.
 
 *  **`query`** value must be a non-blank string.
 
@@ -114,7 +109,7 @@ Get a list of all `Fields` in `Database`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/:id/idfields`
 
@@ -122,7 +117,7 @@ Get a list of all primary key `Fields` for `Database`.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`include_editable_data_model`**
 
@@ -138,11 +133,13 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`. Ret
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`include_hidden`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`remove_inactive`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/database/:id/schema/`
 
@@ -152,6 +149,10 @@ Return a list of Tables for a Database whose `schema` is `nil` or an empty strin
 
 *  **`id`** value must be an integer greater than zero.
 
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
 ## `GET /api/database/:id/schema/:schema`
 
 Returns a list of Tables for the given Database `id` and `schema`.
@@ -160,15 +161,31 @@ Returns a list of Tables for the given Database `id` and `schema`.
 
 *  **`id`** value must be an integer greater than zero.
 
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
 *  **`schema`**
 
 ## `GET /api/database/:id/schemas`
 
-Returns a list of all the schemas found for the database `id`.
+Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
+
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`include_hidden`** nullable value must be a valid boolean string ('true' or 'false').
+
+## `GET /api/database/:id/syncable_schemas`
+
+Returns a list of all syncable schemas found for the database `id`.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/database/:id/usage_info`
 
@@ -210,10 +227,6 @@ Returns a list of Tables for the saved questions virtual database.
 
 Returns a list of all the schemas found for the saved questions virtual database.
 
-## `GET /api/database/db-ids-with-deprecated-drivers`
-
-Return a list of database IDs using currently deprecated drivers.
-
 ## `POST /api/database/`
 
 Add a new `Database`.
@@ -226,17 +239,17 @@ You must be a superuser to do this.
 
 *  **`engine`** value must be a valid database engine.
 
-*  **`details`** value must be a map.
+*  **`details`** Value must be a map.
 
-*  **`is_full_sync`** value may be nil, or if non-nil, value must be a boolean.
+*  **`is_full_sync`** nullable boolean
 
-*  **`is_on_demand`** value may be nil, or if non-nil, value must be a boolean.
+*  **`is_on_demand`** nullable boolean
 
-*  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
+*  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap
 
-*  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
+*  **`auto_run_queries`** nullable boolean
 
-*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`cache_ttl`** nullable value must be an integer greater than zero.
 
 ## `POST /api/database/:id/discard_values`
 
@@ -244,7 +257,7 @@ Discards all saved field values for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/dismiss_spinner`
 
@@ -253,7 +266,7 @@ Manually set the initial sync status of the `Database` and corresponding
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/persist`
 
@@ -261,7 +274,7 @@ Attempt to enable model persistence for a database. If already enabled returns a
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/rescan_values`
 
@@ -269,15 +282,7 @@ Trigger a manual scan of the field values for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
-
-## `POST /api/database/:id/sync`
-
-Update the metadata for this `Database`. This happens asynchronously.
-
-### PARAMS:
-
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/sync_schema`
 
@@ -285,7 +290,7 @@ Trigger a manual update of the schema metadata for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/unpersist`
 
@@ -293,7 +298,7 @@ Attempt to disable model persistence for a database. If already not enabled, jus
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/sample_database`
 
@@ -311,7 +316,7 @@ You must be a superuser to do this.
 
 *  **`engine`** value must be a valid database engine.
 
-*  **`details`** value must be a map.
+*  **`details`** map
 
 ## `PUT /api/database/:id`
 
@@ -319,31 +324,31 @@ Update a `Database`.
 
 ### PARAMS:
 
-*  **`engine`** value may be nil, or if non-nil, value must be a valid database engine.
+*  **`engine`** nullable value must be a valid database engine.
 
-*  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
+*  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap
 
-*  **`refingerprint`** value may be nil, or if non-nil, value must be a boolean.
+*  **`refingerprint`** nullable boolean
 
-*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
+*  **`points_of_interest`** nullable string
 
-*  **`description`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
+*  **`auto_run_queries`** nullable boolean
 
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`name`** nullable value must be a non-blank string.
 
-*  **`settings`** value may be nil, or if non-nil, value must be a map.
+*  **`settings`** nullable Value must be a map.
 
-*  **`caveats`** value may be nil, or if non-nil, value must be a string.
+*  **`caveats`** nullable string
 
 *  **`is_full_sync`** 
 
-*  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`cache_ttl`** nullable value must be an integer greater than zero.
 
-*  **`details`** value may be nil, or if non-nil, value must be a map.
+*  **`details`** nullable Value must be a map.
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
 *  **`is_on_demand`**
 

@@ -1,6 +1,6 @@
-import React from "react";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
-import Icon from "metabase/components/Icon";
 import { TabBar, Tab, RadioInput } from "./EditorTabs.styled";
 
 type Props = {
@@ -8,7 +8,7 @@ type Props = {
   options: {
     id: string;
     name: string;
-    icon: string;
+    icon: IconName;
     disabled?: boolean;
   }[];
   onChange: (optionId: string) => void;
@@ -53,4 +53,5 @@ function EditorTabs({ currentTab, options, onChange, ...props }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EditorTabs;

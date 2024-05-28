@@ -1,0 +1,107 @@
+:root {
+  --title-color: var(--mb-color-text-dark);
+  --subtitle-color: var(--mb-color-text-medium);
+  --muted-color: var(--mb-color-text-light);
+}
+
+.list {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.list a {
+  text-decoration: none;
+}
+
+.header {
+  composes: mt4 mb2 from "style";
+  flex-direction: row;
+  display: flex;
+  color: var(--title-color);
+  font-size: 24px;
+  min-height: 48px;
+}
+
+.headerBody {
+  composes: borderBottom from "style";
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  border-color: var(--mb-color-brand);
+}
+
+.headerButton {
+  composes: ml1 from "style";
+  align-items: center;
+  display: flex;
+  font-size: 14px;
+}
+
+.empty {
+  width: 100%;
+  justify-content: center;
+  display: flex;
+  padding-top: 75px;
+}
+
+.item {
+  position: relative;
+  align-items: center;
+  display: flex;
+}
+
+.itemBody {
+  max-width: 100%;
+  flex: 1 0 auto;
+}
+
+.itemTitle {
+  composes: textBold from "style";
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.itemSubtitle {
+  color: var(--subtitle-color);
+  max-width: 600px;
+  font-size: 14px;
+}
+
+.leftIcons {
+  composes: mr2 from "style";
+  align-self: flex-start;
+  flex-shrink: 0;
+  flex-direction: row;
+  align-items: center;
+  display: flex;
+}
+
+.itemIcons {
+  composes: leftIcons;
+  padding-top: 4px;
+}
+
+.icon {
+  position: relative;
+  color: var(--muted-color);
+}
+
+.item .icon {
+  visibility: hidden;
+}
+
+.item:hover .icon {
+  visibility: visible;
+}
+
+.icon:hover {
+  color: var(--mb-color-brand);
+}
+
+/* CHART ICON */
+.chartIcon {
+  composes: icon;
+  visibility: visible !important;
+  position: relative;
+}

@@ -5,9 +5,24 @@
    [cheshire.core :as json]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.util.log :as log]))
+   [metabase.models :refer [Table]]
+   [metabase.util.log :as log]
+   [potemkin :as p]
+   [toucan2.core :as t2]))
+
+(comment metabot-feedback/keep-me
+         metabot-util/keep-me)
+
+(p/import-vars
+ [metabot-feedback
+  submit-feedback]
+ [metabot-util
+  denormalize-database
+  denormalize-model
+  supported?])
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
@@ -43,7 +58,7 @@
                                        (:id model)
                                        user_prompt
                                        final-sql)
-              template-tags (lib-native/template-tags inner_query)
+              template-tags (lib-native/extract-template-tags inner_query)
               dataset       {:dataset_query          {:database database_id
                                                       :type     "native"
                                                       :native   {:query         final-sql
@@ -57,6 +72,28 @@
                                        (format "%s:%s" prompt_template version)))
            :bot-sql                  bot-sql})
         (log/infof "No sql inferred for model '%s' with prompt '%s'." (:id model) user_prompt)))
+    (log/warn "Metabot is not enabled")))
+
+(defn match-best-model
+  "Find the model in the db that best matches the prompt using embedding matching."
+  [{{database-id :id :keys [models]} :database :keys [user_prompt]}]
+  (log/infof "Metabot is inferring model for database '%s' with prompt '%s'." database-id user_prompt)
+  (if (metabot-settings/is-metabot-enabled)
+    (let [models (->> models
+                      (map (fn [{:keys [create_table_ddl] :as model}]
+                             (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding create_table_ddl)]
+                               (assoc model
+                                      :prompt prompt
+                                      :embedding embedding
+                                      :tokens tokens)))))]
+      (if-some [{best-mode-name :name
+                 best-model-id  :id
+                 :as            model} (metabot-util/best-prompt-object models user_prompt)]
+        (do
+          (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s' (%s)."
+                     database-id user_prompt best-model-id best-mode-name)
+          model)
+        (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
 (defn infer-model
@@ -87,10 +124,16 @@
 
 (defn infer-native-sql-query
   "Given a database and user prompt, determine a sql query to answer my question."
-  [{:keys [database user_prompt prompt_template_versions] :as context}]
-  (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
+  [{{database-id :id} :database
+    :keys             [user_prompt prompt_template_versions] :as context}]
+  (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." database-id user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
+    (let [prompt-objects (->> (t2/select [Table :name :schema :id] :db_id database-id)
+                              (map metabot-util/memoized-create-table-embedding)
+                              (filter identity))
+          ddl            (metabot-util/generate-prompt prompt-objects user_prompt)
+          context        (assoc-in context [:database :create_database_ddl] ddl)
+          {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
       (if-some [sql (metabot-util/find-result
                      metabot-util/extract-sql
                      (metabot-client/invoke-metabot prompt))]
@@ -98,5 +141,5 @@
          :prompt_template_versions (conj
                                     (vec prompt_template_versions)
                                     (format "%s:%s" prompt_template version))}
-        (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt)))
+        (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))

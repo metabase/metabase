@@ -1,16 +1,15 @@
-import React from "react";
-
 import { color } from "metabase/lib/colors";
+import type { IconName } from "metabase/ui";
 
 import { SidebarItem } from "../SidebarItem";
 
-const LinkOption = ({
+export const LinkOption = ({
   option,
   icon,
   onClick,
 }: {
   option: string;
-  icon: string;
+  icon: IconName;
   onClick: () => void;
 }) => (
   <SidebarItem onClick={onClick}>
@@ -20,5 +19,3 @@ const LinkOption = ({
     </div>
   </SidebarItem>
 );
-
-export default LinkOption;

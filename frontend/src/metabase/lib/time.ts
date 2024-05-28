@@ -1,8 +1,8 @@
+import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
-import moment, { DurationInputArg2, MomentInput } from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
-
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();
@@ -10,8 +10,10 @@ addAbbreviatedLocale();
 const TIME_FORMAT_24_HOUR = "HH:mm";
 
 const TEXT_UNIT_FORMATS = {
-  "day-of-week": (value: string) =>
-    moment.parseZone(value, "ddd").startOf("day"),
+  "day-of-week": (value: string) => {
+    const day = moment.parseZone(value, "ddd").startOf("day");
+    return day.isValid() ? day : moment.parseZone(value).startOf("day");
+  },
 };
 
 const NUMERIC_UNIT_FORMATS = {
@@ -100,15 +102,6 @@ export function getDateStyleFromSettings() {
   return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
-export function getDefaultTimezone() {
-  return moment.tz.guess();
-}
-
-export function getNumericDateStyleFromSettings() {
-  const dateStyle = getDateStyleFromSettings();
-  return /\//.test(dateStyle || "") ? dateStyle : "M/D/YYYY";
-}
-
 export function getRelativeTime(timestamp: string) {
   return moment(timestamp).fromNow();
 }
@@ -133,10 +126,6 @@ export function getTimeStyleFromSettings() {
 export function has24HourModeSetting() {
   const timeStyle = getTimeStyleFromSettings();
   return timeStyle === TIME_FORMAT_24_HOUR;
-}
-
-export function hasTimePart(date: moment.Moment | null) {
-  return date != null && (date.hours() !== 0 || date.minutes() !== 0);
 }
 
 export function hoursToSeconds(hours: number) {
@@ -184,10 +173,13 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
+/**
+ * @deprecated use dayjs version from ./time-dayjs.ts
+ */
 export function parseTimestamp(
-  value: MomentInput,
+  value: any,
   unit: DatetimeUnit | null = null,
-  local: unknown = false,
+  isLocal = false,
 ) {
   let m: any;
   if (moment.isMoment(value)) {
@@ -203,5 +195,5 @@ export function parseTimestamp(
   } else {
     m = moment.utc(value);
   }
-  return local ? m.local() : m;
+  return isLocal ? m.local() : m;
 }

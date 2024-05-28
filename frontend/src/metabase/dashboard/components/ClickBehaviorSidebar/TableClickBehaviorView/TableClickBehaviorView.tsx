@@ -1,16 +1,18 @@
-import React, { useMemo, useCallback } from "react";
+import cx from "classnames";
+import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
+import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
-  DashboardOrderedCard,
+  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
   DatasetColumn,
 } from "metabase-types/api";
 
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-import Column from "./Column";
+import { Column } from "./Column";
 
 const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "link",
@@ -18,9 +20,17 @@ const COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE = [
   "actionMenu",
 ];
 
+type ColumnGroup = [
+  ClickBehaviorType,
+  {
+    column: DatasetColumn;
+    clickBehavior: ClickBehavior | undefined;
+  }[],
+];
+
 function explainClickBehaviorType(
   type: ClickBehaviorType,
-  dashcard: DashboardOrderedCard,
+  dashcard: QuestionDashboardCard,
 ) {
   return {
     action: t`Execute an action`,
@@ -34,14 +44,14 @@ function explainClickBehaviorType(
 
 interface Props {
   columns: DatasetColumn[];
-  dashcard: DashboardOrderedCard;
+  dashcard: QuestionDashboardCard;
   getClickBehaviorForColumn: (
     column: DatasetColumn,
   ) => ClickBehavior | undefined;
   onColumnClick: (column: DatasetColumn) => void;
 }
 
-function TableClickBehaviorView({
+export function TableClickBehaviorView({
   columns,
   dashcard,
   getClickBehaviorForColumn,
@@ -63,10 +73,10 @@ function TableClickBehaviorView({
     return _.sortBy(pairs, ([type]) =>
       COLUMN_SORTING_ORDER_BY_CLICK_BEHAVIOR_TYPE.indexOf(type),
     );
-  }, [columns, getClickBehaviorForColumn]);
+  }, [columns, getClickBehaviorForColumn]) as unknown as ColumnGroup[]; // _.groupby swallows the ClickAction type
 
   const renderColumn = useCallback(
-    ({ column, clickBehavior }, index) => {
+    ({ column, clickBehavior }, index: number) => {
       return (
         <Column
           key={index}
@@ -80,11 +90,11 @@ function TableClickBehaviorView({
   );
 
   const renderColumnGroup = useCallback(
-    group => {
+    (group: ColumnGroup) => {
       const [clickBehaviorType, columnsWithClickBehavior] = group;
       return (
-        <div key={clickBehaviorType} className="mb2 px4">
-          <h5 className="text-uppercase text-medium my1">
+        <div key={clickBehaviorType} className={cx(CS.mb2, CS.px4)}>
+          <h5 className={cx(CS.textUppercase, CS.textMedium, CS.my1)}>
             {explainClickBehaviorType(clickBehaviorType, dashcard)}
           </h5>
           {columnsWithClickBehavior.map(renderColumn)}
@@ -96,5 +106,3 @@ function TableClickBehaviorView({
 
   return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
-
-export default TableClickBehaviorView;

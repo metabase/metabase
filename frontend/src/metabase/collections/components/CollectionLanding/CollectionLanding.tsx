@@ -1,6 +1,13 @@
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { replace } from "react-router-redux";
+
+import { useGetCollectionQuery } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { extractCollectionId } from "metabase/lib/urls";
-import CollectionContent from "../../containers/CollectionContent";
+
+import { CollectionContent } from "../CollectionContent";
 
 export interface CollectionLandingProps {
   params: CollectionLandingParams;
@@ -15,15 +22,31 @@ const CollectionLanding = ({
   params: { slug },
   children,
 }: CollectionLandingProps) => {
+  const dispatch = useDispatch();
+  const { data: trashCollection } = useGetCollectionQuery("trash");
+
   const collectionId = extractCollectionId(slug);
-  const isRoot = collectionId === "root";
+
+  useEffect(
+    function redirectIfTrashCollection() {
+      if (trashCollection?.id === collectionId) {
+        dispatch(replace("/trash"));
+      }
+    },
+    [dispatch, trashCollection?.id, collectionId],
+  );
+
+  if (!isNotNull(collectionId)) {
+    return null;
+  }
 
   return (
     <>
-      <CollectionContent isRoot={isRoot} collectionId={collectionId} />
+      <CollectionContent collectionId={collectionId} />
       {children}
     </>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionLanding;

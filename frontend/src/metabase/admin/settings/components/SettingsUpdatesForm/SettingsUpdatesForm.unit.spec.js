@@ -1,12 +1,13 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
+  createMockTokenStatus,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+
 import SettingsUpdatesForm from "./SettingsUpdatesForm";
 
 const elements = [
@@ -18,6 +19,7 @@ const elements = [
 
 function setup({
   isHosted = false,
+  isPaid = false,
   currentVersion = "v1.0.0",
   latestVersion = "v2.0.0",
 } = {}) {
@@ -31,13 +33,21 @@ function setup({
       })
     : null;
 
-  mockSettings({
+  const settings = mockSettings({
     "is-hosted?": isHosted,
     version,
     "version-info": versionInfo,
+    "token-status": createMockTokenStatus({ valid: isPaid }),
   });
 
-  render(<SettingsUpdatesForm elements={elements} />);
+  const state = createMockState({
+    settings,
+    currentUser: { is_superuser: true },
+  });
+
+  renderWithProviders(<SettingsUpdatesForm elements={elements} />, {
+    storeInitialState: state,
+  });
 }
 
 describe("SettingsUpdatesForm", () => {
@@ -62,16 +72,14 @@ describe("SettingsUpdatesForm", () => {
 
   it("shows upgrade call-to-action if not in Enterprise plan", () => {
     setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
-    expect(screen.getByText("Migrate to Metabase Cloud.")).toBeInTheDocument();
+    expect(screen.getByText("Get automatic updates")).toBeInTheDocument();
   });
 
-  it("does not show upgrade call-to-action if in Enterprise plan", () => {
-    setupEnterpriseTest();
-
-    setup({ currentVersion: "v1.0.0", latestVersion: "v2.0.0" });
+  it("does not show upgrade call-to-action if is a paid plan", () => {
+    setup({ currentVersion: "v1.0.0", latestVersion: "v2.0.0", isPaid: true });
 
     expect(
-      screen.queryByText("Migrate to Metabase Cloud."),
+      screen.queryByText("Get automatic updates."),
     ).not.toBeInTheDocument();
   });
 });

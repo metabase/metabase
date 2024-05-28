@@ -1,9 +1,9 @@
-import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import _ from "underscore";
-import type { VisualizationSettings } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
+
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTable } from "./PivotTable";
 
@@ -42,7 +42,7 @@ const cols = [
     field_ref: ["aggregation", 2],
     display_name: "aggregation-2",
   },
-] as Column[];
+] as DatasetColumn[];
 
 const rows = [
   ["foo1", "bar1", "baz1", 0, 111, 222],
@@ -84,7 +84,7 @@ function setup(options?: any) {
 }
 
 function PivotTableWrapper(props?: any) {
-  const [vizSettings, setVizSettings] = React.useState(
+  const [vizSettings, setVizSettings] = useState(
     props.initialSettings ?? settings,
   );
   return (
@@ -196,7 +196,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     });
   });
 
-  it("expanding collapsed columns", () => {
+  it("expanding collapsed columns", async () => {
     const hiddenSettings = {
       ...settings,
       "pivot_table.collapsed_rows": {
@@ -221,7 +221,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       within(toggleButton).getByRole("img", { name: /add/i }),
     ).toBeInTheDocument();
 
-    userEvent.click(toggleButton);
+    await userEvent.click(toggleButton);
 
     //Ensure that collapsed data is now visible
     columnIndexes.forEach(columnIndex => {

@@ -19,7 +19,8 @@
            (log/info :keyword 78)))))
 
 (deftest logp-levels-test
-  (let [spam (fn []
+  (let [important-message #{"fatal" "error" "warn" "info" "debug" "trace"}
+        spam (fn []
                (log/fatal "fatal")
                (log/error "error")
                (log/warn  "warn")
@@ -32,7 +33,10 @@
               [:info  nil "info"]
               [:debug nil "debug"]
               [:trace nil "trace"]]]
-    (are [prefix level] (= (take prefix logs) (tlog/with-log-messages-for-level level (spam)))
+    (are [prefix level] (= (->> logs
+                                (filter (fn [[_ _ msg]] (contains? important-message msg)))
+                                (take prefix))
+                           (tlog/with-log-messages-for-level level (spam)))
          ;0 :off - this doesn't work in CLJ and perhaps should?
          1 :fatal
          2 :error

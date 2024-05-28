@@ -1,41 +1,54 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
-
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
+import { setArchivedQuestion } from "metabase/query_builder/actions";
 
-import * as Urls from "metabase/lib/urls";
-import Questions from "metabase/entities/questions";
+const mapDispatchToProps = dispatch => ({
+  archive: question => dispatch(setArchivedQuestion(question, true)),
+});
 
-const mapDispatchToProps = {
-  archive: card => Questions.actions.setArchived(card, true),
+const getLabels = question => {
+  const type = question.type();
+
+  if (type === "question") {
+    return {
+      title: t`Move this question to trash?`,
+      message: t`This question will be removed from any dashboards or alerts using it.`,
+    };
+  }
+
+  if (type === "model") {
+    return {
+      title: t`Move this model to trash?`,
+      message: t`This model will be removed from any dashboards or alerts using it.`,
+    };
+  }
+
+  if (type === "metric") {
+    return {
+      title: t`Archive this metric?`,
+      message: t`This metric will be removed from any dashboards or pulses using it.`,
+    };
+  }
+
+  throw new Error(`Unknown question.type(): ${type}`);
 };
 
 class ArchiveQuestionModal extends Component {
   onArchive = () => {
-    const { question, archive, router } = this.props;
+    const { question, archive } = this.props;
 
-    const card = question.card();
-    archive(card);
-    router.push(Urls.collection(card.collection));
+    archive(question);
   };
 
   render() {
     const { onClose, question } = this.props;
 
-    const isModel = question.isDataset();
-
-    const title = isModel ? t`Archive this model?` : t`Archive this question?`;
-
-    const message = isModel
-      ? t`This model will be removed from any dashboards or pulses using it.`
-      : t`This question will be removed from any dashboards or pulses using it.`;
-
+    const { title, message } = getLabels(question);
     const widgetCount = question.getParameterUsageCount();
-
     const additionalWarning =
       widgetCount > 0
         ? " " +
@@ -57,7 +70,4 @@ class ArchiveQuestionModal extends Component {
   }
 }
 
-export default connect(
-  null,
-  mapDispatchToProps,
-)(withRouter(ArchiveQuestionModal));
+export default connect(null, mapDispatchToProps)(ArchiveQuestionModal);

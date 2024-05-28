@@ -3,13 +3,15 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.api.geojson :as api.geojson]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [ring.adapter.jetty9 :as ring-jetty]
-   [schema.core :as s]))
+   [metabase.util.malli.schema :as ms]
+   [ring.adapter.jetty :as ring-jetty])
+  (:import
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,11 +37,10 @@
                   :region_key  nil
                   :region_name nil}})
 
-(deftest geojson-schema-test
-  (is (= true
-         (boolean (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))))
+(deftest ^:parallel geojson-schema-test
+  (is (@#'api.geojson/CustomGeoJSONValidator test-custom-geojson)))
 
-(deftest validate-geojson-test
+(deftest ^:parallel validate-geojson-test
   (testing "It validates URLs and files appropriately"
     (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
@@ -93,12 +94,10 @@
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"
     (mt/with-temporary-setting-values [custom-geojson nil]
-      (let [built-in @#'api.geojson/builtin-geojson]
+      (let [built-in (@#'api.geojson/builtin-geojson)]
         (testing "Make sure the built-in entries still look like what we expect so our test still makes sense."
-          (is (schema= {:us_states {:name     (s/eq "United States")
-                                    s/Keyword s/Any}
-                        s/Keyword  s/Any}
-                       built-in))
+          (is (=? {:us_states {:name "United States"}}
+                  built-in))
           (is (= built-in
                  (api.geojson/custom-geojson))))
         (testing "Try to change one of the built-in entries..."
@@ -110,7 +109,7 @@
 (deftest update-endpoint-test
   (testing "PUT /api/setting/custom-geojson"
     (testing "test that we can set the value of api.geojson/custom-geojson via the normal routes"
-      (is (= (merge @#'api.geojson/builtin-geojson test-custom-geojson)
+      (is (= (merge (@#'api.geojson/builtin-geojson) test-custom-geojson)
              ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
              (u/auto-retry 3
                ;; bind a temporary value so it will get set back to its old value here after the API calls are done
@@ -128,34 +127,14 @@
       (let [resource-geojson {(first (keys test-custom-geojson))
                               (assoc (first (vals test-custom-geojson))
                                      :url "c3p0.properties")}]
-        (is (= (merge @#'api.geojson/builtin-geojson resource-geojson)
+        (is (= (merge (@#'api.geojson/builtin-geojson) resource-geojson)
                (u/auto-retry 3
                  (mt/with-temporary-setting-values [custom-geojson nil]
                    (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
                                          {:value resource-geojson})
                    (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
 
-(defprotocol GeoJsonTestServer
-  (-port [_]))
-
-(defn- non-responding-server
-  "Returns a server which accepts requests but never responds to them. Implements [[GeoJsonTestServer]] so you can
-  call [[-port]] to get the port. Implements java.io.Closeable so can be used in a `with-open`."
-  ^java.io.Closeable []
-  (let [server (ring-jetty/run-jetty (fn silent-async-handler
-                                       [_request _respond _raise])
-                                     {:join?         false
-                                      :async?        true
-                                      :port          0
-                                      :async-timeout 60000})]
-    (reify
-      java.io.Closeable
-      (close [_] (.stop server))
-
-      GeoJsonTestServer
-      (-port [_] (.. server getURI getPort)))))
-
-(deftest url-proxy-endpoint-test
+(deftest ^:parallel url-proxy-endpoint-test
   (testing "GET /api/geojson"
     (testing "test the endpoint that fetches JSON files given a URL"
       (is (= {:type        "Point"
@@ -165,7 +144,38 @@
       (is (= "GeoJSON URL failed to load"
              (mt/user-http-request :crowberto :get 400 "geojson"
                                    :url test-broken-geojson-url))))
-    (testing "error is returned if URL server never responds (#28752)"
+    (testing "error is returned if URL is invalid"
+      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
+                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
+                  "prohibited.")
+             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
+    (testing "cannot be called by non-admins"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+
+(defprotocol GeoJsonTestServer
+  (-port [_]))
+
+(defn- non-responding-server
+  "Returns a server which accepts requests but never responds to them. Implements [[GeoJsonTestServer]] so you can
+  call [[-port]] to get the port. Implements java.io.Closeable so can be used in a `with-open`."
+  ^java.io.Closeable []
+  (let [^Server server (ring-jetty/run-jetty (fn silent-async-handler
+                                               [_request _respond _raise])
+                                             {:join?         false
+                                              :async?        true
+                                              :port          0
+                                              :async-timeout 60000})]
+    (reify
+      java.io.Closeable
+      (close [_] (.stop server))
+
+      GeoJsonTestServer
+      (-port [_] (.. server getURI getPort)))))
+
+(deftest url-proxy-endpoint-non-responding-server-test
+  (testing "error is returned if URL server never responds (#28752)"
+    (with-redefs [api.geojson/connection-timeout-ms 200]
       ;; use a webserver which accepts a connection and never responds. The geojson endpoint opens a reader to the url
       ;; and responds with it. And if there are never any bytes going across, the whole thing just sits there. Our
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
@@ -175,15 +185,7 @@
           (testing "error is returned if URL connection fails"
             (is (= "GeoJSON URL failed to load"
                    (mt/user-http-request :crowberto :get 400 "geojson"
-                                         :url never-responds-url)))))))
-    (testing "error is returned if URL is invalid"
-      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
-                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
-                  "prohibited.")
-             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
-    (testing "cannot be called by non-admins"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+                                         :url never-responds-url)))))))))
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
@@ -195,7 +197,7 @@
       (testing "should be able to fetch the GeoJSON even if you aren't logged in"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
-               (client/client :get 200 "geojson/middle-earth"))))
+               (client/real-client :get 200 "geojson/middle-earth"))))
       (testing "try fetching an invalid key; should fail"
         (is (= "Invalid custom GeoJSON key: invalid-key"
                (mt/user-http-request :rasta :get 400 "geojson/invalid-key")))))
@@ -212,26 +214,26 @@
                              :url         "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/us-states.json"
                              :region_key  "STATE"
                              :region_name "NAME"}}
-            expected-value (merge @#'api.geojson/builtin-geojson custom-geojson)]
+            expected-value (merge (@#'api.geojson/builtin-geojson) custom-geojson)]
         (mt/with-temporary-setting-values [custom-geojson nil]
-          (mt/with-temp-env-var-value [mb-custom-geojson (json/generate-string custom-geojson)]
-            (binding [setting/*disable-cache* true]
+          (mt/with-temp-env-var-value! [mb-custom-geojson (json/generate-string custom-geojson)]
+            (binding [config/*disable-setting-cache* true]
               (testing "Should parse env var custom GeoJSON and merge in"
                 (is (= expected-value
                        (api.geojson/custom-geojson))))
               (testing "Env var value SHOULD NOT come back with [[setting/writable-settings]] -- should NOT be WRITABLE"
-                (is (schema= {:key            (s/eq :custom-geojson)
-                              :value          (s/eq nil)
-                              :is_env_setting (s/eq true)
-                              :env_name       (s/eq "MB_CUSTOM_GEOJSON")
-                              :description    su/NonBlankString
-                              :default        (s/eq "Using value of env var $MB_CUSTOM_GEOJSON")
-                              s/Keyword       s/Any}
-                             (some
-                              (fn [{setting-name :key, :as setting}]
-                                (when (= setting-name :custom-geojson)
-                                  setting))
-                              (setting/writable-settings)))))
+                (is (malli= [:map
+                             [:key [:= :custom-geojson]]
+                             [:value nil?]
+                             [:is_env_setting [:= true]]
+                             [:env_name       [:= "MB_CUSTOM_GEOJSON"]]
+                             [:description    ms/NonBlankString]
+                             [:default         [:= "Using value of env var $MB_CUSTOM_GEOJSON"]]]
+                            (some
+                             (fn [{setting-name :key, :as setting}]
+                               (when (= setting-name :custom-geojson)
+                                 setting))
+                             (setting/writable-settings)))))
               (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
                 (is (= expected-value
                        (get (setting/user-readable-values-map #{:public}) :custom-geojson)))))))))))
@@ -239,10 +241,18 @@
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"
     (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
-      (mt/with-temp-env-var-value [mb-custom-geojson-enabled false]
+      (mt/with-temp-env-var-value! [mb-custom-geojson-enabled false]
         (testing "Should not be able to fetch GeoJSON via URL proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"
-                 (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))
+                 (mt/user-real-request :crowberto :get 400 "geojson" :url test-geojson-url))))
         (testing "Should not be able to fetch custom GeoJSON via key proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"
-                 (mt/user-http-request :crowberto :get 400 "geojson/middle-earth"))))))))
+                 (mt/user-real-request :crowberto :get 400 "geojson/middle-earth"))))))))
+
+(deftest disable-default-maps-test
+  (testing "Should be able to disable the default GeoJSON maps by env var"
+    (mt/with-temp-env-var-value! [mb-default-maps-enabled false]
+      (is (= {}
+             (@#'api.geojson/builtin-geojson)))
+      (is (= "Invalid custom GeoJSON key: us_states"
+             (mt/user-real-request :crowberto :get 400 "geojson/us_states"))))))

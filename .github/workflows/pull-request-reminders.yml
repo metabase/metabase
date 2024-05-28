@@ -1,0 +1,45 @@
+name: Pull Request Reminders
+
+on:
+  pull_request:
+    types: [opened]
+    branches:
+      - "master"
+
+jobs:
+  external-reminder:
+    name: External PR Helper
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+      issues: read
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: | # js
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const pullNumber = '${{ github.event.pull_request.number }}';
+            const author = '${{ github.event.pull_request.user.login }}';
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: pullNumber,
+              labels: ["External"],
+            });
+
+            const guideLink = "https://www.notion.so/metabase/Third-Party-PRs-External-contributions-5954061854424c1ea6391d98746646e0";
+            const message = `@${author} Thanks for your contribution! ❤️  We'll try to review it as soon as we can.\n\n
+              Reviewers, make sure to check out our [External PR Review Guide](${guideLink}) when reviewing.
+            `;
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pullNumber,
+              body: message,
+            });

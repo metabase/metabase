@@ -14,7 +14,7 @@
    cache entry key. `results` are passed as a compressed byte array.
 
   The implementation is responsible for purging old cache entries when appropriate."
-  (^{:style/indent 3} cached-results [this ^bytes query-hash max-age-seconds respond]
+  (^{:style/indent 3} cached-results [this ^bytes query-hash strategy respond]
     "Call `respond` with cached results for the query (as an `InputStream` to the raw bytes) if present and not
   expired; otherwise, call `respond` with `nil.
 
@@ -22,7 +22,7 @@
       (with-open [is (...)]
         (respond is)))
 
-  `max-age-seconds` may be floating-point. This method *must* return the result of `respond`.")
+  `strategy` should be a map with cache configuration. This method *must* return the result of `respond`.")
 
   (save-results! [this ^bytes query-hash ^bytes results]
     "Add a cache entry with the `results` of running query with byte array `query-hash`. This should replace any prior
@@ -35,13 +35,13 @@
 (defmacro with-cached-results
   "Macro version for consuming `cached-results` from a `backend`.
 
-    (with-cached-results backend query-hash max-age-seconds [is]
+    (with-cached-results backend query-hash strategy [is]
       ...)
 
   InputStream `is` will be `nil` if no cached results were available."
   {:style/indent 4}
-  [backend query-hash max-age-seconds [is-binding] & body]
-  `(cached-results ~backend ~query-hash ~max-age-seconds (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
+  [backend query-hash strategy [is-binding] & body]
+  `(cached-results ~backend ~query-hash ~strategy (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
                                                            ~@body)))
 
 (defmulti cache-backend

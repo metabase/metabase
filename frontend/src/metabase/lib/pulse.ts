@@ -1,20 +1,18 @@
 import _ from "underscore";
-import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
 
+import MetabaseSettings from "metabase/lib/settings";
+import { getEmailDomain } from "metabase/lib/utils";
 import {
+  getDefaultValuePopulatedParameters,
+  normalizeParameterValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
   Channel,
   ChannelSpec,
   NotificationRecipient,
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
-import {
-  hasDefaultParameterValue,
-  hasParameterValue,
-  normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -53,21 +51,20 @@ export function scheduleIsValid(channel: Channel) {
         return true;
       }
     // these cases intentionally fall though
-    // eslint-disable-next-line no-fallthrough
+    /* eslint-disable no-fallthrough */
     case "weekly":
       if (channel.schedule_day == null) {
         return false;
       }
-    // eslint-disable-next-line no-fallthrough
     case "daily":
       if (channel.schedule_hour == null) {
         return false;
       }
-    // eslint-disable-next-line no-fallthrough
     case "hourly":
       break;
     default:
       return false;
+    /* eslint-enable no-fallthrough */
   }
 
   return true;
@@ -100,7 +97,7 @@ export function recipientIsValid(recipient: NotificationRecipient) {
     return true;
   }
 
-  const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
+  const recipientDomain = getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
   return (
     _.isEmpty(allowedDomains) ||
@@ -206,22 +203,11 @@ export function getActivePulseParameters(
   pulse: Pulse,
   parameters: PulseParameter[],
 ) {
-  const pulseParameters = getPulseParameters(pulse);
-  const pulseParametersById = _.indexBy(pulseParameters, "id");
-
-  return parameters
-    .map(parameter => {
-      const pulseParameter = pulseParametersById[parameter.id];
-      if (!pulseParameter && !hasDefaultParameterValue(parameter)) {
-        return;
-      }
-
-      return {
-        ...parameter,
-        value: hasParameterValue(pulseParameter?.value)
-          ? pulseParameter.value
-          : parameter.default,
-      };
-    })
-    .filter(isNotNull);
+  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
+    map[parameter.id] = parameter.value;
+    return map;
+  }, {});
+  return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
+    (parameter: any) => parameter.value != null,
+  );
 }

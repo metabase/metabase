@@ -1,6 +1,6 @@
-import { processSource } from "metabase-lib/expressions/process";
+import { processSource } from "metabase-lib/v1/expressions/process";
 
-describe("metabase-lib/expressions/process", () => {
+describe("metabase-lib/v1/expressions/process", () => {
   describe("processSource", () => {
     it("should non throw", () => {
       expect(() =>

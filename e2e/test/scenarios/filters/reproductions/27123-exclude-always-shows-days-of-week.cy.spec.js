@@ -1,5 +1,5 @@
-import { restore, popover } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -20,12 +20,15 @@ describe("issue 27123", () => {
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
     cy.findAllByTestId("header-cell").contains("Created At").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    cy.findByText("Exclude...").click();
-    cy.findByText("Months of the year...").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Exclude…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Months of the year…").click();
 
     popover()
-      .should("contain", "Months of the year...")
+      .should("contain", "Months of the year…")
       .and("contain", "January");
   });
 });

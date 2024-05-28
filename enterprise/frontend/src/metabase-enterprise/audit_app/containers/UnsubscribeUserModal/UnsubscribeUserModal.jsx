@@ -1,9 +1,11 @@
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+
 import Users from "metabase/entities/users";
 import { addUndo } from "metabase/redux/undo";
-import { AuditApi } from "../../lib/services";
+import { AuditApi } from "metabase-enterprise/services";
+
 import UnsubscribeUserForm from "../../components/UnsubscribeUserForm";
 
 const mapDispatchToProps = dispatch => ({

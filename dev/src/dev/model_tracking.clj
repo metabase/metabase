@@ -52,7 +52,7 @@
 (defn- new-change
   "Add a change to the [[changes]] atom.
 
-    > (new-change :models/Card :insert {:name \"new card\"})
+    > (new-change :model/Card :insert {:name \"new card\"})
     instance
 
     > @changes*

@@ -1,5 +1,6 @@
-import { RowValue } from "./dataset";
-import { CardId } from "./card";
+import type { CardId } from "./card";
+import type { RowValue } from "./dataset";
+import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -21,8 +22,8 @@ export type DateParameterType =
   | "date/range"
   | "date/relative"
   | "date/month-year"
-  | "date/quarter-year";
-("date/all-options");
+  | "date/quarter-year"
+  | "date/all-options";
 
 export type ParameterType =
   | StringParameterType
@@ -42,9 +43,11 @@ export interface Parameter extends ParameterValuesConfig {
   sectionId?: string;
   default?: any;
   required?: boolean;
+  options?: ParameterOptions;
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
+  target?: ParameterTarget;
 }
 
 export interface ParameterValuesConfig {
@@ -63,9 +66,48 @@ export interface ValuesSourceConfig {
   value_field?: unknown[];
 }
 
+export type VariableTarget = ["template-tag", string];
+export type ParameterVariableTarget = ["variable", VariableTarget];
+export type ParameterTextTarget = ["text-tag", string];
+
+export type ParameterTarget =
+  | ParameterVariableTarget
+  | ParameterDimensionTarget
+  | ParameterTextTarget;
+
+export type ParameterDimensionTarget =
+  | NativeParameterDimensionTarget
+  | StructuredParameterDimensionTarget;
+
+export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
+
+export type StructuredParameterDimensionTarget = [
+  "dimension",
+  ConcreteFieldReference | ExpressionReference,
+];
+
+export type ParameterValueOrArray = string | number | Array<any>;
 export type ParameterValue = [RowValue];
 
 export interface ParameterValues {
   values: ParameterValue[];
   has_more_values: boolean;
 }
+
+export interface ParameterOptions {
+  "case-sensitive": boolean;
+}
+
+export type ParameterMappingOptions = {
+  name: string;
+  sectionId: string;
+  combinedName?: string;
+  menuName?: string;
+  type: string;
+};
+
+export type ParameterQueryObject = {
+  type: string;
+  target: ParameterTarget;
+  value: ParameterValueOrArray;
+};

@@ -15,19 +15,20 @@ jobs:
     outputs:
       codeql: ${{ steps.changes.outputs.codeql }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
   analyze:
     needs: files-changed
+    if: needs.files-changed.outputs.codeql == 'true'
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:

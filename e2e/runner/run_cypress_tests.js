@@ -1,8 +1,8 @@
-const { printBold } = require("./cypress-runner-utils");
-const runCypress = require("./cypress-runner-run-tests");
-const getVersion = require("./cypress-runner-get-version");
-const generateSnapshots = require("./cypress-runner-generate-snapshots");
 const CypressBackend = require("./cypress-runner-backend");
+const generateSnapshots = require("./cypress-runner-generate-snapshots");
+const getVersion = require("./cypress-runner-get-version");
+const runCypress = require("./cypress-runner-run-tests");
+const { printBold } = require("./cypress-runner-utils");
 
 const e2eHost = process.env["E2E_HOST"];
 
@@ -31,7 +31,11 @@ const cleanup = async (exitCode = 0) => {
     await CypressBackend.stop(server);
   }
 
-  process.exit(exitCode);
+  // We might get a signal code instead, which is a string
+  // and doesn't require process.exit call
+  if (typeof exitCode === "number") {
+    process.exit(exitCode);
+  }
 };
 
 const launch = () =>

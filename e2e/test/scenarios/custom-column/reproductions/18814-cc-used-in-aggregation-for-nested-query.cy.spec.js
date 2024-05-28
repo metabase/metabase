@@ -1,5 +1,5 @@
-import { restore, popover, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visualize } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -31,13 +31,15 @@ describe("issue 18814", () => {
     cy.icon("notebook").click();
 
     cy.icon("sum").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().contains(ccName).click();
 
     visualize();
 
-    cy.get(".Visualization").should("contain", "2016");
+    cy.findByTestId("query-visualization-root").should("contain", "2022");
   });
 });

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { space, width } from "styled-system";
+
 import { color, alpha } from "metabase/lib/colors";
 
 type CardProps = {
@@ -11,8 +11,6 @@ type CardProps = {
 };
 
 const Card = styled.div<CardProps>`
-  ${width}
-  ${space}
   background-color: ${props => (props.dark ? color("text-dark") : "white")};
   border: 1px solid
     ${props => (props.dark ? "transparent" : color("bg-medium"))};
@@ -29,4 +27,5 @@ const Card = styled.div<CardProps>`
   ${props => props.compact && `box-shadow: 0 1px 2px ${color("shadow")};`};
 `;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Card;

@@ -1,5 +1,5 @@
-import { restore, popover, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visualize } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS, ORDERS } = SAMPLE_DATABASE;
 
@@ -38,9 +38,10 @@ describe.skip("issue 18770", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("4,784").click();
     popover()
-      .should("contain", "View these Orders")
+      .should("contain", "See these Orders")
       .and("contain", "Break out by a…")
       .and("contain", "Filter by this value")
       .and("contain", "Automatic explorations");

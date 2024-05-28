@@ -1,0 +1,92 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import {
+  Box,
+  Button,
+  Flex,
+  HoverCard,
+  Text,
+  TextInput,
+  Stack,
+} from "metabase/ui";
+
+export const args = {
+  label: "HoverCard",
+  position: "bottom",
+};
+
+export const argTypes = {
+  position: {
+    options: [
+      "bottom",
+      "left",
+      "right",
+      "top",
+      "bottom-end",
+      "bottom-start",
+      "left-end",
+      "left-start",
+      "right-end",
+      "right-start",
+      "top-end",
+      "top-start",
+    ],
+    control: { type: "select" },
+  },
+};
+
+export const sampleArgs = {
+  simple: <Text>Hover!</Text>,
+  interactive: (
+    <Stack spacing="sm">
+      <TextInput autoFocus placeholder="First name" />
+      <TextInput placeholder="Last name" />
+      <Button>Update</Button>
+    </Stack>
+  ),
+};
+
+<Meta
+  title="Overlays/HoverCard"
+  component={HoverCard}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# HoverCard
+
+Our themed wrapper around [Mantine HoverCard](https://v6.mantine.dev/core/hover-card/).
+
+## Docs
+
+- [Mantine HoverCard Docs](https://v6.mantine.dev/core/hover-card/)
+
+## Examples
+
+export const DefaultTemplate = ({ children, ...args }) => (
+  <Flex justify="center">
+    <HoverCard {...args}>
+      <HoverCard.Target>
+        <Button variant="filled">Hover to open</Button>
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <Box p="md">{children}</Box>
+      </HoverCard.Dropdown>
+    </HoverCard>
+  </Flex>
+);
+
+export const Default = DefaultTemplate.bind({});
+Default.args = {
+  children: sampleArgs.simple,
+};
+
+export const Interactive = DefaultTemplate.bind({});
+Interactive.args = {
+  children: sampleArgs.interactive,
+};
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+  <Story name="Interactive content">{Interactive}</Story>
+</Canvas>

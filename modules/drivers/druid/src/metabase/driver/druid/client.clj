@@ -1,12 +1,14 @@
 (ns metabase.driver.druid.client
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clojure.core.async :as a]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.log :as log]
-            [metabase.util.ssh :as ssh]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [metabase.models.secret :as secret]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.ssh :as ssh]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,8 +27,11 @@
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
-  (let [options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
-                  (:body options) (update :body json/generate-string))]
+  (let [{:keys [auth-enabled auth-username auth-token-value]} options
+        options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
+                        (:body options) (update :body json/generate-string)
+                        auth-enabled (assoc :basic-auth (str auth-username ":" auth-token-value)))]
+
     (try
       (let [{:keys [status body]} (request-fn url options)]
         (when (not= status 200)
@@ -62,7 +67,13 @@
   {:pre [(map? details) (map? query)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (try
-      (POST (details->url details-with-tunnel "/druid/v2"), :body query)
+      (POST (details->url details-with-tunnel "/druid/v2"),
+        :body             query
+        :auth-enabled     (:auth-enabled details)
+        :auth-username    (:auth-username details)
+        :auth-token-value (-> details
+                              (secret/db-details-prop->secret-map "auth-token")
+                              secret/value->string))
       ;; don't need to do anything fancy if the query was killed
       (catch InterruptedException e
         (throw e))
@@ -71,20 +82,25 @@
                           {:type  qp.error-type/db
                            :query query}
                           e)]
-          (log/error e' (trs "Error running query"))
+          (log/error e' "Error running query")
           ;; Re-throw a new exception with `message` set to the extracted message
           (throw e'))))))
 
 (defn- cancel-query-with-id! [details query-id]
   (if-not query-id
-    (log/warn (trs "Client closed connection, no queryId found, can't cancel query"))
+    (log/warn "Client closed connection, no queryId found, can't cancel query")
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
+      (log/warnf "Client closed connection, canceling Druid queryId %s" query-id)
       (try
-        (log/debug (trs "Canceling Druid query with ID {0}" query-id))
-        (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
+        (log/debugf "Canceling Druid query with ID %s" query-id)
+        (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id))
+          :auth-enabled     (:auth-enabled details)
+          :auth-username    (:auth-username details)
+          :auth-token-value (-> details
+                                (secret/db-details-prop->secret-map "auth-token")
+                                secret/value->string))
         (catch Exception cancel-e
-          (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id)))))))
+          (log/warnf cancel-e "Failed to cancel Druid query with queryId %s" query-id))))))
 
 (defn do-query-with-cancellation
   "Run a Druid `query`, canceling it if `canceled-chan` gets a message."

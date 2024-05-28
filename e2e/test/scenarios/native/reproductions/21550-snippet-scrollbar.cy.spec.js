@@ -14,7 +14,7 @@ describe("issue 21550", () => {
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
-    cy.contains("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -25,8 +25,10 @@ describe("issue 21550", () => {
       cy.wait("@rootCollection");
     });
 
-    cy.findByText("people").realHover();
-    cy.get(".Icon-chevrondown").click({ force: true });
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("people").realHover();
+      cy.icon("chevrondown").click({ force: true });
+    });
 
     cy.get("pre").then($pre => {
       const preWidth = $pre[0].getBoundingClientRect().width;

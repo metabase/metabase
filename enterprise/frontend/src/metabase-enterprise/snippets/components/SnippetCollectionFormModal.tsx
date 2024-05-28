@@ -1,13 +1,11 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-
 import type { Collection } from "metabase-types/api";
 
-import SnippetCollectionForm, {
-  SnippetCollectionFormOwnProps,
-} from "./SnippetCollectionForm";
+import type { SnippetCollectionFormOwnProps } from "./SnippetCollectionForm";
+import SnippetCollectionForm from "./SnippetCollectionForm";
 
 interface SnippetCollectionFormModalOwnProps
   extends Omit<SnippetCollectionFormOwnProps, "onCancel"> {
@@ -47,4 +45,5 @@ function SnippetFormModal({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SnippetFormModal;

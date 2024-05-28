@@ -1,0 +1,8 @@
+@import "./components/form.module.css";
+@import "./components/list.module.css";
+@import "./components/modal.module.css";
+@import "./components/tippy.module.css";
+@import "./components/grabber.module.css";
+@import "./admin.module.css";
+@import "./dashboard.module.css";
+@import "./query_builder.module.css";

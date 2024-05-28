@@ -1,10 +1,16 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import FormProvider from "metabase/core/components/FormProvider";
+
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import * as Errors from "metabase/core/utils/errors";
-import { SubscribeInfo } from "metabase-types/store";
+import { FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import type { SubscribeInfo } from "metabase-types/store";
+
+import { getUserEmail } from "../../selectors";
+import { subscribeToNewsletter } from "../../utils";
+
 import {
   EmailForm,
   EmailFormHeader,
@@ -23,25 +29,15 @@ const NEWSLETTER_SCHEMA = Yup.object({
   email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
-export interface NewsletterFormProps {
-  initialEmail?: string;
-  onSubscribe: (email: string) => void;
-}
-
-const NewsletterForm = ({
-  initialEmail = "",
-  onSubscribe,
-}: NewsletterFormProps): JSX.Element => {
-  const initialValues = { email: initialEmail };
+export const NewsletterForm = (): JSX.Element => {
+  const initialEmail = useSelector(getUserEmail);
+  const initialValues = { email: initialEmail ?? "" };
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const handleSubmit = useCallback(
-    async ({ email }: SubscribeInfo) => {
-      await onSubscribe(email);
-      setIsSubscribed(true);
-    },
-    [onSubscribe],
-  );
+  const handleSubmit = useCallback(async ({ email }: SubscribeInfo) => {
+    await subscribeToNewsletter(email);
+    setIsSubscribed(true);
+  }, []);
 
   return (
     <EmailFormRoot>
@@ -82,5 +78,3 @@ const NewsletterForm = ({
     </EmailFormRoot>
   );
 };
-
-export default NewsletterForm;

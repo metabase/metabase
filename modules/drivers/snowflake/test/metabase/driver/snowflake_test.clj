@@ -1,14 +1,31 @@
 (ns metabase.driver.snowflake-test
   (:require
+   [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.snowflake :as driver.snowflake]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -18,11 +35,21 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(defn- query->native [query]
+  (let [check-sql-fn (fn [_ _ sql & _]
+                       (throw (ex-info "done" {::native-query sql})))]
+    (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
+                  sql-jdbc.execute/execute-statement! check-sql-fn]
+      (try
+        (qp/process-query query)
+        (is false "no statement created")
+        (catch Exception e
+          (-> e u/all-ex-data ::native-query))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -30,8 +57,7 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false
-                                hx/*honey-sql-version*                   2]
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
 (deftest sanity-check-test
@@ -41,39 +67,128 @@
             (mt/run-mbql-query venues
               {:aggregation [[:count]]}))))))
 
+(deftest ^:parallel quote-name-test
+  (is (nil? (#'driver.snowflake/quote-name nil)))
+  (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
+  (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
+
+(deftest ^:parallel connection-details->spec-test
+  (let [details {:role nil
+                 :warehouse "COMPUTE_WH"
+                 :additional-options nil
+                 :db "v3_sample-dataset"
+                 :password "passwd"
+                 :quote-db-name false
+                 :let-user-control-scheduling false
+                 :private-key-options "uploaded"
+                 :private-key-source nil
+                 :port nil
+                 :advanced-options true
+                 :private-key-id 1
+                 :schema-filters-type "all"
+                 :account "ls10467.us-east-2.aws"
+                 :private-key-value nil
+                 :tunnel-enabled false
+                 :engine :snowflake
+                 :private-key-creator-id 3
+                 :user "SNOWFLAKE_DEVELOPER"
+                 :private-key-created-at "2024-01-05T19:10:30.861839Z"
+                 :host ""}]
+    (testing "Database name is quoted if quoting is requested (#27856)"
+      (are [quote? result] (=? {:db result}
+                               (let [details (assoc details :quote-db-name quote?)]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
+        true "\"v3_sample-dataset\""
+        false "v3_sample-dataset"))
+    (testing "Subname is replaced if hostname is provided (#22133)"
+      (are [use-hostname alternative-host expected-subname] (=? expected-subname
+                                                                (:subname (let [details (-> details
+                                                                                            (assoc :host alternative-host)
+                                                                                            (assoc :use-hostname use-hostname))]
+                                                                            (sql-jdbc.conn/connection-details->spec :snowflake details))))
+        true nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "  " "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        true "snowflake.example.com/" "//snowflake.example.com/"
+        true "snowflake.example.com" "//snowflake.example.com/"
+        false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
+
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v3_")]
+    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v4_")]
       (testing "Create DB DDL statements"
-        (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
+        (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
       (testing "Create Table DDL statements"
         (is (= (map
                 #(str/replace % #"\s+" " ")
-                ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                ["DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"users\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"categories\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"venues\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"checkins\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
-                FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
-                FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
-                FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"products\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"products\" (\"id\" INTEGER AUTOINCREMENT, \"ean\" TEXT,
+                \"title\" TEXT, \"category\" TEXT, \"vendor\" TEXT, \"price\" FLOAT, \"rating\" FLOAT, \"created_at\"
+                TIMESTAMP_TZ, PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"people\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"people\" (\"id\" INTEGER AUTOINCREMENT, \"address\" TEXT,
+                \"email\" TEXT, \"password\" TEXT, \"name\" TEXT, \"city\" TEXT, \"longitude\" FLOAT, \"state\" TEXT,
+                \"source\" TEXT, \"birth_date\" DATE, \"zip\" TEXT, \"latitude\" FLOAT, \"created_at\" TIMESTAMP_TZ,
+                PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"reviews\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"reviews\" (\"id\" INTEGER AUTOINCREMENT, \"product_id\" INTEGER,
+                \"reviewer\" TEXT, \"rating\" INTEGER, \"body\" TEXT, \"created_at\" TIMESTAMP_TZ, PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"orders\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"orders\" (\"id\" INTEGER AUTOINCREMENT, \"user_id\" INTEGER,
+                \"product_id\" INTEGER, \"subtotal\" FLOAT, \"tax\" FLOAT, \"total\" FLOAT, \"discount\" FLOAT, \"created_at\"
+                TIMESTAMP_TZ, \"quantity\" INTEGER, PRIMARY KEY (\"id\")) ;"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"gory_id_categories_-1429799958\"
+                FOREIGN KEY (\"category_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_user_id_users_-1503129306\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"users\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_venue_id_venues_55711779\"
+                FOREIGN KEY (\"venue_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"venues\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"reviews\" ADD CONSTRAINT \"roduct_id_products_-1093665274\"
+                FOREIGN KEY (\"product_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"products\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"orders\" ADD CONSTRAINT \"ders_user_id_people_1646240302\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"people\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"orders\" ADD CONSTRAINT \"roduct_id_products_-1151848842\"
+                FOREIGN KEY (\"product_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"products\" (\"id\");"])
                (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
-                                                                   (update :database-name #(str "v3_" %))))))))))
+                                                                   (update :database-name #(str "v4_" %))))))))))
 
-;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
-;; bug in the JDBC driver -- Cam
+(deftest ^:parallel simple-select-probe-query-test
+  (testing "the simple-select-probe-query used by have-select-privilege? should be qualified with the Database name. Ignore blank keys."
+    (mt/test-driver :snowflake
+      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                        {:database (assoc (mt/db)
+                                                          :details {:db     " "
+                                                                    :dbname "dbname"})})
+        (is (= ["SELECT TRUE AS \"_\" FROM \"dbname\".\"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
+               (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
+
+(deftest ^:parallel have-select-privilege?-test
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider (mt/id)
+      (sql-jdbc.execute/do-with-connection-with-options
+       :snowflake
+       (mt/db)
+       nil
+       (fn [^java.sql.Connection conn]
+         (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -81,7 +196,11 @@
                       #{{:name "users",      :schema "PUBLIC", :description nil}
                         {:name "venues",     :schema "PUBLIC", :description nil}
                         {:name "checkins",   :schema "PUBLIC", :description nil}
-                        {:name "categories", :schema "PUBLIC", :description nil}}}]
+                        {:name "categories", :schema "PUBLIC", :description nil}
+                        {:name "orders",     :schema "PUBLIC", :description nil}
+                        {:name "people",     :schema "PUBLIC", :description nil}
+                        {:name "products",   :schema "PUBLIC", :description nil}
+                        {:name "reviews",    :schema "PUBLIC", :description nil}}}]
         (testing "should work with normal details"
           (is (= expected
                  (driver/describe-database :snowflake (mt/db)))))
@@ -95,22 +214,54 @@
           (is (= expected
                  (driver/describe-database :snowflake (assoc (mt/db) :name "ABC")))))))))
 
+(deftest describe-database-default-schema-test
+  (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
+    (mt/test-driver :snowflake
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "Default-Schema-Test"})
+                               ;; simulate a DB default schema or session schema by including it in the connection
+                               ;; details... see
+                               ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
+                               :schema "PUBLIC"
+                               :schema-filters-type "inclusion"
+                               :schema-filters-patterns "Test-Schema")
+            db-name     (:db details)
+            schema-name "Test-Schema"
+            table-name  "Test-Table"
+            field-name  "Test-ID"
+            spec        (sql-jdbc.conn/connection-details->spec :snowflake details)]
+        ;; create the snowflake DB
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake spec nil
+         (fn [^java.sql.Connection conn]
+           (doseq [stmt (letfn [(identifier [& args]
+                                  (str/join \. (map #(str \" % \") args)))]
+                          [(format "DROP DATABASE IF EXISTS %s;" (identifier db-name))
+                           (format "CREATE DATABASE %s;" (identifier db-name))
+                           (format "CREATE SCHEMA %s;" (identifier db-name schema-name))
+                           (format "CREATE TABLE %s (%s INTEGER AUTOINCREMENT);" (identifier db-name schema-name table-name) (identifier field-name))
+                           (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))])]
+             (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))))
+        ;; fetch metadata
+        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
+          (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
+                  (driver/describe-database :snowflake database))))))))
+
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
       (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+            db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
-        (jdbc/execute! spec ["DROP DATABASE IF EXISTS \"views_test\";"]
-                       {:transaction? false})
-        (jdbc/execute! spec ["CREATE DATABASE \"views_test\";"]
-                       {:transaction? false})
+        (doseq [stmt [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)
+                      (format "CREATE DATABASE \"%s\";" db-name)]]
+          (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db "views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details details}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
-            (doseq [statement ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"
-                               "GRANT SELECT ON \"views_test\".\"PUBLIC\".\"example_view\" TO PUBLIC;"]]
+            (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
+                               (format "GRANT SELECT ON \"%s\".\"PUBLIC\".\"example_view\" TO PUBLIC;" db-name)]]
               (jdbc/execute! spec [statement]))
             ;; now sync the DB
             (sync!)
@@ -119,7 +270,78 @@
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
-(deftest describe-table-test
+(def dynamic-db
+  (mt/dataset-definition "dynamic-db"
+    ["metabase_users"
+     [{:field-name "name" :base-type :type/Text}]
+     [["mb_qnkhuat"]]]))
+
+(defn- do-with-dynamic-table
+  [thunk]
+  (mt/dataset (mt/dataset-definition "dynamic-db"
+                ["metabase_users"
+                 [{:field-name "name" :base-type :type/Text}]
+                 [["mb_qnkhuat"]]])
+    (let [details (:details (mt/db))]
+      (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                     [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                              SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
+                              (:db details) (:db details) (:db details))])
+      (thunk))))
+
+(defmacro with-dynamic-table
+  "Create a db with 2 tables: metabase_users and metabase_fan, in which metabase_fan is a dynamic table."
+  [& body]
+  `(do-with-dynamic-table (fn [] ~@body)))
+
+(deftest sync-dynamic-tables-test
+  (testing "Should be able to sync dynamic tables"
+    (mt/test-driver :snowflake
+      (with-dynamic-table
+        (sync/sync-database! (t2/select-one :model/Database (mt/id)))
+        (testing "both base tables and dynamic tables should be synced"
+          (is (= #{"metabase_fan" "metabase_users"}
+                 (t2/select-fn-set :name :model/Table :db_id (mt/id))))
+          (testing "the fields for dynamic tables are synced correctly"
+            (is (= #{{:name "name" :base_type :type/Text}
+                     {:name "id" :base_type :type/Number}}
+                   (set (t2/select [:model/Field :name :base_type]
+                                   :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
+
+(deftest dynamic-table-helpers-test
+  (testing "test to make sure various methods called on dynamic tables work"
+    (mt/test-driver :snowflake
+      (with-dynamic-table
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake
+         (mt/db)
+         nil
+         (fn [conn]
+           (let [dynamic-table (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
+                 normal-table  (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+                 db-name       (-> (mt/db) :details :db)]
+             (testing "dynamic-table?"
+               (testing "returns true for dynamic table"
+                 (is (true? (#'driver.snowflake/dynamic-table? conn db-name (:schema dynamic-table) (:name dynamic-table)))))
+
+               (testing "returns false for normal table"
+                 (is (false? (#'driver.snowflake/dynamic-table? conn db-name (:schema normal-table) (:name normal-table)))))
+
+               (testing "returns false if db-name is invalid, make sure we don't throw an exception"
+                 (is (false? (#'driver.snowflake/dynamic-table? conn (mt/random-name) (:schema normal-table) (:name normal-table))))))
+
+             (testing "sql-jdbc.describe-table/get-table-pks"
+               (testing "returns empty array for dynamic table"
+                 (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn db-name dynamic-table))))
+
+               (testing "also works if db-name is nil"
+                 (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
+
+             (testing "driver/describe-table-fks returns empty set for dynamic table"
+               #_{:clj-kondo/ignore [:deprecated-var]}
+               (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
+
+(deftest ^:parallel describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
       (is (= {:name   "categories"
@@ -130,26 +352,29 @@
                          :pk?               true
                          :database-position 0
                          :database-is-auto-increment true
-                         :database-required false}
+                         :database-required false
+                         :json-unfolding    false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
                          :database-position 1
                          :database-is-auto-increment false
-                         :database-required true}}}
+                         :database-required true
+                         :json-unfolding    false}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table-fks uses the NAME FROM DETAILS too"
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :venues))))))))
 
 (defn- format-env-key ^String [env-key]
   (let [[_ header body footer]
-        (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
     (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
 (deftest can-connect-test
@@ -185,13 +410,31 @@
                                   (merge {:db pk-db :user pk-user} to-merge))]
                   (is (can-connect? details)))))))))))
 
+(deftest can-connect-pk-no-options-test
+  (mt/test-driver
+   :snowflake
+   (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
+     (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+           pk-user (tx/db-test-env-var :snowflake :pk-user)
+           pk-db "SNOWFLAKE_SAMPLE_DATA"
+           details (-> (:details (mt/db))
+                       (dissoc :password)
+                       (assoc :dbname pk-db
+                              :private-key-value (u/encode-base64 pk-key)
+                              :user pk-user))]
+       (is (driver/can-connect? :snowflake details))))))
+
+(deftest ^:parallel replacement-snippet-date-param-test
+  (mt/test-driver :snowflake
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "'2014-08-02'::date"
+              :prepared-statement-args nil}
+             (sql.params.substitution/->replacement-snippet-info :snowflake (params/->Date "2014-08-02")))))))
+
 (deftest report-timezone-test
   (mt/test-driver :snowflake
-    (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036)"
-      (letfn [(run-query []
-                (mt/rows
-                 (qp/process-query
-                  {:database   (mt/id)
+    (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036, #39769)"
+      (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}")
                                 :template-tags {:filter_date {:name         "filter_date"
@@ -199,19 +442,22 @@
                                                               :type         "date"}}}
                    :parameters [{:type   "date/single"
                                  :target ["variable" ["template-tag" "filter_date"]]
-                                 :value  "2014-08-02"}]})))]
-        (testing "baseline"
-          (is (= [["2014-08-02T00:00:00Z"]]
-                 (run-query))))
-        (testing "with report-timezone"
-          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-            (is (= [["2014-08-02T00:00:00-07:00"]]
-                   (run-query)))))))
-    (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036)"
-      (letfn [(run-query []
-                (mt/rows
-                 (qp/process-query
-                  {:database   (mt/id)
+                                 :value  "2014-08-02"}]}]
+        (mt/with-native-query-testing-context query
+          (letfn [(run-query []
+                    (mt/rows (qp/process-query query)))]
+            (testing "baseline"
+              (is (= [["2014-08-02T00:00:00Z"]]
+                     (run-query))))
+            (testing "with report-timezone"
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (is (= [["2014-08-02T00:00:00-07:00"]]
+                       (run-query)))))))))))
+
+(deftest report-timezone-test-2
+  (mt/test-driver :snowflake
+    (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036, #39769)"
+      (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
                                                     (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
@@ -223,16 +469,67 @@
                                                               :type         "date"}}}
                    :parameters [{:type   "date/single"
                                  :target ["variable" ["template-tag" "filter_date"]]
-                                 :value  "2014-08-02"}]})))]
-        (testing "baseline (no report-timezone set)"
-          (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
-                  ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
-                 (run-query))))
-        (testing "with report timezone set"
-          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
-                  ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
-                 (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-                   (run-query)))))))))
+                                 :value  "2014-08-02"}]}]
+        (mt/with-native-query-testing-context query
+          (letfn [(run-query []
+                    (mt/rows (qp/process-query query)))]
+            (testing "baseline (no report-timezone set)"
+              (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
+                      ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
+                     (run-query))))
+            (testing "with report timezone set"
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
+                        ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
+                       (run-query)))))))))))
+
+(defn- test-temporal-instance
+  "Test that `java.time` instance `t` is set correctly (as a parameter) and returned correctly."
+  [t expected]
+  (mt/test-driver :snowflake
+    (testing "(#11036, #39769)"
+      (let [[sql & params] (sql.qp/format-honeysql :snowflake {:select [[(sql.qp/->honeysql :snowflake t) :t]]})
+            query {:database (mt/id)
+                   :type     :native
+                   :native   {:query  sql
+                              :params (vec params)}}]
+        (mt/with-native-query-testing-context query
+          (testing (format "\nt = ^%s %s" (.getName (class t)) (pr-str t))
+            (is (= [expected]
+                   (mt/first-row (qp/process-query query))))))))))
+
+(deftest ^:parallel local-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00"
+   "2024-04-25T14:44:00Z"))
+
+(deftest local-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00"
+     "2024-04-25T14:44:00-07:00")))
+
+(deftest ^:parallel offset-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00-07:00"
+   "2024-04-25T21:44:00Z"))
+
+(deftest offset-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00-07:00"
+     "2024-04-25T14:44:00-07:00")))
+
+(deftest ^:parallel zoned-date-time-parameter-test
+  (test-temporal-instance
+   #t "2024-04-25T14:44:00-07:00[US/Pacific]"
+   "2024-04-25T21:44:00Z"))
+
+(deftest zoned-date-time-parameter-report-timezone-test
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+    (test-temporal-instance
+     #t "2024-04-25T14:44:00-07:00[US/Pacific]"
+     "2024-04-25T14:44:00-07:00")))
 
 (deftest week-start-test
   (mt/test-driver :snowflake
@@ -261,7 +558,7 @@
 (deftest first-day-of-week-test
   (mt/test-driver :snowflake
     (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (doseq [[start-of-week friday-int] [[:friday 1]
                                             [:monday 5]
                                             [:sunday 6]]]
@@ -274,12 +571,78 @@
                 (is (= [[friday-int 1]]
                        (mt/rows (qp/process-query query))))))))))))
 
-(deftest normalize-test
+(deftest ^:parallel normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (mt/with-temp Database [db {:name    "Legacy Snowflake DB"
-                                  :engine  :snowflake,
-                                  :details {:account  "my-instance"
-                                            :regionid "us-west-1"}}]
+      (t2.with-temp/with-temp [Database db {:name    "Legacy Snowflake DB"
+                                            :engine  :snowflake,
+                                            :details {:account  "my-instance"
+                                                      :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
+
+(deftest ^:parallel set-role-statement-test
+  (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
+    ;; No special characters
+    (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))
+    (is (= "USE ROLE ROLE123;"        (driver.sql/set-role-statement :snowflake "ROLE123")))
+    (is (= "USE ROLE lowercase_role;" (driver.sql/set-role-statement :snowflake "lowercase_role")))
+
+    ;; Special characters
+    (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
+    (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
+
+(deftest remark-test
+  (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
+    (mt/test-driver :snowflake
+      (let [expected-map {"pulseId" nil
+                          "serverId" (public-settings/site-uuid)
+                          "client" "Metabase"
+                          "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+                          "queryType" "query"
+                          "cardId" 1234
+                          "dashboardId" 5678
+                          "context" "ad-hoc"
+                          "userId" 1000
+                          "databaseId" (mt/id)}
+            result-query (driver/prettify-native-form :snowflake
+                           (query->native
+                             (assoc
+                               (mt/mbql-query users {:limit 2000})
+                               :parameters [{:type   "id"
+                                             :target [:dimension [:field (mt/id :users :id) nil]]
+                                             :value  ["1" "2" "3"]}]
+                               :info {:executed-by  1000
+                                      :card-id      1234
+                                      :dashboard-id 5678
+                                      :context      :ad-hoc
+                                      :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                                 93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            result-comment (second (re-find #"-- (\{.*\})" result-query))
+            result-map (json/read-str result-comment)]
+        (is (= expected-map result-map))))))
+
+(mt/defdataset dst-change
+  [["dst_tz_test" [{:field-name "dtz"
+                    :base-type :type/DateTimeWithTZ}]
+    [["2023-09-30 23:59:59 +1000"]      ; September
+     ["2023-10-01 00:00:00 +1000"]      ; October before DST starts
+     ["2023-10-01 05:00:00 +1100"]      ; October after DST starts
+     ["2023-11-01 05:00:00 +1100"]]]])  ; November
+
+(deftest date-bucketing-test
+  (testing "#37065"
+    (mt/test-driver :snowflake
+      (mt/dataset dst-change
+        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              ds-tz-test (lib.metadata/table metadata-provider (mt/id :dst_tz_test))
+              dtz        (lib.metadata/field metadata-provider (mt/id :dst_tz_test :dtz))
+              query      (-> (lib/query metadata-provider ds-tz-test)
+                             (lib/breakout dtz)
+                             (lib/aggregate (lib/count)))]
+          (mt/with-native-query-testing-context query
+            (is (= [["2023-09-30T00:00:00+10:00" 1]
+                    ["2023-10-01T00:00:00+10:00" 2]
+                    ["2023-11-01T00:00:00+11:00" 1]]
+                   (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
+                     (mt/rows (qp/process-query query)))))))))))

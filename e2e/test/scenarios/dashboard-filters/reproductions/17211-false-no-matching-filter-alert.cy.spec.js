@@ -1,6 +1,5 @@
-import { restore, filterWidget, visitDashboard } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, visitDashboard } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -29,14 +28,14 @@ describe("issue 17211", () => {
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 8,
+              size_x: 11,
               size_y: 6,
               series: [],
               visualization_settings: {},
@@ -69,8 +68,10 @@ describe("issue 17211", () => {
     filterWidget().click();
 
     cy.findByPlaceholderText("Search by City").type("abb");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Abbeville").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No matching City found").should("not.exist");
   });
 });

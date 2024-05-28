@@ -1,6 +1,5 @@
 (ns ^{:added  "0.46.0"} metabase.util.honey-sql-2
-  "Honey SQL 2 extensions. Used for the application database. For QP/drivers stuff,
-  see [[metabase.util.honeysql-extensions]], which at the time of this writing still uses Honey SQL 1."
+  "Honey SQL 2 utilities and extra registered functions/operators."
   (:refer-clojure
    :exclude
    [+ - / * abs mod inc dec cast concat format second])
@@ -48,23 +47,37 @@
  (update (sql/get-dialect :ansi) :quote (fn [quote]
                                           (comp english-upper-case quote))))
 
+;;; this is mostly a convenience for tests, disables quoting completely.
+(sql/register-dialect!
+ ::unquoted-dialect
+ (assoc (sql/get-dialect :ansi) :quote identity))
+
 ;; register the `::extract` function with HoneySQL
 (defn- format-extract
   "(sql/format-expr [::extract :a :b])
    => \"extract(a from b)\""
-  [_fn [unit expr]]
+  [_tag [unit expr]]
   (let [[sql & args] (sql/format-expr expr {:nested true})]
     (into [(clojure.core/format "extract(%s from %s)" (name unit) sql)]
           args)))
 
 (sql/register-fn! ::extract #'format-extract)
 
+(defn extract
+  "Create a Honey SQL form that will compile to SQL like
+
+    extract(unit FROM expr)"
+  [unit expr]
+  ;; make sure no one tries to be sneaky and pass some sort of malicious unit in.
+  {:pre [(some-fn keyword? string?) (re-matches #"^[a-zA-Z0-9]+$" (name unit))]}
+  [::extract unit expr])
+
 ;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
   "(sql/format-expr [::h2x/distinct-count :x])
    =>
    count(distinct x)"
-  [_fn [expr]]
+  [_tag [expr]]
   (let [[sql & args] (sql/format-expr expr)]
     (into [(str "count(distinct " sql ")")]
           args)))
@@ -74,7 +87,7 @@
 ;; register the function `percentile` with HoneySQL
 (defn- format-percentile-cont
   "(hsql/format (sql/call :percentile-cont :a 0.9)) => \"percentile_cont(0.9) within group (order by a)\""
-  [_fn [expr p]]
+  [_tag [expr p]]
   (let [p                      (if (number? p)
                                  [:inline p]
                                  p)
@@ -88,7 +101,7 @@
 (sql/register-fn! ::percentile-cont #'format-percentile-cont)
 
 (def IdentifierType
-  "Malli schema for valid Identifier types."
+  "Malli schema for valid [[identifier]] types."
   [:enum
    :database
    :schema
@@ -110,7 +123,14 @@
   (and (vector? x)
        (= (first x) ::identifier)))
 
-(defn- format-identifier [_fn [_identifier-type components]]
+(def Identifier
+  "Malli schema for an [[identifier]]."
+  [:tuple
+   [:= ::identifier]
+   IdentifierType
+   [:sequential {:min 1} :string]])
+
+(defn- format-identifier [_tag [_identifier-type components :as _args]]
   ;; don't error if the identifier has something 'suspicious' like a semicolon in it -- it's ok because we're quoting
   ;; everything
   (binding [sql/*allow-suspicious-entities* true]
@@ -121,7 +141,7 @@
 
 (sql/register-fn! ::identifier #'format-identifier)
 
-(mu/defn identifier
+(mu/defn identifier :- Identifier
   "Define an identifier of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 
@@ -141,14 +161,22 @@
               :when     (some? component)]
           (u/qualified-name component)))])
 
+(mu/defn identifier->components :- [:sequential string?]
+  "Given an identifer return its components
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
+  "
+  [identifier :- [:fn identifier?]]
+  (last identifier))
+
 ;;; Single-quoted string literal
 
 (defn- escape-and-quote-literal [s]
-  (as-> s <>
-    (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
-    (str \' <> \')))
+  (as-> s s
+    (str/replace s #"(?<![\\'])'(?![\\'])"  "''")
+    (str \' s \')))
 
-(defn- format-literal [_fn [s]]
+(defn- format-literal [_tag [s]]
   [(escape-and-quote-literal s)])
 
 (sql/register-fn! ::literal #'format-literal)
@@ -163,7 +191,7 @@
   [s]
   [::literal (u/qualified-name s)])
 
-(defn- format-at-time-zone [_fn [expr zone]]
+(defn- format-at-time-zone [_tag [expr zone]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
         [zone-sql & zone-args] (sql/format-expr (literal zone))]
     (into [(clojure.core/format "(%s AT TIME ZONE %s)"
@@ -181,7 +209,7 @@
   [::at-time-zone expr zone])
 
 (p.types/defprotocol+ TypedHoneySQL
-  "Protocol for a HoneySQL form that has type information such as `:metabase.util.honeysql-extensions/database-type`.
+  "Protocol for a HoneySQL form that has type information such as `:database-type`.
   See #15115 for background."
   (type-info [honeysql-form]
     "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
@@ -192,14 +220,14 @@
     "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
     Otherwise, returns form as-is."))
 
-(defn- format-typed [_fn [expr _type-info]]
+(defn- format-typed [_tag [expr _type-info]]
   (sql/format-expr expr {:nested true}))
 
 (sql/register-fn! ::typed #'format-typed)
 
 (def ^:private NormalizedTypeInfo
   [:map
-   [:metabase.util.honeysql-extensions/database-type
+   [:database-type
     {:optional true}
     [:and
      ms/NonBlankString
@@ -210,11 +238,11 @@
 
 (mu/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
-  `:metabase.util.honeysql-extensions/database-type` to a lower-case string)."
+  `:database-type` to a lower-case string)."
   [type-info]
   (cond-> type-info
-    (:metabase.util.honeysql-extensions/database-type type-info)
-    (update :metabase.util.honeysql-extensions/database-type (comp u/lower-case-en name))))
+    (:database-type type-info)
+    (update :database-type (comp u/lower-case-en name))))
 
 (defn- typed? [x]
   (and (vector? x)
@@ -258,7 +286,7 @@
   "For a given type-info, returns the `database-type`."
   [type-info]
   {:added "0.39.0"}
-  (:metabase.util.honeysql-extensions/database-type type-info))
+  (:database-type type-info))
 
 (defn database-type
   "Returns the `database-type` from the type-info of `honeysql-form` if present.
@@ -284,11 +312,11 @@
   `TypedHoneySQLForm`. Passing `nil` as `database-type` will remove any existing type info.
 
     (with-database-type-info :field \"text\")
-    ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
+    ;; -> [::typed :field \"text\"]"
   {:style/indent [:form]}
   [honeysql-form db-type :- [:maybe ms/KeywordOrString]]
   (if (some? db-type)
-    (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
+    (with-type-info honeysql-form {:database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (def ^:private TypedExpression

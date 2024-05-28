@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import RunButton from "metabase/query_builder/components/RunButton";
+
 import UserAvatar from "metabase/components/UserAvatar";
 import Input from "metabase/core/components/Input";
+import { color } from "metabase/lib/colors";
+import RunButton from "metabase/query_builder/components/RunButton";
 
 export const PromptSection = styled.div`
   display: flex;

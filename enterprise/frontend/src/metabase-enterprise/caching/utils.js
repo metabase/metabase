@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { msToSeconds } from "metabase/lib/time";
+
 import MetabaseSettings from "metabase/lib/settings";
+import { msToSeconds } from "metabase/lib/time";
 
 /**
  * If a question doesn't have an explicitly set cache TTL,
@@ -53,4 +54,14 @@ export function validateCacheTTL(value) {
 
 export function normalizeCacheTTL(value) {
   return value === 0 || value === undefined ? null : value;
+}
+
+export function hasQuestionCacheSection(question) {
+  const type = question.type();
+
+  return (
+    type === "question" &&
+    question.metadata().setting("enable-query-caching") &&
+    (question.canWrite() || question.lastQueryStart() != null)
+  );
 }

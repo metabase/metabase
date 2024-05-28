@@ -1,13 +1,14 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import * as Errors from "metabase/core/utils/errors";
-import { SlackSettings } from "metabase-types/api";
+import { Form, FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+import type { SlackSettings } from "metabase-types/api";
+
 import { SlackFormMessage } from "./SlackForm.styled";
 
 const SLACK_SCHEMA = Yup.object({
@@ -73,4 +74,5 @@ const SlackForm = ({
 const SLACK_CHANNEL_PROMPT = t`Finally, open Slack, create a public channel and enter its name below.`;
 const SLACK_CHANNEL_DESCRIPTION = t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackForm;

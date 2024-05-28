@@ -1,12 +1,12 @@
-import React from "react";
+import type * as React from "react";
 import { t, jt } from "ttag";
 
-import Icon from "metabase/components/Icon";
-
-import type { DashboardOrderedCard, DatasetColumn } from "metabase-types/api";
-
 import { isTableDisplay } from "metabase/lib/click-behavior";
+import { Icon } from "metabase/ui";
+import type { QuestionDashboardCard, DatasetColumn } from "metabase-types/api";
+
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
+
 import {
   ColumnClickBehaviorHeader,
   ChevronIconContainer,
@@ -22,7 +22,7 @@ function DefaultHeader({ children }: { children: React.ReactNode }) {
 }
 
 interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: QuestionDashboardCard;
   selectedColumn?: DatasetColumn | null;
   onUnsetColumn: () => void;
 }
@@ -44,12 +44,10 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
   return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
 }
 
-function ClickBehaviorSidebarHeader(props: Props) {
+export const ClickBehaviorSidebarHeader = (props: Props) => {
   return (
     <SidebarHeader>
       <HeaderContent {...props} />
     </SidebarHeader>
   );
-}
-
-export default ClickBehaviorSidebarHeader;
+};

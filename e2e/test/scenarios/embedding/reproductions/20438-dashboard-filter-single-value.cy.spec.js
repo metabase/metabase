@@ -1,11 +1,12 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   filterWidget,
   popover,
   visitDashboard,
   visitIframe,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -52,14 +53,14 @@ describe("issue 20438", () => {
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       // Connect filter to the card
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,
             row: 0,
             col: 0,
-            size_x: 18,
+            size_x: 24,
             size_y: 8,
             parameter_mappings: [
               {
@@ -83,8 +84,7 @@ describe("issue 20438", () => {
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
-    cy.icon("share").click();
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 

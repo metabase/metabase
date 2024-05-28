@@ -4,10 +4,10 @@
  */
 
 import { isWithinIframe } from "metabase/lib/dom";
-import { init } from "./app";
 
-import { getRoutes } from "./routes-embed";
+import { init } from "./app";
 import reducers from "./reducers-public";
+import { getRoutes } from "./routes-embed";
 
 init(reducers, getRoutes, () => {
   if (isWithinIframe()) {

@@ -1,4 +1,3 @@
-import React from "react";
 import d3 from "d3";
 import Humanize from "humanize-plus";
 
@@ -148,6 +147,22 @@ export function formatNumber(
   }
 }
 
+export function formatChangeWithSign(
+  change: number,
+  { maximumFractionDigits = 2 } = {},
+): string {
+  if (change === Infinity) {
+    return "+∞%";
+  }
+
+  const formattedNumber = formatNumber(change, {
+    number_style: "percent",
+    maximumFractionDigits,
+  });
+
+  return change > 0 ? `+${formattedNumber}` : formattedNumber;
+}
+
 export function numberFormatterForOptions(options: FormatNumberOptionsType) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
@@ -183,7 +198,14 @@ function formatNumberCompact(value: number, options: FormatNumberOptionsType) {
       const { value: currency } = nf
         .formatToParts(value)
         .find((p: any) => p.type === "currency");
-      return currency + formatNumberCompactWithoutOptions(value);
+
+      const valueSign = value < 0 ? "-" : "";
+
+      return (
+        valueSign +
+        currency +
+        formatNumberCompactWithoutOptions(Math.abs(value))
+      );
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
       return formatNumberCompactWithoutOptions(value);

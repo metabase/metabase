@@ -1,13 +1,16 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
-import Button from "metabase/core/components/Button";
+import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 import { cancelable } from "metabase/lib/promise";
+import { Icon } from "metabase/ui";
+
+import { SmallSpinner } from "./ActionButton.styled";
 
 export default class ActionButton extends Component {
   constructor(props) {
@@ -17,6 +20,7 @@ export default class ActionButton extends Component {
       active: false,
       result: null,
     };
+    this.resetState.bind(this);
   }
 
   static propTypes = {
@@ -24,9 +28,9 @@ export default class ActionButton extends Component {
   };
 
   static defaultProps = {
-    className: "Button",
-    successClassName: "Button--success",
-    failedClassName: "Button--danger",
+    className: ButtonsS.Button,
+    successClassName: ButtonsS.ButtonSuccess,
+    failedClassName: ButtonsS.ButtonDanger,
     normalText: t`Save`,
     activeText: t`Saving...`,
     failedText: t`Save failed`,
@@ -39,6 +43,14 @@ export default class ActionButton extends Component {
     if (this.actionPromise) {
       this.actionPromise.cancel();
     }
+  }
+
+  resetState() {
+    clearTimeout(this.timeout);
+    this.setState({
+      active: false,
+      result: null,
+    });
   }
 
   resetStateOnTimeout = () => {
@@ -92,11 +104,13 @@ export default class ActionButton extends Component {
 
   render() {
     const {
+      innerRef,
       normalText,
       activeText,
       failedText,
       successText,
-      // eslint-disable-next-line no-unused-vars
+      useLoadingSpinner = false,
+      resetState,
       actionFn,
       className,
       successClassName,
@@ -110,26 +124,29 @@ export default class ActionButton extends Component {
 
     return (
       <Button
+        ref={innerRef}
         {...props}
         className={
           forceActiveStyle
-            ? cx("Button", "Button--waiting")
+            ? ButtonsS.Button
             : cx(className, {
-                "Button--waiting": active,
                 [successClassName]: result === "success",
                 [failedClassName]: result === "failed",
-                "pointer-events-none": isActionDisabled,
+                [CS.pointerEventsNone]: isActionDisabled,
               })
         }
         onClick={this.onClick}
       >
         {active ? (
-          // TODO: loading spinner
-          activeText
+          useLoadingSpinner ? (
+            <SmallSpinner />
+          ) : (
+            activeText
+          )
         ) : result === "success" ? (
           <span>
             {forceActiveStyle ? null : <Icon name="check" size={12} />}
-            <span className="ml1">{successText}</span>
+            <span className={CS.ml1}>{successText}</span>
           </span>
         ) : result === "failed" ? (
           failedText

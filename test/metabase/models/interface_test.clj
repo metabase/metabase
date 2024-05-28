@@ -2,30 +2,27 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [java-time :as t]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [java-time.api :as t]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
-   [metabase.test :as mt]
+   [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
-   [schema.core :as s]
-   [toucan.models :as models]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import (com.fasterxml.jackson.core JsonParseException)))
 
-;; let's make sure the `:metabase-query`/`:metric-segment-definition`/`::dashboard-card/parameter-mappings`
+;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
 ;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
-
-(defn type-fn [toucan-type in-or-out]
-  (@#'models/type-fn toucan-type in-or-out))
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
                 "response because of one malformed Card, dump the error to the logs and return nil.")
     (is (= nil
-           ((type-fn :metabase-query :out)
+           ((:out mi/transform-metabase-query)
             (json/generate-string
              {:database 1
               :type     :native
@@ -36,29 +33,33 @@
     ;; TODO -- we should make sure this returns a good error message so we don't have to dig thru the exception chain.
     (is (thrown?
          Exception
-         ((type-fn :metabase-query :in)
+         ((:in mi/transform-metabase-query)
           {:database 1
            :type     :native
            :native   {:template-tags {100 [:field-id "WOW"]}}})))))
 
+(deftest ^:parallel normalize-empty-query-test
+  (is (= {}
+         ((:out mi/transform-metabase-query) "{}"))))
+
 (deftest ^:parallel normalize-metric-segment-definition-test
   (testing "Legacy Metric/Segment definitions should get normalized"
     (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
-           ((type-fn :metric-segment-definition :out)
+           ((:out mi/transform-legacy-metric-segment-definition)
             (json/generate-string
              {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
 
 (deftest ^:parallel dont-explode-on-way-out-from-db-test
   (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
     (is (= nil
-           ((type-fn :metric-segment-definition :out)
+           ((:out mi/transform-legacy-metric-segment-definition)
             (json/generate-string
              {:filter 1000}))))
 
     (testing "...but should still throw them coming in"
       (is (thrown?
            Exception
-           ((type-fn :metric-segment-definition :in)
+           ((:in mi/transform-legacy-metric-segment-definition)
             {:filter 1000}))))))
 
 (deftest handle-errors-gracefully-test
@@ -66,7 +67,7 @@
                 "sure the Toucan type fn handles the error gracefully")
     (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
       (is (= nil
-             ((type-fn :parameters-list :out)
+             ((:out mi/transform-parameters-list)
               (json/generate-string
                [{:target [:dimension [:field "ABC" nil]]}])))))))
 
@@ -75,7 +76,7 @@
     (is (thrown?
          Exception
          (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-           ((type-fn :parameters-list :in)
+           ((:in mi/transform-parameters-list)
             [{:target [:dimension [:field "ABC" nil]]}]))))))
 
 (deftest timestamped-property-test
@@ -92,29 +93,23 @@
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (mt/with-temp Field [field]
+    (t2.with-temp/with-temp [Field field]
       (testing "Nothing specified: use now() for both"
-        (is (schema= {:created_at java.time.temporal.Temporal
-                      :updated_at java.time.temporal.Temporal
-                      s/Keyword   s/Any}
-                     field))))
-    (let [t        #t "2022-10-13T19:21:00Z"
-          t-schema (s/eq (case (mdb.connection/db-type)
-                           ;; not sure why this is TIMESTAMP WITH TIME ZONE for Postgres but not for H2/MySQL. :shrug:
-                           :postgres    (t/offset-date-time "2022-10-13T19:21:00Z")
-                           (:h2 :mysql) (t/local-date-time "2022-10-13T19:21:00")))]
+        (is (=? {:created_at java.time.temporal.Temporal
+                 :updated_at java.time.temporal.Temporal}
+                field))))
+    (let [t                  #t "2022-10-13T19:21:00Z"
+          expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
-        (mt/with-temp Field [field {:created_at t}]
-          (is (schema= {:created_at t-schema
-                        :updated_at java.time.temporal.Temporal
-                        s/Keyword   s/Any}
-                       field))))
+        (t2.with-temp/with-temp [Field field {:created_at t}]
+          (is (=? {:created_at expected-timestamp
+                   :updated_at java.time.temporal.Temporal}
+                  field))))
       (testing "Explicitly specify :updated_at"
-        (mt/with-temp Field [field {:updated_at t}]
-          (is (schema= {:created_at java.time.temporal.Temporal
-                        :updated_at t-schema
-                        s/Keyword   s/Any}
-                       field)))))))
+        (t2.with-temp/with-temp [Field field {:updated_at t}]
+          (is (=? {:created_at java.time.temporal.Temporal
+                   :updated_at expected-timestamp}
+                  field)))))))
 
 (deftest ^:parallel upgrade-to-v2-viz-settings-test
   (let [migrate #(select-keys (#'mi/migrate-viz-settings %)
@@ -139,3 +134,28 @@
                (migrate {:pie.show_legend          legend
                          :pie.show_legend_perecent percent
                          :pie.show_data_labels     labels})))))))
+
+(deftest encrypted-data-with-no-secret-test
+  (encryption-test/with-secret-key nil
+    (testing "Just parses string normally when there is no key and the string is JSON"
+      (is (= {:a 1}
+             (mi/encrypted-json-out "{\"a\": 1}"))))
+    (testing "Also parses string if it's encrypted and JSON"
+      (is (= {:a 1}
+             (encryption-test/with-secret-key "qwe"
+               (mi/encrypted-json-out
+                (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+    (testing "Logs an error message when incoming data looks encrypted"
+      (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
+              (tu.log/with-log-messages-for-level :error
+                (mi/encrypted-json-out
+                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+    (testing "Invalid JSON throws correct error"
+      (is (=? [[:error JsonParseException "Error parsing JSON"]]
+              (tu.log/with-log-messages-for-level :error
+                (mi/encrypted-json-out "{\"a\": 1"))))
+      (is (=? [[:error JsonParseException "Error parsing JSON"]]
+              (tu.log/with-log-messages-for-level :error
+                (encryption-test/with-secret-key "qwe"
+                  (mi/encrypted-json-out
+                   (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))))))))

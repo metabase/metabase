@@ -1,0 +1,31 @@
+;; https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj
+{:extra-indents
+ {auto-parse                                                       [[:inner 0]]
+  cond->                                                           [[:inner 0]]
+  check                                                            [[:inner 0]]
+  deferred-tru                                                     [[:inner 0]]
+  defprotocol+                                                     [[:block 1] [:inner 1]]
+  potemkin/defprotocol+                                            [[:block 1] [:inner 1]]
+  let-404                                                          [[:block 1]]
+  metabase.legacy-mbql.util/match-one                              [[:inner 0]]
+  merge-with                                                       [[:inner 0]]
+  metabase.test/dataset                                            [[:inner 0]]
+  metabase.test/formatted-rows                                     [[:inner 0]]
+  metabase.test/mbql-query                                         [[:inner 0]]
+  metabase.test/test-drivers                                       [[:inner 0]]
+  metabase.test/with-temporary-setting-values                      [[:block 1]]
+  ;; If we just treat these as functions we can ignore this, despite some files not being consistent
+  ;metabase.models.permissions/set-has-full-permissions-for-set?    [[:inner 0]]
+  ;metabase.models.permissions/set-has-full-permissions?            [[:inner 0]]
+  ;metabase.models.permissions/set-has-partial-permissions?         [[:inner 0]]
+  metabase.models.permissions/set-has-partial-permissions-for-set? [[:inner 0]]
+  publish-event!                                                   [[:block 1]]
+  metabase.query-processor.streaming/streaming-response            [[:inner 0]]
+  metabase.util/prog1                                              [[:inner 0]]
+  metabase.util/select-keys-when                                   [[:inner 0]]
+  ;; This supports a lot of existing formatting, but these are functions so the
+  ;; existing formatting is probably wrong.
+  ;toucan2.core/select                                              [[:inner 0]]
+  ;toucan2.core/update!                                             [[:inner 0]]
+  }
+ :sort-ns-references? true}

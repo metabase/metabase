@@ -1,16 +1,17 @@
-import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
 import {
   setupDatabasesEndpoints,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-
+import { renderWithProviders, screen } from "__support__/ui";
+import type Question from "metabase-lib/v1/Question";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import type Question from "metabase-lib/Question";
-
+import { createMockNotebookStep } from "../test-utils";
 import type { NotebookStep as INotebookStep, NotebookStepType } from "../types";
-import { createMockNotebookStep, DEFAULT_QUESTION } from "../test-utils";
+
 import NotebookStep from "./NotebookStep";
 
 type SetupOpts = {
@@ -18,20 +19,17 @@ type SetupOpts = {
   question?: Question;
 };
 
-function setup({
-  step = createMockNotebookStep(),
-  question = DEFAULT_QUESTION,
-}: SetupOpts = {}) {
+function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const openStep = jest.fn();
   const updateQuery = jest.fn();
 
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
+  setupRecentViewsEndpoints([]);
 
   renderWithProviders(
     <NotebookStep
       step={step}
-      sourceQuestion={question}
       isLastStep={false}
       isLastOpened={false}
       reportTimezone="Europe/London"
@@ -77,5 +75,18 @@ describe("NotebookStep", () => {
     expect(
       screen.queryByRole("button", { name: "Remove step" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("sets the row limit only on blur", async () => {
+    const step = createMockNotebookStep({ type: "limit" });
+    const { updateQuery } = setup({ step });
+
+    const input = screen.getByPlaceholderText("Enter a limit");
+    await userEvent.type(input, "38");
+    await userEvent.type(input, "clear");
+    await userEvent.type(input, "42");
+    input.blur();
+
+    expect(updateQuery).toHaveBeenCalledTimes(1);
   });
 });

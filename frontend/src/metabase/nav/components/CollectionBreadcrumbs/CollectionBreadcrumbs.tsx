@@ -1,8 +1,10 @@
-import React from "react";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { Fragment } from "react";
+
 import { isRootCollection } from "metabase/collections/utils";
+import { useToggle } from "metabase/hooks/use-toggle";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import { Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
+
 import {
   ExpandButton,
   PathContainer,
@@ -24,7 +26,8 @@ export const CollectionBreadcrumbs = ({
 
   const ancestors = collection.effective_ancestors || [];
   const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
-  const parts = hasRoot ? ancestors.splice(0, 1) : ancestors;
+  const [_, ...crumbsWithoutRoot] = ancestors;
+  const parts = hasRoot ? crumbsWithoutRoot : ancestors;
 
   const content =
     parts.length > 1 && !isExpanded ? (
@@ -38,7 +41,6 @@ export const CollectionBreadcrumbs = ({
         <ExpandButton
           small
           borderless
-          iconSize={10}
           icon="ellipsis"
           onlyIcon
           onClick={toggle}
@@ -47,14 +49,14 @@ export const CollectionBreadcrumbs = ({
       </>
     ) : (
       parts.map(collection => (
-        <>
+        <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
             inactiveColor="text-medium"
             isSingleLine
           />
           <PathSeparator>/</PathSeparator>
-        </>
+        </Fragment>
       ))
     );
 
@@ -70,4 +72,5 @@ export const CollectionBreadcrumbs = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionBreadcrumbs;

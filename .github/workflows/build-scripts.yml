@@ -12,7 +12,7 @@ jobs:
   test-build-scripts:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Prepare back-end environment
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend

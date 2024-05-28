@@ -1,36 +1,43 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import cx from "classnames";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 
-import DashCardCardParameterMapper from "./DashCardCardParameterMapper";
+import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
+import { MapperSettingsContainer } from "./DashCardParameterMapper.styled";
 
-const DashCardParameterMapper = ({ dashcard, isMobile }) => (
-  <div className="relative flex-full flex flex-column layout-centered">
+export const DashCardParameterMapper = ({ dashcard, isMobile }) => (
+  <div
+    className={cx(
+      CS.relative,
+      CS.flexFull,
+      CS.flex,
+      CS.flexColumn,
+      CS.layoutCentered,
+    )}
+  >
     {dashcard.series && dashcard.series.length > 0 && (
       <div
-        className="mx4 my1 p1 rounded"
+        className={cx(CS.mx4, CS.my1, CS.p1, CS.rounded, CS.textMedium)}
         style={{
           backgroundColor: color("bg-light"),
-          color: color("text-medium"),
           marginTop: -10,
         }}
       >
         {t`Make sure to make a selection for each series, or the filter won't work on this card.`}
       </div>
     )}
-    <div className="flex mx4 z1" style={{ justifyContent: "space-around" }}>
+    <MapperSettingsContainer>
       {[dashcard.card].concat(dashcard.series || []).map(card => (
-        <DashCardCardParameterMapper
+        <DashCardCardParameterMapperConnected
           key={`${dashcard.id},${card.id}`}
           dashcard={dashcard}
           card={card}
           isMobile={isMobile}
         />
       ))}
-    </div>
+    </MapperSettingsContainer>
   </div>
 );
-
-export default DashCardParameterMapper;

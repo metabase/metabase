@@ -1,37 +1,37 @@
-import React from "react";
 import { Group } from "@visx/group";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import {
-  FontStyle,
-  TextMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
-import { measureText } from "metabase/static-viz/lib/text";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import {
-  getGroupedDataset,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
-import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { VisualizationSettings } from "metabase-types/api";
-import { ColorGetter } from "metabase/static-viz/lib/colors";
-import {
-  RemappingHydratedChartData,
-  TwoDimensionalChartData,
-} from "metabase/visualizations/shared/types/data";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import {
-  getAxesVisibility,
-  getLabelledSeries,
-  getXValueRange,
-} from "metabase/visualizations/visualizations/RowChart/utils/settings";
+
 import {
   getColumnValueStaticFormatter,
   getLabelsStaticFormatter,
   getStaticFormatters,
 } from "metabase/static-viz/lib/format";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { extractRemappedColumns } from "metabase/visualizations";
-import { calculateLegendRows } from "../Legend/utils";
+import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import type {
+  FontStyle,
+  TextWidthMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
+import {
+  getGroupedDataset,
+  trimData,
+} from "metabase/visualizations/shared/utils/data";
+import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
+import type {
+  ColorGetter,
+  RemappingHydratedChartData,
+} from "metabase/visualizations/types";
+import {
+  getAxesVisibility,
+  getLabelledSeries,
+  getXValueRange,
+} from "metabase/visualizations/visualizations/RowChart/utils/settings";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+
 import { Legend } from "../Legend";
+import { calculateLegendRows } from "../Legend/utils";
 
 import { getStaticChartTheme } from "./theme";
 import { getChartLabels } from "./utils/labels";
@@ -46,14 +46,17 @@ const LEGEND_FONT = {
 const WIDTH = 620;
 const HEIGHT = 440;
 
-interface StaticRowChartProps {
-  data: TwoDimensionalChartData;
+export interface StaticRowChartProps {
+  data: DatasetData;
   settings: VisualizationSettings;
   getColor: ColorGetter;
 }
 
-const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
-  measureText(
+const staticTextMeasurer: TextWidthMeasurer = (
+  text: string,
+  style: FontStyle,
+) =>
+  measureTextWidth(
     text,
     parseInt(style.size.toString(), 10),
     style.weight ? parseInt(style.weight.toString(), 10) : 400,
@@ -87,23 +90,29 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const xValueRange = getXValueRange(settings);
   const labelledSeries = getLabelledSeries(settings, series);
 
-  const legend = calculateLegendRows(
-    series.map(series => ({
+  const legend = calculateLegendRows({
+    items: series.map(series => ({
+      key: series.seriesKey,
       name: series.seriesName,
       color: seriesColors[series.seriesKey],
     })),
-    WIDTH,
-    LEGEND_FONT.lineHeight,
-    LEGEND_FONT.size,
-    LEGEND_FONT.weight,
-  );
+    width: WIDTH,
+    lineHeight: LEGEND_FONT.lineHeight,
+    fontSize: LEGEND_FONT.size,
+    fontWeight: LEGEND_FONT.weight,
+  });
 
   const legendHeight = legend != null ? legend.height + CHART_PADDING : 0;
   const fullChartHeight = HEIGHT + legendHeight;
 
   return (
-    <svg width={WIDTH} height={fullChartHeight} fontFamily="Lato">
-      {legend && (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={WIDTH}
+      height={fullChartHeight}
+      fontFamily="Lato"
+    >
+      {legend.items.length > 0 && (
         <Legend
           items={legend.items}
           top={CHART_PADDING}
@@ -124,7 +133,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={staticTextMeasurer}
+          measureTextWidth={staticTextMeasurer}
           xLabel={xLabel}
           yLabel={yLabel}
           hasXAxis={hasXAxis}
@@ -138,4 +147,5 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StaticRowChart;

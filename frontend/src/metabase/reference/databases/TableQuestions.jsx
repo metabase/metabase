@@ -1,33 +1,32 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
-import moment from "moment-timezone";
 import { t } from "ttag";
-import visualizations from "metabase/visualizations";
-import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List/List.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+import visualizations from "metabase/visualizations";
+
 import ReferenceHeader from "../components/ReferenceHeader";
-
-import { getQuestionUrl } from "../utils";
-
 import {
   getTableQuestions,
   getError,
   getLoading,
   getTable,
 } from "../selectors";
+import { getQuestionUrl } from "../utils";
 
-const emptyStateData = table => {
+const emptyStateData = (table, metadata) => {
   return {
     message: t`Questions about this table will appear here as they're added`,
     icon: "folder",
@@ -35,6 +34,7 @@ const emptyStateData = table => {
     link: getQuestionUrl({
       dbId: table.db_id,
       tableId: table.id,
+      metadata,
     }),
   };
 };
@@ -44,6 +44,7 @@ const mapStateToProps = (state, props) => ({
   entities: getTableQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
@@ -53,6 +54,7 @@ const mapDispatchToProps = {
 class TableQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,
+    metadata: PropTypes.object.isRequired,
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
@@ -60,10 +62,11 @@ class TableQuestions extends Component {
   };
 
   render() {
-    const { entities, style, loadingError, loading } = this.props;
+    const { entities, style, loadingError, loading, table, metadata } =
+      this.props;
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader
           name={t`Questions about ${this.props.table.display_name}`}
           type="questions"
@@ -75,32 +78,29 @@ class TableQuestions extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {Object.values(entities).map(
-                    (entity, index) =>
+                    entity =>
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            id={entity.id}
-                            index={index}
-                            name={entity.display_name || entity.name}
-                            description={t`Created ${moment(
-                              entity.created_at,
-                            ).fromNow()} by ${entity.creator.common_name}`}
-                            url={Urls.question(entity)}
-                            icon={visualizations.get(entity.display).iconName}
-                          />
-                        </li>
+                        <ListItem
+                          key={entity.id}
+                          name={entity.display_name || entity.name}
+                          description={t`Created ${moment(
+                            entity.created_at,
+                          ).fromNow()} by ${entity.creator.common_name}`}
+                          url={Urls.question(entity)}
+                          icon={visualizations.get(entity.display).iconName}
+                        />
                       ),
                   )}
                 </List>
               </div>
             ) : (
               <div className={S.empty}>
-                <AdminAwareEmptyState {...emptyStateData(this.props.table)} />
+                <AdminAwareEmptyState {...emptyStateData(table, metadata)} />
               </div>
             )
           }

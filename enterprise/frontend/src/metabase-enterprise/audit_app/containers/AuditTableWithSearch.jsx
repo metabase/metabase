@@ -1,11 +1,11 @@
-import React from "react";
-import PropTypes from "prop-types";
-
-import { t } from "ttag";
 import { updateIn } from "icepick";
-import Icon from "metabase/components/Icon";
+import PropTypes from "prop-types";
+import { t } from "ttag";
+
+import { Icon } from "metabase/ui";
 
 import AuditParameters from "../components/AuditParameters";
+
 import AuditTable from "./AuditTable";
 
 const propTypes = {

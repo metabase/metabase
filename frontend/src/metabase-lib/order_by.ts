@@ -1,33 +1,47 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { OrderByClause, Query, ColumnMetadata } from "./types";
 
-export function orderableColumns(query: Query): ColumnMetadata[] {
-  return ML.orderable_columns(query);
-}
+import { removeClause } from "./query";
+import type {
+  ColumnMetadata,
+  OrderByClause,
+  OrderByDirection,
+  Query,
+} from "./types";
 
-export function orderBys(query: Query): OrderByClause[] {
-  return ML.order_bys(query);
-}
-
-declare function OrderByFn(
+export function orderableColumns(
   query: Query,
-  column: ColumnMetadata | OrderByClause,
-): Query;
-declare function OrderByFn(
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.orderable_columns(query, stageIndex);
+}
+
+export function orderBys(query: Query, stageIndex: number): OrderByClause[] {
+  return ML.order_bys(query, stageIndex);
+}
+
+export function orderBy(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata | OrderByClause,
-): Query;
+  direction?: OrderByDirection,
+): Query {
+  return ML.order_by(query, stageIndex, column, direction);
+}
 
-export const orderBy: typeof OrderByFn = ML.order_by;
-
-type OrderByDirection = "asc" | "desc";
-
-declare function OrderByClauseFn(
-  query: Query,
-  stageNumber: number,
+export function orderByClause(
   column: ColumnMetadata,
   direction?: OrderByDirection,
-): OrderByClause;
+): OrderByClause {
+  return ML.order_by_clause(column, direction);
+}
 
-export const orderByClause: typeof OrderByClauseFn = ML.order_by_clause;
+export function changeDirection(query: Query, clause: OrderByClause): Query {
+  return ML.change_direction(query, clause);
+}
+
+export function removeOrderBys(query: Query, stageIndex: number): Query {
+  return orderBys(query, stageIndex).reduce(
+    (newQuery, orderBy) => removeClause(newQuery, stageIndex, orderBy),
+    query,
+  );
+}

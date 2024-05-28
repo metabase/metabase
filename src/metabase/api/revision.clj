@@ -6,35 +6,33 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.revision :as revision :refer [Revision]]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(def ^:private ^:const valid-entity-names
-  #{"card" "dashboard"})
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
-  (apply s/enum valid-entity-names))
+  [:enum "card" "dashboard"])
 
 (defn- model-and-instance [entity-name id]
   (case entity-name
     "card"      [Card (t2/select-one Card :id id)]
     "dashboard" [Dashboard (t2/select-one Dashboard :id id)]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get revisions of an object."
   [entity id]
-  {entity Entity, id s/Int}
+  {id     ms/PositiveInt
+   entity Entity}
   (let [[model instance] (model-and-instance entity id)]
-    (when (api/read-check instance)
-      (revision/revisions+details model id))))
+   (when (api/read-check instance)
+     (revision/revisions+details model id))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/revert"
+(api/defendpoint POST "/revert"
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
-  {entity Entity, id s/Int, revision_id s/Int}
+  {id          ms/PositiveInt
+   entity      Entity
+   revision_id ms/PositiveInt}
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
         revision         (api/check-404 (t2/select-one Revision :model (name model), :model_id id, :id revision_id))]
@@ -43,9 +41,9 @@
       (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
-      :entity      model
+     {:entity      model
       :id          id
       :user-id     api/*current-user-id*
-      :revision-id revision_id)))
+      :revision-id revision_id})))
 
 (api/define-routes)

@@ -1,14 +1,13 @@
-import React, { useCallback, useMemo } from "react";
+/* eslint-disable react/prop-types */
+import { useCallback, useMemo } from "react";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
 
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
-
-import { DataPickerProps, DataPickerSelectedItem } from "../types";
-
+import type { DataPickerProps, DataPickerSelectedItem } from "../types";
 import useSelectedTables from "../useSelectedTables";
 
 import RawDataPickerView from "./RawDataPickerView";
@@ -198,6 +197,7 @@ function RawDataPicker({
   return renderPicker({ isLoading: allLoading });
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Databases.loadList({
   loadingAndErrorWrapper: false,
   // We don't actually need the saved questions database here,

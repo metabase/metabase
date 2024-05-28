@@ -1,21 +1,24 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
+  entityPickerModalTab,
   restore,
   openTable,
   popover,
   enterCustomColumnDetails,
   filter,
-  openOrdersTable,
+  startNewQuestion,
   visualize,
   getNotebookStep,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column > data type", () => {
   beforeEach(() => {
     restore();
+    restore("postgres-12");
+
     cy.signInAsAdmin();
   });
 
@@ -31,14 +34,20 @@ describe("scenarios > question > custom column > data type", () => {
 
     filter({ mode: "notebook" });
 
-    popover().findByText("CategoryTitle").click();
-
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-    cy.findByPlaceholderText("Enter some text");
+    popover().within(() => {
+      cy.findByText("CategoryTitle").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByPlaceholderText("Enter some text").should("be.visible");
+    });
   });
 
   it("should understand date functions", () => {
-    openOrdersTable({ mode: "notebook" });
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("QA Postgres12").click();
+      cy.findByText("Orders").click();
+    });
 
     addCustomColumns([
       { name: "Year", formula: "year([Created At])" },
@@ -78,13 +87,13 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().findByText("DoB").click();
-
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-    cy.findByText("Relative dates...").click();
-    cy.findByText("Past").click();
-    cy.findByText("days");
+    popover().within(() => {
+      cy.findByText("DoB").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
   });
 
   it("should handle CASE (metabase#13122)", () => {
@@ -97,13 +106,14 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().findByText("MiscDate").click();
+    popover().within(() => {
+      cy.findByText("MiscDate").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-    cy.findByText("Relative dates...").click();
-    cy.findByText("Past").click();
-    cy.findByText("days");
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
   });
 
   it("should handle COALESCE", () => {
@@ -116,26 +126,26 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().findByText("MiscDate").click();
-
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-    cy.findByText("Relative dates...").click();
-    cy.findByText("Past").click();
-    cy.findByText("days");
+    popover().within(() => {
+      cy.findByText("MiscDate").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
   });
 });
 
 function addCustomColumns(columns) {
   cy.wrap(columns).each((column, index) => {
     if (index) {
-      getNotebookStep("expression").within(() => cy.icon("add").click());
+      getNotebookStep("expression").icon("add").click();
     } else {
-      cy.findByText("Custom column").click();
+      cy.findByLabelText("Custom column").click();
     }
 
     enterCustomColumnDetails(column);
-    cy.button("Done").click();
+    cy.button("Done").click({ force: true });
   });
 }
 

@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { isValidElement } from "react";
 
 import RemappedValue from "metabase/containers/RemappedValue";
-
 import { formatValue } from "metabase/lib/formatting";
 
 const Value = ({ value, ...options }) => {
@@ -13,7 +12,7 @@ const Value = ({ value, ...options }) => {
     return <RemappedValue value={value} {...options} />;
   }
   const formatted = formatValue(value, { ...options, jsx: true });
-  if (React.isValidElement(formatted)) {
+  if (isValidElement(formatted)) {
     return formatted;
   } else {
     return <span>{formatted}</span>;

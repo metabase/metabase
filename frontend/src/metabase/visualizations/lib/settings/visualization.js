@@ -1,6 +1,11 @@
+import { assocIn } from "icepick";
 import { t } from "ttag";
+
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
+import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+
 import {
   getComputedSettings,
   getSettingsWidgets,
@@ -23,6 +28,20 @@ const COMMON_SETTINGS = {
     dashboard: true,
     useRawSeries: true,
   },
+  "card.hide_empty": {
+    title: t`Hide this card if there are no results`,
+    widget: "toggle",
+    inline: true,
+    dashboard: true,
+    getHidden: ([{ card }]) => isVirtualDashCard(card),
+    onUpdate: (value, extra) => {
+      if (!value) {
+        return;
+      }
+
+      trackCardSetToHideWhenNoResults(extra.dashboardId);
+    },
+  },
   click_behavior: {},
 };
 
@@ -30,7 +49,7 @@ function getSettingDefintionsForSeries(series) {
   if (!series) {
     return {};
   }
-  const { visualization } = getVisualizationRaw(series);
+  const visualization = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
     ...(visualization.settings || {}),
@@ -48,7 +67,7 @@ function normalizeColumnSettings(columnSettings) {
     // if the key is a reference, normalize the mbql syntax
     const newColumnKey =
       refOrName === "ref"
-        ? JSON.stringify(["ref", normalizeFieldRef(fieldRef)])
+        ? JSON.stringify(["ref", normalize(fieldRef)])
         : oldColumnKey;
     newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
   }
@@ -56,12 +75,14 @@ function normalizeColumnSettings(columnSettings) {
 }
 
 export function getStoredSettingsForSeries(series) {
-  const storedSettings =
+  let storedSettings =
     (series && series[0] && series[0].card.visualization_settings) || {};
   if (storedSettings.column_settings) {
     // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings.column_settings = normalizeColumnSettings(
-      storedSettings.column_settings,
+    storedSettings = assocIn(
+      storedSettings,
+      ["column_settings"],
+      normalizeColumnSettings(storedSettings.column_settings),
     );
   }
   return storedSettings;
@@ -88,6 +109,7 @@ export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,
+  extra = {},
 ) {
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
@@ -99,7 +121,7 @@ export function getSettingsWidgetsForSeries(
     computedSettings,
     series,
     onChangeSettings,
-    { isDashboard },
+    { isDashboard, ...extra },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

@@ -1,31 +1,29 @@
-import React, { useCallback } from "react";
-import { t } from "ttag";
-import moment from "moment-timezone";
+import cx from "classnames";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { useCallback } from "react";
 import { connect } from "react-redux";
-
-import Link from "metabase/core/components/Link";
-import DateTime from "metabase/components/DateTime";
-import EmptyState from "metabase/components/EmptyState";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
-import PaginationControls from "metabase/components/PaginationControls";
-
-import PersistedModels from "metabase/entities/persisted-models";
-import { capitalize } from "metabase/lib/formatting";
-import * as Urls from "metabase/lib/urls";
-
-import { usePagination } from "metabase/hooks/use-pagination";
-
-import { ModelCacheRefreshStatus } from "metabase-types/api";
+import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import DateTime from "metabase/components/DateTime";
+import EmptyState from "metabase/components/EmptyState";
+import PaginationControls from "metabase/components/PaginationControls";
+import Link from "metabase/core/components/Link";
+import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import PersistedModels from "metabase/entities/persisted-models";
+import { usePagination } from "metabase/hooks/use-pagination";
+import { capitalize } from "metabase/lib/formatting";
+import * as Urls from "metabase/lib/urls";
+import { Icon } from "metabase/ui";
+import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
-import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
 import {
   ErrorBox,
   IconButtonContainer,
   PaginationControlsContainer,
-  StyledLink,
 } from "./ModelCacheRefreshJobs.styled";
 
 type JobTableItemProps = {
@@ -69,10 +67,13 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
     <tr key={job.id}>
       <th>
         <span>
-          <StyledLink to={modelUrl}>{job.card_name}</StyledLink> {t`in`}{" "}
-          <StyledLink to={collectionUrl}>
+          <Link variant="brand" to={modelUrl}>
+            {job.card_name}
+          </Link>{" "}
+          {t`in`}{" "}
+          <Link variant="brand" to={collectionUrl}>
             {job.collection_name || t`Our analytics`}
-          </StyledLink>
+          </Link>
         </span>
       </th>
       <th>{renderStatus()}</th>
@@ -147,7 +148,7 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
 
           return (
             <div data-testid="model-cache-logs">
-              <table className="ContentTable border-bottom">
+              <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
                 <colgroup>
                   <col style={{ width: "30%" }} />
                   <col style={{ width: "40%" }} />
@@ -196,4 +197,5 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(ModelCacheRefreshJobs);

@@ -1,10 +1,9 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
-import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
-
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
-import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
+import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
+import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const dateFilters = Object.entries(DATE_FILTER_SUBTYPES);
 
@@ -32,11 +31,14 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
       FieldFilter.setWidgetType(subType);
-      dateFilterSelector({ filterType: subType, filterValue: value });
+      dateFilterSelector({
+        filterType: subType,
+        filterValue: value,
+      });
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText(representativeResult);
       });
     });
@@ -50,11 +52,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
       FieldFilter.setWidgetType(subType);
 
-      // When we run the first iteration, there will be no default filter value set
-      if (index !== 0) {
-        FieldFilter.clearDefaultFilterValue();
-      }
-
       dateFilterSelector({
         filterType: subType,
         filterValue: value,
@@ -63,7 +60,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText(representativeResult);
       });
     });
@@ -72,7 +69,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
 function openDateFilterPicker(isFilterRequired) {
   const selector = isFilterRequired
-    ? cy.findByText("Select a default value…")
+    ? cy.findByPlaceholderText("Select a default value…")
     : cy.get("fieldset");
 
   return selector.click();
@@ -96,12 +93,12 @@ function dateFilterSelector({
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
       break;
 
     case "Relative Date":

@@ -21,7 +21,7 @@ describe("issue 27257", () => {
       cy.icon("string");
     });
 
-    cy.findByText("Variable type").parent().findByText("Text").click();
+    cy.findByTestId("variable-type-select").click();
     popover().contains("Number").click();
 
     filterWidget().within(() => {
@@ -32,11 +32,12 @@ describe("issue 27257", () => {
 
     SQLFilter.runQuery();
 
-    cy.get(".ScalarValue").invoke("text").should("eq", "0");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "0");
   });
 
   it("should not drop numeric filter widget value on refresh even if it's zero (metabase#27257)", () => {
     cy.reload();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear");
     cy.findByDisplayValue("0");
   });

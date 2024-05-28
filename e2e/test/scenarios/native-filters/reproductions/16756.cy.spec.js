@@ -1,5 +1,5 @@
-import { restore, filterWidget, popover } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, popover } from "e2e/support/helpers";
 
 import { runQuery } from "../helpers/e2e-sql-filter-helpers";
 
@@ -33,34 +33,37 @@ describe("issue 16756", () => {
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/**/${id}/query`).as("cardQuery");
 
-      cy.visit(`/question/${id}?filter=2018-03-31~2019-03-31`);
+      cy.visit(`/question/${id}?filter=2024-03-31~2025-03-31`);
 
       cy.wait("@cardQuery");
     });
   });
 
   it("should allow switching between date filter types (metabase#16756)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     cy.icon("variable").click();
 
     // Update the filter widget type
-    cy.findByTestId("sidebar-right").findByText("Date Range").click();
+    cy.findByTestId("sidebar-right").findByDisplayValue("Date Range").click();
 
     popover().contains("Single Date").click();
 
     // The previous filter value should reset
-    cy.location("search").should("eq", "");
+    cy.location("search").should("eq", "?filter=");
 
-    // Set the date to the 15th of whichever the month and year are when this tests runs
+    cy.log("Set the date to the 15th of October 2023");
+    cy.clock(new Date("2023-10-31"), ["Date"]);
     filterWidget().click();
 
     popover().contains("15").click();
 
-    cy.button("Update filter").click();
+    cy.button("Add filter").click();
 
     runQuery();
 
     // We expect "No results"
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No results!");
   });
 });

@@ -1,12 +1,13 @@
-import React from "react";
+import cx from "classnames";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDataFromClicked } from "metabase-lib/parameters/utils/click-behavior";
-import { isURL } from "metabase-lib/types/utils/isa";
-import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
-import { formatValue, getRemappedValue } from "./value";
+import CS from "metabase/css/core/index.css";
+import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
+import { isURL } from "metabase-lib/v1/types/utils/isa";
 
+import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
 import type { OptionsType } from "./types";
+import { formatValue, getRemappedValue } from "./value";
 
 function isSafeProtocol(protocol: string) {
   return (
@@ -14,7 +15,7 @@ function isSafeProtocol(protocol: string) {
   );
 }
 
-function isDefaultLinkProtocol(protocol: string) {
+export function isDefaultLinkProtocol(protocol: string) {
   return (
     protocol === "http:" || protocol === "https:" || protocol === "mailto:"
   );
@@ -37,7 +38,7 @@ export function formatUrl(value: string, options: OptionsType = {}) {
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
     return (
-      <ExternalLink className="link link--wrappable" href={url}>
+      <ExternalLink className={cx(CS.link, CS.linkWrappable)} href={url}>
         {text}
       </ExternalLink>
     );

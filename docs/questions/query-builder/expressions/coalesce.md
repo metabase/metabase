@@ -70,7 +70,7 @@ If you want to treat "unknown" values as zeroes (or some other value that means 
 Use the same data types within a single `coalesce` function. If you want to coalesce values that have different data types:
 
 - Use the SQL `CAST` operator.
-- [Change the data type from the Data Model page][cast-data-type].
+- [Change the data type from the Table Metadata page][cast-data-type].
 
 If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 

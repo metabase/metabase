@@ -31,13 +31,14 @@ When the "Set up Single Sign-On with SAML" page appears, you'll see an option fo
 ![AZAzureStep1](images/saml-azure-step-1.png)
 
 Fill out the following fields as follows and click "Save":
+
 - **Identifier (Entity ID)**: `Metabase`
 - **Reply URL (Assertion Consumer Service URL)**: go to your Metabase instance in Settings -> Admin-> Authentication -> SAML and insert the value that your Metabase instance reports in the "Configure your identity provider (IdP)" box.
 
 In a new tab, visit the "App Federation Metadata URL". On the Metadata page, note the:
 
 - "Login URL"
-- "Azure AD Identifier" 
+- "Azure AD Identifier"
 
 You'll need these URLs to complete the SSO setup in Metabase.
 
@@ -49,8 +50,8 @@ Log in to Metabase as an administrator and go to **Admin** -> **Settings** -> **
 
 Under "Tell Metabase about your identity provider", enter the following:
 
-- **SAML Identity Provider URL**: the "Login URL" you got on Step 4 on the Azure AD SAML SSO configuration 
-- **SAML Identity Provider Certificate**: copy and paste the super long string under the "<X509Certificate>" tag in the "App Federation Metadata Url". Make sure you copy and paste the whole string; if you miss any character, the integration won't work.
+- **SAML Identity Provider URL**: the "Login URL" you got on Step 4 on the Azure AD SAML SSO configuration
+- **SAML Identity Provider Certificate**: copy and paste the super long string under the `<X509Certificate>` tag in the "App Federation Metadata Url". Make sure you copy and paste the whole string; if you miss any character, the integration won't work.
 - **SAML Application Name**: "Metabase"
 - **SAML Identity Provider Issuer**: the "Azure AD Identifier" URL you got from the Azure AD SAML SSO configuration.
 

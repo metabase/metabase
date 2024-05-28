@@ -1,6 +1,12 @@
-import { RawDataRouteParams } from "../../types";
-import { state } from "./data-permissions.unit.spec.fixtures";
+import type { State } from "metabase-types/store";
+
+import type { RawDataRouteParams } from "../../types";
+
+import { state as mockState } from "./data-permissions.unit.spec.fixtures";
+
 import { getDataFocusSidebar } from ".";
+
+const state = mockState as unknown as State;
 
 const getRouteProps = ({
   databaseId,
@@ -18,7 +24,7 @@ describe("getDataFocusSidebar", () => {
   describe("when database is not selected", () => {
     it("returns a correct placeholder for databases list search", () => {
       const sidebarData = getDataFocusSidebar(
-        state as any,
+        state,
         getRouteProps({ databaseId: undefined }),
       );
 
@@ -26,7 +32,7 @@ describe("getDataFocusSidebar", () => {
     });
 
     it("returns list of databases", () => {
-      const sidebarData = getDataFocusSidebar(state as any, getRouteProps({}));
+      const sidebarData = getDataFocusSidebar(state, getRouteProps({}));
 
       expect(sidebarData?.entityGroups).toEqual([
         [
@@ -54,7 +60,7 @@ describe("getDataFocusSidebar", () => {
   describe("when a database is selected", () => {
     it("returns a correct placeholder for databases list search", () => {
       const sidebarData = getDataFocusSidebar(
-        state as any,
+        state,
         getRouteProps({ databaseId: "2" }),
       );
 
@@ -63,7 +69,7 @@ describe("getDataFocusSidebar", () => {
 
     it("returns tree of schemas and tables for a database with schemas", () => {
       const sidebarData = getDataFocusSidebar(
-        state as any,
+        state,
         getRouteProps({ databaseId: "2" }),
       );
 

@@ -1,55 +1,55 @@
-import React, { useMemo, useCallback } from "react";
-import _ from "underscore";
-import { t } from "ttag";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
+import { useQuestionQuery } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
-
-import Databases from "metabase/entities/databases";
-
-import { executeRowAction } from "metabase/dashboard/actions";
-import { getEditingDashcardId } from "metabase/dashboard/selectors";
-
+import {
+  executeRowAction,
+  reloadDashboardCards,
+} from "metabase/dashboard/actions";
+import {
+  getEditingDashcardId,
+  getParameterValues,
+} from "metabase/dashboard/selectors";
+import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
   Dashboard,
   ParametersForActionExecution,
+  ParameterValueOrArray,
   WritebackAction,
 } from "metabase-types/api";
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import type { Dispatch, State } from "metabase-types/store";
 
-import type Database from "metabase-lib/metadata/Database";
-
+import { FullContainer } from "./ActionButton.styled";
+import ActionButtonView from "./ActionButtonView";
+import ActionVizForm from "./ActionVizForm";
 import {
   getDashcardParamValues,
-  getNotProvidedActionParameters,
   getMappedActionParameters,
+  getNotProvidedActionParameters,
   shouldShowConfirmation,
 } from "./utils";
-
-import ActionVizForm from "./ActionVizForm";
-import ActionButtonView from "./ActionButtonView";
-import { FullContainer } from "./ActionButton.styled";
 
 interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
   parameterValues: { [id: string]: ParameterValueOrArray };
+}
+
+interface StateProps {
   isEditingDashcard: boolean;
+
   dispatch: Dispatch;
 }
 
-interface DatabaseLoaderProps {
-  database: Database;
-  error?: unknown;
-}
+export type ActionProps = Pick<VisualizationProps, "settings" | "isSettings"> &
+  OwnProps &
+  StateProps;
 
-export type ActionProps = VisualizationProps & OwnProps & DatabaseLoaderProps;
-
-function ActionComponent({
+const ActionComponent = ({
   dashcard,
   dashboard,
   dispatch,
@@ -57,7 +57,11 @@ function ActionComponent({
   settings,
   parameterValues,
   isEditingDashcard,
-}: ActionProps) {
+}: ActionProps) => {
+  const { data: model } = useQuestionQuery({
+    id: dashcard.action?.model_id,
+  });
+
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
     settings?.actionDisplayType ?? actionSettings?.type ?? "button";
@@ -95,15 +99,24 @@ function ActionComponent({
     shouldConfirm
   );
 
+  const canWrite = model?.canWriteActions();
+
   const onSubmit = useCallback(
-    (parameters: ParametersForActionExecution) =>
-      executeRowAction({
+    async (parameters: ParametersForActionExecution) => {
+      const result = await executeRowAction({
         dashboard,
         dashcard,
         parameters,
         dispatch,
         shouldToast: shouldDisplayButton,
-      }),
+      });
+
+      if (result.success) {
+        dispatch(reloadDashboardCards());
+      }
+
+      return result;
+    },
     [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
 
@@ -119,38 +132,36 @@ function ActionComponent({
       isSettings={isSettings}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
+      canEditAction={canWrite}
       onSubmit={onSubmit}
     />
   );
-}
+};
 
 const ConnectedActionComponent = connect()(ActionComponent);
 
 function mapStateToProps(state: State, props: ActionProps) {
   return {
+    parameterValues: getParameterValues(state),
     isEditingDashcard: getEditingDashcardId(state) === props.dashcard.id,
   };
 }
 
 function ActionFn(props: ActionProps) {
-  const {
-    database,
-    dashcard: { action },
-    error,
-  } = props;
+  const { dashcard } = props;
+  const { action } = dashcard;
 
-  const hasActionsEnabled = database?.hasActionsEnabled?.();
+  const hasActionsEnabled = getActionIsEnabledInDatabase(dashcard);
 
-  if (error || !action || !hasActionsEnabled) {
+  if (!action || !hasActionsEnabled) {
     const tooltip = getErrorTooltip({
       hasActionAssigned: !!action,
       hasActionsEnabled,
-      error,
     });
 
     return (
       <Tooltip tooltip={tooltip}>
-        <FullContainer>
+        <FullContainer data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"
@@ -169,29 +180,20 @@ function ActionFn(props: ActionProps) {
 function getErrorTooltip({
   hasActionAssigned,
   hasActionsEnabled,
-  error,
 }: {
   hasActionAssigned: boolean;
   hasActionsEnabled: boolean;
-  error?: unknown;
 }) {
-  if (error) {
-    return getResponseErrorMessage(error);
-  }
   if (!hasActionAssigned) {
     return t`No action assigned`;
   }
+
   if (!hasActionsEnabled) {
     return t`Actions are not enabled for this database`;
   }
+
   return t`Something's gone wrong`;
 }
 
-export default _.compose(
-  Databases.load({
-    id: (state: State, props: ActionProps) =>
-      props.dashcard?.action?.database_id,
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps),
-)(ActionFn);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default connect(mapStateToProps)(ActionFn);

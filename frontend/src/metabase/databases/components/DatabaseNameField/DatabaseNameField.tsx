@@ -1,7 +1,7 @@
-import React from "react";
 import { t } from "ttag";
+
 import FormInput from "metabase/core/components/FormInput";
-import { Engine } from "metabase-types/api";
+import type { Engine } from "metabase-types/api";
 
 export interface DatabaseNameFieldProps {
   engine: Engine;
@@ -16,9 +16,11 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
       title={t`Display name`}
       placeholder={t`Our ${name}`}
       rightIcon="info"
+      // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
       rightIconTooltip={t`Choose what this data will be called in Metabase.`}
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseNameField;

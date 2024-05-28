@@ -1,4 +1,5 @@
 import { renderHook, act } from "@testing-library/react-hooks";
+
 import { usePagination } from "./use-pagination";
 
 describe("usePagination", () => {

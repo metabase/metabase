@@ -1,12 +1,13 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visitQuestion,
   visitDashboard,
   filterWidget,
   describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -49,9 +50,10 @@ describeEE("issue 24966", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
-    // Add user attribute to existing ("nodata" / id:3 user
-    cy.request("PUT", "/api/user/3", {
+    // Add user attribute to existing user
+    cy.request("PUT", `/api/user/${NODATA_USER_ID}`, {
       login_attributes: { attr_cat: "Gizmo" },
     });
 
@@ -80,14 +82,14 @@ describeEE("issue 24966", () => {
       cy.wrap(dashboard_id).as("dashboardId");
 
       // Connect the filter to the card
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,
             col: 0,
             row: 0,
-            size_x: 12,
+            size_x: 16,
             size_y: 8,
             parameter_mappings: [
               {
@@ -103,20 +105,18 @@ describeEE("issue 24966", () => {
   });
 
   it("should correctly fetch field values for a filter when native question is used for sandboxing (metabase#24966)", () => {
-    cy.get("@dashboardId").then(id => {
-      cy.signIn("nodata");
-      visitDashboard(id);
-      filterWidget().click();
-      cy.findByTestId("Gizmo-filter-value").click();
-      cy.button("Add filter").click();
-      cy.location("search").should("eq", "?text=Gizmo");
+    cy.signIn("nodata");
+    visitDashboard("@dashboardId");
+    filterWidget().click();
+    cy.findByTestId("Gizmo-filter-value").click();
+    cy.button("Add filter").click();
+    cy.location("search").should("eq", "?text=Gizmo");
 
-      cy.signInAsSandboxedUser();
-      visitDashboard(id);
-      filterWidget().click();
-      cy.findByTestId("Widget-filter-value").click();
-      cy.button("Add filter").click();
-      cy.location("search").should("eq", "?text=Widget");
-    });
+    cy.signInAsSandboxedUser();
+    visitDashboard("@dashboardId");
+    filterWidget().click();
+    cy.findByTestId("Widget-filter-value").click();
+    cy.button("Add filter").click();
+    cy.location("search").should("eq", "?text=Widget");
   });
 });

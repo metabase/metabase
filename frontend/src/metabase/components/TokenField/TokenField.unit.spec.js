@@ -1,12 +1,12 @@
 /* eslint-disable jest/expect-expect */
-/* eslint-disable react/display-name */
 /* eslint-disable react/prop-types */
 
-import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Component } from "react";
 
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+
 import TokenField from "./TokenField";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
@@ -29,7 +29,7 @@ const DEFAULT_TOKEN_FIELD_PROPS = {
   ),
 };
 
-class TokenFieldWithStateAndDefaults extends React.Component {
+class TokenFieldWithStateAndDefaults extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -38,7 +38,6 @@ class TokenFieldWithStateAndDefaults extends React.Component {
   }
   render() {
     // allow overriding everything except value and onChange which we provide
-    // eslint-disable-next-line no-unused-vars
     const { value, onChange, ...props } = this.props;
     return (
       <TokenField
@@ -171,7 +170,7 @@ describe("TokenField", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("should add freeform value if parseFreeformValue is provided", () => {
+  it("should add freeform value if parseFreeformValue is provided", async () => {
     render(
       <TokenFieldWithStateAndDefaults
         value={[]}
@@ -179,7 +178,7 @@ describe("TokenField", () => {
         parseFreeformValue={value => value}
       />,
     );
-    userEvent.type(input(), "yep");
+    await userEvent.type(input(), "yep");
     expect(input().value).toEqual("yep");
 
     type("yep");
@@ -265,11 +264,11 @@ describe("TokenField", () => {
     });
 
     // This is messy and tricky to test with RTL
-    it("should not commit empty freeform value", () => {
+    it("should not commit empty freeform value", async () => {
       setup();
 
       type("Doohickey");
-      userEvent.clear(input());
+      await userEvent.clear(input());
       type("");
       input().blur();
       expect(values()).toHaveTextContent("");
@@ -421,7 +420,7 @@ describe("TokenField", () => {
   });
 
   describe("with multi=false", () => {
-    it("should not prevent blurring on tab", () => {
+    it("should not prevent blurring on tab", async () => {
       render(
         <TokenFieldWithStateAndDefaults
           options={DEFAULT_OPTIONS}
@@ -432,7 +431,7 @@ describe("TokenField", () => {
       );
       type("asdf");
       input().focus();
-      userEvent.tab();
+      await userEvent.tab();
       expect(input()).not.toHaveFocus();
     });
 

@@ -1,11 +1,13 @@
+import d3 from "d3";
 import L from "leaflet";
 import { t } from "ttag";
-import d3 from "d3";
 
 import { color } from "metabase/lib/colors";
-import { isNumeric, isMetric } from "metabase-lib/types/utils/isa";
-import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
+import { isNumeric, isMetric } from "metabase-lib/v1/types/utils/isa";
+
 import { computeNumericDataInverval } from "../lib/numeric";
+
 import LeafletMap from "./LeafletMap";
 
 const isValidCoordinatesColumn = column =>
@@ -66,8 +68,6 @@ export default class LeafletGridHeatMap extends LeafletMap {
       const longitureValues = points.map(row => row[longitudeIndex]);
 
       for (let i = 0; i < totalSquares; i++) {
-        const [latitude, longiture, metric] = points[i];
-
         if (i >= points.length) {
           gridLayer.removeLayer(gridSquares[i]);
         }
@@ -78,6 +78,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
         }
 
         if (i < points.length) {
+          const [latitude, longiture, metric] = points[i];
+
           gridSquares[i].setStyle({ color: colorScale(metric) });
 
           const [latMin, latMax] = getValueRange(

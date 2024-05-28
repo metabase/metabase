@@ -1,4 +1,4 @@
-import { isNumber, isCoordinate } from "metabase-lib/types/utils/isa";
+import { isNumber, isCoordinate } from "metabase-lib/v1/types/utils/isa";
 
 export function getTableClickedObjectRowData(
   [series],
@@ -42,7 +42,8 @@ export function getTableCellClickedObject(
   if (isPivoted) {
     // if it's a pivot table, the first column is
     if (columnIndex === 0) {
-      return row._dimension;
+      const { value, column: col } = row._dimension;
+      return { value, column: col, settings, data: [{ value, col }] };
     } else {
       return {
         value,
@@ -74,12 +75,7 @@ export function getTableCellClickedObject(
   }
 }
 
-export function getTableHeaderClickedObject(
-  data,
-  columnIndex,
-  isPivoted,
-  query,
-) {
+export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
   const column = data.cols[columnIndex];
   if (isPivoted) {
     // if it's a pivot table, the first column is
@@ -91,10 +87,6 @@ export function getTableHeaderClickedObject(
   } else {
     return {
       column,
-      dimension:
-        typeof query?.dimensionForColumn === "function"
-          ? query?.dimensionForColumn(column)
-          : null,
     };
   }
 }

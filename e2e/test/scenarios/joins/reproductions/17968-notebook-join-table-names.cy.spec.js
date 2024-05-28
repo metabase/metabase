@@ -1,30 +1,39 @@
-import { restore, popover, openOrdersTable } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  getNotebookStep,
+  openOrdersTable,
+  popover,
+  restore,
+  summarize,
+} from "e2e/support/helpers";
 
 describe("issue 17968", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsAdmin();
   });
 
-  it("shows correct table names when joining many tables (metabase#17968)", () => {
+  it("should show 'Previous results' instead of a table name for non-field dimensions (metabase#17968)", () => {
     openOrdersTable({ mode: "notebook" });
 
-    cy.findByText("Join data").click();
-    popover().findByText("Products").click();
+    summarize({ mode: "notebook" });
+    popover().findByText("Count of rows").click();
 
-    cy.findByTestId("action-buttons").findByText("Join data").click();
-    popover().findByText("Reviews").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover().findByText("Created At").click();
 
-    popover().within(() => {
+    cy.findAllByTestId("action-buttons").last().button("Join data").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
       cy.findByText("Products").click();
-      cy.findByText("ID").click();
     });
+    popover().findByText("Count").click();
 
-    popover().findByText("Product ID").click();
-
-    cy.findByTestId("step-join-0-1")
-      .findByTestId("parent-dimension")
-      .findByText("Products");
+    getNotebookStep("join", { stage: 1 })
+      .findByLabelText("Left column")
+      .findByText("Previous results");
   });
 });

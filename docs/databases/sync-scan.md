@@ -16,7 +16,7 @@ When Metabase first connects to your database, Metabase performs a [sync](#how-d
 
 You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
 
-Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Data model**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
+Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
 ## Choose when Metabase syncs and scans
 
@@ -50,46 +50,35 @@ If you've turned ON [Choose when syncs and scans happen](#choose-when-metabase-s
 
 To scan values from all the columns in a table:
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Select the table that you want to bring up to date with your database.
 3. Click the **gear icon** at the top of the page.
 4. Click **Re-scan this table**.
 
 To scan values from a specific column:
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Select the table.
 3. Find the column you want bring up to date with your database.
 4. Click the **gear icon** in the panel for that column.
 5. Click **Re-scan this field**.
 
-## Periodically refingerprint tables
+## Clearing cached values for a table or field
 
-> Periodic refingerprinting will increase the load on your database.
+To clear the [scanned field values for a table](#syncing-and-scanning-databases):
 
-By default, Metabase only runs [fingerprinting](#how-database-fingerprinting-works) queries when you first connect your database.
+1. Go to **Admin settings** > **Table Metadata**.
+2. Select the database and table.
+3. Click the **gear icon** in the upper right.
+4. Click **Discard cached field values**.
 
-Turn this setting ON if you want Metabase to use larger samples of column values when making suggestions in the UI:
-
-1. Go to **Admin** > **Databases** > your database.
-2. Expand **Show advanced options**.
-3. Turn ON **Periodically refingerprint tables**.
-
-## Clearing cached values
-
-To ask Metabase to forget the data from previous [scans](#syncing-and-scanning-databases) and [fingerprinting](#how-database-fingerprinting-works):
-
-1. Go to **Admin settings** > **Data model** > your database.
-2. Select the table.
-3. Optional: select the column.
-4. Click the **gear icon**.
-5. Click **Discard cached field values**.
+You can also tell Metabase to forget the cached values for individual fields by clicking the **gear** icon on a field and clicking on **Discard cached field values**.
 
 ## Disabling syncing and scanning for specific tables
 
 To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Hover over the table name in the sidebar.
 3. Click the **eye** icon.
 
@@ -109,9 +98,9 @@ A Metabase **sync** is a query that gets a list of updated table and view names,
 ```sql
 SELECT
     TRUE
-FROM 
+FROM
     "your_schema"."your_table_or_view"
-WHERE 
+WHERE
     1 <> 1
 LIMIT 0
 ```
@@ -141,6 +130,18 @@ Cached column values are displayed in filter dropdown menus. If people type in t
 A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
 To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days.
+
+## Periodically refingerprint tables
+
+> Periodic refingerprinting will increase the load on your database.
+
+By default, Metabase only runs [fingerprinting](#how-database-fingerprinting-works) queries when you first connect your database.
+
+Turn this setting ON if you want Metabase to use larger samples of column values when making suggestions in the UI:
+
+1. Go to **Admin** > **Databases** > your database.
+2. Expand **Show advanced options**.
+3. Turn ON **Periodically refingerprint tables**.
 
 ## How database fingerprinting works
 

@@ -1,5 +1,5 @@
-import React from "react";
-
+import { Component, cloneElement } from "react";
+import { Route as _Route } from "react-router";
 import _ from "underscore";
 
 const componentStack = [];
@@ -15,8 +15,11 @@ const updateDocumentTitle = _.debounce(() => {
     .join(SEPARATOR);
 });
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 const title = documentTitleOrGetter => ComposedComponent =>
-  class extends React.Component {
+  class extends Component {
     static displayName =
       "Title[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
@@ -72,13 +75,11 @@ const title = documentTitleOrGetter => ComposedComponent =>
 
 export default title;
 
-import { Route as _Route } from "react-router";
-
 // react-router Route wrapper that adds a `title` property
 export class Route extends _Route {
   static createRouteFromReactElement(element) {
     if (element.props.title) {
-      element = React.cloneElement(element, {
+      element = cloneElement(element, {
         component: title(element.props.title)(
           element.props.component || (({ children }) => children),
         ),

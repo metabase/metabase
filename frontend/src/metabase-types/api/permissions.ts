@@ -1,7 +1,16 @@
-import { DatabaseId } from "metabase-types/types/Database";
-import { SchemaName, TableId } from "metabase-types/types/Table";
-import { GroupId } from "./group";
-import { UserAttribute } from "./user";
+import type {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase/admin/permissions/types";
+import type {
+  DatabaseId,
+  TableId,
+  SchemaName,
+  CollectionId,
+} from "metabase-types/api";
+
+import type { GroupId } from "./group";
+import type { UserAttribute } from "./user";
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;
@@ -16,13 +25,19 @@ export type GroupPermissions = {
   [key: DatabaseId]: DatabasePermissions;
 };
 
-export type DownloadPermission = "full" | "limited" | "none";
+export type DownloadPermission =
+  | DataPermissionValue.FULL
+  | DataPermissionValue.LIMITED
+  | DataPermissionValue.NONE;
 
 export type DownloadAccessPermission = {
+  native?: DownloadSchemasPermission;
   schemas: DownloadSchemasPermission;
 };
 
-export type DetailsPermission = "no" | "yes";
+export type DetailsPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
 
 export type DetailsPermissions = {
   [key: DatabaseId]: DetailsPermission;
@@ -37,10 +52,11 @@ export type DownloadTablePermission =
   | { [key: TableId]: DownloadPermission };
 
 export type DatabasePermissions = {
-  data: DatabaseAccessPermissions;
-  "data-model": DataModelPermissions;
-  download: DownloadAccessPermission;
-  details: DetailsPermissions;
+  [DataPermission.VIEW_DATA]: SchemasPermissions;
+  [DataPermission.CREATE_QUERIES]?: NativePermissions;
+  [DataPermission.DATA_MODEL]?: DataModelPermissions;
+  [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
+  [DataPermission.DETAILS]?: DetailsPermissions;
 };
 
 export type DataModelPermissions = {
@@ -48,27 +64,48 @@ export type DataModelPermissions = {
 };
 
 export type DatabaseAccessPermissions = {
-  native: NativePermissions;
+  native?: NativePermissions;
   schemas: SchemasPermissions;
 };
 
-export type NativePermissions = "read" | "write" | "none";
+export type NativePermissions =
+  | DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+  | DataPermissionValue.QUERY_BUILDER
+  | DataPermissionValue.NO
+  | undefined;
 
 export type SchemasPermissions =
-  | "all"
-  | "none"
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.NO
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.BLOCKED
+  | DataPermissionValue.IMPERSONATED
   | {
       [key: SchemaName]: TablesPermissions;
     };
 
 export type TablesPermissions =
-  | "all"
-  | "none"
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
   | {
       [key: TableId]: FieldsPermissions;
     };
 
-export type FieldsPermissions = "all" | "none";
+export type FieldsPermissions =
+  | DataPermissionValue.UNRESTRICTED
+  | DataPermissionValue.LEGACY_NO_SELF_SERVICE
+  | DataPermissionValue.SANDBOXED;
+
+export type CollectionPermissionsGraph = {
+  groups: CollectionPermissions;
+  revision: number;
+};
+
+export type CollectionPermissions = {
+  [key: GroupId]: Partial<Record<CollectionId, CollectionPermission>>;
+};
+
+export type CollectionPermission = "write" | "read" | "none";
 
 // FIXME: is there a more suitable type for this?
 export type DimensionRef = ["dimension", any[]];
@@ -82,4 +119,10 @@ export type GroupTableAccessPolicy = {
     [key: UserAttribute]: DimensionRef;
   };
   permission_id: number | null;
+};
+
+export type Impersonation = {
+  db_id: DatabaseId;
+  group_id: GroupId;
+  attribute: UserAttribute;
 };

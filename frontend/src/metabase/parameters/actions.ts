@@ -1,5 +1,7 @@
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
-import {
+import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
   CardId,
   DashboardId,
   FieldId,
@@ -7,9 +9,8 @@ import {
   ParameterId,
   ParameterValues,
 } from "metabase-types/api";
-import { Dispatch, GetState } from "metabase-types/store";
-import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
-import { normalizeParameter } from "metabase-lib/parameters/utils/parameter-values";
+import type { Dispatch, GetState } from "metabase-types/store";
+
 import { getParameterValuesCache } from "./selectors";
 import { getFilteringParameterValuesMap } from "./utils/dashboards";
 
@@ -108,7 +109,7 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
     : await ParameterApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };
@@ -125,7 +126,7 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
     : await CardApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };
@@ -144,7 +145,7 @@ const loadDashboardParameterValues = async (
     : await DashboardApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };

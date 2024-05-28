@@ -1,9 +1,10 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
+
 import {
   createMockEngine,
   createMockEngineSource,
 } from "metabase-types/api/mocks";
+
 import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
 export default {

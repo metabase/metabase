@@ -1,0 +1,105 @@
+.ListSectionHeader :global(.Icon),
+.ListItem .ListItemArrow :global(.Icon) {
+  color: var(--mb-color-text-dark);
+}
+
+.ListSectionHeader:hover :global(.Icon) {
+  color: inherit;
+}
+
+.ListItem :global(.Icon) {
+  color: var(--mb-color-text-light);
+}
+
+.ListSectionHeader {
+  color: var(--mb-color-text-dark);
+  border: 2px solid transparent;
+
+  /* so that spacing matches [data-element-id=list-item] */
+}
+
+.ListSectionHeaderCursor {
+  border-radius: 8px;
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: -4px;
+}
+
+/* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
+.ListSectionToggleAble .ListSectionHeader:hover,
+.ListSectionToggleAble .ListSectionHeader:hover :global(.Icon),
+.ListSectionToggleAble .ListSectionHeader:hover .ListSectionTitle,
+.ListSectionExpanded .ListSectionHeader,
+.ListSectionExpanded .ListSectionHeader .ListSectionIcon :global(.Icon) {
+  color: currentColor;
+}
+
+.ListSectionExpanded .ListSectionHeader .ListSectionTitle {
+  color: var(--mb-color-text-dark);
+}
+
+.ListSectionTitle {
+  word-wrap: break-word;
+}
+
+/* LIST ITEM */
+.ListItem {
+  display: flex;
+  border-radius: 4px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+.ListItemCursor {
+  outline: 2px solid var(--mb-color-focus);
+}
+
+.ListItemCursor:not(.ListItemDisabled),
+.ListItem:not(.ListItemDisabled):hover,
+.ListItemSelected:not(.ListItemDisabled) {
+  background-color: currentColor;
+}
+
+/* LIST ITEM TITLE */
+.ListItemTitle {
+  color: var(--mb-color-text-dark);
+}
+
+.ListItemDisabled .ListItemTitle {
+  color: var(--mb-color-text-light);
+}
+
+.ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
+.ListItem:not(.ListItemDisabled):hover .ListItemTitle,
+.ListItemSelected:not(.ListItemDisabled) .ListItemTitle {
+  color: white;
+}
+
+/* LIST ITEM DESCRIPTION */
+.ListItemDescription {
+  margin-top: 0.25em;
+  margin-bottom: 0;
+  color: var(--mb-color-text-medium);
+}
+
+.ListItemDisabled .ListItemDescription {
+  color: var(--mb-color-text-dark);
+}
+
+.ListItemCursor:not(.ListItemDisabled) .ListItemDescription,
+.ListItem:not(.ListItemDisabled):hover .ListItemDescription,
+.ListItemSelected:not(.ListItemDisabled) .ListItemDescription {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* LIST ITEM ICON */
+.ListItemCursor:not(.ListItemDisabled) :global(.Icon),
+.ListItem:not(.ListItemDisabled):hover :global(.Icon),
+.ListItemSelected:not(.ListItemDisabled) :global(.Icon) {
+  color: white !important;
+}
+
+/* Moved from `query_builder.module.css` to make migration easier */
+.ListItem:not(.ListItemDisabled):hover .FieldListGroupingTrigger,
+.ListItemSelected .FieldListGroupingTrigger {
+  visibility: visible;
+}

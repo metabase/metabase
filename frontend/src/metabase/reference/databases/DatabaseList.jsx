@@ -1,20 +1,18 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import S from "metabase/components/List/List.css";
-
 import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
-import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
-import ReferenceHeader from "../components/ReferenceHeader";
+import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 
+import ReferenceHeader from "../components/ReferenceHeader";
 import { getDatabases, getError, getLoading } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
@@ -49,7 +47,7 @@ class DatabaseList extends Component {
       });
 
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full}>
         <ReferenceHeader name={t`Our data`} />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
@@ -57,19 +55,16 @@ class DatabaseList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper">
+              <div className={CS.wrapper}>
                 <List>
-                  {databases.map((database, index) => (
-                    <li className="relative" key={database.id}>
-                      <ListItem
-                        id={database.id}
-                        index={index}
-                        name={database.display_name || database.name}
-                        description={database.description}
-                        url={`/reference/databases/${database.id}`}
-                        icon="database"
-                      />
-                    </li>
+                  {databases.map(database => (
+                    <ListItem
+                      key={database.id}
+                      name={database.name}
+                      description={database.description}
+                      url={`/reference/databases/${database.id}`}
+                      icon="database"
+                    />
                   ))}
                 </List>
               </div>

@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -64,6 +64,7 @@ describe.skip("issue 13961", () => {
     cy.log("URL is correct at this point, but there are no results");
 
     cy.location("search").should("eq", `?${productIdFilter.name}=1`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
   });
 });

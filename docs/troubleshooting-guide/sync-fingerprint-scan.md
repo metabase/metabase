@@ -37,7 +37,7 @@ If you’ve just set up a new database in Metabase, the initial sync query needs
 
 **Explanation**
 
-A sync query should show up like this in your database's query execution table (using the privileges for the database user in the database connection details):
+A sync query should show up like this in your database's query execution table (using the [privileges](../databases/users-roles-privileges.md) for the database user in the database connection details):
 
 ```sql
 SELECT
@@ -52,7 +52,7 @@ LIMIT 0
 To run the sync query, Metabase must:
 
 - successfully connect to your database, and
-- be [granted privileges](./data-permissions.md#granting-database-privileges) to query that database. 
+- be [granted privileges](../databases/users-roles-privileges.md) to query that database. 
 
 If the [connection is failing](./db-connection.md) or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
 
@@ -69,7 +69,7 @@ Metabase will try to unfold JSON and JSONB records during the sync process, whic
 
 ## Scanning
 
-1. Go to **Admin** > **Data Model**.
+1. Go to **Admin** > **Table Metadata**.
 2. Select the database and table.
 3. Go to the column you want to update, and click the **gear** icon.
 4. Click **Discard cached field values**.
@@ -98,7 +98,7 @@ LIMIT 1000
 
 A failed scan is caused by a failed scan query---you can look at the logs to debug the query similar to other queries you'd run directly against your database.
 
-Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Data Model, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
+Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Table Metadata, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or a lot of text-heavy data (like long URLs or survey responses), you can:
 
 - Use a search box filter for that field.
 - Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/analytics/etl-landscape) process.
@@ -109,7 +109,7 @@ To manually re-trigger a fingerprinting query for a given column:
 
 1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
 2. Toggle ON **Periodically refingerprint tables** and click **Save changes**.
-3. Go to **Admin** > **Data Model**.
+3. Go to **Admin** > **Table Metadata**.
 4. Select your database and table.
 5. Change the visibility of the table to "Hidden".
 6. Change the visibility back to "Queryable".
@@ -149,7 +149,7 @@ To speed up **syncs**:
 
 To speed up **scans**:
    - [Reduce the frequency of scans, or disable scans entirely](../databases/sync-scan.md#scheduling-database-scans).
-   - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
+   - Reduce the number of columns being scanned by going to **Admin** > **Table Metadata** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
 **Explanation**
 

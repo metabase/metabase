@@ -18,7 +18,7 @@ To complete any build of the Metabase code, you'll need to install the following
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../installation-and-operation/java-versions.md))
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
 
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
 

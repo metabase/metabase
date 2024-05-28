@@ -1,35 +1,49 @@
-import React, {
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+import type {
+  HTMLAttributes,
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  Ref,
+} from "react";
+import {
   useEffect,
   useContext,
   useCallback,
   useRef,
   useState,
-  HTMLAttributes,
-  ChangeEventHandler,
-  KeyboardEventHandler,
-  MouseEventHandler,
   forwardRef,
-  Ref,
 } from "react";
 import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import { color, lighten } from "metabase/lib/colors";
 
+import type { TabContextType } from "../Tab";
 import {
   getTabButtonInputId,
   getTabId,
   getTabPanelId,
   TabContext,
-  TabContextType,
 } from "../Tab";
-import { TabButtonInput, TabButtonRoot, MenuButton } from "./TabButton.styled";
-import TabButtonMenu from "./TabButtonMenu";
 
-export type TabButtonValue = string | number;
+import {
+  TabButtonInput,
+  TabButtonRoot,
+  MenuButton,
+  TabButtonInputWrapper,
+  TabButtonInputResizer,
+} from "./TabButton.styled";
+import { TabButtonMenu } from "./TabButtonMenu";
+
+export const INPUT_WRAPPER_TEST_ID = "tab-button-input-wrapper";
 
 export type TabButtonMenuAction = (
   context: TabContextType,
-  value?: TabButtonValue,
+  value: UniqueIdentifier | null,
 ) => void;
 
 export interface TabButtonMenuItem {
@@ -39,25 +53,27 @@ export interface TabButtonMenuItem {
 
 export interface TabButtonProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
-  value?: TabButtonValue;
+  value: UniqueIdentifier | null;
   showMenu?: boolean;
   menuItems?: TabButtonMenuItem[];
-  onEdit?: ChangeEventHandler<HTMLInputElement>;
-  onFinishEditing?: () => void;
-  isEditing?: boolean;
+  onRename?: ChangeEventHandler<HTMLInputElement>;
+  onFinishRenaming?: () => void;
+  isRenaming?: boolean;
+  onInputDoubleClick?: MouseEventHandler<HTMLSpanElement>;
   disabled?: boolean;
 }
 
-const TabButton = forwardRef(function TabButton(
+const _TabButton = forwardRef(function TabButton(
   {
     value,
     menuItems,
     label,
     onClick,
-    onEdit,
-    onFinishEditing,
+    onRename,
+    onFinishRenaming,
+    onInputDoubleClick,
     disabled = false,
-    isEditing = false,
+    isRenaming = false,
     showMenu: showMenuProp = true,
     ...props
   }: TabButtonProps,
@@ -72,7 +88,7 @@ const TabButton = forwardRef(function TabButton(
     showMenuProp && menuItems !== undefined && menuItems.length > 0;
 
   const handleButtonClick: MouseEventHandler<HTMLDivElement> = useCallback(
-    event => {
+    (event: React.MouseEvent<HTMLDivElement>) => {
       if (
         disabled ||
         menuButtonRef.current?.contains(event.target as Node) ||
@@ -89,16 +105,12 @@ const TabButton = forwardRef(function TabButton(
 
   const handleInputKeyPress: KeyboardEventHandler<HTMLInputElement> =
     useCallback(
-      event => {
-        if (event.key !== "Enter") {
-          return;
-        }
-        if (typeof inputRef === "object") {
+      (event: React.KeyboardEvent) => {
+        if (event.key === "Enter" && typeof inputRef === "object") {
           inputRef?.current?.blur();
         }
-        onFinishEditing?.();
       },
-      [onFinishEditing, inputRef],
+      [inputRef],
     );
 
   return (
@@ -111,21 +123,33 @@ const TabButton = forwardRef(function TabButton(
       aria-selected={isSelected}
       aria-controls={getTabPanelId(idPrefix, value)}
       aria-disabled={disabled}
+      aria-label={label}
       id={getTabId(idPrefix, value)}
     >
-      <TabButtonInput
-        type="text"
-        value={label}
+      <TabButtonInputWrapper
+        onDoubleClick={onInputDoubleClick}
         isSelected={isSelected}
-        disabled={!isEditing}
-        onChange={onEdit}
-        onKeyPress={handleInputKeyPress}
-        onFocus={e => e.currentTarget.select()}
-        onBlur={onFinishEditing}
-        id={getTabButtonInputId(idPrefix, value)}
-        ref={inputRef}
-      />
-
+        disabled={disabled}
+        data-testid={INPUT_WRAPPER_TEST_ID}
+      >
+        <TabButtonInputResizer aria-hidden="true">
+          {label}
+        </TabButtonInputResizer>
+        <TabButtonInput
+          maxLength={75}
+          type="text"
+          value={label}
+          isSelected={isSelected}
+          disabled={!isRenaming}
+          onChange={onRename}
+          onKeyPress={handleInputKeyPress}
+          onFocus={e => e.currentTarget.select()}
+          onBlur={onFinishRenaming}
+          aria-labelledby={getTabId(idPrefix, value)}
+          id={getTabButtonInputId(idPrefix, value)}
+          ref={inputRef}
+        />
+      </TabButtonInputWrapper>
       {showMenu && (
         <ControlledPopoverWithTrigger
           visible={isMenuOpen}
@@ -156,30 +180,58 @@ const TabButton = forwardRef(function TabButton(
 });
 
 export interface RenameableTabButtonProps
-  extends Omit<TabButtonProps, "onEdit" | "onFinishEditing" | "isEditing"> {
+  extends Omit<TabButtonProps, "onRename" | "onFinishRenaming" | "isRenaming"> {
   onRename: (newLabel: string) => void;
   renameMenuLabel?: string;
   renameMenuIndex?: number;
+  canRename?: boolean;
+  value: UniqueIdentifier;
 }
 
+// These styles need to be here instead of .styled to avoid circular dependency
+const borderStyle = css`
+  border: 1px solid ${color("brand")};
+  box-shadow: 0px 0px 0px 1px ${lighten(color("brand"), 0.28)};
+`;
+export const RenameableTabButtonStyled = styled(_TabButton)<{
+  isRenaming: boolean;
+  isSelected: boolean;
+  canRename: boolean;
+}>`
+  ${TabButtonInputWrapper} {
+    ${props => props.isRenaming && borderStyle}
+    :hover {
+      ${props => props.canRename && props.isSelected && borderStyle}
+    }
+  }
+`;
+
 export function RenameableTabButton({
-  label: originalLabel,
+  label: labelProp,
   menuItems: originalMenuItems = [],
   onRename,
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
+  canRename = true,
   ...props
 }: RenameableTabButtonProps) {
-  const [label, setLabel] = useState(originalLabel);
+  const { value: selectedValue } = useContext(TabContext);
+  const isSelected = props.value === selectedValue;
+
+  const [label, setLabel] = useState(labelProp);
   const [prevLabel, setPrevLabel] = useState(label);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing) {
+    setLabel(labelProp);
+  }, [labelProp]);
+
+  useEffect(() => {
+    if (isRenaming) {
       inputRef.current?.focus();
     }
-  }, [isEditing]);
+  }, [isRenaming]);
 
   const onFinishEditing = () => {
     if (label.length === 0) {
@@ -188,35 +240,53 @@ export function RenameableTabButton({
       setPrevLabel(label);
       onRename(label);
     }
-    setIsEditing(false);
+    setIsRenaming(false);
   };
 
-  const renameItem = {
-    label: renameMenuLabel,
-    action: () => {
-      setIsEditing(true);
-    },
+  let menuItems = [...originalMenuItems];
+  if (canRename) {
+    const renameItem = {
+      label: renameMenuLabel,
+      action: () => {
+        setIsRenaming(true);
+      },
+    };
+    menuItems = [
+      ...menuItems.slice(0, renameMenuIndex),
+      renameItem,
+      ...menuItems.slice(renameMenuIndex),
+    ];
+  }
+
+  const dragLabel = (s: string) => {
+    if (s.length < 20) {
+      return s;
+    } else {
+      return `${s.slice(0, 17)}...`;
+    }
   };
-  const menuItems = [
-    ...originalMenuItems.slice(0, renameMenuIndex),
-    renameItem,
-    ...originalMenuItems.slice(renameMenuIndex),
-  ];
+
+  const { isDragging } = useSortable({ id: props.value });
 
   return (
-    <TabButton
-      label={label}
-      isEditing={isEditing}
-      onEdit={e => setLabel(e.target.value)}
-      onFinishEditing={onFinishEditing}
-      menuItems={menuItems}
+    <RenameableTabButtonStyled
+      label={isDragging ? dragLabel(label) : label}
+      isSelected={isSelected}
+      isRenaming={canRename && isRenaming}
+      canRename={canRename}
+      onRename={e => setLabel(e.target.value)}
+      onFinishRenaming={onFinishEditing}
+      onInputDoubleClick={() => setIsRenaming(canRename)}
+      menuItems={
+        menuItems as TabButtonMenuItem[] /* workaround for styled component swallowing generic type */
+      }
       ref={inputRef}
       {...props}
     />
   );
 }
 
-export default Object.assign(TabButton, {
+export const TabButton = Object.assign(_TabButton, {
   Root: TabButtonRoot,
   Renameable: RenameableTabButton,
 });

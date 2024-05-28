@@ -1,1 +1,1 @@
-export { default } from "./DateRangeWidget";
+export { DateRangeWidget } from "./DateRangeWidget";

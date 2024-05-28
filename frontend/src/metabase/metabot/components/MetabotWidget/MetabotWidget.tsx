@@ -1,22 +1,24 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
+
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Search from "metabase/entities/search";
-import { getUser } from "metabase/selectors/user";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Card, CollectionItem, DatabaseId, User } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
+import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
+import { getUser } from "metabase/selectors/user";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { CollectionItem, DatabaseId, User } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
+
 import DatabasePicker from "../DatabasePicker";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
+
 import { MetabotHeader } from "./MetabotWidget.styled";
 
 interface DatabaseLoaderProps {
@@ -28,12 +30,11 @@ interface SearchLoaderProps {
 }
 
 interface CardLoaderProps {
-  card?: Card;
+  model?: Question;
 }
 
 interface StateProps {
   user: User | null;
-  model: Question | null;
   databases: Database[];
 }
 
@@ -41,14 +42,16 @@ interface DispatchProps {
   onSubmitQuery: (databaseId: DatabaseId, query: string) => void;
 }
 
-type MetabotWidgetProps = StateProps & DispatchProps & DatabaseLoaderProps;
+type MetabotWidgetProps = StateProps &
+  DispatchProps &
+  CardLoaderProps &
+  DatabaseLoaderProps;
 
 const mapStateToProps = (
   state: State,
-  { card, databases }: CardLoaderProps & DatabaseLoaderProps,
+  { databases }: DatabaseLoaderProps,
 ): StateProps => ({
   user: getUser(state),
-  model: card ? new Question(card, getMetadata(state)) : null,
   databases: databases.filter(canUseMetabotOnDatabase),
 });
 
@@ -103,7 +106,7 @@ const getGreetingMessage = (user: User | null) => {
   }
 };
 
-const getPromptPlaceholder = (model: Question | null) => {
+const getPromptPlaceholder = (model: Question | undefined) => {
   if (model) {
     return t`Ask something like, how many ${model?.displayName()} have we had over time?`;
   } else {
@@ -111,17 +114,18 @@ const getPromptPlaceholder = (model: Question | null) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
     listName: "models",
   }),
   Questions.load({
     id: (state: State, { models }: SearchLoaderProps) => models[0]?.id,
-    entityAlias: "card",
+    entityAlias: "model",
   }),
   Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

@@ -1,6 +1,4 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
-
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 
 export function makeCard(card) {
@@ -181,10 +179,6 @@ export function renderChart(renderer, element, series, props) {
     settings,
     ...props,
   });
-}
-
-export function renderLineAreaBar(...args) {
-  return renderChart(lineAreaBarRenderer, ...args);
 }
 
 // mirrors logic in ChartTooltip

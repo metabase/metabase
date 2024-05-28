@@ -1,22 +1,21 @@
-import React, { useCallback } from "react";
-import { t } from "ttag";
+import { useCallback } from "react";
+import { c, t } from "ttag";
 import _ from "underscore";
 
-import { IconProps } from "metabase/components/Icon";
-import { Tree } from "metabase/components/tree";
+import { useUserSetting } from "metabase/common/hooks";
+import CollapseSection from "metabase/components/CollapseSection";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
+import { Tree } from "metabase/components/tree";
+import CS from "metabase/css/core/index.css";
 import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
-
+import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
-
-import { SelectedItem } from "../types";
-import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 
 import {
   AddYourOwnDataLink,
@@ -29,14 +28,15 @@ import {
   SidebarHeadingWrapper,
   SidebarSection,
 } from "../MainNavbar.styled";
+import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
 
 interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children: CollectionTreeItem[];
 }
-
 type Props = {
   isAdmin: boolean;
   isOpen: boolean;
@@ -57,10 +57,9 @@ type Props = {
     oldIndex: number;
   }) => void;
 };
-
-const BROWSE_URL = "/browse";
+const BROWSE_MODELS_URL = "/browse/models";
+const BROWSE_DATA_URL = "/browse/databases";
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ARCHIVE_URL = "/archive";
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
@@ -88,20 +87,75 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
+  const [expandBrowse = true, setExpandBrowse] = useUserSetting(
+    "expand-browse-in-nav",
+  );
+  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
+    "expand-bookmarks-in-nav",
+  );
+
   return (
     <SidebarContentRoot>
       <div>
         <SidebarSection>
-          <ul>
+          <PaddedSidebarLink
+            isSelected={nonEntityItem?.url === "/"}
+            icon="home"
+            onClick={onItemSelect}
+            url="/"
+          >
+            {t`Home`}
+          </PaddedSidebarLink>
+        </SidebarSection>
+        <SidebarSection>
+          <CollapseSection
+            header={
+              <SidebarHeading>{c("A verb, shown in the sidebar")
+                .t`Browse`}</SidebarHeading>
+            }
+            initialState={expandBrowse ? "expanded" : "collapsed"}
+            iconPosition="right"
+            iconSize={8}
+            headerClass={CS.mb1}
+            onToggle={setExpandBrowse}
+          >
             <PaddedSidebarLink
-              isSelected={nonEntityItem?.url === "/"}
-              icon="home"
+              icon="model"
+              url={BROWSE_MODELS_URL}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
               onClick={onItemSelect}
-              url="/"
+              aria-label={t`Browse models`}
             >
-              {t`Home`}
+              {t`Models`}
             </PaddedSidebarLink>
-          </ul>
+            {hasDataAccess && (
+              <PaddedSidebarLink
+                icon="database"
+                url={BROWSE_DATA_URL}
+                isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
+                onClick={onItemSelect}
+                aria-label={t`Browse databases`}
+              >
+                {t`Databases`}
+              </PaddedSidebarLink>
+            )}
+          </CollapseSection>
+          {hasDataAccess && (
+            <>
+              {!hasOwnDatabase && isAdmin && (
+                <AddYourOwnDataLink
+                  icon="add"
+                  url={ADD_YOUR_OWN_DATA_URL}
+                  isSelected={nonEntityItem?.url?.startsWith(
+                    ADD_YOUR_OWN_DATA_URL,
+                  )}
+                  onClick={onItemSelect}
+                >
+                  {t`Add your own data`}
+                </AddYourOwnDataLink>
+              )}
+            </>
+          )}
         </SidebarSection>
 
         {bookmarks.length > 0 && (
@@ -111,6 +165,8 @@ function MainNavbarView({
               selectedItem={cardItem ?? dashboardItem ?? collectionItem}
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
+              onToggle={setExpandBookmarks}
+              initialState={expandBookmarks ? "expanded" : "collapsed"}
             />
           </SidebarSection>
         )}
@@ -126,50 +182,18 @@ function MainNavbarView({
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
             role="tree"
+            aria-label="collection-tree"
           />
         </SidebarSection>
-
-        {hasDataAccess && (
-          <SidebarSection>
-            <SidebarHeadingWrapper>
-              <SidebarHeading>{t`Data`}</SidebarHeading>
-            </SidebarHeadingWrapper>
-            <ul>
-              <PaddedSidebarLink
-                icon="database"
-                url={BROWSE_URL}
-                isSelected={nonEntityItem?.url?.startsWith(BROWSE_URL)}
-                onClick={onItemSelect}
-                data-metabase-event="NavBar;Data Browse"
-              >
-                {t`Browse data`}
-              </PaddedSidebarLink>
-              {!hasOwnDatabase && isAdmin && (
-                <AddYourOwnDataLink
-                  icon="add"
-                  url={ADD_YOUR_OWN_DATA_URL}
-                  isSelected={nonEntityItem?.url?.startsWith(
-                    ADD_YOUR_OWN_DATA_URL,
-                  )}
-                  onClick={onItemSelect}
-                  data-metabase-event="NavBar;Add your own data"
-                >
-                  {t`Add your own data`}
-                </AddYourOwnDataLink>
-              )}
-            </ul>
-          </SidebarSection>
-        )}
       </div>
+      <WhatsNewNotification />
     </SidebarContentRoot>
   );
 }
-
 interface CollectionSectionHeadingProps {
   currentUser: User;
   handleCreateNewCollection: () => void;
 }
-
 function CollectionSectionHeading({
   currentUser,
   handleCreateNewCollection,
@@ -188,20 +212,17 @@ function CollectionSectionHeading({
         </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
-            icon={getCollectionIcon(PERSONAL_COLLECTIONS as Collection)}
+            icon={
+              getCollectionIcon(
+                PERSONAL_COLLECTIONS as Collection,
+              ) as unknown as IconName
+            }
             url={OTHER_USERS_COLLECTIONS_URL}
             onClick={closePopover}
           >
             {t`Other users' personal collections`}
           </SidebarLink>
         )}
-        <SidebarLink
-          icon="view_archive"
-          url={ARCHIVE_URL}
-          onClick={closePopover}
-        >
-          {t`View archive`}
-        </SidebarLink>
       </CollectionMenuList>
     ),
     [currentUser, handleCreateNewCollection],
@@ -213,7 +234,7 @@ function CollectionSectionHeading({
       <CollectionsMoreIconContainer>
         <TippyPopoverWithTrigger
           renderTrigger={({ onClick }) => (
-            <CollectionsMoreIcon name="ellipsis" onClick={onClick} size={12} />
+            <CollectionsMoreIcon name="ellipsis" onClick={onClick} />
           )}
           popoverContent={renderMenu}
         />
@@ -221,5 +242,5 @@ function CollectionSectionHeading({
     </SidebarHeadingWrapper>
   );
 }
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MainNavbarView;

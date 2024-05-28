@@ -1,55 +1,50 @@
 /* eslint-disable react/prop-types */
-import React, { Component, useEffect, useState } from "react";
-import { connect } from "react-redux";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { createRef, Component } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
-import MetabaseSettings from "metabase/lib/settings";
-
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
+import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
+import Questions from "metabase/entities/questions";
 import Schemas from "metabase/entities/schemas";
-import Tables from "metabase/entities/tables";
 import Search from "metabase/entities/search";
-
-import { PLUGIN_MODERATION } from "metabase/plugins";
-
-import { getMetadata } from "metabase/selectors/metadata";
+import Tables from "metabase/entities/tables";
 import { getHasDataAccess } from "metabase/selectors/data";
-import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
   isVirtualCardId,
-  getQuestionVirtualTableId,
+  getQuestionIdFromVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
+
 import {
-  SearchResults,
-  convertSearchResultToTableLikeItem,
-} from "./data-search";
-import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-import DataBucketPicker from "./DataSelectorDataBucketPicker";
-import DatabasePicker from "./DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
-import SchemaPicker from "./DataSelectorSchemaPicker";
-import FieldPicker from "./DataSelectorFieldPicker";
-import TablePicker from "./DataSelectorTablePicker";
-import {
-  CollectionDatasetSelectList,
-  CollectionDatasetAllDataLink,
   EmptyStateContainer,
   TableSearchContainer,
 } from "./DataSelector.styled";
-
-import { DATA_BUCKET } from "./constants";
-
-import "./DataSelector.css";
+import DataBucketPicker from "./DataSelectorDataBucketPicker";
+import DatabasePicker from "./DataSelectorDatabasePicker";
+import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import FieldPicker from "./DataSelectorFieldPicker";
+import SchemaPicker from "./DataSelectorSchemaPicker";
+import TablePicker from "./DataSelectorTablePicker";
+import {
+  FieldTrigger,
+  DatabaseTrigger,
+  TableTrigger,
+  Trigger,
+} from "./TriggerComponents";
+import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
+import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -64,169 +59,59 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
-// allows to choose one of collection's dataset (requires collectionId prop)
-// is used while adding a question with the "+" button on collection page
-const COLLECTION_DATASET_STEP = "COLLECTION_DATASET";
-
-export const DataSourceSelector = props => (
-  <DataSelector
-    steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-    combineDatabaseSchemaSteps
-    getTriggerElementContent={TableTriggerContent}
-    {...props}
-  />
-);
-
-export const CollectionDatasetOrDataSourceSelector = ({
-  hasCollectionDatasetsStep,
-  ...props
-}) => {
-  const [collectionDatasetsShown, setCollectionDatasetsShown] = useState(
-    !!hasCollectionDatasetsStep,
-  );
-
-  const steps = collectionDatasetsShown
-    ? [COLLECTION_DATASET_STEP]
-    : [DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP];
-
+export function DataSourceSelector(props) {
   return (
     <DataSelector
-      steps={steps}
+      steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
       combineDatabaseSchemaSteps
-      getTriggerElementContent={TableTriggerContent}
+      getTriggerElementContent={TableTrigger}
       {...props}
-      onCloseCollectionDatasets={() => {
-        setCollectionDatasetsShown(false);
-      }}
     />
   );
-};
-
-export const DatabaseDataSelector = props => (
-  <DataSelector
-    steps={[DATABASE_STEP]}
-    getTriggerElementContent={DatabaseTriggerContent}
-    {...props}
-  />
-);
-
-export const DatabaseSchemaAndTableDataSelector = props => (
-  <DataSelector
-    steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
-    combineDatabaseSchemaSteps
-    getTriggerElementContent={TableTriggerContent}
-    {...props}
-  />
-);
-
-export const SchemaAndTableDataSelector = props => (
-  <DataSelector
-    steps={[SCHEMA_STEP, TABLE_STEP]}
-    getTriggerElementContent={TableTriggerContent}
-    {...props}
-  />
-);
-
-export const SchemaTableAndFieldDataSelector = props => (
-  <DataSelector
-    steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
-    getTriggerElementContent={FieldTriggerContent}
-    {...props}
-  />
-);
-
-const DatabaseTriggerContent = ({ selectedDatabase }) =>
-  selectedDatabase ? (
-    <span className="text-wrap text-grey no-decoration">
-      {selectedDatabase.name}
-    </span>
-  ) : (
-    <span className="text-medium no-decoration">{t`Select a database`}</span>
-  );
-
-const TableTriggerContent = ({ selectedTable }) =>
-  selectedTable ? (
-    <span className="text-wrap text-grey no-decoration">
-      {selectedTable.display_name || selectedTable.name}
-    </span>
-  ) : (
-    <span className="text-medium no-decoration">{t`Select a table`}</span>
-  );
-
-const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
-  if (!selectedField || !selectedField.table) {
-    return (
-      <span className="flex-full text-medium no-decoration">{t`Select...`}</span>
-    );
-  } else {
-    const hasMultipleSchemas =
-      selectedDatabase &&
-      _.uniq(selectedDatabase.tables, t => t.schema_name).length > 1;
-    return (
-      <div className="flex-full cursor-pointer">
-        <div className="h6 text-bold text-uppercase text-light">
-          {hasMultipleSchemas && selectedField.table.schema_name + " > "}
-          {selectedField.table.display_name}
-        </div>
-        <div className="h4 text-bold text-default">
-          {selectedField.display_name}
-        </div>
-      </div>
-    );
-  }
-};
-
-class DataSelectorInner extends Component {
-  render() {
-    return <UnconnectedDataSelector {...this.props} />;
-  }
 }
 
-const DataSelector = _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-    listName: "allDatabases",
-  }),
-  Search.loadList({
-    // If there is at least one dataset,
-    // we want to display a slightly different data picker view
-    // (see DATA_BUCKET step)
-    query: {
-      models: "dataset",
-      limit: 1,
-    },
-    loadingAndErrorWrapper: false,
-  }),
-  connect(
-    (state, ownProps) => ({
-      metadata: getMetadata(state),
-      databases:
-        ownProps.databases ||
-        Databases.selectors.getList(state, {
-          entityQuery: ownProps.databaseQuery,
-        }) ||
-        [],
-      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true },
-      }),
-      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true },
-      }),
-      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables" },
-      }),
-      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
-    }),
-    {
-      fetchDatabases: databaseQuery =>
-        Databases.actions.fetchList(databaseQuery),
-      fetchSchemas: databaseId =>
-        Schemas.actions.fetchList({ dbId: databaseId }),
-      fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
-      fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
-    },
-  ),
-)(DataSelectorInner);
+export function DatabaseDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[DATABASE_STEP]}
+      getTriggerElementContent={DatabaseTrigger}
+      {...props}
+    />
+  );
+}
+
+export function DatabaseSchemaAndTableDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
+      combineDatabaseSchemaSteps
+      getTriggerElementContent={TableTrigger}
+      {...props}
+    />
+  );
+}
+
+export function SchemaAndTableDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[SCHEMA_STEP, TABLE_STEP]}
+      getTriggerElementContent={TableTrigger}
+      {...props}
+    />
+  );
+}
+
+export function SchemaTableAndFieldDataSelector(props) {
+  return (
+    <DataSelector
+      steps={[SCHEMA_STEP, TABLE_STEP, FIELD_STEP]}
+      getTriggerElementContent={FieldTrigger}
+      // We don't want to change styles when there's a different trigger element
+      isMantine={!props.getTriggerElementContent}
+      {...props}
+    />
+  );
+}
 
 export class UnconnectedDataSelector extends Component {
   constructor(props) {
@@ -239,7 +124,8 @@ export class UnconnectedDataSelector extends Component {
       selectedTableId: props.selectedTableId,
       selectedFieldId: props.selectedFieldId,
       searchText: "",
-      isSavedQuestionPickerShown: false,
+      isSavedEntityPickerShown: false,
+      savedEntityType: null,
     };
     const computedState = this._getComputedState(props, state);
     this.state = {
@@ -249,14 +135,14 @@ export class UnconnectedDataSelector extends Component {
       ...state,
       ...computedState,
     };
-    this.popover = React.createRef();
+    this.popover = createRef();
   }
 
   static propTypes = {
     selectedDataBucketId: PropTypes.string,
     selectedDatabaseId: PropTypes.number,
     selectedSchemaId: PropTypes.string,
-    selectedTableId: PropTypes.number,
+    selectedTableId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     selectedFieldId: PropTypes.number,
     databases: PropTypes.array.isRequired,
     setDatabaseFn: PropTypes.func,
@@ -267,11 +153,11 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableDatabase: PropTypes.bool,
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
-    renderAsSelect: PropTypes.bool,
     tableFilter: PropTypes.func,
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
+    canSelectMetric: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -287,13 +173,13 @@ export class UnconnectedDataSelector extends Component {
     delete: PropTypes.func,
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
-    search: PropTypes.arrayOf(PropTypes.object),
+    models: PropTypes.arrayOf(PropTypes.object),
+    metrics: PropTypes.arrayOf(PropTypes.object),
     allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
     isInitiallyOpen: false,
-    renderAsSelect: false,
     useOnlyAvailableDatabase: true,
     useOnlyAvailableSchema: true,
     hideSingleSchema: true,
@@ -302,6 +188,8 @@ export class UnconnectedDataSelector extends Component {
     canChangeDatabase: true,
     hasTriggerExpandControl: true,
     isPopover: true,
+    isMantine: false,
+    canSelectMetric: false,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -346,18 +234,21 @@ export class UnconnectedDataSelector extends Component {
         tables = schemas[0].tables;
       }
     }
+
     function setSelectedSchema(schema) {
       selectedSchema = schema;
       if (!tables && schema) {
         tables = schema.tables;
       }
     }
+
     function setSelectedTable(table) {
       selectedTable = table;
       if (!fields && table) {
         fields = table.fields;
       }
     }
+
     function setSelectedField(field) {
       selectedField = field;
     }
@@ -437,18 +328,29 @@ export class UnconnectedDataSelector extends Component {
 
   async componentDidMount() {
     const { activeStep } = this.state;
+    const {
+      fetchFields,
+      fetchQuestion,
+      selectedDataBucketId,
+      selectedTableId: sourceId,
+    } = this.props;
+
     if (!this.isLoadingDatasets() && !activeStep) {
       await this.hydrateActiveStep();
     }
 
-    if (this.props.selectedDataBucketId === DATA_BUCKET.DATASETS) {
-      this.showSavedQuestionPicker();
+    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
+      this.showSavedEntityPicker({ entityType: "model" });
     }
 
-    if (this.props.selectedTableId) {
-      await this.props.fetchFields(this.props.selectedTableId);
-      if (this.isSavedQuestionSelected()) {
-        this.showSavedQuestionPicker();
+    if (sourceId) {
+      await fetchFields(sourceId);
+      if (this.isSavedEntitySelected()) {
+        await fetchQuestion(sourceId);
+
+        this.showSavedEntityPicker({
+          entityType: this.props.selectedQuestion?.type(),
+        });
       }
     }
   }
@@ -517,14 +419,46 @@ export class UnconnectedDataSelector extends Component {
 
   isLoadingDatasets = () => this.props.loading;
 
-  hasDatasets = () => {
-    const { search, loaded } = this.props;
-    return loaded && search?.length > 0;
+  getCardType() {
+    const { selectedDataBucketId, savedEntityType } = this.state;
+    switch (true) {
+      case selectedDataBucketId === DATA_BUCKET.MODELS ||
+        savedEntityType === "model":
+        return "model";
+      case selectedDataBucketId === DATA_BUCKET.METRICS ||
+        savedEntityType === "metric":
+        return "metric";
+      default:
+        return "question";
+    }
+  }
+
+  hasModels = () => {
+    const { models, loaded } = this.props;
+    return loaded && models && models.length > 0;
   };
 
-  hasUsableDatasets = () => {
-    // As datasets are actually saved questions, nested queries must be enabled
-    return this.hasDatasets() && MetabaseSettings.get("enable-nested-queries");
+  hasUsableModels = () => {
+    // As models are actually saved questions, nested queries must be enabled
+    return this.hasModels() && this.props.hasNestedQueriesEnabled;
+  };
+
+  hasMetrics = () => {
+    const { metrics, loaded, canSelectMetric } = this.props;
+    return loaded && metrics && metrics.length > 0 && canSelectMetric;
+  };
+
+  hasUsableMetrics = () => {
+    // As metrics are actually saved questions, nested queries must be enabled
+    return this.hasMetrics() && this.props.hasNestedQueriesEnabled;
+  };
+
+  hasUsableModelsOrMetrics = () => {
+    return this.hasUsableModels() || this.hasUsableMetrics();
+  };
+
+  hasSavedQuestions = () => {
+    return this.state.databases.some(database => database.is_saved_questions);
   };
 
   getDatabases = () => {
@@ -534,7 +468,7 @@ export class UnconnectedDataSelector extends Component {
     // "Saved Questions" are presented in a different picker step
     // So it should be excluded from a regular databases list
     const shouldRemoveSavedQuestionDatabaseFromList =
-      !MetabaseSettings.get("enable-nested-queries") || this.hasDatasets();
+      !this.props.hasNestedQueriesEnabled || this.hasUsableModelsOrMetrics();
 
     return shouldRemoveSavedQuestionDatabaseFromList
       ? databases.filter(db => !db.is_saved_questions)
@@ -544,18 +478,26 @@ export class UnconnectedDataSelector extends Component {
   async hydrateActiveStep() {
     const { steps } = this.props;
     if (
-      this.isSavedQuestionSelected() ||
-      this.state.selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.isSavedEntitySelected() ||
+      this.state.selectedDataBucketId === DATA_BUCKET.MODELS ||
       this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
     ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
-    } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
+    } else if (
+      // Schema id is explicitly set when going through the New > Question/Model flow,
+      // whereas we have to obtain it from the state when opening a saved question.
+      (this.state.selectedSchemaId || this.state.selectedSchema?.id) &&
+      steps.includes(TABLE_STEP)
+    ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
-    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
+    } else if (
+      steps[0] === DATA_BUCKET_STEP &&
+      !this.hasUsableModelsOrMetrics()
+    ) {
       await this.switchToStep(steps[1]);
     } else {
       await this.switchToStep(steps[0]);
@@ -625,8 +567,8 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    // data bucket step doesn't make a lot of sense when there're no datasets
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
+    // data bucket step doesn't make a lot of sense when there're no models or metrics
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableModelsOrMetrics()) {
       return null;
     }
 
@@ -693,6 +635,12 @@ export class UnconnectedDataSelector extends Component {
   async loadStepData(stepName) {
     const loadersForSteps = {
       // NOTE: make sure to return the action's resulting promise
+      [DATA_BUCKET_STEP]: () => {
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchDatabases({ saved: true }),
+        ]);
+      },
       [DATABASE_STEP]: () => {
         return Promise.all([
           this.props.fetchDatabases(this.props.databaseQuery),
@@ -708,6 +656,8 @@ export class UnconnectedDataSelector extends Component {
       [TABLE_STEP]: () => {
         if (this.state.selectedSchemaId != null) {
           return this.props.fetchSchemaTables(this.state.selectedSchemaId);
+        } else if (this.state.selectedSchema?.id != null) {
+          return this.props.fetchSchemaTables(this.state.selectedSchema?.id);
         }
       },
       [FIELD_STEP]: () => {
@@ -769,8 +719,11 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
-  showSavedQuestionPicker = () =>
-    this.setState({ isSavedQuestionPickerShown: true });
+  showSavedEntityPicker = ({ entityType }) =>
+    this.setState({
+      isSavedEntityPickerShown: true,
+      savedEntityType: entityType,
+    });
 
   onChangeDataBucket = async selectedDataBucketId => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
@@ -792,7 +745,7 @@ export class UnconnectedDataSelector extends Component {
 
   onChangeDatabase = async database => {
     if (database.is_saved_questions) {
-      this.showSavedQuestionPicker();
+      this.showSavedEntityPicker({ entityType: "question" });
       return;
     }
 
@@ -815,7 +768,7 @@ export class UnconnectedDataSelector extends Component {
 
   onChangeTable = async table => {
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table?.id);
+      this.props.setSourceTableFn(table?.id, table?.db_id);
     }
     await this.nextStep({ selectedTableId: table?.id });
   };
@@ -833,8 +786,10 @@ export class UnconnectedDataSelector extends Component {
       style,
       triggerIconSize,
       triggerElement,
-      getTriggerElementContent,
+      getTriggerElementContent: TriggerComponent,
       hasTriggerExpandControl,
+      readOnly,
+      isMantine,
     } = this.props;
 
     if (triggerElement) {
@@ -844,50 +799,46 @@ export class UnconnectedDataSelector extends Component {
     const { selectedDatabase, selectedTable, selectedField } = this.state;
 
     return (
-      <span
-        className={className || "px2 py2 text-bold cursor-pointer text-default"}
+      <Trigger
+        className={className}
         style={style}
+        showDropdownIcon={!readOnly && hasTriggerExpandControl}
+        iconSize={isMantine ? "1rem" : triggerIconSize}
+        isMantine={isMantine}
       >
-        {React.createElement(getTriggerElementContent, {
-          selectedDatabase,
-          selectedTable,
-          selectedField,
-          ...triggerProps,
-        })}
-        {!this.props.readOnly && hasTriggerExpandControl && (
-          <Icon
-            className="ml1"
-            name="chevrondown"
-            size={triggerIconSize || 8}
-          />
-        )}
-      </span>
+        <TriggerComponent
+          database={selectedDatabase}
+          table={selectedTable}
+          field={selectedField}
+          {...triggerProps}
+        />
+      </Trigger>
     );
   };
 
   getTriggerClasses() {
-    const { readOnly, triggerClasses, renderAsSelect } = this.props;
-    if (triggerClasses) {
-      return cx(triggerClasses, { disabled: readOnly });
-    }
-    return renderAsSelect
-      ? cx("border-medium bg-white block no-decoration", { disabled: readOnly })
-      : cx("flex align-center", { disabled: readOnly });
+    const { readOnly, triggerClasses } = this.props;
+    return cx(triggerClasses ?? cx(CS.flex, CS.alignCenter), {
+      disabled: readOnly,
+    });
   }
 
-  handleSavedQuestionPickerClose = () => {
+  handleSavedEntityPickerClose = () => {
     const { selectedDataBucketId } = this.state;
+    if (selectedDataBucketId === DATA_BUCKET.MODELS || this.hasUsableModels()) {
+      this.previousStep();
+    }
     if (
-      selectedDataBucketId === DATA_BUCKET.DATASETS ||
-      this.hasUsableDatasets()
+      selectedDataBucketId === DATA_BUCKET.METRICS ||
+      this.hasUsableMetrics()
     ) {
       this.previousStep();
     }
-    this.setState({ isSavedQuestionPickerShown: false });
+    this.setState({ isSavedEntityPickerShown: false, savedEntityType: null });
   };
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps } = this.props;
+    const { combineDatabaseSchemaSteps, hasNestedQueriesEnabled } = this.props;
 
     const props = {
       ...this.state,
@@ -908,22 +859,23 @@ export class UnconnectedDataSelector extends Component {
     };
 
     switch (this.state.activeStep) {
-      case COLLECTION_DATASET_STEP:
+      case DATA_BUCKET_STEP:
         return (
-          <CollectionDatasetPicker
+          <DataBucketPicker
+            dataTypes={getDataTypes({
+              hasModels: this.hasModels(),
+              hasNestedQueriesEnabled,
+              hasSavedQuestions: this.hasSavedQuestions(),
+              hasMetrics: this.hasMetrics(),
+            })}
             {...props}
-            collectionId={this.props.collectionId}
-            handleCollectionDatasetSelect={this.handleCollectionDatasetSelect}
-            onSeeAllData={this.handleCollectionDatasetsPickerClose}
           />
         );
-      case DATA_BUCKET_STEP:
-        return <DataBucketPicker {...props} />;
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
             {...props}
-            hasBackButton={this.hasUsableDatasets() && props.onBack}
+            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
           />
         ) : (
           <DatabasePicker {...props} />
@@ -932,7 +884,7 @@ export class UnconnectedDataSelector extends Component {
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
             {...props}
-            hasBackButton={this.hasUsableDatasets() && props.onBack}
+            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
           />
         ) : (
           <SchemaPicker {...props} />
@@ -946,12 +898,13 @@ export class UnconnectedDataSelector extends Component {
     return null;
   }
 
-  isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
+  isSavedEntitySelected = () => isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedQuestionSelect = async tableOrModelId => {
-    await this.props.fetchFields(tableOrModelId);
+  handleSavedEntitySelect = async tableOrCardId => {
+    await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(tableOrModelId);
+      const table = this.props.metadata.table(tableOrCardId);
+      this.props.setSourceTableFn(tableOrCardId, table.db_id);
     }
     this.popover.current.toggle();
     this.handleClose();
@@ -975,29 +928,12 @@ export class UnconnectedDataSelector extends Component {
       searchText,
     });
 
-  handleCollectionDatasetSelect = async dataset => {
-    const tableId = getQuestionVirtualTableId(dataset.id);
-    await this.props.fetchFields(tableId);
-    if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(tableId);
-    }
-    this.popover.current.toggle();
-    this.props.onCloseCollectionDatasets();
-    this.switchToStep(TABLE_STEP);
-  };
-
-  handleCollectionDatasetsPickerClose = () => {
-    this.props.onCloseCollectionDatasets();
-    this.switchToStep(
-      this.hasUsableDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP,
-    );
-  };
-
   handleSearchItemSelect = async item => {
-    const table = convertSearchResultToTableLikeItem(item);
-    await this.props.fetchFields(table.id);
+    const tableOrCardId = getSearchItemTableOrCardId(item);
+    await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table.id);
+      const table = this.props.metadata.table(tableOrCardId);
+      this.props.setSourceTableFn(table.id, table.db_id);
     }
     this.popover.current.toggle();
     this.handleClose();
@@ -1012,34 +948,40 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getSearchInputPlaceholder = () => {
-    const { activeStep, selectedDataBucketId, isSavedQuestionPickerShown } =
+    const { activeStep, selectedDataBucketId, isSavedEntityPickerShown } =
       this.state;
     if (activeStep === DATA_BUCKET_STEP) {
       return t`Search for some data…`;
     }
-    if (selectedDataBucketId === DATA_BUCKET.DATASETS) {
+    if (selectedDataBucketId === DATA_BUCKET.MODELS) {
       return t`Search for a model…`;
     }
-    return isSavedQuestionPickerShown
+    return isSavedEntityPickerShown
       ? t`Search for a question…`
       : t`Search for a table…`;
   };
 
   getSearchModels = () => {
-    const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
-    if (!MetabaseSettings.get("enable-nested-queries")) {
+    const { selectedDataBucketId, isSavedEntityPickerShown } = this.state;
+    if (!this.props.hasNestedQueriesEnabled) {
       return ["table"];
     }
-    if (!this.hasUsableDatasets()) {
-      return isSavedQuestionPickerShown ? ["card"] : ["card", "table"];
+    if (!this.hasUsableModelsOrMetrics()) {
+      return isSavedEntityPickerShown ? ["card"] : ["card", "table"];
     }
     if (!selectedDataBucketId) {
-      return ["card", "dataset", "table"];
+      return [
+        "card",
+        "dataset",
+        "table",
+        ...(this.props.canSelectMetric ? ["metric"] : []),
+      ];
     }
     return {
-      [DATA_BUCKET.DATASETS]: ["dataset"],
+      [DATA_BUCKET.MODELS]: ["dataset"],
       [DATA_BUCKET.RAW_DATA]: ["table"],
       [DATA_BUCKET.SAVED_QUESTIONS]: ["card"],
+      [DATA_BUCKET.METRICS]: ["metric"],
     }[selectedDataBucketId];
   };
 
@@ -1051,7 +993,7 @@ export class UnconnectedDataSelector extends Component {
   renderContent = () => {
     const {
       searchText,
-      isSavedQuestionPickerShown,
+      isSavedEntityPickerShown,
       selectedDataBucketId,
       selectedTable,
     } = this.state;
@@ -1062,8 +1004,7 @@ export class UnconnectedDataSelector extends Component {
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
 
     const isPickerOpen =
-      isSavedQuestionPickerShown ||
-      selectedDataBucketId === DATA_BUCKET.DATASETS;
+      isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
     if (this.isLoadingDatasets()) {
       return <LoadingAndErrorWrapper loading />;
@@ -1094,17 +1035,17 @@ export class UnconnectedDataSelector extends Component {
           )}
           {!isSearchActive &&
             (isPickerOpen ? (
-              <SavedQuestionPicker
+              <SavedEntityPicker
                 collectionName={
                   selectedTable &&
                   selectedTable.schema &&
                   getSchemaName(selectedTable.schema.id)
                 }
-                isDatasets={selectedDataBucketId === DATA_BUCKET.DATASETS}
+                type={this.getCardType()}
                 tableId={selectedTable?.id}
                 databaseId={currentDatabaseId}
-                onSelect={this.handleSavedQuestionSelect}
-                onBack={this.handleSavedQuestionPickerClose}
+                onSelect={this.handleSavedEntitySelect}
+                onBack={this.handleSavedEntityPickerClose}
               />
             ) : (
               this.renderActiveStep()
@@ -1148,73 +1089,65 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
-const CollectionDatasetPicker = ({
-  collectionId,
-  handleCollectionDatasetSelect,
-  onSeeAllData,
-}) => {
-  return (
-    <Search.ListLoader
-      query={{
-        collection: collectionId,
-        models: ["dataset"],
-      }}
-      loadingAndErrorWrapper={false}
-    >
-      {({ list: datasets }) => (
-        <CollectionDatasetList
-          datasets={datasets}
-          onSelect={handleCollectionDatasetSelect}
-          onSeeAllData={onSeeAllData}
-        />
-      )}
-    </Search.ListLoader>
-  );
-};
-
-function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
-  useEffect(() => {
-    if (datasets?.length === 0) {
-      onSeeAllData();
-    } else if (datasets?.length === 1) {
-      onSelect(datasets[0]);
-    }
-  }, [datasets, onSelect, onSeeAllData]);
-
-  // If there are no datasets, in a collection, we just switch to the normal picker
-  // If there is exactly one dataset, we select it and close the picker
-  // The loading indicator is still shown for both cases to prevent flickering
-  // Example: spinner > one dataset shown > it gets selected > the selector closes, everything flickers
-  if (!datasets || datasets.length === 0 || datasets.length === 1) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  return (
-    <CollectionDatasetSelectList>
-      {datasets.map(dataset => {
-        return (
-          <CollectionDatasetSelectList.Item
-            key={dataset.id}
-            name={dataset.name}
-            onSelect={() => onSelect(dataset)}
-            size="small"
-            icon={{ name: "model", size: 16 }}
-            rightIcon={PLUGIN_MODERATION.getStatusIcon(
-              dataset.moderated_status,
-            )}
-          />
-        );
-      })}
-      <CollectionDatasetAllDataLink
-        key="all-data"
-        onSelect={onSeeAllData}
-        as={props => <li {...props} />}
-      >
-        <CollectionDatasetAllDataLink.Content>
-          {t`All data`}
-          <Icon key="icon" name="chevronright" size={12} />
-        </CollectionDatasetAllDataLink.Content>
-      </CollectionDatasetAllDataLink>
-    </CollectionDatasetSelectList>
-  );
-}
+const DataSelector = _.compose(
+  Databases.loadList({
+    loadingAndErrorWrapper: false,
+    listName: "allDatabases",
+  }),
+  // If there is at least one model or metric,
+  // we want to display a slightly different data picker view
+  // (see DATA_BUCKET step)
+  Search.loadList({
+    query: {
+      models: ["dataset"],
+      limit: 1,
+    },
+    listName: "models",
+    loadingAndErrorWrapper: false,
+  }),
+  Search.loadList({
+    query: {
+      models: ["metric"],
+      limit: 1,
+    },
+    listName: "metrics",
+    loadingAndErrorWrapper: false,
+  }),
+  connect(
+    (state, ownProps) => ({
+      metadata: getMetadata(state),
+      databases:
+        ownProps.databases ||
+        Databases.selectors.getList(state, {
+          entityQuery: ownProps.databaseQuery,
+        }) ||
+        [],
+      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
+        entityQuery: { include: "tables", saved: true },
+      }),
+      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
+        entityQuery: { saved: true },
+      }),
+      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
+        entityQuery: { include: "tables" },
+      }),
+      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
+      hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+      selectedQuestion: Questions.selectors.getObject(state, {
+        entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+      }),
+    }),
+    {
+      fetchDatabases: databaseQuery =>
+        Databases.actions.fetchList(databaseQuery),
+      fetchSchemas: databaseId =>
+        Schemas.actions.fetchList({ dbId: databaseId }),
+      fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
+      fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
+      fetchQuestion: id =>
+        Questions.actions.fetch({
+          id: getQuestionIdFromVirtualTableId(id),
+        }),
+    },
+  ),
+)(UnconnectedDataSelector);

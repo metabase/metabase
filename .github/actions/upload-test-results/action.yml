@@ -1,0 +1,54 @@
+name: Upload Test Results to s3
+description: Uploads test results files to s3
+
+inputs:
+  input-path:
+    required: true
+  output-name:
+    required: true
+    default: test
+  aws-access-key-id:
+    required: true
+  aws-secret-access-key:
+    required: true
+  aws-region:
+    required: true
+    default: us-east-1
+  bucket:
+    required: true
+  trunk-api-token:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+    - name: zip test results
+      env:
+        INPUT_DIR: ${{ inputs.input-path }}
+        OUTPUT_FILE: ${{ inputs.output-name }}
+      shell: bash
+      run: | # sh
+        zip ${OUTPUT_FILE}.zip $INPUT_DIR/*.xml
+    - name: Upload test results to S3
+      env:
+        BUCKET: ${{ inputs.bucket }}
+        OUTPUT_FILE: ${{ inputs.output-name }}
+      shell: bash
+      run: | # sh
+        DATE=$(date '+%Y-%m-%d')
+        aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
+
+    - name: Upload results to Trunk
+      if: ${{ always() }}
+      uses: trunk-io/analytics-uploader@main
+      with:
+        junit-paths: ${{ inputs.input-path }}
+        org-slug: metabase
+        token: ${{ inputs.trunk-api-token }}
+      continue-on-error: true

@@ -3,105 +3,119 @@
    [cheshire.core :as json]
    [medley.core :as m]
    [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(models/defmodel QueryAction :query_action)
-(models/defmodel HTTPAction :http_action)
-(models/defmodel ImplicitAction :implicit_action)
-(models/defmodel Action :action)
+;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
+
+(methodical/defmethod t2/table-name :model/Action [_model] :action)
+(methodical/defmethod t2/table-name :model/QueryAction [_model] :query_action)
+(methodical/defmethod t2/table-name :model/HTTPAction [_model] :http_action)
+(methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
+
+;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+;; We'll keep this till we replace all the Actions symbol in our codebase.
+(def Action         "Action model"         :model/Action)
+(def QueryAction    "QueryAction model"    :model/QueryAction)
+(def HTTPAction     "HTTPAction model"     :model/HTTPAction)
+(def ImplicitAction "ImplicitAction model" :model/ImplicitAction)
+
+(def ^:private action-sub-models [:model/QueryAction :model/HTTPAction :model/ImplicitAction])
+
+(doto :model/Action
+  (derive :metabase/model)
+  ;;; You can read/write an Action if you can read/write its model (Card)
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/entity-id)
+  (derive :hook/timestamped?))
+
+(doseq [model action-sub-models]
+  (derive model :metabase/model))
+
+(methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
+(methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])
+(methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
+
+(def ^:private transform-action-visualization-settings
+  {:in  mi/json-in
+   :out (comp (fn [viz-settings]
+                ;; the keys of :fields should be strings, not keywords
+                (m/update-existing viz-settings :fields update-keys name))
+              mi/json-out-with-keywordization)})
+
+(t2/deftransforms :model/Action
+  {:type                   mi/transform-keyword
+   :parameter_mappings     mi/transform-parameters-list
+   :parameters             mi/transform-parameters-list
+   :visualization_settings transform-action-visualization-settings})
+
+(t2/deftransforms :model/QueryAction
+  ;; shouldn't this be mi/transform-metabase-query?
+  {:dataset_query mi/transform-json})
+
+(def ^:private transform-json-with-nested-parameters
+  {:in  (comp mi/json-in
+              (fn [template]
+                (u/update-if-exists template :parameters mi/normalize-parameters-list)))
+   :out (comp (fn [template]
+                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
+              mi/json-out-with-keywordization)})
+
+(t2/deftransforms :model/HTTPAction
+  {:template transform-json-with-nested-parameters})
+
+(methodical/defmethod t2/batched-hydrate [:model/Action :model]
+  [_model k actions]
+  (mi/instances-with-hydrated-data
+   actions k
+   #(t2/select-pk->fn identity :model/Card :id [:in (map :model_id actions)])
+   :model_id))
+
+(defn- check-model-is-not-a-saved-question
+  [model-id]
+  (when-not (= (t2/select-one-fn :type [Card :type] :id model-id) :model)
+    (throw (ex-info (tru "Actions must be made with models, not cards.")
+                    {:status-code 400}))))
+
+(t2/define-before-insert :model/Action
+  [{model-id :model_id, :as action}]
+  (u/prog1 action
+    (check-model-is-not-a-saved-question model-id)))
+
+(t2/define-before-update :model/Action
+  [{archived? :archived, id :id, model-id :model_id, :as changes}]
+  (u/prog1 changes
+    (if archived?
+      (t2/delete! :model/DashboardCard :action_id id)
+      (check-model-is-not-a-saved-question model-id))))
+
+(defmethod mi/perms-objects-set :model/Action
+  [instance read-or-write]
+  (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
+
+(def action-columns
+  "The columns that are common to all Action types."
+  [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
+   :parameters :public_uuid :type :updated_at :visualization_settings])
 
 (defn type->model
   "Returns the model from an action type.
    `action-type` can be a string or a keyword."
   [action-type]
   (case action-type
-    :http     HTTPAction
-    :implicit ImplicitAction
-    :query    QueryAction))
+    :http     :model/HTTPAction
+    :implicit :model/ImplicitAction
+    :query    :model/QueryAction))
 
-;;; You can read/write an Action if you can read/write its model (Card)
-(doto Action
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
 
-(defmethod mi/perms-objects-set Action
-  [instance read-or-write]
-  (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
-
-(models/add-type! ::json-with-nested-parameters
-  :in  (comp mi/json-in
-             (fn [template]
-               (u/update-if-exists template :parameters mi/normalize-parameters-list)))
-  :out (comp (fn [template]
-               (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
-             mi/json-out-with-keywordization))
-
-(mi/define-simple-hydration-method model
-  :model
-  "Return the Card this action uses as a model."
-  [{:keys [model_id]}]
-  (t2/select-one Card :id model_id))
-
-(defn- check-model-is-not-a-saved-question
-  [model-id]
-  (when-not (t2/select-one-fn :dataset Card :id model-id)
-    (throw (ex-info (tru "Actions must be made with models, not cards.")
-                    {:status-code 400}))))
-
-(t2/define-before-insert Action
-  [{model-id :model_id, :as action}]
-  (u/prog1 action
-    (check-model-is-not-a-saved-question model-id)))
-
-(t2/define-before-update Action
-  [{archived? :archived, id :id, model-id :model_id, :as changes}]
-  (u/prog1 changes
-    (if archived?
-      (t2/delete! DashboardCard :action_id id)
-      (check-model-is-not-a-saved-question model-id))))
-
-(mi/define-methods
- Action
- {:types      (constantly {:type                   :keyword
-                           :parameter_mappings     :parameters-list
-                           :parameters             :parameters-list
-                           :visualization_settings :visualization-settings})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})})
-
-(def ^:private Action-subtype-IModel-impl
-  "[[models/IModel]] impl for `HTTPAction`, `ImplicitAction`, and `QueryAction`"
-  {:primary-key (constantly :action_id)}) ; This is ok as long as we're 1:1
-
-(mi/define-methods
- QueryAction
- (merge
-  Action-subtype-IModel-impl
-  {:types (constantly {:dataset_query :json})}))
-
-(mi/define-methods
- ImplicitAction
- Action-subtype-IModel-impl)
-
-(mi/define-methods
- HTTPAction
- (merge Action-subtype-IModel-impl
-        {:types (constantly {:template ::json-with-nested-parameters})}))
-
-(def action-columns
-  "The columns that are common to all Action types."
-  [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
-   :parameters :public_uuid :type :updated_at :visualization_settings])
+;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
@@ -110,15 +124,15 @@
     (let [action (first (t2/insert-returning-instances! Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
       (t2/query-one {:insert-into (t2/table-name model)
-                    :values [(-> (apply dissoc action-data action-columns)
-                                 (assoc :action_id (:id action))
-                                 (cond->
-                                   (= (:type action) :implicit)
-                                   (dissoc :database_id)
-                                   (= (:type action) :http)
-                                   (update :template json/encode)
-                                   (= (:type action) :query)
-                                   (update :dataset_query json/encode)))]})
+                     :values [(-> (apply dissoc action-data action-columns)
+                                  (assoc :action_id (:id action))
+                                  (cond->
+                                    (= (:type action) :implicit)
+                                    (dissoc :database_id)
+                                    (= (:type action) :http)
+                                    (update :template json/encode)
+                                    (= (:type action) :query)
+                                    (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!
@@ -200,16 +214,19 @@
                                      :when table-id]
                                  [table-id card]))
         tables (when-let [table-ids (seq (keys card-by-table-id))]
-                 (hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
+                 (t2/hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
                 :let [fields (:fields table)]
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
                 :when (unique-field-slugs? fields)
-                :let [card (get card-by-table-id (:id table))
-                      exposed-fields (into #{} (keep :id) (:result_metadata card))
+                :let [card         (get card-by-table-id (:id table))
+                      id->metadata (m/index-by :id (:result_metadata card))
                       parameters (->> fields
-                                      (filter #(contains? exposed-fields (:id %)))
+                                      ;; get display_name from metadata
+                                      (keep (fn [field]
+                                              (when-let [metadata (id->metadata (:id field))]
+                                                (assoc field :display_name (:display_name metadata)))))
                                       ;; remove exploded json fields and any structured field
                                       (remove (some-fn
                                                ;; exploded json fields can't be recombined in sql yet
@@ -220,6 +237,7 @@
                                                (comp #{:type/*} :effective_type)))
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
+                                              :display-name (:display_name field)
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
                                               :required (:database_required field)
@@ -246,10 +264,10 @@
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
                                         (implicit-action-parameters implicit-action-models))]
-    (for [{:keys [parameters] :as action} actions]
+    (for [action actions]
       (if (= (:type action) :implicit)
         (let [model-id        (:model_id action)
-              saved-params    (m/index-by :id parameters)
+              saved-params    (m/index-by :id (:parameters action))
               action-kind     (:kind action)
               implicit-params (cond->> (get model-id->implicit-parameters model-id)
                                 :always
@@ -270,31 +288,75 @@
                                 (map #(dissoc % ::pk? ::field-id)))]
           (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
             (seq implicit-params)
-            (assoc :parameters implicit-params)))
+            (-> (assoc :parameters implicit-params)
+                (update-in [:visualization_settings :fields]
+                           (fn [fields]
+                             (let [param-ids (map :id implicit-params)
+                                   fields    (->> (or fields {})
+                                                  ;; remove entries that don't match params (in case of deleted columns)
+                                                  (m/filter-keys (set param-ids)))]
+                               ;; add default entries for params that don't have an entry
+                               (reduce (fn [acc param-id]
+                                         (if (contains? acc param-id)
+                                           acc
+                                           (assoc acc param-id {:id param-id, :hidden false})))
+                                       fields
+                                       param-ids)))))))
         action))))
 
 (defn select-action
   "Selects an Action and fills in the subtype data and implicit parameters.
-   `options` is passed to `t2/select-one` `& options` arg."
+   `options` is [[apply]]ed to [[t2/select]]."
   [& options]
+  ;; TODO -- it's dumb that we're calling `t2/select` rather than `t2/select-one` above, limiting like this should never
+  ;; be done server-side. I don't have time to fix this right now. -- Cam
   (first (apply select-actions nil options)))
+
+(defn- map-assoc-database-enable-actions
+  "Adds a boolean field `:database-enabled-actions` to each action according to the `database-enable-actions` setting for
+   the action's database."
+  [actions]
+  (let [action-ids                  (map :id actions)
+        get-database-enable-actions (fn [{:keys [settings]}]
+                                      (boolean (some-> settings
+                                                       ((get-in (t2/transforms :model/Database) [:settings :out]))
+                                                       :database-enable-actions)))
+        id->database-enable-actions (into {}
+                                          (map (juxt :id get-database-enable-actions))
+                                          (t2/query {:select [:action.id :db.settings]
+                                                     :from   :action
+                                                     :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                                              [:metabase_database :db] [:= :db.id :card.database_id]]
+                                                     :where  [:in :action.id action-ids]}))]
+    (map (fn [action]
+           (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
+         actions)))
 
 (mi/define-batched-hydration-method dashcard-action
   :dashcard/action
-  "Hydrates action from DashboardCards."
+  "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to the
+   `database-enable-actions` setting for the action's database."
   [dashcards]
   (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (m/index-by :id (select-actions nil :id [:in action-ids])))]
+                        (->> (select-actions nil :id [:in action-ids])
+                             map-assoc-database-enable-actions
+                             (m/index-by :id)))]
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
+
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (select-action :id)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/extract-query "Action" [_model _opts]
   (eduction (map hydrate-subtype)
-            (db/select-reducible 'Action)))
+            (t2/reducible-select Action)))
 
-(defmethod serdes/hash-fields Action [_action]
+(defmethod serdes/hash-fields :model/Action [_action]
   [:name (serdes/hydrated-hash :model) :created_at])
 
 (defmethod serdes/extract-one "Action" [_model-name _opts action]
@@ -313,6 +375,9 @@
       (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes/*import-fk-keyed* 'Database :name))))
+
+(defmethod serdes/ingested-model-columns "Action" [_ingested]
+  (into #{} (conj action-columns :database_id :dataset_query :kind :template :response_handle :error_handle :type)))
 
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))

@@ -1,9 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
-import { PillSize } from "./types";
+import type { PillSize } from "./types";
 
 export interface ColorPillRootProps {
   isAuto: boolean;

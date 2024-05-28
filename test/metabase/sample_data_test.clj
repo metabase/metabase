@@ -5,16 +5,19 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.database-test :as api.database-test]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Database Field Table]]
    [metabase.plugins :as plugins]
    [metabase.sample-data :as sample-data]
    [metabase.sync :as sync]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
@@ -32,7 +35,7 @@
   "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(mt/with-temp Database [db# (sample-database-db false)]
+  `(t2.with-temp/with-temp [Database db# (sample-database-db false)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -101,13 +104,13 @@
                  ;; it should be `nil` after sync but get set to `search` by the auto-inference. We only set `list` in
                  ;; sync and setting anything else is reserved for admins, however we fill in what we think should be
                  ;; the appropiate value with the hydration fn
-                 (hydrate :has_field_values)
+                 (t2/hydrate :has_field_values)
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
 
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
-    (mt/with-temp Database [db (sample-database-db true)]
+    (t2.with-temp/with-temp [Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
@@ -150,7 +153,7 @@
 
 (deftest ddl-sample-database-test
   (testing "should be able to execute DDL statements on the Sample Database"
-    (mt/with-temp Database [db (sample-database-db true)]
+    (t2.with-temp/with-temp [Database db (sample-database-db true)]
       (sync/sync-database! db)
       (mt/with-db db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -168,13 +171,28 @@
             (is (not (contains? (get-tables) "NEW_TABLE")))
             (jdbc/execute! conn-spec "CREATE TABLE NEW_TABLE (id INTEGER);")
             (is (contains? (get-tables) "NEW_TABLE"))
-          (testing "add column"
-            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
-            (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
-          (testing "remove column"
-            (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
-            (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-          (testing "drop table"
-              (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
-              (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+           (testing "add column"
+             (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+             (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
+             (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
+            (testing "remove column"
+              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+              (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+             (testing "drop table"
+                 (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
+                 (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+
+(deftest sample-database-schedule-sync-test
+  (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (api.database-test/with-db-scheduler-setup
+        (mdb/setup-db! :create-sample-content? true)
+        (sample-data/extract-and-sync-sample-database!)
+        (testing "Sense check: a newly created database should have sync jobs scheduled"
+          (mt/with-temp [:model/Database db {}]
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+        (testing "The sample database should also have sync jobs scheduled"
+          (let [sample-db (t2/select-one :model/Database :is_sample true)]
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name sample-db)))))))))

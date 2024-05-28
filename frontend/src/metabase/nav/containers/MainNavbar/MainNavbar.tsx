@@ -1,38 +1,36 @@
-import React, { useEffect, useMemo } from "react";
+import type { LocationDescriptor } from "history";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
-import * as Urls from "metabase/lib/urls";
-
-import { closeNavbar, openNavbar } from "metabase/redux/app";
-import Questions from "metabase/entities/questions";
-
+import { useQuestionQuery } from "metabase/common/hooks";
 import { getDashboard } from "metabase/dashboard/selectors";
-
-import type { Card, Dashboard } from "metabase-types/api";
+import * as Urls from "metabase/lib/urls";
+import { closeNavbar, openNavbar } from "metabase/redux/app";
+import type Question from "metabase-lib/v1/Question";
+import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
-
-import {
-  MainNavbarOwnProps,
-  MainNavbarDispatchProps,
-  SelectedItem,
-} from "./types";
 import getSelectedItems, {
   isModelPath,
   isQuestionPath,
 } from "./getSelectedItems";
-import { NavRoot, Sidebar } from "./MainNavbar.styled";
+import type {
+  MainNavbarOwnProps,
+  MainNavbarDispatchProps,
+  SelectedItem,
+} from "./types";
 
 interface EntityLoaderProps {
-  card?: Card;
+  question?: Question;
 }
 
 interface StateProps {
   dashboard?: Dashboard;
+  questionId?: number;
 }
 
 interface DispatchProps extends MainNavbarDispatchProps {
@@ -44,12 +42,14 @@ type Props = MainNavbarOwnProps &
   StateProps &
   DispatchProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
     // Can't use dashboard entity loader instead.
     // The dashboard page uses DashboardsApi.get directly,
     // so we can't re-use data between these components.
     dashboard: getDashboard(state),
+
+    questionId: maybeGetQuestionId(state, props),
   };
 }
 
@@ -63,13 +63,17 @@ function MainNavbar({
   isOpen,
   location,
   params,
-  card,
+  questionId,
   dashboard,
   openNavbar,
   closeNavbar,
   onChangeLocation,
   ...props
 }: Props) {
+  const { data: question } = useQuestionQuery({
+    id: questionId,
+  });
+
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -92,18 +96,18 @@ function MainNavbar({
       getSelectedItems({
         pathname: location.pathname,
         params,
-        card,
+        question,
         dashboard,
       }),
-    [location, params, card, dashboard],
+    [location, params, question, dashboard],
   );
 
   return (
     <Sidebar
-      className="Nav"
       isOpen={isOpen}
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
+      data-element-id="navbar-root"
     >
       <NavRoot isOpen={isOpen}>
         <MainNavbarContainer
@@ -130,11 +134,7 @@ function maybeGetQuestionId(
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  Questions.load({
-    id: maybeGetQuestionId,
-    loadingAndErrorWrapper: false,
-    entityAlias: "card",
-  }),
-)(MainNavbar);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  MainNavbar,
+);

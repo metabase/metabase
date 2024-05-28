@@ -1,11 +1,10 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
-  popover,
   visualize,
   startNewQuestion,
+  selectSavedQuestionsToJoin,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -26,25 +25,19 @@ describe("issue 18502", () => {
     cy.createQuestion(question2);
 
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
+    selectSavedQuestionsToJoin("18502#1", "18502#2");
 
-    cy.findByText("18502#1").click();
-    cy.icon("join_left_outer").click();
-    cy.wait("@getCollectionContent");
-
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Saved Questions").click();
-      cy.findByText("18502#2").click();
-    });
-
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Birth Date").click();
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 
-    cy.findByText("April, 2016");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("April 2022");
   });
 });
 

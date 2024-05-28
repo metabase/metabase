@@ -1,8 +1,9 @@
-import React from "react";
 import { t } from "ttag";
-import ImageToggle from "../ImageToggle";
-import { LighthouseSetting } from "./types";
+
+import { ImageToggle } from "../ImageToggle";
+
 import { LighthouseImage } from "./LighthouseToggleWidget.styled";
+import type { LighthouseSetting } from "./types";
 
 interface LighthouseToggleWidgetProps {
   setting: LighthouseSetting;
@@ -26,4 +27,5 @@ const LighthouseToggleWidget = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LighthouseToggleWidget;

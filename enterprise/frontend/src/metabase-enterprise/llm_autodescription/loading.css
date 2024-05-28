@@ -1,0 +1,21 @@
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.llm-pulse-icon {
+  animation: pulse 1s infinite;
+  cursor: wait;
+}

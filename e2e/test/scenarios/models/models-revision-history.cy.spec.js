@@ -1,33 +1,36 @@
-import { restore, questionInfoButton, visitModel } from "e2e/support/helpers";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  questionInfoButton,
+  visitModel,
+  echartsContainer,
+} from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  beforeEach(() => {
-    cy.request("PUT", "/api/card/3", {
+    cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
-      dataset: true,
+      type: "model",
     });
   });
 
   it("should allow reverting to a saved question state and back into a model again", () => {
-    visitModel(3);
+    visitModel(ORDERS_BY_YEAR_QUESTION_ID);
 
     openRevisionHistory();
     revertTo("You created this");
-    cy.wait("@modelQuery3");
+    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.location("pathname").should("match", /^\/question\/3/);
-    cy.get(".LineAreaBarChart");
+    cy.location("pathname").should("match", /^\/question\/\d+/);
+    echartsContainer();
 
-    revertTo("^Turned this into a model");
-    cy.wait("@modelQuery3");
+    revertTo("You edited this");
+    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.location("pathname").should("match", /^\/model\/3/);
-    cy.get(".cellData");
+    cy.location("pathname").should("match", /^\/model\/\d+/);
+    cy.get("[data-testid=cell-data]");
   });
 });
 

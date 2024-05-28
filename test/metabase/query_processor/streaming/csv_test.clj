@@ -22,57 +22,79 @@
    (rest (csv/read-csv response))))
 
 (deftest date-columns-should-be-emitted-without-time
-  (is (= [["1" "2014-04-07" "5" "12"]
-          ["2" "2014-09-18" "1" "31"]
-          ["3" "2014-09-15" "8" "56"]
-          ["4" "2014-03-11" "5" "4"]
-          ["5" "2013-05-05" "3" "49"]]
-         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+  (is (= [["1" "April 7, 2014" "5" "12"]
+          ["2" "September 18, 2014" "1" "31"]
+          ["3" "September 15, 2014" "8" "56"]
+          ["4" "March 11, 2014" "5" "4"]
+          ["5" "May 5, 2013" "3" "49"]]
+         (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                             (json/generate-string (mt/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"
-    (mt/dataset defs/test-data-with-null-date-checkins
-      (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+    (mt/dataset defs/test-data-null-date
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                          (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-        (is (= [["1" "2014-04-07" "" "5" "12"]
-                ["2" "2014-09-18" "" "1" "31"]
-                ["3" "2014-09-15" "" "8" "56"]
-                ["4" "2014-03-11" "" "5" "4"]
-                ["5" "2013-05-05" "" "3" "49"]]
+        (is (= [["1" "April 7, 2014" "" "5" "12"]
+                ["2" "September 18, 2014" "" "1" "31"]
+                ["3" "September 15, 2014" "" "8" "56"]
+                ["4" "March 11, 2014" "" "5" "4"]
+                ["5" "May 5, 2013" "" "3" "49"]]
                (parse-and-sort-csv result)))))))
 
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
-    (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                        (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-      (is (= [["1" "2014-04-07" "5" "12"]
-              ["2" "2014-09-18" "1" "31"]
-              ["3" "2014-09-15" "8" "56"]
-              ["4" "2014-03-11" "5" "4"]
-              ["5" "2013-05-05" "3" "49"]]
+      (is (= [["1" "April 7, 2014" "5" "12"]
+              ["2" "September 18, 2014" "1" "31"]
+              ["3" "September 15, 2014" "8" "56"]
+              ["4" "March 11, 2014" "5" "4"]
+              ["5" "May 5, 2013" "3" "49"]]
              (parse-and-sort-csv result))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+  (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                      (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
-    (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
-            ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
-            ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
-            ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
-            ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
+    (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
+            ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]
+            ["3" "Kaneonuskatew Eiran" "November 6, 2014, 4:15 PM"]
+            ["4" "Simcha Yan" "January 1, 2014, 8:30 AM"]
+            ["5" "Quentin Sören" "October 3, 2014, 5:30 PM"]]
            (parse-and-sort-csv result)))))
+
+(deftest geographic-coordinates-test
+  (testing "Ensure CSV longitude and latitude values are correctly exported"
+    (let [result (mt/user-http-request
+                   :rasta :post 200 "dataset/csv" :query
+                   (json/generate-string
+                     {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (mt/id :venues)
+                                 :fields       [[:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                                [:field (mt/id :venues :longitude) {:base-type :type/Float}]
+                                                [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
+                                 :order-by     [[:asc (mt/id :venues :id)]]
+                                 :limit        5}}))]
+      (is (= [["1" "165.37400000° W" "10.06460000° N"]
+              ["2" "118.32900000° W" "34.09960000° N"]
+              ["3" "118.42800000° W" "34.04060000° N"]
+              ["4" "118.46500000° W" "33.99970000° N"]
+              ["5" "118.26100000° W" "34.07780000° N"]]
+             (parse-and-sort-csv result))))))
 
 (defn- csv-export
   "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
   [rows]
   (driver/with-driver :h2
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (with-open [bos (ByteArrayOutputStream.)
                   os  (BufferedOutputStream. bos)]
         (let [results-writer (qp.si/streaming-results-writer :csv os)]
-          (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+          (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}
+                                                              {:base_type :type/*}
+                                                              {:base_type :type/*}]}} {})
           (doall (map-indexed
                   (fn [i row] (qp.si/write-row! results-writer row i [] {}))
                   rows))

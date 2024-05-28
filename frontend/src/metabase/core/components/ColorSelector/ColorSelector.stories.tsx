@@ -1,7 +1,8 @@
-import React from "react";
+import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+
 import { color } from "metabase/lib/colors";
+
 import ColorSelector from "./ColorSelector";
 
 export default {

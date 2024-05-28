@@ -1,13 +1,12 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
-import _ from "underscore";
 import { createAction } from "redux-actions";
+import { t } from "ttag";
+import _ from "underscore";
 
-import { ActionSchema } from "metabase/schema";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
+import { ActionSchema } from "metabase/schema";
 import { ActionsApi } from "metabase/services";
-
 import type {
   WritebackAction,
   WritebackActionId,
@@ -57,11 +56,14 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    if (options.insert) {
+    // We're ordering actions that's most recently created first.
+    // So if we want to show Create, Update, Delete, then we need
+    // to create them in the reverse order.
+    if (options.delete) {
       await ActionsApi.create({
-        name: t`Create`,
+        name: t`Delete`,
         type: "implicit",
-        kind: "row/create",
+        kind: "row/delete",
         model_id: modelId,
       });
     }
@@ -75,11 +77,11 @@ const enableImplicitActionsForModel =
       });
     }
 
-    if (options.delete) {
+    if (options.insert) {
       await ActionsApi.create({
-        name: t`Delete`,
+        name: t`Create`,
         type: "implicit",
-        kind: "row/delete",
+        kind: "row/create",
         model_id: modelId,
       });
     }
@@ -90,6 +92,9 @@ const enableImplicitActionsForModel =
 const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
 const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
@@ -175,4 +180,5 @@ const Actions = createEntity({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Actions;

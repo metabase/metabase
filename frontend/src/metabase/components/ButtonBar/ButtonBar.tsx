@@ -1,4 +1,6 @@
-import React, { Children, HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
+import { Children } from "react";
+
 import {
   ButtonBarCenter,
   ButtonBarLeft,
@@ -25,6 +27,7 @@ interface ButtonBarProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ButtonBar({
   children,
   left = children,

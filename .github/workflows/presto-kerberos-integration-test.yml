@@ -18,9 +18,9 @@ jobs:
     outputs:
       backend_presto_kerberos: ${{ steps.changes.outputs.backend_presto_kerberos }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v2.11.1
+        uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -41,11 +41,11 @@ jobs:
             && sudo ./install \
             && cd -
       - name: Checkout Metabase repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Check out Presto Kerberos Docker Compose
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: metabase/presto-kerberos-docker
           ref: master
@@ -64,7 +64,7 @@ jobs:
       - name: Copy client.keytab file to resources
         run: docker cp presto-kerberos:/home/presto/client.keytab resources
       - name: Checkout mba
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: metabase/mba
           ref: master

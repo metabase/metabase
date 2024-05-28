@@ -1,21 +1,21 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
-import S from "metabase/components/List/List.css";
-import R from "metabase/reference/Reference.css";
-
-import List from "metabase/components/List";
-import ListItem from "metabase/components/ListItem";
 import EmptyState from "metabase/components/EmptyState";
-
+import List from "metabase/components/List";
+import S from "metabase/components/List/List.module.css";
+import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
-import ReferenceHeader from "../components/ReferenceHeader";
+import R from "metabase/reference/Reference.module.css";
 
+import ReferenceHeader from "../components/ReferenceHeader";
 import {
   getDatabase,
   getTablesByDatabase,
@@ -41,17 +41,16 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const createListItem = (entity, index) => (
-  <li className="relative" key={entity.id}>
-    <ListItem
-      id={entity.id}
-      index={index}
-      name={entity.display_name || entity.name}
-      description={entity.description}
-      url={`/reference/databases/${entity.db_id}/tables/${entity.id}`}
-      icon="table2"
-    />
-  </li>
+const createListItem = table => (
+  <ListItem
+    data-testid="table-list-item"
+    key={table.id}
+    name={table.display_name || table.name}
+    description={table.description}
+    disabled={table.initial_sync_status !== "complete"}
+    url={`/reference/databases/${table.db_id}/tables/${table.id}`}
+    icon="table2"
+  />
 );
 
 const createSchemaSeparator = table => (
@@ -62,26 +61,24 @@ export const separateTablesBySchema = (
   tables,
   createSchemaSeparator,
   createListItem,
-) =>
-  Object.values(tables)
-    .sort((table1, table2) =>
-      table1.schema_name > table2.schema_name
-        ? 1
-        : table1.schema_name === table2.schema_name
-        ? 0
-        : -1,
-    )
-    .map((table, index, sortedTables) => {
-      if (!table || !table.id || !table.name) {
-        return;
-      }
-      // add schema header for first element and if schema is different from previous
-      const previousTableId = Object.keys(sortedTables)[index - 1];
-      return index === 0 ||
-        sortedTables[previousTableId].schema_name !== table.schema_name
-        ? [createSchemaSeparator(table), createListItem(table, index)]
-        : createListItem(table, index);
-    });
+) => {
+  const sortedTables = _.chain(tables)
+    .sortBy(t => t.name)
+    .sortBy(t => t.schema_name)
+    .value();
+
+  return sortedTables.map((table, index, sortedTables) => {
+    if (!table || !table.id || !table.name) {
+      return;
+    }
+    // add schema header for first element and if schema is different from previous
+    const previousTableId = Object.keys(sortedTables)[index - 1];
+    return index === 0 ||
+      sortedTables[previousTableId].schema_name !== table.schema_name
+      ? [createSchemaSeparator(table), createListItem(table)]
+      : createListItem(table);
+  });
+};
 
 class TableList extends Component {
   static propTypes = {
@@ -103,8 +100,10 @@ class TableList extends Component {
       loading,
     } = this.props;
 
+    const tables = Object.values(entities);
+
     return (
-      <div style={style} className="full">
+      <div style={style} className={CS.full} data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
           type="tables"
@@ -115,21 +114,21 @@ class TableList extends Component {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
+            tables.length > 0 ? (
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {!hasSingleSchema
                     ? separateTablesBySchema(
-                        entities,
+                        tables,
                         createSchemaSeparator,
                         createListItem,
                       )
-                    : Object.values(entities).map(
-                        (entity, index) =>
-                          entity &&
-                          entity.id &&
-                          entity.name &&
-                          createListItem(entity, index),
+                    : _.sortBy(tables, "name").map(
+                        table =>
+                          table &&
+                          table.id &&
+                          table.name &&
+                          createListItem(table),
                       )}
                 </List>
               </div>

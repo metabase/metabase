@@ -1,8 +1,7 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { msgid, ngettext } from "ttag";
 
-import Table from "metabase-lib/metadata/Table";
+import Table from "metabase-lib/v1/metadata/Table";
 
 import { Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -25,4 +24,5 @@ function ColumnCount({ table }: { table: Table }) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColumnCount;

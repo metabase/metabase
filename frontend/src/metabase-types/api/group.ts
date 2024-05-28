@@ -16,3 +16,10 @@ export type Group = {
   name: string;
   member_count: number;
 };
+
+export type GroupListQuery = Omit<Group, "members">;
+
+export type BaseGroupInfo = {
+  id: GroupId;
+  name: string;
+};

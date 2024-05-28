@@ -1,16 +1,14 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
+
 import Tooltip from "metabase/core/components/Tooltip";
+
 import { BookmarkIcon, BookmarkButton } from "./BookmarkToggle.styled";
 
 export interface BookmarkToggleProps extends HTMLAttributes<HTMLButtonElement> {
   isBookmarked: boolean;
+  tooltipPlacement?: "top" | "bottom";
   onCreateBookmark: () => void;
   onDeleteBookmark: () => void;
 }
@@ -20,6 +18,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     isBookmarked,
     onCreateBookmark,
     onDeleteBookmark,
+    tooltipPlacement,
     ...props
   }: BookmarkToggleProps,
   ref: Ref<HTMLButtonElement>,
@@ -40,8 +39,13 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     setIsAnimating(false);
   }, []);
 
+  const iconName = isBookmarked ? "bookmark_filled" : "bookmark";
+
   return (
-    <Tooltip tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}>
+    <Tooltip
+      tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
+      placement={tooltipPlacement}
+    >
       <BookmarkButton
         {...props}
         ref={ref}
@@ -49,8 +53,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
         onClick={handleClick}
       >
         <BookmarkIcon
-          name="bookmark"
-          size={16}
+          name={iconName}
           isBookmarked={isBookmarked}
           isAnimating={isAnimating}
           onAnimationEnd={handleAnimationEnd}
@@ -60,4 +63,5 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BookmarkToggle;

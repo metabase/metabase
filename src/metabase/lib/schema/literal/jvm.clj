@@ -1,58 +1,53 @@
 (ns metabase.lib.schema.literal.jvm
   "JVM-specific literal definitions."
   (:require
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defn- instance-of [^Class klass]
-  [:fn {:error/message (str "instance of " (.getName klass))}
-   #(instance? klass %)])
-
 (mr/def ::big-integer
-  [:or
-   (instance-of java.math.BigInteger)
-   (instance-of clojure.lang.BigInt)])
+  (common/instance-of-class java.math.BigInteger clojure.lang.BigInt))
 
-(defmethod expression/type-of* java.math.BigInteger
+(defmethod expression/type-of-method java.math.BigInteger
   [_n]
   :type/BigInteger)
 
-(defmethod expression/type-of* clojure.lang.BigInt
+(defmethod expression/type-of-method clojure.lang.BigInt
   [_n]
   :type/BigInteger)
 
 (mr/def ::big-decimal
-  (instance-of java.math.BigDecimal))
+  (common/instance-of-class java.math.BigDecimal))
 
-(defmethod expression/type-of* java.math.BigDecimal
+(defmethod expression/type-of-method java.math.BigDecimal
   [_n]
   :type/Decimal)
 
 (mr/def ::float
-  (instance-of Float))
+  (common/instance-of-class Float))
 
-(defmethod expression/type-of* java.time.LocalDate
+(defmethod expression/type-of-method java.time.LocalDate
   [_t]
   :type/DateTime)
 
-(defmethod expression/type-of* java.time.LocalTime
+(defmethod expression/type-of-method java.time.LocalTime
   [_t]
   :type/Time)
 
-(defmethod expression/type-of* java.time.OffsetTime
+(defmethod expression/type-of-method java.time.OffsetTime
   [_t]
   :type/TimeWithTZ)
 
-(defmethod expression/type-of* java.time.LocalDateTime
+(defmethod expression/type-of-method java.time.LocalDateTime
   [_t]
   :type/DateTime)
 
-(defmethod expression/type-of* java.time.OffsetDateTime
+(defmethod expression/type-of-method java.time.OffsetDateTime
   [_t]
   :type/DateTimeWithZoneOffset)
 
-(defmethod expression/type-of* java.time.ZonedDateTime
+(defmethod expression/type-of-method java.time.ZonedDateTime
   [_t]
   :type/DateTimeWithZoneID)

@@ -1,11 +1,13 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
   hasHiddenBackground: boolean;
+  shouldForceHiddenBackground: boolean;
 }
 
 const rootNightModeStyle = css`
@@ -23,6 +25,11 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
+const hiddenBackgroundStyle = css`
+  background: ${color("bg-light")};
+  box-shadow: none !important;
+`;
+
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${color("white")};
 
@@ -30,31 +37,9 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
-`;
 
-export const DashboardCardActionsPanel = styled.div`
-  padding: 0.125em 0.25em;
-  position: absolute;
-  background: white;
-  transform: translateY(-50%);
-  top: 0;
-  right: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
-  z-index: 3;
-  cursor: default;
-  transition: opacity 200ms;
-  opacity: 0;
-  pointer-events: none;
-
-  .Card:hover & {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .Dash--dragging & {
-    display: none;
-  }
+  ${({ shouldForceHiddenBackground }) =>
+    shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
 export const VirtualDashCardOverlayRoot = styled.div`
@@ -66,5 +51,5 @@ export const VirtualDashCardOverlayRoot = styled.div`
 
 export const VirtualDashCardOverlayText = styled.h4`
   color: ${color("text-medium")};
-  padding: 1.5rem;
+  padding: 1rem;
 `;

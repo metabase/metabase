@@ -1,19 +1,18 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
-import { isNotNull } from "metabase/core/utils/types";
-
-import ActionFormFieldWidget from "metabase/actions/components/ActionFormFieldWidget";
+import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFieldWidget";
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
+import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
-
+import CheckBox from "metabase/core/components/CheckBox";
+import Radio from "metabase/core/components/Radio";
+import { isNotNull } from "metabase/lib/types";
 import type {
   FieldSettings,
   FieldType,
   FieldValueOptions,
 } from "metabase-types/api";
-import type { ActionFormFieldProps } from "metabase/actions/types";
 
 import { FieldSettingsButtons } from "../FieldSettingsButtons";
 
@@ -66,6 +65,7 @@ function FormFieldEditor({
 }: FormFieldEditorProps) {
   const fieldTypeOptions = useMemo(getFieldTypes, []);
   const inputTypeOptions = useMemo(getInputTypes, []);
+  const hidden = fieldSettings?.hidden ?? false;
 
   const handleChangeFieldType = (nextFieldType: FieldType) => {
     const { inputType, valueOptions } = fieldSettings;
@@ -98,9 +98,9 @@ function FormFieldEditor({
   };
 
   return (
-    <FormFieldContainer>
+    <FormFieldContainer data-testid="form-field-container">
       <EditorContainer>
-        <Column>{isEditable && <DragHandle name="grabber2" />}</Column>
+        <Column>{isEditable && <DragHandle name="grabber" />}</Column>
         <Column full>
           <Header>
             <Title>{field.title}</Title>
@@ -126,11 +126,26 @@ function FormFieldEditor({
           <Subtitle>{t`Appearance`}</Subtitle>
         </Column>
       </EditorContainer>
-      <PreviewContainer>
+      <PreviewContainer data-testid="preview-container">
         <Column />
         <Column full>
           <InputContainer>
-            <ActionFormFieldWidget formField={field} />
+            <ActionFormFieldWidget
+              hidden={hidden}
+              actions={
+                <CheckBox
+                  onChange={() => {
+                    onChange({
+                      ...fieldSettings,
+                      hidden: !hidden,
+                    });
+                  }}
+                  checked={!hidden}
+                  label={t`Show field`}
+                />
+              }
+              formField={field}
+            />
           </InputContainer>
         </Column>
       </PreviewContainer>
@@ -138,4 +153,5 @@ function FormFieldEditor({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormFieldEditor;

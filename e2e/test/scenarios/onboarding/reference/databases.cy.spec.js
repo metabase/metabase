@@ -1,4 +1,10 @@
-import { popover, restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  popover,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {
@@ -8,6 +14,7 @@ describe("scenarios > reference > databases", () => {
 
   it("should see the listing", () => {
     cy.visit("/reference/databases");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database");
   });
 
@@ -19,42 +26,55 @@ describe("scenarios > reference > databases", () => {
 
   it("should let an admin edit details about the database", () => {
     cy.visit("/reference/databases/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Description")
       .parent()
       .parent()
       .find("textarea")
       .type("A pretty ok store");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("A pretty ok store");
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
     cy.visit("/reference/databases/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Why this")
       .parent()
       .parent()
       .find("textarea")
       .type("Turns out it's not");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Cancel").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Turns out").should("have.length", 0);
   });
 
   it("should let an admin edit the database name", () => {
     cy.visit("/reference/databases/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Edit").click();
-    cy.get(".wrapper input").clear().type("My definitely profitable business");
+    cy.findByPlaceholderText("Sample Database")
+      .clear()
+      .type("My definitely profitable business");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("My definitely profitable business");
   });
 
   describe("multiple databases sorting order", () => {
     beforeEach(() => {
       ["d", "b", "a", "c"].forEach(name => {
-        cy.addH2SampleDatabase({ name });
+        cy.addSQLiteDatabase({ name });
       });
     });
 
@@ -67,7 +87,15 @@ describe("scenarios > reference > databases", () => {
     });
 
     it("should sort databases in new UI based question data selection popover", () => {
-      checkQuestionSourceDatabasesOrder();
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.get("[data-index='0']").should("have.text", "a");
+        cy.get("[data-index='1']").should("have.text", "b");
+        cy.get("[data-index='2']").should("have.text", "c");
+        cy.get("[data-index='3']").should("have.text", "d");
+        cy.get("[data-index='4']").should("have.text", "Sample Database");
+      });
     });
 
     it.skip("should sort databases in new native question data selection popover", () => {
@@ -81,17 +109,15 @@ function checkReferenceDatabasesOrder() {
   cy.get("@databaseCard").last().should("have.text", "Sample Database");
 }
 
-function checkQuestionSourceDatabasesOrder(question_type) {
+function checkQuestionSourceDatabasesOrder() {
   // Last item is "Saved Questions" for UI based questions so we have to check for the one before that (-2), and the last one for "Native" (-1)
-  const lastDatabaseIndex = question_type === "Native query" ? -1 : -2;
-  const selector =
-    question_type === "Native query"
-      ? ".List-item-title"
-      : ".List-section-title";
+  const lastDatabaseIndex = -1;
+  const selector = "[data-element-id=list-item]-title";
 
   startNewQuestion();
   popover().within(() => {
-    cy.get(selector).as("databaseName").first().should("have.text", "a");
+    cy.findByText("Raw Data").click();
+    cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
       .should("have.text", "Sample Database");

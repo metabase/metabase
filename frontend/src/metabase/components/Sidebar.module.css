@@ -1,0 +1,55 @@
+.sidebar {
+  /* TODO: FIGURE OUT WHAT TO DO WITH THIS */
+  composes: py2 from "style";
+  width: 30%;
+  max-width: 500px;
+  background-color: var(--color-bg-light);
+  color: var(--mb-color-text-medium);
+}
+
+.sidebar a {
+  text-decoration: none;
+}
+
+.item {
+  composes: py1 mb1 rounded pl2 from "style";
+  align-items: center;
+  display: flex;
+  font-size: 1em;
+  color: var(--mb-color-text-light);
+}
+
+.item .icon {
+  line-height: 1em;
+}
+
+.item:hover {
+  background-color: var(--color-bg-medium);
+  color: var(--mb-color-brand);
+}
+
+.item.selected,
+.item.selected .icon {
+  color: var(--mb-color-brand);
+}
+
+.item.selected {
+  background-color: rgba(80, 158, 227, 0.15);
+}
+
+.name {
+  composes: ml2 textBold from "style";
+  color: var(--mb-color-text-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-x: hidden;
+}
+
+.item:hover .name,
+.item.selected .name {
+  color: var(--mb-color-brand);
+}
+
+.icon {
+  flex-shrink: 0;
+}

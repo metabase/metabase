@@ -1,10 +1,9 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
   (:require
+   [cheshire.core :as json]
    [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
-   [metabase.actions.execution :as actions.execution]
-   [metabase.actions.http-action :as http-action]
+   [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -16,10 +15,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +23,7 @@
   [:and
    string?
    (mu/with-api-error-message
-     [:fn #(http-action/apply-json-query {} %)]
+    [:fn #(actions/apply-json-query {} %)]
      (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
@@ -59,7 +55,7 @@
   {model-id [:maybe ms/PositiveInt]}
   (letfn [(actions-for [models]
             (if (seq models)
-              (hydrate (action/select-actions models
+              (t2/hydrate (action/select-actions models
                                               :model_id [:in (map :id models)]
                                               :archived false)
                        :creator)
@@ -69,7 +65,7 @@
                    [(api/read-check Card model-id)]
                    (t2/select Card {:where
                                     [:and
-                                     [:= :dataset true]
+                                     [:= :type "model"]
                                      [:= :archived false]
                                      ;; action permission keyed off of model permission
                                      (collection/visible-collection-ids->honeysql-filter-clause
@@ -86,15 +82,17 @@
   (t2/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/:action-id"
+  "Fetch an Action."
   [action-id]
   {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
-      (hydrate :creator)
+      (t2/hydrate :creator)
       api/read-check))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:action-id"
+(api/defendpoint DELETE "/:action-id"
+  "Delete an Action."
   [action-id]
+  {action-id ms/PositiveInt}
   (let [action (api/write-check Action action-id)]
     (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
                                                                             :action_id action-id}))
@@ -144,6 +142,7 @@
       (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
+  "Update an Action."
   [id :as {action :body}]
   {id     ms/PositiveInt
    action [:map
@@ -181,7 +180,7 @@
   (let [action (api/read-check Action id :archived false)]
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
-               (u/prog1 (str (UUID/randomUUID))
+               (u/prog1 (str (random-uuid))
                  (t2/update! Action id
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))
@@ -198,6 +197,16 @@
   (t2/update! Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
 
+(api/defendpoint GET "/:action-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [action-id parameters]
+  {action-id  ms/PositiveInt
+   parameters ms/JSONString}
+  (actions/check-actions-enabled! action-id)
+  (-> (action/select-action :id action-id :archived false)
+      api/read-check
+      (actions/fetch-values (json/parse-string parameters))))
+
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.
 
@@ -209,6 +218,6 @@
     (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
                                                                              :type      type
                                                                              :action_id id})
-    (actions.execution/execute-action! action (update-keys parameters name))))
+    (actions/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)

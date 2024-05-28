@@ -14,9 +14,9 @@ Get revisions of an object.
 
 ### PARAMS:
 
-*  **`entity`** value must be one of: `card`, `dashboard`.
+*  **`entity`** enum of card, dashboard
 
-*  **`id`** value must be an integer.
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/revision/revert`
 
@@ -24,11 +24,11 @@ Revert an object to a prior revision.
 
 ### PARAMS:
 
-*  **`entity`** value must be one of: `card`, `dashboard`.
+*  **`entity`** enum of card, dashboard
 
-*  **`id`** value must be an integer.
+*  **`id`** value must be an integer greater than zero.
 
-*  **`revision_id`** value must be an integer.
+*  **`revision_id`** value must be an integer greater than zero.
 
 ---
 

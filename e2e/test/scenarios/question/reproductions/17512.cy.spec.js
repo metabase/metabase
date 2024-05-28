@@ -4,6 +4,8 @@ import {
   popover,
   visualize,
   summarize,
+  expressionEditorWidget,
+  enterCustomColumnDetails,
 } from "e2e/support/helpers";
 
 describe("issue 17512", () => {
@@ -22,7 +24,11 @@ describe("issue 17512", () => {
       "CE",
     );
 
+    cy.findByTestId("aggregate-step").contains("CE").should("exist");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
     addCustomColumn("1 + 1", "CC");
@@ -31,8 +37,8 @@ describe("issue 17512", () => {
       expect(body.error).to.not.exist;
     });
 
-    cy.findByText("CE");
-    cy.findByText("CC");
+    cy.findAllByTestId("header-cell").contains("CE").should("exist");
+    cy.findAllByTestId("header-cell").contains("CC").should("exist");
   });
 });
 
@@ -40,18 +46,22 @@ function addSummarizeCustomExpression(formula, name) {
   summarize({ mode: "notebook" });
   popover().contains("Custom Expression").click();
 
-  popover().within(() => {
-    cy.get(".ace_text-input").type(formula).blur();
-    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+  expressionEditorWidget().within(() => {
+    enterCustomColumnDetails({
+      formula,
+      name,
+    });
     cy.button("Done").click();
   });
 }
 
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
-  popover().within(() => {
-    cy.get(".ace_text-input").type(formula).blur();
-    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+  expressionEditorWidget().within(() => {
+    enterCustomColumnDetails({
+      formula,
+      name,
+    });
     cy.button("Done").click();
   });
 }

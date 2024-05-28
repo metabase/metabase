@@ -1,5 +1,5 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
+
 import Calendar from "./Calendar";
 
 export default {

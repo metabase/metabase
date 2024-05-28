@@ -1,5 +1,5 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
+
 import Toaster from "./Toaster";
 
 export default {

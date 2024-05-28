@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 
@@ -28,7 +28,7 @@ export const CellContent = styled.span<{ isClickable: boolean }>`
     css`
       cursor: pointer;
       &:hover {
-        color: ${color("brand")};
+        color: ${props.theme.fn.themeColor("brand")};
       }
     `}
 `;

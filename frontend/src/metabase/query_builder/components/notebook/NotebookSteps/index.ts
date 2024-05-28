@@ -1,1 +1,1 @@
-export { default } from "./NotebookSteps";
+export { NotebookSteps } from "./NotebookSteps";

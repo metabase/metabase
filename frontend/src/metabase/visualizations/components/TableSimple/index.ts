@@ -1,1 +1,1 @@
-export { default } from "./TableSimple";
+export * from "./TableSimple";

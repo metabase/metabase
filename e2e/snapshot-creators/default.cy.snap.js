@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { snapshot, restore, withSampleDatabase } from "e2e/support/helpers";
+
 import {
   USERS,
   USER_GROUPS,
@@ -7,6 +7,14 @@ import {
   SAMPLE_DB_TABLES,
   METABASE_SECRET_KEY,
 } from "e2e/support/cypress_data";
+import {
+  snapshot,
+  restore,
+  withSampleDatabase,
+  setTokenFeatures,
+  describeEE,
+  deleteToken,
+} from "e2e/support/helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -41,6 +49,8 @@ describe("snapshots", () => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
+        snapshot("without-models");
+        createModels(SAMPLE_DATABASE);
         cy.writeFile(
           "e2e/support/cypress_sample_database.json",
           SAMPLE_DATABASE,
@@ -49,7 +59,37 @@ describe("snapshots", () => {
 
       snapshot("default");
 
+      // we need to do this after the snapshot because hitting the API populates the audit log
+      const instanceData = getDefaultInstanceData();
+      cy.writeFile(
+        "e2e/support/cypress_sample_instance_data.json",
+        instanceData,
+      );
+
       restore("blank");
+    });
+  });
+
+  describeEE("default-ee", () => {
+    it("default-ee", () => {
+      restore("blank");
+      setup();
+      updateSettings();
+      setTokenFeatures("all");
+      addUsersAndGroups(true);
+      createCollections();
+      withSampleDatabase(SAMPLE_DATABASE => {
+        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
+        hideNewSampleTables(SAMPLE_DATABASE);
+        createQuestionsAndDashboards(SAMPLE_DATABASE);
+        createModels(SAMPLE_DATABASE);
+        cy.writeFile(
+          "e2e/support/cypress_sample_database.json",
+          SAMPLE_DATABASE,
+        );
+      });
+      deleteToken();
+      snapshot("default-ee");
     });
   });
 
@@ -67,16 +107,22 @@ describe("snapshots", () => {
         });
       },
     );
-    // Dismiss `it's ok to play around` modal for admin
-    cy.request("PUT", `/api/user/1/modal/qbnewb`, {});
+
+    cy.request("GET", "/api/user/current").then(({ body: { id } }) => {
+      // Dismiss `it's ok to play around` modal for admin
+      cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
+    });
   }
 
   function updateSettings() {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("PUT", "/api/setting/enable-embedding", { value: true });
-    cy.request("PUT", "/api/setting/embedding-secret-key", {
-      value: METABASE_SECRET_KEY,
-    });
+    cy.request("PUT", "/api/setting/enable-embedding", { value: true }).then(
+      () => {
+        cy.request("PUT", "/api/setting/embedding-secret-key", {
+          value: METABASE_SECRET_KEY,
+        });
+      },
+    );
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
@@ -86,26 +132,28 @@ describe("snapshots", () => {
     });
   }
 
-  function addUsersAndGroups() {
+  function addUsersAndGroups(isEE = false) {
+    const lowest_read_data_permission = isEE ? "blocked" : "unrestricted";
+
     // groups
     cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(COLLECTION_GROUP); // 4
+        expect(body.id).to.eq(COLLECTION_GROUP); // 3
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "data" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(DATA_GROUP); // 5
+        expect(body.id).to.eq(DATA_GROUP); // 4
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "readonly" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(READONLY_GROUP); // 6
+        expect(body.id).to.eq(READONLY_GROUP); // 5
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "nosql" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(NOSQL_GROUP); // 7
+        expect(body.id).to.eq(NOSQL_GROUP); // 6
       },
     );
 
@@ -119,19 +167,35 @@ describe("snapshots", () => {
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          // set the data permission so the UI doesn't warn us that "all users has higher permissions than X"
+          "view-data": lowest_read_data_permission,
+          "create-queries": "no",
+        },
       },
       [DATA_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder-and-native",
+        },
       },
       [NOSQL_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": lowest_read_data_permission,
+          "create-queries": "no",
+        },
       },
       [READONLY_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": lowest_read_data_permission,
+          "create-queries": "no",
+        },
       },
     });
 
@@ -148,11 +212,11 @@ describe("snapshots", () => {
     function postCollection(name, parent_id, callback) {
       cy.request("POST", "/api/collection", {
         name,
-        color: "#509ee3",
         description: `Collection ${name}`,
         parent_id,
       }).then(({ body }) => callback && callback(body));
     }
+
     postCollection("First collection", undefined, firstCollection =>
       postCollection(
         "Second collection",
@@ -173,22 +237,11 @@ describe("snapshots", () => {
     // dashboard 1: Orders in a dashboard
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            },
-          ],
-        });
-      },
-    );
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+      cardDetails: { size_x: 16, size_y: 8 },
+    });
 
     // question 2: Orders, Count
     cy.createQuestion({
@@ -205,6 +258,15 @@ describe("snapshots", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
+    });
+  }
+
+  function createModels({ ORDERS_ID }) {
+    // Model 1
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      type: "model",
     });
   }
 
@@ -281,3 +343,44 @@ describe("snapshots", () => {
     });
   });
 });
+
+function getDefaultInstanceData() {
+  const instanceData = {};
+
+  cy.request("/api/card").then(({ body: cards }) => {
+    instanceData.questions = cards;
+  });
+
+  cy.request("/api/user").then(({ body: { data: users } }) => {
+    instanceData.users = users;
+  });
+
+  cy.request("/api/database").then(({ body: { data: databases } }) => {
+    instanceData.databases = databases;
+  });
+
+  cy.request("/api/permissions/group").then(({ body: groups }) => {
+    instanceData.groups = groups;
+  });
+
+  cy.request("/api/collection").then(({ body: collections }) => {
+    instanceData.collections = collections;
+
+    instanceData.dashboards = [];
+    for (const collection of collections) {
+      cy.request(
+        `/api/collection/${collection.id}/items?models=dashboard`,
+      ).then(({ body: { data: dashboards } }) => {
+        for (const dashboard of dashboards) {
+          if (!instanceData.dashboards.find(d => d.id === dashboard.id)) {
+            cy.request(`/api/dashboard/${dashboard.id}`).then(response => {
+              instanceData.dashboards.push(response.body);
+            });
+          }
+        }
+      });
+    }
+  });
+
+  return instanceData;
+}

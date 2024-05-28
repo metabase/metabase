@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Button from "metabase/core/components/Button";
+import { color } from "metabase/lib/colors";
 
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;

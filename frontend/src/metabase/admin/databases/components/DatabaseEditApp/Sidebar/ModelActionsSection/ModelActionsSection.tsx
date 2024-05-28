@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 
 import {
   ToggleContainer,
@@ -48,4 +48,5 @@ function ModelActionsSection({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelActionsSection;

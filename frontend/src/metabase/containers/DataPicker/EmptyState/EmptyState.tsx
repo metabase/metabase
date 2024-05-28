@@ -1,11 +1,13 @@
-import React from "react";
 import { t } from "ttag";
+
 import DefaultEmptyState from "metabase/components/EmptyState";
+import type { IconName } from "metabase/ui";
+
 import { EmptyStateContainer } from "./EmptyState.styled";
 
 interface Props {
   message?: string;
-  icon?: string;
+  icon?: IconName;
 }
 
 function EmptyState({ message = t`Nothing here`, icon = "folder" }: Props) {
@@ -16,4 +18,5 @@ function EmptyState({ message = t`Nothing here`, icon = "folder" }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EmptyState;

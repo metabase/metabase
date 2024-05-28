@@ -12,7 +12,7 @@ const isFolder = !!folder;
 const isOpenMode = args["--open"];
 
 const getSourceFolder = folder => {
-  return `./e2e/test/scenarios/${folder}/**/*.cy.spec.js`;
+  return `./e2e/test/scenarios/${folder}/**/*.cy.spec.{js,ts}`;
 };
 
 const runCypress = async (baseUrl, exitFunction) => {

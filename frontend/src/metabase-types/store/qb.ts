@@ -1,8 +1,10 @@
-import { Dataset } from "metabase-types/api/dataset";
-
-import { Card } from "metabase-types/types/Card";
-import { Field } from "metabase-types/types/Field";
-import { ParameterValueOrArray } from "metabase-types/types/Parameter";
+import type {
+  Card,
+  DashboardId,
+  Dataset,
+  Field,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
@@ -14,6 +16,7 @@ export type ForeignKeyReference = {
 };
 
 export interface QueryBuilderUIControls {
+  isModifiedFromNotebook: boolean;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
@@ -24,12 +27,15 @@ export interface QueryBuilderUIControls {
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
+  isNativeEditorOpen: boolean;
   initialChartSetting: null;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
+  isShowingNotebookNativePreview: boolean;
+  notebookNativePreviewSidebarWidth: number | null;
 }
 
 export interface QueryBuilderLoadingControls {
@@ -38,10 +44,15 @@ export interface QueryBuilderLoadingControls {
   timeoutId: string;
 }
 
+export interface QueryBuilderDashboardState {
+  dashboardId: DashboardId | null;
+  isEditing: boolean;
+}
+
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
-
   loadingControls: QueryBuilderLoadingControls;
+  parentDashboard: QueryBuilderDashboardState;
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;

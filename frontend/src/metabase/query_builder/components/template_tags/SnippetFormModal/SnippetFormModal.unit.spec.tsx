@@ -1,14 +1,12 @@
-import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
-
 import type { NativeQuerySnippet } from "metabase-types/api";
 import {
   createMockCollection,
@@ -64,7 +62,7 @@ async function setup({
     <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onClose };
 }
@@ -124,7 +122,7 @@ describe("SnippetFormModal", () => {
 
     it("can't submit if content is empty", async () => {
       await setup();
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       });
@@ -132,7 +130,7 @@ describe("SnippetFormModal", () => {
 
     it("can't submit if name is empty", async () => {
       await setup();
-      userEvent.type(
+      await userEvent.type(
         screen.getByLabelText(LABEL.CONTENT),
         "WHERE discount > 0",
       );
@@ -144,8 +142,8 @@ describe("SnippetFormModal", () => {
     it("can submit with name and content", async () => {
       await setup();
 
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
-      userEvent.type(
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+      await userEvent.type(
         screen.getByLabelText(LABEL.CONTENT),
         "WHERE discount > 0",
       );
@@ -164,7 +162,7 @@ describe("SnippetFormModal", () => {
 
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
         expect(onClose).toHaveBeenCalledTimes(1);
       });
@@ -229,7 +227,7 @@ describe("SnippetFormModal", () => {
 
     it("can't submit if content is empty", async () => {
       await setupEditing();
-      userEvent.clear(screen.getByLabelText(LABEL.NAME));
+      await userEvent.clear(screen.getByLabelText(LABEL.NAME));
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       });
@@ -237,7 +235,7 @@ describe("SnippetFormModal", () => {
 
     it("can't submit if name is empty", async () => {
       await setupEditing();
-      userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
+      await userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       });
@@ -246,8 +244,8 @@ describe("SnippetFormModal", () => {
     it("can submit with name and content", async () => {
       await setupEditing();
 
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
-      userEvent.type(
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+      await userEvent.type(
         screen.getByLabelText(LABEL.CONTENT),
         "WHERE discount > 0",
       );
@@ -266,7 +264,7 @@ describe("SnippetFormModal", () => {
 
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setupEditing();
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
         expect(onClose).toHaveBeenCalledTimes(1);
       });
@@ -274,7 +272,7 @@ describe("SnippetFormModal", () => {
 
     it("closes the modal after archiving", async () => {
       const { onClose } = await setupEditing();
-      userEvent.click(screen.getByText("Archive"));
+      await userEvent.click(screen.getByText("Archive"));
       await waitFor(() => {
         expect(onClose).toHaveBeenCalledTimes(1);
       });

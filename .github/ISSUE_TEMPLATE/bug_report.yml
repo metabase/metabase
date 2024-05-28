@@ -1,0 +1,94 @@
+name: Bug Report
+description: Create a report to help us improve
+labels: [".Needs Triage", "Type:Bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Thanks for taking the time to fill out this bug report!
+        ### Please read this before you proceed.
+        The Github issue tracker is intended to collect bug reports and feature requests.
+        Any issues open for help requests will be closed to keep from clogging up the issue tracker.
+        Please use our [discussion forum](https://discourse.metabase.com) instead.
+
+        - We might close bug reports without sufficient information. Either provide repro steps or help us reproduce the issue.
+        - Please check if the [bug already exists](https://github.com/metabase/metabase/labels/Type%3ABug). We will close duplicate reports.
+        - Use as many screenshots or videos as possible to describe what you're seeing.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what happened!
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior (if you can reproduce the bug using the Sample Database, we will find the issue faster).
+      value: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: How should this work?
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Please include relevant JavaScript console logs from the "console" tab in the browser dev tools.
+        Additionally, include Metabase server logs (`Settings -> Admin -> Troubleshooting -> Logs`) around the time this bug occurred.
+        For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
+    validations:
+      required: false
+
+  - type: textarea
+    id: about-metabase
+    attributes:
+      label: Information about your Metabase installation
+      description: |
+        Copy and paste the JSON from `Admin -> Troubleshooting`.
+        _This will be automatically formatted into code, so no need for backticks._
+      placeholder: |
+        - Your browser and the version: (e.g., Chrome 52.1, Firefox 48.0, Safari 11.1, …)
+        - Your operating system: (e.g., OS X 10.10, Windows 10.1809, Ubuntu 16.04, …)
+        - Your databases: (e.g, MySQL, Postgres, MongoDB, …)
+        - Metabase version: (e.g., 0.19.3)
+        - Metabase hosting environment: (e.g., Elastic Beanstalk, Docker, Heroku, Jar-file on Ubuntu, …)
+        - Metabase internal database: (e.g., H2 (default), Postgres or MySQL)
+      render: JSON
+    validations:
+      required: true
+
+  - type: input
+    id: severity
+    attributes:
+      label: Severity
+      description: |
+        How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here. This is a good place to include any additional screenshots and/or videos.
+    validations:
+      required: false

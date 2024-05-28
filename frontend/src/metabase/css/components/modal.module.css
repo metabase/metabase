@@ -1,0 +1,114 @@
+.ModalContainer {
+  z-index: 4;
+}
+
+.Modal {
+  margin: auto;
+  width: 640px;
+  box-shadow: 0 0 6px var(--mb-color-shadow);
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+/* On IE11, single flex item with `margin: auto` gets shifted to flex end
+ * https://github.com/philipwalton/flexbugs/issues/157
+ * Set margin to zero when using Flexbox in `WindowModal` component
+ */
+.ModalBackdrop > .Modal {
+  margin: 0;
+}
+
+.Modal.ModalSmall {
+  width: 480px;
+} /* TODO - why is this one px? */
+.Modal.ModalMedium {
+  width: 65%;
+}
+
+.Modal.ModalWide {
+  width: 85%;
+}
+
+.Modal.ModalFit {
+  width: auto;
+  max-height: 100%;
+}
+
+.Modal.ModalTall {
+  min-height: 85%;
+}
+
+.ModalFull {
+  background-color: white;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+}
+
+.ModalBackdrop {
+  background-color: color-mod(var(--mb-color-bg-black) alpha(-40%));
+}
+
+/* TRANSITIONS */
+
+/* backdrop */
+
+.ModalBackdrop.ModalAppear,
+.ModalBackdrop.ModalEnter {
+  background-color: color-mod(var(--mb-color-bg-black) alpha(-99%));
+}
+
+.ModalBackdrop.ModalAppearActive,
+.ModalBackdrop.ModalEnterActive {
+  transition: background-color 200ms ease-in-out;
+  background-color: color-mod(var(--mb-color-bg-black) alpha(-40%));
+}
+
+.ModalBackdrop.ModalExit {
+  background-color: color-mod(var(--mb-color-bg-black) alpha(-40%));
+}
+
+.ModalBackdrop.ModalExitActive {
+  transition: background-color 200ms ease-in-out 100ms;
+  background-color: color-mod(var(--mb-color-bg-black) alpha(-99%));
+}
+
+/* modal */
+
+.ModalBackdrop.ModalAppear .Modal,
+.ModalBackdrop.ModalEnter .Modal {
+  opacity: 0.01;
+  transform: translate(0, 40px);
+}
+
+.ModalBackdrop.ModalAppearActive .Modal,
+.ModalBackdrop.ModalEnterActive .Modal {
+  transition: opacity 200ms linear 100ms, transform 200ms ease-in-out 100ms;
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.ModalBackdrop.ModalExit .Modal {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.ModalBackdrop.ModalExitActive .Modal {
+  transition: opacity 200ms linear, transform 200ms ease-in-out;
+  opacity: 0.01;
+  transform: translate(0, -40px);
+}
+
+@media (prefers-reduced-motion) {
+  .ModalBackdrop.ModalAppear,
+  .ModalBackdrop.ModalEnter,
+  .ModalBackdrop.ModalExit,
+  .ModalBackdrop.ModalAppear .Modal,
+  .ModalBackdrop.ModalEnter .Modal,
+  .ModalBackdrop.ModalExit .Modal {
+    transition: none;
+  }
+}

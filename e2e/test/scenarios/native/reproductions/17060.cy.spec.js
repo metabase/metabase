@@ -2,7 +2,8 @@ import { restore, openNativeEditor } from "e2e/support/helpers";
 
 import { runQuery } from "../../native-filters/helpers/e2e-sql-filter-helpers";
 
-const ORIGINAL_QUERY = `select ID as "num", CATEGORY as "text" from PRODUCTS limit 1`;
+const ORIGINAL_QUERY =
+  'select ID as "num", CATEGORY as "text" from PRODUCTS limit 1';
 const SECTION = "select ";
 const SELECTED_TEXT = "ID";
 
@@ -43,7 +44,7 @@ describe("issue 17060", () => {
 
     runQuery();
 
-    cy.get(".Visualization").within(() => {
+    cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("num");
     });
   });

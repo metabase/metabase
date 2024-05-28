@@ -1,7 +1,6 @@
 (ns metabase-enterprise.advanced-config.file.interface
   (:require
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (defmulti section-spec
@@ -34,4 +33,4 @@
 ;;; forward-compatible and handle sections that might be unknown in a particular version of Metabase.
 (defmethod initialize-section! :default
   [section-name _section-config]
-  (log/warn (u/colorize :yellow (trs "Ignoring unknown config section {0}." (pr-str section-name)))))
+  (log/warn (u/format-color :yellow "Ignoring unknown config section %s." (pr-str section-name))))

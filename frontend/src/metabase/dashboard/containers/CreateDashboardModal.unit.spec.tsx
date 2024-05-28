@@ -1,26 +1,61 @@
-import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import {
+  setupCollectionsEndpoints,
+  setupCollectionItemsEndpoint,
+  setupRecentViewsEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  mockGetBoundingClientRect,
+  mockScrollBy,
+} from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import {
+  createMockCollection,
+  createMockCollectionItemFromCollection,
+} from "metabase-types/api/mocks";
 
-import type { Collection } from "metabase-types/api";
-import { createMockEntitiesState } from "metabase-types/store/mocks";
+import { CreateDashboardModalConnected } from "./CreateDashboardModal";
 
-import CreateDashboardModal from "./CreateDashboardModal";
-
-const ROOT_COLLECTION = {
-  id: "root",
-  name: "Our analytics",
-  can_write: true,
-} as Collection;
+const COLLECTION = {
+  ROOT: createMockCollection({
+    ...ROOT_COLLECTION,
+    name: "Our analytics",
+    can_write: true,
+  }),
+  PARENT: createMockCollection({
+    id: 2,
+    name: "Parent collection",
+    can_write: true,
+  }),
+  CHILD: createMockCollection({
+    id: 3,
+    name: "Child collection",
+    can_write: true,
+  }),
+  PERSONAL: createMockCollection({
+    id: 1,
+    name: "My personal collection",
+    can_write: true,
+    is_personal: true,
+  }),
+};
+COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 
 function setup({
   isCachingEnabled = false,
   mockCreateDashboardResponse = true,
 } = {}) {
+  mockGetBoundingClientRect();
+  mockScrollBy();
+  setupRecentViewsEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
@@ -28,14 +63,36 @@ function setup({
   if (mockCreateDashboardResponse) {
     fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
   }
+  const collections = Object.values(COLLECTION);
+  setupCollectionsEndpoints({
+    collections,
+    rootCollection: COLLECTION.ROOT,
+  });
 
-  renderWithProviders(<CreateDashboardModal onClose={onClose} />, {
+  setupCollectionItemsEndpoint({
+    collection: COLLECTION.ROOT,
+    collectionItems: [
+      createMockCollectionItemFromCollection(COLLECTION.PARENT),
+    ],
+  });
+
+  setupCollectionItemsEndpoint({
+    collection: COLLECTION.PARENT,
+    collectionItems: [createMockCollectionItemFromCollection(COLLECTION.CHILD)],
+  });
+
+  setupCollectionItemsEndpoint({
+    collection: COLLECTION.PERSONAL,
+    collectionItems: [],
+  });
+
+  collections
+    .filter(c => c.id !== "root")
+    .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
+
+  renderWithProviders(<CreateDashboardModalConnected onClose={onClose} />, {
     storeInitialState: {
-      entities: createMockEntitiesState({
-        collections: {
-          root: ROOT_COLLECTION,
-        },
-      }),
+      entities: createMockEntitiesState({ collections }),
       settings,
     },
   });
@@ -46,8 +103,8 @@ function setup({
 }
 
 describe("CreateDashboardModal", () => {
-  beforeEach(() => {
-    fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
+  afterAll(() => {
+    jest.restoreAllMocks();
   });
 
   it("displays empty form fields", () => {
@@ -74,7 +131,9 @@ describe("CreateDashboardModal", () => {
 
   it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
-    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel" }) as Element,
+    );
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -103,6 +162,72 @@ describe("CreateDashboardModal", () => {
           screen.queryByText("Cache all question results for"),
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("new collection modal", () => {
+    const nameField = () => screen.getByRole("textbox", { name: /name/i });
+    const collDropdown = () => screen.getByLabelText(/Which collection/);
+    const newCollBtn = () =>
+      screen.getByRole("button", {
+        name: /new collection/i,
+      });
+    const dashModalTitle = () =>
+      screen.getByRole("heading", { name: /new dashboard/i });
+    const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    it("should have a new collection button in the collection picker", async () => {
+      setup();
+      await userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+    });
+    it("should open new collection modal and return to dashboard modal when clicking close", async () => {
+      setup();
+      const name = "my dashboard";
+      await waitFor(async () =>
+        expect(await dashModalTitle()).toBeInTheDocument(),
+      );
+      await userEvent.type(nameField(), name);
+      await userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      // Open New Collection Dialog
+      await userEvent.click(newCollBtn());
+      await screen.findByText("Give it a name");
+      // Close New Collection Dialog
+      await userEvent.click(cancelBtn());
+      // Close Collection Picker
+      await userEvent.click(cancelBtn());
+
+      await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
+      expect(nameField()).toHaveValue(name);
+    });
+
+    it("should create collection inside nested folder", async () => {
+      setup();
+      const name = "my dashboard";
+      await userEvent.type(nameField(), name);
+      //Open Collection Picker
+      await userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      //Select Parent Collection
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: new RegExp(COLLECTION.PARENT.name),
+        }),
+      );
+      //Open Create Collection Dialog
+      await userEvent.click(newCollBtn());
+      await screen.findByText("Give it a name");
+    });
+    it("should create collection inside root folder", async () => {
+      setup();
+      const name = "my dashboard";
+      await userEvent.type(nameField(), name);
+      await userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      await userEvent.click(newCollBtn());
+      await screen.findByTestId("create-collection-on-the-go"),
+        await screen.findByText("Give it a name");
     });
   });
 });

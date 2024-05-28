@@ -1,0 +1,1 @@
+export { ViewTitleHeader } from "./ViewHeader";

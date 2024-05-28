@@ -1,6 +1,10 @@
-import React, { ReactNode, useMemo } from "react";
+import type { ReactNode } from "react";
+import { useMemo } from "react";
+
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { TabContext, TabContextType } from "../Tab";
+
+import type { TabContextType } from "../Tab";
+import { TabContext } from "../Tab";
 
 export interface TabContentProps<T> {
   value?: T;
@@ -25,4 +29,5 @@ const TabContent = function TabContent<T>({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TabContent;

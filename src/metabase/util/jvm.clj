@@ -268,12 +268,12 @@
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
 (defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
-                        for use by various routines that load related namespaces, such as task and events
-                        initialization."}
- metabase-namespace-symbols
+  for use by various routines that load related namespaces, such as task and events
+  initialization."}
+  metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-                   :when   (and (.startsWith (name ns-symb) "metabase.")
-                                (not (.contains (name ns-symb) "test")))]
+                   :when   (and (str/starts-with? ns-symb "metabase")
+                                (not (str/includes? ns-symb "test")))]
                ns-symb))))
 
 (defn deref-with-timeout
@@ -299,3 +299,21 @@
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
   `(do-with-timeout ~timeout-ms (fn [] ~@body)))
+
+(defn poll
+  "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise.
+  The default timeout is 1000ms and the default interval is 100ms."
+  [{:keys [thunk done? timeout-ms interval-ms]
+    :or   {timeout-ms 1000 interval-ms 100}}]
+  (let [start-time (System/currentTimeMillis)]
+    (loop []
+      (let [response (thunk)]
+        (if (done? response)
+          response
+          (let [current-time (System/currentTimeMillis)
+                elapsed-time (- current-time start-time)]
+            (if (>= elapsed-time timeout-ms)
+              nil ; timeout reached
+              (do
+                (Thread/sleep interval-ms)
+                (recur)))))))))

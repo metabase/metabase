@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   restore,
   setupSMTP,
@@ -5,7 +6,6 @@ import {
   visitDashboard,
   sendEmailAndAssert,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
 
 const {
   admin: { first_name, last_name },
@@ -37,12 +37,15 @@ describe("issue 18352", { tags: "@external" }, () => {
   it("should send the card with the INT64 values (metabase#18352)", () => {
     cy.icon("subscription").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${first_name} ${last_name}`).click();
     // Click this just to close the popover that is blocking the "Send email now" button
-    cy.findByText(`To:`).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("To:").click();
 
     sendEmailAndAssert(({ html }) => {
       expect(html).not.to.include(

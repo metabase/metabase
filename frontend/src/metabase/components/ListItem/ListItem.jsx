@@ -1,30 +1,38 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
-import Ellipsified from "metabase/core/components/Ellipsified";
-import Card from "metabase/components/Card";
-import S from "metabase/components/List/List.css";
-import Icon from "metabase/components/Icon";
+import PropTypes from "prop-types";
+import { memo } from "react";
 
-//TODO: extend this to support functionality required for questions
-const ListItem = ({ index, name, description, placeholder, url, icon }) => (
-  <Link to={url} className="text-brand-hover">
-    <Card hoverable className="mb2 p3 bg-white rounded bordered">
+import Card from "metabase/components/Card";
+import S from "metabase/components/List/List.module.css";
+import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
+
+import { ListItemLink, ListItemName, Root } from "./ListItem.styled";
+
+const ListItem = ({
+  "data-testid": dataTestId,
+  name,
+  url,
+  description,
+  disabled,
+  placeholder,
+  icon,
+}) => {
+  const card = (
+    <Card
+      hoverable
+      className={cx(CS.mb2, CS.p3, CS.bgWhite, CS.rounded, CS.bordered)}
+    >
       <div className={cx(S.item)}>
         <div className={S.itemIcons}>
           {icon && <Icon className={S.chartIcon} name={icon} size={16} />}
         </div>
         <div className={S.itemBody}>
           <div className={S.itemTitle}>
-            <Ellipsified
-              className={S.itemName}
-              tooltip={name}
-              tooltipMaxWidth="100%"
-            >
+            <ListItemName tooltip={name} tooltipMaxWidth="100%">
               <h3>{name}</h3>
-            </Ellipsified>
+            </ListItemName>
           </div>
           {(description || placeholder) && (
             <div className={cx(S.itemSubtitle)}>
@@ -34,18 +42,31 @@ const ListItem = ({ index, name, description, placeholder, url, icon }) => (
         </div>
       </div>
     </Card>
-  </Link>
-);
+  );
 
-ListItem.propTypes = {
-  name: PropTypes.string.isRequired,
-  index: PropTypes.number.isRequired,
-  url: PropTypes.string,
-  description: PropTypes.string,
-  placeholder: PropTypes.string,
-  icon: PropTypes.string,
-  isEditing: PropTypes.bool,
-  field: PropTypes.object,
+  if (disabled) {
+    return (
+      <Root data-testid={dataTestId} disabled>
+        {card}
+      </Root>
+    );
+  }
+
+  return (
+    <Root data-testid={dataTestId}>
+      <ListItemLink to={url}>{card}</ListItemLink>
+    </Root>
+  );
 };
 
-export default React.memo(ListItem);
+ListItem.propTypes = {
+  "data-testid": PropTypes.string,
+  name: PropTypes.string.isRequired,
+  url: PropTypes.string,
+  description: PropTypes.string,
+  disabled: PropTypes.bool,
+  placeholder: PropTypes.string,
+  icon: PropTypes.string,
+};
+
+export default memo(ListItem);

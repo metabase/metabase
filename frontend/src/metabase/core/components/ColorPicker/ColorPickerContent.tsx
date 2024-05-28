@@ -1,8 +1,11 @@
-import React, { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
-import { ColorState } from "react-color";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback } from "react";
+import type { ColorState } from "react-color";
+
 import ColorInput from "metabase/core/components/ColorInput";
-import ColorPickerControls from "./ColorPickerControls";
+
 import { ContentContainer } from "./ColorPicker.styled";
+import ColorPickerControls from "./ColorPickerControls";
 
 export type ColorPickerContentAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -31,4 +34,5 @@ const ColorPickerContent = forwardRef(function ColorPickerContent(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorPickerContent;

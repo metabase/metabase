@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.fix-bad-references
   (:require
    [clojure.walk :as walk]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (defn- find-source-table [{:keys [source-table source-query]}]
@@ -22,19 +22,18 @@
 
 (defn- table [table-id]
   (when table-id
-    (qp.store/fetch-and-store-tables! #{table-id})
-    (qp.store/table table-id)))
+    (lib.metadata/table (qp.store/metadata-provider) table-id)))
 
 (def ^:dynamic *bad-field-reference-fn*
   "A function to be called on each bad field found by this middleware. Not used except for in tests."
-  (fn bad-field-no-op [_field]))
+  (constantly nil))
 
 (defn- fix-bad-references*
   ([inner-query]
    (fix-bad-references* inner-query inner-query (find-source-table inner-query)))
 
   ([inner-query form source-table & sources]
-   (mbql.u/replace form
+   (lib.util.match/replace form
      ;; don't replace anything inside source metadata.
      (_ :guard (constantly ((set &parents) :source-metadata)))
      &match
@@ -51,22 +50,22 @@
      ;; :source-table]` path that do not have `:join-alias` info
      [:field
       (id :guard (every-pred integer? (fn [id]
-                                        (let [{table-id :table_id} (qp.store/field id)]
+                                        (let [{:keys [table-id]} (lib.metadata/field (qp.store/metadata-provider) id)]
                                           (not (some (partial = table-id)
                                                      (cons source-table sources)))))))
       (opts :guard (complement :join-alias))]
-     (let [{table-id :table_id, :as field} (qp.store/field id)
-           {join-alias :alias}             (find-join-against-table inner-query table-id)]
-       (log/warn (u/colorize 'yellow (str (trs "Bad :field clause {0} for field {1} at {2}: clause should have a :join-alias."
-                                               (pr-str &match)
-                                               (pr-str (format "%s.%s"
-                                                               (:name (table table-id))
-                                                               (:name field)))
-                                               (pr-str &parents))
-                                          " "
-                                          (if join-alias
-                                            (trs "Guessing join {0}" (pr-str join-alias))
-                                            (trs "Unable to infer an appropriate join. Query may not work as expected.")))))
+     (let [{:keys [table-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id)
+           {join-alias :alias}           (find-join-against-table inner-query table-id)]
+       (log/warn (u/colorize :yellow (str
+                                      (format
+                                       "Bad :field clause %s for field %s at %s: clause should have a :join-alias."
+                                       (pr-str &match)
+                                       (pr-str (format "%s.%s" (:name (table table-id)) (:name field)))
+                                       (pr-str &parents))
+                                      " "
+                                      (if join-alias
+                                        (format "Guessing join %s" (pr-str join-alias))
+                                        "Unable to infer an appropriate join. Query may not work as expected."))))
        (*bad-field-reference-fn* &match)
        (if join-alias
          [:field id (assoc opts :join-alias join-alias)]

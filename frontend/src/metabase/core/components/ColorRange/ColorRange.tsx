@@ -1,13 +1,9 @@
-import React, {
-  forwardRef,
-  MouseEvent,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useMemo,
-} from "react";
+import type { MouseEvent, HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
+
 import { getColorScale } from "metabase/lib/colors/scales";
+
 import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";
 
 export type ColorRangeAttributes = Omit<
@@ -57,4 +53,5 @@ const ColorRange = forwardRef(function ColorRange(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRange;

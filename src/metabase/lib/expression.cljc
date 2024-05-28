@@ -1,43 +1,53 @@
 (ns metabase.lib.expression
-  (:refer-clojure
-   :exclude
-   [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
-  "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
-  [metadata :- lib.metadata/ColumnMetadata]
+  "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
+  [metadata :- ::lib.schema.metadata/column]
   (let [options {:lib/uuid       (str (random-uuid))
-                 :base-type      (:base_type metadata)
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}]
-    [:expression options (:name metadata)]))
+                 :base-type      (:base-type metadata)
+                 :effective-type ((some-fn :effective-type :base-type) metadata)}]
+    [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   expression-name :- ::lib.schema.common/non-blank-string]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (or (get-in stage [:expressions expression-name])
-        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
-                        {:expression-name expression-name
-                         :query           query
-                         :stage-number    stage-number})))))
+  ([query expression-name]
+   (resolve-expression query -1 expression-name))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- :int
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (let [stage (lib.util/query-stage query stage-number)]
+     (or (m/find-first (comp #{expression-name} lib.util/expression-name)
+                       (:expressions stage))
+         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
+                         {:expression-name expression-name
+                          :query           query
+                          :stage-number    stage-number}))))))
 
 (defmethod lib.metadata.calculation/type-of-method :expression
   [query stage-number [_expression _opts expression-name, :as _expression-ref]]
@@ -45,12 +55,14 @@
     (lib.metadata.calculation/type-of query stage-number expression)))
 
 (defmethod lib.metadata.calculation/metadata-method :expression
-  [query stage-number [_expression _opts expression-name, :as expression-ref]]
-  {:lib/type     :metadata/field
-   :name         expression-name
-   :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
-   :lib/source   :source/expressions})
+  [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
+  {:lib/type            :metadata/column
+   :lib/source-uuid     (:lib/uuid opts)
+   :name                expression-name
+   :lib/expression-name expression-name
+   :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+   :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+   :lib/source          :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
   [_query _stage-number n _style]
@@ -63,6 +75,10 @@
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/string
   [_query _stage-number s _style]
   (str \" s \"))
+
+(defmethod lib.metadata.calculation/display-name-method :dispatch-type/boolean
+  [_query _stage-number s _style]
+  (str s))
 
 (defmethod lib.metadata.calculation/display-name-method :expression
   [_query _stage-number [_expression _opts expression-name] _style]
@@ -104,21 +120,9 @@
   [query stage-number [tag _opts & args] _style]
   (infix-display-name query stage-number (get infix-operator-display-name tag) args))
 
-(defn- infix-column-name
-  [query stage-number operator-str args]
-  (str/join (str \_ operator-str \_)
-            (map (partial lib.metadata.calculation/column-name query stage-number)
-                 args)))
-
-(def ^:private infix-operator-column-name
-  {:+ "plus"
-   :- "minus"
-   :/ "divided_by"
-   :* "times"})
-
 (defmethod lib.metadata.calculation/column-name-method ::infix-operator
-  [query stage-number [tag _opts & args]]
-  (infix-column-name query stage-number (get infix-operator-column-name tag) args))
+  [_query _stage-number _expr]
+  "expression")
 
 ;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.schema.expression/type-of]].
 ;;;
@@ -132,17 +136,13 @@
    (for [arg args]
      (lib.metadata.calculation/type-of query stage-number arg))))
 
+;;; TODO -- this stuff should probably be moved into [[metabase.lib.temporal-bucket]]
+
 (defn- interval-unit-str [amount unit]
-  (clojure.core/case unit
-    :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
-    :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
-    :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
-    :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
-    :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
-    :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
-    :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
-    :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
-    :year        (i18n/trun "year"        "years"        (clojure.core/abs amount))))
+  ;; this uses [[clojure.string/lower-case]] so its in the user's locale in the browser rather than always using
+  ;; English lower-casing rules.
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (str/lower-case (lib.temporal-bucket/describe-temporal-unit amount unit)))
 
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
@@ -186,22 +186,64 @@
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
 
+#_(defn- conflicting-name? [query stage-number expression-name]
+    (let [stage     (lib.util/query-stage query stage-number)
+          cols      (lib.metadata.calculation/visible-columns query stage-number stage)
+          expr-name (u/lower-case-en expression-name)]
+      (some #(-> % :name u/lower-case-en (= expr-name)) cols)))
+
+(mr/def ::add-expression-options
+  [:map
+   ;; default: true
+   [:add-to-fields? {:optional true} [:maybe :boolean]]])
+
+(defn- add-expression-to-stage
+  [stage
+   expression
+   {:keys [add-to-fields?], :or {add-to-fields? true}, :as _options}]
+  (cond-> (update stage :expressions (fnil conj []) expression)
+    ;; if there are explicit fields selected, add the expression to them
+    (and (vector? (:fields stage))
+         add-to-fields?)
+    (update :fields conj (lib.options/ensure-uuid [:expression {} (lib.util/expression-name expression)]))))
+
 (mu/defn expression :- ::lib.schema/query
-  "Adds an expression to query."
-  ([query expression-name an-expression-clause]
-   (expression query -1 expression-name an-expression-clause))
-  ([query stage-number expression-name an-expression-clause]
-   (let [stage-number (or stage-number -1)]
+  "Adds an expression to query.
+
+  Options:
+
+  * `:add-to-fields?` (default: `true`) -- whether to add an `:expression` ref to `:fields` if one is present in the
+    query."
+  ([query expression-name expressionable]
+   (expression query -1 expression-name expressionable))
+
+  ([query stage-number expression-name expressionable]
+   (expression query stage-number expression-name expressionable nil))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- [:maybe :int]
+    expression-name :- ::lib.schema.common/non-blank-string
+    expressionable
+    options         :- [:maybe ::add-expression-options]]
+   (let [stage-number   (or stage-number -1)
+         expressionable (lib.common/->op-arg expressionable)]
+     ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
+     ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
+     ;; the QP code, and it should be powered by MLv2 in due course.
+     #_(when (conflicting-name? query stage-number expression-name)
+         (throw (ex-info "Expression name conflicts with a column in the same query stage"
+                         {:expression-name expression-name})))
      (lib.util/update-query-stage
        query stage-number
-       update :expressions
-       assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
+       add-expression-to-stage
+       (lib.util/top-level-expression-clause expressionable expression-name)
+       options))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
 (lib.common/defop * [x y & more])
 ;; Kondo gets confused
-#_{:clj-kondo/ignore [:unresolved-namespace]}
+#_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
 (lib.common/defop case [x y & more])
 (lib.common/defop coalesce [x y & more])
@@ -227,29 +269,230 @@
 (lib.common/defop get-minute [t])
 (lib.common/defop get-second [t])
 (lib.common/defop get-quarter [t])
+(lib.common/defop get-day-of-week [t])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
 (lib.common/defop replace [s search replacement])
 (lib.common/defop regexextract [s regex])
+(lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
 (lib.common/defop trim [s])
 (lib.common/defop ltrim [s])
 (lib.common/defop rtrim [s])
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
+(lib.common/defop host [s])
+(lib.common/defop domain [s])
+(lib.common/defop subdomain [s])
+(lib.common/defop month-name [n])
+(lib.common/defop quarter-name [n])
+(lib.common/defop day-name [n])
+(lib.common/defop offset [x n])
 
-(mu/defn expressions :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn ^:private expression-metadata :- ::lib.schema.metadata/column
+  [query                 :- ::lib.schema/query
+   stage-number          :- :int
+   expression-definition :- ::lib.schema.expression/expression]
+  (let [expression-name (lib.util/expression-name expression-definition)]
+    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+        (assoc :lib/source   :source/expressions
+               :name         expression-name
+               :display-name expression-name))))
+
+(mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
+  ([query]
+   (expressions-metadata query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
+            (mapv (partial expression-metadata query stage-number)))))
+
+(mu/defn expressions :- [:maybe ::lib.schema.expression/expressions]
+  "Get the expressions map from a given stage of a `query`."
   ([query]
    (expressions query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (some->> (not-empty (:expressions (lib.util/query-stage query stage-number)))
-            (mapv (fn [[expression-name expression-definition]]
-                    (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
-                        (assoc :lib/source   :source/expressions
-                               :name         expression-name
-                               :display_name expression-name)))))))
+   (not-empty (:expressions (lib.util/query-stage query stage-number)))))
+
+(defmethod lib.ref/ref-method :expression
+  [expression-clause]
+  expression-clause)
+
+(mu/defn expressionable-columns :- [:sequential ::lib.schema.metadata/column]
+  "Get column metadata for all the columns that can be used expressions in
+  the stage number `stage-number` of the query `query` and in expression index `expression-position`
+  If `stage-number` is omitted, the last stage is used.
+  Pass nil to `expression-position` for new expressions.
+  The rules for determining which columns can be broken out by are as follows:
+
+  1. custom `:expressions` in this stage of the query, that come before the `expression-position`
+
+  2. Fields 'exported' by the previous stage of the query, if there is one;
+     otherwise Fields from the current `:source-table`
+
+  3. Fields exported by explicit joins
+
+  4. Fields in Tables that are implicitly joinable."
+
+  ([query :- ::lib.schema/query
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (expressionable-columns query -1 expression-position))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [indexed-expressions (into {} (map-indexed (fn [idx expr]
+                                                     [(lib.util/expression-name expr) idx])
+                                                   (expressions query stage-number)))
+         unavailable-expressions (fn [column]
+                                   (or (not expression-position)
+                                       (not= (:lib/source column) :source/expressions)
+                                       (< (get indexed-expressions (:name column)) expression-position)))
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+     (->> columns
+          (filterv unavailable-expressions)
+          not-empty))))
+
+(mu/defn expression-ref :- :mbql.clause/expression
+  "Find the expression with `expression-name` using [[resolve-expression]], then create a ref for it. Intended for use
+  when creating queries using threading macros e.g.
+
+    (-> (lib/query ...)
+        (lib/expression \"My Expression\" ...)
+        (as-> <> (lib/aggregate <> (lib/avg (lib/expression-ref <> \"My Expression\")))))"
+  ([query expression-name]
+   (expression-ref query -1 expression-name))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- :int
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (->> expression-name
+        (resolve-expression query stage-number)
+        (expression-metadata query stage-number)
+        lib.ref/ref)))
+
+(def ^:private expression-validator
+  (mc/validator ::lib.schema.expression/expression))
+
+(defn expression-clause?
+  "Returns true if `expression-clause` is indeed an expression clause, false otherwise."
+  [expression-clause]
+  (expression-validator expression-clause))
+
+(mu/defn with-expression-name :- ::lib.schema.expression/expression
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  for other expressions (for example named aggregation expressions) the :display-name option is set.
+
+  Note that always setting :lib/expression-name would lead to confusion, because that option is used
+  to decide what kind of reference is to be created. For example, expression are referenced by name,
+  aggregations are referenced by position."
+  [an-expression-clause :- ::lib.schema.expression/expression
+   new-name :- :string]
+  (lib.options/update-options
+   (if (lib.util/clause? an-expression-clause)
+     an-expression-clause
+     [:value {:effective-type (lib.schema.expression/type-of an-expression-clause)}
+      an-expression-clause])
+   (fn [opts]
+     (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
+       (if (:lib/expression-name opts)
+         (-> opts
+             (dissoc :display-name :name)
+             (assoc :lib/expression-name new-name))
+         (assoc opts :name new-name :display-name new-name))))))
+
+(def ^:private expression-explainer
+  (mr/explainer ::lib.schema.expression/expression))
+
+(def ^:private aggregation-validator
+  (mr/validator ::lib.schema.aggregation/aggregation))
+
+(def ^:private aggregation-explainer
+  (mr/explainer ::lib.schema.aggregation/aggregation))
+
+(def ^:private filter-validator
+  (mr/validator ::lib.schema/filterable))
+
+(def ^:private filter-explainer
+  (mr/explainer ::lib.schema/filterable))
+
+(defn- expression->name
+  [expr]
+  (-> expr lib.options/options :lib/expression-name))
+
+(defn- referred-expressions
+  [expr]
+  (into #{}
+        (map #(get % 2))
+        (lib.util.match/match expr :expression)))
+
+(defn- cyclic-definition
+  ([node->children]
+   (some #(cyclic-definition node->children %) (keys node->children)))
+  ([node->children start]
+   (cyclic-definition node->children start []))
+  ([node->children node path]
+   (if (some #{node} path)
+     (conj path node)
+     (some #(cyclic-definition node->children % (conj path node))
+           (node->children node)))))
+
+(mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
+  "Checks `expr` for type errors and, if `expression-mode` is :expression and
+  `expression-position` is provided, for cyclic references with other expressions.
+
+  - `expr` is a pMBQL expression usually created from a legacy MBQL expression created
+  using the custom column editor in the FE. It is expected to have been normalized and
+  converted using [[metabase.lib.convert/->pMBQL]].
+  - `expression-mode` specifies what type of thing `expr` is: an :expression (custom column),
+  an :aggregation expression, or a :filter condition.
+  - `expression-position` is only defined when editing an existing custom column, and in that case
+  it is the index of that expression in (expressions query stage-number).
+
+  The function returns nil, if the expression is valid, otherwise it returns a map with
+  an i18n message describing the problem under the key :message."
+  [query               :- ::lib.schema/query
+   stage-number        :- :int
+   expression-mode     :- [:enum :expression :aggregation :filter]
+   expr                :- :any
+   expression-position :- [:maybe :int]]
+  (let [[validator explainer] (clojure.core/case expression-mode
+                                :expression [expression-validator expression-explainer]
+                                :aggregation [aggregation-validator aggregation-explainer]
+                                :filter [filter-validator filter-explainer])]
+    (or (when-not (validator expr)
+          (let [error (explainer expr)
+                humanized (str/join ", " (me/humanize error))]
+            {:message (i18n/tru "Type error: {0}" humanized)}))
+        (when-let [path (and (= expression-mode :expression)
+                             expression-position
+                             (let [exprs (expressions query stage-number)
+                                   edited-expr (nth exprs expression-position)
+                                   edited-name (expression->name edited-expr)
+                                   deps (-> (m/index-by expression->name exprs)
+                                            (assoc edited-name expr)
+                                            (update-vals referred-expressions))]
+                               (cyclic-definition deps)))]
+          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " path))
+           :friendly true})
+        (when (and (= expression-mode :expression)
+                   (lib.util.match/match-one expr :offset))
+          {:message  (i18n/tru "OFFSET is not supported in custom expressions")
+           :friendly true})
+        (when (and (= expression-mode :expression)
+                   (lib.util.match/match-one expr :offset)
+                   (empty? (:order-by (lib.util/query-stage query stage-number))))
+          {:message  (i18n/tru "OFFSET in a custom expression requires a sort order")
+           :friendly true})
+        (when (and (= expression-mode :filter)
+                   (lib.util.match/match-one expr :offset))
+          {:message  (i18n/tru "OFFSET is not supported in custom filters")
+           :friendly true}))))

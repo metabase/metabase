@@ -1,17 +1,20 @@
-import React from "react";
-import { Link } from "react-router";
-import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
+import { useFormik } from "formik";
+import { useEffect } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
-import { formatValue } from "metabase/lib/formatting";
+
+import { FieldSet } from "metabase/components/FieldSet";
 import Button from "metabase/core/components/Button/Button";
-import FieldSet from "metabase/components/FieldSet";
-import { Segment, StructuredQuery } from "metabase-types/api";
-import * as Q from "metabase-lib/queries/utils/query";
+import { formatValue } from "metabase/lib/formatting";
+import * as Q from "metabase-lib/v1/queries/utils/query";
+import type { Segment, StructuredQuery } from "metabase-types/api";
+
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
 import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
+
 import {
   FormRoot,
   FormSection,
@@ -30,6 +33,7 @@ export interface SegmentFormProps {
   segment?: Segment;
   previewSummary?: string;
   updatePreviewSummary: (previewSummary: string) => void;
+  onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Segment>) => void;
 }
 
@@ -37,16 +41,22 @@ const SegmentForm = ({
   segment,
   previewSummary,
   updatePreviewSummary,
+  onIsDirtyChange,
   onSubmit,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
 
-  const { isValid, getFieldProps, getFieldMeta, handleSubmit } = useFormik({
-    initialValues: segment ?? {},
-    isInitialValid: false,
-    validate: getFormErrors,
-    onSubmit,
-  });
+  const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
+    useFormik({
+      initialValues: segment ?? {},
+      isInitialValid: false,
+      validate: getFormErrors,
+      onSubmit,
+    });
+
+  useEffect(() => {
+    onIsDirtyChange(dirty);
+  }, [dirty, onIsDirtyChange]);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
@@ -69,33 +79,39 @@ const SegmentForm = ({
         </FormLabel>
         <FormBodyContent>
           <FormLabel
+            htmlFor="name"
             title={t`Name Your Segment`}
             description={t`Give your segment a name to help others find it.`}
           >
             <FormInput
               {...getFieldProps("name")}
               {...getFieldMeta("name")}
+              id="name"
               placeholder={t`Something descriptive but not too long`}
             />
           </FormLabel>
           <FormLabel
+            htmlFor="description"
             title={t`Describe Your Segment`}
             description={t`Give your segment a description to help others understand what it's about.`}
           >
             <FormTextArea
               {...getFieldProps("description")}
               {...getFieldMeta("description")}
+              id="description"
               placeholder={t`This is a good place to be more specific about less obvious segment rules`}
             />
           </FormLabel>
           {!isNew && (
             <FieldSet legend={t`Reason For Changes`} noPadding={false}>
               <FormLabel
+                htmlFor="revision_message"
                 description={t`Leave a note to explain what changes you made and why they were required.`}
               >
                 <FormTextArea
                   {...getFieldProps("revision_message")}
                   {...getFieldMeta("revision_message")}
+                  id="revision_message"
                   placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                 />
               </FormLabel>
@@ -174,4 +190,5 @@ const getQueryBuilderProps = ({
   };
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SegmentForm;

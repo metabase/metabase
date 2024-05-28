@@ -8,7 +8,9 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -18,19 +20,13 @@
   (driver/escape-alias driver join-alias))
 
 (defn- driver->escape-fn [driver]
-  (comp (mbql.u/unique-name-generator
-         ;; some databases treat aliases as case-insensitive so make sure the generated aliases
-         ;; are unique regardless of case
-         :name-key-fn     u/lower-case-en
-         ;; uniqified aliases needs to be escaped again just in case
-         :unique-alias-fn (fn [original suffix]
-                            (escape-alias driver (str original \_ suffix))))
+  (comp (lib.util/unique-name-generator (qp.store/metadata-provider))
         (partial escape-alias driver)))
 
 (defn- add-escaped-aliases
   "Walk the query and add an `::alias` key to every join in the query."
   [query escape-fn]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     (join :guard (every-pred map? :condition :alias (complement ::alias)))
     (let [join (assoc join ::alias (escape-fn (:alias join)))]
       ;; now recursively add escaped aliases for `:source-query` etc.
@@ -40,7 +36,7 @@
   "Walk the query and add a map of original alias -> escaped alias at all levels that have either a `:source-table` or
   `:source-query`."
   [query]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     (m :guard (every-pred map? (some-fn :source-table :source-query) (complement ::original->escaped)))
     (let [original->escaped (into {} (map (juxt :alias ::alias) (:joins m)))
           m                 (assoc m ::original->escaped original->escaped)]
@@ -62,7 +58,7 @@
   `X` inside another join. Important! This includes join conditions! So that means we need to merge in the
   `::original->escaped` map from the parent level into the maps in its `:joins` as well."
   [query]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     (m :guard (every-pred map? ::original->escaped))
     ;; first, recursively merge all the stuff in the source levels (`:source-query` and `:joins`)
     (let [m'                                 (merge-original->escaped-maps (dissoc m ::original->escaped))
@@ -90,14 +86,14 @@
 (defn- add-escaped-join-aliases-to-fields
   "Walk the query and add an `::join-alias` to all `:field` clauses."
   [query]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     (m :guard (every-pred map? ::original->escaped))
     (let [original->escaped (::original->escaped m)
           ;; recursively update source levels *first*
           m'                (assoc (add-escaped-join-aliases-to-fields (dissoc m ::original->escaped))
                                    ::original->escaped original->escaped)]
       ;; now update any `:field` clauses that don't have an `::join-alias`
-      (mbql.u/replace m'
+      (lib.util.match/replace m'
         [:field id-or-name (field-options :guard (every-pred map? :join-alias (complement ::join-alias)))]
         [:field id-or-name (assoc field-options ::join-alias (get original->escaped (:join-alias field-options)))]))))
 
@@ -105,7 +101,7 @@
   "Build a map of escaped alias -> original alias for the query (current level and all nested levels). Remove keys where
   the original alias is identical to the escaped alias; that's not useful information to include in `:info`."
   [query]
-  (let [escaped->original-maps (mbql.u/match query
+  (let [escaped->original-maps (lib.util.match/match query
                                  (m :guard (every-pred map? ::original->escaped))
                                  (merge
                                   (set/map-invert (::original->escaped m))
@@ -140,7 +136,7 @@
   map. For `:field` clauses, we need to keep track of whether we already escaped it or not , since the mapping between
   original alias and escaped alias might be different based on the level of query we're at."
   [query]
-  (mbql.u/replace query
+  (lib.util.match/replace query
     ;; update inner queries that have `::original->escaped` maps
     (m :guard (every-pred map? ::original->escaped))
     (-> (dissoc m ::original->escaped)
@@ -216,7 +212,7 @@
       (do
         (log/tracef "Rewriting join aliases:\n%s" (u/pprint-to-str original->new))
         (letfn [(rename-join-aliases* [query]
-                  (mbql.u/replace query
+                  (lib.util.match/replace query
                     [:field id-or-name (opts :guard (comp aliases-to-replace :join-alias))]
                     [:field id-or-name (update opts :join-alias original->new)]
 

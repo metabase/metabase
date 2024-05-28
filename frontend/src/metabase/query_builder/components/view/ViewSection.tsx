@@ -1,5 +1,9 @@
-import React, { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import cx from "classnames";
+import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+
 import Subhead from "metabase/components/type/Subhead";
+import CS from "metabase/css/core/index.css";
+
 import { ViewSectionRoot } from "./ViewSection.styled";
 
 interface ViewSectionProps extends HTMLAttributes<HTMLDivElement> {
@@ -32,9 +36,10 @@ interface ViewSubHeadingProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const ViewSubHeading = ({ children, ...props }: ViewSubHeadingProps) => (
-  <div className="text-medium text-bold" {...props}>
+  <div className={cx(CS.textMedium, CS.textBold)} {...props}>
     {children}
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ViewSection;

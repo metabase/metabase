@@ -1,1 +1,1 @@
-export { default } from "./ImageToggle";
+export { ImageToggle } from "./ImageToggle";

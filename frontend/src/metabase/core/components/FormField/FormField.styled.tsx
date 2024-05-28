@@ -1,7 +1,9 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import { FieldAlignment, FieldOrientation } from "./types";
+import { Icon } from "metabase/ui";
+
+import type { FieldAlignment, FieldOrientation } from "./types";
 
 export interface FormCaptionProps {
   alignment: FieldAlignment;
@@ -101,4 +103,11 @@ export const FieldRoot = styled.div<FieldRootProps>`
       display: none;
     }
   }
+`;
+
+export const FieldTitleActions = styled.div`
+  margin-left: auto;
+  font-size: 0.77rem;
+  font-weight: 900;
+  color: ${color("text-medium")};
 `;

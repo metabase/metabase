@@ -14,6 +14,7 @@ describe("issue 6239", () => {
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
@@ -21,11 +22,15 @@ describe("issue 6239", () => {
     cy.findByPlaceholderText("Something nice and descriptive").type("CE");
     cy.button("Done").click();
 
+    cy.findByTestId("aggregate-step").contains("CE").should("exist");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().contains("Created At").first().click();
   });
 
   it("should be possible to sort by using custom expression (metabase#6239)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sort").click();
     popover().contains(/^CE$/).click();
 
@@ -34,12 +39,12 @@ describe("issue 6239", () => {
     // Line chart renders initially. Switch to the table view.
     cy.icon("table2").click();
 
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .eq(1)
       .should("contain", "CE")
       .and("have.descendants", ".Icon-chevronup");
 
-    cy.get(".cellData").eq(3).invoke("text").should("eq", "1");
+    cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
     cy.icon("notebook").click();
@@ -51,11 +56,11 @@ describe("issue 6239", () => {
 
     visualize();
 
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .eq(1)
       .should("contain", "CE")
       .and("have.descendants", ".Icon-chevrondown");
 
-    cy.get(".cellData").eq(3).invoke("text").should("eq", "584");
+    cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "584");
   });
 });

@@ -57,6 +57,15 @@ Default: `null`
 
 The email address users should be referred to if they encounter a problem.
 
+### `MB_AGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 10000
+
+Maximum number of rows to return for aggregated queries via the API. Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+
+See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 Type: boolean<br>
@@ -73,7 +82,7 @@ Middleware that enforces validation of the client via the request header `X-Meta
 
 ### `MB_APPLICATION_COLORS`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"{}"`
 
@@ -120,7 +129,7 @@ See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#mb_jdbc_data_warehouse_ma
 
 ### `MB_APPLICATION_FAVICON_URL`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"frontend_client/favicon.ico"`
 
@@ -128,7 +137,7 @@ Path or URL to favicon file.
 
 ### `MB_APPLICATION_FONT`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"Lato"`<br>
 Since: v44.0
@@ -137,7 +146,7 @@ Change the font used in Metabase. See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_FONT_FILES`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"{}"`<br>
 Since: v44.0
@@ -163,15 +172,15 @@ See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"app/assets/img/logo.svg"`
 
-Path or URL to logo file. For best results use SVG format.
+Path or URL to logo file. For best results use SVG format (inline styling and inline scripts are not supported).
 
 ### `MB_APPLICATION_NAME`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"Metabase"`
 
@@ -184,6 +193,29 @@ Default: `50`<br>
 Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
+
+### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
+
+Type: integer<br>
+Default: `20`<br>
+
+Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
+
+### `MB_AUDIT_MAX_RETENTION_DAYS`
+
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
+Type: integer<br>
+Default: 720 (Metabase keeps all rows)<br>
+
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `query_execution`
+- `audit_log`
+- `view_log`
+
+Twice a day, Metabase will delete rows older than this threshold.
+
+The minimum value is `30` days (Metabase will treat entered values of `1` to `29` the same as `30`). If set to `0`, Metabase will keep all rows.
 
 ### `MB_BREAKOUT_BIN_WIDTH`
 
@@ -218,7 +250,7 @@ Color log lines. When set to `false` it will disable log line colors. This is di
 Type: string<br>
 Default: `config.yml`
 
-This feature requires the `advanced-config` feature flag on your token.
+This feature requires the `config-text-file` feature flag on your token.
 
 ### `MB_CUSTOM_FORMATTING`
 
@@ -406,13 +438,13 @@ SMTP username.
 
 ### `MB_EMBEDDING_APP_ORIGIN`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
 URL of origin allowed to embed the full Metabase application.
 
-Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
 
 ### `MB_EMBEDDING_SECRET_KEY`
 
@@ -424,7 +456,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Signed Embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication (see [`MB_JWT_ENABLED`](#mb_jwt_enabled)).
 
 ### `MB_EMOJI_IN_LOGS`
 
@@ -449,7 +481,7 @@ Allow using a saved question as the source for other queries.
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `true`
 
@@ -519,6 +551,18 @@ Maximum number of connections to the data source databases. The maximum is for e
 Change this to a higher value if you notice that regular usage consumes all or close to all connections. When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
 
 See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size) for setting maximum connections to the Metabase application database.
+
+### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
+
+Type: integer<br>
+Default: `1200`<br>
+Since: v47.4
+
+Metabase's query processor will normally kill connections when their queries time out, but in practice some connections can be severed and go undetected by Metabase, staying alive even after a query returns or times out. This environment variable tells  Metabase how long to wait before killing connections if no response is received from the connection.
+
+This variable affects connections that are severed and undetected by Metabase (that is, in situations where Metabase never receives a connection closed signal and is treating an inactive connection as active). You may want to adjust this variable's value if your connection is unreliable or is a dynamic connections behind a SSH tunnel where the connection to the SSH tunnel host may stay active even after the connection from the SSH tunnel host to your database is severed.
+
+Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -651,7 +695,7 @@ Password for Java TrustStore file.
 
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"email"`
 
@@ -659,7 +703,7 @@ Key to retrieve the JWT user's email address.
 
 ### `MB_JWT_ATTRIBUTE_FIRSTNAME`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"first_name"`
 
@@ -667,7 +711,7 @@ Key to retrieve the JWT user's first name.
 
 ### `MB_JWT_ATTRIBUTE_GROUPS`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"groups"`
 
@@ -675,7 +719,7 @@ Key to retrieve the JWT user's groups.
 
 ### `MB_JWT_ATTRIBUTE_LASTNAME`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"last_name"`
 
@@ -683,17 +727,17 @@ Key to retrieve the JWT user's last name.
 
 ### `MB_JWT_ENABLED`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `false`
 
 When set to `true`, will enable JWT authentication with the options configured in the `MB_JWT_*` variables.
 
-This is for JWT SSO authentication, and has nothing to do with Signed Embedding, which is [MB_EMBEDDING_SECRET_KEY](#mb_embedding_secret_key)
+This is for JWT SSO authentication, and has nothing to do with Static embedding, which is [MB_EMBEDDING_SECRET_KEY](#mb_embedding_secret_key)
 
 ### `MB_JWT_GROUP_MAPPINGS`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"{}"`
 
@@ -701,7 +745,7 @@ JSON object containing JWT to Metabase group mappings. Should be in the form: `'
 
 ### `MB_JWT_GROUP_SYNC`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `false`
 
@@ -709,7 +753,7 @@ Enable group membership synchronization with JWT.
 
 ### `MB_JWT_IDENTITY_PROVIDER_URI`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
@@ -717,7 +761,7 @@ URL of JWT based login page.
 
 ### `MB_JWT_SHARED_SECRET`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
@@ -725,7 +769,7 @@ String used to seed the private key used to validate JWT messages.
 
 ### `MB_LANDING_PAGE`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `""`
 
@@ -782,7 +826,7 @@ JSON object containing LDAP to Metabase group mappings.
 
 ### `MB_LDAP_GROUP_MEMBERSHIP_FILTER`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"(member={dn})"`<br>
 Since: v40.0
@@ -826,7 +870,7 @@ Use SSL, TLS or plain text.
 
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `true`
 
@@ -834,7 +878,7 @@ Sync user attributes when someone logs in via LDAP.
 
 ### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"userPassword,dn,distinguishedName"`
 
@@ -854,9 +898,16 @@ Default: `"(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"`
 
 User lookup filter. The placeholder `{login}` will be replaced by the user supplied login.
 
+### `MB_LOAD_ANALYTICS_CONTENT`
+
+Type: Boolean<br>
+Default: True
+
+If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+
 ### `MB_LOADING_MESSAGE`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string (`"doing-science"`, `"running-query"`, `"loading-results"`)<br>
 Default: `"doing-science."`<br>
 Since: v44.0
@@ -878,14 +929,31 @@ Since: v44.1
 
 Matching style for native query editor's autocomplete. Larger instances can have performance issues matching using `substring`, so can use `prefix` matching, or turn autocompletions `off`.
 
+### `MB_NO_SURVEYS`
+
+Type: boolean<br>
+Default: `false`<br>
+
+Metabase will send a sentiment survey to people who create a number of questions and dashboards to gauge how well the product is doing with respect to making things easy for creators.
+
+Metabase will only send these emails to people who have in the past 2 months:
+
+- Created at least 10 questions total
+- Created at least 2 SQL questions
+- Created at least 1 dashboard
+
+If you're whitelabeling Metabase, these survey emails will only be sent to admins for that instance who meet that criteria.
+
+If you don't want Metabase to send these emails, set `MB_NO_SURVEYS=true`.
+
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`<br>
 Since: v42.0
 
-The base URL where dashboard notitification links will point to instead of the Metabase base URL. Only applicable for users who utilize FullApp embedding and subscriptions.
+The base URL where dashboard notitification links will point to instead of the Metabase base URL. Only applicable for users who utilize interactive embedding and subscriptions.
 
 ### `MB_NOTIFICATION_RETRY_INITIAL_INTERVAL`
 
@@ -1036,7 +1104,7 @@ Connection timezone to use when executing queries. Defaults to system timezone.
 
 ### `MB_SAML_APPLICATION_NAME`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"Metabase"`
 
@@ -1044,7 +1112,7 @@ This application name will be used for requests to the Identity Provider.
 
 ### `MB_SAML_ATTRIBUTE_EMAIL`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"`
 
@@ -1052,7 +1120,7 @@ SAML attribute for the user's email address.
 
 ### `MB_SAML_ATTRIBUTE_FIRSTNAME`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"`
 
@@ -1060,7 +1128,7 @@ SAML attribute for the user's first name.
 
 ### `MB_SAML_ATTRIBUTE_GROUP`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"member_of"`
 
@@ -1068,7 +1136,7 @@ SAML attribute for group syncing.
 
 ### `MB_SAML_ATTRIBUTE_LASTNAME`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"`
 
@@ -1076,7 +1144,7 @@ SAML attribute for the user's last name.
 
 ### `MB_SAML_ENABLED`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `false`
 
@@ -1084,7 +1152,7 @@ When set to `true`, will enable SAML authentication with the options configured 
 
 ### `MB_SAML_GROUP_MAPPINGS`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"{}"`
 
@@ -1092,7 +1160,7 @@ JSON object containing SAML to Metabase group mappings. Should be in the form: `
 
 ### `MB_SAML_GROUP_SYNC`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `false`
 
@@ -1100,7 +1168,7 @@ Enable group membership synchronization with SAML.
 
 ### `MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
@@ -1108,7 +1176,7 @@ Encoded certificate for the identity provider, provided as the content, not a fi
 
 ### `MB_SAML_IDENTITY_PROVIDER_ISSUER`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
@@ -1116,7 +1184,7 @@ This is a unique identifier for the IdP. Often referred to as Entity ID or simpl
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
@@ -1124,7 +1192,7 @@ This is the URL where your users go to log in to your identity provider. Dependi
 
 ### `MB_SAML_KEYSTORE_ALIAS`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"metabase"`
 
@@ -1132,7 +1200,7 @@ Alias for the key that Metabase should use for signing SAML requests.
 
 ### `MB_SAML_KEYSTORE_PASSWORD`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `"changeit"`
 
@@ -1140,7 +1208,7 @@ Password for opening the KeyStore.
 
 ### `MB_SAML_KEYSTORE_PATH`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`
 
@@ -1166,7 +1234,7 @@ Also, this variable controls the geocoding service that Metabase uses to know th
 
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `true`
 
@@ -1174,15 +1242,13 @@ Send email notifications to users in Admin group, when a new SSO users is create
 
 ### `MB_SESSION_COOKIE_SAMESITE`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string (`"none"`, `"lax"`, `"strict"`)<br>
 Default: `"lax"`
 
-When using FullApp embedding, and the embedding website is hosted under a domain other than the one your Metabase instance is hosted under, you most likely need to set it to `"none"`.
+See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
 
-Setting the variable to `"none"` requires you to use HTTPS, otherwise browsers will reject the request.
-
-Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
 
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
 
@@ -1199,7 +1265,7 @@ Also see the [Changing session expiration](../people-and-groups/changing-session
 
 ### `MB_SESSION_TIMEOUT`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`<br>
 Since: v44.0
@@ -1238,7 +1304,7 @@ Hide the X-rays section from the homepage by setting it to `false`. Show the sec
 
 ### `MB_SHOW_LIGHTHOUSE_ILLUSTRATION`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `true`<br>
 Since: v44.0
@@ -1247,7 +1313,7 @@ Display the lighthouse illustration on the home and login pages.
 
 ### `MB_SHOW_METABOT`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: boolean<br>
 Default: `true`<br>
 Since: v44.0
@@ -1259,7 +1325,7 @@ Display the MetaBot character on the home page.
 Type: string<br>
 Default: `"en"`
 
-The default language for this Metabase instance. This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface.
+The default language for this Metabase instance. This setting applies to the Metabase UI, system emails, [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/sharing/alerts.md). People can override the default language from their [account settings](../people-and-groups/account-settings.md).
 
 ### `MB_SITE_NAME`
 
@@ -1294,6 +1360,14 @@ Default: `"metabase_files"`<br>
 Since: v42.0
 
 Set the system files channel used by Metabase to store images. This channel has to be public, and is not intended to be used by humans. The Slack App has to be invited into this channel.
+
+### `MB_JETTY_SKIP_SNI`
+
+Type: string<br>
+Default: `"false"`<br>
+Since: v48.4
+
+Setting `MB_JETTY_SKIP_SNI=false` (the default setting) enables the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this default enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=true`, or use another SSL certificate that exactly matches the domain name of the server.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 
@@ -1334,9 +1408,18 @@ This will affect things like grouping by week or filtering in GUI queries. It wo
 
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 
-Only available in [some plans](https://www.metabase.com/pricing)<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: string<br>
 Default: `null`<br>
 Since: v41.0
 
 Allowed email address domain(s) for new Subscriptions and Alerts. Specify multiple domain comma-separated. When not defined, all domains are allowed.
+
+### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 2000
+
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575, and less than the number configured in `MB_AGGREGATED_QUERY_ROW_LIMIT`. This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+
+See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).

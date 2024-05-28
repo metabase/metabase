@@ -1,10 +1,11 @@
-import React from "react";
-import { IconProps } from "../Icon";
+import type * as React from "react";
+
+import type { IconName, IconProps } from "metabase/ui";
 
 export interface ITreeNodeItem {
   id: string | number;
   name: string;
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children?: ITreeNodeItem[];
 }
 

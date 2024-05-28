@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Responsive as ReactGridLayout } from "react-grid-layout";
 
 import "react-grid-layout/css/styles.css";
@@ -7,7 +7,7 @@ import "react-resizable/css/styles.css";
 
 import { generateGridBackground } from "./utils";
 
-function GridLayout({
+export function GridLayout({
   items,
   itemRenderer,
   breakpoints,
@@ -133,5 +133,3 @@ function GridLayout({
     </ReactGridLayout>
   );
 }
-
-export default GridLayout;

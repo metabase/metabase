@@ -1,0 +1,58 @@
+body {
+  background-color: transparent;
+}
+
+.EmbedFrame {
+  background-color: white;
+}
+
+.EmbedFrameHeader,
+.EmbedFrameFooter {
+  color: var(--mb-color-text-dark);
+  background-color: white;
+}
+
+.ThemeNight.EmbedFrame {
+  background-color: var(--mb-color-bg-black);
+  border-color: var(--color-bg-dark);
+}
+
+.ThemeNight .EmbedFrameHeader,
+.ThemeNight .EmbedFrameFooter {
+  color: color-mod(var(--color-text-white) alpha(-14%));
+  background-color: var(--mb-color-bg-black);
+  border-color: var(--color-bg-dark);
+}
+
+.ThemeNight.EmbedFrame .fullscreenNightText {
+  color: color-mod(var(--color-text-white) alpha(-14%));
+  transition: color 1s linear;
+}
+
+.ThemeNight.EmbedFrame svg text {
+  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  stroke: none !important;
+}
+
+.ThemeNight.EmbedFrame .DashCard .Card {
+  background-color: var(--mb-color-bg-black);
+  border: 1px solid var(--color-bg-dark);
+}
+
+.ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),
+.ThemeNight.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
+  fill: currentColor;
+}
+
+.ThemeTransparent.EmbedFrame {
+  background-color: transparent;
+}
+
+.ThemeTransparent .EmbedFrameHeader,
+.ThemeTransparent .EmbedFrameFooter {
+  background-color: transparent;
+}
+
+.ThemeTransparent.EmbedFrame .DashCard .Card {
+  background-color: transparent;
+}

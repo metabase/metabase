@@ -1,16 +1,15 @@
-import React, { useRef } from "react";
-import Questions from "metabase/entities/questions";
+import { useRef } from "react";
+
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+import Questions from "metabase/entities/questions";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 
 export interface PinnedQuestionLoaderProps {
   id: number;
-  metadata: Metadata;
   children: (props: PinnedQuestionChildrenProps) => JSX.Element;
 }
 
@@ -24,7 +23,7 @@ export interface PinnedQuestionChildrenProps {
 
 export interface QuestionLoaderProps {
   loading: boolean;
-  question: any;
+  question: Question;
 }
 
 export interface QuestionResultLoaderProps {
@@ -37,19 +36,18 @@ export interface QuestionResultLoaderProps {
 
 const PinnedQuestionLoader = ({
   id,
-  metadata,
   children,
 }: PinnedQuestionLoaderProps): JSX.Element => {
   const questionRef = useRef<Question>();
 
   return (
     <Questions.Loader id={id} loadingAndErrorWrapper={false}>
-      {({ loading, question: card }: QuestionLoaderProps) => {
-        if (loading || !card.dataset_query) {
+      {({ loading, question: loadedQuestion }: QuestionLoaderProps) => {
+        if (loading !== false) {
           return children({ loading: true });
         }
 
-        const question = questionRef.current ?? new Question(card, metadata);
+        const question = questionRef.current ?? loadedQuestion;
         questionRef.current = question;
 
         return (
@@ -115,4 +113,5 @@ const getErrorIcon = (error?: any, result?: any) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedQuestionLoader;

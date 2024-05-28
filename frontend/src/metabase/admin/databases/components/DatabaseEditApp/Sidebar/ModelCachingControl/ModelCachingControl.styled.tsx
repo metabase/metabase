@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const ControlContainer = styled.div`
   display: flex;

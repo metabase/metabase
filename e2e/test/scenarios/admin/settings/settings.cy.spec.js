@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   openOrdersTable,
@@ -6,28 +8,44 @@ import {
   setupMetabaseCloud,
   isOSS,
   isEE,
+  setTokenFeatures,
+  undoToast,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > admin > settings", () => {
+describeWithSnowplow("scenarios > admin > settings", () => {
   beforeEach(() => {
+    resetSnowplow();
     restore();
     cy.signInAsAdmin();
   });
 
   it(
-    "should prompt admin to migrate to the hosted instance",
+    "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
       cy.onlyOn(isOSS);
       cy.visit("/admin/settings/setup");
-      cy.findByText("Have your server maintained for you.");
-      cy.findByText("Migrate to Metabase Cloud.");
-      cy.findAllByRole("link", { name: "Learn more" })
-        .should("have.attr", "href")
-        .and("include", "/migrate/");
+
+      cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
+      expectGoodSnowplowEvent({
+        event: "upsell_viewed",
+        promoted_feature: "hosting",
+      });
+      cy.findByTestId("upsell-card")
+        .findAllByRole("link", { name: "Learn more" })
+        .click();
+      // link opens in new tab
+      expectGoodSnowplowEvent({
+        event: "upsell_clicked",
+        promoted_feature: "hosting",
+      });
+      expectNoBadSnowplowEvents();
     },
   );
 
@@ -57,7 +75,7 @@ describe("scenarios > admin > settings", () => {
     //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
     cy.log("Making sure we display an error message in UI");
     // Same reasoning for regex as above
-    cy.get(".SaveStatus").contains(/^Error: Invalid site URL/);
+    undoToast().contains(/^Error: Invalid site URL/);
   });
 
   it("should save a setting", () => {
@@ -69,6 +87,7 @@ describe("scenarios > admin > settings", () => {
     // rather than aliasing it with .as()
     const emailInput = () =>
       cy
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         .contains("Email Address for Help Requests")
         .parent()
         .parent()
@@ -97,10 +116,13 @@ describe("scenarios > admin > settings", () => {
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     // settings have loaded, but there's no redirect setting visible
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Site URL");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Redirect to HTTPS").should("not.exist");
 
     // switch site url to use https
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Site URL")
       .parent()
       .parent()
@@ -109,6 +131,7 @@ describe("scenarios > admin > settings", () => {
     popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
     restore(); // avoid leaving https site url
@@ -121,6 +144,7 @@ describe("scenarios > admin > settings", () => {
       req.reply({ forceNetworkError: true });
     }).as("httpsCheck");
     // switch site url to use https
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Site URL")
       .parent()
       .parent()
@@ -129,6 +153,7 @@ describe("scenarios > admin > settings", () => {
     popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("It looks like HTTPS is not properly configured");
   });
 
@@ -141,48 +166,86 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    cy.findByText("January 7, 2018").click({ force: true });
-    cy.findByText("2018/1/7").click({ force: true });
-    cy.wait("@saveFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("January 31, 2018")
+      .click({ force: true });
 
-    cy.findByText("17:24 (24-hour clock)").click();
+    popover().findByText("2018/1/31").click({ force: true });
+    cy.wait("@saveFormatting");
+
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/31");
+
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("17:24 (24-hour clock)")
+      .click();
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
-      .and("contain", "2019/2/11, 21:40");
+      .and("contain", "2025/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
 
-    cy.findByText("5:24 PM (12-hour clock)").click();
+    cy.findByTestId("custom-formatting-setting")
+      .findByText("5:24 PM (12-hour clock)")
+      .click();
+
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("h:mm A").should("be.checked");
 
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
+  });
+
+  it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
+    // Set the semantic type of total to currency
+    cy.request("PUT", `/api/field/${ORDERS.TOTAL}`, {
+      semantic_type: "type/Currency",
+    });
+
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.TOTAL}/formatting`,
+    );
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      // Assert that this option now exists
+      cy.findByText("Where to display the unit of currency");
+      cy.findByText("In every table cell").click();
+    });
+
+    // Open the orders table
+    openOrdersTable({ limit: 2 });
+
+    cy.get("#main-data-grid").within(() => {
+      // Items in the total column should have a leading dollar sign
+      cy.findByText("$39.72");
+      cy.findByText("$117.03");
+    });
   });
 
   it("should search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
 
     cy.visit("/admin/settings/localization");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Report Timezone")
       .closest("li")
       .findByTestId("report-timezone-select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("US/Central").click({ force: true });
 
     cy.wait("@reportTimezone");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("US/Central");
   });
 
@@ -210,8 +273,11 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/general");
 
     cy.wait("@appSettings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("We're a little lost...").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site name/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site URL/i);
   });
 
@@ -219,14 +285,16 @@ describe("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      const lastItem = isEE ? "Appearance" : "Metabot";
+      isEE && setTokenFeatures("all");
+
+      const lastItem = isOSS ? "Cloud" : "Appearance";
 
       cy.visit("/admin/settings/setup");
-      cy.get(".AdminList .AdminList-item")
-        .as("settingsOptions")
-        .first()
-        .contains("Setup");
-      cy.get("@settingsOptions").last().contains(lastItem);
+      cy.findByTestId("admin-list-settings-items").within(() => {
+        cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
+        cy.get("@settingsOptions").first().contains("Setup");
+        cy.get("@settingsOptions").last().contains(lastItem);
+      });
     },
   );
 
@@ -235,10 +303,14 @@ describe("scenarios > admin > settings", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Site Name");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Site URL").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Updates").should("not.exist");
   });
 
@@ -247,6 +319,7 @@ describe("scenarios > admin > settings", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
   });
@@ -255,6 +328,7 @@ describe("scenarios > admin > settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
       cy.findByLabelText("Public channel to store image files").type(
@@ -262,6 +336,7 @@ describe("scenarios > admin > settings", () => {
       );
       cy.button("Save changes").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(": invalid token");
     });
   });
@@ -277,6 +352,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   it("should show the store link when running Metabase OSS", () => {
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon");
   });
@@ -286,6 +362,7 @@ describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
@@ -293,13 +370,16 @@ describeEE("scenarios > admin > settings (EE)", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Site Name");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Enterprise").should("not.exist");
   });
 
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
   });

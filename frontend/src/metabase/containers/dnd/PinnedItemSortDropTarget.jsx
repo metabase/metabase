@@ -1,9 +1,10 @@
-import { DropTarget } from "react-dnd";
 import PropTypes from "prop-types";
+import { DropTarget } from "react-dnd";
 
 import { isItemPinned } from "metabase/collections/utils";
 
 import DropArea from "./DropArea";
+
 import { PinnableDragTypes } from ".";
 
 const PinnedItemSortDropTarget = DropTarget(

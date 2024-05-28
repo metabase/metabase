@@ -1,5 +1,5 @@
-import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Children, Component } from "react";
 import ReactDOM from "react-dom";
 
 import {
@@ -58,6 +58,6 @@ export default class OnClickOutsideWrapper extends Component {
   };
 
   render() {
-    return React.Children.only(this.props.children);
+    return Children.only(this.props.children);
   }
 }

@@ -1,23 +1,42 @@
-import React, { ComponentPropsWithoutRef } from "react";
-import _ from "underscore";
 import userEvent from "@testing-library/user-event";
-import { render, screen, getIcon } from "__support__/ui";
+import type { ComponentPropsWithoutRef } from "react";
+import _ from "underscore";
 
-import { Card, Series } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import { render, screen, getIcon, queryIcon } from "__support__/ui";
+import type { Card, Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+} from "metabase-types/api/mocks";
+
 import ChartCaption from "./ChartCaption";
 
 type Props = ComponentPropsWithoutRef<typeof ChartCaption>;
 
 const getSeries = ({ card }: { card?: Card } = {}): Series => {
   const cols = [
-    { name: "col 1", display_name: "col 1", source: "source" },
-    { name: "col 2", display_name: "col 2", source: "source" },
+    createMockColumn({
+      name: "col 1",
+      display_name: "col 1",
+      source: "source",
+    }),
+    createMockColumn({
+      name: "col 2",
+      display_name: "col 2",
+      source: "source",
+    }),
   ];
   const series: Series = [
     {
       card: card ?? createMockCard({ name: "" }),
-      data: { rows: [["foo", 1]], cols, rows_truncated: 0 },
+      ...createMockDataset({
+        data: {
+          rows: [["foo", 1]],
+          cols,
+          rows_truncated: 0,
+        },
+      }),
     },
   ];
 
@@ -29,6 +48,7 @@ const setup = (props: Partial<Props> = {}) => {
     series = getSeries(),
     onChangeCardAndRun = _.noop,
     settings = {},
+    width = 200,
   } = props;
 
   render(
@@ -36,19 +56,20 @@ const setup = (props: Partial<Props> = {}) => {
       series={series}
       onChangeCardAndRun={onChangeCardAndRun}
       settings={settings}
+      width={width}
       {...props}
     />,
   );
 };
 
 describe("ChartCaption", () => {
-  it("shouldn't render without title", () => {
+  it("should render without a title (metabase#36788)", () => {
     setup();
 
-    expect(screen.queryByTestId("legend-caption")).not.toBeInTheDocument();
+    expect(screen.getByTestId("legend-caption")).toBeInTheDocument();
   });
 
-  it("should render with title", () => {
+  it("should render with a title", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
       settings: { "card.description": "description" },
@@ -57,16 +78,26 @@ describe("ChartCaption", () => {
     expect(screen.getByTestId("legend-caption")).toBeInTheDocument();
   });
 
-  it("should render markdown in description", () => {
+  it("should render markdown in description", async () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
-      settings: { "card.description": "# header" },
+      settings: { "card.description": "[link](https://metabase.com)" },
     });
 
-    userEvent.hover(getIcon("info"));
+    await userEvent.hover(getIcon("info"));
 
-    const tooltipContent = screen.getByRole("heading");
+    const tooltipContent = screen.getByRole("link");
     expect(tooltipContent).toBeInTheDocument();
-    expect(tooltipContent).toHaveTextContent("header");
+    expect(tooltipContent).toHaveTextContent("link");
+  });
+
+  it("should hide description icon if too narrow", () => {
+    setup({
+      width: 50,
+      series: getSeries({ card: createMockCard({ name: "card name" }) }),
+      settings: { "card.description": "description" },
+    });
+
+    expect(queryIcon("info")).not.toBeInTheDocument();
   });
 });

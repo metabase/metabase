@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import cx from "classnames";
+import { Component } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
+import CS from "metabase/css/core/index.css";
 
 const DEBOUNCE_PERIOD = 300;
 
@@ -14,7 +14,7 @@ const DEBOUNCE_PERIOD = 300;
  * We also fade the component out and block mouse events while it's transitioning
  */
 
-class DebouncedFrame extends React.Component {
+class DebouncedFrame extends Component {
   // NOTE: don't keep `_transition` in component state because we don't want to trigger a rerender when we update it
   // Instead manually modify the style in _updateTransitionStyle
   // There's probably a better way to block renders of children though
@@ -90,14 +90,14 @@ class DebouncedFrame extends React.Component {
     return (
       <div
         ref={r => (this._container = r)}
-        className={cx(className, "relative")}
+        className={cx(className, CS.relative)}
         style={{
           overflow: "hidden",
           transition: "opacity 0.25s",
           ...style,
         }}
       >
-        <div className="absolute" style={{ width, height }}>
+        <div className={CS.absolute} style={{ width, height }}>
           {children}
         </div>
       </div>

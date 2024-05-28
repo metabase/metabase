@@ -1,31 +1,28 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { useMount } from "react-use";
-
-import { getHasDataAccess } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
+import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
-
-import type { Database, DatabaseId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
+import { getHasDataAccess } from "metabase/selectors/data";
+import { getSetting } from "metabase/selectors/settings";
+import type Database from "metabase-lib/v1/metadata/Database";
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/metadata/utils/saved-questions";
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { DatabaseId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
+import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
+import DataPickerView from "./DataPickerView";
+import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
 import type {
   DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
 } from "./types";
-
-import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
-import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
-
-import DataPickerView from "./DataPickerView";
+import { getDataTypes } from "./utils";
 
 interface DataPickerStateProps {
   hasNestedQueriesEnabled: boolean;
@@ -81,6 +78,7 @@ function DataPicker({
   const dataTypes = useMemo(
     () =>
       getDataTypes({
+        hasMetrics: false,
         hasModels: modelLookupResult.length > 0,
         hasSavedQuestions: allDatabases.some(
           database => database.is_saved_questions,
@@ -161,7 +159,7 @@ const DataPickerContainer = _.compose(
   // at least one model, to offer for selection
   Search.loadList({
     query: {
-      models: "dataset",
+      models: ["dataset"],
       limit: 1,
     },
   }),
@@ -169,6 +167,7 @@ const DataPickerContainer = _.compose(
   connect(mapStateToProps),
 )(DataPicker);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DataPickerContainer, {
   Provider: DataPickerContextProvider,
 });

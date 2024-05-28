@@ -12,24 +12,22 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
-  {name         su/NonBlankString
-   description  (s/maybe s/Str)
-   timestamp    su/TemporalString
-   time_matters (s/maybe s/Bool)
-   timezone     s/Str
-   icon         (s/maybe timeline/Icons)
-   timeline_id  su/IntGreaterThanZero
-   source       (s/maybe timeline-event/Sources)
-   question_id  (s/maybe su/IntGreaterThanZero)
-   archived     (s/maybe s/Bool)}
+  {name         ms/NonBlankString
+   description  [:maybe :string]
+   timestamp    ms/TemporalString
+   time_matters [:maybe :boolean]
+   timezone     :string
+   icon         [:maybe timeline-event/Icon]
+   timeline_id  ms/PositiveInt
+   source       [:maybe timeline-event/Source]
+   question_id  [:maybe ms/PositiveInt]
+   archived     [:maybe :boolean]}
   ;; deliberately not using api/check-404 so we can have a useful error message.
   (let [timeline (t2/select-one Timeline :id timeline_id)]
     (when-not timeline
@@ -53,40 +51,40 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (first (t2/insert-returning-instances! TimelineEvent tl-event)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
+  {id ms/PositiveInt}
   (api/read-check TimelineEvent id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
             :as   timeline-event-updates} :body}]
-  {name         (s/maybe su/NonBlankString)
-   description  (s/maybe s/Str)
-   timestamp    (s/maybe su/TemporalString)
-   time_matters (s/maybe s/Bool)
-   timezone     (s/maybe s/Str)
-   icon         (s/maybe timeline/Icons)
-   timeline_id  (s/maybe su/IntGreaterThanZero)
-   archived     (s/maybe s/Bool)}
+  {id           ms/PositiveInt
+   name         [:maybe ms/NonBlankString]
+   description  [:maybe :string]
+   timestamp    [:maybe ms/TemporalString]
+   time_matters [:maybe :boolean]
+   timezone     [:maybe :string]
+   icon         [:maybe timeline-event/Icon]
+   timeline_id  [:maybe ms/PositiveInt]
+   archived     [:maybe :boolean]}
   (let [existing (api/write-check TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (t2/update! TimelineEvent id
-      (u/select-keys-when timeline-event-updates
-        :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-        :non-nil #{:name}))
+                (u/select-keys-when timeline-event-updates
+                                    :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
+                                    :non-nil #{:name}))
     (t2/select-one TimelineEvent :id id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]
+  {id ms/PositiveInt}
   (api/write-check TimelineEvent id)
   (t2/delete! TimelineEvent :id id)
   api/generic-204-no-content)

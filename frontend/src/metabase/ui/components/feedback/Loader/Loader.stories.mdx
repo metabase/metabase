@@ -1,0 +1,69 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Grid, Text } from "metabase/ui";
+import { Loader } from "./";
+
+export const args = {
+  size: "md",
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "sm", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+};
+
+<Meta
+  title="Feedback/Loader"
+  component={Loader}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Loader
+
+Our themed wrapper around [Mantine Loader](https://v6.mantine.dev/core/loader/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/NUXRUa9Ot3HvgC1WwIA4UH/Loader?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Loader Docs](https://v6.mantine.dev/core/loader/)
+
+## Caveats
+
+- Only use the `oval` variant unless otherwise called out
+- Prefer usage of loader sizes less than `xl` unless specifically called out
+
+## Examples
+
+export const DefaultTemplate = args => <Loader {...args} />;
+
+export const SizeTemplate = args => (
+  <Grid w="10rem" columns={2} align="center">
+    {argTypes.size.options.map(size => (
+      <Fragment key={size}>
+        <Grid.Col span={1} align="center">
+          <Text weight="bold">{size}</Text>
+        </Grid.Col>
+        <Grid.Col span={1} align="center">
+          <Loader size={size} />
+        </Grid.Col>
+      </Fragment>
+    ))}
+  </Grid>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Sizes
+
+export const Sizes = SizeTemplate.bind({});
+
+<Canvas>
+  <Story name="Sizes">{Sizes}</Story>
+</Canvas>

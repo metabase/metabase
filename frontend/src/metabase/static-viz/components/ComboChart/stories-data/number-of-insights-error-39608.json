@@ -1,0 +1,625 @@
+[
+  {
+    "card": {
+      "original_card_id": 279,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-13T19:53:22.171435Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "regressions",
+        "name": "Regressions",
+        "personal_owner_id": null,
+        "type": null,
+        "id": 17,
+        "entity_id": "5GNXgVzQTdQp5bxa6D_aa",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-13T22:30:37.083713Z"
+      },
+      "visualization_settings": {
+        "table.pivot_column": "subtype2",
+        "table.cell_column": "hp",
+        "graph.show_trendline": true,
+        "graph.dimensions": ["set_release_date"],
+        "graph.metrics": ["avg", "avg_3"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-03-13T19:54:16.095469Z"
+      },
+      "collection_preview": true,
+      "entity_id": "5W5Ac54xh4Dupme-ChrjV",
+      "display": "line",
+      "parameter_mappings": [],
+      "id": 279,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "avg",
+              [
+                "field",
+                "hp",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                "average_price",
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                "set_total",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "set_release_date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "year"
+              }
+            ]
+          ],
+          "source-table": "card__71"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-13T19:54:15.883514Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 404,
+      "type": "question",
+      "dashboard_count": 2,
+      "last_query_start": "2024-03-13T19:58:16.646998Z",
+      "name": "Combo - #39608 chart errors when number of insight objects does not match number of series ",
+      "query_type": "query",
+      "collection_id": 17,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-03-08T20:14:19.465128Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "set_release_date",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1279,
+            {
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "id": 1279,
+          "visibility_type": "normal",
+          "display_name": "Set Release Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 127,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "1999-01-09",
+                "latest": "2023-09-22"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "display_name": "Average of Hp",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "avg",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 25,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 59.60919540229885,
+                "q1": 70.54863468769393,
+                "q3": 116.13171104503542,
+                "max": 143.0500582072177,
+                "sd": 26.946076622655706,
+                "avg": 94.18076866067233
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Average Price",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "avg_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 25,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 2.3497245762711847,
+                "q1": 3.6576124908681056,
+                "q3": 10.708645127053936,
+                "max": 18.29532769556025,
+                "sd": 4.338582329545646,
+                "avg": 6.809256968545854
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Set Total",
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "avg_3",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 25,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 64.81132075471699,
+                "q1": 108.5369850187266,
+                "q3": 176.82033420056763,
+                "max": 230.9549795361528,
+                "sd": 44.0957183663446,
+                "avg": 136.56036281841952
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 137,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [
+          "1999-01-01T00:00:00-08:00",
+          62.333333333333336,
+          12.188239999999983,
+          75.27758007117438
+        ],
+        [
+          "2000-01-01T00:00:00-08:00",
+          59.60919540229885,
+          6.7871379897785395,
+          120.67687074829932
+        ],
+        [
+          "2001-01-01T00:00:00-08:00",
+          61.266666666666666,
+          11.983856209150318,
+          64.81132075471699
+        ],
+        [
+          "2002-01-01T00:00:00-08:00",
+          65.46783625730994,
+          13.260026178010468,
+          131.42317380352645
+        ],
+        [
+          "2003-01-01T00:00:00-08:00",
+          68.75605815831987,
+          12.23617117117116,
+          139.87237026647966
+        ],
+        [
+          "2004-01-01T00:00:00-08:00",
+          70.75566750629723,
+          10.283574766355143,
+          99.52267818574514
+        ],
+        [
+          "2005-01-01T00:00:00-08:00",
+          69.92753623188406,
+          18.29532769556025,
+          116.9511201629328
+        ],
+        [
+          "2006-01-01T00:00:00-08:00",
+          70.80103359173127,
+          12.649247058823526,
+          90.792656587473
+        ],
+        [
+          "2007-01-01T00:00:00-08:00",
+          77.10317460317461,
+          7.108639053254434,
+          111.43493150684931
+        ],
+        [
+          "2008-01-01T00:00:00-08:00",
+          78.2247191011236,
+          2.4633054393305436,
+          110.5
+        ],
+        [
+          "2009-01-01T00:00:00-08:00",
+          81.01593625498008,
+          3.8290272373540875,
+          124.29818181818182
+        ],
+        [
+          "2010-01-01T00:00:00-08:00",
+          81.81102362204724,
+          2.6711435523114364,
+          100.47152619589977
+        ],
+        [
+          "2011-01-01T00:00:00-08:00",
+          87.14893617021276,
+          3.955113871635613,
+          102.64794007490637
+        ],
+        [
+          "2012-01-01T00:00:00-08:00",
+          93.47916666666667,
+          5.185030674846629,
+          119.90151515151516
+        ],
+        [
+          "2013-01-01T00:00:00-08:00",
+          104.49704142011835,
+          6.440876436781606,
+          148.32894736842104
+        ],
+        [
+          "2014-01-01T00:00:00-08:00",
+          98.78281622911695,
+          2.3497245762711847,
+          122.39525691699605
+        ],
+        [
+          "2015-01-01T00:00:00-08:00",
+          106.16977225672878,
+          3.971716417910448,
+          132.76360544217687
+        ],
+        [
+          "2016-01-01T00:00:00-08:00",
+          106.32860040567951,
+          3.1399658703071647,
+          118.3931484502447
+        ],
+        [
+          "2017-01-01T00:00:00-08:00",
+          125.7327080890973,
+          4.443595263724427,
+          178.989
+        ],
+        [
+          "2018-01-01T00:00:00-08:00",
+          112.94642857142857,
+          5.328214731585509,
+          180.98819362455725
+        ],
+        [
+          "2019-01-01T00:00:00-08:00",
+          135.13899920571882,
+          6.355325936199717,
+          230.9549795361528
+        ],
+        [
+          "2020-01-01T00:00:00-08:00",
+          130.96,
+          2.500065861690454,
+          195.15536105032822
+        ],
+        [
+          "2021-01-01T00:00:00-08:00",
+          137.5249500998004,
+          5.765554614733284,
+          204.38359569179784
+        ],
+        [
+          "2022-01-01T00:00:00-08:00",
+          143.0500582072177,
+          3.897175355450247,
+          176.09744560075686
+        ],
+        [
+          "2023-01-01T00:00:00-08:00",
+          125.68755846585594,
+          3.14336825141016,
+          216.97767145135566
+        ]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 137,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "set_release_date",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1279,
+            {
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTimeWithLocalTZ",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1279,
+          "position": 18,
+          "visibility_type": "normal",
+          "display_name": "Set Release Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 127,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "1999-01-09",
+                "latest": "2023-09-22"
+              }
+            }
+          },
+          "base_type": "type/DateTimeWithLocalTZ"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Decimal",
+          "name": "avg",
+          "display_name": "Average of Hp",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Decimal"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg_2",
+          "display_name": "Average of Average Price",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Decimal",
+          "name": "avg_3",
+          "display_name": "Average of Set Total",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "aggregation_index": 2,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"source\".\"set_release_date\") AS \"set_release_date\", AVG(\"source\".\"hp\") AS \"avg\", AVG(\"source\".\"average_price\") AS \"avg_2\", AVG(\"source\".\"set_total\") AS \"avg_3\" FROM (SELECT \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"image_small\" AS \"image_small\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"number\" AS \"number\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"supertype\" AS \"supertype\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"subtype1\" AS \"subtype1\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"subtype2\" AS \"subtype2\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"type1\" AS \"type1\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"type2\" AS \"type2\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"hp\" AS \"hp\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"evolves_from\" AS \"evolves_from\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"evolves_to\" AS \"evolves_to\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"retreat_cost\" AS \"retreat_cost\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_id\" AS \"set_id\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_name\" AS \"set_name\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_series\" AS \"set_series\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_printed_total\" AS \"set_printed_total\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_total\" AS \"set_total\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_release_date\" AS \"set_release_date\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_unlimited_legal\" AS \"set_unlimited_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_standard_legal\" AS \"set_standard_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_expanded_legal\" AS \"set_expanded_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_ptcgo_code\" AS \"set_ptcgo_code\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_symbol_image\" AS \"set_symbol_image\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"set_logo_image\" AS \"set_logo_image\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"artist\" AS \"artist\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"rarity\" AS \"rarity\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"image_large\" AS \"image_large\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"flavor_text\" AS \"flavor_text\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"pokedex_number\" AS \"pokedex_number\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"unlimited_legal\" AS \"unlimited_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"standard_legal\" AS \"standard_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"expanded_legal\" AS \"expanded_legal\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"regulation_mark\" AS \"regulation_mark\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"tcgplayer_url\" AS \"tcgplayer_url\", \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\".\"average_price\" AS \"average_price\" FROM \"csv_upload_data\".\"csv_upload_pokemon_cards_20230927_20231121133434\") AS \"source\" GROUP BY DATE_TRUNC('year', \"source\".\"set_release_date\") ORDER BY DATE_TRUNC('year', \"source\".\"set_release_date\") ASC",
+        "params": null
+      },
+      "results_timezone": "America/Los_Angeles",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "set_release_date",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1279,
+              {
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTimeWithLocalTZ",
+            "id": 1279,
+            "visibility_type": "normal",
+            "display_name": "Set Release Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 127,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "1999-01-09",
+                  "latest": "2023-09-22"
+                }
+              }
+            },
+            "base_type": "type/DateTimeWithLocalTZ"
+          },
+          {
+            "display_name": "Average of Hp",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "avg",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 59.60919540229885,
+                  "q1": 70.54863468769393,
+                  "q3": 116.13171104503542,
+                  "max": 143.0500582072177,
+                  "sd": 26.946076622655706,
+                  "avg": 94.18076866067233
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Average Price",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "avg_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 2.3497245762711847,
+                  "q1": 3.6576124908681056,
+                  "q3": 10.708645127053936,
+                  "max": 18.29532769556025,
+                  "sd": 4.338582329545646,
+                  "avg": 6.809256968545854
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Set Total",
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "avg_3",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 25,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 64.81132075471699,
+                  "q1": 108.5369850187266,
+                  "q3": 176.82033420056763,
+                  "max": 230.9549795361528,
+                  "sd": 44.0957183663446,
+                  "avg": 136.56036281841952
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 143.0500582072177,
+          "unit": "year",
+          "offset": -51.07273335892687,
+          "last-change": -0.12137359438338004,
+          "col": "avg",
+          "slope": 0.00969943939501882,
+          "last-value": 125.68755846585594,
+          "best-fit": [
+            "*",
+            19.180373228181978,
+            ["exp", ["*", 0.00010367074913897064, "x"]]
+          ]
+        },
+        {
+          "previous-value": 3.897175355450247,
+          "unit": "year",
+          "offset": 23.11063174525298,
+          "last-change": -0.1934239635858003,
+          "col": "avg_2",
+          "slope": -0.0010885396531150396,
+          "last-value": 3.14336825141016,
+          "best-fit": [
+            "*",
+            12404690089.085602,
+            ["pow", "x", -2.2405493102626295]
+          ]
+        },
+        {
+          "previous-value": 176.09744560075686,
+          "unit": "year",
+          "offset": -61.407762346394605,
+          "last-change": 0.2321454789485209,
+          "col": "avg_3",
+          "slope": 0.013219508001414812,
+          "last-value": 216.97767145135566,
+          "best-fit": [
+            "*",
+            30.932536991716802,
+            ["exp", ["*", 0.0000958670175274292, "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]

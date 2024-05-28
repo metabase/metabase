@@ -1,23 +1,23 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Database Field FieldValues Table]]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.table :as table]
-   [metabase.server.middleware.util :as mw.util]
+   [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,14 +26,16 @@
 ;; authentication test on every single individual endpoint
 
 (deftest unauthenticated-test
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 "table")))
-  (is (= (get mw.util/response-unauthentic :body)
+  (is (= (get req.util/response-unauthentic :body)
          (client/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
+                         :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
+                         :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -43,13 +45,11 @@
     :caveats                     nil
     :points_of_interest          nil
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :cache_field_values_schedule "0 50 0 * * ? *"
-    :metadata_sync_schedule      "0 50 * * * ? *"
-    :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
-    :cache_ttl                   nil}))
+    :cache_ttl                   nil
+    :is_audit                    false}))
 
 (defn- table-defaults []
   (merge
@@ -57,6 +57,7 @@
    {:db          (db-details)
     :entity_type "entity/GenericTable"
     :field_order "database"
+    :view_count  0
     :metrics     []
     :segments    []}))
 
@@ -64,6 +65,7 @@
   (merge
    (mt/object-defaults Field)
    {:default_dimension_option nil
+    :database_indexed         false
     :dimension_options        []
     :dimensions               []
     :position                 0
@@ -82,7 +84,6 @@
   (-> (field-details field)
       (dissoc :dimension_options :default_dimension_option)))
 
-
 (deftest list-table-test
   (testing "GET /api/table"
     (testing "These should come back in alphabetical order and include relevant metadata"
@@ -94,6 +95,22 @@
                 :display_name "Checkins"
                 :id           (mt/id :checkins)
                 :entity_type  "entity/EventTable"}
+               {:name         (mt/format-name "orders")
+                :display_name "Orders"
+                :id           (mt/id :orders)
+                :entity_type  "entity/TransactionTable"}
+               {:name         (mt/format-name "people")
+                :display_name "People"
+                :id           (mt/id :people)
+                :entity_type  "entity/UserTable"}
+               {:name         (mt/format-name "products")
+                :display_name "Products"
+                :id           (mt/id :products)
+                :entity_type  "entity/ProductTable"}
+               {:name         (mt/format-name "reviews")
+                :display_name "Reviews"
+                :id           (mt/id :reviews)
+                :entity_type  "entity/GenericTable"}
                {:name         (mt/format-name "users")
                 :display_name "Users"
                 :id           (mt/id :users)
@@ -105,27 +122,68 @@
              (->> (mt/user-http-request :rasta :get 200 "table")
                   (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
                   (map #(select-keys % [:name :display_name :id :entity_type]))
-                  set))))))
+                  set))))
+    (testing "Schema is \"\" rather than nil, if not set"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {}                {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= [""]
+               (->> (mt/user-http-request :rasta :get 200 "table")
+                    (filter #(= (:db_id %) database-id))
+                    (map :schema))))))))
+
+(defmacro with-tables-as-uploads
+  "Temporarily mark the given tables as uploads, as an alternate to making more expensive or brittle changes to the db."
+  [table-keys & body]
+  `(t2/with-transaction []
+     (let [where-clause# {:id [:in (map mt/id ~table-keys)]}]
+       (try
+         (t2/update! :model/Table where-clause# {:is_upload true})
+         ~@body
+         (finally
+           (t2/update! :model/Table where-clause# {:is_upload false}))))))
 
 (deftest get-table-test
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :venues))
+            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                       :id (mt/id :venues))
+                        :pk_field)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
-             :pk_field     (table/pk-field-id (t2/select-one Table :id (mt/id :venues)))
-             :id           (mt/id :venues)
              :db_id        (mt/id)})
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
 
+    (testing " returns schema as \"\" not nil"
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {table-id :id}    {:db_id        database-id
+                                                 :name         "schemaless_table"
+                                                 :display_name "Schemaless"
+                                                 :entity_type  "entity/GenericTable"
+                                                 :schema       nil}]
+        (is (= (merge
+                 (dissoc (table-defaults) :segments :field_values :metrics :db)
+                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                            :id table-id)
+                             :pk_field)
+                 {:schema       ""
+                  :name         "schemaless_table"
+                  :display_name "Schemaless"
+                  :db_id        database-id})
+               (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
+                       :db)))))
+
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [{table-id :id}    {:db_id database-id}]]
-        (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
+      (mt/with-temp [Database {database-id :id} {}
+                     Table    {table-id :id}    {:db_id database-id}]
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
@@ -138,7 +196,7 @@
                 options)
     (m/map-keys #(Long/parseLong %) options)
     ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-    (mbql.u/replace options :field (mt/obj->json->obj &match))))
+    (lib.util.match/replace options :field (mt/obj->json->obj &match))))
 
 (defn- query-metadata-defaults []
   (-> (table-defaults)
@@ -149,67 +207,68 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
                :entity_type  "entity/UserTable"
                :fields       [(assoc (field-details (t2/select-one Field :id (mt/id :users :id)))
-                                     :semantic_type     "type/PK"
-                                     :table_id         (mt/id :users)
-                                     :name             "ID"
-                                     :display_name     "ID"
-                                     :database_type    "BIGINT"
-                                     :base_type        "type/BigInteger"
-                                     :effective_type   "type/BigInteger"
-                                     :visibility_type  "normal"
-                                     :has_field_values "none"
-                                     :database_required false
+                                     :semantic_type              "type/PK"
+                                     :table_id                   (mt/id :users)
+                                     :name                       "ID"
+                                     :display_name               "ID"
+                                     :database_type              "BIGINT"
+                                     :base_type                  "type/BigInteger"
+                                     :effective_type             "type/BigInteger"
+                                     :visibility_type            "normal"
+                                     :has_field_values           "none"
+                                     :database_required          false
+                                     :database_indexed           true
                                      :database_is_auto_increment true)
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
-                                     :semantic_type             "type/Name"
-                                     :table_id                 (mt/id :users)
-                                     :name                     "NAME"
-                                     :display_name             "Name"
-                                     :database_type            "CHARACTER VARYING"
-                                     :base_type                "type/Text"
-                                     :effective_type           "type/Text"
-                                     :visibility_type          "normal"
-                                     :dimension_options        []
-                                     :default_dimension_option nil
-                                     :has_field_values         "list"
-                                     :position                 1
-                                     :database_position        1
-                                     :database_required        false
+                                     :semantic_type              "type/Name"
+                                     :table_id                   (mt/id :users)
+                                     :name                       "NAME"
+                                     :display_name               "Name"
+                                     :database_type              "CHARACTER VARYING"
+                                     :base_type                  "type/Text"
+                                     :effective_type             "type/Text"
+                                     :visibility_type            "normal"
+                                     :dimension_options          []
+                                     :default_dimension_option   nil
+                                     :has_field_values           "list"
+                                     :position                   1
+                                     :database_position          1
+                                     :database_required          false
                                      :database_is_auto_increment false)
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :last_login)))
-                                     :table_id                 (mt/id :users)
-                                     :name                     "LAST_LOGIN"
-                                     :display_name             "Last Login"
-                                     :database_type            "TIMESTAMP"
-                                     :base_type                "type/DateTime"
-                                     :effective_type           "type/DateTime"
-                                     :visibility_type          "normal"
-                                     :dimension_options        (var-get #'api.table/datetime-dimension-indexes)
-                                     :default_dimension_option (var-get #'api.table/datetime-default-index)
-                                     :has_field_values         "none"
-                                     :position                 2
-                                     :database_position        2
-                                     :database_required        false
+                                     :table_id                   (mt/id :users)
+                                     :name                       "LAST_LOGIN"
+                                     :display_name               "Last Login"
+                                     :database_type              "TIMESTAMP"
+                                     :base_type                  "type/DateTime"
+                                     :effective_type             "type/DateTime"
+                                     :visibility_type            "normal"
+                                     :dimension_options          (var-get #'api.table/datetime-dimension-indexes)
+                                     :default_dimension_option   (var-get #'api.table/datetime-default-index)
+                                     :has_field_values           "none"
+                                     :position                   2
+                                     :database_position          2
+                                     :database_required          false
                                      :database_is_auto_increment false)
                               (assoc (field-details (t2/select-one Field :table_id (mt/id :users), :name "PASSWORD"))
-                                     :semantic_type     "type/Category"
-                                     :table_id         (mt/id :users)
-                                     :name             "PASSWORD"
-                                     :display_name     "Password"
-                                     :database_type    "CHARACTER VARYING"
-                                     :base_type        "type/Text"
-                                     :effective_type   "type/Text"
-                                     :visibility_type  "sensitive"
-                                     :has_field_values "list"
-                                     :position          3
-                                     :database_position 3
-                                     :database_required false
+                                     :semantic_type              "type/Category"
+                                     :table_id                   (mt/id :users)
+                                     :name                       "PASSWORD"
+                                     :display_name               "Password"
+                                     :database_type              "CHARACTER VARYING"
+                                     :base_type                  "type/Text"
+                                     :effective_type             "type/Text"
+                                     :visibility_type            "sensitive"
+                                     :has_field_values           "list"
+                                     :position                   3
+                                     :database_position          3
+                                     :database_required          false
                                      :database_is_auto_increment false)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
@@ -220,7 +279,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -234,6 +293,7 @@
                                      :base_type        "type/BigInteger"
                                      :effective_type   "type/BigInteger"
                                      :has_field_values "none"
+                                     :database_indexed  true
                                      :database_required false
                                      :database_is_auto_increment true)
                               (assoc (field-details (t2/select-one Field :id (mt/id :users :name)))
@@ -272,25 +332,26 @@
     (testing (str "Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated "
                   "`:target`(#3867)")
       ;; create a temp DB with two tables; table-2 has an FK to table-1
-      (mt/with-temp* [Database [db]
-                      Table    [table-1     {:db_id (u/the-id db)}]
-                      Table    [table-2     {:db_id (u/the-id db)}]
-                      Field    [table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
-                      Field    [_table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}]
-                      Field    [_table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]]
-        ;; grant permissions only to table-2
-        (perms/revoke-data-perms! (perms-group/all-users) (u/the-id db))
-        (perms/grant-permissions! (perms-group/all-users) (u/the-id db) (:schema table-2) (u/the-id table-2))
-        ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
-        (is (= #{{:name "id", :target false}
-                 {:name "fk", :target false}}
-               (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
-                      (-> (select-keys field [:name :target])
-                          (update :target boolean))))))))))
+      (mt/with-temp [Database db          {}
+                     Table    table-1     {:db_id (u/the-id db)}
+                     Table    table-2     {:db_id (u/the-id db)}
+                     Field    table-1-id  {:table_id (u/the-id table-1), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                     Field    _table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
+                     Field    _table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]
+        (mt/with-no-data-perms-for-all-users!
+          ;; grant permissions only to table-2
+          (data-perms/set-table-permission! (perms-group/all-users) table-2 :perms/create-queries :query-builder)
+          (data-perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
+          ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
+          (is (= #{{:name "id", :target false}
+                   {:name "fk", :target false}}
+                 (set (for [field (:fields (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (u/the-id table-2))))]
+                        (-> (select-keys field [:name :target])
+                            (update :target boolean)))))))))))
 
 (deftest update-table-test
   (testing "PUT /api/table/:id"
-    (mt/with-temp Table [table]
+    (t2.with-temp/with-temp [Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                             {:display_name    "Userz"
                              :visibility_type "hidden"
@@ -299,17 +360,17 @@
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
                   (update :db merge (select-keys (mt/db) [:details :settings])))
-              (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
+              (t2/hydrate (t2/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table)) :pk_field)
               {:description     "What a nice table!"
                :entity_type     nil
+               :schema          ""
                :visibility_type "hidden"
-               :display_name    "Userz"
-               :pk_field        (table/pk-field-id table)})
+               :display_name    "Userz"})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))
     (testing "Can update description, caveat, points of interest to be empty (#11097)"
       (doseq [property [:caveats :points_of_interest :description]]
-        (mt/with-temp Table [table]
+        (t2.with-temp/with-temp [Table table]
           (is (= ""
                  (get (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                             {property ""})
@@ -317,13 +378,13 @@
 
     (testing "Don't change visibility_type when updating properties (#22287)"
       (doseq [property [:caveats :points_of_interest :description :display_name]]
-        (mt/with-temp Table [table {:visibility_type "hidden"}]
-         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                                                   {property (mt/random-name)})
-         (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
+        (t2.with-temp/with-temp [Table table {:visibility_type "hidden"}]
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                {property (mt/random-name)})
+          (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
 
     (testing "A table can only be updated by a superuser"
-      (mt/with-temp Table [table]
+      (t2.with-temp/with-temp [Table table]
         (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
 
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
@@ -331,7 +392,10 @@
 (deftest update-table-sync-test
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
-      (mt/with-temp Table [table]
+      (t2.with-temp/with-temp [Database db    {:details (:details (mt/db))}
+                               Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                                                  (dissoc :id)
+                                                  (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
               original (var-get #'api.table/sync-unhidden-tables)]
@@ -377,8 +441,8 @@
 
   (testing "Bulk updating visibility"
     (let [unhidden-ids (atom #{})]
-      (mt/with-temp* [Table [{id-1 :id} {}]
-                      Table [{id-2 :id} {:visibility_type "hidden"}]]
+      (mt/with-temp [Table {id-1 :id} {}
+                     Table {id-2 :id} {:visibility_type "hidden"}]
         (with-redefs [api.table/sync-unhidden-tables (fn [unhidden] (reset! unhidden-ids (set (map :id unhidden))))]
           (letfn [(set-many-vis! [ids state]
                     (reset! unhidden-ids #{})
@@ -404,18 +468,21 @@
                  :relationship   "Mt1"
                  :origin         (-> (fk-field-details checkins-user-field)
                                      (dissoc :target :dimensions :values)
-                                     (assoc :table_id      (mt/id :checkins)
-                                            :name          "USER_ID"
-                                            :display_name  "User ID"
-                                            :database_type "INTEGER"
-                                            :base_type     "type/Integer"
-                                            :effective_type "type/Integer"
-                                            :semantic_type  "type/FK"
+                                     (assoc :table_id          (mt/id :checkins)
+                                            :name              "USER_ID"
+                                            :display_name      "User ID"
+                                            :database_type     "INTEGER"
+                                            :base_type         "type/Integer"
+                                            :effective_type    "type/Integer"
+                                            :semantic_type     "type/FK"
                                             :database_position 2
                                             :position          2
+                                            :database_indexed  true
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table
+                                                                            :id :created_at :updated_at
+                                                                            :initial_sync_status :view_count]
                                                               :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -423,23 +490,25 @@
                                                              :entity_type  "entity/EventTable"})))
                  :destination    (-> (fk-field-details users-id-field)
                                      (dissoc :target :dimensions :values)
-                                     (assoc :table_id      (mt/id :users)
-                                            :name          "ID"
-                                            :display_name  "ID"
-                                            :base_type     "type/BigInteger"
-                                            :effective_type "type/BigInteger"
-                                            :database_type "BIGINT"
-                                            :semantic_type  "type/PK"
-                                            :table         (merge
-                                                            (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
-                                                              :id (mt/id :users))
-                                                            {:schema       "PUBLIC"
-                                                             :name         "USERS"
-                                                             :display_name "Users"
-                                                             :entity_type  "entity/UserTable"})))}]
+                                     (assoc :table_id         (mt/id :users)
+                                            :name             "ID"
+                                            :display_name     "ID"
+                                            :base_type        "type/BigInteger"
+                                            :effective_type   "type/BigInteger"
+                                            :database_type    "BIGINT"
+                                            :semantic_type    "type/PK"
+                                            :database_indexed true
+                                            :table            (merge
+                                                               (dissoc (table-defaults) :db :segments :field_values :metrics)
+                                                               (t2/select-one [Table
+                                                                               :id :created_at :updated_at
+                                                                               :initial_sync_status :view_count]
+                                                                 :id (mt/id :users))
+                                                               {:schema       "PUBLIC"
+                                                                :name         "USERS"
+                                                                :display_name "Users"
+                                                                :entity_type  "entity/UserTable"})))}]
                (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))
-
     (testing "should just return nothing for 'virtual' tables"
       (is (= []
              (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
@@ -463,25 +532,48 @@
                               :effective_type    "type/BigInteger"
                               :has_field_values  "none"
                               :database_required false
+                              :database_indexed  true
                               :database_is_auto_increment true})
                             (merge
                              (field-details (t2/select-one Field :id (mt/id :categories :name)))
-                             {:table_id                  (mt/id :categories)
-                              :semantic_type             "type/Name"
-                              :name                      "NAME"
-                              :display_name              "Name"
-                              :database_type             "CHARACTER VARYING"
-                              :base_type                 "type/Text"
-                              :effective_type            "type/Text"
-                              :dimension_options         []
-                              :default_dimension_option  nil
-                              :has_field_values          "list"
-                              :database_position         1
-                              :position                  1
-                              :database_required         true
+                             {:table_id                   (mt/id :categories)
+                              :semantic_type              "type/Name"
+                              :name                       "NAME"
+                              :display_name               "Name"
+                              :database_type              "CHARACTER VARYING"
+                              :base_type                  "type/Text"
+                              :effective_type             "type/Text"
+                              :dimension_options          []
+                              :default_dimension_option   nil
+                              :has_field_values           "list"
+                              :database_position          1
+                              :position                   1
+                              :database_required          true
                               :database_is_auto_increment false})]
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
+
+(deftest table-metric-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (mt/with-temp [:model/Card metric {:type :metric
+                                       :name "Category metric"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}
+                   :model/Card _      {:type :metric
+                                       :name "Venues metric"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :venues)}
+                   :model/Card _      {:type :question
+                                       :name "Category question"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}
+                   :model/Card _      {:type :metric
+                                       :name "Archived metric"
+                                       :archived true
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}]
+      (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
+              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
@@ -506,11 +598,11 @@
 (deftest virtual-table-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure metadata for 'virtual' tables comes back as expected"
-      (mt/with-temp Card [card {:name          "Go Dubs!"
-                                :database_id   (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
+      (t2.with-temp/with-temp [Card card {:name          "Go Dubs!"
+                                          :database_id   (mt/id)
+                                          :dataset_query {:database (mt/id)
+                                                          :type     :native
+                                                          :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
         ;; run the Card which will populate its result_metadata column
         (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
         ;; Now fetch the metadata for this "table"
@@ -564,11 +656,11 @@
 (deftest include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Test date dimensions being included with a nested query"
-      (mt/with-temp Card [card {:name          "Users"
-                                :database_id   (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+      (t2.with-temp/with-temp [Card card {:name          "Users"
+                                          :database_id   (mt/id)
+                                          :dataset_query {:database (mt/id)
+                                                          :type     :native
+                                                          :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
         (let [card-virtual-table-id (str "card__" (u/the-id card))]
           ;; run the Card which will populate its result_metadata column
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -641,8 +733,11 @@
                 :type/Category
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
+(deftest query-metadata-remappings-test-2
+  (testing "GET /api/table/:id/query_metadata"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (testing "Ensure internal remapped dimensions and human_readable_values are returned when type is enum"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
@@ -659,8 +754,10 @@
                 :type/Enum
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
+(deftest query-metadata-remappings-test-3
+  (testing "GET /api/table/:id/query_metadata"
     (mt/with-column-remappings [venues.category_id categories.name]
       (testing "Ensure FK remappings are returned"
         (is (= [{:table_id   (mt/id :venues)
@@ -743,7 +840,7 @@
           (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint temp-fingerprint}
             (is (= []
                    (-> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
-                       (get-in [:fields])
+                       (get :fields)
                        first
                        :dimension_options)))))))))
 
@@ -780,7 +877,7 @@
 
       (testing "time columns"
         (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
-          (mt/dataset test-data-with-time
+          (mt/dataset time-test-data
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes
                      (dimension-options-for-field response "last_login_time"))))))))))
@@ -789,10 +886,10 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "binning options for nested queries"
       (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
-        (mt/with-temp Card [card {:database_id   (mt/id)
-                                  :dataset_query {:database (mt/id)
-                                                  :type    :query
-                                                  :query    {:source-query {:source-table (mt/id :venues)}}}}]
+        (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
+                                            :dataset_query {:database (mt/id)
+                                                            :type    :query
+                                                            :query    {:source-query {:source-table (mt/id :venues)}}}}]
           (letfn [(dimension-options []
                     (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
                       (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]
@@ -818,9 +915,9 @@
 
 (deftest discard-values-test
   (testing "POST /api/table/:id/discard_values"
-    (mt/with-temp* [Table       [table        {}]
-                    Field       [field        {:table_id (u/the-id table)}]
-                    FieldValues [field-values {:field_id (u/the-id field), :values ["A" "B" "C"]}]]
+    (mt/with-temp [Table       table        {}
+                   Field       field        {:table_id (u/the-id table)}
+                   FieldValues field-values {:field_id (u/the-id field) :values ["A" "B" "C"]}]
       (let [url (format "table/%d/discard_values" (u/the-id table))]
         (testing "Non-admin toucans should not be allowed to discard values"
           (is (= "You don't have permissions to do that."
@@ -862,10 +959,89 @@
       (testing "Can we set custom field ordering?"
         (let [custom-field-order [(mt/id :venues :price) (mt/id :venues :longitude) (mt/id :venues :id)
                                   (mt/id :venues :category_id) (mt/id :venues :name) (mt/id :venues :latitude)]]
-          (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
-                                {:request-options {:body (json/encode custom-field-order)}})
+          (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues)) custom-field-order)
           (is (= custom-field-order
-                 (->> (table/fields (t2/select-one Table :id (mt/id :venues)))
+                 (->> (t2/hydrate (t2/select-one Table :id (mt/id :venues)) :fields)
+                      :fields
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/append-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn create-csv! []
+  (mt/with-current-user (mt/user->id :rasta)
+    (upload-test/create-upload-table!)))
+
+(defn- update-csv! [options]
+  (@#'api.table/update-csv! options))
+
+(defn- update-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  [action]
+  (let [table (create-csv!)
+        file  (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] (mt/random-name))]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (update-csv! {:action   action
+                    :table-id (:id table)
+                    :file     file}))))
+
+(deftest append-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (testing "Happy path"
+        (upload-test/with-uploads-enabled
+          (is (= {:status 200, :body nil}
+                 (update-csv-via-api! :metabase.upload/append)))))
+      (testing "Failure paths return an appropriate status code and a message in the body"
+        (upload-test/with-uploads-disabled
+          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                 (update-csv-via-api! :metabase.upload/append))))))))
+
+(deftest append-csv-deletes-file-test
+  (testing "File gets deleted after appending"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-empty-db
+          (let [filename (mt/random-name)
+                file (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
+                table (upload-test/create-upload-table!)]
+            (is (.exists file) "File should exist before append-csv!")
+            (mt/with-current-user (mt/user->id :crowberto)
+              (update-csv! {:action :metabase.upload/append
+                            :table-id (:id table)
+                            :file     file}))
+            (is (not (.exists file)) "File should be deleted after append-csv!")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/replace-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest replace-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+     (testing "Happy path"
+       (upload-test/with-uploads-enabled
+         (is (= {:status 200, :body nil}
+                (update-csv-via-api! :metabase.upload/replace)))))
+     (testing "Failure paths return an appropriate status code and a message in the body"
+       (upload-test/with-uploads-disabled
+         (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                (update-csv-via-api! :metabase.upload/replace))))))))
+
+(deftest replace-csv-deletes-file-test
+  (testing "File gets deleted after replacing"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-empty-db
+         (let [filename (mt/random-name)
+               file     (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
+               table    (upload-test/create-upload-table!)]
+           (is (.exists file) "File should exist before replace-csv!")
+           (mt/with-current-user (mt/user->id :crowberto)
+             (update-csv! {:action   :metabase.upload/replace
+                           :table-id (:id table)
+                           :file     file}))
+           (is (not (.exists file)) "File should be deleted after replace-csv!")))))))

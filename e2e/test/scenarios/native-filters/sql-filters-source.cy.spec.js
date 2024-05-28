@@ -1,6 +1,7 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
-  modal,
   openNativeEditor,
   popover,
   restore,
@@ -11,11 +12,11 @@ import {
   visitEmbeddedPage,
   visitPublicQuestion,
   visitQuestion,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
+
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
+import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 const { COLLECTION_GROUP } = USER_GROUPS;
@@ -71,7 +72,9 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       SQLFilter.toggleRequired();
       FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget");
+      FieldFilter.selectFilterValueFromList("Gadget", {
+        buttonLabel: "Add filter",
+      });
     });
 
     it("should be able to use a structured question source with a text tag", () => {
@@ -90,11 +93,14 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("Gadget", { addFilter: false });
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
-      FieldFilter.openEntryForm(true);
-      FieldFilter.selectFilterValueFromList("Gadget");
+      cy.findByTestId("sidebar-content")
+        .findByPlaceholderText("Start typing to filter…")
+        .click();
+      popover().findByText("Gadget").click();
     });
 
     it("should be able to use a structured question source without saving the question", () => {
@@ -223,6 +229,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
       setFilterQuestionSource({ question: "SQL source", field: "EAN" });
       saveQuestion("SQL filter");
 
@@ -304,6 +311,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
       setFilterListSource({ values: ["1018947080336", "7663515285824"] });
       saveQuestion("SQL filter");
 
@@ -341,8 +349,9 @@ describe("scenarios > filters > sql filters > values source", () => {
 
 describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
-    restore();
+    restore("default-ee");
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
     cy.intercept("GET", "/api/card/*/params/*/values").as(
       "cardParameterValues",
@@ -352,7 +361,10 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   it("should sandbox parameter values in questions", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 
@@ -377,14 +389,6 @@ describeEE("scenarios > filters > sql filters > values source", () => {
 
     FieldFilter.openEntryForm();
     cy.wait("@cardParameterValues");
-    checkFilterValueNotInList("Gadget");
-    checkFilterValueNotInList("Doohickey");
-    FieldFilter.selectFilterValueFromList("Gizmo");
-
-    cy.findByText("Open Editor").click();
-    cy.icon("variable").click();
-    FieldFilter.openEntryForm(true);
-    cy.wait("@parameterValues");
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");
@@ -528,7 +532,9 @@ const getListDimensionTargetQuestion = () => {
 
 const updateQuestion = () => {
   cy.findByText("Save").click();
-  modal().button("Save").click();
+  cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByText("Save").click();
+  });
   cy.wait("@updateQuestion");
 };
 

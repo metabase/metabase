@@ -1,55 +1,60 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import cx from "classnames";
+import { merge } from "icepick";
 import PropTypes from "prop-types";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
-import { merge } from "icepick";
-import { usePrevious } from "react-use";
 
+import { useModelIndexesListQuery } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Confirm from "metabase/components/Confirm";
-
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import SnippetSidebar from "metabase/query_builder/components/template_tags/SnippetSidebar";
-import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
+import Button from "metabase/core/components/Button";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
+import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
+import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
+import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
+  getIsResultDirty,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
-
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { useToggle } from "metabase/hooks/use-toggle";
-
-import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
   getSortedModelFields,
-} from "metabase-lib/metadata/utils/models";
-import { EDITOR_TAB_INDEXES } from "./constants";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
-import EditorTabs from "./EditorTabs";
-import { TabHintToast } from "./TabHintToast";
+} from "metabase-lib/v1/metadata/utils/models";
+import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
-  Root,
   DatasetEditBar,
   FieldTypeIcon,
   MainContainer,
   QueryEditorContainer,
-  TableHeaderColumnName,
-  TableContainer,
+  Root,
   TabHintToastContainer,
+  TableContainer,
+  TableHeaderColumnName,
 } from "./DatasetEditor.styled";
+import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
+import DatasetQueryEditor from "./DatasetQueryEditor";
+import EditorTabs from "./EditorTabs";
+import { TabHintToast } from "./TabHintToast";
+import { EDITOR_TAB_INDEXES } from "./constants";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
@@ -60,6 +65,7 @@ const propTypes = {
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -68,6 +74,7 @@ const propTypes = {
   onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
+  updateQuestion: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 
@@ -85,9 +92,11 @@ const TABLE_HEADER_HEIGHT = 45;
 
 function mapStateToProps(state) {
   return {
+    metadata: getMetadata(state),
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
+    isResultDirty: getIsResultDirty(state),
   };
 }
 
@@ -102,16 +111,18 @@ function getSidebar(
     focusedFieldIndex,
     focusFirstField,
     onFieldMetadataChange,
+    onMappedDatabaseColumnChange,
   },
 ) {
   const {
-    question: dataset,
+    question,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
     isShowingSnippetSidebar,
     toggleTemplateTagsEditor,
     toggleDataReference,
     toggleSnippetSidebar,
+    modelIndexes,
   } = props;
 
   if (datasetEditorTab === "metadata") {
@@ -124,24 +135,34 @@ function getSidebar(
       return <div />;
     }
     const isLastField =
-      focusedFieldIndex === dataset.getResultMetadata().length - 1;
+      focusedFieldIndex === question.getResultMetadata().length - 1;
     return (
       <DatasetFieldMetadataSidebar
-        dataset={dataset}
+        dataset={question}
         field={focusedField}
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
         onFieldMetadataChange={onFieldMetadataChange}
+        onMappedDatabaseColumnChange={onMappedDatabaseColumnChange}
+        modelIndexes={modelIndexes}
       />
     );
   }
 
-  if (!dataset.isNative()) {
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+
+  if (!isNative) {
     return null;
   }
 
   if (isShowingTemplateTagsEditor) {
-    return <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />;
+    return (
+      <TagEditorSidebar
+        {...props}
+        query={question.legacyQuery()}
+        onClose={toggleTemplateTagsEditor}
+      />
+    );
   }
   if (isShowingDataReference) {
     return <DataReference {...props} onClose={toggleDataReference} />;
@@ -173,7 +194,7 @@ const FIELDS = [
 
 function DatasetEditor(props) {
   const {
-    question: dataset,
+    question,
     datasetEditorTab,
     result,
     resultsMetadata,
@@ -181,33 +202,47 @@ function DatasetEditor(props) {
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
+    isResultDirty,
     setQueryBuilderMode,
+    runQuestionQuery,
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
     onCancelCreateNewModel,
     onSave,
+    updateQuestion,
     handleResize,
     onOpenModal,
   } = props;
 
+  const isMetric = question.type() === "metric";
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isDirty = isModelQueryDirty || isMetadataDirty;
+  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
-    () => getSortedModelFields(dataset, resultsMetadata?.columns),
-    [dataset, resultsMetadata],
+    () => getSortedModelFields(question, resultsMetadata?.columns),
+    [question, resultsMetadata],
   );
+
+  const { data: modelIndexes } = useModelIndexesListQuery({
+    query: { model_id: question.id() },
+    enabled: question.isSaved() && question.type() === "model",
+  });
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
 
   const initialEditorHeight = useMemo(() => {
-    if (dataset.isStructured()) {
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+
+    if (!isNative) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: dataset.query(),
+      query: question.legacyQuery(),
       viewHeight: height,
     });
-  }, [dataset, height]);
+  }, [question, height]);
 
   const [editorHeight, setEditorHeight] = useState(
     isEditingQuery ? initialEditorHeight : 0,
@@ -229,7 +264,7 @@ function DatasetEditor(props) {
   const focusedField = useMemo(() => {
     const field = fields[focusedFieldIndex];
     if (field) {
-      const fieldMetadata = metadata.field(field.id, field.table_id);
+      const fieldMetadata = metadata?.field?.(field.id, field.table_id);
       return {
         ...fieldMetadata,
         ...field,
@@ -253,7 +288,7 @@ function DatasetEditor(props) {
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
-      const mappedField = metadata.field(changes.id).getPlainObject();
+      const mappedField = metadata.field?.(changes.id)?.getPlainObject();
       const inheritedProperties = _.pick(mappedField, ...FIELDS);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
@@ -261,10 +296,15 @@ function DatasetEditor(props) {
   );
 
   const onFieldMetadataChange = useCallback(
-    _changes => {
-      const changes = _changes.id
-        ? inheritMappedFieldProperties(_changes)
-        : _changes;
+    values => {
+      setFieldMetadata({ field_ref: focusedFieldRef, changes: values });
+    },
+    [focusedFieldRef, setFieldMetadata],
+  );
+
+  const onMappedDatabaseColumnChange = useCallback(
+    value => {
+      const changes = inheritMappedFieldProperties({ id: value });
       setFieldMetadata({ field_ref: focusedFieldRef, changes });
     },
     [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
@@ -290,29 +330,55 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancelCreate = useCallback(() => {
-    onCancelCreateNewModel();
-  }, [onCancelCreateNewModel]);
-
-  const handleCancelEdit = useCallback(() => {
+  const handleCancelEdit = () => {
+    setShowCancelEditWarning(false);
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
-  }, [setQueryBuilderMode, onCancelDatasetChanges]);
+  };
+
+  const handleCancelEditWarningClose = () => {
+    setShowCancelEditWarning(false);
+  };
+
+  const handleCancelClick = () => {
+    if (question.isSaved()) {
+      if (isDirty) {
+        setShowCancelEditWarning(true);
+      } else {
+        handleCancelEdit();
+      }
+    } else {
+      onCancelCreateNewModel();
+    }
+  };
 
   const handleSave = useCallback(async () => {
-    const canBeDataset = checkCanBeModel(dataset);
-    const isBrandNewDataset = !dataset.id();
+    const canBeDataset = checkCanBeModel(question);
+    const isBrandNewDataset = !question.id();
+    const questionWithDisplay = isMetric
+      ? question.setDefaultDisplay()
+      : question;
 
     if (canBeDataset && isBrandNewDataset) {
+      await updateQuestion(questionWithDisplay, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(dataset);
-      setQueryBuilderMode("view");
+      await onSave(questionWithDisplay, { rerunQuery: false });
+      await setQueryBuilderMode("view");
+      runQuestionQuery();
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
     }
-  }, [dataset, onSave, setQueryBuilderMode, onOpenModal]);
+  }, [
+    question,
+    isMetric,
+    updateQuestion,
+    onSave,
+    setQueryBuilderMode,
+    runQuestionQuery,
+    onOpenModal,
+  ]);
 
   const handleColumnSelect = useCallback(
     column => {
@@ -378,90 +444,118 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
-  const canSaveChanges = useMemo(() => {
-    if (dataset.query().isEmpty()) {
-      return false;
-    }
-    const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return (
-      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
-    );
-  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
+  const canSaveChanges =
+    isDirty &&
+    (!isNative || !isResultDirty) &&
+    fields.every(field => field.display_name) &&
+    Lib.canSave(question.query(), question.type());
 
-  const sidebar = getSidebar(props, {
-    datasetEditorTab,
-    isQueryError: result?.error,
-    focusedField,
-    focusedFieldIndex,
-    focusFirstField,
-    onFieldMetadataChange,
-  });
+  const saveButtonTooltipLabel = useMemo(() => {
+    if (
+      isNative &&
+      isDirty &&
+      isResultDirty &&
+      Lib.rawNativeQuery(question.query()).length > 0
+    ) {
+      return t`You must run the query before you can save this model`;
+    }
+
+    if (isMetric && Lib.aggregations(question.query(), -1).length === 0) {
+      return t`You must define how the measure is calculated to save this metric`;
+    }
+  }, [isNative, isMetric, isDirty, isResultDirty, question]);
+
+  const sidebar = getSidebar(
+    { ...props, modelIndexes },
+    {
+      datasetEditorTab,
+      isQueryError: result?.error,
+      focusedField,
+      focusedFieldIndex,
+      focusFirstField,
+      onFieldMetadataChange,
+      onMappedDatabaseColumnChange,
+    },
+  );
 
   return (
     <>
       <DatasetEditBar
-        title={dataset.displayName()}
+        data-testid="dataset-edit-bar"
+        title={question.displayName()}
         center={
-          <EditorTabs
-            currentTab={datasetEditorTab}
-            onChange={onChangeEditorTab}
-            options={[
-              { id: "query", name: t`Query`, icon: "notebook" },
-              {
-                id: "metadata",
-                name: t`Metadata`,
-                icon: "label",
-                disabled: !resultsMetadata,
-              },
-            ]}
-          />
+          // Metadata tab is temporarily disabled for metrics.
+          // It should be enabled in #37993
+          // @see https://github.com/metabase/metabase/issues/37993
+          isMetric ? null : (
+            <EditorTabs
+              currentTab={datasetEditorTab}
+              onChange={onChangeEditorTab}
+              options={[
+                { id: "query", name: t`Query`, icon: "notebook" },
+                {
+                  id: "metadata",
+                  name: t`Metadata`,
+                  icon: "label",
+                  disabled: !resultsMetadata,
+                },
+              ]}
+            />
+          )
         }
         buttons={[
-          dataset.isSaved() ? (
-            <Button
-              key="cancel"
-              small
-              onClick={handleCancelEdit}
-            >{t`Cancel`}</Button>
-          ) : (
-            <Confirm
-              key="cancel"
-              action={handleCancelCreate}
-              title={t`Discard changes?`}
-              message={t`Your model won't be created.`}
-              confirmButtonText={t`Discard`}
-            >
-              <Button small>{t`Cancel`}</Button>
-            </Confirm>
-          ),
-          <ActionButton
+          <Button
+            key="cancel"
+            small
+            onClick={handleCancelClick}
+          >{t`Cancel`}</Button>,
+          <Tooltip
             key="save"
-            disabled={!canSaveChanges}
-            actionFn={handleSave}
-            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className="Button Button--primary Button--small"
-          />,
+            refProp="innerRef"
+            label={saveButtonTooltipLabel}
+            disabled={!saveButtonTooltipLabel}
+          >
+            <ActionButton
+              key="save"
+              disabled={!canSaveChanges}
+              actionFn={handleSave}
+              normalText={question.isSaved() ? t`Save changes` : t`Save`}
+              activeText={t`Saving…`}
+              failedText={t`Save failed`}
+              successText={t`Saved`}
+              className={cx(
+                ButtonsS.Button,
+                ButtonsS.ButtonPrimary,
+                ButtonsS.ButtonSmall,
+              )}
+            />
+          </Tooltip>,
         ]}
       />
       <Root>
         <MainContainer>
           <QueryEditorContainer isResizable={isEditingQuery}>
-            <DatasetQueryEditor
-              {...props}
-              isActive={isEditingQuery}
-              height={editorHeight}
-              viewHeight={height}
-              onResizeStop={handleResize}
-            />
+            {/**
+             * Optimization: DatasetQueryEditor can be expensive to re-render
+             * and we don't need it on the "Metadata" tab.
+             *
+             * @see https://github.com/metabase/metabase/pull/31142/files#r1211352364
+             */}
+            {isEditingQuery && editorHeight > 0 && (
+              <DatasetQueryEditor
+                {...props}
+                isActive={isEditingQuery}
+                height={editorHeight}
+                viewHeight={height}
+                onResizeStop={handleResize}
+              />
+            )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
-            <DebouncedFrame className="flex-full" enabled>
+            <DebouncedFrame className={cx(CS.flexFull)} enabled>
               <QueryVisualization
                 {...props}
-                className="spread"
+                className={CS.spread}
                 noHeader
                 queryBuilderMode="dataset"
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
@@ -483,6 +577,13 @@ function DatasetEditor(props) {
           {sidebar}
         </ViewSidebar>
       </Root>
+
+      <Modal isOpen={showCancelEditWarning}>
+        <LeaveConfirmationModalContent
+          onAction={handleCancelEdit}
+          onClose={handleCancelEditWarningClose}
+        />
+      </Modal>
     </>
   );
 }

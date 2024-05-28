@@ -1,8 +1,9 @@
-import React from "react";
 import PropTypes from "prop-types";
 
-import Table from "metabase-lib/metadata/Table";
+import Table from "metabase-lib/v1/metadata/Table";
+
 import { LabelContainer, Label } from "../MetadataInfo.styled";
+
 import { TableIcon } from "./TableLabel.styled";
 
 const propTypes = {
@@ -27,4 +28,5 @@ function TableLabel({
 
 TableLabel.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableLabel;

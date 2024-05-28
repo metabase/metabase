@@ -1,5 +1,5 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
+
 import SettingsLicense from "./SettingsLicense";
 
 const setup = () => {

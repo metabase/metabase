@@ -1,10 +1,10 @@
-import React from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Fragment } from "react";
 import { t } from "ttag";
-import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 
 export default function PaginationControls({
   page,
@@ -21,46 +21,47 @@ export default function PaginationControls({
     return null;
   }
 
+  const isLastPage = (pageIndex, pageSize, total) =>
+    pageIndex === Math.ceil(total / pageSize) - 1;
+
   const isPreviousDisabled = page === 0;
   const isNextDisabled =
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
   return (
-    <div className="flex align-center text-bold" aria-label="pagination">
-      <span className="mr1">
+    <div
+      className={cx(CS.flex, CS.alignCenter, CS.textBold)}
+      aria-label="pagination"
+    >
+      <span className={CS.mr1}>
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
-          <React.Fragment>
-            <span className="text-light">&nbsp;{t`of`}&nbsp;</span>
+          <Fragment>
+            <span className={CS.textLight}>&nbsp;{t`of`}&nbsp;</span>
             <span data-testid="pagination-total">{total}</span>
-          </React.Fragment>
+          </Fragment>
         )}
       </span>
-      <PaginationButton
+      <Button
+        onlyIcon
+        icon="chevronleft"
         onClick={onPreviousPage}
         disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
-      >
-        <Icon name="chevronleft" />
-      </PaginationButton>
-      <PaginationButton
-        small
+        aria-label={t`Previous page`}
+      />
+
+      <Button
+        onlyIcon
+        icon="chevronright"
         onClick={onNextPage}
         disabled={isNextDisabled}
         data-testid="next-page-btn"
-      >
-        <Icon name="chevronright" />
-      </PaginationButton>
+        aria-label={t`Next page`}
+      />
     </div>
   );
 }
-
-const PaginationButton = styled(IconWrapper.withComponent("button"))`
-  &:disabled {
-    background-color: transparent;
-    color: ${color("text-light")};
-  }
-`;
 
 PaginationControls.propTypes = {
   page: PropTypes.number.isRequired,
@@ -75,6 +76,3 @@ PaginationControls.propTypes = {
 PaginationControls.defaultProps = {
   showTotal: false,
 };
-
-export const isLastPage = (pageIndex, pageSize, total) =>
-  pageIndex === Math.ceil(total / pageSize) - 1;

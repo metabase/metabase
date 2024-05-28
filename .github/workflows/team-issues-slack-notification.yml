@@ -1,0 +1,49 @@
+name: Team Issues Slack Notification
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  on-team-label-added:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: |
+      contains(github.event.label.name, '.Team/') &&
+       ( contains(github.event.issue.labels.*.name, 'Type:Bug') ||
+         contains(github.event.issue.labels.*.name, 'flaky-test-fix') )
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v7
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Extracting team name
+        id: team_name
+        run: |
+          team_label=$(sed 's/&/\$/g' <<< '${{ github.event.label.name }}')
+          echo $team_label
+          team_name=${team_label#*.Team/}
+          echo $team_name
+          echo "team_name=${team_name^^}_SLACK_ISSUES_WEBHOOK_URL" >> "$GITHUB_OUTPUT"
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets[steps.team_name.outputs.team_name] }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

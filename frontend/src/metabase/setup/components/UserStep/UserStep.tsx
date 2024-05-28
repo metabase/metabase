@@ -1,46 +1,42 @@
-import React from "react";
 import { t } from "ttag";
-import { UserInfo } from "metabase-types/store";
-import ActiveStep from "../ActiveStep";
-import InactiveStep from "../InvactiveStep";
-import UserForm from "../UserForm";
+
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { UserInfo } from "metabase-types/store";
+
+import { submitUser } from "../../actions";
+import { getIsHosted, getUser } from "../../selectors";
+import { useStep } from "../../useStep";
+import { validatePassword } from "../../utils";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InactiveStep";
+import { UserForm } from "../UserForm";
+import type { NumberedStepProps } from "../types";
+
 import { StepDescription } from "./UserStep.styled";
 
-export interface UserStepProps {
-  user?: UserInfo;
-  isHosted: boolean;
-  isStepActive: boolean;
-  isStepCompleted: boolean;
-  isSetupCompleted: boolean;
-  onValidatePassword: (password: string) => Promise<string | undefined>;
-  onStepSelect: () => void;
-  onStepSubmit: (user: UserInfo) => void;
-}
+export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
+  const { isStepActive, isStepCompleted } = useStep("user_info");
+  const user = useSelector(getUser);
+  const isHosted = useSelector(getIsHosted);
 
-const UserStep = ({
-  user,
-  isHosted,
-  isStepActive,
-  isStepCompleted,
-  isSetupCompleted,
-  onValidatePassword,
-  onStepSelect,
-  onStepSubmit,
-}: UserStepProps): JSX.Element => {
+  const dispatch = useDispatch();
+
+  const handleSubmit = async (user: UserInfo) => {
+    await dispatch(submitUser(user)).unwrap();
+  };
+
   if (!isStepActive) {
     return (
       <InactiveStep
         title={getStepTitle(user, isStepCompleted)}
-        label={2}
+        label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={onStepSelect}
       />
     );
   }
 
   return (
-    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={2}>
+    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={stepLabel}>
       {isHosted && (
         <StepDescription>
           {t`We know you’ve already created one of these.`}{" "}
@@ -49,8 +45,8 @@ const UserStep = ({
       )}
       <UserForm
         user={user}
-        onValidatePassword={onValidatePassword}
-        onSubmit={onStepSubmit}
+        onValidatePassword={validatePassword}
+        onSubmit={handleSubmit}
       />
     </ActiveStep>
   );
@@ -62,5 +58,3 @@ const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
     ? t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;
 };
-
-export default UserStep;

@@ -1,4 +1,0 @@
-{:linters
- {:unresolved-symbol
-  {:exclude
-   [(clojure.test/is [partial= re= schema= =?])]}}}

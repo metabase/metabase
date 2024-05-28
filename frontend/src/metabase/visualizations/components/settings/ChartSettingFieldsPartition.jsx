@@ -1,14 +1,16 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
-import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import _ from "underscore";
 import { splice } from "icepick";
+import { Component } from "react";
+import { Droppable, Draggable } from "react-beautiful-dnd";
+import { t } from "ttag";
+import _ from "underscore";
 
 import Label from "metabase/components/type/Label";
+import { DragDropContext } from "metabase/core/components/DragDropContext";
+import CS from "metabase/css/core/index.css";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import {
   DroppableContainer,
   FieldPartitionColumn,
@@ -29,7 +31,7 @@ const columnAdd = (columns, to, column) => {
   return splice(columns, to, 0, column);
 };
 
-class ChartSettingFieldsPartition extends React.Component {
+class ChartSettingFieldsPartition extends Component {
   constructor(props) {
     super(props);
   }
@@ -106,11 +108,11 @@ class ChartSettingFieldsPartition extends React.Component {
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
         {this.props.partitions.map(({ name: partitionName, title }, index) => {
-          const columns = value[partitionName];
+          const columns = value[partitionName] ?? [];
           const partitionType = this.getPartitionType(partitionName);
           return (
             <div
-              className={cx("py2", { "border-top": index > 0 })}
+              className={cx(CS.py2, { [CS.borderTop]: index > 0 })}
               key={partitionName}
             >
               <Label color="medium">{title}</Label>
@@ -135,7 +137,7 @@ class ChartSettingFieldsPartition extends React.Component {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className="mb1"
+                              className={CS.mb1}
                             >
                               <Column
                                 key={`${partitionName}-${col.display_name}`}
@@ -161,7 +163,7 @@ class ChartSettingFieldsPartition extends React.Component {
   }
 }
 
-class Column extends React.Component {
+class Column extends Component {
   constructor(props) {
     super(props);
   }

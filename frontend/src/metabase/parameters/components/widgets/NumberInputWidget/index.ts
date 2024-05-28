@@ -1,1 +1,1 @@
-export { default } from "./NumberInputWidget";
+export { NumberInputWidget } from "./NumberInputWidget";

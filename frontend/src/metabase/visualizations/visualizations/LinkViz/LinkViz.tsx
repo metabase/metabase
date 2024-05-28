@@ -1,39 +1,39 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
+import _ from "underscore";
 
-import Input from "metabase/core/components/Input";
-import SearchResults from "metabase/nav/components/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import type {
-  DashboardOrderedCard,
-  LinkCardSettings,
-  UnrestrictedLinkEntity,
-} from "metabase-types/api";
-
-import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
-
+import { useToggle } from "metabase/hooks/use-toggle";
+import { getUrlTarget } from "metabase/lib/dom";
+import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import type {
+  LinkCardSettings,
+  SearchModel,
+  UnrestrictedLinkEntity,
+  VirtualDashboardCard,
+} from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
+
 import {
   EntityDisplay,
   UrlLinkDisplay,
   RestrictedEntityDisplay,
 } from "./EntityDisplay";
-import { settings } from "./LinkVizSettings";
-
 import {
   EditLinkCardWrapper,
   DisplayLinkCardWrapper,
   CardLink,
   SearchResultsContainer,
   StyledRecentsList,
+  ExternalLink,
+  StyledInput,
 } from "./LinkViz.styled";
-
+import { settings } from "./LinkVizSettings";
+import type { WrappedUnrestrictedLinkEntity } from "./types";
 import { isUrlString } from "./utils";
-import { WrappedUnrestrictedLinkEntity } from "./types";
 
-const MODELS_TO_SEARCH = [
+const MODELS_TO_SEARCH: SearchModel[] = [
   "card",
   "dataset",
   "dashboard",
@@ -43,21 +43,23 @@ const MODELS_TO_SEARCH = [
 ];
 
 export interface LinkVizProps {
-  dashcard: DashboardOrderedCard;
+  dashcard: VirtualDashboardCard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
-    newSettings: Partial<DashboardOrderedCard["visualization_settings"]>,
+    newSettings: Partial<VirtualDashboardCard["visualization_settings"]>,
   ) => void;
-  settings: DashboardOrderedCard["visualization_settings"] & {
+  settings: VirtualDashboardCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
+  isEditingParameter?: boolean;
 }
 
-function LinkViz({
+function LinkVizInner({
   dashcard,
   isEditing,
   onUpdateVisualizationSettings,
   settings,
+  isEditingParameter,
 }: LinkVizProps) {
   const {
     link: { url, entity },
@@ -98,7 +100,7 @@ function LinkViz({
   if (entity) {
     if (isRestrictedLinkEntity(entity)) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper fade={isEditingParameter}>
           <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
@@ -113,7 +115,10 @@ function LinkViz({
 
     if (isEditing) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper
+          data-testid="entity-edit-display-link"
+          fade={isEditingParameter}
+        >
           <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
@@ -121,16 +126,21 @@ function LinkViz({
 
     return (
       <DisplayLinkCardWrapper>
-        <CardLink to={wrappedEntity.getUrl()} target="_blank" rel="noreferrer">
+        <CardLink
+          data-testid="entity-view-display-link"
+          to={wrappedEntity.getUrl()}
+          rel="noreferrer"
+          role="link"
+        >
           <EntityDisplay entity={wrappedEntity} showDescription />
         </CardLink>
       </DisplayLinkCardWrapper>
     );
   }
 
-  if (isEditing) {
+  if (isEditing && !isEditingParameter) {
     return (
-      <EditLinkCardWrapper>
+      <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <TippyPopover
           visible={inputIsFocused && !isUrlString(url)}
           content={
@@ -140,6 +150,7 @@ function LinkViz({
               <SearchResultsContainer>
                 <SearchResults
                   searchText={url?.trim()}
+                  forceEntitySelect
                   onEntitySelect={handleEntitySelect}
                   models={MODELS_TO_SEARCH}
                 />
@@ -148,14 +159,15 @@ function LinkViz({
           }
           placement="bottom"
         >
-          <Input
+          <StyledInput
             fullWidth
             value={url ?? ""}
             autoFocus={autoFocus}
             placeholder={"https://example.com"}
             onChange={e => handleLinkChange(e.target.value)}
             onFocus={onFocusInput}
-            onBlur={onBlurInput}
+            // we need to debounce this or it may close the popover before the click event can fire
+            onBlur={_.debounce(onBlurInput, 100)}
             // the dashcard really wants to turn all mouse events into drag events
             onMouseDown={e => e.stopPropagation()}
           />
@@ -164,13 +176,21 @@ function LinkViz({
     );
   }
 
+  // external link
   return (
-    <DisplayLinkCardWrapper>
-      <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
+    <DisplayLinkCardWrapper
+      data-testid="custom-view-text-link"
+      fade={isEditingParameter}
+    >
+      <ExternalLink
+        href={url ?? ""}
+        target={getUrlTarget(url)}
+        rel="noreferrer"
+      >
         <UrlLinkDisplay url={url} />
-      </CardLink>
+      </ExternalLink>
     </DisplayLinkCardWrapper>
   );
 }
 
-export default Object.assign(LinkViz, settings);
+export const LinkViz = Object.assign(LinkVizInner, settings);

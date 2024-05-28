@@ -1,6 +1,5 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
-// NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visitDashboard } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -35,14 +34,14 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               {
                 id,
                 card_id,
                 row: 0,
                 col: 0,
-                size_x: 8,
+                size_x: 11,
                 size_y: 6,
                 parameter_mappings: [
                   {
@@ -63,6 +62,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findAllByText("Doohickey");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Category").click();
       popover().within(() => {
         cy.findByText("Gadget").click();
@@ -70,6 +70,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       });
 
       // verify that the filter is applied
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey").should("not.exist");
     });
   });
@@ -94,14 +95,14 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
               {
                 id,
                 card_id,
                 row: 0,
                 col: 0,
-                size_x: 8,
+                size_x: 11,
                 size_y: 6,
                 parameter_mappings: [
                   {
@@ -120,13 +121,16 @@ describe("scenarios > dashboard > OLD parameters", () => {
     });
 
     it("should work", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("City").click();
       popover().within(() => {
         cy.get("input").type("Flagstaff{enter}");
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".DashCard tbody tr").should("have.length", 1);
+      cy.findByTestId("dashcard-container")
+        .get("tbody tr")
+        .should("have.length", 1);
     });
   });
 
@@ -164,14 +168,14 @@ describe("scenarios > dashboard > OLD parameters", () => {
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 8,
+              size_x: 11,
               size_y: 6,
               parameter_mappings: [
                 {
@@ -191,6 +195,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findAllByText("Doohickey");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Category").click();
       popover().within(() => {
         cy.findByText("Gadget").click();
@@ -198,6 +203,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       });
 
       // verify that the filter is applied
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey").should("not.exist");
     });
   });

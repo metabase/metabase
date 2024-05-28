@@ -1,10 +1,15 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
+import { Icon } from "metabase/ui";
 
 export interface MenuItemProps {
+  color?: ColorName;
+  hoverColor?: ColorName;
+  hoverBgColor?: ColorName;
   disabled?: boolean;
 }
 
@@ -13,19 +18,22 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   align-items: center;
   border-radius: 0.5em;
   cursor: ${props => (props.disabled ? "not-allowed" : "pointer")};
-  color: ${props => color(props.disabled ? "text-light" : "text-dark")};
+  color: ${props =>
+    color(props.disabled ? "text-light" : props.color || "text-dark")};
   padding: 0.85em 1.45em;
   text-decoration: none;
   :hover {
-    color: ${props => !props.disabled && color("brand")};
-    background-color: ${props => !props.disabled && color("bg-light")};
+    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
+    background-color: ${props =>
+      color((!props.disabled && props.hoverBgColor) || "bg-light")};
   }
   > .Icon {
-    color: ${props => color(props.disabled ? "text-light" : "text-dark")};
+    color: ${props =>
+      color(props.disabled ? "text-light" : props.color || "text-dark")};
     margin-right: 0.65em;
   }
   :hover > .Icon {
-    color: ${props => !props.disabled && color("brand")};
+    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
   },
   /* icon specific tweaks
      the alert icon should be optically aligned  with the x-height of the text */

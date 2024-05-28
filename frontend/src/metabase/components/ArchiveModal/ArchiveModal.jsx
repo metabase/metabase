@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
+import { Component } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import FormMessage from "metabase/components/form/FormMessage";
+import Button from "metabase/core/components/Button";
+import { FormMessage } from "metabase/forms";
 
-class ArchiveModal extends React.Component {
+class ArchiveModal extends Component {
   state = {
     error: null,
   };
@@ -31,14 +30,14 @@ class ArchiveModal extends React.Component {
     const { error } = this.state;
     return (
       <ModalContent
-        title={title || t`Archive this?`}
+        title={title || t`Trash this?`}
         footer={[
           error ? <FormMessage key="message" formError={error} /> : null,
           <Button key="cancel" onClick={onClose}>
             {t`Cancel`}
           </Button>,
           <Button key="archive" warning onClick={this.archive}>
-            {t`Archive`}
+            {t`Move to trash`}
           </Button>,
         ]}
       >

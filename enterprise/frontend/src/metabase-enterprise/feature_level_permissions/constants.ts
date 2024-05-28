@@ -6,6 +6,6 @@ export const DATA_COLUMNS = [
     hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
   },
   {
-    name: t`Manage data model`,
+    name: t`Manage table metadata`,
   },
 ];

@@ -1,7 +1,18 @@
-import { ORDERS } from "__support__/sample_database_fixture";
-import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import { createMockMetadata } from "__support__/metadata";
+import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 
-const query = ORDERS.query();
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const query = metadata
+  .table(ORDERS_ID)
+  .legacyQuery({ useStructuredQuery: true });
 
 function aggregationForMBQL(mbql) {
   return new Aggregation(mbql, 0, query);
@@ -16,7 +27,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "+",
-          ["sum", ["field", ORDERS.TOTAL.id, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
           42,
         ]).displayName(),
       ).toEqual("Sum(Total) + 42");
@@ -25,7 +36,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "sum",
-          ["+", ["field", ORDERS.TOTAL.id, null], 42],
+          ["+", ["field", ORDERS.TOTAL, null], 42],
         ]).displayName(),
       ).toEqual("Sum(Total + 42)");
     });
@@ -33,21 +44,16 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field", ORDERS.TOTAL.id, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
           { "display-name": "named" },
         ]).displayName(),
       ).toEqual("named");
-    });
-    it("should format saved metric", () => {
-      expect(aggregationForMBQL(["metric", 1]).displayName()).toEqual(
-        "Total Order Value",
-      );
     });
     it("should format aggregation with aggregation-options but not display-name", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field", ORDERS.TOTAL.id, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
           {},
         ]).displayName(),
       ).toEqual("Sum of Total");
@@ -61,7 +67,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "+",
-          ["sum", ["field", ORDERS.TOTAL.id, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
           42,
         ]).isValid(),
       ).toBe(true);
@@ -70,7 +76,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "sum",
-          ["+", ["field", ORDERS.TOTAL.id, null], 42],
+          ["+", ["field", ORDERS.TOTAL, null], 42],
         ]).isValid(),
       ).toBe(true);
     });
@@ -78,19 +84,16 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field", ORDERS.TOTAL.id, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
           { "display-name": "named" },
         ]).isValid(),
       ).toBe(true);
-    });
-    it("should be true for saved metric", () => {
-      expect(aggregationForMBQL(["metric", 1]).isValid()).toBe(true);
     });
     it("should be true for aggregation with aggregation-options but not display-name", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field", ORDERS.TOTAL.id, null]],
+          ["sum", ["field", ORDERS.TOTAL, null]],
           {},
         ]).isValid(),
       ).toBe(true);

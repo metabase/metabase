@@ -1,3 +1,5 @@
+const webpack = require("webpack");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../webpack.config");
 
 module.exports = {
@@ -13,13 +15,25 @@ module.exports = {
     "@storybook/addon-links",
     "@storybook/addon-a11y",
   ],
+  babel: () => {},
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
+    plugins: [
+      ...storybookConfig.plugins,
+      new MiniCssExtractPlugin(),
+      new webpack.ProvidePlugin({
+        Buffer: ["buffer", "Buffer"],
+      }),
+    ],
     module: {
       ...storybookConfig.module,
       rules: [
-        ...storybookConfig.module.rules.filter(rule => !isCSSRule(rule)),
-        ...appConfig.module.rules.filter(rule => isCSSRule(rule)),
+        ...storybookConfig.module.rules.filter(
+          rule => !isCSSRule(rule) && !isSvgRule(rule),
+        ),
+        ...appConfig.module.rules.filter(
+          rule => isCSSRule(rule) || isSvgRule(rule),
+        ),
       ],
     },
     resolve: {
@@ -31,3 +45,4 @@ module.exports = {
 };
 
 const isCSSRule = rule => rule.test.toString() === "/\\.css$/";
+const isSvgRule = rule => rule.test && rule.test?.test(".svg");

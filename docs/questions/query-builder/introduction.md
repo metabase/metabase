@@ -26,14 +26,13 @@ You can start a question from:
 Note that there are some kinds of saved questions that can't be used as source data:
 
 - Druid questions
-- Google Analytics questions
 - Mongo questions
 - Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
 - Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
 
 ## The query builder
 
-Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you to the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](../images/notebook-editor.png)
 
@@ -43,13 +42,13 @@ This is the query builder's notebook editor. It has three default steps.
 - [Filtering](#filtering)
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
 
-To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
+To the right of each completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
 ![Previewing results](../images/preview-table.png)
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results. See also [adding or removing columns in a table](#adding-or-removing-columns-in-a-table).
 
 ## Joining data
 
@@ -66,8 +65,6 @@ When you add a filter step, you can select one or more columns to filter on. Dep
 You can add subsequent filter steps after each summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
-
-![An active filter](../images/filter-badge.png)
 
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
@@ -167,6 +164,14 @@ Once you're done setting your metrics and groupings, click **Visualize** to see 
 
 If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
 
+## Drill-through menu
+
+You can also click through questions to explored the data in greater detail.
+
+![Drill-through menu](../images/drill-through-menu.png)
+
+The drill-through menu will present different options depending on what you click on. You can then optionally save that exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+
 ## Returning to the notebook editor
 
 To return to the notebook editor for a question, click on the show editor button in the upper right.
@@ -195,6 +200,12 @@ Custom columns are helpful when you need to create a new column based on a calcu
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
+## Adding or removing columns in a table
+
+When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
+
+![Adding or removing columns](../images/column-selection.png)
+
 ## Sorting results
 
 ![Sorting](../images/sort-step.png)
@@ -207,7 +218,22 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../../permissions/data.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+![View the SQL](../images/view-the-sql.png)
+
+Under the hood, all Metabase questions are SQL (gasp!). To view the SQL that Metabase will run when you click **Visualize**, click the little **Console** icon in the top right of the query builder. Metabase will preview the SQL in a sidebar:
+
+![SQL sidebar](../images/sql-sidebar.png)
+
+To view the SQL, you must have [query builder and native permissions](../../permissions/data.md).
+
+### Convert query builder question to SQL
+
+You can also convert the question to a [native editor question](../native-editor/writing-sql.md). From the query builder screen:
+
+1. Click the **Console** icon in the upper right of the query builder.
+2. Click **Convert the question to SQL** option in the bottom right below the SQL code.
+
+Conversion is a one-way street: you can't convert a SQL question back into a query builder question.
 
 ## Play around with saved questions
 

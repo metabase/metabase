@@ -1,6 +1,12 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  editDashboard,
+  setFilter,
+  filterWidget,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -28,7 +34,7 @@ describe("issue 18747", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
             },
           ],
@@ -43,8 +49,10 @@ describe("issue 18747", () => {
     addNumberParameterToDashboard();
     mapParameterToCustomColumn();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // wait for saving to finish
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     addValueToParameterFilter();
@@ -60,19 +68,18 @@ describe("issue 18747", () => {
 });
 
 function addNumberParameterToDashboard() {
-  cy.icon("pencil").click();
-  cy.icon("filter").click();
-  cy.contains("Number").click();
-  cy.findByText("Equal to").click();
+  editDashboard();
+
+  setFilter("Number", "Equal to");
 }
 
 function mapParameterToCustomColumn() {
-  cy.get(".DashCard").contains("Select…").click();
+  cy.findByTestId("dashcard-container").contains("Select…").click();
   popover().contains("Quantity_2").click({ force: true });
 }
 
 function addValueToParameterFilter() {
-  cy.contains("Equal to").click();
+  filterWidget().click();
   popover().find("input").type("14");
   popover().contains("Add filter").click();
 }

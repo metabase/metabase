@@ -18,6 +18,11 @@
     (nil? x)
     y
 
+    ;; if the type of either x or y is unknown, then the overall type of this has to be unknown as well.
+    (or (= x ::expression/type.unknown)
+        (= y ::expression/type.unknown))
+    ::expression/type.unknown
+
     ;; if both types are keywords return their most-specific ancestor.
     (and (keyword? x)
          (keyword? y))
@@ -49,25 +54,27 @@
    #_pred [:ref ::expression/boolean]
    #_expr [:ref ::expression/expression]])
 
-
-(mbql-clause/define-tuple-mbql-clause :case
+(mbql-clause/define-catn-mbql-clause :case
   ;; TODO -- we should further constrain this so all of the exprs are of the same type
-  [:sequential {:min 1} [:ref ::case-subclause]])
+  [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]
+  [:default [:? [:schema [:ref ::expression/expression]]]])
 
-(defmethod expression/type-of* :case
-  [[_tag _opts pred-expr-pairs]]
+(defmethod expression/type-of-method :case
+  [[_tag _opts pred-expr-pairs default]]
   (reduce
    (fn [best-guess [_pred expr]]
      (let [expr-type (expression/type-of expr)]
        (best-return-type best-guess expr-type)))
-   nil
+   (when (some? default)
+     (expression/type-of default))
    pred-expr-pairs))
 
 ;;; TODO -- add constraint that these types have to be compatible
-(mbql-clause/define-tuple-mbql-clause :coalesce
-  #_expr       [:ref :metabase.lib.schema.expression/expression]
-  #_null-value [:ref :metabase.lib.schema.expression/expression])
+(mbql-clause/define-catn-mbql-clause :coalesce
+  [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
 
-(defmethod expression/type-of* :coalesce
-  [[_tag _opts expr null-value]]
-  (best-return-type (expression/type-of expr) (expression/type-of null-value)))
+(defmethod expression/type-of-method :coalesce
+  [[_tag _opts & exprs]]
+  #_{:clj-kondo/ignore [:reduce-without-init]}
+  (reduce best-return-type
+          (map expression/type-of exprs)))

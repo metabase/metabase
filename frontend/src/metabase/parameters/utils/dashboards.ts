@@ -1,30 +1,34 @@
 import _ from "underscore";
 
-import { generateParameterId } from "metabase/parameters/utils/parameter-id";
+import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
-import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
+import { generateParameterId } from "metabase/parameters/utils/parameter-id";
+import Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type {
+  UiParameter,
+  FieldFilterUiParameter,
+} from "metabase-lib/v1/parameters/types";
+import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  getParameterTargetField,
+  isParameterVariableTarget,
+} from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
-  DashboardOrderedCard,
+  QuestionDashboardCard,
   Parameter,
+  ParameterMappingOptions,
+  DashCardId,
+  CardId,
+  ParameterTarget,
 } from "metabase-types/api";
-import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
-import type {
-  UiParameter,
-  FieldFilterUiParameter,
-  ParameterWithTarget,
-} from "metabase-lib/parameters/types";
-import {
-  getTargetFieldFromCard,
-  isVariableTarget,
-} from "metabase-lib/parameters/utils/targets";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type Field from "metabase-lib/metadata/Field";
 
 type ExtendedMapping = DashboardParameterMapping & {
-  dashcard_id: number;
+  dashcard_id: DashCardId;
   card: Card;
 };
 
@@ -52,11 +56,8 @@ export function createParameter(
 
 export function setParameterName(
   parameter: Parameter,
-  name?: string,
+  name: string,
 ): Parameter {
-  if (!name) {
-    name = "unnamed";
-  }
   const slug = slugify(name);
   return {
     ...parameter,
@@ -65,39 +66,38 @@ export function setParameterName(
   };
 }
 
+export function setParameterType(
+  parameter: Parameter,
+  type: string,
+  sectionId: string,
+): Parameter {
+  // reset default value
+  const { default: _, ...rest } = parameter;
+
+  return {
+    ...rest,
+    type,
+    sectionId,
+  };
+}
+
 export function getIsMultiSelect(parameter: Parameter): boolean {
-  return parameter.isMultiSelect == null ? true : parameter.isMultiSelect;
+  return parameter.isMultiSelect ?? true;
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
-  return dashboard.ordered_cards.some(ordered_card => {
-    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
+  return dashboard.dashcards.some(dashcard => {
+    return dashcard?.parameter_mappings?.some(parameter_mapping => {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
 }
 
-export function isDashboardParameterWithoutMapping(
-  parameter: Parameter,
-  dashboard: Dashboard,
-) {
-  if (!dashboard || !dashboard.parameters) {
-    return false;
-  }
-
-  const parameterExistsOnDashboard = dashboard.parameters.some(
-    dashParam => dashParam.id === parameter.id,
-  );
-  const parameterHasMapping = hasMapping(parameter, dashboard);
-
-  return parameterExistsOnDashboard && !parameterHasMapping;
-}
-
-function getMappings(ordered_cards: DashboardOrderedCard[]): ExtendedMapping[] {
-  return ordered_cards.flatMap(dashcard => {
+function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
+  return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
-    return (parameter_mappings || [])
+    const extendedParameterMappings = (parameter_mappings || [])
       .map(parameter_mapping => {
         const card = _.findWhere(cards, { id: parameter_mapping.card_id });
         return card
@@ -109,18 +109,27 @@ function getMappings(ordered_cards: DashboardOrderedCard[]): ExtendedMapping[] {
           : null;
       })
       .filter((mapping): mapping is ExtendedMapping => mapping != null);
+
+    return extendedParameterMappings;
   });
 }
 
 export function getDashboardUiParameters(
-  dashboard: Dashboard,
+  dashcards: Dashboard["dashcards"],
+  parameters: Dashboard["parameters"],
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): UiParameter[] {
-  const { parameters, ordered_cards } = dashboard;
-  const mappings = getMappings(ordered_cards as DashboardOrderedCard[]);
+  const mappableDashcards = dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
-      return buildFieldFilterUiParameter(parameter, mappings, metadata);
+      return buildFieldFilterUiParameter(
+        parameter,
+        mappings,
+        metadata,
+        questions,
+      );
     }
 
     return {
@@ -135,50 +144,69 @@ function buildFieldFilterUiParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
   metadata: Metadata,
+  questions: Record<CardId, Question>,
 ): FieldFilterUiParameter {
   const mappingsForParameter = mappings.filter(
     mapping => mapping.parameter_id === parameter.id,
   );
-  const mappedFields = mappingsForParameter.map(mapping => {
+  const uniqueTargets: ParameterTarget[] = [];
+  const uniqueMappingsForParameters = mappingsForParameter.filter(mapping => {
+    const isTargetUnique = uniqueTargets.every(
+      target => _.isEqual(target, mapping.target) === false,
+    );
+
+    if (isTargetUnique) {
+      uniqueTargets.push(mapping.target);
+    }
+
+    return isTargetUnique;
+  });
+
+  const mappedFields = uniqueMappingsForParameters.map(mapping => {
     const { target, card } = mapping;
-    return getTargetFieldFromCard(target, card, metadata);
+    if (!isQuestionCard(card)) {
+      return {
+        field: null,
+        shouldResolveFkField: false,
+      };
+    }
+
+    const question = questions[card.id] ?? new Question(card, metadata);
+    try {
+      const field = getParameterTargetField(target, question);
+
+      return {
+        field,
+        // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
+        shouldResolveFkField: card.dataset_query?.type === "query",
+      };
+    } catch (e) {
+      console.error("Error getting a field from a card", { card });
+      throw e;
+    }
   });
-  const fields = mappedFields.filter((field): field is Field => field != null);
+
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
-    return isVariableTarget(mapping.target);
+    return isParameterVariableTarget(mapping.target);
   });
-  const uniqueFieldsWithFKResolved = _.uniq(
-    fields.map(field => field.target ?? field),
-    field => field.id,
-  );
+
+  const fields = mappedFields
+    .filter(
+      (
+        mappedField,
+      ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+        return mappedField.field != null;
+      },
+    )
+    .map(({ field, shouldResolveFkField }) => {
+      return shouldResolveFkField ? field.target ?? field : field;
+    });
 
   return {
     ...parameter,
-    fields: uniqueFieldsWithFKResolved,
+    fields: _.uniq(fields, field => field.id),
     hasVariableTemplateTagTarget,
   };
-}
-
-export function getParametersMappedToDashcard(
-  dashboard: Dashboard,
-  dashcard: DashboardOrderedCard,
-): ParameterWithTarget[] {
-  const { parameters } = dashboard;
-  const { parameter_mappings } = dashcard;
-  return (parameters || [])
-    .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings || [], {
-        parameter_id: parameter.id,
-      });
-
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-        };
-      }
-    })
-    .filter((parameter): parameter is ParameterWithTarget => parameter != null);
 }
 
 export function hasMatchingParameters({
@@ -192,7 +220,7 @@ export function hasMatchingParameters({
   cardId: number;
   parameters: Parameter[];
 }) {
-  const dashcard = _.findWhere(dashboard.ordered_cards, {
+  const dashcard = _.findWhere(dashboard.dashcards, {
     id: dashcardId,
     card_id: cardId,
   });
@@ -200,9 +228,8 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(
-    dashboard.ordered_cards as DashboardOrderedCard[],
-  );
+  const mappableParameters = dashboard.dashcards.filter(isQuestionDashCard);
+  const mappings = getMappings(mappableParameters);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );

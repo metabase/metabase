@@ -5,8 +5,7 @@
    [metabase.async.streaming-response]
    [metabase.db :as mdb]
    [metabase.public-settings :as public-settings]
-   [metabase.server.request.util :as request.u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.server.request.util :as req.util]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -27,7 +26,7 @@
   [handler]
   (fn [request respond raise]
     (handler request
-             (if-not (request.u/api-call? request)
+             (if-not (req.util/api-call? request)
                respond
                (comp respond add-content-type*))
              raise)))
@@ -47,11 +46,11 @@
              (not= uri "/api/health")
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
     (when-let [site-url (or origin x-forwarded-host host)]
-      (log/info (trs "Setting Metabase site URL to {0}" site-url))
+      (log/infof "Setting Metabase site URL to %s" site-url)
       (try
         (public-settings/site-url! site-url)
         (catch Throwable e
-          (log/warn e (trs "Failed to set site-url")))))))
+          (log/warn e "Failed to set site-url"))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` setting on the initial setup request"

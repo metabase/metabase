@@ -1,0 +1,122 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+
+import { Switch, Stack } from "metabase/ui";
+
+export const args = {
+  labelPosition: "right",
+  label: "Eat all the cheese",
+  description: undefined,
+  size: "md",
+  disabled: false,
+};
+
+export const argTypes = {
+  labelPosition: {
+    control: { type: "inline-radio" },
+    options: ["left", "right"],
+  },
+  variant: {
+    control: { type: "inline-radio" },
+    options: ["default", "stretch"],
+  },
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  size: {
+    control: { type: "inline-radio" },
+    options: ["xs", "sm", "md"],
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Inputs/Switch"
+  component={Switch}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Switch
+
+Our themed wrapper around [Mantine Switch](https://mantine.dev/core/switch/).
+
+## When to use Switch
+
+Use Switch when you have a setting that can be only either on or off, or enabled/disabled. If there are multiple related options in a list that could be selected or chosen, use a checkbox group instead.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/xdNKMROC99J6Z4Sqg6V3JI/Input-%2F-Switch?type=design&node-id=1-96&mode=design&t=0K7GSP6rqj8M2muz-0)
+- [Mantine Checkbox Docs](https://mantine.dev/core/switch/)
+
+## Usage guidelines
+
+In most situations you should use the `md` size variant, with the label on the left and the toggle on the right. (This allows users to read what the setting or option is first.)
+
+## Examples
+
+export const DefaultTemplate = args => <Switch {...args} />;
+
+export const StateTemplate = args => (
+  <Stack>
+    <Switch {...args} label="Unchecked switch" checked={false} />
+    <Switch {...args} label="Checked switch" checked />
+    <Switch {...args} label="Disabled unchecked switch" disabled />
+    <Switch {...args} label="Disabled checked switch" disabled checked />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Label
+
+export const Label = StateTemplate.bind({});
+
+<Canvas>
+  <Story name="Label">{Label}</Story>
+</Canvas>
+
+### Left label position
+
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
+
+<Canvas>
+  <Story name="Label, left position" args={LabelLeft.args}>
+    {LabelLeft}
+  </Story>
+</Canvas>
+
+### Description
+
+export const Description = StateTemplate.bind({});
+Description.args = {
+  description: "Every type of cheese will be consumed, regardless of stink.",
+};
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
+</Canvas>
+
+### Left description position
+
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  labelPosition: "left",
+  description: "Every type of cheese will be consumed, regardless of stink.",
+};
+
+<Canvas>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
+</Canvas>

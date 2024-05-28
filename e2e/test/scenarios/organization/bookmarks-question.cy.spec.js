@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   navigationSidebar,
@@ -15,7 +16,7 @@ describe("scenarios > question > bookmarks", () => {
   });
 
   it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     toggleBookmark();
 
     openNavigationSidebar();
@@ -31,25 +32,33 @@ describe("scenarios > question > bookmarks", () => {
       cy.findByText("Orders 2");
     });
 
-    // Convert to model
+    cy.log("Turn the question into a model");
     openQuestionActions();
-    cy.findByText("Turn into a model").click();
-    cy.findByText("Turn this into a model").click();
+    cy.findByRole("dialog").contains("Turn into a model").click();
+    cy.findByRole("dialog").contains("Turn this into a model").click();
+    cy.findByRole("status").contains("This is a model now.").should("exist");
 
     navigationSidebar().within(() => {
-      cy.icon("model");
+      cy.findByLabelText(/Bookmarks/)
+        .icon("model")
+        .should("exist");
     });
 
-    // Convert back to question
+    cy.log("Turn the model back into a question");
     openQuestionActions();
-    cy.findByText("Turn back to saved question").click();
+    cy.findByRole("dialog").contains("Turn back to saved question").click();
+    cy.findByRole("status").contains("This is a question now.").should("exist");
 
+    openNavigationSidebar();
+    cy.log("Should not find bookmark");
     navigationSidebar().within(() => {
-      cy.icon("model").should("not.exist");
+      cy.findByLabelText(/Bookmarks/)
+        .icon("model")
+        .should("not.exist");
     });
 
     // Remove bookmark
-    toggleBookmark();
+    toggleBookmark({ wasSelected: true });
 
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/).should("not.exist");
@@ -58,9 +67,10 @@ describe("scenarios > question > bookmarks", () => {
   });
 });
 
-function toggleBookmark() {
+function toggleBookmark({ wasSelected = false } = {}) {
+  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
   cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon("bookmark").click();
+    cy.icon(iconName).click();
   });
   cy.wait("@toggleBookmark");
 }

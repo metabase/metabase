@@ -1,16 +1,15 @@
-import React from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 
 interface ActionButtonViewProps extends Pick<VisualizationProps, "settings"> {
   disabled?: boolean;
-  icon?: string;
+  icon?: IconName;
   tooltip?: string;
   isFullHeight?: boolean;
   onClick?: () => void;
@@ -52,4 +51,5 @@ function ActionButtonView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionButtonView;

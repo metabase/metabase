@@ -1,12 +1,12 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
 
-import cx from "classnames";
-import Icon from "metabase/components/Icon";
-import S from "./LabelIcon.css";
+import { Icon } from "metabase/ui";
 
-const LabelIcon = ({ icon, size = 18, className, style }) =>
+import S from "./LabelIcon.module.css";
+
+const LabelIcon = ({ icon, size = 16, className, style }) =>
   icon.charAt(0) === "#" ? (
     <span
       className={cx(S.icon, S.colorIcon, className)}

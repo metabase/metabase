@@ -1,4 +1,6 @@
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
+  entityPickerModal,
   restore,
   startNewQuestion,
   enterCustomColumnDetails,
@@ -16,13 +18,18 @@ import {
       cy.signInAsAdmin();
 
       resetTestTable({ type: dialect, table: tableName });
-      cy.request("POST", "/api/database/2/sync_schema");
+      cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
     });
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
-      cy.findByText(/Writable/i).click();
-      cy.findByText(/colors/i).click();
+
+      entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("colors");
+        cy.findByTestId("result-item")
+          .contains(/colors/i)
+          .click();
+      });
       cy.icon("add_data").click();
       enterCustomColumnDetails({
         formula: "case([ID] > 1, 25, 5)",
@@ -36,7 +43,7 @@ import {
       popover().findByText(/^Sum$/).click();
 
       cy.wait("@dataset");
-      cy.get(".ScalarValue").invoke("text").should("eq", "55");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "55");
 
       cy.findByTestId("sidebar-right")
         .should("be.visible")

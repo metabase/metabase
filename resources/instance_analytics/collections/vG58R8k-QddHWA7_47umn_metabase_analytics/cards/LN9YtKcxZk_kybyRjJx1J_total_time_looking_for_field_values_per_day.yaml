@@ -1,0 +1,155 @@
+name: Total time looking for field values per day
+description: null
+entity_id: LN9YtKcxZk_kybyRjJx1J
+created_at: '2023-11-13T20:45:10.662006Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_tasks
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - sum
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_tasks
+          - duration_seconds
+        - base-type: type/Float
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_tasks
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: day
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - base-type: type/Text
+        join-alias: Databases - Database Qualified
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_tasks
+        - task
+      - base-type: type/Text
+    - field values scanning
+    - update-field-values
+    joins:
+    - alias: Databases - Database Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_tasks
+          - database_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_databases
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Databases - Database Qualified
+      fields: all
+      source-table: -19557ZnrWiDgG4h4cKxF
+      strategy: left-join
+    source-table: PKhlEfegdbTozSMfj0aLB
+  type: query
+result_metadata:
+- base_type: type/Date
+  coercion_strategy: null
+  description: null
+  display_name: Started At
+  effective_type: type/Date
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tasks
+    - started_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: day
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tasks
+  - started_at
+  name: started_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: day
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Databases - Database Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_databases
+    - name
+  - base-type: type/Text
+    join-alias: Databases - Database Qualified
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - name
+  name: name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Float
+  display_name: Sum of Duration Seconds
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: sum
+  semantic_type: null
+  settings: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - started_at
+  - name
+  graph.metrics:
+  - sum
+  graph.series_order: null
+  graph.series_order_dimension: null
+serdes/meta:
+- id: LN9YtKcxZk_kybyRjJx1J
+  label: total_time_looking_for_field_values_per_day
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-15T20:34:49.850139Z'
+metabase_version: vUNKNOWN (a98530f)
+type: question

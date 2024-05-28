@@ -1,7 +1,13 @@
-import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-
+import { createMockMetadata } from "__support__/metadata";
 import { separateTablesBySchema } from "metabase/reference/databases/TableList";
-import { TYPE } from "metabase-lib/types/constants";
+import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import {
+  createMockDatabase,
+  createMockField,
+  createMockSegment,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 describe("Reference utils.js", () => {
   describe("databaseToForeignKeys()", () => {
@@ -59,14 +65,14 @@ describe("Reference utils.js", () => {
   });
 
   describe("tablesToSchemaSeparatedTables()", () => {
-    it("should add schema separator to appropriate locations", () => {
+    it("should add schema separator to appropriate locations and sort tables by name", () => {
       const tables = {
-        1: { id: 1, name: "table1", schema_name: "foo" },
-        2: { id: 2, name: "table2", schema_name: "bar" },
-        3: { id: 3, name: "table3", schema_name: "boo" },
-        4: { id: 4, name: "table4", schema_name: "bar" },
-        5: { id: 5, name: "table5", schema_name: "foo" },
-        6: { id: 6, name: "table6", schema_name: "bar" },
+        1: { id: 1, name: "Toucan", schema_name: "foo" },
+        2: { id: 2, name: "Elephant", schema_name: "bar" },
+        3: { id: 3, name: "Giraffe", schema_name: "boo" },
+        4: { id: 4, name: "Wombat", schema_name: "bar" },
+        5: { id: 5, name: "Anaconda", schema_name: "foo" },
+        6: { id: 6, name: "Buffalo", schema_name: "bar" },
       };
 
       const createSchemaSeparator = table => table.schema_name;
@@ -79,34 +85,47 @@ describe("Reference utils.js", () => {
       );
 
       expect(schemaSeparatedTables).toEqual([
-        ["bar", { id: 2, name: "table2", schema_name: "bar" }],
-        { id: 4, name: "table4", schema_name: "bar" },
-        { id: 6, name: "table6", schema_name: "bar" },
-        ["boo", { id: 3, name: "table3", schema_name: "boo" }],
-        ["foo", { id: 1, name: "table1", schema_name: "foo" }],
-        { id: 5, name: "table5", schema_name: "foo" },
+        ["bar", { id: 6, name: "Buffalo", schema_name: "bar" }],
+        { id: 2, name: "Elephant", schema_name: "bar" },
+        { id: 4, name: "Wombat", schema_name: "bar" },
+        ["boo", { id: 3, name: "Giraffe", schema_name: "boo" }],
+        ["foo", { id: 5, name: "Anaconda", schema_name: "foo" }],
+        { id: 1, name: "Toucan", schema_name: "foo" },
       ]);
     });
   });
 
   describe("getQuestion()", () => {
+    const tableId = 5;
+    const dbId = 7;
+    const segment = createMockSegment({ table_id: tableId });
+    const segmentId = segment.id;
+    const field = createMockField({ table_id: tableId });
+    const fieldId = field.id;
+    const table = createMockTable({
+      id: tableId,
+      fields: [field],
+      segments: [segment],
+    });
+    const database = createMockDatabase({ id: dbId, tables: [table] });
+    const metadata = createMockMetadata({ databases: [database] });
+
     const getNewQuestion = ({
-      database = 1,
-      table = 2,
       display = "table",
       aggregation,
       breakout,
       filter,
-    }) => {
+    } = {}) => {
       const card = {
-        name: null,
-        display: display,
+        name: undefined,
+        collection_id: undefined,
+        display,
         visualization_settings: {},
         dataset_query: {
-          database: database,
+          database: database.id,
           type: "query",
           query: {
-            "source-table": table,
+            "source-table": tableId,
           },
         },
       };
@@ -124,29 +143,24 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for table raw data", () => {
       const question = getQuestion({
-        dbId: 3,
-        tableId: 4,
+        dbId,
+        tableId,
+        metadata,
       });
 
-      expect(question).toEqual(
-        getNewQuestion({
-          database: 3,
-          table: 4,
-        }),
-      );
+      expect(question).toEqual(getNewQuestion());
     });
 
     it("should generate correct question for table counts", () => {
       const question = getQuestion({
-        dbId: 3,
-        tableId: 4,
+        dbId,
+        tableId,
         getCount: true,
+        metadata,
       });
 
       expect(question).toEqual(
         getNewQuestion({
-          database: 3,
-          table: 4,
           aggregation: [["count"]],
         }),
       );
@@ -154,35 +168,33 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for field raw data", () => {
       const question = getQuestion({
-        dbId: 3,
-        tableId: 4,
-        fieldId: 5,
+        dbId,
+        tableId,
+        fieldId,
+        metadata,
       });
 
       expect(question).toEqual(
         getNewQuestion({
-          database: 3,
-          table: 4,
-          breakout: [["field", 5, null]],
+          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
         }),
       );
     });
 
     it("should generate correct question for field group by bar chart", () => {
       const question = getQuestion({
-        dbId: 3,
-        tableId: 4,
-        fieldId: 5,
+        dbId,
+        tableId,
+        fieldId,
         getCount: true,
         visualization: "bar",
+        metadata,
       });
 
       expect(question).toEqual(
         getNewQuestion({
-          database: 3,
-          table: 4,
           display: "bar",
-          breakout: [["field", 5, null]],
+          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
           aggregation: [["count"]],
         }),
       );
@@ -190,84 +202,51 @@ describe("Reference utils.js", () => {
 
     it("should generate correct question for field group by pie chart", () => {
       const question = getQuestion({
-        dbId: 3,
-        tableId: 4,
-        fieldId: 5,
+        dbId,
+        tableId,
+        fieldId,
         getCount: true,
         visualization: "pie",
+        metadata,
       });
 
       expect(question).toEqual(
         getNewQuestion({
-          database: 3,
-          table: 4,
           display: "pie",
-          breakout: [["field", 5, null]],
+          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
           aggregation: [["count"]],
-        }),
-      );
-    });
-
-    it("should generate correct question for metric raw data", () => {
-      const question = getQuestion({
-        dbId: 1,
-        tableId: 2,
-        metricId: 3,
-      });
-
-      expect(question).toEqual(
-        getNewQuestion({
-          aggregation: [["metric", 3]],
-        }),
-      );
-    });
-
-    it("should generate correct question for metric group by fields", () => {
-      const question = getQuestion({
-        dbId: 1,
-        tableId: 2,
-        fieldId: 4,
-        metricId: 3,
-      });
-
-      expect(question).toEqual(
-        getNewQuestion({
-          aggregation: [["metric", 3]],
-          breakout: [["field", 4, null]],
         }),
       );
     });
 
     it("should generate correct question for segment raw data", () => {
       const question = getQuestion({
-        dbId: 2,
-        tableId: 3,
-        segmentId: 4,
+        dbId,
+        tableId,
+        segmentId,
+        metadata,
       });
 
       expect(question).toEqual(
         getNewQuestion({
-          database: 2,
-          table: 3,
-          filter: ["segment", 4],
+          filter: ["segment", segmentId],
         }),
       );
     });
 
     it("should generate correct question for segment counts", () => {
       const question = getQuestion({
-        dbId: 2,
-        tableId: 3,
-        segmentId: 4,
+        dbId,
+        tableId,
+        segmentId,
         getCount: true,
+        metadata,
       });
 
       expect(question).toEqual(
         getNewQuestion({
-          database: 2,
-          table: 3,
           aggregation: [["count"]],
-          filter: ["segment", 4],
+          filter: ["segment", segmentId],
         }),
       );
     });

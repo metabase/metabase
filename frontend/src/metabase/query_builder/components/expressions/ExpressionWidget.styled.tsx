@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+
 import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { color } from "metabase/lib/colors";
 
 export const Container = styled.div`
   width: 472px;
@@ -16,7 +15,7 @@ export const ExpressionFieldWrapper = styled.div`
   padding: 1.5rem 1.5rem 1rem;
 `;
 
-export const FieldTitle = styled.div`
+export const FieldLabel = styled.label`
   display: flex;
   margin-bottom: 0.5rem;
 
@@ -26,20 +25,6 @@ export const FieldTitle = styled.div`
   letter-spacing: 0.06em;
 
   color: ${color("text-light")};
-`;
-
-export const InfoLink = styled(ExternalLink)`
-  margin-left: 4px;
-
-  &:hover,
-  :focus {
-    color: ${color("brand")};
-  }
-`;
-
-export const StyledFieldTitleIcon = styled(Icon)`
-  width: 10px;
-  height: 10px;
 `;
 
 export const Footer = styled.div`

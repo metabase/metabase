@@ -1,27 +1,24 @@
-(ns metabase-enterprise.audit-app.pages.common-test
+(ns ^:mb/once metabase-enterprise.audit-app.pages.common-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util :as u]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
   (mt/with-test-user :crowberto
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (qp/process-query (merge {:type :internal
                                 :fn   (u/qualified-name query-type)}
                                additional-query-params)))))
 
 (defmethod audit.i/internal-query ::legacy-format-query-fn
   [_ a1]
-  {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
-              [:B {:display_name "B", :base_type :type/Integer}]]
+  {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
+              [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/query
               {:union-all [{:select [[[:inline a1] :A]
                                      [[:inline 2] :B]]}
@@ -30,8 +27,8 @@
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
-  {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
-              [:B {:display_name "B", :base_type :type/Integer}]]
+  {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
+              [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/reducible-query
               {:union-all [{:select [[[:inline a1] :A]
                                      [[:inline 2] :B]]}
@@ -41,7 +38,7 @@
 
 (deftest transform-results-test
   (testing "Make sure query function result are transformed to QP results correctly"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                              :expected-rows [[100 2] [3 4]]}
                                                                 "reducible" {:query-type    ::reducible-format-query-fn
@@ -49,22 +46,12 @@
         (testing (format "format = %s" format-name)
           (let [results (delay (run-query query-type :args [100]))]
             (testing "cols"
-              (is (= [{:display_name "A", :base_type :type/DateTime, :name "A"}
-                      {:display_name "B", :base_type :type/Integer, :name "B"}]
+              (is (= [{:display_name "A", :base_type :type/DateTime, :name "a"}
+                      {:display_name "B", :base_type :type/Integer, :name "b"}]
                      (mt/cols @results))))
             (testing "rows"
               (is (= expected-rows
                      (mt/rows @results))))))))))
-
-(deftest ^:parallel add-45-days-clause-test
-  (testing "add 45 days clause"
-    (is (= {:where
-            [:>
-             (h2x/with-database-type-info
-               [:cast :bob.dobbs [:raw "date"]]
-               "date")
-             nil]}
-           (assoc-in (#'common/add-45-days-clause {} :bob.dobbs) [:where 2] nil)))))
 
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
@@ -75,7 +62,7 @@
 
 (deftest query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
                                                                              :expected-rows [[100 2] [3 4]]}
                                                                 "reducible" {:query-type    ::reducible-format-query-fn

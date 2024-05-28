@@ -14,15 +14,15 @@ describe("issue 16886", () => {
     cy.signInAsAdmin();
   });
 
-  it(`shouldn't remove parts of the query when choosing "Run selected text" (metabase#16886)`, () => {
+  it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
     openNativeEditor().type(
       ORIGINAL_QUERY + moveCursorToBeginning + highlightSelectedText,
       { delay: 50 },
     );
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.get(".ScalarValue").invoke("text").should("eq", "1");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
     cy.get("@editor").contains(ORIGINAL_QUERY);
   });

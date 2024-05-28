@@ -1,6 +1,7 @@
-import { Engine } from "metabase-types/api";
+import type { Engine } from "metabase-types/api";
+
 import { ELEVATED_ENGINES, ENGINE_LOGO } from "../constants";
-import { EngineOption } from "../types";
+import type { EngineOption } from "../types";
 
 export const getEngineOptions = (
   engines: Record<string, Engine>,

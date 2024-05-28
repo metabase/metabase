@@ -1,11 +1,12 @@
 (ns metabase.query-processor-test.sum-where-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.segment :refer [Segment]]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 179.0
            (->> {:aggregation [[:sum-where
@@ -26,7 +27,7 @@
                   ffirst
                   double))))))
 
-(deftest compound-condition-test
+(deftest ^:parallel compound-condition-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 34.0
            (->> {:aggregation [[:sum-where
@@ -39,7 +40,7 @@
                 ffirst
                 double)))))
 
-(deftest filter-test
+(deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= nil
            (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:< [:field (mt/id :venues :price) nil] 4]]]
@@ -48,7 +49,7 @@
                 mt/rows
                 ffirst)))))
 
-(deftest breakout-test
+(deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[2 0.0]
             [3 0.0]
@@ -65,7 +66,7 @@
                 (map (fn [[k v]]
                        [(long k) (double v)])))))))
 
-(deftest sum-where-inside-expressions-test
+(deftest ^:parallel sum-where-inside-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (is (= 90.5
            (->> {:aggregation [[:+
@@ -80,27 +81,40 @@
                 ffirst
                 double)))))
 
-(deftest segment-test
+(deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
-                                             :definition {:source-table (mt/id :venues)
-                                                          :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      {:segments [{:id         1
+                                                   :name       "Segment 1"
+                                                   :table-id   (mt/id :venues)
+                                                   :definition {:source-table (mt/id :venues)
+                                                                :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]})
       (is (= 179.0
-             (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:segment segment-id]]]}
+             (->> {:aggregation [[:sum-where [:field (mt/id :venues :price) nil] [:segment 1]]]}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst
                   double))))))
 
-(deftest metric-test
+
+(deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
-                                           :definition {:source-table (mt/id :venues)
-                                                        :aggregation  [:sum-where
-                                                                       [:field (mt/id :venues :price) nil]
-                                                                       [:< [:field (mt/id :venues :price) nil] 4]]}}]
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      {:cards [{:id            1
+                                                :database-id   (mt/id)
+                                                :name          "Metric 1"
+                                                :dataset-query {:database (mt/id)
+                                                                :type :query
+                                                                :query {:source-table (mt/id :venues)
+                                                                        :aggregation  [:sum-where
+                                                                                       [:field (mt/id :venues :price) nil]
+                                                                                       [:< [:field (mt/id :venues :price) nil] 4]]}}
+                                                :type          :metric}]})
       (is (= 179.0
-             (->> {:aggregation [[:metric metric-id]]}
+             (->> {:aggregation [[:metric 1]]
+                   :source-table "card__1"}
                   (mt/run-mbql-query venues)
                   mt/rows
                   ffirst

@@ -1,5 +1,10 @@
 import { t } from "ttag";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
+
 export const settings = {
   uiName: "Link",
   canSavePng: false,
@@ -10,8 +15,8 @@ export const settings = {
   supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
-  minSize: { width: 1, height: 1 },
-  defaultSize: { width: 3, height: 1 },
+  minSize: getMinSize("link"),
+  defaultSize: getDefaultSize("link"),
   checkRenderable: () => undefined,
   settings: {
     "card.title": {

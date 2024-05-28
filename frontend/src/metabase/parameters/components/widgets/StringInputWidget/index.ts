@@ -1,1 +1,1 @@
-export { default } from "./StringInputWidget";
+export { StringInputWidget } from "./StringInputWidget";

@@ -1,0 +1,125 @@
+/* provide flex utilities in lieu of float based layouts */
+
+:root {
+  --gap-1: 0.5rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.flexAuto {
+  flex: auto;
+}
+
+.flexFull {
+  flex: 1 0 auto;
+}
+
+.flexHalf {
+  flex: 0.5;
+}
+
+.flexNoShrink {
+  flex-shrink: 0;
+}
+
+/* The behavior of how `flex: <flex-grow>` sets flex-basis is inconsistent across
+ * browsers. Specifically:
+ * - On Chrome and FF it's set to `flex-basis: 0%`. That behaves equally as `height: 0%`.
+ *   It means that if the containing block has no explicit height, then `height: 0%` is computed as `height: auto`,
+ *   and element grows as its content grows. That is the most common scenario in Metabase codebase.
+ * - On older IEs it's set to `flex-basis: 0` which means that the initial main size of flex item is zero.
+ *   It is also notable that `flex-basis: 0%` doesn't work correctly on IE.
+ *
+ *  As a solution, `flex-basis-auto` should always be used in conjunction with `flex-full` when it is
+ *  a desired behavior that the element grows with its contents.
+*/
+.flexBasisAuto {
+  flex-basis: auto;
+}
+
+.flexBasisNone {
+  flex-basis: 0;
+}
+
+.shrinkBelowContentSize {
+  /* W3C spec says:
+     * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
+     * fixed-size element). To change this, set the min-width or min-height property.
+     */
+  min-width: 0;
+  min-height: 0;
+}
+
+.alignCenter {
+  align-items: center;
+}
+
+.justifyCenter {
+  justify-content: center;
+}
+
+.justifyBetween {
+  justify-content: space-between;
+}
+
+.justifyEnd {
+  justify-content: flex-end;
+}
+
+.alignStart {
+  align-items: flex-start;
+}
+
+.alignEnd {
+  align-items: flex-end;
+}
+
+.alignStretch {
+  align-items: stretch;
+}
+
+.alignSelfEnd {
+  align-self: flex-end;
+}
+
+.alignSelfStretch {
+  align-self: stretch;
+}
+
+.flexAlignRight {
+  margin-left: auto;
+}
+
+.layoutCentered {
+  align-items: center;
+  justify-content: center;
+}
+
+.flexColumn {
+  flex-direction: column;
+}
+
+.flexRow {
+  flex-direction: row;
+}
+
+.flexWrap {
+  flex-wrap: wrap;
+}
+
+.flexReverse {
+  flex-direction: row-reverse;
+}
+
+/* Contents of elements inside flex items might not be wrapped correctly on IE11,
+   set max-width manually to enforce wrapping
+*/
+.ieWrapContentFix {
+  max-width: 100%;
+}
+
+.rowGap1 {
+  row-gap: var(--gap-1);
+}

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { darken } from "metabase/lib/colors";
+
 import DateTime from "metabase/components/DateTime";
+import { darken } from "metabase/lib/colors";
 
 export const TimelineEventList = styled.ul`
   max-width: 300px;

@@ -1,11 +1,14 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   setupSMTP,
   visitQuestion,
   leftSidebar,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -28,12 +31,12 @@ const multiSeriesQuestionWithGoal = {
   display: "line",
 };
 
-const timeSeriesQuestionId = 3;
+const timeSeriesQuestionId = ORDERS_BY_YEAR_QUESTION_ID;
 
 const rawTestCases = [
   {
     questionType: "raw data question",
-    questionId: 1,
+    questionId: ORDERS_QUESTION_ID,
   },
   {
     questionType: "timeseries question without a goal",
@@ -58,6 +61,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
         openAlertModal();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         cy.wait("@savedAlert").then(({ response: { body } }) => {
@@ -72,24 +76,33 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       // Set goal on timeseries question
       visitQuestion(timeSeriesQuestionId);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").click();
       leftSidebar().within(() => {
         cy.icon("line").realHover();
         cy.icon("gear").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Line options");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Display").click();
 
       setGoal("7000");
 
       // Save question
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
-      cy.get(".Modal").button("Save").click();
+      cy.findByTestId("save-question-modal").within(modal => {
+        cy.findByText("Save").click();
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save question").should("not.exist");
 
       openAlertModal();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Reaches the goal line").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("The first time").click();
 
       cy.button("Done").click();
@@ -112,6 +125,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       //   "Goal-based alerts aren't yet supported for charts with more than one line",
       // );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
       // The alert condition should fall back to rows

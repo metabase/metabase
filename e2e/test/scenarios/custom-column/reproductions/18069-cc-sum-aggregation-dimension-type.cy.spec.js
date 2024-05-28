@@ -1,6 +1,5 @@
-import { restore, popover, visualize, summarize } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, popover, visualize, summarize } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -30,6 +29,7 @@ describe("issue 18069", () => {
 
   it("should not allow choosing text fields for SUM (metabase#18069)", () => {
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of ...").click();
 
     popover().within(() => {
@@ -49,6 +49,7 @@ describe("issue 18069", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,041.45");
   });
 });

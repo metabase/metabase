@@ -1,1 +1,1 @@
-export { default } from "./ParameterSidebar";
+export { ParameterSidebar } from "./ParameterSidebar";

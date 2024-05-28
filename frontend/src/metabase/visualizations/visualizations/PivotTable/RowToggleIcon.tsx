@@ -1,15 +1,13 @@
-import React from "react";
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
-
 import { COLLAPSED_ROWS_SETTING } from "metabase/lib/data_grid";
-
-import {
+import { Icon } from "metabase/ui";
+import type {
   VisualizationSettings,
   PivotTableCollapsedRowsSetting,
 } from "metabase-types/api";
+
 import { RowToggleIconRoot } from "./PivotTable.styled";
 
 interface RowToggleIconProps {

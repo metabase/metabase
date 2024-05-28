@@ -1,62 +1,78 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { useMemo, useCallback, useState, memo } from "react";
 import { t } from "ttag";
 
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import visualizations from "metabase/visualizations";
+import ErrorBoundary from "metabase/ErrorBoundary";
+import CS from "metabase/css/core/index.css";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import visualizations from "metabase/visualizations";
+import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
-export default class ChartSettingsSidebar extends React.Component {
-  state = { sidebarPropsOverride: null };
+function ChartSettingsSidebar(props) {
+  const [sidebarPropsOverride, setSidebarPropsOverride] = useState(null);
+  const handleSidebarPropsOverride = useCallback(
+    sidebarPropsOverride => {
+      setSidebarPropsOverride(sidebarPropsOverride);
+    },
+    [setSidebarPropsOverride],
+  );
 
-  setSidebarPropsOverride = sidebarPropsOverride =>
-    this.setState({ sidebarPropsOverride });
+  const {
+    question,
+    result,
+    addField,
+    initialChartSetting,
+    onReplaceAllVisualizationSettings,
+    onClose,
+    onOpenChartType,
+    visualizationSettings,
+    showSidebarTitle = false,
+  } = props;
+  const sidebarContentProps = showSidebarTitle
+    ? {
+        title: t`${visualizations.get(question.display()).uiName} options`,
+        onBack: () => onOpenChartType(),
+      }
+    : {};
 
-  render() {
-    const {
-      question,
-      result,
-      addField,
-      initialChartSetting,
-      onReplaceAllVisualizationSettings,
-      onClose,
-      onOpenChartType,
-      visualizationSettings,
-      showSidebarTitle = false,
-    } = this.props;
-    const { sidebarPropsOverride } = this.state;
-    const sidebarContentProps = showSidebarTitle
-      ? {
-          title: t`${visualizations.get(question.display()).uiName} options`,
-          onBack: () => onOpenChartType(),
-        }
-      : {};
-    return (
-      result && (
-        <SidebarContent
-          className="full-height"
-          onDone={() => onClose()}
-          {...sidebarContentProps}
-          {...sidebarPropsOverride}
-        >
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const card = question.card();
+  const series = useMemo(() => {
+    return [
+      {
+        card,
+        data: result.data,
+      },
+    ];
+  }, [card, result.data]);
+
+  return (
+    result && (
+      <SidebarContent
+        className={CS.fullHeight}
+        onDone={handleClose}
+        {...sidebarContentProps}
+        {...sidebarPropsOverride}
+      >
+        <ErrorBoundary>
           <ChartSettings
             question={question}
             addField={addField}
-            series={[
-              {
-                card: question.card(),
-                data: result.data,
-              },
-            ]}
+            series={series}
             onChange={onReplaceAllVisualizationSettings}
-            onClose={() => onClose()}
+            onClose={handleClose}
             noPreview
             initial={initialChartSetting}
-            setSidebarPropsOverride={this.setSidebarPropsOverride}
+            setSidebarPropsOverride={handleSidebarPropsOverride}
             computedSettings={visualizationSettings}
           />
-        </SidebarContent>
-      )
-    );
-  }
+        </ErrorBoundary>
+      </SidebarContent>
+    )
+  );
 }
+
+export default memo(ChartSettingsSidebar);

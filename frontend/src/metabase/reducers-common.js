@@ -1,15 +1,15 @@
 // Reducers shared between "main" and "public" apps
 
-/* ducks */
+import { Api } from "metabase/api";
 import app from "metabase/redux/app";
+import { reducer as auth } from "metabase/redux/auth";
 import embed from "metabase/redux/embed";
-import requests from "metabase/redux/requests";
-import settings from "metabase/redux/settings";
-import undo from "metabase/redux/undo";
-// eslint-disable-next-line import/no-named-as-default
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
-
-/* user */
+import requests from "metabase/redux/requests";
+import { settings } from "metabase/redux/settings";
+import { modal } from "metabase/redux/ui";
+import undo from "metabase/redux/undo";
+import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 
 export default {
@@ -22,4 +22,8 @@ export default {
   settings,
   undo,
   entities,
+  upload,
+  auth,
+  [Api.reducerPath]: Api.reducer,
+  modal,
 };

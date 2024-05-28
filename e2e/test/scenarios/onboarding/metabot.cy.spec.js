@@ -1,17 +1,18 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeWithSnowplow,
   enableTracking,
-  ensureDcChartVisibility,
+  echartsContainer,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
   openQuestionActions,
   resetSnowplow,
   restore,
+  sidebar,
   visitModel,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -26,7 +27,7 @@ const MODEL_DETAILS = {
   query: {
     "source-table": PRODUCTS_ID,
   },
-  dataset: true,
+  type: "model",
 };
 
 const PROMPT_RESPONSE = {
@@ -48,7 +49,7 @@ const PROMPT_RESPONSE = {
   prompt_template_versions: [],
 };
 
-describe("scenarios > metabot", () => {
+describe.skip("scenarios > metabot", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -59,6 +60,20 @@ describe("scenarios > metabot", () => {
     cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
     );
+    cy.intercept("POST", "/api/metabot/feedback", {
+      message: "Thanks for your feedback",
+    });
+  });
+
+  it("should not show metabot if it is disabled", () => {
+    cy.visit("/admin");
+    sidebar().findByText("Metabot").should("not.exist");
+
+    cy.visit("/metabot/database/1");
+    cy.url().should("eq", `${location.origin}/`);
+
+    cy.visit("/metabot/model/1");
+    cy.url().should("eq", `${location.origin}/`);
   });
 
   it("should allow to submit prompts based on the database", () => {
@@ -98,7 +113,7 @@ describe("scenarios > metabot", () => {
   });
 });
 
-describeWithSnowplow("scenarios > metabot", () => {
+describeWithSnowplow.skip("scenarios > metabot", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
@@ -108,6 +123,9 @@ describeWithSnowplow("scenarios > metabot", () => {
     cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
     );
+    cy.intercept("POST", "/api/metabot/feedback", {
+      message: "Thanks for your feedback",
+    });
   });
 
   afterEach(() => {
@@ -117,13 +135,16 @@ describeWithSnowplow("scenarios > metabot", () => {
   it("should send snowplow events when submitting metabot feedback", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
+    resetSnowplow();
     verifyHomeMetabot();
     verifyMetabotFeedback();
 
-    // 1 - new_instance_created
-    // 2 - pageview
-    // 4 - metabot_feedback_received
-    expectGoodSnowplowEvents(3);
+    // home page_view
+    // metabot page_view
+    // metabot_query_run
+    // metabot_feedback_received
+    // metabot_query_run
+    expectGoodSnowplowEvents(5);
   });
 });
 
@@ -142,13 +163,13 @@ const verifyHomeMetabot = () => {
   cy.wait("@databasePrompt");
   cy.wait("@dataset");
   cy.findByDisplayValue(PROMPT).should("be.visible");
-  ensureDcChartVisibility();
+  echartsContainer();
   cy.findByText("Gadget").should("be.visible");
   cy.findByText("Widget").should("be.visible");
   cy.findByLabelText("table2 icon").click();
   verifyTableVisibility();
   cy.findByLabelText("bar icon").click();
-  ensureDcChartVisibility();
+  echartsContainer();
 };
 
 const verifyManualQueryEditing = () => {
@@ -158,7 +179,7 @@ const verifyManualQueryEditing = () => {
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
-  ensureDcChartVisibility();
+  echartsContainer();
   cy.findByText("Gadget").should("be.visible");
   cy.findByText("Widget").should("not.exist");
 };
@@ -167,7 +188,7 @@ const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
-  ensureDcChartVisibility();
+  echartsContainer();
 };
 
 const verifyCollectionMetabot = () => {
@@ -178,7 +199,7 @@ const verifyCollectionMetabot = () => {
   cy.findByLabelText("Get Answer").click();
   cy.wait("@modelPrompt");
   cy.wait("@dataset");
-  ensureDcChartVisibility();
+  echartsContainer();
 };
 
 const verifyQueryBuilderMetabot = () => {

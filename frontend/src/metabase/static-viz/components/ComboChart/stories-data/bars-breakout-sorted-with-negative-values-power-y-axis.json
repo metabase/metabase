@@ -1,0 +1,813 @@
+[
+    {
+        "card": {
+            "public_uuid": null,
+            "parameter_usage_count": 0,
+            "created_at": "2024-01-18T11:45:10.466447-03:00",
+            "dataset": false,
+            "parameters": [],
+            "metabase_version": "v0.48.1-SNAPSHOT (c3a4e77)",
+            "collection": null,
+            "visualization_settings": {
+                "graph.show_goal": false,
+                "graph.show_values": true,
+                "graph.series_order_dimension": "CATEGORY",
+                "graph.y_axis.labels_enabled": true,
+                "graph.y_axis.scale": "pow",
+                "graph.metrics": [
+                    "sum"
+                ],
+                "graph.y_axis.axis_enabled": true,
+                "graph.series_order": [
+                    {
+                        "key": "Widget",
+                        "color": "#51528D",
+                        "enabled": true,
+                        "name": "Widget"
+                    },
+                    {
+                        "key": "Doohickey",
+                        "color": "#88BF4D",
+                        "enabled": true,
+                        "name": "Doohickey"
+                    },
+                    {
+                        "key": "Gadget",
+                        "color": "#509EE3",
+                        "enabled": true,
+                        "name": "Gadget"
+                    },
+                    {
+                        "name": "Gizmo",
+                        "enabled": false,
+                        "color": "#A989C5",
+                        "key": "Gizmo"
+                    }
+                ],
+                "series_settings": {
+                    "Widget": {
+                        "color": "#51528D"
+                    },
+                    "Gadget": {
+                        "color": "#509EE3"
+                    },
+                    "Doohickey": {
+                        "color": "#7172AD"
+                    }
+                },
+                "graph.dimensions": [
+                    "CREATED_AT",
+                    "CATEGORY"
+                ]
+            },
+            "collection_preview": true,
+            "entity_id": "DNSDcJ7Ce4xI8L3F1OmLU",
+            "display": "bar",
+            "parameter_mappings": [],
+            "id": 174,
+            "dataset_query": {
+                "database": 1,
+                "type": "query",
+                "query": {
+                    "source-table": 5,
+                    "expressions": {
+                        "Negative": [
+                            "case",
+                            [
+                                [
+                                    [
+                                        ">",
+                                        [
+                                            "field",
+                                            39,
+                                            {
+                                                "base-type": "type/Float"
+                                            }
+                                        ],
+                                        82
+                                    ],
+                                    [
+                                        "field",
+                                        39,
+                                        {
+                                            "base-type": "type/Float"
+                                        }
+                                    ]
+                                ]
+                            ],
+                            {
+                                "default": [
+                                    "-",
+                                    0,
+                                    [
+                                        "field",
+                                        39,
+                                        {
+                                            "base-type": "type/Float"
+                                        }
+                                    ]
+                                ]
+                            }
+                        ]
+                    },
+                    "aggregation": [
+                        [
+                            "sum",
+                            [
+                                "expression",
+                                "Negative",
+                                {
+                                    "base-type": "type/Float"
+                                }
+                            ]
+                        ]
+                    ],
+                    "breakout": [
+                        [
+                            "field",
+                            64,
+                            {
+                                "base-type": "type/Text",
+                                "source-field": 37
+                            }
+                        ],
+                        [
+                            "field",
+                            38,
+                            {
+                                "base-type": "type/DateTime",
+                                "temporal-unit": "quarter"
+                            }
+                        ]
+                    ]
+                }
+            },
+            "cache_ttl": null,
+            "embedding_params": null,
+            "made_public_by_id": null,
+            "updated_at": "2024-01-18T11:45:10.466447-03:00",
+            "moderation_reviews": [],
+            "creator_id": 1,
+            "average_query_time": null,
+            "dashboard_count": 0,
+            "last_query_start": null,
+            "name": "bars-breakout-sorted-with-negative-values-power-y-axis",
+            "query_type": "query",
+            "collection_id": null,
+            "enable_embedding": false,
+            "database_id": 1,
+            "can_write": true,
+            "result_metadata": [
+                {
+                    "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+                    "semantic_type": "type/Category",
+                    "coercion_strategy": null,
+                    "name": "CATEGORY",
+                    "settings": null,
+                    "fk_target_field_id": null,
+                    "field_ref": [
+                        "field",
+                        64,
+                        {
+                            "base-type": "type/Text",
+                            "source-field": 37
+                        }
+                    ],
+                    "effective_type": "type/Text",
+                    "id": 64,
+                    "visibility_type": "normal",
+                    "display_name": "Product → Category",
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 4,
+                            "nil%": 0
+                        },
+                        "type": {
+                            "type/Text": {
+                                "percent-json": 0,
+                                "percent-url": 0,
+                                "percent-email": 0,
+                                "percent-state": 0,
+                                "average-length": 6.375
+                            }
+                        }
+                    },
+                    "base_type": "type/Text"
+                },
+                {
+                    "description": "The date and time an order was submitted.",
+                    "semantic_type": "type/CreationTimestamp",
+                    "coercion_strategy": null,
+                    "unit": "quarter",
+                    "name": "CREATED_AT",
+                    "settings": null,
+                    "fk_target_field_id": null,
+                    "field_ref": [
+                        "field",
+                        38,
+                        {
+                            "base-type": "type/DateTime",
+                            "temporal-unit": "quarter"
+                        }
+                    ],
+                    "effective_type": "type/DateTime",
+                    "id": 38,
+                    "visibility_type": "normal",
+                    "display_name": "Created At",
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 10001,
+                            "nil%": 0
+                        },
+                        "type": {
+                            "type/DateTime": {
+                                "earliest": "2022-04-30T18:56:13.352Z",
+                                "latest": "2026-04-19T14:07:15.657Z"
+                            }
+                        }
+                    },
+                    "base_type": "type/DateTime"
+                },
+                {
+                    "display_name": "Sum of Negative",
+                    "field_ref": [
+                        "aggregation",
+                        0
+                    ],
+                    "name": "sum",
+                    "base_type": "type/Float",
+                    "effective_type": "type/Float",
+                    "semantic_type": null,
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 68,
+                            "nil%": 0
+                        },
+                        "type": {
+                            "type/Number": {
+                                "min": -10644.586294815555,
+                                "q1": -2557.524010830847,
+                                "q3": 11630.404221753935,
+                                "max": 17411.194596582187,
+                                "sd": 7799.9328322211895,
+                                "avg": 4658.79296478584
+                            }
+                        }
+                    }
+                }
+            ],
+            "table_id": 5,
+            "collection_position": null,
+            "archived": false,
+            "description": null,
+            "displayIsLocked": true
+        },
+        "data": {
+            "rows": [
+                [
+                    "Doohickey",
+                    "2022-04-01T00:00:00-03:00",
+                    -325.82325565403073
+                ],
+                [
+                    "Doohickey",
+                    "2022-07-01T00:00:00-03:00",
+                    -1026.212015485978
+                ],
+                [
+                    "Doohickey",
+                    "2022-10-01T00:00:00-03:00",
+                    -3620.1459226394386
+                ],
+                [
+                    "Doohickey",
+                    "2023-01-01T00:00:00-03:00",
+                    -5073.257852702885
+                ],
+                [
+                    "Doohickey",
+                    "2023-04-01T00:00:00-03:00",
+                    -6722.985966075507
+                ],
+                [
+                    "Doohickey",
+                    "2023-07-01T00:00:00-03:00",
+                    -8096.945181580537
+                ],
+                [
+                    "Doohickey",
+                    "2023-10-01T00:00:00-03:00",
+                    -10644.586294815555
+                ],
+                [
+                    "Doohickey",
+                    "2024-01-01T00:00:00-03:00",
+                    7100.155059032233
+                ],
+                [
+                    "Doohickey",
+                    "2024-04-01T00:00:00-03:00",
+                    5581.8109185925205
+                ],
+                [
+                    "Doohickey",
+                    "2024-07-01T00:00:00-03:00",
+                    9108.958585999206
+                ],
+                [
+                    "Doohickey",
+                    "2024-10-01T00:00:00-03:00",
+                    6049.88977783245
+                ],
+                [
+                    "Doohickey",
+                    "2025-01-01T00:00:00-03:00",
+                    6765.1060247390005
+                ],
+                [
+                    "Doohickey",
+                    "2025-04-01T00:00:00-03:00",
+                    7576.530629366888
+                ],
+                [
+                    "Doohickey",
+                    "2025-07-01T00:00:00-03:00",
+                    5742.868601007638
+                ],
+                [
+                    "Doohickey",
+                    "2025-10-01T00:00:00-03:00",
+                    5948.4957156358805
+                ],
+                [
+                    "Doohickey",
+                    "2026-01-01T00:00:00-03:00",
+                    8902.96687957765
+                ],
+                [
+                    "Doohickey",
+                    "2026-04-01T00:00:00-03:00",
+                    2080.9617217188593
+                ],
+                [
+                    "Gadget",
+                    "2022-04-01T00:00:00-03:00",
+                    -598.9215327547897
+                ],
+                [
+                    "Gadget",
+                    "2022-07-01T00:00:00-03:00",
+                    -476.7958535248947
+                ],
+                [
+                    "Gadget",
+                    "2022-10-01T00:00:00-03:00",
+                    -2100.8328252477154
+                ],
+                [
+                    "Gadget",
+                    "2023-01-01T00:00:00-03:00",
+                    -3868.9997655760585
+                ],
+                [
+                    "Gadget",
+                    "2023-04-01T00:00:00-03:00",
+                    -1295.382121971366
+                ],
+                [
+                    "Gadget",
+                    "2023-07-01T00:00:00-03:00",
+                    -3476.9480422665383
+                ],
+                [
+                    "Gadget",
+                    "2023-10-01T00:00:00-03:00",
+                    -3934.10029964949
+                ],
+                [
+                    "Gadget",
+                    "2024-01-01T00:00:00-03:00",
+                    8713.96357485307
+                ],
+                [
+                    "Gadget",
+                    "2024-04-01T00:00:00-03:00",
+                    9183.269353549564
+                ],
+                [
+                    "Gadget",
+                    "2024-07-01T00:00:00-03:00",
+                    9821.257528653276
+                ],
+                [
+                    "Gadget",
+                    "2024-10-01T00:00:00-03:00",
+                    16230.125500748753
+                ],
+                [
+                    "Gadget",
+                    "2025-01-01T00:00:00-03:00",
+                    17411.194596582187
+                ],
+                [
+                    "Gadget",
+                    "2025-04-01T00:00:00-03:00",
+                    13743.607732343738
+                ],
+                [
+                    "Gadget",
+                    "2025-07-01T00:00:00-03:00",
+                    14937.256516612373
+                ],
+                [
+                    "Gadget",
+                    "2025-10-01T00:00:00-03:00",
+                    13838.249527037973
+                ],
+                [
+                    "Gadget",
+                    "2026-01-01T00:00:00-03:00",
+                    15165.355363208406
+                ],
+                [
+                    "Gadget",
+                    "2026-04-01T00:00:00-03:00",
+                    2923.406842615667
+                ],
+                [
+                    "Gizmo",
+                    "2022-04-01T00:00:00-03:00",
+                    183.18776895653292
+                ],
+                [
+                    "Gizmo",
+                    "2022-07-01T00:00:00-03:00",
+                    -410.872298570342
+                ],
+                [
+                    "Gizmo",
+                    "2022-10-01T00:00:00-03:00",
+                    -949.6008513760329
+                ],
+                [
+                    "Gizmo",
+                    "2023-01-01T00:00:00-03:00",
+                    -4802.376680496336
+                ],
+                [
+                    "Gizmo",
+                    "2023-04-01T00:00:00-03:00",
+                    -4561.858018481196
+                ],
+                [
+                    "Gizmo",
+                    "2023-07-01T00:00:00-03:00",
+                    -5059.784759990812
+                ],
+                [
+                    "Gizmo",
+                    "2023-10-01T00:00:00-03:00",
+                    -7407.1082127191985
+                ],
+                [
+                    "Gizmo",
+                    "2024-01-01T00:00:00-03:00",
+                    6254.345649702369
+                ],
+                [
+                    "Gizmo",
+                    "2024-04-01T00:00:00-03:00",
+                    10678.52787616596
+                ],
+                [
+                    "Gizmo",
+                    "2024-07-01T00:00:00-03:00",
+                    9466.034363076766
+                ],
+                [
+                    "Gizmo",
+                    "2024-10-01T00:00:00-03:00",
+                    14858.205469165761
+                ],
+                [
+                    "Gizmo",
+                    "2025-01-01T00:00:00-03:00",
+                    12455.640970357175
+                ],
+                [
+                    "Gizmo",
+                    "2025-04-01T00:00:00-03:00",
+                    14959.437078700845
+                ],
+                [
+                    "Gizmo",
+                    "2025-07-01T00:00:00-03:00",
+                    13594.265870562318
+                ],
+                [
+                    "Gizmo",
+                    "2025-10-01T00:00:00-03:00",
+                    11663.118204300117
+                ],
+                [
+                    "Gizmo",
+                    "2026-01-01T00:00:00-03:00",
+                    10569.162380953923
+                ],
+                [
+                    "Gizmo",
+                    "2026-04-01T00:00:00-03:00",
+                    2686.2635641114007
+                ],
+                [
+                    "Widget",
+                    "2022-04-01T00:00:00-03:00",
+                    -342.74334170619994
+                ],
+                [
+                    "Widget",
+                    "2022-07-01T00:00:00-03:00",
+                    -1130.8709211718312
+                ],
+                [
+                    "Widget",
+                    "2022-10-01T00:00:00-03:00",
+                    -3014.2151964139784
+                ],
+                [
+                    "Widget",
+                    "2023-01-01T00:00:00-03:00",
+                    -3400.1734742168514
+                ],
+                [
+                    "Widget",
+                    "2023-04-01T00:00:00-03:00",
+                    -4925.753921778788
+                ],
+                [
+                    "Widget",
+                    "2023-07-01T00:00:00-03:00",
+                    -5848.390018036037
+                ],
+                [
+                    "Widget",
+                    "2023-10-01T00:00:00-03:00",
+                    -5202.017608578675
+                ],
+                [
+                    "Widget",
+                    "2024-01-01T00:00:00-03:00",
+                    7948.304264740955
+                ],
+                [
+                    "Widget",
+                    "2024-04-01T00:00:00-03:00",
+                    12444.276665873262
+                ],
+                [
+                    "Widget",
+                    "2024-07-01T00:00:00-03:00",
+                    13201.670856504134
+                ],
+                [
+                    "Widget",
+                    "2024-10-01T00:00:00-03:00",
+                    15840.030381439912
+                ],
+                [
+                    "Widget",
+                    "2025-01-01T00:00:00-03:00",
+                    16149.143839671822
+                ],
+                [
+                    "Widget",
+                    "2025-04-01T00:00:00-03:00",
+                    14053.92543753227
+                ],
+                [
+                    "Widget",
+                    "2025-07-01T00:00:00-03:00",
+                    11597.690239207755
+                ],
+                [
+                    "Widget",
+                    "2025-10-01T00:00:00-03:00",
+                    10004.080416772196
+                ],
+                [
+                    "Widget",
+                    "2026-01-01T00:00:00-03:00",
+                    15848.726218162448
+                ],
+                [
+                    "Widget",
+                    "2026-04-01T00:00:00-03:00",
+                    3834.155873252857
+                ]
+            ],
+            "cols": [
+                {
+                    "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+                    "semantic_type": "type/Category",
+                    "table_id": 8,
+                    "coercion_strategy": null,
+                    "name": "CATEGORY",
+                    "settings": null,
+                    "source": "breakout",
+                    "fk_target_field_id": null,
+                    "fk_field_id": 37,
+                    "field_ref": [
+                        "field",
+                        64,
+                        {
+                            "base-type": "type/Text",
+                            "source-field": 37
+                        }
+                    ],
+                    "effective_type": "type/Text",
+                    "nfc_path": null,
+                    "parent_id": null,
+                    "id": 64,
+                    "position": 3,
+                    "visibility_type": "normal",
+                    "display_name": "Product → Category",
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 4,
+                            "nil%": 0
+                        },
+                        "type": {
+                            "type/Text": {
+                                "percent-json": 0,
+                                "percent-url": 0,
+                                "percent-email": 0,
+                                "percent-state": 0,
+                                "average-length": 6.375
+                            }
+                        }
+                    },
+                    "base_type": "type/Text",
+                    "source_alias": "PRODUCTS__via__PRODUCT_ID"
+                },
+                {
+                    "description": "The date and time an order was submitted.",
+                    "semantic_type": "type/CreationTimestamp",
+                    "table_id": 5,
+                    "coercion_strategy": null,
+                    "unit": "quarter",
+                    "name": "CREATED_AT",
+                    "settings": null,
+                    "source": "breakout",
+                    "fk_target_field_id": null,
+                    "field_ref": [
+                        "field",
+                        38,
+                        {
+                            "base-type": "type/DateTime",
+                            "temporal-unit": "quarter"
+                        }
+                    ],
+                    "effective_type": "type/DateTime",
+                    "nfc_path": null,
+                    "parent_id": null,
+                    "id": 38,
+                    "position": 7,
+                    "visibility_type": "normal",
+                    "display_name": "Created At",
+                    "fingerprint": {
+                        "global": {
+                            "distinct-count": 10001,
+                            "nil%": 0
+                        },
+                        "type": {
+                            "type/DateTime": {
+                                "earliest": "2022-04-30T18:56:13.352Z",
+                                "latest": "2026-04-19T14:07:15.657Z"
+                            }
+                        }
+                    },
+                    "base_type": "type/DateTime"
+                },
+                {
+                    "base_type": "type/Float",
+                    "name": "sum",
+                    "display_name": "Sum of Negative",
+                    "source": "aggregation",
+                    "field_ref": [
+                        "aggregation",
+                        0
+                    ],
+                    "aggregation_index": 0,
+                    "effective_type": "type/Float"
+                }
+            ],
+            "native_form": {
+                "query": "SELECT \"source\".\"PRODUCTS__via__PRODUCT_ID__CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") AS \"CREATED_AT\", SUM(\"source\".\"Negative\") AS \"sum\" FROM (SELECT \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" AS \"PRODUCT_ID\", \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\", \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\", CASE WHEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" > 82 THEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" ELSE 0 - \"PUBLIC\".\"ORDERS\".\"TOTAL\" END AS \"Negative\", \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", \"PRODUCTS__via__PRODUCT_ID\".\"ID\" AS \"PRODUCTS__via__PRODUCT_ID__ID\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"PRODUCTS__via__PRODUCT_ID\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"PRODUCTS__via__PRODUCT_ID\".\"ID\") AS \"source\" GROUP BY \"source\".\"PRODUCTS__via__PRODUCT_ID__CATEGORY\", DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") ORDER BY \"source\".\"PRODUCTS__via__PRODUCT_ID__CATEGORY\" ASC, DATE_TRUNC('quarter', \"source\".\"CREATED_AT\") ASC",
+                "params": null
+            },
+            "results_timezone": "America/Montevideo",
+            "results_metadata": {
+                "columns": [
+                    {
+                        "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+                        "semantic_type": "type/Category",
+                        "coercion_strategy": null,
+                        "name": "CATEGORY",
+                        "settings": null,
+                        "fk_target_field_id": null,
+                        "field_ref": [
+                            "field",
+                            64,
+                            {
+                                "base-type": "type/Text",
+                                "source-field": 37
+                            }
+                        ],
+                        "effective_type": "type/Text",
+                        "id": 64,
+                        "visibility_type": "normal",
+                        "display_name": "Product → Category",
+                        "fingerprint": {
+                            "global": {
+                                "distinct-count": 4,
+                                "nil%": 0
+                            },
+                            "type": {
+                                "type/Text": {
+                                    "percent-json": 0,
+                                    "percent-url": 0,
+                                    "percent-email": 0,
+                                    "percent-state": 0,
+                                    "average-length": 6.375
+                                }
+                            }
+                        },
+                        "base_type": "type/Text"
+                    },
+                    {
+                        "description": "The date and time an order was submitted.",
+                        "semantic_type": "type/CreationTimestamp",
+                        "coercion_strategy": null,
+                        "unit": "quarter",
+                        "name": "CREATED_AT",
+                        "settings": null,
+                        "fk_target_field_id": null,
+                        "field_ref": [
+                            "field",
+                            38,
+                            {
+                                "base-type": "type/DateTime",
+                                "temporal-unit": "quarter"
+                            }
+                        ],
+                        "effective_type": "type/DateTime",
+                        "id": 38,
+                        "visibility_type": "normal",
+                        "display_name": "Created At",
+                        "fingerprint": {
+                            "global": {
+                                "distinct-count": 10001,
+                                "nil%": 0
+                            },
+                            "type": {
+                                "type/DateTime": {
+                                    "earliest": "2022-04-30T18:56:13.352Z",
+                                    "latest": "2026-04-19T14:07:15.657Z"
+                                }
+                            }
+                        },
+                        "base_type": "type/DateTime"
+                    },
+                    {
+                        "display_name": "Sum of Negative",
+                        "field_ref": [
+                            "aggregation",
+                            0
+                        ],
+                        "name": "sum",
+                        "base_type": "type/Float",
+                        "effective_type": "type/Float",
+                        "semantic_type": null,
+                        "fingerprint": {
+                            "global": {
+                                "distinct-count": 68,
+                                "nil%": 0
+                            },
+                            "type": {
+                                "type/Number": {
+                                    "min": -10644.586294815555,
+                                    "q1": -2557.524010830847,
+                                    "q3": 11630.404221753935,
+                                    "max": 17411.194596582187,
+                                    "sd": 7799.9328322211895,
+                                    "avg": 4658.79296478584
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "insights": null
+        }
+    }
+]

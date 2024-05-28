@@ -4,25 +4,30 @@
   `metabase_database` table."
   (:require
    [metabase.util.cron :as u.cron]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
-(def CronSchedulesMap
+(def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
-  {(s/optional-key :metadata_sync_schedule)      u.cron/CronScheduleString
-   (s/optional-key :cache_field_values_schedule) u.cron/CronScheduleString})
+  [:map
+   [:metadata_sync_schedule      {:optional true} u.cron/CronScheduleString]
+   [:cache_field_values_schedule {:optional true} [:maybe u.cron/CronScheduleString]]])
+
+(mr/def ::ExpandedSchedulesMap
+  (mu/with-api-error-message
+   [:map
+    {:error/message "Map of expanded schedule maps"}
+    [:cache_field_values {:optional true} [:maybe u.cron/ScheduleMap]]
+    [:metadata_sync      {:optional true} u.cron/ScheduleMap]]
+   (deferred-tru "value must be a valid map of schedule maps for a DB.")))
 
 (def ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
    This same key is used in reverse to update the schedules."
-  (su/with-api-error-message
-      (s/named
-       {(s/optional-key :cache_field_values) u.cron/ScheduleMap
-        (s/optional-key :metadata_sync)      u.cron/ScheduleMap}
-       "Map of expanded schedule maps")
-    "value must be a valid map of schedule maps for a DB."))
+  [:ref ::ExpandedSchedulesMap])
 
-(s/defn schedule-map->cron-strings :- CronSchedulesMap
+(mu/defn schedule-map->cron-strings :- CronSchedulesMap
   "Convert a map of `:schedules` as passed in by the frontend to a map of cron strings with the approriate keys for
    Database. This map can then be merged directly inserted into the DB, or merged with a map of other columns to
    insert/update."
@@ -65,5 +70,6 @@
 (defn scheduling
   "Adds sync schedule defaults to a map of schedule-maps."
   [{:keys [cache_field_values metadata_sync] :as _schedules}]
-  {:cache_field_values (or cache_field_values (randomly-once-a-day))
-   :metadata_sync      (or metadata_sync (randomly-once-an-hour))})
+  {:metadata_sync      (or metadata_sync (randomly-once-an-hour))
+   ;; cache_field_values is nullable
+   :cache_field_values cache_field_values})

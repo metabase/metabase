@@ -1,9 +1,8 @@
-import React from "react";
 import PropTypes from "prop-types";
 
-import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
 import Value from "metabase/components/Value";
-import Field from "metabase-lib/metadata/Field";
+import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
+import type Field from "metabase-lib/v1/metadata/Field";
 
 import { normalizeValue } from "../normalizeValue";
 
@@ -12,6 +11,7 @@ type ParameterFieldWidgetValueProps = {
   fields: Field[];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ParameterFieldWidgetValue({
   value,
   fields,

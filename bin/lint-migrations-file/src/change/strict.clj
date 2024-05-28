@@ -1,12 +1,13 @@
 (ns change.strict
   (:require
-   [change.common]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [column.strict]))
 
-(comment change.common/keep-me
-         column.strict/keep-me)
+(comment column.strict/keep-me)
+
+(s/def ::tableName
+  string?)
 
 (s/def ::column
   (s/keys :req-un [:column.strict/column]))
@@ -15,9 +16,7 @@
   (s/alt :column ::column))
 
 (s/def ::addColumn
-  (s/merge
-   :change.common/addColumn
-   (s/keys :req-un [:change.strict.add-column/columns])))
+  (s/keys :req-un [:change.strict.add-column/columns ::tableName]))
 
 (s/def ::remarks
   string?)
@@ -26,10 +25,8 @@
   (s/+ (s/alt :column ::column)))
 
 (s/def ::createTable
-  (s/merge
-   :change.common/createTable
-   ;; remarks are required for new tables in strict mode
-   (s/keys :req-un [:change.strict.create-table/columns ::remarks])))
+  ;; remarks are required for new tables in strict mode
+  (s/keys :req-un [:change.strict.create-table/columns ::remarks ::tableName]))
 
 ;; createIndex *must* include an explicit index name.
 (s/def ::indexName
@@ -45,6 +42,25 @@
 
 (s/def ::change
   (s/keys :opt-un [::addColumn ::createTable ::createIndex ::customChange]))
+
+(s/def :change.strict.dbms-qualified-sql-change.sqlfile/dbms
+  string?)
+
+(s/def :change.strict.dbms-qualified-sql-change.sqlFile/path
+  string?)
+
+(s/def :change.strict.dbms-qualified-sqlFile-change.sqlFile/relativeToChangelogFile
+  boolean?)
+
+(s/def :change.strict.dbms-qualified-sqlFile-change/sqlFile
+  (s/keys :req-un [:change.strict.dbms-qualified-sqlFile-change.sqlFile/dbms
+                   :change.strict.dbms-qualified-sqlFile-change.sqlFile/path
+                   :change.strict.dbms-qualified-sqlFile-change.sqlFile/relativeToChangelogFile]))
+
+(s/def ::dbms-qualified-sqlFile-change
+  (s/merge
+   ::change
+   (s/keys :req-un [:change.strict.dbms-qualified-sqlFile-change/sqlFile])))
 
 (s/def :change.strict.dbms-qualified-sql-change.sql/dbms
   string?)

@@ -11,13 +11,14 @@ describe("issue 22517", () => {
     cy.createNativeQuestion(
       {
         name: "22517",
-        native: { query: `select * from orders` },
-        dataset: true,
+        native: { query: "select * from orders" },
+        type: "model",
       },
       { visitQuestion: true },
     );
 
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit metadata").click();
 
     renameColumn("ID", "Foo");
@@ -28,9 +29,11 @@ describe("issue 22517", () => {
 
   it("adding or removging a column should not drop previously edited metadata (metabase#22517)", () => {
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
     // Make sure previous metadata changes are reflected in the UI
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
 
     // This will edit the original query and add the `SIZE` column
@@ -40,13 +43,16 @@ describe("issue 22517", () => {
         ", case when quantity > 4 then 'large' else 'small' end size ",
     );
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
   });
 });

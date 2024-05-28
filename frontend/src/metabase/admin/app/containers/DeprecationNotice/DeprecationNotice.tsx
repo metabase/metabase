@@ -1,10 +1,12 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Databases from "metabase/entities/databases";
-import { Database } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import DeprecationNotice from "../../components/DeprecationNotice";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { State } from "metabase-types/store";
+
 import { disableNotice } from "../../actions";
+import DeprecationNotice from "../../components/DeprecationNotice";
 import {
   hasDeprecatedDatabase,
   hasSlackBot,
@@ -25,6 +27,7 @@ const mapDispatchToProps = {
   onClose: disableNotice,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,

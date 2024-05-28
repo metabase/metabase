@@ -1,12 +1,13 @@
-// NOTE: need to load visualizations first for getSettings to work
-import "metabase/visualizations/index";
+import icepick from "icepick";
 
+import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
 } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
 
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+registerVisualizations();
 
 describe("visualization_settings", () => {
   describe("getComputedSettingsForSeries", () => {
@@ -163,6 +164,30 @@ describe("visualization_settings", () => {
         { card: { visualization_settings: { foo: "bar" } } },
       ]);
       expect(settings).toEqual({ foo: "bar" });
+    });
+    it("should work correctly with frozen objects", () => {
+      const settings = getStoredSettingsForSeries(
+        icepick.freeze([
+          {
+            card: {
+              visualization_settings: {
+                column_settings: {
+                  '["name","A"]': {
+                    number_style: "currency",
+                  },
+                },
+              },
+            },
+          },
+        ]),
+      );
+      expect(settings).toEqual({
+        column_settings: {
+          '["name","A"]': {
+            number_style: "currency",
+          },
+        },
+      });
     });
   });
   describe("table.cell_column", () => {

@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest promise-chan?-test
+(deftest ^:parallel promise-chan?-test
   (doseq [[x expected] {(a/promise-chan) true
                         (a/chan 1)       false
                         (a/chan)         false
@@ -16,58 +16,7 @@
     (is (= expected
            (async.u/promise-chan? x)))))
 
-(deftest promise-pipe-test
-  (testing "make sure `single-value-pipe` pipes a value from in-chan to out-chan"
-    (tu.async/with-open-channels [in-chan  (a/promise-chan)
-                                  out-chan (a/promise-chan)]
-      (async.u/promise-pipe in-chan out-chan)
-      (a/>!! in-chan ::value)
-      (is (= ::value
-             (first (a/alts!! [out-chan (a/timeout 1000)]))))))
-
-  (testing "`promise-pipe` should close input-chan if output-chan is closed"
-    (tu.async/with-open-channels [in-chan  (a/promise-chan)
-                                  out-chan (a/promise-chan)]
-      (async.u/promise-pipe in-chan out-chan)
-      (a/close! out-chan)
-      (is (= nil
-             (tu.async/wait-for-result in-chan 100)))))
-
-  (testing "`promise-pipe` should close output-chan if input-chan is closed"
-    (tu.async/with-open-channels [in-chan  (a/promise-chan)
-                                  out-chan (a/promise-chan)]
-      (async.u/promise-pipe in-chan out-chan)
-      (a/close! in-chan)
-      (is (= nil
-             (tu.async/wait-for-result out-chan 100)))))
-
-  (testing "if you are a knucklehead and write directly to out-chan it should close `in-chan`"
-    (tu.async/with-open-channels [in-chan  (a/promise-chan)
-                                  out-chan (a/promise-chan)]
-      (async.u/promise-pipe in-chan out-chan)
-      (a/>!! out-chan "Oops")
-      (let [timeout-chan (a/timeout 1000)
-            [val port]   (a/alts!! [in-chan timeout-chan])]
-        (is (= nil
-               val))
-        (is (= :in-chan
-               (condp = port
-                 in-chan      :in-chan
-                 out-chan     :out-chan
-                 timeout-chan :timeout-chan
-                 port))))))
-
-  (testing "can we combine multiple single value pipes?"
-    (tu.async/with-open-channels [in-chan    (a/promise-chan)
-                                  out-chan-1 (a/promise-chan)
-                                  out-chan-2 (a/promise-chan)]
-      (async.u/promise-pipe in-chan out-chan-1)
-      (async.u/promise-pipe out-chan-1 out-chan-2)
-      (a/>!! in-chan ::value)
-      (is (= ::value
-             (first (a/alts!! [out-chan-2 (a/timeout 1000)])))))))
-
-(deftest cancelable-thread-test
+(deftest ^:parallel cancelable-thread-test
   (testing "Make sure `cancelable-thread` can actually run a function correctly"
     (tu.async/with-open-channels [result-chan (async.u/cancelable-thread
                                                 (Thread/sleep 10)
@@ -92,13 +41,4 @@
           (a/close! result-chan))
         (is (instance?
              InterruptedException
-             (first (a/alts!! [finished-chan (a/timeout 1000)])))))))
-
-  (testing "We should be able to combine the `promise-pipe` and `cancelable-thread` and get results"
-    (letfn [(f []
-              (Thread/sleep 10)
-              ::success)]
-      (tu.async/with-open-channels [result-chan (a/promise-chan)]
-        (async.u/promise-pipe (async.u/cancelable-thread-call f) result-chan)
-        (is (= ::success
-               (first (a/alts!! [result-chan (a/timeout 500)]))))))))
+             (first (a/alts!! [finished-chan (a/timeout 1000)]))))))))

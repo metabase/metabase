@@ -7,6 +7,7 @@
    [metabase.driver.athena :as athena]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
@@ -22,7 +23,7 @@
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 ;; during unit tests don't treat athena as having FK support
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:athena :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -30,7 +31,10 @@
 ;; names.
 (defmethod ddl.i/format-name :athena
   [driver database-or-table-or-field-name]
-  ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace database-or-table-or-field-name #"-" "_")))
+  (let [name' ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace database-or-table-or-field-name #"-" "_"))]
+    (if (= name' "test_data")
+      "v2_test_data"
+      name')))
 
 (defmethod tx/dbdef->connection-details :athena
   [driver _context {:keys [database-name], :as _dbdef}]
@@ -70,26 +74,26 @@
 ;;;    aws configure --profile athena-ci
 ;;;
 ;;; 3. Delete the data from the `MB_ATHENA_TEST_S3_STAGING_DIR` S3 bucket. The data directory is the same as the dataset
-;;;    name you want to delete with hyphens replaced with underscores e.g. `sample-dataset` becomes `sample_dataset`
+;;;    name you want to delete with hyphens replaced with underscores e.g. `test-data` becomes `test_data`
 ;;;
 ;;;    ```
-;;;    aws s3 --profile athena-ci rm s3://metabase-ci-athena-results/sample_dataset --recursive
+;;;    aws s3 --profile athena-ci rm s3://metabase-ci-athena-results/test_data --recursive
 ;;;    ```
 ;;;
 ;;; 4. Delete the database from the Glue Console.
 ;;;
 ;;;    ```
-;;;    aws glue --profile athena-ci delete-database --name sample_dataset
+;;;    aws glue --profile athena-ci delete-database --name test_data
 ;;;   ```
 ;;;
 ;;; 5. After this you can recreate the database normally using the test loading code. Note that you must
 ;;;    enable [[*allow-database-creation*]] for this to work:
 ;;;
 ;;;    ```
-;;;    (t2/delete! 'Database :engine "athena", :name "sample-dataset")
+;;;    (t2/delete! 'Database :engine "athena", :name "test-data")
 ;;;    (binding [metabase.test.data.athena/*allow-database-creation* true]
 ;;;      (metabase.driver/with-driver :athena
-;;;        (metabase.test/dataset sample-dataset
+;;;        (metabase.test/dataset test-data
 ;;;          (metabase.test/db))))
 ;;;    ```
 
@@ -124,19 +128,16 @@
 ;; Customize the create table table to include the S3 location
 ;; TODO: Specify a unique location each time
 (defmethod sql.tx/create-table-sql :athena
-  [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
-  (let [field-definitions (cons
-                           {:field-name "id", :base-type :type/Integer, :semantic-type :type/PK}
-                           (:field-definitions tabledef))
-        fields            (->> field-definitions
-                               (map (fn [{:keys [field-name base-type]}]
-                                      (format "`%s` %s"
-                                              (ddl.i/format-name driver field-name)
-                                              (if (map? base-type)
-                                                (:native base-type)
-                                                (sql.tx/field-base-type->sql-type driver base-type)))))
-                               (interpose ", ")
-                               str/join)]
+  [driver {:keys [database-name]} {:keys [table-name field-definitions], :as _tabledef}]
+  (let [fields (->> field-definitions
+                    (map (fn [{:keys [field-name base-type]}]
+                           (format "`%s` %s"
+                                   (ddl.i/format-name driver field-name)
+                                   (if (map? base-type)
+                                     (:native base-type)
+                                     (sql.tx/field-base-type->sql-type driver base-type)))))
+                    (interpose ", ")
+                    str/join)]
     ;; ICEBERG tables do what we want, and dropping them causes the data to disappear; dropping a normal non-ICEBERG
     ;; table doesn't delete data, so if you recreate it you'll have duplicate rows. 'normal' tables do not support
     ;; `DELETE .. FROM`, either, so there's no way to fix them here.
@@ -180,7 +181,7 @@
                               :type/Time           "TIMESTAMP"}]
   (defmethod sql.tx/field-base-type->sql-type [:athena base-type] [_ _] sql-type))
 
-;; I'm not sure why `driver/supports?` above doesn't rectify this, but make `add-fk-sql a noop
+;; TODO: Maybe make `add-fk-sql a noop
 (defmethod sql.tx/add-fk-sql :athena [& _] nil)
 
 ;; Athena can only execute one statement at a time
@@ -200,7 +201,7 @@
             ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
             ;; very fussy! See [[athena/*loading-data*]] for more info.
             athena/*loading-data*  true]
-    (apply load-data/load-data-add-ids-chunked! args)))
+    (apply load-data/load-data-maybe-add-ids-chunked! args)))
 
 (defn- server-connection-details []
   (tx/dbdef->connection-details :athena :server nil))
@@ -211,10 +212,14 @@
 (defn- existing-databases
   "Set of databases that already exist in our S3 bucket, so we don't try to create them a second time."
   []
-  (jdbc/with-db-connection [conn (server-connection-spec)]
-    (let [dbs (into #{} (map :database_name) (jdbc/query conn ["SHOW DATABASES;"]))]
-      (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
-      dbs)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   :athena
+   (server-connection-spec)
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [dbs (into #{} (map :database_name) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
+       (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
+       dbs))))
 
 (def ^:private ^:dynamic *allow-database-creation*
   "Whether to allow database creation. This is normally disabled to prevent people from accidentally loading duplicate

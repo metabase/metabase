@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
@@ -7,7 +8,10 @@ import {
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
+  computeSplit,
+  getDefaultPivotColumn,
 } from "metabase/visualizations/lib/utils";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
 
@@ -337,6 +341,87 @@ describe("metabase/visualization/lib/utils", () => {
       expect(
         preserveExistingColumnsOrder(["a", "b"], ["c", "d"]),
       ).toStrictEqual(["c", "d"]);
+    });
+  });
+
+  describe("computeSplit", () => {
+    const extents = [
+      [6, 8],
+      [9, 13],
+      [6, 7],
+      [1, 1],
+      [10, 13],
+      [15, 19],
+      [5, 6],
+      [5, 10],
+      [9, 13],
+      [2, 6],
+      [12, 15],
+      [1, 1],
+    ];
+
+    it("should return the same number of series as given", () => {
+      expect(computeSplit(extents).flat()).toHaveLength(extents.length);
+    });
+  });
+
+  describe("getDefaultPivotColumn", () => {
+    const lowestCardinalityColumn = createMockColumn({
+      name: "lowest_cardinality",
+    });
+    const lowCardinalityColumn = createMockColumn({ name: "low_cardinality" });
+    const highCardinalityColumn = createMockColumn({
+      name: "high_cardinality",
+    });
+    const highestCardinalityColumn = createMockColumn({
+      name: "highest_cardinality",
+    });
+
+    const lowestCardinality = 5;
+    const lowCardinality = 16;
+    const highCardinality = 17;
+    const highestCardinality = 50;
+
+    it("returns null if all columns has cardinality > 16", () => {
+      const cols = [highestCardinalityColumn, highCardinalityColumn];
+      const rows = _.range(highestCardinality).map(n => [
+        n,
+        n % highCardinality,
+      ]);
+
+      expect(getDefaultPivotColumn(cols, rows)).toBeNull();
+    });
+
+    it("returns lowest cardinality column from ones where it is <= 16", () => {
+      const cols = [
+        highestCardinalityColumn,
+        highCardinalityColumn,
+        lowCardinalityColumn,
+        lowestCardinalityColumn,
+      ];
+      const rows = _.range(highestCardinality).map(n => [
+        n,
+        n % highCardinality,
+        n % lowCardinality,
+        n % lowestCardinality,
+      ]);
+
+      expect(getDefaultPivotColumn(cols, rows)).toEqual(
+        lowestCardinalityColumn,
+      );
+    });
+
+    it("ignores low cardinality non-dimension columns", () => {
+      const cols = [
+        lowCardinalityColumn,
+        createMockColumn({
+          name: "lowest_cardinality_aggregation",
+          source: "aggregation",
+        }),
+      ];
+      const rows = _.range(lowCardinality).map(n => [n, 1]);
+
+      expect(getDefaultPivotColumn(cols, rows)).toEqual(lowCardinalityColumn);
     });
   });
 });

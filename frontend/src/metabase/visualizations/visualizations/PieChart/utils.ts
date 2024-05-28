@@ -1,17 +1,14 @@
 import _ from "underscore";
-import { StackedTooltipModel } from "metabase/visualizations/components/ChartTooltip/types";
+
+import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 export function getMaxLabelDimension(
   d3Arc: d3.svg.Arc<d3.svg.arc.Arc>,
   slice: d3.svg.arc.Arc,
 ) {
-  // Invalid typing
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
+  // @ts-expect-error Invalid library typings
   const innerRadius = d3Arc.innerRadius()();
-  // Invalid typing
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
+  // @ts-expect-error Invalid library typings
   const outerRadius = d3Arc.outerRadius()();
   const donutWidth = outerRadius - innerRadius;
 
@@ -32,6 +29,9 @@ export function getMaxLabelDimension(
 interface SliceData {
   key: string;
   value: number;
+  displayValue: number;
+  percentage: number;
+  rowIndex: number;
   color: string;
 }
 
@@ -45,7 +45,7 @@ export const getTooltipModel = (
 ): StackedTooltipModel => {
   const rows = slices.map(slice => ({
     name: dimensionFormatter(slice.key),
-    value: slice.value,
+    value: slice.displayValue,
     color: slice.color,
     formatter: metricFormatter,
   }));

@@ -1,13 +1,7 @@
-import React, { useCallback, useState } from "react";
+import type * as React from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
-import {
-  DataReferenceTriggerButton,
-  DataReferenceInline,
-} from "metabase/actions/containers/ActionCreator/InlineDataReference";
 import {
   ActionCreatorBodyContainer,
   EditorContainer,
@@ -16,14 +10,20 @@ import {
   ModalLeft,
   ModalRight,
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
-
-import { isNotNull } from "metabase/core/utils/types";
+import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
+import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
+import {
+  DataReferenceTriggerButton,
+  DataReferenceInline,
+} from "metabase/actions/containers/ActionCreator/InlineDataReference";
+import Button from "metabase/core/components/Button";
+import { isNotNull } from "metabase/lib/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
-import type { ActionCreatorUIProps, SideView } from "./types";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
 } from "./InlineActionSettings";
+import type { ActionCreatorUIProps, SideView } from "./types";
 
 interface ActionCreatorProps extends ActionCreatorUIProps {
   action: Partial<WritebackAction>;
@@ -43,6 +43,7 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
 
 const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionCreatorView({
   action,
   formSettings,
@@ -85,7 +86,7 @@ export default function ActionCreatorView({
   }, []);
 
   return (
-    <ModalRoot>
+    <ModalRoot data-testid="action-creator">
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader
@@ -120,6 +121,7 @@ export default function ActionCreatorView({
         <ModalRight>
           {activeSideView === "actionForm" ? (
             <FormCreator
+              actionType={action.type ?? "query"}
               parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}

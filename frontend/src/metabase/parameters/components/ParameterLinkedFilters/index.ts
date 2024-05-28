@@ -1,1 +1,1 @@
-export { default } from "./ParameterLinkedFilters";
+export { ParameterLinkedFilters } from "./ParameterLinkedFilters";

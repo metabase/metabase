@@ -4,12 +4,11 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.ldap.sdk LDAPConnectionPool)))
+   (com.unboundid.ldap.sdk DN LDAPConnectionPool)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,7 +69,7 @@
 
 (deftest find-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
+  (mt/with-premium-features #{}
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -125,40 +124,40 @@
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
+  (mt/with-premium-features #{}
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try
-         (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
-         (is (= {:first_name       "John"
-                 :last_name        "Smith"
-                 :common_name      "John Smith"
-                 :email            "john.smith@metabase.com"}
-                (into {} (t2/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
-         (finally (t2/delete! User :email "john.smith@metabase.com"))))
+          (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
+          (is (= {:first_name       "John"
+                  :last_name        "Smith"
+                  :common_name      "John Smith"
+                  :email            "john.smith@metabase.com"}
+                 (into {} (t2/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
+          (finally (t2/delete! User :email "john.smith@metabase.com"))))
 
       (try
-       (testing "a user without a givenName attribute has `nil` for that attribute"
-         (ldap/fetch-or-create-user! (ldap/find-user "jmiller"))
-         (is (= {:first_name       nil
-                 :last_name        "Miller"
-                 :common_name      "Miller"}
-                (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+        (testing "a user without a givenName attribute has `nil` for that attribute"
+          (ldap/fetch-or-create-user! (ldap/find-user "jmiller"))
+          (is (= {:first_name       nil
+                  :last_name        "Miller"
+                  :common_name      "Miller"}
+                 (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
-       (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
-         (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name "Jane" :last-name "Doe"))
-         (is (= {:first_name       "Jane"
-                 :last_name        "Doe"
-                 :common_name      "Jane Doe"}
-                (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+        (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
+          (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name "Jane" :last-name "Doe"))
+          (is (= {:first_name       "Jane"
+                  :last_name        "Doe"
+                  :common_name      "Jane Doe"}
+                 (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
-       (testing "if givenName or sn attributes are removed, values stored in Metabase are updated to `nil` to respect the IdP response."
-         (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
-         (is (= {:first_name       nil
-                 :last_name        nil
-                 :common_name      "jane.miller@metabase.com"}
-                (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
-       (finally (t2/delete! User :email "jane.miller@metabase.com"))))))
+        (testing "if givenName or sn attributes are removed, values stored in Metabase are updated to `nil` to respect the IdP response."
+          (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
+          (is (= {:first_name       nil
+                  :last_name        nil
+                  :common_name      "jane.miller@metabase.com"}
+                 (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
+        (finally (t2/delete! User :email "jane.miller@metabase.com"))))))
 
 (deftest group-matching-test
   (testing "LDAP group matching should identify Metabase groups using DN equality rules"
@@ -170,6 +169,14 @@
               ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
                "CN=Shipping,OU=Groups,DC=metabase,DC=com"]
               {:group-mappings (ldap/ldap-group-mappings)}))))))
+
+(deftest valid-group-mapping
+  (testing "Validating that a group mapping DN can contain a forward slash when set as a keyword (#29629)"
+    (mt/with-temporary-setting-values
+      [ldap-group-mappings nil]
+      (ldap/ldap-group-mappings! {(keyword "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []})
+      (is (= {(DN. "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []}
+             (ldap/ldap-group-mappings))))))
 
 ;; For hosts that do not support IPv6, the connection code will return an error
 ;; This isn't a failure of the code, it's a failure of the host.

@@ -1,0 +1,16 @@
+{{> metabase/email/_header }}
+<p>Hi {{userName}},</p>
+<p>We deprecated Pulses in Metabase 0.38, two years ago.</p>
+<p>Now the time has come to remove them.</p>
+<p>On the next release, we will delete all Pulses and keep only Dashboard Subscriptions.</p>
+<p>These are the active Pulses you have:</p>
+<ul>
+  {{#pulses}}
+    <li><a href="{{url}}">{{name}}</a></li>
+  {{/pulses}}
+</ul>
+<p>You can replace legacy Pulses with <a href="https://www.metabase.com/docs/latest/questions/sharing/pulses">dashboards subscriptions and alerts</a>.</p>
+<p>This message was sent to all Admins of <a href="{{instanceURL}}">{{instanceURL}}</a>.</p>
+<p>Onward!</p>
+<p>- The Metabase Team</p>
+{{> metabase/email/_footer }}

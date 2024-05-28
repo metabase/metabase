@@ -6,7 +6,13 @@ redirect_from:
 
 # Managing people and groups
 
-To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
+To start managing people:
+
+Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click on the **People** settings result.
+
+Or
+
+Click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
@@ -14,17 +20,36 @@ To start managing people, click on the **gear** icon > **Admin settings** > **Pe
 
 To add a new person, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
-On some [paid plans](https://www.metabase.com/pricing), you can also add attributes to that user account. But you don't have to right away; you can add attributes to accounts at any time (as well as [via SSO](../people-and-groups/start.md#authentication)). Metabase uses attributes to create [data sandboxes](../permissions/data-sandboxes.md).
-
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a paid Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/pricing/how-billing-works)).
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
 ## Editing an account
 
-You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**.
+You can edit someone's name and email address by clicking the three dots icon and choosing **Edit user**.
 
 > Be careful: changing an account's email address _will change the address the person will use to log in to Metabase_.
+
+## Adding a user attribute
+
+{% include plans-blockquote.html feature="User attributes" %}
+
+To add a user attribute manually:
+
+1. Go to **Admin settings** > **People**.
+2. Find the person's account and click the **three dot** (...) menu.
+3. Click **Edit user**.
+4. Click **+ Add an attribute**.
+5. Add the name of the user attribute under "Key". For example, "Department".
+6. Add the value that applies to the specific person. For example, "Engineering".
+7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permissions, such as "Sandboxed people".
+8. Add the person to the group.
+
+You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
+
+User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
+
+You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonated-view-data-permission).
 
 ## Deactivating an account
 
@@ -93,6 +118,32 @@ If you're a Metabase admin and have access to the server console, you can get Me
 This action will delete any dashboard subscriptions or alerts the person has created, and remove them as a recipient from any other subscriptions or alerts.
 
 This action doesn't affect email distribution lists that are managed outside of Metabase.
+
+## Default user accounts
+
+Metabase includes default user accounts to handle various tasks. We're documenting these accounts here so you know they're legitimate accounts and not someone trying to spy on your Metabase. Some things to know about them:
+
+- Customers are not charged for these accounts.
+- No one can log in to these user accounts.
+- Metabase excludes these user accounts from the **Admin settings** > **People** tab.
+
+### Anonymous user account
+
+- ID: 0
+- First name: External
+- Last name: User
+- Email: null
+
+Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+
+### Metabase internal account
+
+- ID: 13371338
+- First name: Internal
+- Last name: Metabase
+- Email: internal@metabase.com
+
+Metabase uses this account to load content into Metabase (like the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
 
 ## Groups
 

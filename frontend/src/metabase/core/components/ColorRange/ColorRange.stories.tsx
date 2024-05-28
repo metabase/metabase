@@ -1,6 +1,7 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
+
 import { color } from "metabase/lib/colors";
+
 import ColorRange from "./ColorRange";
 
 export default {

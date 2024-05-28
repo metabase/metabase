@@ -1,11 +1,11 @@
 import { screen, queryIcon } from "__support__/ui";
-
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
 
-import { setup as baseSetup, SetupOpts } from "./common";
+import type { SetupOpts } from "./common";
+import { setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),
@@ -48,7 +48,7 @@ describe("ActionCreator > Implicit Actions", () => {
 
     expect(screen.getByDisplayValue(action.name)).toBeDisabled();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
-    expect(queryIcon("grabber2")).not.toBeInTheDocument();
+    expect(queryIcon("grabber")).not.toBeInTheDocument();
   });
 
   it("blocks editing if the user doesn't have write permissions for the collection", async () => {
@@ -62,7 +62,7 @@ describe("ActionCreator > Implicit Actions", () => {
     expect(screen.getByDisplayValue(action.name)).toBeDisabled();
 
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
-    expect(queryIcon("grabber2")).not.toBeInTheDocument();
+    expect(queryIcon("grabber")).not.toBeInTheDocument();
 
     expect(
       screen.queryByRole("button", { name: "Update" }),

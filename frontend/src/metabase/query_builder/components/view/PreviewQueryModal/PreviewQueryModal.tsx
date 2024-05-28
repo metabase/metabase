@@ -1,55 +1,58 @@
-import React from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
+import { useGetNativeDatasetQuery } from "metabase/api";
+import { formatNativeQuery } from "metabase/lib/engine";
+import { getResponseErrorMessage } from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import {
-  getNativeQueryFn,
   getQuestion,
+  getNextRunParameters,
 } from "metabase/query_builder/selectors";
-import { NativeQueryForm } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+import { getLearnUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import * as Lib from "metabase-lib";
+
+import { NativeQueryPreview } from "../NativeQueryPreview";
+
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {
-  question: Question;
-  onLoadQuery: ({ pretty }: { pretty?: boolean }) => Promise<NativeQueryForm>;
   onClose?: () => void;
 }
 
-const PreviewQueryModal = ({
-  question,
-  onLoadQuery,
+export const PreviewQueryModal = ({
   onClose,
 }: PreviewQueryModalProps): JSX.Element => {
-  const { query, error, isLoading } = useNativeQuery(question, () =>
-    onLoadQuery({ pretty: false }),
-  );
-  const learnUrl = MetabaseSettings.learnUrl("debugging-sql/sql-syntax");
+  const question = checkNotNull(useSelector(getQuestion));
+  const sourceQuery = question.query();
+  const parameters = useSelector(getNextRunParameters);
+  const payload = {
+    ...Lib.toLegacyQuery(sourceQuery),
+    parameters,
+    pretty: false,
+  };
+  const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
+  const learnUrl = getLearnUrl("debugging-sql/sql-syntax");
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const engine = question.database()?.engine;
+  const formattedQuery = formatNativeQuery(data?.query, engine);
+  const formattedError = error ? getResponseErrorMessage(error) : undefined;
 
   return (
-    <NativeQueryModal
+    <NativeQueryPreview
       title={t`Query preview`}
-      query={query}
-      error={error}
-      isLoading={isLoading}
+      query={formattedQuery}
+      error={formattedError}
+      isLoading={isFetching}
       onClose={onClose}
     >
-      {error && (
+      {formattedError && showMetabaseLinks && (
         <ModalExternalLink href={learnUrl}>
           {t`Learn how to debug SQL errors`}
         </ModalExternalLink>
       )}
-    </NativeQueryModal>
+    </NativeQueryPreview>
   );
 };
-
-const mapStateToProps = (state: State) => ({
-  // FIXME: remove the non-null assertion operator
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  question: getQuestion(state)!,
-  onLoadQuery: getNativeQueryFn(state),
-});
-
-export default connect(mapStateToProps)(PreviewQueryModal);

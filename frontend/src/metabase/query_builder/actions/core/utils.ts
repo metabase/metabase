@@ -1,9 +1,8 @@
 import _ from "underscore";
 
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
-import { Series } from "metabase-types/types/Visualization";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
+import type { Series } from "metabase-types/api";
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that

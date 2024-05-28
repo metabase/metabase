@@ -5,15 +5,15 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.u.match]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -41,23 +41,18 @@
   (assoc (lib.metadata.calculation/display-info query stage-number expr)
          :direction tag))
 
-(defmulti ^:private ->order-by-clause
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x))
+(defmulti ^:private order-by-clause-method
+  {:arglists '([orderable])}
+  lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->order-by-clause ::order-by-clause
-  [_query _stage-number clause]
+(defmethod order-by-clause-method ::order-by-clause
+  [clause]
   (lib.options/ensure-uuid clause))
 
-(defmethod ->order-by-clause :dispatch-type/fn
-  [query stage-number f]
-  (->order-by-clause query stage-number (f query stage-number)))
-
 ;;; by default, try to convert `x` to a ref and then order by `:asc`
-(defmethod ->order-by-clause :default
-  [_query _stage-number x]
+(defmethod order-by-clause-method :default
+  [x]
   (when (nil? x)
     (throw (ex-info (i18n/tru "Can''t order by nil") {})))
   (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
@@ -70,22 +65,12 @@
 
 (mu/defn order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
-  ([x]
-   (fn [query stage-number]
-     (order-by-clause query stage-number x nil)))
-  ([x
+  ([orderable]
+   (order-by-clause orderable :asc))
+
+  ([orderable :- some?
     direction :- [:maybe [:enum :asc :desc]]]
-   (fn [query stage-number]
-     (order-by-clause query stage-number x direction)))
-  ([query :- ::lib.schema/query
-    stage-number :- [:maybe :int]
-    x]
-   (order-by-clause query stage-number x nil))
-  ([query :- ::lib.schema/query
-    stage-number :- [:maybe :int]
-    x
-    direction :- [:maybe [:enum :asc :desc]]]
-   (-> (->order-by-clause query (or stage-number -1) x)
+   (-> (order-by-clause-method orderable)
        (with-direction (or direction :asc)))))
 
 (mu/defn order-by
@@ -93,19 +78,19 @@
   Field, or `:field` clause, or expression of some sort, etc.
 
   You can teach Metabase lib how to generate order by clauses for different things by implementing the
-  underlying [[->order-by-clause]] multimethod."
-  ([query x]
-   (order-by query -1 x nil))
+  underlying [[order-by-clause-method]] multimethod."
+  ([query orderable]
+   (order-by query -1 orderable nil))
 
-  ([query x direction]
-   (order-by query -1 x direction))
+  ([query orderable direction]
+   (order-by query -1 orderable direction))
 
   ([query
     stage-number :- [:maybe :int]
-    x            :- some?
+    orderable    :- some?
     direction    :- [:maybe [:enum :asc :desc]]]
    (let [stage-number (or stage-number -1)
-         new-order-by (cond-> (->order-by-clause query stage-number x)
+         new-order-by (cond-> (order-by-clause-method orderable)
                         direction (with-direction direction))]
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
                                                                         (conj (vec order-bys) new-order-by))))))
@@ -118,12 +103,12 @@
     stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :order-by))))
 
-(defn- orderable-column? [{base-type :base_type, :as _column-metadata}]
+(defn- orderable-column? [{:keys [base-type]}]
   (some (fn [orderable-base-type]
           (isa? base-type orderable-base-type))
         lib.schema.expression/orderable-types))
 
-(mu/defn orderable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn orderable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get column metadata for all the columns you can order by in a given `stage-number` of a `query`. Rules are as
   follows:
 
@@ -148,22 +133,36 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [existing-order-bys (mapv (fn [[_tag _opts expr]]
-                                    expr)
-                                  (order-bys query stage-number))
-         existing-order-by? (fn [x]
-                              (some (fn [existing-order-by]
-                                      (lib.equality/= (lib.ref/ref x) existing-order-by))
-                                    existing-order-bys))
-         breakouts          (not-empty (lib.breakout/breakouts query stage-number))
-         aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
+   (let [breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
+         aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))]
-     (some->> (not-empty columns)
-              (into [] (comp (filter orderable-column?)
-                             (remove existing-order-by?)))))))
+                              (let [stage   (lib.util/query-stage query stage-number)
+                                    options {:include-implicitly-joinable-for-source-card? false}]
+                                (lib.metadata.calculation/visible-columns query stage-number stage options)))
+         columns            (filter orderable-column? columns)
+         existing-order-bys (->> (order-bys query stage-number)
+                                 (map (fn [[_tag _opts expr]]
+                                        expr)))]
+     (cond
+       (empty? columns)
+       nil
+
+       (empty? existing-order-bys)
+       (vec columns)
+
+       :else
+       (let [matching (into {}
+                            (comp (map lib.ref/ref)
+                                  (keep-indexed (fn [index an-order-by]
+                                                  (when-let [col (lib.equality/find-matching-column
+                                                                  query stage-number an-order-by columns)]
+                                                    [col index]))))
+                            existing-order-bys)]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :order-by-position pos)))
+               columns))))))
 
 (def ^:private opposite-direction
   {:asc :desc
@@ -173,7 +172,16 @@
   "Flip the direction of `current-order-by` in `query`."
   ([query :- ::lib.schema/query
     current-order-by :- ::lib.schema.order-by/order-by]
-   (let [lib-uuid (lib.util/clause-uuid current-order-by)]
-     (mbql.u.match/replace query
+   (let [lib-uuid (lib.options/uuid current-order-by)]
+     (lib.util.match/replace query
        [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
        (assoc &match 0 (opposite-direction direction))))))
+
+(mu/defn remove-all-order-bys :- ::lib.schema/query
+  "Remove all order bys from this stage of the query."
+  ([query]
+   (remove-all-order-bys query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.util/update-query-stage query stage-number dissoc :order-by)))

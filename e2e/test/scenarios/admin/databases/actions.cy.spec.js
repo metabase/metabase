@@ -1,5 +1,5 @@
-import { restore } from "e2e/support/helpers";
 import { WRITABLE_DB_ID, WRITABLE_DB_CONFIG } from "e2e/support/cypress_data";
+import { restore } from "e2e/support/helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 

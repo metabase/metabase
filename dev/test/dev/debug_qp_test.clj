@@ -28,7 +28,7 @@
               :fk-field-id  (mt/id :venues :category_id)}])))))
 
 (deftest to-mbql-shorthand-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "Normal Field ID clause"
       (is (= '$user_id
              (debug-qp/expand-symbolize [:field (mt/id :orders :user_id) nil])))

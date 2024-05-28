@@ -1,7 +1,7 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import EmptyState from "metabase/components/EmptyState";
+
 import { EmptyStateRoot } from "./PermissionsEditorEmptyState.styled";
 
 const propTypes = {

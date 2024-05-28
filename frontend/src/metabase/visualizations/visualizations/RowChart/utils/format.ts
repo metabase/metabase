@@ -1,20 +1,23 @@
-import { NumberLike, StringLike } from "@visx/scale";
-import {
+import type { NumberLike, StringLike } from "@visx/scale";
+
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatValue } from "metabase/lib/formatting";
+import { isEmpty } from "metabase/lib/validate";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import type {
+  ChartTicksFormatters,
+  ValueFormatter,
+} from "metabase/visualizations/shared/types/format";
+import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
+import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import {
-  ChartTicksFormatters,
-  ValueFormatter,
-} from "metabase/visualizations/shared/types/format";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
-import { formatValue } from "metabase/lib/formatting";
 
 export const getFormatters = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
@@ -63,7 +66,7 @@ export const getFormatters = (
 };
 
 export const getLabelsFormatter = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;
@@ -82,5 +85,7 @@ export const getLabelsFormatter = (
 
 export const getColumnValueFormatter = () => {
   return (value: RowValue, column: DatasetColumn) =>
-    String(formatValue(value, { column }));
+    isEmpty(value)
+      ? NULL_DISPLAY_VALUE
+      : String(formatValue(value, { column }));
 };

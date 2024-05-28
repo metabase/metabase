@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
@@ -19,35 +19,26 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.sql DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
-(defmethod sql.qp/honey-sql-version :athena
-  [_driver]
-  2)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
-
-(defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)
-
-(defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
-                                                                         ; for now.
-
-(defmethod driver/database-supports? [:athena :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:datetime-diff                 true
+                              :foreign-keys                  true
+                              :nested-fields                 false
+                              :connection/multiple-databases true
+                              :metadata/key-constraints      false
+                              :test/jvm-timezone-setting     false}]
+  (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -142,7 +133,7 @@
           (u.date/parse s)
           ;; better to catch and log the error here than to barf completely, right?
           (catch Throwable e
-            (log/error e (trs "Error parsing timestamp with time zone string {0}: {1}" (pr-str s) (ex-message e)))
+            (log/errorf e "Error parsing timestamp with time zone string %s: %s" (pr-str s) (ex-message e))
             nil))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
@@ -198,8 +189,8 @@
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   ;; this is identical to the normal version except for the `::offset` instead of `:offset`
   (assoc honeysql-form
-         :limit items
-         ::offset (* items (dec page))))
+         :limit (sql.qp/inline-num items)
+         ::offset (sql.qp/inline-num (* items (dec page)))))
 
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 
@@ -300,8 +291,8 @@
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]
   (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                            database-type))
+      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
+                     database-type)
           :type/*)))
 
 (defn- run-query
@@ -367,19 +358,24 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver columns))))
     (catch Throwable e
-      (log/error e (trs "Error retreiving fields for DB {0}.{1}" schema table-name))
+      (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
       (throw e))))
 
 ;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog]} :details, :as database} table]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (assoc (select-keys table [:name :schema])
-           :fields (try
-                     (describe-table-fields metadata database driver table catalog)
-                     (catch Throwable _
-                       (set nil))))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       (assoc (select-keys table [:name :schema])
+              :fields (try
+                        (describe-table-fields metadata database driver table catalog)
+                        (catch Throwable _
+                          (set nil))))))))
 
 (defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
@@ -430,8 +426,13 @@
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
 (defmethod driver/describe-database :athena
   [driver {details :details, :as database}]
-  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (fast-active-tables driver metadata details))})
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       {:tables (fast-active-tables driver metadata details)}))))
 
 ; Unsure if this is the right way to approach building the parameterized query...but it works
 (defn- prepare-query [driver {query :native, :as outer-query}]
@@ -442,4 +443,4 @@
 
 (defmethod driver/execute-reducible-query :athena
   [driver query context respond]
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver (prepare-query driver, query) context respond))
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver (prepare-query driver query) context respond))

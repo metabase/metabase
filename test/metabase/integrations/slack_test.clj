@@ -7,8 +7,7 @@
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
-   [schema.core :as s])
+   [metabase.test.util :as tu])
   (:import
    (java.nio.charset Charset)
    (org.apache.http NameValuePair)
@@ -78,6 +77,12 @@
   [endpoint thunk]
   (doseq [f [test-no-auth-token test-invalid-auth-token]]
     (f endpoint thunk)))
+
+(deftest slack-app-token-truncation-test
+  (testing "slack-app-token is truncated when fetched by the setting's custom getter"
+    (tu/with-temporary-setting-values [slack-app-token "xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"]
+      (is (= "xoxb-7812...UypD"
+             (slack/slack-app-token))))))
 
 (deftest conversations-list-test
   (testing "conversations-list"
@@ -169,56 +174,68 @@
   (testing "upload-file!"
     (let [image-bytes (.getBytes "fake-picture")
           filename    "wow.gif"
-          channel-id  "C13372B6X"]
-      (http-fake/with-fake-routes {#"^https://slack.com/api/files\.upload.*"
-                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))}
+          channel-id  "C13372B6X"
+          upload-url  "https://files.slack.com/upload/v1/CwABAAAAWgoAAZnBg"
+          fake-upload-routes {#"^https://slack.com/api/files\.getUploadURLExternal.*"
+                              (fn [_] (mock-200-response {:ok         true
+                                                          :upload_url upload-url
+                                                          :file_id    "DDDDDDDDD-EEEEEEEEE"}))
+
+                              upload-url
+                              (fn [_] (mock-200-response "OK"))
+
+                              #"^https://slack.com/api/files\.completeUploadExternal.*"
+                              (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))}]
+      (http-fake/with-fake-routes fake-upload-routes
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
-          (is (= "https://files.slack.com/files-pri/T078VLEET-F017C3TSBK6/wow.gif"
+          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                  (slack/upload-file! image-bytes filename channel-id)))))
       ;; Slack app token requires joining the `metabase_files` channel before uploading a file
-      (http-fake/with-fake-routes {#"^https://slack.com/api/files\.upload.*"
-                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))
-                                   #"^https://slack.com/api/conversations\.join.*"
-                                   (fn [_] (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json")))}
+      (http-fake/with-fake-routes
+        (assoc fake-upload-routes
+               #"^https://slack.com/api/conversations\.join.*"
+               (fn [_] (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json"))))
         (tu/with-temporary-setting-values [slack-token nil
                                            slack-app-token "test-token"]
-          (is (= "https://files.slack.com/files-pri/T078VLEET-F017C3TSBK6/wow.gif"
-                 (slack/upload-file! image-bytes filename channel-id)))))))
-  (testing (str "upload-file! will attempt to join channels by internal slack id"
-                " but we can continue to use the channel name for posting")
-    (let [filename    "wow.gif"
-          channel-id  "metabase_files"
-          slack-id    "CQXPZKNQ3RK"
-          joined?     (atom false)
-          channel-info [{:display-name "#random",
-                         :name "random",
-                         :id "CT2FNGZSRPL",
-                         :type "channel"}
-                        {:display-name "#general",
-                         :name "general",
-                         :id "C4Q6LXLRA46",
-                         :type "channel"}
-                        {:display-name "#metabase_files",
-                         :name channel-id,
-                         ;; must look up "metabase_files" and find the id below
-                         :id slack-id,
-                         :type "channel"}]]
-      (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
-                                         slack/slack-cached-channels-and-usernames
-                                         {:channels channel-info}]
-        (with-redefs [slack/POST (fn [endpoint payload]
-                                   (case endpoint
-                                     "files.upload"
-                                     (if @joined?
-                                       {:file {:url_private filename}}
-                                       (throw (ex-info "Not in that channel"
-                                                       {:error-code "not_in_channel"})))
-                                     "conversations.join"
-                                     (reset! joined? (= (-> payload :form-params :channel)
-                                                        slack-id))))]
-          (slack/upload-file! (.getBytes "fake-picture") filename channel-id)
-          (is @joined? (str "Did not attempt to join with slack-id " slack-id)))))))
+          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+                 (slack/upload-file! image-bytes filename channel-id))))
+        (testing (str "upload-file! will attempt to join channels by internal slack id"
+                      " but we can continue to use the channel name for posting")
+          (let [filename    "wow.gif"
+                channel-id  "metabase_files"
+                slack-id    "CQXPZKNQ3RK"
+                joined?     (atom false)
+                channel-info [{:display-name "#random",
+                               :name "random",
+                               :id "CT2FNGZSRPL",
+                               :type "channel"}
+                              {:display-name "#general",
+                               :name "general",
+                               :id "C4Q6LXLRA46",
+                               :type "channel"}
+                              {:display-name "#metabase_files",
+                               :name channel-id,
+                               ;; must look up "metabase_files" and find the id below
+                               :id slack-id,
+                               :type "channel"}]
+                post          (var-get #'slack/POST)]
+            (with-redefs [slack/POST (fn [endpoint payload]
+                                       (case endpoint
+                                         "files.completeUploadExternal"
+                                         (if @joined?
+                                           (json/parse-string (slurp "./test_resources/slack_upload_file_response.json") keyword)
+                                           (throw (ex-info "Not in that channel"
+                                                           {:error-code "not_in_channel"})))
+                                         "conversations.join"
+                                         (reset! joined? (= (-> payload :form-params :channel)
+                                                            slack-id))
+                                         (post endpoint payload)))]
+              (tu/with-temporary-setting-values [slack/slack-app-token "slack-configured?"
+                                                 slack/slack-cached-channels-and-usernames
+                                                 {:channels channel-info}]
+                (slack/upload-file! (.getBytes "fake-picture") filename channel-id)
+                (is @joined? (str "Did not attempt to join with slack-id " slack-id))))))))))
 
 (deftest maybe-lookup-id-test
   (let [f (var-get #'slack/maybe-lookup-id)]
@@ -248,20 +265,18 @@
   (testing "post-chat-message!"
     (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*" (fn [_]
                                                                                  (mock-200-response (slurp "./test_resources/slack_post_chat_message_response.json")))}
-      (let [expected-schema {:ok       (s/eq true)
-                             :message  {:type     (s/eq "message")
-                                        :subtype  (s/eq "bot_message")
-                                        :text     (s/eq ":wow:")
-                                        s/Keyword s/Any}
-                             s/Keyword s/Any}]
+      (let [expected {:ok      true
+                      :message {:type    "message"
+                                :subtype "bot_message"
+                                :text    ":wow:"}}]
         (tu/with-temporary-setting-values [slack-token "test-token"
                                            slack-app-token nil]
-          (is (schema= expected-schema
-                       (slack/post-chat-message! "C94712B6X" ":wow:"))))
+          (is (=? expected
+                  (slack/post-chat-message! "C94712B6X" ":wow:"))))
         (tu/with-temporary-setting-values [slack-app-token "test-token"
                                            slack-token nil]
-          (is (schema= expected-schema
-                       (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
+          (is (=? expected
+                  (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
   (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]

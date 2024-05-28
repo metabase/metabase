@@ -7,11 +7,11 @@
   "
   (:require
    [clojure.string :as str]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search.util :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -19,27 +19,33 @@
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
+
+(mu/defn ^:private normalize-query :- :string
+  "Normalize a `query` to lower-case."
+  [query :- :string]
+  (u/lower-case-en (str/trim query)))
+
 (defn- query-matches
-  "Filter the values according to the `search-term`.
+  "Filters for values that match `query`.
 
   Values could have 2 shapes
-  - [value1, value2]
-  - [[value1, label1], [value2, label2]] - we search using label in this case"
+  - [[value1], [value2]]
+  - [[value2, label2], [value2, label2]] - we search using label in this case"
   [query values]
-  (let [normalized-query (search/normalize query)]
-    (filter #(str/includes? (search/normalize (if (string? %)
-                                                %
-                                                ;; search by label
-                                                (second %)))
-                            normalized-query) values)))
+  (let [normalized-query (normalize-query query)]
+    (filter (fn [v] (str/includes? (normalize-query (if (= (count v) 1)
+                                                      (first v)
+                                                      (second v)))
+                                   normalized-query)) values)))
 
 (defn- static-list-values
   [{values-source-options :values_source_config :as _param} query]
   (when-let [values (:values values-source-options)]
-    {:values          (if query
-                        (query-matches query values)
-                        values)
-     :has_more_values false}))
+    (let [wrapped-values (map (fn [v] (if-not (sequential? v) [v] v)) values)]
+      {:values          (if query
+                          (query-matches query wrapped-values)
+                          wrapped-values)
+       :has_more_values false})))
 
 ;;; ---------------------------------------------------- source=card ------------------------------------------------------
 
@@ -49,25 +55,29 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-
 (defn- values-from-card-query
-  [card value-field query]
-  (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))]
+  [card value-field-ref query]
+  (let [value-base-type (:base_type (qp.util/field->field-info value-field-ref (:result_metadata card)))
+        value-field-ref (lib.util.match/replace value-field-ref
+                          [:expression expr-name opts]
+                          [:field expr-name (merge {:base-type value-base-type} opts)]
+
+                          [:expression expr-name]
+                          [:field expr-name {:base-type value-base-type}])]
     {:database (:database_id card)
      :type     :query
-     :query    (merge
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field]
-                  :limit        *max-rows*}
-                 {:filter [:and
-                           [(if (isa? value-base-type :type/Text)
-                              :not-empty
-                              :not-null)
-                            value-field]
-                           (when query
-                             (if-not (isa? value-base-type :type/Text)
-                               [:= value-field query]
-                               [:contains [:lower value-field] (u/lower-case-en query)]))]})
+     :query    {:source-table (format "card__%d" (:id card))
+                :breakout     [value-field-ref]
+                :limit        *max-rows*
+                :filter       [:and
+                               [(if (isa? value-base-type :type/Text)
+                                  :not-empty
+                                  :not-null)
+                                value-field-ref]
+                               (when query
+                                 (if-not (isa? value-base-type :type/Text)
+                                   [:= value-field-ref query]
+                                   [:contains [:lower value-field-ref] (u/lower-case-en query)]))]}
      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card
@@ -81,19 +91,19 @@
   ;;  :filter       [:contains [:lower value-field] \"red\"]
   ;;  :limit        *max-rows*}
   =>
-  {:values          [\"Red Medicine\"]
+  {:values          [[\"Red Medicine\"]]
   :has_more_values false}
   "
   ([card value-field]
    (values-from-card card value-field nil))
 
   ([card            :- (ms/InstanceOf Card)
-    value-field     :- ms/Field
+    value-field-ref :- ms/LegacyFieldOrExpressionReference
     query           :- [:any]]
-   (let [mbql-query   (values-from-card-query card value-field query)
+   (let [mbql-query   (values-from-card-query card value-field-ref query)
          result       (qp/process-query mbql-query)
-         values       (map first (get-in result [:data :rows]))]
-     {:values          values
+         values       (get-in result [:data :rows])]
+     {:values         values
       ;; if the row_count returned = the limit we specified, then it's probably has more than that
       :has_more_values (= (:row_count result)
                           (get-in mbql-query [:query :limit]))})))
@@ -113,7 +123,7 @@
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
-(defn parameter->values
+(mu/defn parameter->values :- ms/FieldValuesResult
   "Given a parameter with a custom-values source, return the values.
 
   `default-case-thunk` is a 0-arity function that returns values list when:

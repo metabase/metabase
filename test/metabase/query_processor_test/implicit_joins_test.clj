@@ -4,12 +4,16 @@
    [clj-time.core :as time]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
-(deftest breakout-on-fk-field-test
+(deftest ^:parallel breakout-on-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Test that we can breakout on an FK field (Note how the FK Field is returned in the results)"
       (mt/dataset tupac-sightings
@@ -25,13 +29,13 @@
                 ["Irvine"       11]
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
-                                  (mt/run-mbql-query sightings
-                                                     {:aggregation [[:count]]
-                                                      :breakout    [$city_id->cities.name]
-                                                      :order-by    [[:desc [:aggregation 0]]]
-                                                      :limit       10}))))))))
+                 (mt/run-mbql-query sightings
+                   {:aggregation [[:count]]
+                    :breakout    [$city_id->cities.name]
+                    :order-by    [[:desc [:aggregation 0]]]
+                    :limit       10}))))))))
 
-(deftest filter-by-fk-field-test
+(deftest ^:parallel filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Test that we can filter on an FK field"
       (mt/dataset tupac-sightings
@@ -42,7 +46,7 @@
                    {:aggregation [[:count]]
                     :filter      [:= $category_id->categories.id 8]}))))))))
 
-(deftest fk-field-in-fields-test
+(deftest ^:parallel fk-field-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Check that we can include an FK field in `:fields`"
       (mt/dataset tupac-sightings
@@ -63,7 +67,7 @@
                     :order-by [[:desc $timestamp]]
                     :limit    10}))))))))
 
-(deftest join-multiple-tables-test
+(deftest ^:parallel join-multiple-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing (str "1. Check that we can order by Foreign Keys (this query targets sightings and orders by cities.name "
                   "and categories.name)"
@@ -93,7 +97,7 @@
                     (map butlast)
                     (mt/format-rows-by [int int int]))))))))
 
-(deftest feature-check-test
+(deftest ^:parallel feature-check-test
   (mt/test-drivers (mt/normal-drivers-without-feature :foreign-keys)
     (testing "Check that trying to use a Foreign Key fails for Mongo and other DBs"
       (is
@@ -107,18 +111,18 @@
                         [:asc $id]]
              :limit    10})))))))
 
-(deftest field-refs-test
+(deftest ^:parallel field-refs-test
   (testing "Implicit joins should come back with `:fk->` field refs"
     (is (= (mt/$ids venues $category_id->categories.name)
            (-> (mt/cols
-                 (mt/run-mbql-query venues
-                   {:fields   [$category_id->categories.name]
-                    :order-by [[:asc $id]]
-                    :limit    1}))
+                (mt/run-mbql-query venues
+                  {:fields   [$category_id->categories.name]
+                   :order-by [[:asc $id]]
+                   :limit    1}))
                first
                :field_ref)))))
 
-(deftest multiple-joins-test
+(deftest ^:parallel multiple-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (testing "Can we join against the same table twice (multiple fks to a single table?)"
       (mt/dataset avian-singles
@@ -143,10 +147,10 @@
                     :breakout    [$sender_id->users.name]
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
-(deftest implicit-joins-with-expressions-test
+(deftest ^:parallel implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category
@@ -156,14 +160,53 @@
                        :filter      [:and
                                      [:= $user_id->people.source "Facebook" "Google"]
                                      [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year]]
+                                     [:time-interval $created_at (- 2020 (.getYear (time/now))) :year]]
                        :expressions {:pivot-grouping [:abs 0]}
                        :limit       5})]
           (mt/with-native-query-testing-context query
-            (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
-                    ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
-                    ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
+            (is (= [["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
                     ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
-                    ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
+                    ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0 113]
+                    ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0 101]]
                    (mt/formatted-rows [str str str int int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
+
+(deftest ^:parallel test-23293
+  (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                        (lib.tu/mock-metadata-provider
+                                         {:cards [{:id            1
+                                                   :name          "Card 1"
+                                                   :database-id   (mt/id)
+                                                   :dataset-query (mt/mbql-query orders
+                                                                    {:fields
+                                                                     [$id
+                                                                      $user_id
+                                                                      $subtotal
+                                                                      $tax
+                                                                      $total
+                                                                      $discount
+                                                                      $created_at
+                                                                      $quantity
+                                                                      $orders.product_id->products.category]})}]})
+                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
+        (is (= [["Doohickey" 3976]]
+               (mt/rows
+                (qp/process-query
+                 (mt/mbql-query nil
+                   {:source-table "card__1"
+                    :breakout     [$orders.product_id->products.category]
+                    :aggregation  [[:count]]
+                    :limit        1})))))
+        (testing "Should still work if the query is has refs generated by MLv2 that have extra keys"
+          (is (= [["Doohickey" 3976]]
+                 (mt/rows
+                  (qp/process-query
+                   (mt/mbql-query nil
+                     {:source-table "card__1"
+                      :breakout     [[:field
+                                      (mt/id :products :category)
+                                      {:source-field (mt/id :orders :product_id), :base-type :type/Integer}]]
+                      :aggregation  [[:count]]
+                      :limit        1}))))))))))

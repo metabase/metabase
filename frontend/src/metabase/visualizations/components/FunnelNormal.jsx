@@ -1,37 +1,60 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-
 import cx from "classnames";
+import { Component } from "react";
+import { t } from "ttag";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
-import { formatValue } from "metabase/lib/formatting";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { findSeriesByKey } from "metabase/visualizations/lib/series";
-
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import styles from "./FunnelNormal.css";
+import {
+  formatChangeWithSign,
+  formatNumber,
+  formatValue,
+} from "metabase/lib/formatting";
+import {
+  FunnelNormalRoot,
+  FunnelStart,
+  FunnelStep,
+  Head,
+  Info,
+  Subtitle,
+  Title,
+} from "metabase/visualizations/components/FunnelNormal.styled";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
+
+import { computeChange } from "../lib/numeric";
 
 export default class FunnelNormal extends Component {
   render() {
     const {
       className,
-      series,
+      rawSeries,
       gridSize,
       hovered,
       onHoverChange,
       onVisualizationClick,
       visualizationIsClickable,
       settings,
+      isPlaceholder,
     } = this.props;
 
-    const dimensionIndex = 0;
-    const metricIndex = 1;
-    const cols = series[0].data.cols;
-    const rows = settings["funnel.rows"]
+    const [series] = isPlaceholder ? this.props.series : rawSeries;
+    const {
+      data: { cols, rows },
+    } = series;
+
+    const dimensionIndex = cols.findIndex(
+      col => col.name === settings["funnel.dimension"],
+    );
+    const metricIndex = cols.findIndex(
+      col => col.name === settings["funnel.metric"],
+    );
+
+    const sortedRows = settings["funnel.rows"]
       ? settings["funnel.rows"]
           .filter(fr => fr.enabled)
-          .map(fr => findSeriesByKey(series, fr.key).data.rows[0])
-      : series.map(s => s.data.rows[0]);
+          .map(fr => rows.find(row => row[dimensionIndex] === fr.key))
+      : rows;
 
     const isNarrow = gridSize && gridSize.width < 7;
     const isShort = gridSize && gridSize.height <= 5;
@@ -54,7 +77,7 @@ export default class FunnelNormal extends Component {
     // Initial infos (required for step calculation)
     let infos = [
       {
-        value: rows[0][metricIndex],
+        value: sortedRows[0][metricIndex],
         graph: {
           startBottom: 0.0,
           startTop: 1.0,
@@ -64,10 +87,29 @@ export default class FunnelNormal extends Component {
       },
     ];
 
-    let remaining = rows[0][metricIndex];
+    let remaining = sortedRows[0][metricIndex];
 
-    rows.map((row, rowIndex) => {
+    sortedRows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
+
+      const footerData = [
+        {
+          key: t`Retained`,
+          value: formatNumber(row[metricIndex] / infos[0].value, {
+            number_style: "percent",
+          }),
+        },
+      ];
+
+      const prevRow = sortedRows[rowIndex - 1];
+      if (prevRow != null) {
+        footerData.push({
+          key: t`Compared to previous`,
+          value: formatChangeWithSign(
+            computeChange(prevRow[metricIndex], row[metricIndex]),
+          ),
+        });
+      }
 
       infos[rowIndex + 1] = {
         value: row[metricIndex],
@@ -92,11 +134,8 @@ export default class FunnelNormal extends Component {
               value: row[metricIndex],
               col: cols[metricIndex],
             },
-            {
-              key: "Retained",
-              value: formatPercent(row[metricIndex] / infos[0].value),
-            },
           ],
+          footerData,
         },
 
         clicked: {
@@ -118,76 +157,70 @@ export default class FunnelNormal extends Component {
 
     const initial = infos[0];
 
-    const isClickable = visualizationIsClickable(infos[0].clicked);
+    const isClickable = onVisualizationClick != null;
+
+    const handleClick = e => {
+      if (onVisualizationClick && visualizationIsClickable(infos[0].clicked)) {
+        onVisualizationClick(e);
+      }
+    };
 
     return (
-      <div
+      <FunnelNormalRoot
+        className={className}
+        isSmall={isSmall}
         data-testid="funnel-chart"
-        className={cx(className, styles.Funnel, "flex", {
-          [styles["Funnel--narrow"]]: isNarrow,
-          p1: isSmall,
-          p2: !isSmall,
-        })}
       >
-        <div
-          className={cx(styles.FunnelStep, styles.Initial, "flex flex-column")}
-        >
-          <Ellipsified
-            className={styles.Head}
-            data-testid="funnel-chart-header"
-          >
-            {formatDimension(rows[0][dimensionIndex])}
-          </Ellipsified>
-          <div className={styles.Start}>
-            <div className={styles.Title}>
-              {formatMetric(rows[0][metricIndex])}
-            </div>
-            <div className={styles.Subtitle}>
-              {getFriendlyName(cols[metricIndex])}
-            </div>
-          </div>
+        <FunnelStep isFirst>
+          <Head isNarrow={isNarrow}>
+            <Ellipsified data-testid="funnel-chart-header">
+              {formatDimension(sortedRows[0][dimensionIndex])}
+            </Ellipsified>
+          </Head>
+          <FunnelStart isNarrow={isNarrow}>
+            <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
+            <Subtitle>{getFriendlyName(cols[metricIndex])}</Subtitle>
+          </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
-          <div className={styles.Infos}>
-            <div className={styles.Title}>&nbsp;</div>
-            <div className={styles.Subtitle}>&nbsp;</div>
-          </div>
-        </div>
+          <Info isNarrow={isNarrow}>
+            <Title>&nbsp;</Title>
+            <Subtitle>&nbsp;</Subtitle>
+          </Info>
+        </FunnelStep>
         {infos.slice(1).map((info, index) => {
           const stepPercentage =
             initial.value > 0 ? info.value / initial.value : 0;
 
           return (
-            <div
-              key={index}
-              className={cx(styles.FunnelStep, "flex flex-column")}
-            >
-              <Ellipsified
-                className={styles.Head}
-                data-testid="funnel-chart-header"
-              >
-                {formatDimension(rows[index + 1][dimensionIndex])}
-              </Ellipsified>
+            <FunnelStep key={index}>
+              <Head isNarrow={isNarrow}>
+                <Ellipsified data-testid="funnel-chart-header">
+                  {formatDimension(sortedRows[index + 1][dimensionIndex])}
+                </Ellipsified>
+              </Head>
               <GraphSection
-                className={cx({ "cursor-pointer": isClickable })}
+                className={cx({ [CS.cursorPointer]: isClickable })}
                 index={index}
                 info={info}
                 infos={infos}
                 hovered={hovered}
                 onHoverChange={onHoverChange}
-                onVisualizationClick={isClickable ? onVisualizationClick : null}
+                onVisualizationClick={handleClick}
               />
-              <div className={styles.Infos}>
-                <Ellipsified className={styles.Title}>
-                  {formatPercent(stepPercentage)}
-                </Ellipsified>
-                <Ellipsified className={styles.Subtitle}>
-                  {formatMetric(rows[index + 1][metricIndex])}
-                </Ellipsified>
-              </div>
-            </div>
+              <Info isNarrow={isNarrow}>
+                <Title>
+                  <Ellipsified>{formatPercent(stepPercentage)}</Ellipsified>
+                </Title>
+                <Subtitle>
+                  <Ellipsified>
+                    {formatMetric(sortedRows[index + 1][metricIndex])}
+                  </Ellipsified>
+                </Subtitle>
+              </Info>
+            </FunnelStep>
           );
         })}
-      </div>
+      </FunnelNormalRoot>
     );
   }
 }
@@ -201,11 +234,11 @@ const GraphSection = ({
   className,
 }) => {
   return (
-    <div className="relative full-height">
+    <div className={cx(CS.relative, CS.fullHeight)}>
       <svg
         height="100%"
         width="100%"
-        className={cx(className, "absolute")}
+        className={cx(className, CS.absolute)}
         onMouseMove={e => {
           if (onHoverChange && info.hovered) {
             onHoverChange({

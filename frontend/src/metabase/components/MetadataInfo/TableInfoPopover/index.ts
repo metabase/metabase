@@ -1,1 +1,1 @@
-export { default } from "./TableInfoPopover";
+export * from "./TableInfoPopover";

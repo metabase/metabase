@@ -1,13 +1,17 @@
-import _ from "underscore";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t, ngettext, msgid } from "ttag";
-import moment from "moment-timezone";
+import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import MetabaseUtils from "metabase/lib/utils";
+import { numberToWord, compareVersions } from "metabase/lib/utils";
+import { getDocsUrlForVersion } from "metabase/selectors/settings";
+import type {
+  PasswordComplexity,
+  SettingKey,
+  Settings,
+} from "metabase-types/api";
 
-import { PasswordComplexity, SettingKey, Settings } from "metabase-types/api";
-
-const n2w = (n: number) => MetabaseUtils.numberToWord(n);
+const n2w = (n: number) => numberToWord(n);
 
 const PASSWORD_COMPLEXITY_CLAUSES = {
   total: {
@@ -63,10 +67,16 @@ class MetabaseSettings {
     this._settings = settings;
   }
 
+  /**
+   * @deprecated use getSetting(state, key)
+   */
   get<T extends SettingKey>(key: T): Partial<Settings>[T] {
     return this._settings[key];
   }
 
+  /**
+   * @deprecated set setting values in the redux store
+   */
   set<T extends SettingKey>(key: T, value: Settings[T]) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
@@ -82,6 +92,9 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated set setting values in the redux store
+   */
   setAll(settings: Settings) {
     const keys = Object.keys(settings) as SettingKey[];
 
@@ -90,58 +103,94 @@ class MetabaseSettings {
     });
   }
 
+  /**
+   * @deprecated call appropriate actions when modifying the setting
+   */
   on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
   }
 
-  // these are all special accessors which provide a lookup of a property plus some additional help
+  /**
+   * @deprecated use getSetting(state, "admin-email")
+   */
   adminEmail() {
     return this.get("admin-email");
   }
 
+  /**
+   * @deprecated use getSetting(state, "enable-enhancements?")
+   */
   enhancementsEnabled() {
     return this.get("enable-enhancements?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "email-configured?")
+   */
   isEmailConfigured(): boolean {
     return !!this.get("email-configured?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "is-hosted?")
+   */
   isHosted(): boolean {
     return !!this.get("is-hosted?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "cloud-gateway-ips")
+   */
   cloudGatewayIps(): string[] {
     return this.get("cloud-gateway-ips") || [];
   }
 
+  /**
+   * @deprecated use getSetting(state, "has-user-setup")
+   */
   hasUserSetup() {
     return this.get("has-user-setup");
   }
 
+  /**
+   * @deprecated use getSetting(state, "hide-embed-branding?")
+   */
   hideEmbedBranding() {
     return this.get("hide-embed-branding?");
   }
 
+  /**
+   * @deprecated use getSetting(state, "google-auth-enabled")
+   */
   isGoogleAuthEnabled() {
     return this.get("google-auth-enabled");
   }
 
+  /**
+   * @deprecated use getSetting(state, "ldap-enabled")
+   */
   isLdapEnabled() {
     return this.get("ldap-enabled");
   }
 
+  /**
+   * @deprecated use getSetting(state, "ldap-configured?")
+   */
   isLdapConfigured() {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is enabled
+  /**
+   * @deprecated use getSetting(state, "other-sso-enabled?")
+   */
   isOtherSsoEnabled() {
     return this.get("other-sso-enabled?");
   }
 
+  /**
+   * @deprecated use getSetting(state, ...)
+   */
   isSsoEnabled() {
     return (
       this.isLdapEnabled() ||
@@ -150,30 +199,44 @@ class MetabaseSettings {
     );
   }
 
+  /**
+   * @deprecated use getSetting(state, "enable-password-login")
+   */
   isPasswordLoginEnabled() {
     return this.get("enable-password-login");
   }
 
-  searchTypeaheadEnabled() {
-    return this.get("search-typeahead-enabled");
-  }
-
+  /**
+   * @deprecated use getSetting(state, "anon-tracking-enabled")
+   */
   trackingEnabled() {
     return this.get("anon-tracking-enabled") || false;
   }
 
-  googleAnalyticsEnabled() {
-    return this.get("ga-enabled") || false;
+  /**
+   * @deprecated use getSetting(state, "anon-tracking-enabled")
+   */
+  uploadsEnabled() {
+    return !!this.get("uploads-settings")?.db_id;
   }
 
+  /**
+   * @deprecated use getSetting(state, "snowplow-enabled")
+   */
   snowplowEnabled() {
     return this.get("snowplow-enabled") || false;
   }
 
+  /**
+   * @deprecated use getSetting(state, "snowplow-url")
+   */
   snowplowUrl() {
     return this.get("snowplow-url");
   }
 
+  /**
+   * @deprecated use getSetting(state, "deprecation-notice-version")
+   */
   deprecationNoticeVersion() {
     return this.get("deprecation-notice-version");
   }
@@ -182,10 +245,16 @@ class MetabaseSettings {
     return this.currentVersion() !== this.deprecationNoticeVersion();
   }
 
+  /**
+   * @deprecated use getSetting(state, "premium-embedding-token")
+   */
   token() {
     return this.get("premium-embedding-token");
   }
 
+  /**
+   * @deprecated use getSetting(state, "custom-formatting")
+   */
   formattingOptions() {
     const opts = this.get("custom-formatting");
     return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
@@ -205,42 +274,24 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated use getDocsUrl
+   */
   docsUrl(page = "", anchor = "") {
-    let { tag } = this.get("version") || {};
-    const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
-
-    if (matches) {
-      if (
-        matches.length > 2 &&
-        matches[2] &&
-        "-snapshot" === matches[2].toLowerCase()
-      ) {
-        // always point -SNAPSHOT suffixes to "latest", since this is likely a development build off of master
-        tag = "latest";
-      } else {
-        // otherwise, it's a regular OSS or EE version string, just link to the major OSS doc link
-        tag = "v0." + matches[1];
-      }
-    } else {
-      // otherwise, just link to the latest tag
-      tag = "latest";
-    }
-
-    if (page) {
-      page = `${page}.html`;
-    }
-
-    if (anchor) {
-      anchor = `#${anchor}`;
-    }
-
-    return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+    return getDocsUrlForVersion(this.get("version"), page, anchor);
   }
 
+  /**
+   * @deprecated use getLearnUrl
+   */
   learnUrl(path = "") {
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of MetabaseSettings.learnUrl()
     return `https://www.metabase.com/learn/${path}`;
   }
 
+  /**
+   * @deprecated use getStoreUrl
+   */
   storeUrl(path = "") {
     return `https://store.metabase.com/${path}`;
   }
@@ -250,47 +301,48 @@ class MetabaseSettings {
   }
 
   newVersionAvailable() {
-    const result = MetabaseUtils.compareVersions(
-      this.currentVersion(),
-      this.latestVersion(),
-    );
+    const result = compareVersions(this.currentVersion(), this.latestVersion());
     return result != null && result < 0;
   }
 
   versionIsLatest() {
-    const result = MetabaseUtils.compareVersions(
-      this.currentVersion(),
-      this.latestVersion(),
-    );
+    const result = compareVersions(this.currentVersion(), this.latestVersion());
     return result != null && result >= 0;
   }
 
+  /**
+   * @deprecated use getSetting(state, "version-info")
+   */
   versionInfo() {
     return this.get("version-info") || {};
   }
 
+  /**
+   * @deprecated use getSetting(state, "version")
+   */
   currentVersion() {
     const version = this.get("version") || {};
     return version.tag;
   }
 
+  /**
+   * @deprecated use getSetting(state, "version-info")
+   */
   latestVersion() {
     const { latest } = this.versionInfo();
     return latest && latest.version;
   }
 
-  isEnterprise() {
-    return false;
-  }
-
-  isPaidPlan() {
-    return this.isHosted() || this.isEnterprise();
-  }
-
+  /**
+   * @deprecated use getSetting(state, "is-metabot-enabled")
+   */
   isMetabotEnabled() {
     return this.get("is-metabot-enabled");
   }
 
+  /**
+   * @deprecated use getSetting(state, "password-complexity")
+   */
   passwordComplexityRequirements(): PasswordComplexity {
     return this.get("password-complexity") || {};
   }
@@ -323,6 +375,9 @@ class MetabaseSettings {
     }
   }
 
+  /**
+   * @deprecated use getSetting(state, "subscription-allowed-domains")
+   */
   subscriptionAllowedDomains(): string[] {
     const setting = this.get("subscription-allowed-domains") || "";
     return setting ? setting.split(",") : [];
@@ -338,4 +393,7 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
-export default new MetabaseSettings(initValues);
+const settings = new MetabaseSettings(initValues);
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default settings;

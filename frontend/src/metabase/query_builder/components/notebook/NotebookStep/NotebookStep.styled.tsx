@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
-import { alpha, darken, lighten } from "metabase/lib/colors";
+import { alpha, color, darken, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 const getPercentage = (number: number): string => {
@@ -23,13 +24,10 @@ export interface StepHeaderProps {
 
 export const StepContent = styled.div`
   width: ${getPercentage(11 / 12)};
-
-  ${breakpointMinSmall} {
-    width: ${getPercentage(8 / 12)};
-  }
+  max-width: 75rem;
 `;
 
-export const StepHeader = styled(StepContent)<StepHeaderProps>`
+export const StepHeader = styled(StepContent)`
   display: flex;
   color: ${props => props.color};
   font-weight: bold;
@@ -65,4 +63,21 @@ export const ColorButton = styled(Button)<ColorButtonProps>`
       transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
   transition: background 300ms;
+`;
+
+interface PreviewButtonProps {
+  icon?: string;
+  transparent?: boolean;
+  hasPreviewButton?: boolean;
+}
+
+export const PreviewButton = styled.div<PreviewButtonProps>`
+  margin-left: 0.5rem;
+  visibility: ${props => !props.hasPreviewButton && "hidden"};
+  pointer-events: ${props => !props.hasPreviewButton && "none"};
+  opacity: ${props => !props.hasPreviewButton && "0.4"};
+
+  &:hover {
+    color: ${props => props.hasPreviewButton && color("brand")};
+  }
 `;

@@ -1,7 +1,9 @@
 import Color from "color";
 import { t } from "ttag";
-import { measureText } from "metabase/static-viz/lib/text";
-import { ProgressBarData } from "./types";
+
+import { measureTextWidth } from "metabase/static-viz/lib/text";
+
+import type { ProgressBarData } from "./types";
 
 const createPalette = (color: string) => ({
   light: Color(color).lighten(0.25).hex(),
@@ -42,7 +44,7 @@ export const calculatePointerLabelShift = (
   pointerWidth: number,
   fontSize: number,
 ) => {
-  const valueTextWidth = measureText(valueText, fontSize);
+  const valueTextWidth = measureTextWidth(valueText, fontSize);
 
   const distanceToLeftBorder = pointerX - xMin;
   const isCrossingLeftBorder = valueTextWidth / 2 > distanceToLeftBorder;

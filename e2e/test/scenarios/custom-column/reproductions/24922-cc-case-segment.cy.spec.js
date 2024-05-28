@@ -1,10 +1,11 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
   openOrdersTable,
   restore,
   visualize,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -28,17 +29,19 @@ describe("issue 24922", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("POST", "/api/segment", segmentDetails);
+    createSegment(segmentDetails);
   });
 
   it("should allow segments in case custom expressions (metabase#24922)", () => {
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
     visualize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
   });
 });

@@ -1,1 +1,1 @@
-export { default } from "./ValuesSourceSettings";
+export { ValuesSourceSettings } from "./ValuesSourceSettings";

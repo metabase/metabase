@@ -1,19 +1,20 @@
-import React from "react";
 import styled from "@emotion/styled";
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-import SearchResult from "metabase/search/components/SearchResult";
-import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { Icon } from "metabase/ui";
 
 const propTypes = {
   databaseId: PropTypes.string,
   searchQuery: PropTypes.string.isRequired,
   onSelect: PropTypes.func.isRequired,
   searchModels: PropTypes.arrayOf(
-    PropTypes.oneOf(["card", "dataset", "table"]),
+    PropTypes.oneOf(["card", "dataset", "table", "metric"]),
   ),
 };
 
@@ -39,10 +40,20 @@ export function SearchResults({
         {({ list }) => {
           if (list.length === 0) {
             return (
-              <div className="flex flex-column align-center justify-center p4 text-medium text-centered">
-                <div className="my4">
-                  <Icon name="search" mb={1} size={32} />
-                  <h3 className="text-light">{t`No results found`}</h3>
+              <div
+                className={cx(
+                  CS.flex,
+                  CS.flexColumn,
+                  CS.alignCenter,
+                  CS.justifyCenter,
+                  CS.p4,
+                  CS.textMedium,
+                  CS.textCentered,
+                )}
+              >
+                <div className={CS.my4}>
+                  <Icon name="search" className={CS.mb1} size={32} />
+                  <h3 className={CS.textLight}>{t`No results found`}</h3>
                 </div>
               </div>
             );
@@ -56,7 +67,7 @@ export function SearchResults({
                     result={item}
                     onClick={onSelect}
                     compact
-                    hasDescription={false}
+                    showDescription={false}
                   />
                 </li>
               ))}

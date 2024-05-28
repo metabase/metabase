@@ -1,0 +1,11 @@
+.colorIcon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+}
+
+.icon {
+  composes: transitionColor from "style";
+  color: currentColor;
+}

@@ -1,0 +1,33 @@
+/* TODO: based on popover.css, combine them? */
+
+/* TODO: other arrow directions */
+
+.arrowRight {
+  position: relative; /* TODO: should it be up to the consumer to set a non-static positioning? */
+}
+
+/* shared arrow styles */
+.arrowRight::before,
+.arrowRight::after {
+  position: absolute;
+  content: "";
+  display: block;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  top: 50%;
+  margin-top: -10px;
+}
+
+/* create a slightly larger arrow on the right for border purposes */
+.arrowRight::before {
+  right: -20px;
+  border-left-color: var(--mb-color-border);
+}
+
+/* create a smaller inset arrow on the right */
+.arrowRight::after {
+  right: -19px;
+  border-left-color: var(--color-white);
+}

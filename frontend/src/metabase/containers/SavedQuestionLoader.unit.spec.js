@@ -1,22 +1,18 @@
-import React from "react";
 import { screen } from "@testing-library/react";
 
-import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
-import { renderWithProviders } from "__support__/ui";
 import {
   setupCardEndpoints,
-  setupSchemaEndpoints,
   setupUnauthorizedSchemaEndpoints,
   setupUnauthorizedCardEndpoints,
+  setupDatabaseEndpoints,
 } from "__support__/server-mocks";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDatabase,
-} from "metabase-types/api/mocks";
-import Question from "metabase-lib/Question";
+import { renderWithProviders } from "__support__/ui";
+import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
+import Question from "metabase-lib/v1/Question";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-const databaseMock = createMockDatabase({ id: 1 });
+const databaseMock = createSampleDatabase();
 
 const childrenRenderFn = ({ loading, question, error }) => {
   if (error) {
@@ -49,7 +45,7 @@ const setupQuestion = ({ id, name, hasAccess }) => {
 
 const setup = ({ questionId, hasAccess }) => {
   if (hasAccess) {
-    setupSchemaEndpoints(databaseMock);
+    setupDatabaseEndpoints(databaseMock);
   } else {
     setupUnauthorizedSchemaEndpoints(databaseMock);
   }

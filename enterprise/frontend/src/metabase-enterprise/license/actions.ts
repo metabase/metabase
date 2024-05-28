@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { createThunkAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
