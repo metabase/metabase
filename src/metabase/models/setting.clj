@@ -271,7 +271,8 @@
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
 
-   ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set)
+   ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set).
+   ;; Defaults to `:maybe`
    [:encryption [:enum :never :maybe]]
 
    ;; should this setting be serialized?
