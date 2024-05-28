@@ -1,7 +1,6 @@
 import * as Lib from "metabase-lib";
-import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
+import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -45,37 +44,42 @@ export function getParameterTargetField(
   }
 
   const fieldRef = target[1];
+  const query = question.query();
   const metadata = question.metadata();
 
   // native queries
   if (isTemplateTagReference(fieldRef)) {
-    const dimension = TemplateTagDimension.parseMBQL(
-      fieldRef,
-      metadata,
-      question.legacyQuery() as NativeQuery,
-    );
-    return dimension?.field();
+    const tagName = fieldRef[1];
+    const tags = Lib.templateTags(query);
+    const tag = tags[tagName];
+    if (!tag || !tag.dimension) {
+      return null;
+    }
+
+    const fieldId = tag.dimension[1];
+    return metadata.field(fieldId);
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const query = question.query();
     const stageIndex = -1;
     const columns = Lib.visibleColumns(query, stageIndex);
-    if (columns.length > 0) {
-      const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-        query,
-        stageIndex,
-        columns,
-        [fieldRef],
-      );
-      if (columnIndex >= 0) {
-        const column = columns[columnIndex];
-        const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-        if (fieldValuesInfo.fieldId != null) {
-          return metadata.field(fieldValuesInfo.fieldId);
-        }
-      }
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      columns,
+      [fieldRef],
+    );
+    if (columnIndex < 0) {
+      return null;
     }
+
+    const column = columns[columnIndex];
+    const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+    if (fieldValuesInfo.fieldId == null) {
+      return null;
+    }
+
+    return metadata.field(fieldValuesInfo.fieldId);
   }
 
   return null;
