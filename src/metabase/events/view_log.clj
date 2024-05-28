@@ -1,10 +1,12 @@
 (ns metabase.events.view-log
-  "This namespace is responsible for subscribing to events which should update the view log and view counts."
+  "This namespace is responsible for subscribing to events which should update the view log, view counts,
+   and recent views for a user."
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.models.recent-views :as recent-views]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -49,6 +51,7 @@
      :topic   topic
      :user-id user-id}
     (try
+      (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id)
       (increment-view-counts! :model/Card object-id)
       (-> (generate-view :model :model/Card event)
           (assoc :context "question")
@@ -69,6 +72,35 @@
     (catch Throwable e
       (log/warnf e "Failed to process view event. %s" topic))))
 
+(derive ::collection-touch-event :metabase/event)
+(derive :event/collection-touch ::collection-touch-event)
+
+(m/defmethod events/publish-event! ::collection-touch-event
+  "Handle processing for a single collection touch event."
+  [topic {:keys [collection-id user-id] :as _event}]
+  (try
+    (let [user-id (or user-id api/*current-user-id*)]
+      (recent-views/update-users-recent-views! user-id :model/Collection collection-id))
+    (catch Throwable e
+      (log/warnf e "Failed to process recent_views event: %s" topic))))
+
+(derive ::dashboard-read :metabase/event)
+(derive :event/dashboard-read ::dashboard-read)
+
+(m/defmethod events/publish-event! ::dashboard-read
+  "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
+  [topic {:keys [object-id user-id] :as event}]
+  (span/with-span!
+    {:name    "view-log-dashboard-read"
+     :topic   topic
+     :user-id user-id}
+    (try
+      (recent-views/update-users-recent-views! user-id :model/Dashboard object-id)
+      (increment-view-counts! :model/Dashboard object-id)
+      (record-views! (generate-view :model :model/Dashboard event))
+      (catch Throwable e
+        (log/warnf e "Failed to process view event. %s" topic)))))
+
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
 
@@ -85,22 +117,6 @@
     (catch Throwable e
       (log/warnf e "Failed to process view event. %s" topic))))
 
-(derive ::dashboard-read :metabase/event)
-(derive :event/dashboard-read ::dashboard-read)
-
-(m/defmethod events/publish-event! ::dashboard-read
-  "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
-  [topic {:keys [object-id user-id] :as event}]
-  (span/with-span!
-    {:name "view-log-dashboard-read"
-     :topic topic
-     :user-id user-id}
-    (try
-      (increment-view-counts! :model/Dashboard object-id)
-      (record-views! (generate-view :model :model/Dashboard event))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
-
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
 
@@ -113,6 +129,7 @@
      :topic topic
      :user-id user-id}
     (try
+      (recent-views/update-users-recent-views! user-id :model/Table (:id object))
       (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
