@@ -1051,18 +1051,40 @@ class TableInteractive extends Component {
     document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
   };
 
+  _shouldShowShorcutButton() {
+    const { question, mode, isRawTable } = this.props;
+
+    if (!question || !mode?.clickActions) {
+      return false;
+    }
+
+    for (const action of mode.clickActions) {
+      const res = action({
+        question,
+        clicked: {
+          columnShortcuts: true,
+          extraData: {
+            isRawTable,
+          },
+        },
+      });
+      if (res?.length > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   render() {
     const {
       width,
       height,
       data: { cols, rows },
       className,
-      isRawTable,
       scrollToColumn,
       scrollToLastColumn,
       theme,
-      question,
-      mode,
     } = this.props;
 
     if (!width || !height) {
@@ -1071,22 +1093,7 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-
-    const shortcutActions =
-      question && mode?.clickActions
-        ? mode.clickActions.flatMap(action =>
-            action({
-              question,
-              clicked: {
-                columnShortcuts: true,
-                extraData: {
-                  isRawTable,
-                },
-              },
-            }),
-          )
-        : [];
-    const shortcutColumn = shortcutActions.length > 0;
+    const shortcutColumn = this._shouldShowShorcutButton();
 
     const tableTheme = theme?.other?.table;
     const backgroundColor = tableTheme?.cell?.backgroundColor;
