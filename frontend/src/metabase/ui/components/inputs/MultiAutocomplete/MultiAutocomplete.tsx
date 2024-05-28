@@ -117,7 +117,7 @@ export function MultiAutocomplete({
       const values = parseValues(newSearchValue);
       if (values.length >= 1) {
         const value = values[0] ?? newSearchValue;
-        if (value && shouldCreate?.(value, lastSelectedValues)) {
+        if (isValid(value)) {
           setSelectedValues(unique([...lastSelectedValues, value]));
         }
       }
@@ -135,9 +135,7 @@ export function MultiAutocomplete({
       (first === '"' && last === '"')
     ) {
       const values = parseValues(newSearchValue);
-      const validValues = values.filter(
-        value => value !== "" && shouldCreate?.(value, lastSelectedValues),
-      );
+      const validValues = values.filter(isValid);
 
       if (values.length > 0) {
         setSearchValue("");
