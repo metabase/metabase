@@ -43,8 +43,8 @@ Amazon has its own best practices on how to backup and restore RDS databases, so
 
 Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
 
-## Self-hosted PostgreSQL or MySQL database
+## Self-hosted PostgreSQL database
 
-If you're hosting your own PostgreSQL or MySQL/MariaDB database, simply follow the same instructions you would use for making any normal database backup. For example, if you're using PostgreSQL for your application database, you should follow PostgreSQL's instructions for [backing up your database](https://www.postgresql.org/docs/current/backup.html).
+If you're hosting your own PostgreSQL database, simply follow PostgreSQL's instructions for [backing up your database](https://www.postgresql.org/docs/current/backup.html).
 
 As long as you have a dump of the Metabase database, you should be good to go.
