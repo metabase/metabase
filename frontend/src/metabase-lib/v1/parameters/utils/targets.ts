@@ -60,33 +60,8 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const query = question.query();
-    const stageIndex = -1;
-    const columns = Lib.visibleColumns(query, stageIndex);
-
-    // query and metadata are not available
-    if (columns.length === 0) {
-      const [_, fieldId] = fieldRef;
-      return metadata.field(fieldId);
-    }
-
-    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-      query,
-      stageIndex,
-      columns,
-      [fieldRef],
-    );
-    if (columnIndex < 0) {
-      return null;
-    }
-
-    const column = columns[columnIndex];
-    const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-    if (fieldValuesInfo.fieldId == null) {
-      return null;
-    }
-
-    return metadata.field(fieldValuesInfo.fieldId);
+    const [_, fieldId] = fieldRef;
+    return metadata.field(fieldId);
   }
 
   return null;
