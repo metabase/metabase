@@ -38,7 +38,7 @@
                         last
                         :type))))
           (testing "GET /api/collection/test"
-            (is (= collection/trash-collection-type
+            (is (= nil
                    (->> (mt/user-http-request :crowberto :get 200 "collection/tree")
                         last
                         :type)))))))))

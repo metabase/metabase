@@ -17,16 +17,30 @@ const mapDispatchToProps = {
 
 class ArchiveCollectionModalInner extends Component {
   archive = async () => {
-    const { collection, setCollectionArchived } = this.props;
-    await setCollectionArchived(collection, true);
+    const { setCollectionArchived, params } = this.props;
+    const id = Urls.extractCollectionId(params.slug);
+    await setCollectionArchived({ id }, true);
+  };
+
+  close = () => {
+    const { onClose, object, push } = this.props;
+    onClose();
+
+    if (object.archived) {
+      const parent =
+        object.effective_ancestors.length > 0
+          ? object.effective_ancestors.at(-1)
+          : null;
+      push(Urls.collection(parent));
+    }
   };
 
   render() {
     return (
       <ArchiveModal
-        title={t`Move this collection to trash?`}
-        message={t`The dashboards, collections, and alerts in this collection will also be moved to the trash.`}
-        onClose={this.props.onClose}
+        title={t`Archive this collection?`}
+        message={t`The dashboards, collections, and pulses in this collection will also be archived.`}
+        onClose={this.close}
         onArchive={this.archive}
       />
     );

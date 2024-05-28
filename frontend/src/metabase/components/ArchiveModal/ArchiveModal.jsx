@@ -30,14 +30,14 @@ class ArchiveModal extends Component {
     const { error } = this.state;
     return (
       <ModalContent
-        title={title || t`Trash this?`}
+        title={title || t`Archive this?`}
         footer={[
           error ? <FormMessage key="message" formError={error} /> : null,
           <Button key="cancel" onClick={onClose}>
             {t`Cancel`}
           </Button>,
           <Button key="archive" warning onClick={this.archive}>
-            {t`Move to trash`}
+            {t`Archive`}
           </Button>,
         ]}
       >

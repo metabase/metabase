@@ -1,9 +1,6 @@
 import { withRouter } from "react-router";
 
-import {
-  isInstanceAnalyticsCollection,
-  isTrashedCollection,
-} from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
@@ -40,7 +37,6 @@ const CollectionHeader = ({
   canUpload,
   uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
-  const isTrash = isTrashedCollection(collection);
   const showUploadButton =
     collection.can_write && (canUpload || !uploadsEnabled);
   const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
@@ -51,38 +47,34 @@ const CollectionHeader = ({
         collection={collection}
         onUpdateCollection={onUpdateCollection}
       />
-      {!isTrash && (
-        <HeaderActions data-testid="collection-menu">
-          {showUploadButton && (
-            <CollectionUpload
-              collection={collection}
-              uploadsEnabled={uploadsEnabled}
-              isAdmin={isAdmin}
-              saveFile={saveFile}
-            />
-          )}
-          {!isInstanceAnalytics && (
-            <CollectionTimeline collection={collection} />
-          )}
-          {isInstanceAnalytics && (
-            <CollectionPermissions collection={collection} />
-          )}
-          <CollectionBookmark
+      <HeaderActions data-testid="collection-menu">
+        {showUploadButton && (
+          <CollectionUpload
             collection={collection}
-            isBookmarked={isBookmarked}
-            onCreateBookmark={onCreateBookmark}
-            onDeleteBookmark={onDeleteBookmark}
+            uploadsEnabled={uploadsEnabled}
+            isAdmin={isAdmin}
+            saveFile={saveFile}
           />
-          {!isInstanceAnalytics && (
-            <CollectionMenu
-              collection={collection}
-              isAdmin={isAdmin}
-              isPersonalCollectionChild={isPersonalCollectionChild}
-              onUpdateCollection={onUpdateCollection}
-            />
-          )}
-        </HeaderActions>
-      )}
+        )}
+        {!isInstanceAnalytics && <CollectionTimeline collection={collection} />}
+        {isInstanceAnalytics && (
+          <CollectionPermissions collection={collection} />
+        )}
+        <CollectionBookmark
+          collection={collection}
+          isBookmarked={isBookmarked}
+          onCreateBookmark={onCreateBookmark}
+          onDeleteBookmark={onDeleteBookmark}
+        />
+        {!isInstanceAnalytics && (
+          <CollectionMenu
+            collection={collection}
+            isAdmin={isAdmin}
+            isPersonalCollectionChild={isPersonalCollectionChild}
+            onUpdateCollection={onUpdateCollection}
+          />
+        )}
+      </HeaderActions>
     </HeaderRoot>
   );
 };

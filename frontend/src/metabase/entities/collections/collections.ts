@@ -2,10 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { collectionApi } from "metabase/api";
-import {
-  isRootTrashCollection,
-  canonicalCollectionId,
-} from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   createEntity,
   undo,
@@ -20,7 +17,6 @@ import type {
   Collection,
   CreateCollectionRequest,
   UpdateCollectionRequest,
-  DeleteCollectionRequest,
 } from "metabase-types/api";
 import type { GetState, ReduxAction, Dispatch } from "metabase-types/store";
 
@@ -92,12 +88,9 @@ const Collections = createEntity({
         dispatch,
         collectionApi.endpoints.updateCollection,
       ),
-    delete: (entityQuery: DeleteCollectionRequest, dispatch: Dispatch) =>
-      entityCompatibleQuery(
-        entityQuery,
-        dispatch,
-        collectionApi.endpoints.deleteCollection,
-      ),
+    delete: () => {
+      throw new TypeError("Collections.api.delete is not supported");
+    },
   },
 
   objectActions: {
@@ -109,7 +102,7 @@ const Collections = createEntity({
       Collections.actions.update(
         { id },
         { archived },
-        undo(opts, t`collection`, archived ? t`trashed` : t`restored`),
+        undo(opts, "collection", archived ? "archived" : "unarchived"),
       ),
 
     setCollection: (
@@ -119,10 +112,7 @@ const Collections = createEntity({
     ) =>
       Collections.actions.update(
         { id },
-        {
-          parent_id: canonicalCollectionId(collection?.id),
-          archived: isRootTrashCollection(collection),
-        },
+        { parent_id: canonicalCollectionId(collection?.id) },
         undo(opts, "collection", "moved"),
       ),
   },

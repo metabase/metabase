@@ -230,8 +230,7 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            ;; +1 for the Trash collection
-            (is (= 111 (-> @entities (get "Collection") count))))
+            (is (= 110 (-> @entities (get "Collection") count))))
 
           (testing "storage"
             (storage/store! (seq @extraction) dump-dir)
@@ -240,8 +239,7 @@
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
-              ;; +1 for the Trash collection
-              (is (= 111 (count (for [f (file-set (io/file dump-dir))
+              (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]
@@ -480,17 +478,15 @@
                            :values_source_type   "card"}]
                          (:parameters (first (by-model extraction "Dashboard")))))
 
-                  ;; card1s has no parameters, card2s does.
-                  (is (= #{[]
-                           [{:id                   "abc",
-                             :name                 "CATEGORY",
-                             :type                 :category,
-                             :values_source_config {:card_id     (:entity_id card1s),
-                                                    :value_field [:field
-                                                                  ["my-db" nil "CUSTOMERS" "NAME"]
-                                                                  nil]},
-                             :values_source_type   "card"}]}
-                         (set (map :parameters (by-model extraction "Card")))))
+                  (is (= [{:id                   "abc",
+                           :name                 "CATEGORY",
+                           :type                 :category,
+                           :values_source_config {:card_id     (:entity_id card1s),
+                                                  :value_field [:field
+                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                nil]},
+                           :values_source_type   "card"}]
+                         (:parameters (first (by-model extraction "Card")))))
 
                   (storage/store! (seq extraction) dump-dir)))
 

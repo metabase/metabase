@@ -186,7 +186,6 @@
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
-                    :can_restore
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
@@ -500,7 +499,8 @@
    collection_preview     [:maybe :boolean]}
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (api/move-on-archive-or-unarchive card-before-update card-updates (collection/trash-collection-id))
+        card-updates           (cond-> card-updates
+                                 (:type card-updates) (update :type keyword))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]

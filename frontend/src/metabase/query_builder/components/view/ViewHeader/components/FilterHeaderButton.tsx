@@ -51,7 +51,6 @@ FilterHeaderButton.shouldRender = ({
     !isNative &&
     isEditable &&
     !isObjectDetail &&
-    isActionListVisible &&
-    !question.isArchived()
+    isActionListVisible
   );
 };

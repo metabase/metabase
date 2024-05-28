@@ -83,6 +83,9 @@ const DashboardInfoSidebarBody = ({
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
+  const showCaching =
+    PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
+
   const handleDescriptionChange = useCallback(
     (description: string) => {
       setDashboardAttribute?.("description", description);
@@ -99,13 +102,8 @@ const DashboardInfoSidebarBody = ({
   );
 
   const autoApplyFilterToggleId = useUniqueId();
-  const canWrite = dashboard.can_write && !dashboard.archived;
+  const canWrite = dashboard.can_write;
   const isCacheable = isDashboardCacheable(dashboard);
-
-  const showCaching =
-    canWrite &&
-    PLUGIN_CACHING.isEnabled() &&
-    MetabaseSettings.get("enable-query-caching");
 
   return (
     <>
@@ -124,29 +122,27 @@ const DashboardInfoSidebarBody = ({
         />
       </ContentSection>
 
-      {!dashboard.archived && (
-        <ContentSection>
-          <Stack spacing="md">
-            <Switch
-              disabled={!canWrite}
-              label={t`Auto-apply filters`}
-              labelPosition="left"
-              variant="stretch"
-              size="sm"
-              id={autoApplyFilterToggleId}
-              checked={dashboard.auto_apply_filters}
-              onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+      <ContentSection>
+        <Stack spacing="md">
+          <Switch
+            disabled={!canWrite}
+            label={t`Auto-apply filters`}
+            labelPosition="left"
+            variant="stretch"
+            size="sm"
+            id={autoApplyFilterToggleId}
+            checked={dashboard.auto_apply_filters}
+            onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+          />
+          {showCaching && isCacheable && (
+            <PLUGIN_CACHING.SidebarCacheSection
+              model="dashboard"
+              item={dashboard}
+              setPage={setPage}
             />
-            {showCaching && isCacheable && (
-              <PLUGIN_CACHING.SidebarCacheSection
-                model="dashboard"
-                item={dashboard}
-                setPage={setPage}
-              />
-            )}
-          </Stack>
-        </ContentSection>
-      )}
+          )}
+        </Stack>
+      </ContentSection>
 
       <ContentSection>
         <HistoryHeader>{t`History`}</HistoryHeader>
