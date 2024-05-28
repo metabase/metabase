@@ -682,6 +682,13 @@ BarCorrectWidthWhenTwoYAxes.args = {
   renderingContext,
 };
 
+export const SingleNullDimensionValue = Template.bind({});
+SingleNullDimensionValue.args = {
+  rawSeries: data.singleNullDimensionValue as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
