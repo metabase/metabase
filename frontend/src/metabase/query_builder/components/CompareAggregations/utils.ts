@@ -46,5 +46,5 @@ export const getTitle = (
 
   const info = Lib.displayInfo(query, stageIndex, aggregation);
 
-  return t`Compare “${info.displayName}” to previous ${period} ...`;
+  return t`Compare “${info.displayName}” to previous ${period}`;
 };
