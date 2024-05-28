@@ -1,4 +1,3 @@
-import cx from "classnames";
 import {
   useEffect,
   useRef,
@@ -264,7 +263,6 @@ function ExpressionEditorSuggestionsListItem({
         onMouseEnter={handleMouseEnter}
         ref={ref}
         isHighlighted={isHighlighted}
-        className={cx(CS.hoverParent, CS.hoverInherit)}
         data-testid="expression-suggestions-list-item"
       >
         {icon && (helpText || !suggestion.column) && (
