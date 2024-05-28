@@ -16,6 +16,7 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { columnsAreValid, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import {
+  getAvailableXAxisScales,
   getDefaultIsHistogram,
   getDefaultStackingValue,
   getDefaultXAxisScale,
@@ -41,7 +42,7 @@ import {
   STACKABLE_DISPLAY_TYPES,
   getDefaultMetrics,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
-import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export const getSeriesDisplays = (transformedSeries, settings) => {
   return transformedSeries.map(single => settings.series(single).display);
@@ -399,28 +400,9 @@ export const GRAPH_AXIS_SETTINGS = {
     ],
     isValid: isXAxisScaleValid,
     getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
-    getProps: ([{ data }], vizSettings) => {
-      const dimensionColumn = data.cols.find(
-        col => col != null && col.name === vizSettings["graph.dimensions"][0],
-      );
-      const options = [];
-      if (vizSettings["graph.x_axis._is_timeseries"]) {
-        options.push({ name: t`Timeseries`, value: "timeseries" });
-      }
-      if (vizSettings["graph.x_axis._is_numeric"]) {
-        options.push({ name: t`Linear`, value: "linear" });
-        // For relative date units such as day of week we do not want to show log, pow, histogram scales
-        if (!isDate(dimensionColumn)) {
-          if (!vizSettings["graph.x_axis._is_histogram"]) {
-            options.push({ name: t`Power`, value: "pow" });
-            options.push({ name: t`Log`, value: "log" });
-          }
-          options.push({ name: t`Histogram`, value: "histogram" });
-        }
-      }
-      options.push({ name: t`Ordinal`, value: "ordinal" });
-      return { options };
-    },
+    getProps: (series, vizSettings) => ({
+      options: getAvailableXAxisScales(series, vizSettings),
+    }),
   },
   "graph.y_axis.scale": {
     section: t`Axes`,
