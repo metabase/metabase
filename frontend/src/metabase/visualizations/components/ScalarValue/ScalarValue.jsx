@@ -12,6 +12,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { useMantineTheme } from "metabase/ui";
 
 import {
   ScalarRoot,
@@ -36,26 +37,41 @@ const ScalarValue = ({
   totalNumGridCols,
   fontFamily,
 }) => {
-  const fontSize = useMemo(
-    () =>
-      findSize({
-        text: value,
-        targetHeight: height,
-        targetWidth: width,
-        fontFamily: fontFamily ?? "Lato",
-        fontWeight: 700,
-        unit: "rem",
-        step: 0.2,
-        min: 1,
-        max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
-      }),
-    [fontFamily, gridSize, height, totalNumGridCols, value, width],
-  );
+  const {
+    other: { scalar: scalarTheme },
+  } = useMantineTheme();
+
+  const fontSize = useMemo(() => {
+    if (scalarTheme?.value?.fontSize) {
+      return scalarTheme.value?.fontSize;
+    }
+
+    return findSize({
+      text: value,
+      targetHeight: height,
+      targetWidth: width,
+      fontFamily: fontFamily ?? "Lato",
+      fontWeight: 700,
+      unit: "rem",
+      step: 0.2,
+      min: 1,
+      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+    });
+  }, [
+    fontFamily,
+    gridSize,
+    height,
+    totalNumGridCols,
+    value,
+    width,
+    scalarTheme?.value?.fontSize,
+  ]);
 
   return (
     <ScalarValueWrapper
       className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
+      lineHeight={scalarTheme?.value?.lineHeight}
       data-testid="scalar-value"
     >
       {value ?? t`null`}
