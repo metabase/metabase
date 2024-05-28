@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -21,7 +21,7 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
-import { Icon, type IconProps } from "metabase/ui";
+import { Icon, Flex, type IconProps } from "metabase/ui";
 import type { ModelResult } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
@@ -60,9 +60,16 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
   sort_direction: SortDirection.Asc,
 };
 
+const LARGE_DATASET_THRESHOLD = 500;
+
 export const ModelsTable = ({ models }: ModelsTableProps) => {
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
+
+  // for large datasets, we need to simplify the display to avoid performance issues
+  const isLargeDataset = models.length > LARGE_DATASET_THRESHOLD;
+
+  const [showLoading, setShowLoading] = useState(isLargeDataset);
 
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
@@ -74,8 +81,20 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   const collectionWidth = 38.5;
   const descriptionWidth = 100 - collectionWidth;
 
-  // for large datasets, we need to simplify the display to avoid performance issues
-  const isLargeDataset = models.length > 500;
+  const handleUpdateSortOptions = (newSortingOptions: SortingOptions) => {
+    if (isLargeDataset) {
+      setShowLoading(true);
+    }
+    setSortingOptions(newSortingOptions);
+  };
+
+  useEffect(() => {
+    // we need a better virtualized table solution for large datasets
+    // for now, we show loading text to make this component feel more responsive
+    if (isLargeDataset && showLoading) {
+      setTimeout(() => setShowLoading(false), 10);
+    }
+  }, [isLargeDataset, showLoading, sortedModels]);
 
   return (
     <Table>
@@ -96,7 +115,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
           <SortableColumnHeader
             name="name"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={setSortingOptions}
+            onSortingOptionsChange={handleUpdateSortOptions}
             style={{ paddingInlineStart: ".625rem" }}
             columnHeaderProps={{
               style: { paddingInlineEnd: ".5rem" },
@@ -107,7 +126,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={setSortingOptions}
+            onSortingOptionsChange={handleUpdateSortOptions}
             {...collectionProps}
             columnHeaderProps={{
               style: {
@@ -132,13 +151,17 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
         </tr>
       </thead>
       <TBody>
-        {sortedModels.map((model: ModelResult) => (
-          <TBodyRow
-            model={model}
-            key={`${model.model}-${model.id}`}
-            simpleDisplay={isLargeDataset}
-          />
-        ))}
+        {showLoading ? (
+          <TableLoader />
+        ) : (
+          sortedModels.map((model: ModelResult) => (
+            <TBodyRow
+              model={model}
+              key={`${model.model}-${model.id}`}
+              simpleDisplay={isLargeDataset}
+            />
+          ))
+        )}
       </TBody>
     </Table>
   );
@@ -244,3 +267,13 @@ const NameCell = ({
     </ItemNameCell>
   );
 };
+
+const TableLoader = () => (
+  <tr>
+    <td colSpan={4}>
+      <Flex justify="center" color="text-light">
+        {t`Loading...`}
+      </Flex>
+    </td>
+  </tr>
+);
