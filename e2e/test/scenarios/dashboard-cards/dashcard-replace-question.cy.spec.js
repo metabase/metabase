@@ -150,7 +150,7 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     // Ensure can replace with a question
     replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Next question"
+      nextQuestionName: "Next question",
     });
     expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
