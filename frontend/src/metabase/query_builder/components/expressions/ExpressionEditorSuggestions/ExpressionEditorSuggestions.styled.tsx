@@ -82,7 +82,6 @@ export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
 `;
 
 export const GroupTitle = styled(ExpressionListItem)`
-  text-transform: uppercase;
   font-weight: bold;
   font-size: 12px;
   color: ${color("text-medium")};
