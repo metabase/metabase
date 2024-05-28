@@ -61,3 +61,4 @@ For example, if you upload a CSV with JSON in it, you might need to update the d
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
+- [Druid (JDBC)](../databases/connections/druid.md)
