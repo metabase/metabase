@@ -87,6 +87,16 @@ export const getWaterfallDataset = (
     );
   }
 
+  if (isTimeSeriesAxis(xAxisModel)) {
+    transformedDataset = replaceValues(
+      transformedDataset,
+      (dataKey: DataKey, value: RowValue) =>
+        dataKey === X_AXIS_DATA_KEY
+          ? xAxisModel.toEChartsAxisValue(value)
+          : value,
+    );
+  }
+
   return replaceValues(
     transformedDataset,
     (dataKey: DataKey, value: RowValue) =>
