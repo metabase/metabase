@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import { Box } from "metabase/ui";
@@ -6,6 +6,7 @@ import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
+import S from "./CompareAggregations.module.css";
 import { getTitle } from "./utils";
 
 interface Props {
@@ -14,10 +15,13 @@ interface Props {
   onClose: () => void;
 }
 
-type AggregationItem = {
-  name: string;
+type AggregationItem = Lib.AggregationClauseDisplayInfo & {
   aggregation: Lib.AggregationClause;
 };
+
+const renderItemName = (item: AggregationItem) => item.displayName;
+
+const renderItemDescription = () => null;
 
 export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
   const aggregations = useMemo(() => {
@@ -33,24 +37,18 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
     [query, stageIndex, aggregation],
   );
 
-  const sections = [
-    {
-      // key: "aggregations",
-      // name: "",
-      items: aggregations.map<AggregationItem>(aggregation => {
-        const info = Lib.displayInfo(query, stageIndex, aggregation);
+  const items = useMemo(() => {
+    return aggregations.map<AggregationItem>(aggregation => {
+      const info = Lib.displayInfo(query, stageIndex, aggregation);
+      return { ...info, aggregation };
+    });
+  }, [query, stageIndex, aggregations]);
 
-        return {
-          name: info.displayName,
-          aggregation,
-        };
-      }),
-    },
-  ];
+  const sections = useMemo(() => [{ items }], [items]);
 
-  const handleAggregationChange = (item: AggregationItem) => {
+  const handleAggregationChange = useCallback((item: AggregationItem) => {
     setAggregation(item.aggregation);
-  };
+  }, []);
 
   const handleBack = () => {
     if (hasManyAggregations && aggregation) {
@@ -66,16 +64,14 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
 
       {!aggregation && (
         <AccordionList
-          sections={sections}
-          onChange={handleAggregationChange}
-          // onChangeSection={handleSectionChange}
-          // itemIsSelected={checkIsItemSelected}
-          // renderItemName={renderItemName}
-          // renderItemDescription={omitItemDescription}
-          // disable scrollbars inside the list
-          style={{ overflow: "visible" }}
+          alwaysExpanded
+          className={S.accordionList}
           maxHeight={Infinity}
-          withBorders
+          renderItemName={renderItemName}
+          renderItemDescription={renderItemDescription}
+          sections={sections}
+          width="100%"
+          onChange={handleAggregationChange}
         />
       )}
     </Box>
