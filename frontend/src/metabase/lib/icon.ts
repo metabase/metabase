@@ -1,3 +1,4 @@
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
@@ -7,20 +8,25 @@ import type {
   SearchModel,
 } from "metabase-types/api";
 
+type IconModel = SearchModel | "schema";
+
 export type ObjectWithModel = {
-  model: SearchModel;
+  model: IconModel;
+  id?: unknown;
   authority_level?: "official" | string | null;
   collection_authority_level?: "official" | string | null;
   moderated_status?: "verified" | string | null;
   display?: CardDisplayType | null;
   type?: Collection["type"];
+  is_personal?: boolean;
 };
 
-const modelIconMap: Record<SearchModel, IconName> = {
+const modelIconMap: Record<IconModel, IconName> = {
   collection: "folder",
   database: "database",
   table: "table",
   dataset: "model",
+  schema: "folder",
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
@@ -38,6 +44,14 @@ export type IconData = {
 export const getIconBase = (item: ObjectWithModel): IconData => {
   if (item.model === "card" && item.display) {
     return { name: getIconForVisualizationType(item.display) };
+  }
+
+  if (item.model === "collection" && item.id === PERSONAL_COLLECTIONS.id) {
+    return { name: "group" };
+  }
+
+  if (item.model === "collection" && item.is_personal) {
+    return { name: "person" };
   }
 
   return { name: modelIconMap?.[item.model] ?? "unknown" };
