@@ -97,7 +97,7 @@ export function ExpressionEditorSuggestions({
   return (
     <Popover
       position="bottom-start"
-      opened={open && suggestions.length > 0}
+      opened={true || (open && suggestions.length > 0)}
       radius="xs"
       withinPortal
       zIndex={DEFAULT_POPOVER_Z_INDEX}
@@ -229,8 +229,6 @@ function ExpressionEditorSuggestionsListItem({
   const { icon, helpText, range = [] } = suggestion;
   const [start = 0, end = 0] = range;
 
-  const { normal, highlighted } = colorForIcon(icon);
-
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
     if (!isHighlighted || !ref.current || !isObscured(ref.current)) {
@@ -268,7 +266,7 @@ function ExpressionEditorSuggestionsListItem({
         {icon && (helpText || !suggestion.column) && (
           <Icon
             name={icon as IconName}
-            color={isHighlighted ? highlighted : normal}
+            color={isHighlighted ? color("brand-white") : color("text-light")}
             className={CS.mr1}
           />
         )}
@@ -333,24 +331,6 @@ function Footer({
       {suggestion.name} <ExternalIcon name={suggestion.icon} />
     </ExpressionListFooter>
   );
-}
-
-function colorForIcon(icon: string | undefined | null) {
-  switch (icon) {
-    case "segment":
-      return { normal: color("accent2"), highlighted: color("brand-white") };
-    case "insight":
-      return { normal: color("accent1"), highlighted: color("brand-white") };
-    case "function":
-    case "combine":
-    case "arrow_split":
-      return { normal: color("brand"), highlighted: color("brand-white") };
-    default:
-      return {
-        normal: color("text-medium"),
-        highlighted: color("brand-white"),
-      };
-  }
 }
 
 type SuggestionWithIndex = Suggestion & {
