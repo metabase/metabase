@@ -40,6 +40,12 @@ To move an item (question, dashboard, model, or collection) to Trash:
 
 You'll still be able to see the contents of the items in Trash, but you won't be able to modify them or use them as a source for other questions.
 
+If you need to delete multiple items from the same collection, you can delete them in bulk:
+
+1. Go to the collection containing items you want to delete;
+2. Click the checkboxes next to the items to select them;
+3. Select "Move to trash"
+
 To restore an item:
 
 1. Go to Trash;
@@ -57,7 +63,9 @@ Deleting or restoring an item will affect other items that depend on that item.
 
 ### Questions
 
-| Affected item                      | In Trash       | Permanently deleted                | Restored       |
+What happens to related items when you delete a question?
+
+| Related item                       | In Trash       | Permanently deleted                | Restored       |
 | ---------------------------------- | -------------- | ---------------------------------- | -------------- |
 | Dashboard                          | Card removed   | Card removed                       | Card restored  |
 | Question based on deleted question | Works normally | Breaks with `Card not found` error | Works normally |
@@ -65,14 +73,18 @@ Deleting or restoring an item will affect other items that depend on that item.
 
 ### Dashboards
 
-| Affected item   | In Trash                   | Permanently deleted        | Restored |
+What happens to related items when you delete a dashboard?
+
+| Related item    | In Trash                   | Permanently deleted        | Restored |
 | --------------- | -------------------------- | -------------------------- | -------- |
 | Subscriptions   | Deactivated                | Deactivated                | Restored |
 | Custom homepage | Revert to default homepage | Revert to default homepage | Restored |
 
 ### Model
 
-| Affected item                      | In Trash       | Permanently deleted                | Restored       |
+What happens to related items when you delete a model?
+
+| Related item                       | In Trash       | Permanently deleted                | Restored       |
 | ---------------------------------- | -------------- | ---------------------------------- | -------------- |
 | Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated    |
 | Dashboard                          | Card removed   | Card removed                       | Card restored  |
@@ -80,9 +92,11 @@ Deleting or restoring an item will affect other items that depend on that item.
 
 ## Collections
 
-| Affected item                                  | In Trash | Permanently deleted | Restored |
+What happens to related items when you delete a collection?
+
+| Related item                                   | In Trash | Permanently deleted | Restored |
 | ---------------------------------------------- | -------- | ------------------- | -------- |
-| All items and subcollecitons in the collection | In Trash | Permanently deleted | Restored |
+| All items and subcollections in the collection | In Trash | Permanently deleted | Restored |
 
 ## Permanently deleting items
 
@@ -93,7 +107,7 @@ To permanently delete an item:
 1. Go to Trash;
 2. Find the item you'd like to delete;
 3. Click on the checkbox next to the collection to select it;
-4. Select "Permanently delete".
+4. Select "Permanently delete". If you click this button, you won't be able to recover the item. It'll be lost to the void.
 
 ## Deleting and restoring events and timelines
 
