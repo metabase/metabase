@@ -123,45 +123,44 @@ export function autoWireParametersToNewCard({
       return;
     }
 
-    const dashcardMappingOptions = getParameterMappingOptions(
+    const targetQuestion =
       questions[targetDashcard.card.id] ??
-        new Question(targetDashcard.card, metadata),
+      new Question(targetDashcard.card, metadata);
+
+    const dashcardMappingOptions = getParameterMappingOptions(
+      targetQuestion,
       null,
       targetDashcard.card,
       targetDashcard,
     );
 
-    const targetQuestion =
-      questions[targetDashcard.card.id] ??
-      new Question(targetDashcard.card, metadata);
-
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
     for (const [dashcard] of dashcardWithQuestions) {
-      const param = dashcard.parameter_mappings?.find(mapping =>
-        getMappingOptionByTarget(
+      for (const mapping of dashcard.parameter_mappings ?? []) {
+        const option = getMappingOptionByTarget(
           dashcardMappingOptions,
           targetDashcard,
           mapping.target,
           targetQuestion,
-        ),
-      );
-
-      if (
-        targetDashcard.card_id &&
-        param &&
-        !processedParameterIds.has(param.parameter_id)
-      ) {
-        parametersToAutoApply.push(
-          ...getParameterMappings(
-            targetDashcard,
-            param.parameter_id,
-            targetDashcard.card_id,
-            param.target,
-          ),
         );
-        processedParameterIds.add(param.parameter_id);
+
+        if (
+          option &&
+          targetDashcard.card_id &&
+          !processedParameterIds.has(mapping.parameter_id)
+        ) {
+          parametersToAutoApply.push(
+            ...getParameterMappings(
+              targetDashcard,
+              mapping.parameter_id,
+              targetDashcard.card_id,
+              option.target,
+            ),
+          );
+          processedParameterIds.add(mapping.parameter_id);
+        }
       }
     }
 
