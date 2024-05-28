@@ -6,7 +6,6 @@ import {
   PopoverHoverTarget as BasePopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 
 export const ExpressionList = styled.ul`
   min-width: 250px;
@@ -35,27 +34,19 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
-  border-top: 1px solid ${color("border")};
   background: white;
   height: 2rem;
-  font-weight: bold;
   color: ${color("text-medium")};
-
-  position: sticky;
-  bottom: 0;
-
   display: flex;
   align-items: center;
-  justify-content: space-between;
-
   padding-left: 0.875rem;
+  margin-top: 12px;
+
+  &:first-child {
+    margin-top: 0;
+  }
 
   ${props => props.isHighlighted && highlighted}
-`;
-
-export const ExternalIcon = styled(Icon)`
-  height: 0.8rem;
-  margin-right: 0.5rem;
 `;
 
 export const SuggestionTitle = styled.span`

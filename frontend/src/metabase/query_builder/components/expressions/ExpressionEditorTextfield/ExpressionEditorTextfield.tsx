@@ -83,14 +83,14 @@ export function suggestWithExtras(
     if (args.startRule === "aggregation") {
       suggestions.push({
         footer: true,
-        name: t`View all aggregations`,
+        name: t`Documentation`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
       });
     } else {
       suggestions.push({
         footer: true,
-        name: t`View all functions`,
+        name: t`Documentation`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
       });

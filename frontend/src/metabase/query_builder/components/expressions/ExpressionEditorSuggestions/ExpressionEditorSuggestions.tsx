@@ -37,7 +37,6 @@ import type {
 import {
   ExpressionListItem,
   ExpressionListFooter,
-  ExternalIcon,
   ExpressionList,
   SuggestionMatch,
   SuggestionTitle,
@@ -321,15 +320,23 @@ function Footer({
     onHighlightSuggestion(suggestion.index);
   }, [suggestion.index, onHighlightSuggestion]);
 
+  const isHighlighted = highlightedIndex === suggestion.index;
+
   return (
     <ExpressionListFooter
       target="_blank"
       href={suggestion.href}
       onMouseDownCapture={handleMouseDownCapture}
-      isHighlighted={highlightedIndex === suggestion.index}
       onMouseEnter={handleMouseEnter}
+      isHighlighted={isHighlighted}
+      data-testid="expression-suggestions-list-item"
     >
-      {suggestion.name} <ExternalIcon name={suggestion.icon} />
+      <Icon
+        name="reference"
+        color={isHighlighted ? color("brand-white") : color("text-light")}
+        className={CS.mr1}
+      />
+      <SuggestionTitle>{suggestion.name}</SuggestionTitle>
     </ExpressionListFooter>
   );
 }
