@@ -36,9 +36,20 @@
   [& {:keys [model object-id object user-id has-access]
       :or   {has-access true}}]
   {:model      (u/lower-case-en (audit-log/model-name (or model object)))
-   :user_id    (or user-id api/*current-user-id*)
+   :user_id    user-id
    :model_id   (or object-id (u/id object))
    :has_access has-access})
+
+(defn- do-catch-throwable [topic f]
+  (try
+    (f)
+    (catch Throwable e
+      (log/warnf e "Failed to process view event: %s" topic))))
+
+(defmacro ^:private catch-throwable
+  {:style/indent 1}
+  [topic & body]
+  `(do-catch-throwable ~topic (fn [] ~@body)))
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
@@ -50,14 +61,12 @@
     {:name    "view-log-card-read"
      :topic   topic
      :user-id user-id}
-    (try
-      (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id)
+    (catch-throwable topic
+      (recent-views/update-users-recent-views! user-id :model/Card object-id)
       (increment-view-counts! :model/Card object-id)
       (-> (generate-view :model :model/Card event)
           (assoc :context "question")
-          record-views!)
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+          record-views!))))
 
 (derive ::collection-read-event :metabase/event)
 (derive :event/collection-read ::collection-read-event)
@@ -65,12 +74,10 @@
 (m/defmethod events/publish-event! ::collection-read-event
   "Handle processing for a generic read event notification"
   [topic event]
-  (try
+  (catch-throwable topic
     (-> event
         generate-view
-        record-views!)
-    (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+        record-views!)))
 
 (derive ::collection-touch-event :metabase/event)
 (derive :event/collection-touch ::collection-touch-event)
@@ -78,11 +85,8 @@
 (m/defmethod events/publish-event! ::collection-touch-event
   "Handle processing for a single collection touch event."
   [topic {:keys [collection-id user-id] :as _event}]
-  (try
-    (let [user-id (or user-id api/*current-user-id*)]
-      (recent-views/update-users-recent-views! user-id :model/Collection collection-id))
-    (catch Throwable e
-      (log/warnf e "Failed to process recent_views event: %s" topic))))
+  (catch-throwable topic
+    (recent-views/update-users-recent-views! user-id :model/Collection collection-id)))
 
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
@@ -94,12 +98,10 @@
     {:name    "view-log-dashboard-read"
      :topic   topic
      :user-id user-id}
-    (try
+    (catch-throwable topic
       (recent-views/update-users-recent-views! user-id :model/Dashboard object-id)
       (increment-view-counts! :model/Dashboard object-id)
-      (record-views! (generate-view :model :model/Dashboard event))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+      (record-views! (generate-view :model :model/Dashboard event)))))
 
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
@@ -107,15 +109,13 @@
 (m/defmethod events/publish-event! ::read-permission-failure
   "Handle processing for a generic read event notification"
   [topic {:keys [object] :as event}]
-  (try
+  (catch-throwable topic
     ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
     ;; other models.
     (when (#{:model/Card :model/Dashboard} (t2/model object))
      (-> event
          generate-view
-         record-views!))
-    (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+         record-views!))))
 
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
@@ -128,7 +128,7 @@
     {:name "view-log-table-read"
      :topic topic
      :user-id user-id}
-    (try
+    (catch-throwable topic
       (recent-views/update-users-recent-views! user-id :model/Table (:id object))
       (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
@@ -138,6 +138,4 @@
         (-> event
             (assoc :has-access has-access?)
             generate-view
-            record-views!))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+            record-views!)))))
