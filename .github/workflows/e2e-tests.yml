@@ -46,7 +46,7 @@ jobs:
       github.event.pull_request.draft == false &&
       needs.e2e-matrix-builder.result == 'success' &&
       needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-8-cores
     timeout-minutes: 25
     strategy:
       matrix:
