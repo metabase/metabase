@@ -77,10 +77,10 @@ export interface MetabaseComponentTheme {
   /** Data tables **/
   table: {
     cell: {
-      /** Text color of cells, defaults to `text-dark`. */
+      /** Text color of cells, defaults to `text-primary`. */
       textColor: string;
 
-      /** Default background color of cells, defaults to `bg-white` */
+      /** Default background color of cells, defaults to `background` */
       backgroundColor?: string;
     };
 
