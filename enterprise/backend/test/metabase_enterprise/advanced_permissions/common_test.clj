@@ -770,10 +770,10 @@
   (perms/grant-application-permissions! (perms-group/all-users) :setting)
   (testing "Upload DB can be set with the right permission"
     (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
-      (mt/user-http-request :rasta :put 204 "setting/" {:uploads-database-id (mt/id)})))
+      (mt/user-http-request :rasta :put 204 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
   (testing "Upload DB cannot be set without the right permission"
     (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
-      (mt/user-http-request :rasta :put 403 "setting/" {:uploads-database-id (mt/id)})))
+      (mt/user-http-request :rasta :put 403 "setting/" {:uploads-settings {:db_id (mt/id) :schema_name nil :table_prefix nil}})))
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
@@ -858,29 +858,24 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-model-cleanup [:model/Table]
-        (let [schema-name (sql.tx/session-schema driver/*driver*)]
+        (let [schema-name (sql.tx/session-schema driver/*driver*)
+              db-id       (u/the-id (mt/db))]
           (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
-            (let [db-id (u/the-id (mt/db))]
-              (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
-                (mt/with-temporary-setting-values [uploads-enabled      true
-                                                   uploads-database-id  db-id
-                                                   uploads-schema-name  schema-name
-                                                   uploads-table-prefix "uploaded_magic_"]
-                  (doseq [[schema-perms can-upload?] {:query-builder               true
-                                                      :no                          false
-                                                      {(:id table) :query-builder} false}]
-                    (testing (format "can_upload should be %s if the user has %s access to the upload schema"
-                                     can-upload? schema-perms)
-                      (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
-                                                                   :create-queries {"some_schema" :query-builder
-                                                                                    schema-name schema-perms}}}
-                        (testing "GET /api/database"
-                          (let [result (->> (mt/user-http-request :rasta :get 200 "database")
-                                            :data
-                                            (filter #(= (:id %) db-id))
-                                            first)]
-                            (def res (mt/user-http-request :rasta :get 200 "database"))
-                            (is (= can-upload? (:can_upload result)))))
-                        (testing "GET /api/database/:id"
-                          (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-                            (is (= can-upload? (:can_upload result)))))))))))))))))
+            (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
+              (doseq [[schema-perms can-upload?] {:query-builder               true
+                                                  :no                          false
+                                                  {(:id table) :query-builder} false}]
+                (testing (format "can_upload should be %s if the user has %s access to the upload schema"
+                                 can-upload? schema-perms)
+                  (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted
+                                                               :create-queries {"some_schema" :query-builder
+                                                                                schema-name schema-perms}}}
+                    (testing "GET /api/database"
+                      (let [result (->> (mt/user-http-request :rasta :get 200 "database")
+                                        :data
+                                        (filter #(= (:id %) db-id))
+                                        first)]
+                        (is (= can-upload? (:can_upload result)))))
+                    (testing "GET /api/database/:id"
+                      (let [result (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+                        (is (= can-upload? (:can_upload result)))))))))))))))

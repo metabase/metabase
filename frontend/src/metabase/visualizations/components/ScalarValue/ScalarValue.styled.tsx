@@ -19,16 +19,18 @@ export const ScalarRoot = styled.div`
 `;
 
 interface ScalarValueWrapperProps {
-  fontSize: string;
+  fontSize?: string;
+  lineHeight?: string;
 }
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
   font-size: ${props => props.fontSize};
+  line-height: ${props => props.lineHeight};
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

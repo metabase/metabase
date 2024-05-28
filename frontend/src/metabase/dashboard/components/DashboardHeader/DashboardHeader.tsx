@@ -1,9 +1,8 @@
 import cx from "classnames";
 import type { Location } from "history";
-import { type MouseEvent, type ReactNode, useState, Fragment } from "react";
+import { type MouseEvent, useState, Fragment } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
@@ -37,7 +36,12 @@ import {
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
-import type { FetchDashboardResult } from "metabase/dashboard/types";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+  EmbedThemeControls,
+  FetchDashboardResult,
+} from "metabase/dashboard/types";
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -46,6 +50,7 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -66,6 +71,7 @@ import type {
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
+import { DashboardParameterList } from "../DashboardParameterList";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -76,24 +82,18 @@ import {
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import { SectionLayoutPreview } from "./SectionLayoutPreview";
 
-interface DashboardHeaderProps {
+type DashboardHeaderProps = {
   dashboardId: DashboardId;
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  databases: Record<DatabaseId, Database>;
   sidebar: DashboardSidebarState;
   location: Location;
-  refreshPeriod: number | null;
   isAdmin: boolean;
   isDirty: boolean;
   isEditing: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
   isAdditionalInfoVisible: boolean;
   isAddParameterPopoverOpen: boolean;
   canManageSubscriptions: boolean;
-  hasNightModeToggle: boolean;
-  parametersWidget?: ReactNode;
 
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -116,7 +116,6 @@ interface DashboardHeaderProps {
     key: Key,
     value: Dashboard[Key],
   ) => void;
-  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
   updateDashboardAndCards: () => void;
 
   addParameter: (option: ParameterMappingOptions) => void;
@@ -124,17 +123,16 @@ interface DashboardHeaderProps {
   hideAddParameterPopover: () => void;
 
   onEditingChange: (arg: Dashboard | null) => void;
-  onRefreshPeriodChange: (period: number | null) => void;
-  onFullscreenChange: (
-    isFullscreen: boolean,
-    browserFullscreen?: boolean,
-  ) => void;
   onSharingClick: () => void;
-  onNightModeChange: (isNightMode: boolean) => void;
 
   setSidebar: (opts: { name: DashboardSidebarName }) => void;
   closeSidebar: () => void;
-}
+} & DashboardFullscreenControls &
+  DashboardRefreshPeriodControls &
+  Pick<
+    EmbedThemeControls,
+    "isNightMode" | "onNightModeChange" | "hasNightModeToggle"
+  >;
 
 export const DashboardHeader = (props: DashboardHeaderProps) => {
   const {
@@ -149,13 +147,11 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     isEditing,
     location,
     dashboard,
-    parametersWidget,
     isFullscreen,
     onFullscreenChange,
     sidebar,
     setSidebar,
     closeSidebar,
-    databases,
     isAddParameterPopoverOpen,
     showAddParameterPopover,
     hideAddParameterPopover,
@@ -174,6 +170,10 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const formInput = useSelector(getPulseFormInput);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
+  const databases = useSelector(getMetadata).databases as Record<
+    DatabaseId,
+    Database
+  >;
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
   );
@@ -360,8 +360,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     const buttons = [];
     const extraButtons = [];
 
-    if (isFullscreen && parametersWidget) {
-      buttons.push(parametersWidget);
+    if (isFullscreen) {
+      buttons.push(<DashboardParameterList isFullscreen={isFullscreen} />);
     }
 
     if (isEditing) {
@@ -642,7 +642,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     <>
       <DashboardHeaderComponent
         headerClassName={CS.wrapper}
-        location={location}
         dashboard={dashboard}
         collection={collection}
         isEditing={isEditing}

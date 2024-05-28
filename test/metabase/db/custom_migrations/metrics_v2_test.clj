@@ -51,7 +51,7 @@
                      :creator_id 1
                      :dataset_query dataset-query
                      :parameter_mappings "[]"
-                     :display "line"
+                     :display "scalar"
                      :visualization_settings "{}"
                      :parameters "[]"
                      :created_at #t "2024-05-02T19:26:15.490874Z"}]

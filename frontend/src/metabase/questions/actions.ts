@@ -9,16 +9,27 @@ export interface LoadMetadataOptions {
   reload?: boolean;
 }
 
-export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) =>
+export const loadMetadataForCard = (
+  card: Card,
+  options?: LoadMetadataOptions,
+) => loadMetadataForCards([card], options);
+
+export const loadMetadataForCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
-      const question = new Question(card, getMetadata(getState()));
-      return Lib.dependentMetadata(
-        question.query(),
-        question.id(),
-        question.type(),
-      );
+      // it's important to create it once here for performance reasons
+      // MBQL lib attaches parsed metadata to the object
+      const metadata = getMetadata(getState());
+      return cards
+        .map(card => new Question(card, metadata))
+        .flatMap(question =>
+          Lib.dependentMetadata(
+            question.query(),
+            question.id(),
+            question.type(),
+          ),
+        );
     };
     await dispatch(loadMetadata(getDependencies, [], options));
   };

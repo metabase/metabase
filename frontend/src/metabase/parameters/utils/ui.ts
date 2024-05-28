@@ -23,7 +23,7 @@ export function getParameterIconName(parameter: UiParameter) {
 }
 
 export function buildHiddenParametersSlugSet(
-  hiddenParameterSlugs: string | undefined,
+  hiddenParameterSlugs: string | null | undefined,
 ) {
   return _.isString(hiddenParameterSlugs)
     ? new Set(hiddenParameterSlugs.split(","))
@@ -32,7 +32,7 @@ export function buildHiddenParametersSlugSet(
 
 export function getVisibleParameters(
   parameters: UiParameter[],
-  hiddenParameterSlugs?: string,
+  hiddenParameterSlugs?: string | null,
 ) {
   const hiddenParametersSlugSet =
     buildHiddenParametersSlugSet(hiddenParameterSlugs);

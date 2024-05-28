@@ -551,7 +551,6 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "does-not-contain",
   // other
   "coalesce",
-  "offset",
 ]);
 
 const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);

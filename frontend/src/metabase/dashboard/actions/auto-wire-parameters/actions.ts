@@ -13,12 +13,12 @@ import {
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
 import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import { compareMappingOptionTargets } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
   DashCardId,
@@ -106,14 +106,6 @@ export function autoWireParametersToNewCard({
       dashboardId,
     );
 
-    const dashcardWithQuestions: Array<[StoreDashcard, Question]> =
-      dashcards.map(dashcard => [
-        dashcard,
-        isQuestionDashCard(dashcard)
-          ? questions[dashcard.card.id] ?? new Question(dashcard.card, metadata)
-          : new Question(dashcard.card, metadata),
-      ]);
-
     const targetDashcard: StoreDashcard = getDashCardById(
       getState(),
       dashcard_id,
@@ -123,46 +115,43 @@ export function autoWireParametersToNewCard({
       return;
     }
 
-    const dashcardMappingOptions = getParameterMappingOptions(
+    const targetQuestion =
       questions[targetDashcard.card.id] ??
-        new Question(targetDashcard.card, metadata),
+      new Question(targetDashcard.card, metadata);
+
+    const dashcardMappingOptions = getParameterMappingOptions(
+      targetQuestion,
       null,
       targetDashcard.card,
       targetDashcard,
     );
 
-    const targetQuestion =
-      questions[targetDashcard.card.id] ??
-      new Question(targetDashcard.card, metadata);
-
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
-    for (const opt of dashcardMappingOptions) {
-      for (const [dashcard, question] of dashcardWithQuestions) {
-        const param = dashcard.parameter_mappings?.find(mapping =>
-          compareMappingOptionTargets(
-            mapping.target,
-            opt.target,
-            question,
-            targetQuestion,
-          ),
+    for (const dashcard of dashcards) {
+      for (const mapping of dashcard.parameter_mappings ?? []) {
+        const option = getMappingOptionByTarget(
+          dashcardMappingOptions,
+          targetDashcard,
+          mapping.target,
+          targetQuestion,
         );
 
         if (
+          option &&
           targetDashcard.card_id &&
-          param &&
-          !processedParameterIds.has(param.parameter_id)
+          !processedParameterIds.has(mapping.parameter_id)
         ) {
           parametersToAutoApply.push(
             ...getParameterMappings(
               targetDashcard,
-              param.parameter_id,
+              mapping.parameter_id,
               targetDashcard.card_id,
-              opt.target,
+              option.target,
             ),
           );
-          processedParameterIds.add(param.parameter_id);
+          processedParameterIds.add(mapping.parameter_id);
         }
       }
     }
