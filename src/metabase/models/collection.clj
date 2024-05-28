@@ -19,7 +19,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.server.middleware.memo :as mw.memo]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -312,7 +311,7 @@
    [:or [:= "root"] ms/PositiveInt]])
 
 (def ^:private collection-id->collection
-  (mw.memo/memoize-for-request
+  (api/memoize-for-request
    (fn []
      (into {} (t2/select-fn-vec (juxt :id identity) :model/Collection)))))
 
