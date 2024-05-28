@@ -1,4 +1,7 @@
-import { DEFAULT_EMBEDDED_COMPONENT_THEME } from "embedding-sdk/lib/theme/default-component-theme";
+import {
+  DEFAULT_EMBEDDED_COMPONENT_THEME,
+  EMBEDDING_SDK_COMPONENTS_OVERRIDES,
+} from "embedding-sdk/lib/theme/default-component-theme";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
@@ -27,6 +30,7 @@ describe("Transform Embedding Theme Override", () => {
         fontSize: "2rem",
         ...DEFAULT_EMBEDDED_COMPONENT_THEME,
       },
+      components: EMBEDDING_SDK_COMPONENTS_OVERRIDES,
     });
   });
 });

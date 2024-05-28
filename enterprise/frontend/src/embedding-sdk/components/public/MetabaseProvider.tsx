@@ -18,6 +18,7 @@ import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { colors } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
+import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
@@ -46,6 +47,16 @@ const MetabaseProviderInternal = ({
 
     return theme && getEmbeddingThemeOverride(theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (theme?.fontFamily) {
+      store.dispatch(
+        setOptions({
+          font: theme.fontFamily,
+        }),
+      );
+    }
+  }, [theme?.fontFamily]);
 
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));

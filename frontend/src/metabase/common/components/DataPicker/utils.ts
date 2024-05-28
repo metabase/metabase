@@ -6,6 +6,7 @@ import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   Card,
   CollectionItem,
+  CollectionItemModel,
   Database,
   DatabaseId,
   SchemaName,
@@ -176,16 +177,18 @@ export const isValidValueItem = (model: SearchModel): boolean => {
   return ["dataset", "card", "table"].includes(model);
 };
 
-export const createShouldShowItem = (databaseId?: DatabaseId) => {
+export const createShouldShowItem = (
+  models: CollectionItemModel[],
+  databaseId?: DatabaseId,
+) => {
   return (item: QuestionPickerItem) => {
     if (item.model === "collection") {
       const below = item.below ?? [];
       const here = item.here ?? [];
       const contents = [...below, ...here];
-      const hasQuestionsOrModels =
-        contents.includes("card") || contents.includes("dataset");
+      const hasCards = models.some(model => contents.includes(model));
 
-      if (item.id !== "root" && !item.is_personal && !hasQuestionsOrModels) {
+      if (item.id !== "root" && !item.is_personal && !hasCards) {
         return false;
       }
     }

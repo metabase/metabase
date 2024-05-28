@@ -7,8 +7,8 @@
   --color-summarize: #88bf4d;
   --color-error: #ed6e6e;
   --mb-color-text-dark: #4c5773;
-  --color-text-medium: #696e7b;
-  --color-text-light: #949aab;
+  --mb-color-text-medium: #696e7b;
+  --mb-color-text-light: #949aab;
   --color-text-white: #fff;
   --mb-color-bg-black: #2e353b;
   --color-bg-dark: #93a1ab;
@@ -47,20 +47,20 @@
 }
 
 .textSlate {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .textSlateLight {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .textLight {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .textMedium,
 .textMediumHover:hover {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .textDark,

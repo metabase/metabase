@@ -12,6 +12,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   createQuestion,
+  describeOSS,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalLevel,
@@ -413,6 +414,31 @@ describe("scenarios > notebook > data source", () => {
           .parents("button")
           .and("have.attr", "aria-selected", "true");
       });
+    });
+  });
+});
+
+describeOSS("scenarios > notebook > data source", { tags: "@OSS" }, () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("should not show saved questions if only models exist (metabase#25142)", () => {
+    createQuestion({
+      name: "GUI Model",
+      query: { "source-table": REVIEWS_ID, limit: 1 },
+      display: "table",
+      type: "model",
+    });
+
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      cy.findAllByRole("tab").should("have.length", 2);
+      entityPickerModalTab("Recents").should("not.exist");
+      entityPickerModalTab("Models").and("have.attr", "aria-selected", "true");
+      entityPickerModalTab("Tables").should("exist");
+      entityPickerModalTab("Saved questions").should("not.exist");
     });
   });
 });

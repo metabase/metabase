@@ -14,6 +14,7 @@
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
 
@@ -194,10 +195,10 @@
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
-          (with-redefs [;; run the job every 2 seconds
-                        u.cron/schedule-map->cron-string (constantly "0/2 * * 1/1 * ? *")
+          (with-redefs [;; run the job every second
+                        u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
                         task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
-                                                          (swap! sent-channel-ids set/union channel-ids))]
+                                                           (swap! sent-channel-ids set/union channel-ids))]
             (let [pc-count  (+ 2 mt.util/in-memory-scheduler-thread-count)
                   pulse-ids (t2/insert-returning-pks! :model/Pulse
                                                       (repeat pc-count {:creator_id (mt/user->id :rasta)
@@ -208,12 +209,13 @@
                                                                 :channel_type   :slack
                                                                 :details        {:channel "#random"}}
                                                                daily-at-6pm)))]
-              (testing "sanity check that we have the correct number triggers and no channel has been sent yet"
-                (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count)))
-                (is (= #{} @sent-channel-ids)))
-              ;; job run every 2 seconds, so wait a bit so the job can run
-              (Thread/sleep 3000)
+              (testing "sanity check that we have the correct number of triggers and no channel has been sent yet"
+                (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count))))
+
               (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"
+                (u/poll {:thunk      (fn [] @sent-channel-ids)
+                         :done?      #(= pc-count (count %))
+                         :timeout-ms 3000})
                 (is (= (set pc-ids) @sent-channel-ids))))))))))
 
 (def ^:private daily-at-8am
