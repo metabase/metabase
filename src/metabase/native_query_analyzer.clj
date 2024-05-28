@@ -57,12 +57,12 @@
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
-  [t]
-  (if-not (:schema t)
-    (field-query :t.name (:table t))
+  [{:keys [schema table]}]
+  (if-not schema
+    (field-query :t.name table)
     [:and
-     (field-query :t.name (:table t))
-     (field-query :t.schema (:schema t))]))
+     (field-query :t.name table)
+     (field-query :t.schema schema)]))
 
 (defn- column-query
   "Generates the query for a column, incorporating its concrete table information (if known) or matching it against
@@ -82,39 +82,36 @@
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
     (t2/select-pks-set :model/Field (assoc field-and-table-fragment
-                                           :where
-                                           [:and
-                                            [:= :t.db_id db-id]
-                                            (into [:or]
-                                                  (map (partial column-query tables) columns))]))))
+                                           :where [:and
+                                                   [:= :t.db_id db-id]
+                                                   (into [:or] (map (partial column-query tables) columns))]))))
 
-(defn- indirect-field-ids-for-query
-  "Similar to direct-field-ids-for-query, but for wildcard selects"
-  [{table-wildcard-maps :table-wildcards
-    all-wildcard-maps   :has-wildcard?
-    table-maps          :tables}
-   db-id]
-  (let [table-wildcards           (map :component table-wildcard-maps)
-        has-wildcard?             (and (seq all-wildcard-maps)
-                                       (reduce #(and %1 %2) true (map :component all-wildcard-maps)))
-        tables                    (map :component table-maps)
-        active-fields-from-tables
-        (fn [tables]
-          (t2/select-pks-set :model/Field (merge field-and-table-fragment
-                                                 {:where [:and
-                                                          [:= :t.db_id db-id]
-                                                          [:= :f.active true]
-                                                          (into [:or] (map table-query tables))]})))]
+(defn- wildcard-tables
+  "Given a parsed query, return the list of tables we are selecting from using a wildcard."
+  [{table-wildcards :table-wildcards
+    all-wildcards   :has-wildcard?
+    tables          :tables}]
+  (let [has-wildcard? (and (seq all-wildcards) (every? :component all-wildcards))]
     (cond
       ;; select * from ...
       ;; so, get everything in all the tables
-      (and has-wildcard? (seq tables)) (active-fields-from-tables tables)
+      (and has-wildcard? (seq tables)) (map :component tables)
       ;; select foo.* from ...
       ;; limit to the named tables
-      (seq table-wildcards)            (active-fields-from-tables table-wildcards))))
+      (seq table-wildcards)            (map :component table-wildcards))))
+
+(defn- indirect-field-ids-for-query
+  "Similar to direct-field-ids-for-query, but for wildcard selects"
+  [parsed-query db-id]
+  (when-let [tables (wildcard-tables parsed-query)]
+    (t2/select-pks-set :model/Field (merge field-and-table-fragment
+                                           {:where [:and
+                                                    [:= :t.db_id db-id]
+                                                    [:= :f.active true]
+                                                    (into [:or] (map table-query tables))]}))))
 
 (defn field-ids-for-sql
-  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's
+  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
   to return fields that are in the query.
 

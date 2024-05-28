@@ -147,5 +147,5 @@
         param->value                 (param-values query)
         {clean-query :query
          tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query param->value)
-        renamed-query                (macaw/replace-names clean-query renames)]
+        renamed-query                (macaw/replace-names clean-query renames :allow-unused? true)]
     (replace-all renamed-query tt-subs)))
