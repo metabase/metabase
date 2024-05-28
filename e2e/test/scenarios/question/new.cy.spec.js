@@ -299,6 +299,11 @@ describe("scenarios > question > new", () => {
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Which collection/)
       .click();
+
+    entityPickerModal()
+      .findByRole("tab", { name: /Collections/ })
+      .click();
+
     entityPickerModal().findByText("Create a new collection").click();
 
     const NEW_COLLECTION = "Foo";
