@@ -274,6 +274,7 @@
         [:collection.name :collection_name]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
+        [:collection.type :collection_type]
         bookmark-col dashboardcard-count-col))
 
 (defmethod columns-for-model "indexed-entity" [_]
@@ -282,6 +283,7 @@
    [:model-index.pk_ref         :pk_ref]
    [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
+   [:collection.type            :collection_type]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]
    [:model.name                 :model_name]
@@ -291,6 +293,7 @@
   [_]
   (conj default-columns :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))
 
 (defmethod columns-for-model "database"

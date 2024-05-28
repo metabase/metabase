@@ -449,40 +449,42 @@
   [search-results]
   (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
         ;; effective location of the result.
-        result->loc (fn [{:keys [collection_id collection_location]}]
-                      (:effective_location
-                       (t2/hydrate
-                        (if (nil? collection_id)
-                          collection/root-collection
-                          {:location collection_location})
-                        :effective_location)))
+        result->loc  (fn [{:keys [collection_id collection_location]}]
+                       (:effective_location
+                        (t2/hydrate
+                         (if (nil? collection_id)
+                           collection/root-collection
+                           {:location collection_location})
+                         :effective_location)))
         ;; a map of collection-ids to collection info
-        col-id->name&loc (into {}
-                               (for [item search-results
-                                     :when (= (:model item) "dataset")]
-                                 [(:collection_id item)
-                                  {:name (:collection_name item)
-                                   :effective_location (result->loc item)}]))
-        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->name&loc`
+        col-id->info (into {}
+                           (for [item  search-results
+                                 :when (= (:model item) "dataset")]
+                             [(:collection_id item)
+                              {:id                 (:collection_id item)
+                               :name               (:collection_name item)
+                               :type               (:collection_type item)
+                               :effective_location (result->loc item)}]))
+        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
-        to-fetch         (into #{} (comp (keep :effective_location)
-                                         (mapcat collection/location-path->ids)
-                                         ;; already have these names
-                                         (remove col-id->name&loc))
-                               (vals col-id->name&loc))
-        ;; the complete map of collection IDs to names
-        id->name         (merge (if (seq to-fetch)
-                                  (t2/select-pk->fn :name :model/Collection :id [:in to-fetch])
-                                  {})
-                                (update-vals col-id->name&loc :name))
-        annotate         (fn [x]
-                           (cond-> x
-                             (= (:model x) "dataset")
-                             (assoc :collection_effective_ancestors
-                                    (if-let [loc (result->loc x)]
-                                      (->> (collection/location-path->ids loc)
-                                           (map (fn [id] {:id id :name (id->name id)})))
-                                      []))))]
+        to-fetch     (into #{} (comp (keep :effective_location)
+                                     (mapcat collection/location-path->ids)
+                                     ;; already have these names
+                                     (remove col-id->info))
+                           (vals col-id->info))
+        ;; the now COMPLETE map of collection IDs to info
+        col-id->info (merge (if (seq to-fetch)
+                              (t2/select-pk->fn #(select-keys % [:name :type :id]) :model/Collection :id [:in to-fetch])
+                              {})
+                            (update-vals col-id->info #(dissoc % :effective_location)))
+        annotate     (fn [x]
+                       (cond-> x
+                         (= (:model x) "dataset")
+                         (assoc :collection_effective_ancestors
+                                (if-let [loc (result->loc x)]
+                                  (->> (collection/location-path->ids loc)
+                                       (map col-id->info))
+                                  []))))]
     (map annotate search-results)))
 
 (defn- add-can-write [row]
@@ -510,6 +512,8 @@
                             (map #(if (t2/instance-of? :model/Collection %)
                                     (t2/hydrate % :effective_location)
                                     (assoc % :effective_location nil)))
+                            (map #(cond-> %
+                                    (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
