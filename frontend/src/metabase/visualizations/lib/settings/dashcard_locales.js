@@ -325,20 +325,20 @@ const TITLE_LOCALES_BN = {
     'bn': 'পরীক্ষা, গ্রেড এবং বছর অনুসারে শিক্ষার্থীদের পারফরম্যান্সের লেভেল'
   },
   'admin.dashboard.book.distribution.progress.submitted' : {
-    'en': 'Submitted Book Demand',
-    'bn': 'বইয়ের চাহিদা জমা হয়েছে'
+    'en': 'Submitted School Book Demand',
+    'bn': 'বিদ্যালয়ের বইয়ের চাহিদা জমা হয়েছে'
   },
   'admin.dashboard.book.distribution.progress.approved' : {
-    'en': 'Approved Book Demand',
-    'bn': 'অনুমোদিত বইয়ের চাহিদা'
+    'en': 'Approved School Book Demand',
+    'bn': 'বিদ্যালয়ের অনুমোদিত বইয়ের চাহিদা'
   },
   'admin.dashboard.book.distribution.progress.pending' : {
-    'en': 'Pending Book Demand',
-    'bn': 'পেন্ডিং বইয়ের চাহিদা'
+    'en': 'Pending School Book Demand',
+    'bn': 'বিদ্যালয়ের পেন্ডিং বইয়ের চাহিদা'
   },
   'admin.dashboard.book.distribution.progress.rejected' : {
-    'en': 'Rejected Book Demand',
-    'bn': 'প্রত্যাখ্যাত বইয়ের চাহিদা'
+    'en': 'Rejected School Book Demand',
+    'bn': 'বিদ্যালয়ের প্রত্যাখ্যাত বইয়ের চাহিদা'
   },
   'admin.dashboard.book.distribution.progress' : {
     'en': 'Progress of Book Demand',
@@ -359,6 +359,22 @@ const TITLE_LOCALES_BN = {
   'admin.dashboard.book.received.progress.not.received': {
 	'en': 'Yet to be distributed schools',
 	'bn': 'বিদ্যালয়ে কোনও বই বিতরণ হয়নি'
+  },
+  'admin.dashboard.book.lot.total' : {
+    'en': 'Total Number of lots',
+    'bn': 'মোট লট সংখ্যা'
+  },
+  'admin.dashboard.book.lot.scheduled' : {
+    'en': 'Scheduled',
+    'bn': 'তালিকাভুক্ত'
+  },
+  'admin.dashboard.book.lot.partially.delivered' : {
+    'en': 'Partially Delivered',
+    'bn': 'আংশিক বিতরণ সম্পন্ন'
+  },
+  'admin.dashboard.book.lot.delivered' : {
+    'en': 'Delivered',
+    'bn': 'বিতরণ সম্পন্ন'
   },
   'admin.book.flow': {
 	'en' : 'Current Status of every distributed book',
