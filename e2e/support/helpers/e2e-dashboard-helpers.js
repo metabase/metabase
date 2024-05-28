@@ -238,11 +238,14 @@ export function resizeDashboardCard({ card, x, y }) {
     const resizeHandle = cy.get(".react-resizable-handle");
     resizeHandle
       .trigger("mousedown", { button: 0 })
+      .wait(200)
       .trigger("mousemove", {
         clientX: x,
         clientY: y,
       })
-      .trigger("mouseup", { force: true });
+      .wait(200)
+      .trigger("mouseup", { force: true })
+      .wait(200);
   });
 }
 

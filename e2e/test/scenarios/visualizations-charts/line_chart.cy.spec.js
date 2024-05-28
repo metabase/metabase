@@ -609,7 +609,7 @@ describe("scenarios > visualizations > line chart", () => {
       series.forEach(serie => {
         const [old_name, new_name] = serie;
 
-        cy.findByDisplayValue(old_name).clear().type(new_name);
+        cy.findByDisplayValue(old_name).clear().type(new_name).blur();
       });
 
       modal()
