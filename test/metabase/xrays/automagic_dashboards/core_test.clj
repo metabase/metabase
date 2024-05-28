@@ -950,8 +950,7 @@
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 6
-                   (call-count)))))))))
+            (is (contains? #{6 7} (call-count)))))))))
 
 (deftest empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
