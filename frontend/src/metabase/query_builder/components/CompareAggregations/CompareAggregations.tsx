@@ -1,7 +1,9 @@
+import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Box, NumberInput } from "metabase/ui";
+import { Box, Button, Flex, NumberInput, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
@@ -37,6 +39,7 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
     hasManyAggregations ? undefined : aggregations[0],
   );
   const [period, setPeriod] = useState<number | "">(1);
+  const isValid = typeof period === "number" && period > 0; // TODO include columns to create
 
   const title = useMemo(
     () => getTitle(query, stageIndex, aggregation),
@@ -64,6 +67,11 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
     }
   };
 
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    // TODO: implement me
+  };
+
   return (
     <Box data-testid="compare-aggregations">
       <ExpressionWidgetHeader title={title} onBack={handleBack} />
@@ -82,19 +90,29 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
       )}
 
       {aggregation && (
-        <Box p="lg">
-          <NumberInput
-            label={getPeriodTitle()}
-            min={1}
-            parseValue={parsePeriodValue}
-            precision={0}
-            size="md"
-            step={1}
-            type="number"
-            value={period}
-            onChange={setPeriod}
-          />
-        </Box>
+        <form onSubmit={handleSubmit}>
+          <Stack p="lg" spacing="xl">
+            <NumberInput
+              label={getPeriodTitle()}
+              min={1}
+              parseValue={parsePeriodValue}
+              precision={0}
+              size="md"
+              step={1}
+              type="number"
+              value={period}
+              onChange={setPeriod}
+            />
+
+            <Flex justify="flex-end">
+              <Button
+                disabled={!isValid}
+                type="submit"
+                variant="filled"
+              >{t`Done`}</Button>
+            </Flex>
+          </Stack>
+        </form>
       )}
     </Box>
   );
