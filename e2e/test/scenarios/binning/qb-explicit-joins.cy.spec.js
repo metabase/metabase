@@ -217,7 +217,6 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for time series", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       tableHeaderClick("People → Birth Date");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
@@ -253,7 +252,6 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for number", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       tableHeaderClick("Products → Price");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
@@ -273,7 +271,6 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for longitude", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       tableHeaderClick("People → Longitude");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();

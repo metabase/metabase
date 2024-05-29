@@ -406,7 +406,6 @@ describe("scenarios > question > filter", () => {
 
   it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
     openReviewsTable();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     tableHeaderClick("Reviewer");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
@@ -435,7 +434,6 @@ describe("scenarios > question > filter", () => {
 
   it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
     openReviewsTable();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     tableHeaderClick("Rating");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
