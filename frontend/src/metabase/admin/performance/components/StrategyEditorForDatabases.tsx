@@ -142,13 +142,10 @@ const StrategyEditorForDatabases_Base = ({
               configs={configs}
               setConfigs={setConfigs}
               targetId={targetId}
-              targetModel="database"
-              targetName={targetDatabase?.name || t`Untitled database`}
-              setIsDirty={setIsStrategyFormDirty}
-              saveStrategy={saveStrategy}
-              savedStrategy={savedStrategy}
-              shouldAllowInvalidation={shouldAllowInvalidation}
-              shouldShowName={targetId !== rootId}
+              updateTargetId={updateTargetId}
+              databases={databases}
+              isStrategyFormDirty={isStrategyFormDirty}
+              shouldShowResetButton={shouldShowResetButton}
             />
           )}
           <Panel hasLeftBorder={canOverrideRootStrategy}>
@@ -161,7 +158,6 @@ const StrategyEditorForDatabases_Base = ({
                 saveStrategy={saveStrategy}
                 savedStrategy={savedStrategy}
                 shouldAllowInvalidation={shouldAllowInvalidation}
-                formStyle={{ overflow: "auto" }}
                 shouldShowName={targetId !== rootId}
               />
             )}
