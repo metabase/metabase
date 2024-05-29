@@ -27,7 +27,7 @@ import {
 } from "./ExpressionWidget.styled";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
-import { ExtractColumn } from "./ExtractColumn";
+import { ExtractColumn, hasExtractions } from "./ExtractColumn";
 
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
@@ -218,13 +218,14 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
               group: "shortcuts",
               icon: "combine",
             },
-            !startRule && {
-              shortcut: true,
-              name: t`Extract columns`,
-              icon: "arrow_split",
-              group: "shortcuts",
-              action: () => setIsExtractingColumn(true),
-            },
+            !startRule &&
+              hasExtractions(query, stageIndex) && {
+                shortcut: true,
+                name: t`Extract columns`,
+                icon: "arrow_split",
+                group: "shortcuts",
+                action: () => setIsExtractingColumn(true),
+              },
           ].filter(Boolean)}
         />
       </ExpressionFieldWrapper>

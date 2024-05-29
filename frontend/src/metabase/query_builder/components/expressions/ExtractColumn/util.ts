@@ -48,3 +48,13 @@ export function getName(
 
   return getNextName(columnNames, info.displayName, 0);
 }
+
+export function hasExtractions(query: Lib.Query, stageIndex: number) {
+  for (const column of Lib.expressionableColumns(query, stageIndex)) {
+    if (Lib.columnExtractions(query, column).length > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
