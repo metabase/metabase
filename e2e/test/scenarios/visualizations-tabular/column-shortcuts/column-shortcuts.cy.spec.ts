@@ -17,7 +17,7 @@ import {
   expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -149,7 +149,7 @@ describeWithSnowplow("extract shortcut", () => {
       });
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
-      enterCustomColumnDetails({ name: "custom formula", formula: "+ 2" });
+      enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
       popover().button("Update").click();
       visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
@@ -260,6 +260,32 @@ describeWithSnowplow("extract shortcut", () => {
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
     cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
+  });
+
+  it("should be possible to extract columns from a summarized table", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 1,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+    extractColumnAndCheck({
+      column: "Created At: Month",
+      option: "Month of year",
+    });
+
+    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
+      "be.visible",
+    );
   });
 });
 

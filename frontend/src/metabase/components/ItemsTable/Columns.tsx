@@ -1,4 +1,4 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
@@ -166,11 +166,7 @@ export const Columns = {
         containerName="ItemsTableContainer"
       />
     ),
-    Header: ({
-      sortingOptions,
-      onSortingOptionsChange,
-      isTrashed,
-    }: HeaderProps & { isTrashed: boolean }) => (
+    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="last_edited_by"
         sortingOptions={sortingOptions}
@@ -178,9 +174,7 @@ export const Columns = {
         hideAtContainerBreakpoint="sm"
         containerName="ItemsTableContainer"
       >
-        {isTrashed
-          ? c("Precedes the name of a user").t`Deleted by`
-          : t`Last edited by`}
+        {t`Last edited by`}
       </SortableColumnHeader>
     ),
     Cell: ({
@@ -212,11 +206,7 @@ export const Columns = {
         containerName="ItemsTableContainer"
       />
     ),
-    Header: ({
-      sortingOptions,
-      onSortingOptionsChange,
-      isTrashed,
-    }: HeaderProps & { isTrashed: boolean }) => (
+    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="last_edited_at"
         sortingOptions={sortingOptions}
@@ -224,9 +214,7 @@ export const Columns = {
         hideAtContainerBreakpoint="md"
         containerName="ItemsTableContainer"
       >
-        {isTrashed
-          ? c("Time which the item was deleted").t`Deleted at`
-          : t`Last edited at`}
+        {t`Last edited at`}
       </SortableColumnHeader>
     ),
     Cell: ({
@@ -279,9 +267,7 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
-            {item.model === "dataset" && !item.archived && (
-              <ModelDetailLink model={item} />
-            )}
+            {item.model === "dataset" && <ModelDetailLink model={item} />}
           </RowActionsContainer>
         </ItemCell>
       );

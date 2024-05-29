@@ -149,18 +149,17 @@
 
 (deftest premium-features-test
   (testing "without a premium token"
-    (mt/with-premium-features #{}
-      (ts/with-random-dump-dir [dump-dir "serdes-"]
-        (testing "dump should fail"
-          (is (thrown-with-msg? Exception #"Please upgrade"
-                                (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
+    (ts/with-random-dump-dir [dump-dir "serdes-"]
+      (testing "dump should fail"
+        (is (thrown-with-msg? Exception #"Please upgrade"
+                              (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
 
-        (testing "load should fail"
-          (mt/with-empty-h2-app-db
-            (is (thrown-with-msg? Exception #"Please upgrade"
-                                  (cmd/load dump-dir
-                                            "--mode"     "update"
-                                            "--on-error" "abort")))))))))
+      (testing "load should fail"
+        (mt/with-empty-h2-app-db
+          (is (thrown-with-msg? Exception #"Please upgrade"
+                                (cmd/load dump-dir
+                                          "--mode"     "update"
+                                          "--on-error" "abort"))))))))
 
 (deftest dump-readonly-dir-test
   (testing "command exits early when destination is not writable"
@@ -190,7 +189,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           4
+                         "count"           3
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -205,7 +204,7 @@
                          "duration_ms"   pos?
                          "source"        "cli"
                          "models"        "Card,Collection,Setting"
-                         "count"         4
+                         "count"         3
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))

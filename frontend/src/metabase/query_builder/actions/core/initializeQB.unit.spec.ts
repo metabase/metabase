@@ -50,7 +50,7 @@ type DisplayLock = { displayIsLocked?: boolean };
 type TestCard = (Card & DisplayLock) | (UnsavedCard & DisplayLock);
 
 type BaseSetupOpts = {
-  user?: User | null;
+  user?: User;
   location: LocationDescriptorObject;
   params: Record<string, unknown>;
   hasDataPermissions?: boolean;
@@ -76,8 +76,11 @@ async function baseSetup({
       metrics: [METRIC],
       segments: [SEGMENT],
     }),
-    currentUser: user === undefined ? createMockUser() : user,
   });
+
+  if (user) {
+    state.currentUser = user;
+  }
 
   const metadata = getMetadata(state);
   const getState = () => state;
@@ -368,21 +371,19 @@ describe("QB Actions > initializeQB", () => {
           });
         });
 
-        describe("archived card", () => {
-          const baseParams = { card: { ...card, archived: true } };
-          const archiveError = setErrorPage(
-            expect.objectContaining({ data: { error_code: "archived" } }),
+        it("throws error for archived card", async () => {
+          const { dispatch } = await setup({
+            card: {
+              ...card,
+              archived: true,
+            },
+          });
+
+          expect(dispatch).toHaveBeenCalledWith(
+            setErrorPage(
+              expect.objectContaining({ data: { error_code: "archived" } }),
+            ),
           );
-
-          it("throws error for archived card if user is not logged in", async () => {
-            const loggedOut = await setup({ ...baseParams, user: null });
-            expect(loggedOut.dispatch).toHaveBeenCalledWith(archiveError);
-          });
-
-          it("does not throw error for archived card if user is logged in", async () => {
-            const loggedIn = await setup({ ...baseParams });
-            expect(loggedIn.dispatch).not.toHaveBeenCalledWith(archiveError);
-          });
         });
       });
     });

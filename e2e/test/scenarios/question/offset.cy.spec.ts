@@ -68,11 +68,43 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("custom columns", () => {
-    it("suggests and allows using offset()", () => {
+    // This test contradicts the next 2 skipped ones.
+    // Remove it once we enable offset() in custom columns.
+    it("does not suggest or allow using offset()", () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
+        limit: 5,
+        "order-by": [["asc", ORDERS_TOTAL_FIELD_REF]],
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+      openNotebook();
+      cy.button("Custom column").click();
+      enterCustomColumnDetails({ formula: prefix });
+
+      cy.log("does not suggest offset() in custom columns");
+      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+
+      enterCustomColumnDetails({ formula: expression });
+      cy.realPress("Tab");
+
+      popover().within(() => {
+        cy.button("Done").should("be.disabled");
+        cy.findByText("OFFSET is not supported in custom expressions").should(
+          "exist",
+        );
+      });
+    });
+
+    // Skipped because we want to disable offset() in custom columns for now
+    it.skip("suggests and allows using offset()", () => {
+      const expression = "Offset([Total], -1)";
+      const prefixLength = 3;
+      const prefix = expression.substring(0, prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
@@ -89,7 +121,7 @@ describe("scenarios > question > offset", () => {
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: suffix });
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -128,12 +160,12 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it("does not allow to use offset-based column in other clauses (metabase#42764)", () => {
+    // Skipped because we want to disable offset() in custom columns for now
+    it.skip("does not allow to use offset-based column in other clauses (metabase#42764)", () => {
       const offsettedColumnName = "xyz";
       const expression = `Offset([${offsettedColumnName}], -1)`;
       const prefixLength = "Offset([x".length;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         expressions: {
@@ -162,20 +194,20 @@ describe("scenarios > question > offset", () => {
 
       cy.log("custom column expressions");
       getNotebookStep("expression").icon("add").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
 
       cy.log("custom filter expressions");
       cy.icon("filter").click();
       popover().findByText("Custom Expression").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
       cy.realPress("Escape");
 
       cy.log("custom aggregation expressions");
       cy.icon("sum").click();
       popover().findByText("Custom Expression").click();
-      verifyInvalidColumnName(offsettedColumnName, prefix, suffix);
+      verifyInvalidColumnName(offsettedColumnName, prefix, expression);
       popover().button("Cancel").click();
       cy.realPress("Escape");
 
@@ -190,7 +222,6 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset([Total], -1) > 0";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         limit: 5,
@@ -205,7 +236,7 @@ describe("scenarios > question > offset", () => {
       cy.log("does not suggest offset() in filter expressions");
       cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-      enterCustomColumnDetails({ formula: suffix });
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -222,7 +253,6 @@ describe("scenarios > question > offset", () => {
       const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
-      const suffix = expression.substring(prefixLength);
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         limit: 5,
@@ -242,7 +272,7 @@ describe("scenarios > question > offset", () => {
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: suffix });
+      enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -573,12 +603,12 @@ function verifyNoQuestionError() {
 function verifyInvalidColumnName(
   columnName: string,
   prefix: string,
-  suffix: string,
+  expression: string,
 ) {
   enterCustomColumnDetails({ formula: prefix });
   cy.findByTestId("expression-suggestions-list-item").should("not.exist");
 
-  enterCustomColumnDetails({ formula: suffix });
+  enterCustomColumnDetails({ formula: expression });
   cy.realPress("Tab");
   popover().within(() => {
     cy.findByText(`Unknown Field: ${columnName}`).should("be.visible");

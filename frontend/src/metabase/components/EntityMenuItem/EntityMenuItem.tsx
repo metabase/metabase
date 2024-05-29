@@ -1,7 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 
 import {
@@ -19,9 +18,6 @@ export interface EntityMenuItemProps {
   link?: string;
   externalLink?: boolean;
   tooltip?: ReactNode;
-  color?: ColorName;
-  hoverColor?: ColorName;
-  hoverBgColor?: ColorName;
   disabled?: boolean;
   onClose?: () => void;
 }
@@ -34,9 +30,6 @@ const EntityMenuItem = ({
   externalLink,
   tooltip,
   disabled,
-  color,
-  hoverColor,
-  hoverBgColor,
   onClose,
 }: EntityMenuItemProps): JSX.Element | null => {
   if (link && action) {
@@ -45,12 +38,7 @@ const EntityMenuItem = ({
   }
 
   const content = (
-    <MenuItemContent
-      disabled={disabled}
-      color={color}
-      hoverColor={hoverColor}
-      hoverBgColor={hoverBgColor}
-    >
+    <MenuItemContent disabled={disabled}>
       {icon && <MenuItemIcon name={icon} size={16} />}
       <MenuItemTitle>{title}</MenuItemTitle>
     </MenuItemContent>

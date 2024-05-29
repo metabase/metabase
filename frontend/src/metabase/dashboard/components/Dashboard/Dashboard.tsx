@@ -5,14 +5,10 @@ import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
-import { deletePermanently } from "metabase/archive/actions";
-import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import {
-  type NewDashCardOpts,
-  type SetDashboardAttributesOpts,
-  type navigateToNewCardFromDashboard,
-  setArchivedDashboard,
-  moveDashboardToCollection,
+import type {
+  NewDashCardOpts,
+  SetDashboardAttributesOpts,
+  navigateToNewCardFromDashboard,
 } from "metabase/dashboard/actions";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
@@ -22,9 +18,8 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -117,6 +112,7 @@ type DashboardProps = {
   addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
   addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  archiveDashboard: (id: DashboardId) => Promise<void>;
 
   setEditingDashboard: (dashboard: IDashboard | null) => void;
   setDashboardAttributes: (opts: SetDashboardAttributesOpts) => void;
@@ -201,8 +197,6 @@ function DashboardInner(props: DashboardProps) {
     toggleSidebar,
   } = props;
 
-  const dispatch = useDispatch();
-
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
@@ -226,7 +220,6 @@ function DashboardInner(props: DashboardProps) {
   }, [dashboard, selectedTabId]);
 
   const canWrite = Boolean(dashboard?.can_write);
-  const canRestore = Boolean(dashboard?.can_restore);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard?.dashcards.length > 0;
 
@@ -427,22 +420,6 @@ function DashboardInner(props: DashboardProps) {
     >
       {() => (
         <DashboardStyled>
-          {dashboard.archived && (
-            <ArchivedEntityBanner
-              name={dashboard.name}
-              entityType="dashboard"
-              canWrite={canWrite}
-              canRestore={canRestore}
-              onUnarchive={() => dispatch(setArchivedDashboard(false))}
-              onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
-              onDeletePermanently={() => {
-                const { id } = dashboard;
-                const deleteAction = Dashboards.actions.delete({ id });
-                dispatch(deletePermanently(deleteAction));
-              }}
-            />
-          )}
-
           <DashboardHeaderContainer
             data-element-id="dashboard-header-container"
             id="Dashboard-Header-Container"
