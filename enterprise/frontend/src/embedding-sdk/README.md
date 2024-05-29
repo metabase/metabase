@@ -291,10 +291,10 @@ const theme = {
 
   table: {
     cell: {
-      // Text color of cells, defaults to `text-dark`
+      // Text color of cells, defaults to `text-primary`
       textColor: "#4C5773",
 
-      // Default background color of cells, defaults to `bg-white`
+      // Default background color of cells, defaults to `background`
       backgroundColor: "#FFFFFF",
     },
 

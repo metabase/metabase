@@ -22,7 +22,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -53,7 +52,6 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  metadata: Metadata;
   mode?: Mode;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
@@ -89,7 +87,6 @@ function DashCardInner({
   dashcard,
   dashboard,
   slowCards,
-  metadata,
   gridItemWidth,
   totalNumGridCols,
   mode,
@@ -324,7 +321,6 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          metadata={metadata}
           mode={mode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}

@@ -78,20 +78,20 @@ export function BreakoutColumnListItem({
             size={18}
           />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
-          <BucketPickerPopover
-            query={query}
-            stageIndex={STAGE_INDEX}
-            column={item.column}
-            color="summarize"
-            isEditing={isSelected}
-            hasChevronDown
-            hasBinning
-            hasTemporalBucketing
-            onSelect={column =>
-              breakout ? onUpdateColumn(column) : onAddColumn(column)
-            }
-          />
         </TitleContainer>
+        <BucketPickerPopover
+          query={query}
+          stageIndex={STAGE_INDEX}
+          column={item.column}
+          color="summarize"
+          isEditing={isSelected}
+          hasChevronDown
+          hasBinning
+          hasTemporalBucketing
+          onSelect={column =>
+            breakout ? onUpdateColumn(column) : onAddColumn(column)
+          }
+        />
         {isSelected && (
           <RemoveButton
             onClick={handleRemoveColumn}

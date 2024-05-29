@@ -45,6 +45,9 @@ import {
   modal,
   addHeadingWhileEditing,
   setFilter,
+  openStaticEmbeddingModal,
+  publishChanges,
+  visitIframe,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -454,8 +457,6 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    cy.wait(1000);
-
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(1);
     });
@@ -469,6 +470,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
     });
@@ -478,9 +480,10 @@ describe("scenarios > dashboard > tabs", () => {
 
     // // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
-    cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
     });
@@ -490,6 +493,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     // // Go back to first tab, expect no additional queries
     goToTab("Tab 1");
+    cy.wait(1000);
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
 
@@ -526,6 +530,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("not.have.been.called");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
     });
@@ -535,14 +540,126 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
-    cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
+    cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
 
+    cy.wait(500); // this is needed to avoid flakes
     firstQuestion().then(r => {
       expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
     });
     secondQuestion().then(r => {
       expect(r.view_count).to.equal(8); // 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
+    });
+
+    goToTab("Tab 1");
+    cy.wait(1000);
+    // This is a bug. publicFirstTabQuery should not be called again
+    cy.get("@publicFirstTabQuery").should("have.been.calledTwice");
+    cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
+
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(10); // 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(9); // 8 (previously) + 1 (secondQuestion)
+    });
+  });
+
+  it("should only fetch cards on the current tab of an embedded dashboard", () => {
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    // Add card to second tab
+    cy.icon("pencil").click();
+    openQuestionsSidebar();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+
+    cy.wait("@cardQuery");
+
+    saveDashboard();
+
+    cy.wait("@saveDashboardCards").then(({ response }) => {
+      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
+    });
+
+    const firstQuestion = () => {
+      return cy.request("GET", `/api/card/${ORDERS_QUESTION_ID}`).its("body");
+    };
+    const secondQuestion = () => {
+      return cy
+        .request("GET", `/api/card/${ORDERS_COUNT_QUESTION_ID}`)
+        .its("body");
+    };
+
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(1); // 1 (firstQuestion)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(1); // 1 (secondQuestion)
+    });
+
+    cy.intercept(
+      "GET",
+      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}`,
+      cy.spy().as("firstTabQuery"),
+    );
+    cy.intercept(
+      "GET",
+      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}`,
+      cy.spy().as("secondTabQuery"),
+    );
+
+    openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
+
+    // publish the embedded dashboard so that we can directly navigate to its url
+    publishChanges("dashboard", ({ request }) => {});
+    // directly navigate to the embedded dashboard, starting on Tab 1
+    visitIframe();
+    // wait for results
+    cy.findAllByTestId("dashcard").contains("37.65");
+    cy.signInAsAdmin();
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
+    cy.get("@secondTabQuery").should("not.have.been.called");
+
+    cy.wait(500); // this is needed to avoid flakes
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
+    });
+
+    goToTab("Tab 2");
+    cy.get("@secondTabQuery").should("have.been.calledOnce");
+    cy.get("@firstTabQuery").should("have.been.calledOnce");
+
+    cy.wait(500); // this is needed to avoid flakes
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (second tab query)
+    });
+
+    goToTab("Tab 1");
+    cy.wait(1000);
+    // This is a bug. firstTabQuery should not be called again
+    cy.get("@firstTabQuery").should("have.been.calledTwice");
+    cy.get("@secondTabQuery").should("have.been.calledOnce");
+
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(6); // 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
     });
   });
 

@@ -35,7 +35,6 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.related :as related]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
@@ -207,7 +206,7 @@
                  collection.root/hydrate-root-collection)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
 
 (defn- dataset-query->query [metadata-provider dataset-query]
   (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]
@@ -748,17 +747,6 @@
   (validation/check-embedding-enabled)
   (t2/select [Card :name :id], :enable_embedding true, :archived false))
 
-(api/defendpoint GET "/:id/related"
-  "Return related entities."
-  [id]
-  {id ms/PositiveInt}
-  (-> (t2/select-one Card :id id) api/read-check related/related))
-
-(api/defendpoint POST "/related"
-  "Return related entities for an ad-hoc query."
-  [:as {query :body}]
-  (related/related (query/adhoc-query query)))
-
 (api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
@@ -877,12 +865,13 @@
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
-    (let [model (upload/create-csv-upload! {:collection-id collection-id
+    (let [uploads-db-settings (public-settings/uploads-settings)
+          model (upload/create-csv-upload! {:collection-id collection-id
                                             :filename      filename
                                             :file          file
-                                            :schema-name   (public-settings/uploads-schema-name)
-                                            :table-prefix  (public-settings/uploads-table-prefix)
-                                            :db-id         (or (public-settings/uploads-database-id)
+                                            :schema-name   (:schema_name uploads-db-settings)
+                                            :table-prefix  (:table_prefix uploads-db-settings)
+                                            :db-id         (or (:db_id uploads-db-settings)
                                                                (throw (ex-info (tru "The uploads database is not configured.")
                                                                                {:status-code 422})))})]
       {:status 200

@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
+import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMinSmall,
@@ -103,7 +104,7 @@ const footerVariantStyles = {
   `,
 };
 
-function getParameterPanelBackgroundColor(theme?: string) {
+function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
   if (theme === "night") {
     return color("bg-black");
   }
@@ -113,7 +114,7 @@ function getParameterPanelBackgroundColor(theme?: string) {
   return color("white");
 }
 
-function getParameterPanelBorderColor(theme?: string) {
+function getParameterPanelBorderColor(theme?: DisplayTheme) {
   if (theme === "night") {
     return color("bg-dark");
   }
@@ -124,7 +125,7 @@ function getParameterPanelBorderColor(theme?: string) {
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  embedFrameTheme?: string;
+  embedFrameTheme?: DisplayTheme;
   hasScroll: boolean;
   isSticky: boolean;
 }>`

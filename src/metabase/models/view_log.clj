@@ -23,4 +23,5 @@
     (merge defaults log-entry)))
 
 (t2/deftransforms :model/ViewLog
-  {:metadata mi/transform-json})
+  {:metadata mi/transform-json
+   :context  mi/transform-keyword})

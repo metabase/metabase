@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
    [metabase.events :as events]
@@ -26,13 +27,13 @@
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is recorded in EE"
-        (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user)})
+        (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user), :context :question})
         (is (partial=
              {:user_id  (u/id user)
               :model    "card"
               :model_id (u/id card)
               :has_access true
-              :context    "question"}
+              :context    :question}
              (latest-view (u/id user) (u/id card))))))))
 
 (deftest card-read-oss-no-view-logging-test
@@ -88,7 +89,7 @@
                    :model/Card          card      {:name "Dashboard Test Card"}
                    :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
       (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-        (testing "A basic dashboard read event is recorded in EE, as well as events for its cards"
+        (testing "A basic dashboard read event is recorded in EE"
           (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/id user)})
           (is (partial=
                {:user_id    (u/id user)
@@ -97,17 +98,18 @@
                 :has_access true
                 :context    nil}
                (latest-view (u/id user) (u/id dashboard))))
-          (is (nil? (latest-view (u/id user) (u/id card)))))))))
+          (testing "Card read events are not recorded when viewing a dashboard"
+            (is (nil? (latest-view (u/id user) (u/id card))))))))))
 
 (deftest card-read-view-count-test
   (mt/with-temp [:model/User user {}
                  :model/Card card {:creator_id (u/id user)}]
-    (testing "A card read events are recorded by a card's view_count"
+    (testing "Card read events are recorded by a card's view_count"
       (is (= 0 (:view_count card))
           "view_count should be 0 before the event is published")
-      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user)})
+      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
       (is (= 1 (t2/select-one-fn :view_count :model/Card (:id card))))
-      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user)})
+      (events/publish-event! :event/card-read {:object-id (:id card) :user-id (u/the-id user) :context :question})
       (is (= 2 (t2/select-one-fn :view_count :model/Card (:id card)))))))
 
 (deftest dashboard-read-view-count-test
@@ -116,7 +118,7 @@
                  :model/Card          card      {:name "Dashboard Test Card"}
                  :model/DashboardCard _dashcard {:dashboard_id (u/id dashboard) :card_id (u/id card)}]
     (let [dashboard (t2/hydrate dashboard [:dashcards :card])]
-      (testing "A dashboard read events are recorded by a dashboard's view_count"
+      (testing "Dashboard read events are recorded by a dashboard's view_count"
         (is (= 0 (:view_count dashboard) (:view_count card))
             "view_count should be 0 before the event is published")
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (u/the-id user)})
@@ -129,7 +131,7 @@
 (deftest table-read-view-count-test
   (mt/with-temp [:model/User  user  {}
                  :model/Table table {}]
-    (testing "A card read events are recorded by a card's view_count"
+    (testing "Card read events are recorded by a card's view_count"
       (is (= 0 (:view_count table))
           "view_count should be 0 before the event is published")
       (events/publish-event! :event/table-read {:object table :user-id (u/the-id user)})
@@ -195,7 +197,7 @@
       (mt/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
         (testing "GET /api/card/:id"
           (mt/user-http-request :crowberto :get 200 (format "card/%s" (u/id card)))
-          (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card)}
+          (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card), :context :question}
                         (latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
 (deftest get-dashboard-view-log-test
@@ -207,6 +209,19 @@
           (is (partial= {:user_id (mt/user->id :crowberto), :model "dashboard", :model_id (u/id dash)}
                         (latest-view (mt/user->id :crowberto) (u/id dash)))))))))
 
+(deftest dashboard-card-query-view-log-test
+  (when (premium-features/log-enabled?)
+    (testing "Running a query for a card in a dashboard is recorded in the view_log."
+      (mt/with-temp [:model/Dashboard     dash     {}
+                     :model/Card          card     {}
+                     :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                    :card_id      (:id card)}]
+        (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+          (mt/user-http-request :crowberto :post 202
+                                (api.dashboard-test/dashboard-card-query-url (:id dash) (:id card) (:id dashcard)))
+          (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (:id card), :context :dashboard}
+                        (latest-view (mt/user->id :crowberto) (:id card)))))))))
+
 (deftest get-public-card-logs-view-test
   (when (premium-features/log-enabled?)
     (testing "Viewing a public card logs the correct view log event."
@@ -214,7 +229,17 @@
         (public-test/with-temp-public-card [card]
           (testing "GET /api/public/card/:uuid"
             (client/client :get 200 (str "public/card/" (:public_uuid card)))
-            (is (partial= {:model "card", :model_id (:id card), :has_access true}
+            (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :question}
+                          (latest-view nil (:id card))))))))))
+
+(deftest public-dashboard-card-query-view-log-test
+  (when (premium-features/log-enabled?)
+    (testing "Running a query for a card in a public dashboard logs the correct view log event."
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (public-test/with-temp-public-dashboard-and-card [dash card dashcard]
+          (testing "GET /api/public/dashboard/:uuid/card/:card-id"
+            (client/client :get 202 (public-test/dashcard-url dash card dashcard))
+            (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :dashboard}
                           (latest-view nil (:id card))))))))))
 
 (deftest get-public-dashboard-logs-view-test
@@ -235,6 +260,19 @@
           (testing "GET /api/embed/card/:token"
             (client/client :get 200 (embed-test/card-url card))
             (is (partial= {:model "card", :model_id (:id card), :has_access true}
+                          (latest-view nil (:id card))))))))))
+
+(deftest embedded-dashboard-card-query-view-log-test
+  (when (premium-features/log-enabled?)
+    (testing "Running a query for a card in a public dashboard logs the correct view log event."
+      (embed-test/with-embedding-enabled-and-new-secret-key
+        (mt/with-temp [:model/Dashboard dash {:enable_embedding true}
+                       :model/Card          card     {}
+                       :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                      :card_id      (:id card)}]
+          (testing "GET /dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+            (client/client :get 202 (embed-test/dashcard-url dashcard))
+            (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :dashboard}
                           (latest-view nil (:id card))))))))))
 
 (deftest get-embedded-dashboard-logs-view-test
