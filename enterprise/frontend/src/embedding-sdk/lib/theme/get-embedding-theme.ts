@@ -39,7 +39,7 @@ export function getEmbeddingThemeOverride(
 
     other: {
       ...components,
-      ...(theme.fontSize && { fontSize: theme.fontSize }),
+      fontSize: theme.fontSize ?? "0.875em",
     },
 
     components: EMBEDDING_SDK_COMPONENTS_OVERRIDES,
