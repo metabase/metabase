@@ -121,12 +121,15 @@
         (lib.util.match/replace
          x
          [:field
-          (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+          (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
           (id :guard integer? pos?)]
          (if (some #{:mbql/stage-metadata} &parents)
            &match
-           (update &match 1 merge (-> (lib.metadata/field metadata-provider id)
-                                      (select-keys [:base-type :effective-type]))))))
+           (update &match 1 merge
+                   (when-not (contains? options :base-type)
+                     {::transformation-added-base-type true})
+                   (-> (lib.metadata/field metadata-provider id)
+                       (select-keys [:base-type :effective-type]))))))
     x))
 
 (mu/defn query-with-stages :- ::lib.schema/query
