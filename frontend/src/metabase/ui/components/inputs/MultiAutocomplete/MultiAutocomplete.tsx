@@ -181,6 +181,15 @@ export function MultiAutocomplete({
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
       rightSection={info}
+      styles={{
+        defaultValue: {
+          color: color("brand"),
+          background: color("bg-medium"),
+        },
+        defaultValueRemove: {
+          color: color("brand"),
+        },
+      }}
     />
   );
 }
