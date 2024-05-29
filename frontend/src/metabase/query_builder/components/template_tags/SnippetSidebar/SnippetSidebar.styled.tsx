@@ -69,7 +69,7 @@ export const MenuIconContainer = styled.div`
 
   &:hover {
     color: var(--mb-color-brand);
-    background-color: ${() => color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
 `;
 

@@ -1,4 +1,4 @@
-import { css, type Theme } from "@emotion/react";
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -33,7 +33,7 @@ export const Root = styled.div<{
   ${({ isBordered, theme }) =>
     isBordered &&
     css`
-      border: 1px solid ${theme.fn.themeColor("border")};
+      border: 1px solid var(--mb-color-border);
       border-radius: 8px;
       box-shadow: 0 2px 2px ${theme.fn.themeColor("shadow")};
     `}
@@ -71,7 +71,7 @@ export const DashboardTabsContainer = styled(FullWidthContainer)`
 `;
 
 export const Separator = styled.div`
-  border-bottom: 1px solid ${() => color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const Body = styled.main`
@@ -89,8 +89,8 @@ export const ActionButtonsContainer = styled.div`
 
 export type FooterVariant = "default" | "large";
 
-const getFooterDefaultVariantStyles = (theme: Theme) => css`
-  border-top: 1px solid ${theme.fn.themeColor("border")};
+const footerDefaultVariantStyles = css`
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 const footerLargeVariantStyles = css`
@@ -105,7 +105,7 @@ const footerLargeVariantStyles = css`
 
 function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
   if (theme === "night") {
-    return `var(--mb-color-bg-black)`;
+    return "var(--mb-color-bg-black)";
   }
   if (theme === "transparent") {
     return "transparent";
@@ -120,7 +120,7 @@ function getParameterPanelBorderColor(theme?: DisplayTheme) {
   if (theme === "transparent") {
     return "transparent";
   }
-  return color("border");
+  return "var(--mb-color-border)";
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
@@ -160,7 +160,7 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
 
   ${props =>
     props.variant === "default"
-      ? getFooterDefaultVariantStyles(props.theme)
+      ? footerDefaultVariantStyles
       : footerLargeVariantStyles}
 
   padding: 0.5rem;

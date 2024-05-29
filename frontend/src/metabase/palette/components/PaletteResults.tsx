@@ -4,9 +4,7 @@ import { useMemo, useEffect } from "react";
 import { withRouter } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
@@ -85,7 +83,7 @@ export const PaletteResults = withRouter(
                       isFirst
                         ? undefined
                         : {
-                            borderTop: `1px solid ${color("border")}`,
+                            borderTop: `1px solid var(--mb-color-border)`,
                             marginTop: "1rem",
                           }
                     }

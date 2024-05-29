@@ -10,7 +10,7 @@ export const TriggerContainer = styled.div<{ hasValue: boolean }>`
   position: relative;
   padding: 0.6875rem;
   border: 1px solid
-    ${props => (props.hasValue ? color("brand") : color("border"))};
+    ${props => (props.hasValue ? color("brand") : "var(--mb-color-border)")};
   border-radius: ${space(0)};
   cursor: pointer;
 `;

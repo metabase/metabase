@@ -26,10 +26,10 @@ export const ChunkyListItem = styled.button<{
         : ""}
   }
 
-  ${({ isLast, theme }) =>
+  ${({ isLast }) =>
     !isLast
       ? css`
-          border-bottom: 1px solid ${theme.fn.themeColor("border")};
+          border-bottom: 1px solid var(--mb-color-border);
         `
       : ""};
 
@@ -41,7 +41,7 @@ export const ChunkyListItem = styled.button<{
 `;
 
 export const ChunkyList = styled.div`
-  border: 1px solid ${() => color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   display: flex;
   flex-direction: column;

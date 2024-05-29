@@ -7,7 +7,7 @@ export const Well = styled.div`
   align-items: center;
   padding: 4px 6px;
   border-radius: 99px;
-  background-color: ${() => color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
   &:hover {
     background-color: ${() => darken(color("bg-medium"), 0.05)};
   }

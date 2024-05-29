@@ -19,14 +19,15 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
 
   &:hover,
   &:focus-within {
-    border-color: ${props => (props.isDisabled ? "" : color("border"))};
+    border-color: ${props =>
+      props.isDisabled ? "" : "var(--mb-color-border)"};
   }
 
-  ${({ isEditing, isDisabled, theme }) =>
+  ${({ isEditing, isDisabled }) =>
     isEditing &&
     !isDisabled &&
     css`
-      border-color: ${theme.fn.themeColor("border")};
+      border-color: var(--mb-color-border);
     `}
 
   ${({ isEditingMarkdown }) =>

@@ -33,7 +33,7 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive, theme }) => {
     if (isActive) {
       return css`
-        background-color: ${theme.fn.themeColor("bg-medium")};
+        background-color: var(--mb-color-bg-medium);
       `;
     }
     return css`
@@ -45,7 +45,7 @@ export const SearchInputContainer = styled.div<{
     `;
   }}
 
-  border: 1px solid ${() => color("border")};
+  border: 1px solid var(--mb-color-border);
 
   overflow: hidden;
 
@@ -63,11 +63,11 @@ export const SearchInputContainer = styled.div<{
     height: 2rem;
     border-radius: 99px;
     border-color: transparent;
-    ${({ isActive, theme }) =>
+    ${({ isActive }) =>
       isActive &&
       css`
         width: 100%;
-        border-color: ${theme.fn.themeColor("border")};
+        border-color: var(--mb-color-border);
         ${activeInputCSS};
       `};
   }

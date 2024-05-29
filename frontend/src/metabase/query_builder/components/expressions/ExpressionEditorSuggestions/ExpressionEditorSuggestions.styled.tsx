@@ -39,7 +39,7 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
-  border-top: 1px solid ${() => color("border")};
+  border-top: 1px solid var(--mb-color-border);
   background: white;
   height: 2rem;
   font-weight: bold;
@@ -88,7 +88,7 @@ export const GroupTitle = styled(ExpressionListItem)`
   color: ${() => color("text-medium")};
   pointer-events: none;
 
-  border-top: 1px solid ${() => color("border")};
+  border-top: 1px solid var(--mb-color-border);
 
   &:first-child {
     border-top: none;

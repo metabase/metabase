@@ -60,7 +60,7 @@
 
 .DashboardNight .parameter.noPopover input:focus,
 .ThemeNight .parameter.noPopover input:focus {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .name {

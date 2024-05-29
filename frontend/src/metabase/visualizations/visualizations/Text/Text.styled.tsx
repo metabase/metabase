@@ -281,7 +281,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
 
   .text-card-markdown blockquote {
     color: ${() => color("text-medium")};
-    border-left: 5px solid ${() => color("border")};
+    border-left: 5px solid var(--mb-color-border);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
   }

@@ -11,7 +11,7 @@ export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   ${props =>
     props.hasLeftBorder &&
     css`
-      border-left: 1px solid ${props.theme.fn.themeColor("border")};
+      border-left: 1px solid var(--mb-color-border);
     `}
 `;
 
@@ -27,7 +27,7 @@ export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
   overflow: hidden;
 
   border-radius: 1rem;
-  border: 2px solid ${() => color("border")};
+  border: 2px solid var(--mb-color-border);
 `;
 
 export const TabWrapper = styled.div`

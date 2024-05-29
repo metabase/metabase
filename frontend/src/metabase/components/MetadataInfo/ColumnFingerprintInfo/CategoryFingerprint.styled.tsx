@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
@@ -66,7 +65,7 @@ export const Li = styled.li`
   padding: 0.3em 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-bottom: 1px solid ${() => color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 
   &:last-child {
     border-bottom: none;

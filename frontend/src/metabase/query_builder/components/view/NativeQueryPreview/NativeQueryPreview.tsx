@@ -53,7 +53,7 @@ const CloseButton = ({ onClose }: Pick<NativeQueryPreviewProps, "onClose">) => (
 );
 
 const Divider = () => (
-  <Box mb="lg" style={{ borderTop: `1px solid ${color("border")}` }}></Box>
+  <Box mb="lg" style={{ borderTop: `1px solid var(--mb-color-border)` }}></Box>
 );
 
 const Footer = ({ children }: { children: ReactNode }) => (

@@ -8,10 +8,10 @@ export const ErrorPageRoot = styled.div<{ bordered?: boolean }>`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  ${({ bordered, theme }) =>
+  ${({ bordered }) =>
     bordered &&
     css`
-      border: 1px solid ${theme.fn.themeColor("border")};
+      border: 1px solid var(--mb-color-border);
     `}
   border-radius: 0.5rem;
   overflow: hidden;

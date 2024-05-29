@@ -49,7 +49,7 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   ${({ isSelected }) =>
     isSelected &&
     css`
-      color: var(--color-text-white);
+      color: var(--mb-color-text-white);
       background-color: var(--mb-color-brand);
     `}
 
@@ -105,11 +105,11 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
   z-index: 2;
   width: 100%;
 
-  ${({ isResizable, theme }) =>
+  ${({ isResizable }) =>
     isResizable &&
     css`
       margin-bottom: 1rem;
-      border-bottom: 1px solid ${theme.fn.themeColor("border")};
+      border-bottom: 1px solid var(--mb-color-border);
     `}
 `;
 

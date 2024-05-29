@@ -206,7 +206,7 @@ export class AddSeriesModal extends Component<Props, State> {
           style={{
             width: 370,
             backgroundColor: color("bg-light"),
-            borderColor: color("border"),
+            borderColor: "var(--mb-color-border)",
           }}
         >
           <QuestionList

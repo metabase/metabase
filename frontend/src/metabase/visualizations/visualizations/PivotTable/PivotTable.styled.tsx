@@ -55,7 +55,7 @@ const getColor = ({ isNightMode }: PivotTableCellProps) => {
 };
 
 const getBorderColor = ({ isNightMode }: PivotTableCellProps) => {
-  return isNightMode ? alpha("bg-black", 0.8) : color("border");
+  return isNightMode ? alpha("bg-black", 0.8) : "var(--mb-color-border)";
 };
 
 export const PivotTableCell = styled.div<PivotTableCellProps>`
@@ -84,7 +84,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     `}
 
   &:hover {
-    background-color: ${() => color("border")};
+    background-color: var(--mb-color-border);
   }
 `;
 

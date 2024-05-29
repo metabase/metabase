@@ -22,7 +22,7 @@ export const IconWrapper = styled.div<{
   archived: boolean;
   type: SearchModel;
 }>`
-  border: ${({ theme }) => `1px solid ${theme.fn.themeColor("border")}`};
+  border: 1px solid var(--mb-color-border);
   border-radius: ${({ theme }) => theme.radius.sm};
   display: flex;
   align-items: center;

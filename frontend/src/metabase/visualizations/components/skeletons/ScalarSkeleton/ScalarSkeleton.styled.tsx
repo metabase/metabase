@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
-import { getAnimationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
+import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 
 export const PositionedActionMenu = styled.div`
@@ -17,12 +17,12 @@ export const SkeletonRoot = styled(VisualizationRoot)`
   align-items: center;
 `;
 export const SkeletonTopImage = styled.svg`
-  ${({ theme }) => getAnimationStyles(theme)};
+  ${animationStyles};
   height: 2rem;
   margin-top: 0.625rem;
 `;
 export const SkeletonBottomImage = styled.svg`
-  ${({ theme }) => getAnimationStyles(theme)};
+  ${animationStyles};
   height: 0.5rem;
 `;
 export const SkeletonCenterCaption = styled(SkeletonCaption)`

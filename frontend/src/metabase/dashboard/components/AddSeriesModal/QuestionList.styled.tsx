@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
 
 export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
   flex: 1;
@@ -43,7 +42,7 @@ export const SearchContainer = styled.div`
   flex-direction: row;
   align-items: center;
   flex: 0;
-  border-bottom: 1px solid ${() => color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const SearchInput = styled(Input)`

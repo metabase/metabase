@@ -9,7 +9,7 @@ export function assignUserColors(
     color("error"),
     color("accent1"),
     color("accent4"),
-    color("bg-medium"),
+    "var(--mb-color-bg-medium)",
   ],
 ) {
   const assignments: { [index: string]: string } = {};

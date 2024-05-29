@@ -6,6 +6,12 @@ import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 
 type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
+
+const getVariantBorderColor = (variant?: string) =>
+  ["filled", "outline"].includes(variant || "")
+    ? "var(--mb-color-brand)"
+    : "var(--mb-color-border)";
+
 export const PolicyToken = styled(Button)<
   { variant?: string; ref?: MutableRefObject<HTMLButtonElement> } & ButtonProps
 >`
@@ -15,11 +21,9 @@ export const PolicyToken = styled(Button)<
   padding: 1rem;
   border-width: 1px;
   border-style: solid;
-  ${({ variant, theme }) =>
+  ${({ variant }) =>
     css`
-      border-color: ${theme.fn.themeColor(
-        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-      )} !important;
+      border-color: ${getVariantBorderColor(variant)} !important;
     `};
   span {
     gap: 0.5rem;

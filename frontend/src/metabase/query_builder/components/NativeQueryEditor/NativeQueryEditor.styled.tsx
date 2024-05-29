@@ -4,7 +4,7 @@ import type { ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 
 const getAceEditorStyle = (theme: Theme) => css`
   .ace_editor {
@@ -17,7 +17,7 @@ const getAceEditorStyle = (theme: Theme) => css`
     font-family: Lato;
     background-color: var(--mb-color-bg-light);
     color: ${theme.fn.themeColor("text-dark")};
-    border-color: ${theme.fn.themeColor("border")};
+    border-color: var(--mb-color-border);
     padding-bottom: 2px;
   }
 
@@ -26,7 +26,7 @@ const getAceEditorStyle = (theme: Theme) => css`
   .ace_button {
     background-color: ${theme.fn.themeColor("white")};
     border-radius: 5px;
-    border: 1px solid ${theme.fn.themeColor("border")};
+    border: 1px solid var(--mb-color-border);
   }
 
   .ace_nomatch {
@@ -169,5 +169,5 @@ export const StyledResizableBox = styled(ResizableBox)<
   }
 >`
   display: ${props => (props.isOpen ? "flex" : "none")};
-  border-top: 1px solid ${() => color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

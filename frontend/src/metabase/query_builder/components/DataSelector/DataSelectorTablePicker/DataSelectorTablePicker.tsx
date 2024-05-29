@@ -151,7 +151,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => (
     ta="center"
     bg={color("bg-light")}
     style={{
-      borderTop: `1px solid ${color("border")}`,
+      borderTop: `1px solid var(--mb-color-border)`,
     }}
   >
     {t`Is a question missing?`}

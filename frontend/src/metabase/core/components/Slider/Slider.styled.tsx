@@ -80,7 +80,7 @@ export const SliderTooltip = styled.div`
   font-weight: bold;
   text-align: center;
   padding: ${space(0.5)} ${space(1)};
-  background: ${() => color("black")};
+  background: var(--mb-color-black);
   color: ${() => color("white")};
   display: block;
   border-radius: ${space(1)};
@@ -92,7 +92,7 @@ export const SliderTooltip = styled.div`
     position: absolute;
     width: 0;
     height: 0;
-    border-top: 10px solid ${() => color("black")};
+    border-top: 10px solid var(--mb-color-black);
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
     top: 100%;

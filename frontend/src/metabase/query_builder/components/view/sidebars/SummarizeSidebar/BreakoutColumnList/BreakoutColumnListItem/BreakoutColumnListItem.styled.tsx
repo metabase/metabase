@@ -106,7 +106,7 @@ const getUnselectedStyle = (theme: Theme) => css`
     }
 
     ${AddButton}:hover {
-      background-color: ${theme.fn.themeColor("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
 
     ${BucketPickerPopover.TriggerButton} {

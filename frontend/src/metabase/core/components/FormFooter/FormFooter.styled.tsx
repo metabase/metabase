@@ -6,10 +6,10 @@ interface FormFooterProps {
 }
 
 const FormFooter = styled.div<FormFooterProps>`
-  ${({ hasTopBorder, theme }) =>
+  ${({ hasTopBorder }) =>
     hasTopBorder
       ? css`
-          border-top: 1px solid ${theme.fn.themeColor("border")};
+          border-top: 1px solid var(--mb-color-border);
           margin-top: 0.5rem;
           padding-top: 1.5rem;
         `

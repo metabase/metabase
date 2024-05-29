@@ -6,7 +6,6 @@ import type { ComponentPropsWithoutRef } from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
@@ -73,7 +72,7 @@ export const DashboardHeaderContainer = styled.header<{
   z-index: 2;
 
   background-color: var(--mb-color-bg-white);
-  border-bottom: 1px solid ${() => color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 
   ${({ isFullscreen }) =>
     isFullscreen &&
@@ -126,7 +125,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     css`
       position: sticky;
       border-bottom: 1px solid
-        ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
+        ${hasScroll
+          ? "var(--mb-color-border)"
+          : getParametersWidgetBgColor(isNightMode)};
     `}
 `;
 
@@ -164,7 +165,7 @@ export const ParametersAndCardsContainer = styled.div<{
 
     ${DashCard.root} {
       box-shadow: none;
-      border: 1px solid ${() => color("border")};
+      border: 1px solid var(--mb-color-border);
     }
   }
 `;

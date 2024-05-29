@@ -8,7 +8,7 @@ export const BehaviorOptionIcon = styled(SidebarItem.Icon)<{
   isSelected?: boolean;
 }>`
   border-color: ${props =>
-    props.isSelected ? "transparent" : color("border")};
+    props.isSelected ? "transparent" : "var(--mb-color-border)"};
 
   .Icon {
     color: ${props => (props.isSelected ? color("white") : color("brand"))};

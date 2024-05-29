@@ -24,7 +24,7 @@
 }
 
 .item:hover {
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
   color: var(--mb-color-brand);
 }
 

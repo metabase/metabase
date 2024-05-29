@@ -23,7 +23,7 @@ export const SearchUserPickerContent = styled(Stack)`
 `;
 
 export const SearchUserSelectBox = styled(Stack)`
-  border: ${({ theme }) => theme.fn.themeColor("border")} 1px solid;
+  border: var(--mb-color-border) 1px solid;
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 

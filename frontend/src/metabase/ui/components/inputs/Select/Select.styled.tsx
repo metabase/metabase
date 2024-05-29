@@ -158,7 +158,7 @@ export const getSelectItemsOverrides = (
           display: "block",
           marginTop: rem(px(theme.spacing.sm) - 1),
           marginBottom: theme.spacing.xs,
-          borderTop: `1px solid ${theme.fn.themeColor("border")}`,
+          borderTop: `1px solid var(--mb-color-border)`,
         },
       },
     },

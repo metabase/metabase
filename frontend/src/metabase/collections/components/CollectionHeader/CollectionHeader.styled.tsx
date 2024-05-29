@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const HeaderRoot = styled.div`
@@ -38,7 +37,7 @@ export const CollectionHeaderButton = styled(
 
   &:hover {
     color: var(--mb-color-brand);
-    background-color: ${() => color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
 
   ${Button.Content} {

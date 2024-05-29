@@ -65,7 +65,7 @@ export const StrategyFormLauncher = ({
       align="center"
       gap="md"
       style={{
-        border: forRoot ? undefined : `1px solid ${color("border")}`,
+        border: forRoot ? undefined : `1px solid var(--mb-color-border)`,
         borderRadius: ".5rem",
       }}
     >
