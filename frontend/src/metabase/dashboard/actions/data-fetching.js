@@ -2,6 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
+import Dashboards from "metabase/entities/dashboards";
 import { defer } from "metabase/lib/promise";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -32,8 +33,6 @@ import {
   fetchDataOrError,
   getCurrentTabDashboardCards,
 } from "../utils";
-
-import { loadMetadataForDashboard } from "./metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -382,7 +381,7 @@ export const fetchDashboardCardMetadata = createThunkAction(
     const dashboard = getDashboardComplete(getState());
     const dashboardType = getDashboardType(dashboard.id);
     if (dashboardType === "normal" || dashboardType === "transient") {
-      await dispatch(loadMetadataForDashboard(dashboard.dashcards));
+      await dispatch(Dashboards.actions.fetchMetadata({ id: dashboard.id }));
     }
   },
 );
