@@ -103,7 +103,8 @@ function getOffsetClauseName(
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
-  const period = inflect(bucketInfo.shortName, absoluteOffset);
+  const bucketName = bucketInfo.displayName.toLowerCase();
+  const period = inflect(bucketName, absoluteOffset);
 
   return absoluteOffset === 1
     ? t`${displayName} (${prefix}previous ${period})`

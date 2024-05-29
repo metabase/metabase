@@ -30,7 +30,7 @@ export const getOffsetPeriod = (
 
   const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
 
-  return bucketInfo.shortName;
+  return bucketInfo.displayName.toLowerCase();
 };
 
 export const getTitle = (
