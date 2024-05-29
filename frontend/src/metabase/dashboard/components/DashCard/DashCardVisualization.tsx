@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useClickBehaviorData } from "metabase/dashboard/hoc/useClickBehaviorData";
+import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import {
   getVirtualCardType,
   isQuestionCard,
@@ -36,6 +36,7 @@ import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import type {
   CardSlownessStatus,
+  DashCardGetNewCardUrlHandler,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
 import { shouldShowParameterMapper } from "./utils";
@@ -45,6 +46,7 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
   mode?: Mode;
+  getHref: DashCardGetNewCardUrlHandler | null;
 
   gridSize: {
     width: number;
@@ -87,6 +89,7 @@ export function DashCardVisualization({
   dashboard,
   series,
   mode,
+  getHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -230,6 +233,7 @@ export function DashCardVisualization({
       rawSeries={series}
       metadata={metadata}
       mode={mode}
+      getHref={getHref}
       gridSize={gridSize}
       totalNumGridCols={totalNumGridCols}
       headerIcon={headerIcon}

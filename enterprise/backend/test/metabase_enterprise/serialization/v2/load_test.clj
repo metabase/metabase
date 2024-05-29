@@ -126,7 +126,8 @@
           t1s        (atom nil)
           t2s        (atom nil)
           f1s        (atom nil)
-          f2s        (atom nil)]
+          f2s        (atom nil)
+          f3s        (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the two databases"
           (ts/with-db source-db
@@ -136,6 +137,7 @@
             (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! Field    :name "Target Field" :table_id (:id @t1s)))
             (reset! f2s  (ts/create! Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
+            (reset! f3s  (ts/create! Field    :name "Nested Field"   :table_id (:id @t1s) :parent_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "serialization of databases is based on the :name"
@@ -152,10 +154,16 @@
         (testing "foreign key references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
                  (->> @serialized
-                      (filter #(-> % :serdes/meta last :model (= "Field")))
-                      (filter #(-> % :table_id (= ["db2" nil "posts"])))
-                      (keep :fk_target_field_id)
-                      first))))
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Foreign Key"))))
+                      :fk_target_field_id))))
+
+        (testing "Parent field references are serialized as a field path"
+          (is (= ["db1" nil "posts" "Target Field"]
+                 (->> @serialized
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Nested Field"))))
+                      :parent_id))))
 
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-db dest-db
@@ -170,7 +178,11 @@
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
             (is (t2/exists? Table :name "posts" :db_id (:id @db1d)))
-            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))))))))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))
+            (is (= (t2/select-one-fn :id Field :name (:name @f1s))
+                   (t2/select-one-fn :fk_target_field_id Field :name (:name @f2s))))
+            (is (= (t2/select-one-fn :id Field :name (:name @f1s))
+                   (t2/select-one-fn :parent_id Field :name (:name @f3s))))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be

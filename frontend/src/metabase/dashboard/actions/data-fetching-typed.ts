@@ -1,6 +1,5 @@
 import { denormalize, normalize, schema } from "normalizr";
 
-import { loadMetadataForDashboard } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
@@ -123,10 +122,6 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       fetchDashboardCancellation = null;
-
-      if (dashboardType === "normal" || dashboardType === "transient") {
-        await dispatch(loadMetadataForDashboard(result.dashcards));
-      }
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
