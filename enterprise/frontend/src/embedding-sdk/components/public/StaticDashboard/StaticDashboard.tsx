@@ -17,7 +17,7 @@ import type { DashboardId } from "metabase-types/api";
 
 const _StaticDashboard = ({
   dashboardId,
-  parameterValues,
+  parameterQueryParams,
   bordered,
   titled,
   theme: userTheme,
@@ -26,7 +26,7 @@ const _StaticDashboard = ({
   hideParameters,
 }: {
   dashboardId: DashboardId;
-  parameterValues: Query;
+  parameterQueryParams: Query;
 } & Partial<EmbedDisplayParams>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
@@ -45,7 +45,7 @@ const _StaticDashboard = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId,
-    parameterQueryParams: parameterValues,
+    parameterQueryParams,
   });
   const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
@@ -60,7 +60,7 @@ const _StaticDashboard = ({
     <Box ref={ref} style={{ overflow: "auto" }}>
       <PublicDashboard
         dashboardId={dashboardId}
-        queryParams={parameterValues}
+        parameterQueryParams={parameterQueryParams}
         bordered={options.bordered}
         font={options.font}
         hasNightModeToggle={hasNightModeToggle}

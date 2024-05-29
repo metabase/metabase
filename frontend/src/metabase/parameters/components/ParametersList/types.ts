@@ -12,7 +12,7 @@ export type ParametersListProps = {
   {
     className: string;
 
-    question: Question | null;
+    question: Question;
     dashboard: Dashboard | null;
     editingParameter: Parameter | null | undefined;
 

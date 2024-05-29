@@ -81,7 +81,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboardId: DashboardId;
-  queryParams: Query;
+  parameterQueryParams: Query;
 };
 
 type DisplayProps = Pick<
@@ -109,7 +109,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
       fetchDashboardCardData,
       fetchDashboardCardMetadata,
       setErrorPage,
-      queryParams,
+      parameterQueryParams,
       dashboardId,
     } = this.props;
 
@@ -117,7 +117,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     const result = await fetchDashboard({
       dashId: String(dashboardId),
-      queryParams,
+      queryParams: parameterQueryParams,
     });
 
     if (!isSuccessfulFetchDashboardResult(result)) {

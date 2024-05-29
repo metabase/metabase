@@ -11,5 +11,5 @@ export type DashboardControlsProps = {
 
 export type DashboardControlsPassedProps = DashboardDisplayOptionControls &
   DashboardControlsProps & {
-    queryParams: Query;
+    parameterQueryParams: Query;
   };

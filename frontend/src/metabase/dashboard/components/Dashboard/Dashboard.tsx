@@ -195,7 +195,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setSharing,
     toggleSidebar,
-    queryParams,
+    parameterQueryParams,
     location,
   } = props;
 
@@ -265,7 +265,7 @@ function DashboardInner(props: DashboardProps) {
 
       const result = await fetchDashboard({
         dashId: dashboardId,
-        queryParams,
+        queryParams: parameterQueryParams,
         options: {
           clearCache: !isNavigatingBackToDashboard,
           preserveParameters: isNavigatingBackToDashboard,
@@ -306,7 +306,7 @@ function DashboardInner(props: DashboardProps) {
       handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
-      queryParams,
+      parameterQueryParams,
       setErrorPage,
     ],
   );

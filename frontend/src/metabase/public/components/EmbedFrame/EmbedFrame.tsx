@@ -54,7 +54,7 @@ export type EmbedFrameBaseProps = Partial<{
   className: string;
   name: string | null;
   description: string | null;
-  question: Question | null;
+  question: Question;
   dashboard: Dashboard | null;
   actionButtons: JSX.Element | null;
   footerVariant: FooterVariant;

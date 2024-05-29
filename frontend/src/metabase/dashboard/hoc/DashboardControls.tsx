@@ -98,7 +98,7 @@ export const DashboardControls = <T extends DashboardControlsProps>(
         titled={titled}
         font={font}
         setFont={setFont}
-        queryParams={queryParams}
+        parameterQueryParams={parameterQueryParams}
       />
     );
   }
