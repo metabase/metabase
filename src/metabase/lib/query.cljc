@@ -126,6 +126,9 @@
          (if (some #{:mbql/stage-metadata} &parents)
            &match
            (update &match 1 merge
+                   ;; Following key is used to track which base-types we added during `query` call. It is used in
+                   ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+                   ;; as legacy -> pmbql -> legacy looks closer to the original.
                    (when-not (contains? options :base-type)
                      {::transformation-added-base-type true})
                    (-> (lib.metadata/field metadata-provider id)
