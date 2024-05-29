@@ -184,8 +184,7 @@
      (when-let [card-id (:source-card base-stage)]
        (let [card (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
-         (concat [{:type :table, :id (str "card__" card-id)}
-                  {:type :card, :id card-id}]
+         (concat [{:type :table, :id (str "card__" card-id)}]
                  (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
                    (query-dependents-foreign-keys metadata-providerable card-columns))
                  (when (and (= (:type card) :metric) definition)
@@ -208,7 +207,6 @@
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
     [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
-    [:card     [:map [:id ::lib.schema.id/card]]]
     [:field    [:map [:id ::lib.schema.id/field]]]]])
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
@@ -235,6 +233,4 @@
   "Return the IDs and types of entities which are needed upfront to create a new query based on a table/card."
   [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id               :- [:or ::lib.schema.id/table :string]]
-  (cons {:type :table, :id table-id}
-        (when-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
-          [{:type :card, :id card-id}])))
+  [{:type :table, :id table-id}])

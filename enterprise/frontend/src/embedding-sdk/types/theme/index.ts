@@ -53,6 +53,15 @@ export interface MetabaseColors {
 
   /** Color used for aggregations and breakouts context */
   summarize?: string;
+
+  /** Chart colors */
+  charts?: ChartColor[];
+
+  /** Color used to indicate successful actions and positive values/trends */
+  positive?: string;
+
+  /** Color used to indicate dangerous actions and negative values/trends */
+  negative?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;
@@ -80,4 +89,25 @@ export interface MetabaseComponentTheme {
       backgroundColor?: string;
     };
   };
+
+  /** Numerical value display */
+  scalar?: {
+    /** The primary numerical value */
+    value?: {
+      fontSize?: string;
+      lineHeight?: string;
+    };
+  };
 }
+
+export type ChartColor =
+  | string
+  | {
+      base: string;
+
+      /** Lighter variation of the base color */
+      tint?: string;
+
+      /** Darker variation of the base color */
+      shade?: string;
+    };

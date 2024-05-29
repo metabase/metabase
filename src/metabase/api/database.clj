@@ -160,7 +160,8 @@
            xform)
      (completing conj #(t2/hydrate % :collection))
      []
-     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
+                                     :result_metadata :type
                                      [{:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
