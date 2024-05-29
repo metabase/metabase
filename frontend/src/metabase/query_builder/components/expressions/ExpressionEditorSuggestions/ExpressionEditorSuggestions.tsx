@@ -317,8 +317,10 @@ function Footer({
   }
 
   const handleMouseMove = useCallback(() => {
-    onHighlightSuggestion(suggestion.index);
-  }, [suggestion.index, onHighlightSuggestion]);
+    if (suggestion.index !== highlightedIndex) {
+      onHighlightSuggestion(suggestion.index);
+    }
+  }, [suggestion.index, onHighlightSuggestion, highlightedIndex]);
 
   const isHighlighted = highlightedIndex === suggestion.index;
 
