@@ -19,6 +19,12 @@ export interface TreeNodeProps {
   onToggleExpand: () => void;
 }
 
-export type TreeNodeComponent = React.ComponentType<
-  React.PropsWithChildren<TreeNodeProps & React.RefAttributes<HTMLLIElement>>
->;
+export type TreeNodeComponent =
+  | React.ComponentType<
+      React.PropsWithChildren<
+        TreeNodeProps & React.RefAttributes<HTMLLIElement>
+      >
+    >
+  | React.ForwardRefExoticComponent<
+      TreeNodeProps & React.RefAttributes<HTMLLIElement>
+    >;
