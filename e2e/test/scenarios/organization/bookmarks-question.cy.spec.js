@@ -47,6 +47,7 @@ describe("scenarios > question > bookmarks", () => {
     cy.log("Turn the model back into a question");
     openQuestionActions();
     cy.findByRole("dialog").contains("Turn back to saved question").click();
+    cy.wait(1000);
     cy.findByRole("status").contains("This is a question now.").should("exist");
 
     openNavigationSidebar();
