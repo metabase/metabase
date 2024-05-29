@@ -76,7 +76,7 @@ export function getParameterTargetField(
     }
     if (fieldsWithName.length === 1) {
       // performance optimization 3:
-      // if there is exactly 1 field, assume that metadata is correct and do not call MBQL lib
+      // if there is exactly 1 field, assume that it's related to this query and do not call MBQL lib
       return fieldsWithName[0];
     }
 
