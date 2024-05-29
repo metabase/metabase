@@ -2,6 +2,7 @@
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
    [metabase.models.interface :as mi]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
@@ -23,4 +24,8 @@
     (merge defaults log-entry)))
 
 (t2/deftransforms :model/ViewLog
-  {:metadata mi/transform-json})
+  {:metadata mi/transform-json
+   :context  mi/transform-keyword})
+
+(mr/def ::context
+  [:enum :dashboard :question])

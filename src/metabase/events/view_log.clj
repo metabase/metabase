@@ -31,12 +31,13 @@
 
 (defn- generate-view
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
-  [& {:keys [model object-id object user-id has-access]
+  [& {:keys [model object-id object user-id has-access context]
       :or   {has-access true}}]
   {:model      (u/lower-case-en (audit-log/model-name (or model object)))
    :user_id    (or user-id api/*current-user-id*)
    :model_id   (or object-id (u/id object))
-   :has_access has-access})
+   :has_access has-access
+   :context    context})
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
@@ -50,9 +51,7 @@
      :user-id user-id}
     (try
       (increment-view-counts! :model/Card object-id)
-      (-> (generate-view :model :model/Card event)
-          (assoc :context "question")
-          record-views!)
+      (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
