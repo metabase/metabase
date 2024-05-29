@@ -195,10 +195,10 @@ export const SMTPConnectionForm = ({
                 <Group>
                   {Object.entries(
                     elementMap["email-smtp-security"].options || {},
-                  ).map(([value, name]) => (
+                  ).map(([value, setting]) => (
                     <Radio
                       value={value}
-                      label={name}
+                      label={setting.name}
                       key={value}
                       styles={{
                         inner: { display: "none" },
