@@ -11,7 +11,7 @@ export function getVisualizationStyleFromTheme(
   const chartTheme = theme.other.chart;
   const labelTheme = chartTheme?.label;
 
-  const style: VisualizationStyle = { seriesLabels: {} };
+  const style: VisualizationStyle = { label: {} };
 
   // Overrides the font size of the series labels
   if (labelTheme?.fontSize) {
@@ -21,8 +21,8 @@ export function getVisualizationStyleFromTheme(
       rootFontSize,
     );
 
-    if (labelFontSize && style.seriesLabels) {
-      style.seriesLabels.fontSize = labelFontSize;
+    if (labelFontSize && style.label) {
+      style.label.fontSize = labelFontSize;
     }
   }
 

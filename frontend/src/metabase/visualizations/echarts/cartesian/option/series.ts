@@ -108,8 +108,7 @@ export const buildEChartsLabelOptions = (
 ): SeriesLabelOption => {
   const style = renderingContext.style;
 
-  const { fontSize = CHART_STYLE.seriesLabels.size } =
-    style?.seriesLabels ?? {};
+  const { fontSize = CHART_STYLE.seriesLabels.size } = style?.label ?? {};
 
   return {
     silent: true,

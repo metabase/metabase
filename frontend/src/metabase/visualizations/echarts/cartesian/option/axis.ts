@@ -83,13 +83,16 @@ export const getAxisNameDefaultOption = (
 });
 
 export const getTicksDefaultOption = ({
+  style,
   getColor,
   fontFamily,
 }: RenderingContext) => {
+  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+
   return {
     hideOverlap: true,
     color: getColor("text-dark"),
-    fontSize: CHART_STYLE.axisTicks.size,
+    fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
   };
@@ -110,7 +113,10 @@ const getHistogramTicksOptions = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  { style }: RenderingContext,
 ) => {
+  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+
   if (settings["graph.x_axis.scale"] !== "histogram") {
     return {};
   }
@@ -120,16 +126,14 @@ const getHistogramTicksOptions = (
   const options = { showMinLabel: false, showMaxLabel: true };
 
   if (settings["graph.x_axis.axis_enabled"] === "rotate-45") {
-    const topOffset =
-      (histogramDimensionWidth + CHART_STYLE.axisTicks.size / 2) * Math.SQRT1_2;
+    const topOffset = (histogramDimensionWidth + fontSize / 2) * Math.SQRT1_2;
     return {
       ...options,
       padding: [0, topOffset, 0, 0],
       margin: -histogramDimensionWidth / 2 + CHART_STYLE.axisTicksMarginX,
     };
   } else if (settings["graph.x_axis.axis_enabled"] === "rotate-90") {
-    const rightOffset =
-      histogramDimensionWidth / 2 - CHART_STYLE.axisTicks.size / 2;
+    const rightOffset = histogramDimensionWidth / 2 - fontSize / 2;
     return {
       ...options,
       verticalAlign: "bottom",
@@ -334,7 +338,12 @@ export const buildCategoricalDimensionAxis = (
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
-      ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
+      ...getHistogramTicksOptions(
+        chartModel,
+        settings,
+        chartMeasurements,
+        renderingContext,
+      ),
       interval: () => true,
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);

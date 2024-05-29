@@ -113,20 +113,23 @@ const getXAxisTicksWidth = (
   dataset: ChartDataset,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   axisModel: XAxisModel,
-  { measureText, fontFamily }: RenderingContext,
+  { style, measureText, fontFamily }: RenderingContext,
 ) => {
+  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+
   if (!axisEnabledSetting) {
     return { firstXTickWidth: 0, lastXTickWidth: 0 };
   }
   if (axisEnabledSetting === "rotate-90") {
     return {
-      firstXTickWidth: CHART_STYLE.axisTicks.size,
-      lastXTickWidth: CHART_STYLE.axisTicks.size,
+      firstXTickWidth: fontSize,
+      lastXTickWidth: fontSize,
     };
   }
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
+    fontSize,
     family: fontFamily,
   };
 
@@ -157,13 +160,16 @@ const getXAxisTicksWidth = (
 const getXAxisTicksHeight = (
   maxXTickWidth: number,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
+  { style }: RenderingContext,
 ) => {
+  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+
   if (!axisEnabledSetting) {
     return 0;
   }
 
   if (axisEnabledSetting === true || axisEnabledSetting === "compact") {
-    return CHART_STYLE.axisTicks.size;
+    return fontSize;
   }
 
   if (axisEnabledSetting === "rotate-90") {
@@ -178,7 +184,7 @@ const getXAxisTicksHeight = (
     `Unexpected "graph.x_axis.axis_enabled" value ${axisEnabledSetting}`,
   );
 
-  return CHART_STYLE.axisTicks.size + CHART_STYLE.axisNameMargin;
+  return fontSize + CHART_STYLE.axisNameMargin;
 };
 
 const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
@@ -207,6 +213,9 @@ const getAutoAxisEnabledSetting = (
   outerHeight: number,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
+  const { fontSize = CHART_STYLE.axisTicks.size } =
+    renderingContext.style?.label ?? {};
+
   const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
     (settings["graph.x_axis.scale"] === "ordinal" ||
@@ -228,19 +237,13 @@ const getAutoAxisEnabledSetting = (
     return true;
   }
 
-  if (
-    dimensionWidth >=
-    CHART_STYLE.axisTicks.size * X_LABEL_ROTATE_45_THRESHOLD_FACTOR
-  ) {
+  if (dimensionWidth >= fontSize * X_LABEL_ROTATE_45_THRESHOLD_FACTOR) {
     return checkHeight(maxXTickWidth, outerHeight, "rotate-45")
       ? "rotate-45"
       : false;
   }
 
-  if (
-    dimensionWidth >=
-    CHART_STYLE.axisTicks.size * X_LABEL_ROTATE_90_THRESHOLD_FACTOR
-  ) {
+  if (dimensionWidth >= fontSize * X_LABEL_ROTATE_90_THRESHOLD_FACTOR) {
     return checkHeight(maxXTickWidth, outerHeight, "rotate-90")
       ? "rotate-90"
       : false;
@@ -329,7 +332,7 @@ const getTicksDimensions = (
     ticksDimensions.lastXTickWidth = lastXTickWidth;
 
     ticksDimensions.xTicksHeight =
-      getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting) +
+      getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting, renderingContext) +
       CHART_STYLE.axisTicksMarginX +
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height

@@ -37,7 +37,7 @@ export interface RenderingContext {
 
 /** Visualization styling overrides. */
 export interface VisualizationStyle {
-  seriesLabels?: {
+  label?: {
     fontSize?: number;
   };
 }
