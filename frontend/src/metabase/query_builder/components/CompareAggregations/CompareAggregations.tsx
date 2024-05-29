@@ -2,19 +2,12 @@ import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Button,
-  Flex,
-  MultiAutocomplete,
-  NumberInput,
-  Stack,
-} from "metabase/ui";
+import { Box, Button, Flex, NumberInput, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
-import { ReferenceAggregationPicker } from "./components";
+import { ColumnPicker, ReferenceAggregationPicker } from "./components";
 import { getPeriodTitle, getTitle } from "./utils";
 
 interface Props {
@@ -40,8 +33,6 @@ const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
   const areColumnsValid = columns.length > 0;
   return isPeriodValid && areColumnsValid;
 };
-
-const shouldCreate = () => false;
 
 const getAggregations = (
   query: Lib.Query,
@@ -72,12 +63,6 @@ const getAggregations = (
 
   return aggregations;
 };
-
-const COLUMN_OPTIONS: { label: string; value: ColumnType }[] = [
-  { label: t`Previous value`, value: "offset" },
-  { label: t`Percentage difference`, value: "percent-diff-offset" },
-  { label: t`Value difference`, value: "diff-offset" },
-];
 
 export const CompareAggregations = ({
   query,
@@ -152,15 +137,7 @@ export const CompareAggregations = ({
                 onChange={setOffset}
               />
 
-              <MultiAutocomplete
-                label={t`Columns to create`}
-                data={COLUMN_OPTIONS}
-                placeholder={t`Columns to create`}
-                rightSection={null}
-                shouldCreate={shouldCreate}
-                value={columns}
-                onChange={values => setColumns(values as ColumnType[])}
-              />
+              <ColumnPicker value={columns} onChange={setColumns} />
             </Stack>
 
             <Flex justify="flex-end">
