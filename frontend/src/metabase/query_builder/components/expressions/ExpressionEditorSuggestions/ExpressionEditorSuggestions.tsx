@@ -246,7 +246,7 @@ function ExpressionEditorSuggestionsListItem({
     [index, onMouseDown],
   );
 
-  const handleMouseEnter = useCallback(
+  const handleMouseMove = useCallback(
     function () {
       onHighlightSuggestion(index);
     },
@@ -257,7 +257,7 @@ function ExpressionEditorSuggestionsListItem({
     <HoverParent>
       <ExpressionListItem
         onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
+        onMouseMove={handleMouseMove}
         ref={ref}
         isHighlighted={isHighlighted}
         data-testid="expression-suggestions-list-item"
@@ -316,7 +316,7 @@ function Footer({
     evt.preventDefault();
   }
 
-  const handleMouseEnter = useCallback(() => {
+  const handleMouseMove = useCallback(() => {
     onHighlightSuggestion(suggestion.index);
   }, [suggestion.index, onHighlightSuggestion]);
 
@@ -327,7 +327,7 @@ function Footer({
       target="_blank"
       href={suggestion.href}
       onMouseDownCapture={handleMouseDownCapture}
-      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
       isHighlighted={isHighlighted}
       data-testid="expression-suggestions-list-item"
     >
