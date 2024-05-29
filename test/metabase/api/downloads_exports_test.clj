@@ -137,6 +137,39 @@
               (is (= "Grand Totals"
                      (first (last result)))))))))))
 
+(deftest multi-measure-pivot-tables-headers-test
+  (testing "Pivot tables with multiple measures correctly include the measure titles in the final header row."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                                :values  [[:aggregation 0]
+                                                          [:aggregation 1]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]],
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          (is (= [["Created At" "Doohickey" "Doohickey" "Gadget" "Gadget" "Gizmo" "Gizmo" "Widget" "Widget" "Row totals" "Row totals"]
+                  ["Created At"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"]]
+               (take 2 result))))))))
 
 (comment
 
@@ -198,21 +231,45 @@
                      :model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field "CATC" {:base-type :type/Text}]
-                                                          [:field "CATD" {:base-type :type/Text}]]
-                                                :columns [[:field "CATA" {:base-type :type/Text}]
-                                                          [:field "CATB" {:base-type :type/Text}]]
+                                               {:rows    [[:field "C" {:base-type :type/Text}]
+                                                          [:field "D" {:base-type :type/Text}]]
+                                                :columns [[:field "A" {:base-type :type/Text}]
+                                                          [:field "B" {:base-type :type/Text}]]
                                                 :values  [[:aggregation 0]]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
                                                {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
                                                 :breakout
-                                                [[:field "CATA" {:base-type :type/Text}]
-                                                 [:field "CATB" {:base-type :type/Text}]
-                                                 [:field "CATC" {:base-type :type/Text}]
-                                                 [:field "CATD" {:base-type :type/Text}]]
+                                                [[:field "A" {:base-type :type/Text}]
+                                                 [:field "B" {:base-type :type/Text}]
+                                                 [:field "C" {:base-type :type/Text}]
+                                                 [:field "D" {:base-type :type/Text}]]
                                                 :source-table (format "card__%s" pivot-data-card-id)}}}]
         (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/json?format_rows=false" pivot-card-id))]
-            (take 20 result)))))
+          (take 20 result)))))
+
+  (defn multi-measure-pivot
+    []
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                                :values  [[:aggregation 0]
+                                                          [:aggregation 1]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]],
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          result))))
+
+
   )
