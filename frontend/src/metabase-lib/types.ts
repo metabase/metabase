@@ -97,6 +97,16 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
+export type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "order-by"
+  | "limit";
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
