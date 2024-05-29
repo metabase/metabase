@@ -45,7 +45,7 @@ const _StaticDashboard = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId,
-    queryParams: parameterValues,
+    parameterQueryParams: parameterValues,
   });
   const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =

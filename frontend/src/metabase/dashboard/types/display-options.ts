@@ -1,8 +1,7 @@
 import type { EmbedDisplayControls } from "metabase/dashboard/types/embed-display-options";
 
-export type DashboardFullscreen = boolean;
 export type DashboardFullscreenControls = {
-  isFullscreen: DashboardFullscreen;
+  isFullscreen: boolean;
   onFullscreenChange: (
     newIsFullscreen: boolean,
     browserFullscreen?: boolean,

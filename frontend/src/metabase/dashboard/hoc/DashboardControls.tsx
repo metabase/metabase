@@ -31,11 +31,11 @@ export const DashboardControls = <T extends DashboardControlsProps>(
   }: DashboardControlsProps) {
     const dispatch = useDispatch();
 
-    const queryParams = location.query;
+    const parameterQueryParams = location.query;
 
     const { refreshDashboard } = useRefreshDashboard({
       dashboardId,
-      queryParams,
+      parameterQueryParams,
     });
 
     const {
