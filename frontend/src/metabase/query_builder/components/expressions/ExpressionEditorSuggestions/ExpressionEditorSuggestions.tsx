@@ -238,7 +238,7 @@ function ExpressionEditorSuggestionsListItem({
   }, [isHighlighted]);
 
   const handleMouseDown = useCallback(
-    function (event: React.MouseEvent) {
+    (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
       onMouseDown?.(index);
@@ -246,12 +246,9 @@ function ExpressionEditorSuggestionsListItem({
     [index, onMouseDown],
   );
 
-  const handleMouseMove = useCallback(
-    function () {
-      onHighlightSuggestion(index);
-    },
-    [index, onHighlightSuggestion],
-  );
+  const handleMouseMove = useCallback(() => {
+    onHighlightSuggestion(index);
+  }, [index, onHighlightSuggestion]);
 
   return (
     <HoverParent>
