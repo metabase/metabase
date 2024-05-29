@@ -8,7 +8,8 @@ import * as Lib from "metabase-lib";
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
 import { ColumnPicker, ReferenceAggregationPicker } from "./components";
-import { getPeriodTitle, getTitle } from "./utils";
+import type { ColumnType } from "./types";
+import { getAggregations, getPeriodTitle, getTitle } from "./utils";
 
 interface Props {
   query: Lib.Query;
@@ -17,52 +18,9 @@ interface Props {
   onSubmit: (aggregations: Lib.ExpressionClause[]) => void;
 }
 
-type ColumnType = "offset" | "diff-offset" | "percent-diff-offset";
-
 const DEFAULT_OFFSET = 1;
 
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
-
-const parsePeriodValue = (value: string): number | "" => {
-  const number = parseInt(value, 10);
-  return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
-};
-
-const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
-  const isPeriodValid = typeof period === "number" && period > 0;
-  const areColumnsValid = columns.length > 0;
-  return isPeriodValid && areColumnsValid;
-};
-
-const getAggregations = (
-  query: Lib.Query,
-  stageIndex: number,
-  aggregation: Lib.AggregationClause | Lib.ExpressionClause,
-  columns: ColumnType[],
-  offset: number,
-): Lib.ExpressionClause[] => {
-  const aggregations: Lib.ExpressionClause[] = [];
-
-  if (columns.includes("offset")) {
-    aggregations.push(
-      Lib.offsetClause(query, stageIndex, aggregation, -offset),
-    );
-  }
-
-  if (columns.includes("diff-offset")) {
-    aggregations.push(
-      Lib.diffOffsetClause(query, stageIndex, aggregation, -offset),
-    );
-  }
-
-  if (columns.includes("percent-diff-offset")) {
-    aggregations.push(
-      Lib.percentDiffOffsetClause(query, stageIndex, aggregation, -offset),
-    );
-  }
-
-  return aggregations;
-};
 
 export const CompareAggregations = ({
   query,
@@ -152,4 +110,15 @@ export const CompareAggregations = ({
       )}
     </Box>
   );
+};
+
+const parsePeriodValue = (value: string): number | "" => {
+  const number = parseInt(value, 10);
+  return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
+};
+
+const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
+  const isPeriodValid = typeof period === "number" && period > 0;
+  const areColumnsValid = columns.length > 0;
+  return isPeriodValid && areColumnsValid;
 };

@@ -9,20 +9,6 @@ type AggregationItem = Lib.AggregationClauseDisplayInfo & {
   aggregation: Lib.AggregationClause;
 };
 
-const renderItemName = (item: AggregationItem) => item.displayName;
-
-const renderItemDescription = () => null;
-
-const getAggregationSections = (query: Lib.Query, stageIndex: number) => {
-  const aggregations = Lib.aggregations(query, stageIndex);
-  const items = aggregations.map<AggregationItem>(aggregation => {
-    const info = Lib.displayInfo(query, stageIndex, aggregation);
-    return { ...info, aggregation };
-  });
-  const sections = [{ items }];
-  return sections;
-};
-
 interface Props {
   query: Lib.Query;
   stageIndex: number;
@@ -57,4 +43,18 @@ export const ReferenceAggregationPicker = ({
       onChange={handleChange}
     />
   );
+};
+
+const renderItemName = (item: AggregationItem) => item.displayName;
+
+const renderItemDescription = () => null;
+
+const getAggregationSections = (query: Lib.Query, stageIndex: number) => {
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const items = aggregations.map<AggregationItem>(aggregation => {
+    const info = Lib.displayInfo(query, stageIndex, aggregation);
+    return { ...info, aggregation };
+  });
+  const sections = [{ items }];
+  return sections;
 };

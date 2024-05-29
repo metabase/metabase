@@ -3,14 +3,12 @@ import { t } from "ttag";
 
 import { MultiAutocomplete } from "metabase/ui";
 
+import type { ColumnType } from "../../types";
+
 interface Props {
   value: ColumnType[];
   onChange: (value: ColumnType[]) => void;
 }
-
-type ColumnType = "offset" | "diff-offset" | "percent-diff-offset";
-
-const shouldCreate = () => false;
 
 const COLUMN_OPTIONS: { label: string; value: ColumnType }[] = [
   { label: t`Previous value`, value: "offset" },
@@ -38,3 +36,5 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
     />
   );
 };
+
+const shouldCreate = () => false;

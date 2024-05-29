@@ -2,6 +2,8 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
+import type { ColumnType } from "./types";
+
 export const getOffsetPeriod = (
   query: Lib.Query,
   stageIndex: number,
@@ -52,4 +54,34 @@ export const getTitle = (
 export const getPeriodTitle = (): string => {
   // TODO: implement me
   return t`Previous period`;
+};
+
+export const getAggregations = (
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation: Lib.AggregationClause | Lib.ExpressionClause,
+  columns: ColumnType[],
+  offset: number,
+): Lib.ExpressionClause[] => {
+  const aggregations: Lib.ExpressionClause[] = [];
+
+  if (columns.includes("offset")) {
+    aggregations.push(
+      Lib.offsetClause(query, stageIndex, aggregation, -offset),
+    );
+  }
+
+  if (columns.includes("diff-offset")) {
+    aggregations.push(
+      Lib.diffOffsetClause(query, stageIndex, aggregation, -offset),
+    );
+  }
+
+  if (columns.includes("percent-diff-offset")) {
+    aggregations.push(
+      Lib.percentDiffOffsetClause(query, stageIndex, aggregation, -offset),
+    );
+  }
+
+  return aggregations;
 };
