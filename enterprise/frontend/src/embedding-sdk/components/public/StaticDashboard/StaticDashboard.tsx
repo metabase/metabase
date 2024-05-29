@@ -1,6 +1,7 @@
 import type { Query } from "history";
 import { pick } from "underscore";
 
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   DEFAULT_EMBED_DISPLAY_OPTIONS,
   useDashboardFullscreen,
@@ -14,7 +15,7 @@ import { PublicDashboard } from "metabase/public/containers/PublicDashboard/Publ
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
-export const StaticDashboard = ({
+const _StaticDashboard = ({
   dashboardId,
   parameterValues,
   bordered,
@@ -78,3 +79,5 @@ export const StaticDashboard = ({
     </Box>
   );
 };
+
+export const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
