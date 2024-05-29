@@ -120,7 +120,7 @@ describe("ExpressionEditorSuggestions", () => {
     const { onHighlightSuggestion } = setup({ startRule: "expression" });
     expect(screen.getByText("Common functions")).toBeInTheDocument();
 
-    fireEvent.mouseOver(screen.getByText("case"));
+    fireEvent.mouseMove(screen.getByText("case"));
     expect(onHighlightSuggestion).toHaveBeenCalled();
   });
 });
