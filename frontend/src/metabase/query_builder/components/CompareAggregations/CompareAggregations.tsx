@@ -50,6 +50,8 @@ const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
   return isPeriodValid && areColumnsValid;
 };
 
+const shouldCreate = () => false;
+
 const getAggregationSections = (
   query: Lib.Query,
   stageIndex: number,
@@ -189,7 +191,7 @@ export const CompareAggregations = ({
                 data={COLUMN_OPTIONS}
                 placeholder={t`Columns to create`}
                 rightSection={null}
-                shouldCreate={() => false} // TODO
+                shouldCreate={shouldCreate}
                 value={columns}
                 onChange={values => setColumns(values as ColumnType[])}
               />
