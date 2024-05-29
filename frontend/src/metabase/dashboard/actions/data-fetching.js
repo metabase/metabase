@@ -33,6 +33,10 @@ import {
   fetchDataOrError,
   getCurrentTabDashboardCards,
 } from "../utils";
+import {
+  loadMetadataForDashcards,
+  loadMetadataForLinkedTargets,
+} from "metabase/dashboard/actions/metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -380,8 +384,12 @@ export const fetchDashboardCardMetadata = createThunkAction(
   () => async (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const dashboardType = getDashboardType(dashboard.id);
-    if (dashboardType === "normal" || dashboardType === "transient") {
+    if (dashboardType === "normal") {
       await dispatch(Dashboards.actions.fetchMetadata({ id: dashboard.id }));
+      await dispatch(loadMetadataForLinkedTargets(dashboard.dashcards));
+    }
+    if (dashboardType === "transient") {
+      await dispatch(loadMetadataForDashcards(dashboard.dashcards));
     }
   },
 );

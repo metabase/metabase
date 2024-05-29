@@ -858,34 +858,26 @@
                                                         mp (db->mp database-id)
                                                         query (lib/query mp (:dataset_query card))]
                                                     (lib/dependent-metadata query (:id card) (:type card)))) cards)))]
-    {:tables (into {}
+    {:tables (into []
                    (keep (fn [{card-or-table-id :id}]
                            (try
-                             [card-or-table-id
-                              (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
-                                (api.table/fetch-card-query-metadata card-id)
-                                (api.table/fetch-table-query-metadata card-or-table-id {}))]
+                             (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
+                               (api.table/fetch-card-query-metadata card-id)
+                               (api.table/fetch-table-query-metadata card-or-table-id {}))
                              (catch Exception e
                                (log/warnf "Error in dashboard metadata %s %s: %s" :table card-or-table-id (ex-message e))))))
                    (:table dependents))
-     :databases (into {}
+     :databases (into []
                       (keep (fn [{database-id :id}]
                               (try
-                                [database-id (api.database/get-database database-id {})]
+                                (api.database/get-database database-id {})
                                 (catch Exception e
                                   (log/warnf "Error in dashboard metadata %s %s: %s" :database database-id (ex-message e))))))
                       (:database dependents))
-     :schemas (into {}
-                    (keep (fn [{database-id :id}]
-                            (try
-                              [database-id (api.database/database-schemas database-id {})]
-                              (catch Exception e
-                                (log/warnf "Error in dashboard metadata %s %s: %s" :schema database-id (ex-message e))))))
-                    (:schema dependents))
-     :fields (into {}
+     :fields (into []
                    (keep (fn [{field-id :id}]
                            (try
-                             [field-id (api.field/get-field field-id {})]
+                             (api.field/get-field field-id {})
                              (catch Exception e
                                (log/warnf "Error in dashboard metadata %s %s: %s" :field field-id (ex-message e))))))
                    (:field dependents))}))
