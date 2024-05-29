@@ -21,17 +21,17 @@ const COLUMN_OPTIONS: ItemType[] = [
   {
     example: "1826, 3004",
     label: t`Previous value`,
-    value: "offset" as const,
+    value: "offset",
   },
   {
     example: "+2.3%, -0.1%",
     label: t`Percentage difference`,
-    value: "percent-diff-offset" as const,
+    value: "percent-diff-offset",
   },
   {
     example: "+42, -3",
     label: t`Value difference`,
-    value: "diff-offset" as const,
+    value: "diff-offset",
   },
 ];
 
@@ -47,7 +47,7 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
     <MultiAutocomplete
       label={t`Columns to create`}
       data={COLUMN_OPTIONS}
-      itemComponent={SelectItem}
+      itemComponent={Item}
       placeholder={t`Columns to create`}
       rightSection={null}
       shouldCreate={shouldCreate}
@@ -59,14 +59,12 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
 
 const shouldCreate = () => false;
 
-type ItemProps = ItemType & ComponentPropsWithoutRef<"div">;
-
-const SelectItem = forwardRef<HTMLDivElement, ItemProps>(function SelectItem(
-  { example, label, ...others }: ItemProps,
-  ref,
-) {
+const Item = forwardRef<
+  HTMLDivElement,
+  ItemType & ComponentPropsWithoutRef<"div">
+>(function SelectItem({ example, label, ...props }, ref) {
   return (
-    <div ref={ref} {...others}>
+    <div ref={ref} {...props}>
       <Flex align="center" justify="space-between">
         <Text>{label}</Text>
         <Text c="text-light" size="sm">
