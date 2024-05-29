@@ -25,7 +25,7 @@ const renderItemDescription = () => null;
 
 const parsePeriodValue = (value: string): number | "" => {
   const number = parseInt(value, 10);
-  return Number.isNaN(number) ? "" : Math.abs(number);
+  return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
 };
 
 export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
