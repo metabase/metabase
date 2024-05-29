@@ -23,9 +23,7 @@ interface Props {
 }
 
 const DEFAULT_OFFSET = 1;
-
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
-
 const STEP_1_WIDTH = 378;
 const STEP_2_WIDTH = 472;
 
