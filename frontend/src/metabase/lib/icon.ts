@@ -40,10 +40,6 @@ export type IconData = {
   color?: string;
 };
 
-export type IconOptions = {
-  variant?: "primary" | "secondary";
-};
-
 /** get an Icon for any entity object, doesn't depend on the entity system */
 export const getIconBase = (item: ObjectWithModel): IconData => {
   if (item.model === "card" && item.display) {
