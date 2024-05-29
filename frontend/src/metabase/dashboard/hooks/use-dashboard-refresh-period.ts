@@ -1,18 +1,16 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { DashboardRefreshPeriodControls, RefreshPeriod } from "../types";
+import type { DashboardRefreshPeriodControls } from "../types";
 
 import { useInterval } from "./use-interval";
 
 const TICK_PERIOD = 1; // seconds
 export const useDashboardRefreshPeriod = ({
-  initialRefreshPeriod = null,
   onRefresh,
 }: {
-  initialRefreshPeriod?: RefreshPeriod;
   onRefresh: () => void;
 }): DashboardRefreshPeriodControls => {
   const [period, setPeriod] = useState<number | null>(null);
@@ -54,12 +52,6 @@ export const useDashboardRefreshPeriod = ({
     },
     [period, start, stop],
   );
-
-  useEffect(() => {
-    if (initialRefreshPeriod) {
-      onRefreshPeriodChange(initialRefreshPeriod);
-    }
-  }, [initialRefreshPeriod, onRefreshPeriodChange, period]);
 
   useUnmount(() => {
     stop();

@@ -15,7 +15,6 @@ export const WithPublicDashboardEndpoints = <T extends WithRouterProps>(
     ...props
   }: {
     params: {
-      dashboardId?: DashboardId;
       uuid?: string;
       token?: string;
     };

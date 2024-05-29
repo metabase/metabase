@@ -5,20 +5,22 @@ import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
 import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/hooks/use-embed-display-options";
+import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
 
-const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS: Record<string, any> = {
+const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS: DashboardUrlHashOptions = {
   ...DEFAULT_EMBED_DISPLAY_OPTIONS,
   fullscreen: false,
   refresh: null,
 };
 
-const getDefaultDisplayOption = (key: string) =>
+// need to type the return value as `any` to satisfy useLocationSync for now
+const getDefaultDisplayOption = (key: keyof DashboardUrlHashOptions): any =>
   DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[key];
 
-const isEmptyOrDefault = (value: any, key: string) =>
+const isEmptyOrDefault = (value: any, key: keyof DashboardUrlHashOptions) =>
   isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
 
 export const useLocationSync = <T = any>({
@@ -27,7 +29,7 @@ export const useLocationSync = <T = any>({
   onChange,
   location,
 }: {
-  key: string;
+  key: keyof DashboardUrlHashOptions;
   value: T;
   onChange: (value: T | null) => void;
   location: Location;
@@ -35,19 +37,22 @@ export const useLocationSync = <T = any>({
   const dispatch = useDispatch();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
-  const hashValue = useMemo(() => {
-    return (hashOptions[key] ?? null) as T | null;
-  }, [hashOptions, key]);
+  const hashValue = (hashOptions[key] ?? null) as T | null;
 
   const defaultValue = getDefaultDisplayOption(key);
 
   const latestValue = useMemo(() => {
+    // prioritize the hash value if we're in the initial state
     const isInitialHashValue = !previousValue && hashValue;
+
+    // check if the hash value has updated
     const isHashValueUpdated = value === previousValue && hashValue !== value;
 
+    // we'll use the hash value if it's changed. otherwise we'll stick with value
     if (isInitialHashValue || isHashValueUpdated) {
       return hashValue ?? defaultValue;
     }
+
     return value;
   }, [defaultValue, hashValue, previousValue, value]);
 
@@ -55,7 +60,6 @@ export const useLocationSync = <T = any>({
     if (latestValue !== previousValue) {
       onChange(latestValue);
 
-      const hashOptions = parseHashOptions(location.hash);
       const updatedOptions = isEmptyOrDefault(latestValue, key)
         ? omit(hashOptions, key)
         : {
@@ -72,5 +76,14 @@ export const useLocationSync = <T = any>({
         }),
       );
     }
-  }, [dispatch, key, latestValue, location, onChange, previousValue, value]);
+  }, [
+    dispatch,
+    hashOptions,
+    key,
+    latestValue,
+    location,
+    onChange,
+    previousValue,
+    value,
+  ]);
 };

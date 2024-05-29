@@ -7,10 +7,7 @@ import {
   useEmbedTheme,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import type {
-  EmbedDisplayParams,
-  RefreshPeriod,
-} from "metabase/dashboard/types";
+import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
 import { PublicDashboard } from "metabase/public/containers/PublicDashboard/PublicDashboard";
 import { Box } from "metabase/ui";
@@ -19,7 +16,6 @@ import type { DashboardId, ParameterId } from "metabase-types/api";
 export const StaticDashboard = ({
   dashboardId,
   parameterValues,
-  refreshPeriod: initialRefreshPeriod = null,
   bordered,
   titled,
   theme: userTheme,
@@ -29,7 +25,6 @@ export const StaticDashboard = ({
 }: {
   dashboardId: DashboardId;
   parameterValues: Record<ParameterId, string | string[] | null | undefined>;
-  refreshPeriod?: RefreshPeriod;
 } & Partial<EmbedDisplayParams>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
@@ -54,7 +49,6 @@ export const StaticDashboard = ({
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
     useDashboardRefreshPeriod({
       onRefresh: refreshDashboard,
-      initialRefreshPeriod,
     });
 
   const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =

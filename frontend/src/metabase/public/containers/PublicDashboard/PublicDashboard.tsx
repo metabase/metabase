@@ -301,8 +301,11 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
+// Raw PublicDashboard used for SDK embedding
 export const PublicDashboard = connector(PublicDashboardInner);
 
+// PublicDashboardControlled used for embedding with location
+// Uses DashboardControls to handle display options, and uses WithPublicDashboardEndpoints to set endpoints for public/embed contexts
 export const PublicDashboardControlled = _.compose(
   title(
     ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
