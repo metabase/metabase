@@ -16,7 +16,7 @@ export const useBrowserRenderingContext = (
       getColor: name => color(name, palette),
       formatValue: (value, options) => String(formatValue(value, options)),
       measureText: measureTextWidth,
-      fontFamily,
+      fontFamily: `${fontFamily}, Arial, sans-serif`,
     }),
     [fontFamily, palette],
   );
