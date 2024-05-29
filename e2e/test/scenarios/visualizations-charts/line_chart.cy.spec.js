@@ -696,6 +696,11 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
+    queryBuilderMain().within(() => {
+      echartsContainer().findByText("Quantity").should("exist");
+    });
+    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+
     cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)
       .trigger("mousemove", 180, 200)
