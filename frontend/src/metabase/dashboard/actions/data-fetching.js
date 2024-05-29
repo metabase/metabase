@@ -1,6 +1,10 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import {
+  loadMetadataForDashcards,
+  loadMetadataForLinkedTargets,
+} from "metabase/dashboard/actions/metadata";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import Dashboards from "metabase/entities/dashboards";
 import { defer } from "metabase/lib/promise";
@@ -33,10 +37,6 @@ import {
   fetchDataOrError,
   getCurrentTabDashboardCards,
 } from "../utils";
-import {
-  loadMetadataForDashcards,
-  loadMetadataForLinkedTargets,
-} from "metabase/dashboard/actions/metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
