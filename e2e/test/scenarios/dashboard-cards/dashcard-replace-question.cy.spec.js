@@ -190,7 +190,6 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Next question",
-      collectionName: "First collection",
     });
 
     // There're two toasts: "Undo replace" and "Undo parameters auto-wiring"
