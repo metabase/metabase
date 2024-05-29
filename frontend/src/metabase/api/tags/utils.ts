@@ -230,9 +230,9 @@ export function provideDashboardMetadataTags(
   metadata: DashboardMetadata,
 ): TagDescription<TagType>[] {
   return [
-    ...provideDatabaseListTags(Object.values(metadata.databases)),
-    ...provideTableListTags(Object.values(metadata.tables)),
-    ...provideFieldListTags(Object.values(metadata.fields)),
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
   ];
 }
 

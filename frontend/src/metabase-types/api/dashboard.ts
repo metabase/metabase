@@ -5,14 +5,11 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
-  DatabaseId,
   Field,
-  FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
   Table,
-  TableId,
 } from "metabase-types/api";
 
 import type {
@@ -78,10 +75,9 @@ export interface Dashboard {
 export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };
 
 export type DashboardMetadata = {
-  databases: Record<DatabaseId, Database>;
-  schemas: Record<DatabaseId, string[]>;
-  tables: Record<TableId, Table>;
-  fields: Record<FieldId, Field>;
+  databases: Database[];
+  tables: Table[];
+  fields: Field[];
 };
 
 export type DashCardId = number;
