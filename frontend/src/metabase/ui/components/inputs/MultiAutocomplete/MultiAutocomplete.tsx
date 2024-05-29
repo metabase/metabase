@@ -14,20 +14,6 @@ export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
 };
 
-const defaultRightSection = (
-  <Tooltip
-    label={
-      <>
-        {t`Separate values with commas, tabs or newlines.`}
-        <br />
-        {t` Use double quotes for values containing commas.`}
-      </>
-    }
-  >
-    <Icon name="info_filled" className={styles.icon} />
-  </Tooltip>
-);
-
 export function MultiAutocomplete({
   data,
   value: controlledValue,
@@ -36,7 +22,7 @@ export function MultiAutocomplete({
   placeholder,
   autoFocus,
   shouldCreate = defaultShouldCreate,
-  rightSection = defaultRightSection,
+  rightSection,
   onChange,
   onSearchChange,
   onFocus,
@@ -165,6 +151,20 @@ export function MultiAutocomplete({
     }
   };
 
+  const defaultRightSection = (
+    <Tooltip
+      label={
+        <>
+          {t`Separate values with commas, tabs or newlines.`}
+          <br />
+          {t` Use double quotes for values containing commas.`}
+        </>
+      }
+    >
+      <Icon name="info_filled" className={styles.icon} />
+    </Tooltip>
+  );
+
   return (
     <MultiSelect
       {...props}
@@ -179,7 +179,9 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
-      rightSection={rightSection}
+      rightSection={
+        typeof rightSection === "undefined" ? defaultRightSection : rightSection
+      }
     />
   );
 }
