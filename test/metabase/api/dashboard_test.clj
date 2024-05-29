@@ -4540,18 +4540,19 @@
                                               :card_id series-id-2
                                               :position 1}]
     (is (=?
-          {:fields [{:id (mt/id :people :id)}
-                    {:id (mt/id :orders :user_id)}
-                    {:id (mt/id :people :source)}
-                    {:id (mt/id :people :name)}]
-           :tables [{:id (mt/id :categories)}
-                    {:id (mt/id :users)}
-                    {:id (mt/id :checkins)}
-                    {:id (mt/id :products)
-                                       :fields sequential?
-                                       :db map?
-                                       :dimension_options map?}
-                    {:id (mt/id :venues)}]
+          {:fields (sort-by :id
+                            [{:id (mt/id :people :id)}
+                             {:id (mt/id :orders :user_id)}
+                             {:id (mt/id :people :source)}
+                             {:id (mt/id :people :name)}])
+           :tables (sort-by :id [{:id (mt/id :categories)}
+                                 {:id (mt/id :users)}
+                                 {:id (mt/id :checkins)}
+                                 {:id (mt/id :products)
+                                  :fields sequential?
+                                  :db map?
+                                  :dimension_options map?}
+                                 {:id (mt/id :venues)}])
            :databases [{:id (mt/id) :engine string?}]}
           (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
               ;; The output is so large, these help debugging
