@@ -106,44 +106,26 @@
                        (not (lib.util.match/match-one (:expressions stage) :offset)))))
                (:stages query))))
 
-(defn- field-ids
-  "Get all integer field ids for a `query`. Works with both pmbql and legacy mbql query. Ignores fields in metadata."
-  [query]
-  (lib.util.match/match query
-    [(_clause :guard #{:field "field"}) (_options :guard map?) (id :guard integer?)]
-    (when-not (some #{:mbql/stage-metadata} &parents)
-      id)
-    [(_clause :guard #{:field "field"}) (id :guard integer?) (_options :guard map?)]
-    (when-not (some #{:source-metadata} &parents)
-      id)))
-
 (defn add-types-to-fields
-  "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`.
-  If `x` is legacy query, types are added only to coerced fields. As this function is called during normalization,
-  also clauses that are not yet keywordized must be handled. `:effective-type` is required for coerced fields to pass
-  schema checks."
+  "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
+  `:effective-type` is required for coerced fields to pass schema checks."
   [x metadata-provider]
-  (if-let [field-ids* (field-ids x)]
+  (if-let [field-ids (lib.util.match/match x
+                       [:field
+                        (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                        (id :guard integer? pos?)]
+                       (when-not (some #{:mbql/stage-metadata} &parents)
+                         id))]
     ;; "pre-warm" the metadata provider
-    (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids*)
+    (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (lib.util.match/replace
          x
-         ;; pmbql fields
-         [(_clause :guard #{:field "field"})
+         [:field
           (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
           (id :guard integer? pos?)]
          (if (some #{:mbql/stage-metadata} &parents)
            &match
            (update &match 1 merge (-> (lib.metadata/field metadata-provider id)
-                                      (select-keys [:base-type :effective-type]))))
-         ;; legacy mbql fields
-         [(_clause :guard #{:field "field"})
-          (id :guard integer? pos?)
-          (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))]
-         (if (or (some #{:source-metadata} &parents)
-                 (not (:coercion-strategy (lib.metadata/field metadata-provider id))))
-           &match
-           (update &match 2 merge (-> (lib.metadata/field metadata-provider id)
                                       (select-keys [:base-type :effective-type]))))))
     x))
 
@@ -163,7 +145,9 @@
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
   (try
-    (let [pmbql-query (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query))]
+    (let [pmbql-query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                            (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
+                          (add-types-to-fields metadata-providerable))]
       (merge
        pmbql-query
        (query-with-stages metadata-providerable (:stages pmbql-query))))
@@ -182,8 +166,7 @@
 
 (defmethod query-method :query ; legacy MBQL query
   [metadata-providerable legacy-query]
-  (query-from-legacy-query metadata-providerable
-                           (add-types-to-fields legacy-query metadata-providerable)))
+  (query-from-legacy-query metadata-providerable legacy-query))
 
 (defmethod query-method :native ; legacy native query
   [metadata-providerable legacy-query]
