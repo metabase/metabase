@@ -486,7 +486,7 @@
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."
   []
-  true #_(or (is-hosted?) (has-feature? :audit-app)))
+  (or (is-hosted?) (has-feature? :audit-app)))
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
