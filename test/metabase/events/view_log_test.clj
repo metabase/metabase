@@ -41,7 +41,7 @@
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
-        (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user)})
+        (events/publish-event! :event/card-read {:object-id (u/id card), :user-id (u/the-id user), :context :question})
         (is (nil? (latest-view (u/id user) (u/id card)))
             "view log entries should not be made in OSS")))))
 
