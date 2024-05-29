@@ -14,6 +14,9 @@ describe("getIcon", () => {
   it("should return the correct icon for a database", () => {
     expect(getIcon({ model: "database" })).toEqual({ name: "database" });
   });
+  it("should return the correct icon for a schema", () => {
+    expect(getIcon({ model: "schema" })).toEqual({ name: "folder" });
+  });
   it("should return the correct icon for a table", () => {
     expect(getIcon({ model: "table" })).toEqual({ name: "table" });
   });
@@ -35,14 +38,6 @@ describe("getIcon", () => {
   it("should return the default icon for an invalid model", () => {
     // @ts-expect-error testing invalid model
     expect(getIcon({ model: "pikachu" })).toEqual({ name: "unknown" });
-  });
-
-  describe("options", () => {
-    it("should return the correct icon for a table with the secondary variant", () => {
-      expect(getIcon({ model: "table" }, { variant: "secondary" })).toEqual({
-        name: "database",
-      });
-    });
   });
 
   describe("card display types", () => {
