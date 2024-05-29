@@ -9,14 +9,21 @@ import type { ClickActionPopoverProps } from "metabase/visualizations/types/clic
 import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const { query, stageIndex } = Lib.asReturned(question.query(), -1);
+
+  const { isEditable } = Lib.queryDisplayInfo(query);
+  const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
+  const isExtractable =
+    expressionableColumns.reduce(function (sum, column) {
+      return sum + Lib.columnExtractions(query, column).length;
+    }, 0) > 0;
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
-    clicked?.extraData?.isRawTable ||
-    !isEditable
+    !isEditable ||
+    !isExtractable
   ) {
     return [];
   }
@@ -25,8 +32,6 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
-    const query = question.query();
-    const stageIndex = -1;
     const dispatch = useDispatch();
 
     function handleSubmit(
