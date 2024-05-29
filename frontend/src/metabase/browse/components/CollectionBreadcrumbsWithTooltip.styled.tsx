@@ -1,18 +1,23 @@
 import styled from "@emotion/styled";
-import type { AnchorHTMLAttributes } from "react";
 
 import { ResponsiveChild } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
+import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
-import type { AnchorProps } from "metabase/ui";
-import { Anchor, FixedSizeIcon, Group } from "metabase/ui";
+import { FixedSizeIcon, Flex, Group } from "metabase/ui";
 
-import type { RefProp } from "./types";
+import { Ellipsis } from "./Ellipsis";
 
-export const Breadcrumb = styled(Anchor)<
-  AnchorProps &
-    AnchorHTMLAttributes<HTMLAnchorElement> &
-    RefProp<HTMLAnchorElement>
->`
+/** When a cell is narrower than this width, breadcrumbs within it change significantly */
+const breadcrumbBreakpoint = "10rem";
+
+export const Breadcrumb = styled(ResponsiveChild)<{
+  maxWidth: string;
+  isSoleBreadcrumb: boolean;
+  index: number;
+}>`
+  ${({ maxWidth }) => {
+    return maxWidth ? `td & { max-width: ${maxWidth} };` : "";
+  }}
   color: ${color("text-dark")};
   line-height: 1;
   overflow: hidden;
@@ -20,35 +25,45 @@ export const Breadcrumb = styled(Anchor)<
   white-space: nowrap;
   padding-top: 1px;
   padding-bottom: 1px;
+  ${props => {
+    return `
+    @container ${props.containerName} (width < ${breadcrumbBreakpoint}) {
+      ${props.index === 0 && !props.isSoleBreadcrumb ? `display: none;` : ""}
+      max-width: calc(95cqw - ${props.isSoleBreadcrumb ? 1 : 3}rem) !important;
+    }`;
+  }}
+`;
+
+export const CollectionLink = styled(Link)`
   :hover {
-    color: ${color("brand")};
-    text-decoration: none;
+    &,
+    * {
+      color: var(--mb-color-brand);
+      .collection-path-separator {
+        color: var(--mb-color-brand-alpha-88);
+      }
+    }
   }
 `;
 
+export const InitialEllipsis = styled(Ellipsis)``;
+InitialEllipsis.defaultProps = {
+  includeSep: false,
+};
+
 export const CollectionBreadcrumbsWrapper = styled(ResponsiveChild)`
   line-height: 1;
+  ${InitialEllipsis} {
+    display: none;
+  }
   ${props => {
-    const breakpoint = "10rem";
     return `
-    .initial-ellipsis {
-      display: none;
-    }
-    @container ${props.containerName} (width < ${breakpoint}) {
-      .ellipsis-and-separator {
+    @container ${props.containerName} (width < ${breadcrumbBreakpoint}) {
+      ${EllipsisAndSeparator} {
         display: none;
       }
-      .initial-ellipsis {
+      ${InitialEllipsis} {
         display: inline;
-      }
-      .for-index-0:not(.sole-breadcrumb) {
-        display: none;
-      }
-      .breadcrumb {
-        max-width: calc(95cqw - 3rem) ! important;
-      }
-      .sole-breadcrumb {
-        max-width: calc(95cqw - 1rem) ! important;
       }
     }
     `;
@@ -62,3 +77,5 @@ export const BreadcrumbGroup = styled(Group)`
 export const CollectionsIcon = styled(FixedSizeIcon)`
   margin-inline-end: 0.5rem;
 `;
+
+export const EllipsisAndSeparator = styled(Flex)``;
