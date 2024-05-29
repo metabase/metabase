@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Box } from "metabase/ui";
+import { Box, NumberInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
 import S from "./CompareAggregations.module.css";
-import { getTitle } from "./utils";
+import { getPeriodTitle, getTitle } from "./utils";
 
 interface Props {
   query: Lib.Query;
@@ -22,6 +22,11 @@ type AggregationItem = Lib.AggregationClauseDisplayInfo & {
 const renderItemName = (item: AggregationItem) => item.displayName;
 
 const renderItemDescription = () => null;
+
+const parsePeriodValue = (value: string): number | "" => {
+  const number = parseInt(value, 10);
+  return Number.isNaN(number) ? "" : number;
+};
 
 export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
   const aggregations = useMemo(() => {
@@ -73,6 +78,20 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
           width="100%"
           onChange={handleAggregationChange}
         />
+      )}
+
+      {aggregation && (
+        <Box p="lg">
+          <NumberInput
+            label={getPeriodTitle()}
+            min={1}
+            parseValue={parsePeriodValue}
+            precision={0}
+            size="md"
+            step={1}
+            type="number"
+          />
+        </Box>
       )}
     </Box>
   );

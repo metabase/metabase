@@ -48,3 +48,8 @@ export const getTitle = (
 
   return t`Compare “${info.displayName}” to previous ${period}`;
 };
+
+export const getPeriodTitle = (): string => {
+  // TODO: implement me
+  return t`Previous period`;
+};
