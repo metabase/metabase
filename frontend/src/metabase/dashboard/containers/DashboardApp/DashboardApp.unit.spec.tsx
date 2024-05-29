@@ -10,6 +10,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupDashboardMetadataEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
@@ -64,6 +65,7 @@ async function setup({ dashboard }: Options = {}) {
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
+  setupDashboardMetadataEndpoint(mockDashboard, [TEST_DATABASE_WITH_ACTIONS]);
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,

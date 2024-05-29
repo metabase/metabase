@@ -66,11 +66,13 @@
               :series                 [{:name                   "Additional Series Card 1"
                                         :description            nil
                                         :display                :table
+                                        :type                   :question
                                         :dataset_query          {}
                                         :visualization_settings {}}
                                        {:name                   "Additional Series Card 2"
                                         :description            nil
                                         :display                :table
+                                        :type                   :question
                                         :dataset_query          {}
                                         :visualization_settings {}}]}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
@@ -133,6 +135,7 @@
                   :series                 [{:name                   "Test Card"
                                             :description            nil
                                             :display                :table
+                                            :type                   :question
                                             :dataset_query          {}
                                             :visualization_settings {}}]}
                  (remove-ids-and-timestamps dashboard-card))))
@@ -146,6 +149,7 @@
                   :series                 [{:name                   "Test Card"
                                             :description            nil
                                             :display                :table
+                                            :type                   :question
                                             :dataset_query          {}
                                             :visualization_settings {}}]}
                  (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card (:id dashboard-card))))))))))
@@ -195,11 +199,13 @@
                 :series                 [{:name                   "Test Card 2"
                                           :description            nil
                                           :display                :table
+                                          :type                   :question
                                           :dataset_query          {}
                                           :visualization_settings {}}
                                          {:name                   "Test Card 1"
                                           :description            nil
                                           :display                :table
+                                          :type                   :question
                                           :dataset_query          {}
                                           :visualization_settings {}}]}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id))))))))
