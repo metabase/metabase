@@ -425,6 +425,37 @@
   ([real-location-path allowed-collection-ids]
    (effective-location-path* real-location-path allowed-collection-ids)))
 
+(def ^:private effective-parent-fields
+  "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views
+  and collection search results."
+  [:id :name :authority_level])
+
+(defn- effective-parent-root []
+  (select-keys
+   (collection.root/root-collection-with-ui-details {})
+   effective-parent-fields))
+
+(mi/define-batched-hydration-method effective-parent
+  :effective_parent
+  "Given a seq of `collections`, batch hydrates them with their `:effective_parent`, their parent collection in their
+  effective location. (i.e. the most recent ancestor the current user has read access to). If :effective_location is not
+  present on any collections, it is hydrated first."
+  [collections]
+  (let [collections     (map #(t2/hydrate % :effective_location) collections)
+        parent-ids      (->> collections
+                             (map :effective_location)
+                             (keep location-path->parent-id))
+        id->parent-coll (merge {nil (effective-parent-root)}
+                               (when (seq parent-ids)
+                                 (t2/select-pk->fn identity :model/Collection
+                                                   {:select effective-parent-fields
+                                                    :where [:in :id parent-ids]})))]
+    (map
+     (fn [collection]
+       (let [parent-id (-> collection :effective_location location-path->parent-id)]
+         (assoc collection :effective_parent (id->parent-coll parent-id))))
+     collections)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |

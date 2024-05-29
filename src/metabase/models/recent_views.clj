@@ -26,7 +26,6 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -193,7 +192,7 @@
 
 (defn- root-coll []
   (select-keys
-   (into {} (root/root-collection-with-ui-details {}))
+   (root/root-collection-with-ui-details {})
    [:id :name :authority_level]))
 
 ;; ================== Recent Cards ==================
@@ -237,7 +236,7 @@
 (defn- parent-collection-valid?
   "Returns true when a parent collection actually exists for this item.
 
-  Careful: the root collection will have a nil `colelction_id` and a nil `collection_name`. We return false when the
+  Careful: the root collection will have a nil `collection_id` and a nil `collection_name`. We return false when the
   collection has a `collection_id`, and a nil `collection_name`."
   [{:keys [collection_id entity-coll-id]}]
   (not (and entity-coll-id (nil? collection_id))))
@@ -342,22 +341,8 @@
                                            :archived :location :trashed_from_location]
                                   :where [:and
                                           [:in :id collection-ids]
-                                          [:= :archived false]]})
-          coll->parent-id (fn [c]
-                            (some-> c collection/effective-location-path collection/location-path->ids last))
-          parent-ids (into #{} (keep coll->parent-id) collections)
-          id->parent-coll (merge {nil (root-coll)}
-                                 (when (seq parent-ids)
-                                   (t2/select-pk->fn identity :model/Collection
-                                                     {:select [:id :name :authority_level]
-                                                      :where [:in :id parent-ids]})))]
-      ;; replace the collection ids with their collection data:
-      (map
-       (fn effective-collection-assocer [c]
-         (assoc c
-                :effective_parent (->> (coll->parent-id c) id->parent-coll)
-                :effective_location (collection/effective-location-path c)))
-       collections))))
+                                          [:= :archived false]]})]
+      (t2/hydrate collections :effective_parent))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
