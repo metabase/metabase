@@ -848,7 +848,7 @@
         cards (for [{:keys [card series]} dashcards
                     :let [all (conj series card)]
                     card all
-                    :when card]
+                    :when (:dataset_query card)]
                 card)
         database-ids (set (map :database_id cards))
         db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
