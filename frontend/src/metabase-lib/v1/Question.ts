@@ -25,6 +25,8 @@ import type {
   CardDisplayType,
   CardType,
   CollectionId,
+  DashboardId,
+  DashCardId,
   DatabaseId,
   Dataset,
   DatasetData,
@@ -524,7 +526,7 @@ class Question {
     dashboardId,
     dashcardId,
   }:
-    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: DashboardId; dashcardId: DashCardId }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)

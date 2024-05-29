@@ -217,7 +217,7 @@ class MetabaseSettings {
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   uploadsEnabled() {
-    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
+    return !!this.get("uploads-settings")?.db_id;
   }
 
   /**

@@ -35,7 +35,7 @@ describe("suggestWithFooters", () => {
 
     expect(suggestions.find(suggestion => "footer" in suggestion)).toEqual({
       footer: true,
-      name: "View all functions",
+      name: "Documentation",
       icon: "external",
       href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
     });
@@ -45,7 +45,7 @@ describe("suggestWithFooters", () => {
     const suggestions = setup({ startRule: "boolean" });
     expect(suggestions.find(suggestion => "footer" in suggestion)).toEqual({
       footer: true,
-      name: "View all functions",
+      name: "Documentation",
       icon: "external",
       href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
     });
@@ -55,7 +55,7 @@ describe("suggestWithFooters", () => {
     const suggestions = setup({ startRule: "aggregation" });
     expect(suggestions.find(suggestion => "footer" in suggestion)).toEqual({
       footer: true,
-      name: "View all aggregations",
+      name: "Documentation",
       icon: "external",
       href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
     });

@@ -160,7 +160,8 @@
            xform)
      (completing conj #(t2/hydrate % :collection))
      []
-     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
+     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
+                                     :result_metadata :type
                                      [{:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
@@ -244,13 +245,16 @@
   [db]
   (driver/database-supports? (driver.u/database->driver db) :uploads db))
 
+(defn- add-can-upload
+  "Adds :can_upload boolean, which is true if the user can create a new upload to this DB."
+  [db]
+  (assoc db :can_upload (upload/can-create-upload? db (:uploads_schema_name db))))
+
 (defn- add-can-upload-to-dbs
   "Add an entry to each DB about whether the user can upload to it."
   [dbs]
-  (let [uploads-db-id (public-settings/uploads-database-id)]
-    (for [db dbs]
-      (assoc db :can_upload (and (= (:id db) uploads-db-id)
-                                 (upload/can-create-upload? db (public-settings/uploads-schema-name)))))))
+  (for [db dbs]
+    (add-can-upload db)))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -343,12 +347,6 @@
                             true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
-
-(defn- add-can-upload
-  "Add an entry about whether the user can upload to this DB."
-  [db]
-  (assoc db :can_upload (and (= (u/the-id db) (public-settings/uploads-database-id))
-                             (upload/can-create-upload? db (public-settings/uploads-schema-name)))))
 
 (defn get-database
   "Get a single Database with `id`."

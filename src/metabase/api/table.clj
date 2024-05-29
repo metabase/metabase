@@ -410,16 +410,24 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (t2/hydrate card :collection)]
+  (let [card (t2/hydrate card :collection)
+        card-type (:type card)
+        dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
              :display_name     (:name card)
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
-             :description      (:description card)}
-      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                                           database_id
-                                                                           (:result_metadata card))))))
+             :description      (:description card)
+             :type             card-type}
+      (and (= card-type :metric)
+           dataset-query)
+      (assoc :dataset_query dataset-query)
+
+      include-fields?
+      (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
+                                                           database_id
+                                                           (:result_metadata card))))))
 
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
@@ -439,9 +447,9 @@
   "Return metadata for the 'virtual' table for a Card."
   [id]
   (let [{:keys [database_id] :as card} (api/check-404
-                                         (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                         :collection_id :database_id :type]
-                                                        :id id))
+                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
+                                                        :collection_id :database_id :type :dataset_query]
+                                                       :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
                                                              :where    [:and
