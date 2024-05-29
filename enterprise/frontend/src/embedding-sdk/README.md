@@ -315,6 +315,7 @@ const theme = {
   },
 
   components: {
+    // Data table
     table: {
       cell: {
         // Text color of cells, defaults to `text-primary`
@@ -339,6 +340,15 @@ const theme = {
       value: {
         fontSize: "24px",
         lineHeight: "21px",
+      },
+    },
+
+    // Pivot table
+    pivotTable: {
+      // Pivot row toggle to expand or collapse row
+      rowToggle: {
+        textColor: "white",
+        backgroundColor: "text-light",
       },
     },
   },
