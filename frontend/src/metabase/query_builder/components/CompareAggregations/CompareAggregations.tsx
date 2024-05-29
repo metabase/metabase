@@ -36,6 +36,7 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
   const [aggregation, setAggregation] = useState(
     hasManyAggregations ? undefined : aggregations[0],
   );
+  const [period, setPeriod] = useState<number | "">(1);
 
   const title = useMemo(
     () => getTitle(query, stageIndex, aggregation),
@@ -90,6 +91,8 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
             size="md"
             step={1}
             type="number"
+            value={period}
+            onChange={setPeriod}
           />
         </Box>
       )}
