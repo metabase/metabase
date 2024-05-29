@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
@@ -9,6 +9,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   Dashboard,
   DashboardCard,
+  DashCardId,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -35,8 +36,12 @@ interface Props {
   onRemove: () => void;
   onAddSeries: () => void;
   onReplaceCard: () => void;
-  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onReplaceAllVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
   onUpdateVisualizationSettings: (
+    dashcardId: DashCardId,
     settings: Partial<VisualizationSettings>,
   ) => void;
   showClickBehaviorSidebar: () => void;
@@ -73,6 +78,28 @@ export function DashCardActionsPanel({
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
+  const handleOnUpdateVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      if (!dashcard) {
+        return;
+      }
+
+      onUpdateVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard, onUpdateVisualizationSettings],
+  );
+
+  const handleOnReplaceAllVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      if (!dashcard) {
+        return;
+      }
+
+      onReplaceAllVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard, onReplaceAllVisualizationSettings],
+  );
+
   if (dashcard) {
     buttons.push(
       <DashCardTabMenu
@@ -103,14 +130,16 @@ export function DashCardActionsPanel({
   }
 
   if (!isLoading && !hasError) {
-    if (onReplaceAllVisualizationSettings && !disableSettingsConfig) {
+    if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          onReplaceAllVisualizationSettings={
+            handleOnReplaceAllVisualizationSettings
+          }
         />,
       );
     }
@@ -183,7 +212,7 @@ export function DashCardActionsPanel({
         <LinkCardEditButton
           key="link-edit-button"
           dashcard={dashcard}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
         />,
       );
     }

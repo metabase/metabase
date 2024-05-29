@@ -75,7 +75,10 @@ interface DashCardVisualizationProps {
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
 
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (
+    id: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -121,6 +124,13 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const handleOnUpdateVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      onUpdateVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard.id, onUpdateVisualizationSettings],
+  );
 
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
@@ -253,7 +263,7 @@ export function DashCardVisualization({
       actionButtons={renderActionButtons()}
       replacementContent={renderVisualizationOverlay()}
       getExtraDataForClick={getExtraDataForClick}
-      onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
     />
