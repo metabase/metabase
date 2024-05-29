@@ -5877,6 +5877,57 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2024-05-29T09:26:20
+      author: SakuragiYoshimasa
+      comment: >-
+        Modify type of report_card.dataset to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-29T09:27:15
+      author: SakuragiYoshimasa
+      comment: Add NOT NULL constraint to report_card.dataset
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_card
+            columnName: dataset
+            defaultNullValue: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-29T09:28:25
+      author: SakuragiYoshimasa
+      comment: Add default value to report_card.dataset
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: false
+            tableName: report_card
+            columnName: dataset
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
