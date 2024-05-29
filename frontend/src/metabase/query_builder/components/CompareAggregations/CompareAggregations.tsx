@@ -1,8 +1,7 @@
 import type { FormEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
 import {
   Box,
   Button,
@@ -15,7 +14,7 @@ import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
-import S from "./CompareAggregations.module.css";
+import { ReferenceAggregationPicker } from "./components";
 import { getPeriodTitle, getTitle } from "./utils";
 
 interface Props {
@@ -25,19 +24,11 @@ interface Props {
   onSubmit: (aggregations: Lib.ExpressionClause[]) => void;
 }
 
-type AggregationItem = Lib.AggregationClauseDisplayInfo & {
-  aggregation: Lib.AggregationClause;
-};
-
 type ColumnType = "offset" | "diff-offset" | "percent-diff-offset";
 
 const DEFAULT_OFFSET = 1;
 
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
-
-const renderItemName = (item: AggregationItem) => item.displayName;
-
-const renderItemDescription = () => null;
 
 const parsePeriodValue = (value: string): number | "" => {
   const number = parseInt(value, 10);
@@ -52,23 +43,10 @@ const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
 
 const shouldCreate = () => false;
 
-const getAggregationSections = (
-  query: Lib.Query,
-  stageIndex: number,
-  aggregations: Lib.AggregationClause[],
-) => {
-  const items = aggregations.map<AggregationItem>(aggregation => {
-    const info = Lib.displayInfo(query, stageIndex, aggregation);
-    return { ...info, aggregation };
-  });
-  const sections = [{ items }];
-  return sections;
-};
-
 const getAggregations = (
   query: Lib.Query,
   stageIndex: number,
-  aggregation: Lib.AggregationClause,
+  aggregation: Lib.AggregationClause | Lib.ExpressionClause,
   columns: ColumnType[],
   offset: number,
 ): Lib.ExpressionClause[] => {
@@ -111,9 +89,9 @@ export const CompareAggregations = ({
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
   const hasManyAggregations = aggregations.length > 1;
-  const [aggregation, setAggregation] = useState(
-    hasManyAggregations ? undefined : aggregations[0],
-  );
+  const [aggregation, setAggregation] = useState<
+    Lib.AggregationClause | Lib.ExpressionClause | undefined
+  >(hasManyAggregations ? undefined : aggregations[0]);
   const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
   const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
 
@@ -121,14 +99,6 @@ export const CompareAggregations = ({
     () => getTitle(query, stageIndex, aggregation),
     [query, stageIndex, aggregation],
   );
-
-  const sections = useMemo(() => {
-    return getAggregationSections(query, stageIndex, aggregations);
-  }, [query, stageIndex, aggregations]);
-
-  const handleAggregationChange = useCallback((item: AggregationItem) => {
-    setAggregation(item.aggregation);
-  }, []);
 
   const handleBack = () => {
     if (hasManyAggregations && aggregation) {
@@ -159,15 +129,10 @@ export const CompareAggregations = ({
       <ExpressionWidgetHeader title={title} onBack={handleBack} />
 
       {!aggregation && (
-        <AccordionList
-          alwaysExpanded
-          className={S.accordionList}
-          maxHeight={Infinity}
-          renderItemDescription={renderItemDescription}
-          renderItemName={renderItemName}
-          sections={sections}
-          width="100%"
-          onChange={handleAggregationChange}
+        <ReferenceAggregationPicker
+          query={query}
+          stageIndex={stageIndex}
+          onChange={setAggregation}
         />
       )}
 

@@ -36,7 +36,7 @@ export const getOffsetPeriod = (
 export const getTitle = (
   query: Lib.Query,
   stageIndex: number,
-  aggregation: Lib.AggregationClause | undefined,
+  aggregation: Lib.AggregationClause | Lib.ExpressionClause | undefined,
 ): string => {
   const period = getOffsetPeriod(query, stageIndex);
 
