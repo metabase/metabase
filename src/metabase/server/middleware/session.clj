@@ -126,7 +126,10 @@
     :path      "/" #_(site-path)}
    ;; If the authentication request request was made over HTTPS (hopefully always except for
    ;; local dev instances) add `Secure` attribute so the cookie is only sent over HTTPS.
-   (when (req.util/https? request)
+   (when
+    (or
+     (req.util/https? request)
+     (req.util/localhost? request))
      {:secure true})))
 
 (defmethod default-session-cookie-attributes :full-app-embed

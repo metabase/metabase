@@ -72,6 +72,11 @@
     scheme
     (= scheme :https)))
 
+(defn localhost?
+  "Checks if the request comes from localhost."
+  [request]
+  (= "localhost" (:server-name request)))
+
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
   [request]
