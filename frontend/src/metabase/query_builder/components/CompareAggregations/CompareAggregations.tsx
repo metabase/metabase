@@ -89,7 +89,13 @@ export const CompareAggregations = ({
         <form onSubmit={handleSubmit}>
           <Stack p="lg" spacing="xl">
             <Stack spacing="md">
-              <OffsetInput value={offset} onChange={setOffset} />
+              <OffsetInput
+                query={query}
+                stageIndex={stageIndex}
+                value={offset}
+                onChange={setOffset}
+              />
+
               <ColumnPicker value={columns} onChange={setColumns} />
             </Stack>
 

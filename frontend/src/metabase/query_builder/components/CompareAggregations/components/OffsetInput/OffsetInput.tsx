@@ -1,15 +1,21 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Flex, NumberInput, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import S from "./OffsetInput.module.css";
 
 interface Props {
+  query: Lib.Query;
+  stageIndex: number;
   value: number | "";
   onChange: (value: number | "") => void;
 }
 
-export const OffsetInput = ({ value, onChange }: Props) => {
+export const OffsetInput = ({ query, stageIndex, value, onChange }: Props) => {
+  const label = useMemo(() => getLabel(query, stageIndex), [query, stageIndex]);
+
   return (
     <Flex align="flex-end" pos="relative">
       <NumberInput
@@ -17,7 +23,7 @@ export const OffsetInput = ({ value, onChange }: Props) => {
           input: S.input,
           wrapper: S.wrapper,
         }}
-        label={getLabel()}
+        label={label}
         min={1}
         parseValue={parsePeriodValue}
         precision={0}
@@ -39,11 +45,25 @@ const parsePeriodValue = (value: string): number | "" => {
   return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
 };
 
-const getLabel = (): string => {
-  // TODO: implement me
+const getLabel = (query: Lib.Query, stageIndex: number): string => {
+  const firstBreakout = Lib.breakouts(query, stageIndex)[0];
+
+  if (firstBreakout) {
+    const firstBreakoutColumn = Lib.breakoutColumn(
+      query,
+      stageIndex,
+      firstBreakout,
+    );
+
+    if (!Lib.isDate(firstBreakoutColumn)) {
+      return t`Row for comparison`;
+    }
+  }
+
   return t`Previous period`;
 };
 
 const getHelp = (): string => {
+  // TODO: implement me
   return t`period ago based on grouping`;
 };
