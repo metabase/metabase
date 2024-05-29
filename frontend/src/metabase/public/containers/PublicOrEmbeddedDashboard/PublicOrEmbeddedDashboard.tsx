@@ -264,7 +264,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
               <DashboardContainer>
                 <DashboardGridConnected
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                  isPublic
+                  isPublicOrEmbedded
                   mode={PublicMode as unknown as Mode}
                   selectedTabId={this.props.selectedTabId}
                   slowCards={this.props.slowCards}
