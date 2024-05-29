@@ -88,7 +88,7 @@ export function getParameterTargetField(
 
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
-      // we cannot correctly find a field in all cases this way
+      // there is no way to find the correct field so pick the first one
       return fieldsWithName[0];
     }
 
