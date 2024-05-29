@@ -13,6 +13,7 @@ import {
   visitPublicQuestion,
   visitPublicDashboard,
   createQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const {
@@ -419,7 +420,7 @@ function getNextObjectDetailButton() {
 
 function changeSorting(columnName, direction) {
   const icon = direction === "asc" ? "arrow_up" : "arrow_down";
-  cy.findByText(columnName).click();
+  tableHeaderClick(columnName);
   popover().within(() => {
     cy.icon(icon).click();
   });

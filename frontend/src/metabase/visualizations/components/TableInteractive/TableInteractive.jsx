@@ -159,6 +159,7 @@ class TableInteractive extends Component {
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
     this._div.style.zIndex = "-1";
+    this._root = undefined;
 
     if (this.props.isEmbeddingSdk) {
       const rootElement = document.getElementById(
@@ -318,14 +319,11 @@ class TableInteractive extends Component {
       data: { cols, rows },
     } = this.props;
 
-    const root = createRoot(this._div);
+    this._root = createRoot(this._div);
 
-    root.render(
+    this._root.render(
       <EmotionCacheProvider>
-        <div
-          style={{ display: "flex" }}
-          ref={() => this.onMeasureHeaderRender(root)}
-        >
+        <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
           {cols.map((column, columnIndex) => (
             <div className="fake-column" key={"column-" + columnIndex}>
               {this.tableHeaderRenderer({
@@ -350,13 +348,17 @@ class TableInteractive extends Component {
     );
   }
 
-  onMeasureHeaderRender = root => {
+  onMeasureHeaderRender = div => {
     const {
       data: { cols },
     } = this.props;
 
+    if (div === null) {
+      return;
+    }
+
     const contentWidths = [].map.call(
-      this._div.getElementsByClassName("fake-column"),
+      div.getElementsByClassName("fake-column"),
       columnElement => columnElement.offsetWidth,
     );
 
@@ -377,15 +379,10 @@ class TableInteractive extends Component {
 
     // Doing this on next tick makes sure it actually gets removed on initial measure
     setTimeout(() => {
-      root.unmount();
+      this._root.unmount();
     }, 0);
 
     delete this.columnNeedsResize;
-
-    // TODO: This is bad. Need to find a new way to render the measure
-    if (columnWidths.some(w => isNaN(w))) {
-      return;
-    }
 
     this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
   };
