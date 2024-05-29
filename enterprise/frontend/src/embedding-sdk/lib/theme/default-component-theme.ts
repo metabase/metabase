@@ -38,15 +38,16 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
     table: {
       cell: {
         backgroundColor: "bg-white",
-        fontSize: "0.625em",
+
+        // Makes the base font size relative to root embedding,
+        // without affecting the Metabase app's font sizes.
+        // SDK users can override this to set their label font sizes.
+        fontSize: "0.857em",
       },
     },
     chart: {
       label: {
-        // Makes the base font size relative to root embedding,
-        // without affecting the Metabase app's font sizes.
-        // SDK users can override this to set their label font sizes.
-        fontSize: "0.75em",
+        fontSize: "0.857em",
       },
     },
   },

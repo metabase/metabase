@@ -4,7 +4,11 @@ import type { MetabaseFontFamily } from "../fonts";
  * Theme configuration for embedded Metabase components.
  */
 export interface MetabaseTheme {
-  /** Base font size */
+  /**
+   * Base font size.
+   * Supported units are px, em and rem.
+   * Defaults to ~14px (0.875em)
+   **/
   fontSize?: string;
 
   /**
@@ -80,8 +84,8 @@ export interface MetabaseComponentTheme {
       /** Default background color of cells, defaults to `bg-white` */
       backgroundColor?: string;
 
-      /** Font size of cell values */
-      fontSize?: string
+      /** Font size of cell values, defaults to ~12px */
+      fontSize?: string;
     };
 
     idColumn?: {
