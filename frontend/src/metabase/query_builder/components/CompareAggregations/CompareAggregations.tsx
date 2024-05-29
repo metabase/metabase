@@ -73,18 +73,20 @@ const getAggregations = (
   const aggregations: Lib.ExpressionClause[] = [];
 
   if (columns.includes("offset")) {
-    aggregations.push(Lib.offsetClause(query, stageIndex, aggregation, offset));
+    aggregations.push(
+      Lib.offsetClause(query, stageIndex, aggregation, -offset),
+    );
   }
 
   if (columns.includes("diff-offset")) {
     aggregations.push(
-      Lib.diffOffsetClause(query, stageIndex, aggregation, offset),
+      Lib.diffOffsetClause(query, stageIndex, aggregation, -offset),
     );
   }
 
   if (columns.includes("percent-diff-offset")) {
     aggregations.push(
-      Lib.percentDiffOffsetClause(query, stageIndex, aggregation, offset),
+      Lib.percentDiffOffsetClause(query, stageIndex, aggregation, -offset),
     );
   }
 
