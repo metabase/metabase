@@ -126,13 +126,18 @@
          (if (some #{:mbql/stage-metadata} &parents)
            &match
            (update &match 1 merge
-                   ;; Following key is used to track which base-types we added during `query` call. It is used in
-                   ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
-                   ;; as legacy -> pmbql -> legacy looks closer to the original.
-                   (when-not (contains? options :base-type)
-                     {::transformation-added-base-type true})
-                   (-> (lib.metadata/field metadata-provider id)
-                       (select-keys [:base-type :effective-type]))))))
+                   ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
+                   ;;       case no change is performed. Find a way how to handle this properly!
+                   (when-not (and (some? (:base-type options))
+                                  (not= (:base-type options)
+                                        (:base-type (lib.metadata/field metadata-provider id))))
+                     ;; Following key is used to track which base-types we added during `query` call. It is used in
+                     ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+                     ;; as legacy -> pmbql -> legacy looks closer to the original.
+                     (merge (when-not (contains? options :base-type)
+                              {::transformation-added-base-type true})
+                            (-> (lib.metadata/field metadata-provider id)
+                                (select-keys [:base-type :effective-type]))))))))
     x))
 
 (mu/defn query-with-stages :- ::lib.schema/query
