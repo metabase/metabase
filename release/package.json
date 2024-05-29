@@ -27,7 +27,7 @@
     "semver": "^7.5.4",
     "tsx": "^3.12.7",
     "typescript": "^5.1.6",
-    "zx": "^7.2.3"
+    "zx": "^8.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.19",

@@ -91,7 +91,7 @@ describe("issue 18207", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     leftSidebar().within(() => {
-      cy.icon("table").click();
+      cy.icon("table2").click();
       cy.findByTestId("Table-button").realHover();
       cy.icon("gear").click();
     });

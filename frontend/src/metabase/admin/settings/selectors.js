@@ -1,11 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -14,7 +13,6 @@ import {
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { PersistedModelsApi } from "metabase/services";
 
 import {
   trackCustomHomepageDashboardEnabled,
@@ -34,7 +32,6 @@ import {
 import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import {
   EmbeddedResources,
   PublicLinksActionListing,
@@ -514,71 +511,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
     order: 110,
     component: SettingsLicense,
     settings: [],
-  },
-  caching: {
-    name: t`Caching`,
-    order: 120,
-    settings: [
-      {
-        key: "persisted-models-enabled",
-        display_name: t`Models`,
-        description: jt`Enabling caching will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
-          <ExternalLink
-            key="model-caching-link"
-            href={MetabaseSettings.docsUrl("data-modeling/models")}
-          >{t`Learn more`}</ExternalLink>
-        )}.`,
-        type: "boolean",
-        disableDefaultUpdate: true,
-        onChanged: async (wasEnabled, isEnabled) => {
-          if (isEnabled) {
-            await PersistedModelsApi.enablePersistence();
-          } else {
-            await PersistedModelsApi.disablePersistence();
-          }
-        },
-      },
-      {
-        key: "persisted-model-refresh-cron-schedule",
-        noHeader: true,
-        type: "select",
-        options: [
-          {
-            value: "0 0 0/1 * * ? *",
-            name: t`Hour`,
-          },
-          {
-            value: "0 0 0/2 * * ? *",
-            name: t`2 hours`,
-          },
-          {
-            value: "0 0 0/3 * * ? *",
-            name: t`3 hours`,
-          },
-          {
-            value: "0 0 0/6 * * ? *",
-            name: t`6 hours`,
-          },
-          {
-            value: "0 0 0/12 * * ? *",
-            name: t`12 hours`,
-          },
-          {
-            value: "0 0 0 ? * * *",
-            name: t`24 hours`,
-          },
-          {
-            value: "custom",
-            name: t`Custom…`,
-          },
-        ],
-        widget: ModelCachingScheduleWidget,
-        disableDefaultUpdate: true,
-        getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: (previousValue, value) =>
-          PersistedModelsApi.setRefreshSchedule({ cron: value }),
-      },
-    ],
   },
   metabot: {
     name: t`Metabot`,
