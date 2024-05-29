@@ -10,7 +10,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
-import TokenField, { parseStringValue } from "metabase/components/TokenField";
+import { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
@@ -25,6 +25,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
+import { MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -106,10 +107,8 @@ export interface IFieldValuesWidgetProps {
 }
 
 export function FieldValuesWidgetInner({
-  color,
   maxResults = MAX_SEARCH_RESULTS,
   alwaysShowOptions = true,
-  style = {},
   formatOptions = {},
   containerWidth,
   maxWidth = 500,
@@ -434,6 +433,11 @@ export function FieldValuesWidgetInner({
       : parseStringValue(value);
   };
 
+  const shouldCreate = (value: string) => {
+    const res = parseFreeformValue(value);
+    return res !== null;
+  };
+
   return (
     <ErrorBoundary>
       <div
@@ -467,38 +471,18 @@ export function FieldValuesWidgetInner({
             checkedColor={checkedColor}
           />
         ) : (
-          <TokenField
-            prefix={prefix}
-            value={value.filter(v => v != null)}
+          <MultiAutocomplete
+            onSearchChange={onInputChange}
             onChange={onChange}
+            value={value.filter(v => v != null)}
+            data={options
+              .flat()
+              .filter((item): item is string => Boolean(item))}
             placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
-            // forwarded props
-            multi={multi}
+            shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            color={color}
-            style={{ ...style, minWidth: "inherit" }}
             className={className}
-            optionsStyle={
-              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
-            }
-            // end forwarded props
-            options={options}
-            valueKey="0"
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
-            filterOption={(option, filterString) => {
-              const lowerCaseFilterString = filterString.toLowerCase();
-              return option?.some?.(
-                value =>
-                  value != null &&
-                  String(value).toLowerCase().includes(lowerCaseFilterString),
-              );
-            }}
-            onInputChange={onInputChange}
-            parseFreeformValue={parseFreeformValue}
-            updateOnInputBlur
+            prefix={prefix}
           />
         )}
       </div>
