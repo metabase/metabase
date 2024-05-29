@@ -1,4 +1,5 @@
 import type { MetabaseFontFamily } from "../fonts";
+import type { DeepPartial } from "../utils";
 
 /**
  * Theme configuration for embedded Metabase components.
@@ -20,7 +21,7 @@ export interface MetabaseTheme {
   colors?: MetabaseColors;
 
   /** Component theme options */
-  components?: MetabaseComponentTheme;
+  components?: DeepPartial<MetabaseComponentTheme>;
 }
 
 export interface MetabaseColors {
