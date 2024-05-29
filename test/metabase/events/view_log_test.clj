@@ -145,7 +145,7 @@
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
 (deftest get-collection-view-log-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Collection reads via the API are recorded in the view_log"
       (mt/with-temp [:model/Collection coll {}]
         (testing "GET /api/collection/:id/items"
@@ -154,7 +154,7 @@
                         (latest-view (mt/user->id :crowberto) (u/id coll)))))))))
 
 (deftest get-card-view-log-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Card reads (views) via the API are recorded in the view_log"
       (mt/with-temp [:model/Card card {:name "My Cool Card" :type :question}]
         (testing "GET /api/card/:id"
@@ -163,7 +163,7 @@
                         (latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
 (deftest get-dashboard-view-log-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Dashboard reads (views) via the API are recorded in the view_log"
       (mt/with-temp [:model/Dashboard dash {}]
         (testing "GET /api/dashboard/:id"
@@ -172,7 +172,7 @@
                         (latest-view (mt/user->id :crowberto) (u/id dash)))))))))
 
 (deftest dashboard-card-query-view-log-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a dashboard is recorded in the view_log."
       (mt/with-temp [:model/Dashboard     dash     {}
                      :model/Card          card     {}
@@ -185,7 +185,7 @@
                         (latest-view (mt/user->id :crowberto) (:id card)))))))))
 
 (deftest get-public-card-logs-view-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Viewing a public card logs the correct view log event."
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (public-test/with-temp-public-card [card]
@@ -195,7 +195,7 @@
                           (latest-view nil (:id card))))))))))
 
 (deftest public-dashboard-card-query-view-log-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (public-test/with-temp-public-dashboard-and-card [dash card dashcard]
@@ -205,7 +205,7 @@
                           (latest-view nil (:id card))))))))))
 
 (deftest get-public-dashboard-logs-view-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Viewing a public dashboard logs the correct view log event."
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (public-test/with-temp-public-dashboard [dash]
@@ -215,7 +215,7 @@
                           (latest-view nil (:id dash))))))))))
 
 (deftest get-embedded-card-embedding-logs-view-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key
         (mt/with-temp [:model/Card card {:enable_embedding true}]
@@ -225,7 +225,7 @@
                           (latest-view nil (:id card))))))))))
 
 (deftest embedded-dashboard-card-query-view-log-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}
@@ -238,7 +238,7 @@
                           (latest-view nil (:id card))))))))))
 
 (deftest get-embedded-dashboard-logs-view-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
       (embed-test/with-embedding-enabled-and-new-secret-key
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
