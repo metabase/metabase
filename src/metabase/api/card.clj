@@ -206,7 +206,7 @@
                  collection.root/hydrate-root-collection)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
 
 (defn- dataset-query->query [metadata-provider dataset-query]
   (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]

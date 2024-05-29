@@ -609,7 +609,7 @@
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
-(defn- dashcard-url
+(defn dashcard-url
   "URL for fetching results of a public DashCard."
   [dash card dashcard]
   (format "public/dashboard/%s/dashcard/%d/card/%d" (:public_uuid dash) (u/the-id dashcard) (u/the-id card)))
