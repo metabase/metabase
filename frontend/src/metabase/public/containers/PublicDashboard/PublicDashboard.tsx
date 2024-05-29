@@ -80,6 +80,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboardId: DashboardId;
+  queryParams: Record<string, string | string[] | null | undefined>;
 };
 
 type DisplayProps = Pick<

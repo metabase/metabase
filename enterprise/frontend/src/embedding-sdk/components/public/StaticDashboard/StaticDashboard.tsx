@@ -1,3 +1,5 @@
+import { pick } from "underscore";
+
 import {
   DEFAULT_EMBED_DISPLAY_OPTIONS,
   useDashboardFullscreen,
@@ -9,6 +11,7 @@ import type {
   EmbedDisplayParams,
   RefreshPeriod,
 } from "metabase/dashboard/types";
+import { isNotNull } from "metabase/lib/types";
 import { PublicDashboard } from "metabase/public/containers/PublicDashboard/PublicDashboard";
 import { Box } from "metabase/ui";
 import type { DashboardId, ParameterId } from "metabase-types/api";
@@ -17,16 +20,30 @@ export const StaticDashboard = ({
   dashboardId,
   parameterValues,
   refreshPeriod: initialRefreshPeriod = null,
-  displayOptions = {},
+  bordered,
+  titled,
+  theme: userTheme,
+  font,
+  hideDownloadButton,
+  hideParameters,
 }: {
   dashboardId: DashboardId;
   parameterValues: Record<ParameterId, string | string[] | null | undefined>;
   refreshPeriod?: RefreshPeriod;
-  displayOptions?: Partial<EmbedDisplayParams>;
-}) => {
+} & Partial<EmbedDisplayParams>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
-    ...displayOptions,
+    ...pick(
+      {
+        bordered,
+        titled,
+        theme: userTheme,
+        font,
+        hideDownloadButton,
+        hideParameters,
+      },
+      isNotNull,
+    ),
   };
 
   const { refreshDashboard } = useRefreshDashboard({
