@@ -250,6 +250,7 @@ interface AdminSettings {
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
+  "store-url": string;
 }
 
 interface SettingsManagerSettings {

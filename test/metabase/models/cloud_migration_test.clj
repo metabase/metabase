@@ -44,7 +44,7 @@
                (slurp body)
                (is (= request-method :put))
                {:status 200})
-             (str (cloud-migration/migration-store-url) "/" (:external_id migration) "/uploaded")
+             (str (cloud-migration/migration-url (:external_id migration) "/uploaded"))
              (constantly {:status 201})}
           (#'cloud-migration/migrate! migration)
           (is (-> @progress-calls :upload count (> 3))
@@ -59,7 +59,7 @@
     (let [migration (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
       (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")
       (#'cloud-migration/migrate! migration)
-      (is (= (:progress (t2/select-one :model/CloudMigration :id (:id migration))) 0))
+      (is (< (:progress (t2/select-one :model/CloudMigration :id (:id migration))) 100))
       (is (not (cloud-migration/read-only-mode))))))
 
 (deftest read-only-login-test

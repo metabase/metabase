@@ -239,8 +239,8 @@
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
-    (catch Throwable _e
-      (log/error "ERROR ROTATING KEY.")
+    (catch Throwable e
+      (log/error e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
