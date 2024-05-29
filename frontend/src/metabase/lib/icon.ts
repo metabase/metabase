@@ -37,7 +37,6 @@ const modelIconMap: Record<IconModel, IconName> = {
   snippet: "unknown",
 };
 
-
 export type IconData = {
   name: IconName;
   color?: string;
