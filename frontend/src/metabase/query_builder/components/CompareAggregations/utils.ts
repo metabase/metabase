@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { pluralize } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
 import type { ColumnType } from "./types";
@@ -21,7 +22,7 @@ export const getOffsetPeriod = (
   );
 
   if (!Lib.isDate(firstBreakoutColumn)) {
-    return t`period`;
+    return t`rows`;
   }
 
   const bucket = Lib.temporalBucket(firstBreakout);
@@ -32,7 +33,7 @@ export const getOffsetPeriod = (
 
   const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
 
-  return bucketInfo.displayName.toLowerCase();
+  return pluralize(bucketInfo.displayName.toLowerCase());
 };
 
 export const getTitle = (

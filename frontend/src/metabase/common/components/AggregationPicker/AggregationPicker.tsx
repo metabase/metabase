@@ -407,17 +407,17 @@ function getCompareListItem(
 
   const period = getOffsetPeriod(query, stageIndex);
 
-  if (aggregations.length === 1) {
-    const [aggregation] = aggregations;
-    const info = Lib.displayInfo(query, stageIndex, aggregation);
-
+  if (aggregations.length > 1) {
     return {
-      displayName: t`Compare “${info.displayName}” to previous ${period} ...`,
+      displayName: t`Compare to previous ${period} ...`,
     };
   }
 
+  const [aggregation] = aggregations;
+  const info = Lib.displayInfo(query, stageIndex, aggregation);
+
   return {
-    displayName: t`Compare to previous ${period} ...`,
+    displayName: t`Compare “${info.displayName}” to previous ${period} ...`,
   };
 }
 
