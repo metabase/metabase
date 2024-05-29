@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
+import { PLUGIN_CACHING } from "metabase/plugins";
 import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
@@ -10,6 +11,7 @@ import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 export enum TabId {
   DataCachingSettings = "dataCachingSettings",
+  ModelPersistence = "modelPersistence",
 }
 const validTabIds = new Set(Object.values(TabId).map(String));
 const isValidTabId = (tab: TabsValue): tab is TabId =>
@@ -56,11 +58,19 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
         <Tab key="DataCachingSettings" value={TabId.DataCachingSettings}>
           {t`Data caching settings`}
         </Tab>
+        <PLUGIN_CACHING.ModelPersistenceTab />
       </TabsList>
       <TabsPanel key={tabId} value={tabId} p="1rem 2.5rem">
-        <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
-          <StrategyEditorForDatabases route={route} />
-        </Flex>
+        {tabId === TabId.DataCachingSettings && (
+          <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
+            <StrategyEditorForDatabases route={route} />
+          </Flex>
+        )}
+        {tabId === TabId.ModelPersistence && (
+          <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
+            <PLUGIN_CACHING.ModelPersistenceConfiguration />
+          </Flex>
+        )}
       </TabsPanel>
     </Tabs>
   );
