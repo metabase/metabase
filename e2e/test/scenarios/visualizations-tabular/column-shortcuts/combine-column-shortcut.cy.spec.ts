@@ -12,7 +12,7 @@ import {
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   beforeEach(() => {
@@ -53,6 +53,32 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       event: "column_combine_via_plus_modal",
       custom_expressions_used: ["concat"],
       database_id: SAMPLE_DB_ID,
+    });
+  });
+
+  it("should allow combining columns when aggregating", function () {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 1,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("TableInteractive-root").should("exist");
+    combineColumns({
+      columns: ["Created At: Hour of day", "Count"],
+      newColumn: "Combined Created At: Hour of day, Count",
+      example: "2042-01-01 12:34:56.789 123",
+      newValue: "0 766",
     });
   });
 });
