@@ -26,7 +26,8 @@ const DEFAULT_OFFSET = 1;
 
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
 
-const WIDTH = 472;
+const STEP_1_WIDTH = 378;
+const STEP_2_WIDTH = 472;
 
 export const CompareAggregations = ({
   query,
@@ -43,6 +44,7 @@ export const CompareAggregations = ({
   >(hasManyAggregations ? undefined : aggregations[0]);
   const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
   const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
+  const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
   const title = useMemo(
     () => getTitle(query, stageIndex, aggregation),
@@ -74,7 +76,7 @@ export const CompareAggregations = ({
   };
 
   return (
-    <Box miw={WIDTH} maw={WIDTH}>
+    <Box miw={width} maw={width}>
       <ExpressionWidgetHeader title={title} onBack={handleBack} />
 
       {!aggregation && (
