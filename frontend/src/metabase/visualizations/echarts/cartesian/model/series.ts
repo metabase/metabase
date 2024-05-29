@@ -351,22 +351,26 @@ export function getWaterfallChartDataDensity(
     };
   }
 
-  const totalNumberOfLabels = dataset.reduce((sum, datum) => {
-    const labelCount = datum[WATERFALL_VALUE_KEY] != null ? 1 : 0;
-
-    return sum + labelCount;
-  }, 0);
+  let totalNumberOfLabels = 0;
+  let sumOfLabelWidths = 0;
 
   const fontStyle = {
     family: renderingContext.fontFamily,
     weight: CHART_STYLE.seriesLabels.weight,
     size: CHART_STYLE.seriesLabels.size,
   };
-  const sumOfLabelWidths = dataset.reduce((sum, datum) => {
+
+  dataset.forEach(datum => {
     const value = datum[WATERFALL_VALUE_KEY];
 
+    if (value == null) {
+      return;
+    }
+
+    totalNumberOfLabels += 1;
+
     if (!waterfallLabelFormatter) {
-      return sum;
+      return;
     }
 
     const labelWidth = renderingContext.measureText(
@@ -374,8 +378,9 @@ export function getWaterfallChartDataDensity(
       fontStyle,
     );
 
-    return sum + labelWidth;
-  }, 0);
+    sumOfLabelWidths += labelWidth;
+  });
+
   const averageLabelWidth =
     totalNumberOfLabels > 0 ? sumOfLabelWidths / totalNumberOfLabels : 0;
 
