@@ -79,6 +79,9 @@ export interface MetabaseComponentTheme {
 
       /** Default background color of cells, defaults to `bg-white` */
       backgroundColor?: string;
+
+      /** Font size of cell values */
+      fontSize?: string
     };
 
     idColumn?: {

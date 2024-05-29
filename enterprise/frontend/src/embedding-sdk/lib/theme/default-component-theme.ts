@@ -14,6 +14,9 @@ import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
+    cell: {
+      fontSize: "12.5px",
+    },
     idColumn: {
       textColor: "brand",
     },
@@ -35,6 +38,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
     table: {
       cell: {
         backgroundColor: "bg-white",
+        fontSize: "0.625em",
       },
     },
     chart: {

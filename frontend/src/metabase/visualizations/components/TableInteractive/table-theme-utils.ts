@@ -16,9 +16,12 @@ export function getCellDataTheme({
   const cellTheme = theme.other?.table?.cell;
   const idTheme = theme.other?.table?.idColumn;
 
+  const fontSize = cellTheme?.fontSize;
+
   if (isIDColumn) {
     return {
       color: idTheme?.textColor,
+      fontSize,
       background:
         idTheme?.backgroundColor || alpha(theme.fn.themeColor("brand"), 0.08),
       border: `1px solid ${alpha(
@@ -28,7 +31,7 @@ export function getCellDataTheme({
     };
   }
 
-  return { color: cellTheme?.textColor };
+  return { color: cellTheme?.textColor, fontSize };
 }
 
 export const getCellHoverBackground = ({

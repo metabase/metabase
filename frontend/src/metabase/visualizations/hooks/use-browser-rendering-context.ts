@@ -24,10 +24,10 @@ export const useBrowserRenderingContext = (
     const style = getVisualizationStyleFromTheme(theme);
 
     return {
-      getColor: key => color(key, palette),
+      getColor: name => color(name, palette),
       formatValue: (value, options) => String(formatValue(value, options)),
       measureText: measureTextWidth,
-      fontFamily,
+      fontFamily: `${fontFamily}, Arial, sans-serif`,
       style,
     };
   }, [fontFamily, palette, theme]);

@@ -49,10 +49,6 @@ export function useModelsAndOption({
     [onRender],
   );
 
-  const hasTimelineEvents = timelineEvents
-    ? timelineEvents.length !== 0
-    : false;
-
   const chartModel = useMemo(() => {
     let getModel = getCartesianChartModel;
 

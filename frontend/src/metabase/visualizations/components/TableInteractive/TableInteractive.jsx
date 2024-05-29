@@ -144,6 +144,7 @@ class TableInteractive extends Component {
         c={cellTheme.color}
         bg={cellTheme.background}
         style={{ border: cellTheme.border }}
+        fz={cellTheme.fontSize}
       >
         {children}
       </Box>
