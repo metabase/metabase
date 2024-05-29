@@ -21,7 +21,6 @@ import {
   commandPaletteSearch,
   commandPalette,
   addOrUpdateDashboardCard,
-  setAdHocFilter,
   undoToast,
   getDashboardCard,
   openNavigationSidebar,
@@ -39,7 +38,10 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 
-import { setQuarterAndYear } from "../native-filters/helpers/e2e-date-filter-helpers";
+import {
+  setQuarterAndYear,
+  setAdHocFilter,
+} from "../native-filters/helpers/e2e-date-filter-helpers";
 
 const {
   ORDERS,
