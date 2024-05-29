@@ -65,22 +65,26 @@ export const getYAxisRange = (
 };
 
 export const getAxisNameDefaultOption = (
-  { getColor, fontFamily }: RenderingContext,
+  { getColor, fontFamily, style }: RenderingContext,
   nameGap: number,
   name: string | undefined,
   rotate?: number,
-): Partial<AxisBaseOptionCommon> => ({
-  name,
-  nameGap,
-  nameLocation: "middle",
-  nameRotate: rotate,
-  nameTextStyle: {
-    color: getColor("text-dark"),
-    fontSize: CHART_STYLE.axisName.size,
-    fontWeight: CHART_STYLE.axisName.weight,
-    fontFamily,
-  },
-});
+): Partial<AxisBaseOptionCommon> => {
+  const { fontSize = CHART_STYLE.axisName.size } = style?.label ?? {};
+
+  return {
+    name,
+    nameGap,
+    nameLocation: "middle",
+    nameRotate: rotate,
+    nameTextStyle: {
+      color: getColor("text-dark"),
+      fontSize,
+      fontWeight: CHART_STYLE.axisName.weight,
+      fontFamily,
+    },
+  };
+};
 
 export const getTicksDefaultOption = ({
   style,

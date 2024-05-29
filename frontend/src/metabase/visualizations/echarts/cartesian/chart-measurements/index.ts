@@ -356,7 +356,13 @@ export const getChartPadding = (
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
+  renderingContext: RenderingContext,
 ): Padding => {
+  const { fontSize } = renderingContext.style?.label ?? {};
+
+  const axisNameFontSize = fontSize ?? CHART_STYLE.axisName.size;
+  const seriesLabelFontSize = fontSize ?? CHART_STYLE.seriesLabels.size;
+
   const padding: Padding = {
     top: CHART_STYLE.padding.y,
     left: CHART_STYLE.padding.x,
@@ -371,8 +377,7 @@ export const getChartPadding = (
     settings["graph.show_values"] ||
     (settings["graph.show_goal"] && settings["graph.goal_label"])
   ) {
-    padding.top +=
-      CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
+    padding.top += seriesLabelFontSize + CHART_STYLE.seriesLabels.offset;
   }
 
   // 2. Bottom Padding
@@ -381,14 +386,12 @@ export const getChartPadding = (
 
   const hasXAxisName = settings["graph.x_axis.labels_enabled"];
   if (hasXAxisName) {
-    padding.bottom +=
-      CHART_STYLE.axisName.size / 2 + CHART_STYLE.axisNameMargin;
+    padding.bottom += axisNameFontSize / 2 + CHART_STYLE.axisNameMargin;
   }
 
   // 3. Side (Left and Right) Padding
 
-  const yAxisNameTotalWidth =
-    CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
+  const yAxisNameTotalWidth = axisNameFontSize + CHART_STYLE.axisNameMargin;
 
   padding.left += ticksDimensions.yTicksWidthLeft;
   if (chartModel.leftAxisModel?.label) {
@@ -549,6 +552,7 @@ export const getChartMeasurements = (
     ticksDimensions,
     axisEnabledSetting,
     width,
+    renderingContext,
   );
   const bounds = getChartBounds(width, height, padding, ticksDimensions);
 
