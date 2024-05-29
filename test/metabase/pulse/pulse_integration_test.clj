@@ -14,8 +14,13 @@
    [metabase.pulse]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
+   [metabase.pulse.util :as pulse.util]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -916,31 +921,36 @@
               (metabase.pulse/send-pulse! pulse)))
           (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))
 
-(defn- run-pulse-and-return-attachments
+(defn- run-pulse-and-return-txt-attachment-contents
   "Simulate sending the pulse email, get the attachments."
   [pulse]
   (mt/with-fake-inbox
     (with-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (metabase.pulse/send-pulse! pulse)))
-    (get-in @mt/inbox ["rasta@metabase.com" 0 :body])))
+    (->>
+     (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+     (keep
+      (fn [{:keys [content-type content]}]
+        (when (= "text" content-type)
+          (slurp content)))))))
 
-(defmethod body/render :will-fail
+(defmethod body/render ::will-fail
   [& _args]
   (throw (Exception. "Sorry buddy.")))
 
 (deftest render-errors-are-attached-to-subscriptions
   (testing "When a render error occurs, details are attached as a .txt file"
     (mt/dataset test-data
-      (let [q {:database (mt/id)
-               :type     :query
-               :query
-               {:source-table (mt/id :orders)
-                :aggregation  [[:count]]
-                :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
-        (mt/with-temp [Card                 {card-id :id} {:display       :will-fail
+      (let [q  {:database (mt/id)
+                :type     :query
+                :query
+                {:source-table (mt/id :orders)
+                 :aggregation  [[:count]]
+                 :breakout     [[:field (mt/id :orders :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}]
+        (mt/with-temp [Card                 {card-id :id} {:display       ::will-fail
                                                            :dataset_query q}
-                       Pulse                {pulse-id :id :as p} {:name "Test Pulse"}
+                       Pulse                {pulse-id :id :as pulse} {:name "Test Pulse"}
                        PulseCard             _             {:pulse_id pulse-id
                                                             :card_id  card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -949,6 +959,56 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (with-redefs [render/detect-pulse-chart-type (fn [{:keys [display]} & _] display)]
-            (is (->> (run-pulse-and-return-attachments p)
-                     ;; the error is attached as a .txt file so we only have to check for its existence
-                     (some #(= "text" (:content-type %)))))))))))
+            (let [[render-error] (run-pulse-and-return-txt-attachment-contents pulse)]
+              (is (str/includes? render-error "Sorry buddy.")))))))))
+
+(defn- execute-card
+  "Mess with the query so it errors."
+  [{pulse-creator-id :creator_id} card-or-id & {:as options}]
+  (let [card-id (u/the-id card-or-id)]
+    (try
+      (when-let [{query     :dataset_query
+                  metadata  :result_metadata
+                  card-type :type
+                  :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
+        (let [query         (-> query
+                                (assoc :async? false)
+                                (assoc-in [:native :query] "GRAB_EM_ALL"))
+              process-query (fn []
+                              (binding [qp.perms/*card-id* card-id]
+                                (qp/process-query
+                                 (qp/userland-query-with-default-constraints
+                                  (assoc query :middleware {:skip-results-metadata? true
+                                                            :process-viz-settings?  true
+                                                            :js-int-to-string?      false})
+                                  (merge (cond-> {:executed-by pulse-creator-id
+                                                  :context     :pulse
+                                                  :card-id     card-id}
+                                           (= card-type :model)
+                                           (assoc :metadata/model-metadata metadata))
+                                         options)))))
+              result        (process-query)]
+          {:card   card
+           :result result}))
+      (catch Throwable e
+        (log/warnf e "Error running query for Card %s" card-id)))))
+
+(deftest query-errors-are-attached-to-subscriptions
+  (testing "When a query error occurs, details are attached as a .txt file"
+    (mt/dataset test-data
+      (let [q {:database (mt/id)
+               :type     :native
+               :native   {:query "SELECT 1 as A"}}]
+        (mt/with-temp [Card                 {card-id :id} {:display       ::will-fail
+                                                           :dataset_query q}
+                       Pulse                {pulse-id :id :as pulse} {:name "Test Pulse"}
+                       PulseCard             _             {:pulse_id pulse-id
+                                                            :card_id  card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (with-redefs [pulse.util/execute-card        execute-card]
+            (let [[query-error]  (run-pulse-and-return-txt-attachment-contents pulse)]
+              (is (str/includes? query-error "There was a card query error with your card")))))))))
