@@ -850,7 +850,7 @@
                     card all
                     :when card]
                 card)
-        database-ids (map :database_id cards)
+        database-ids (set (map :database_id cards))
         db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
                              database-ids))
         dependents (group-by :type (set (mapcat (fn [card]
