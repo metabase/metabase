@@ -8,10 +8,10 @@
         b ["BA" "BB" "BC" "BD"]
         c ["CA" "CB" "CC" "CD"]
         d ["DA" "DB" "DC" "DD"]]
-    [a b c d 1]))
+    [a b c d 0 1]))
 
 (def ^:private column-titles
-  ["A" "B" "C" "D" "MEASURE"])
+  ["A" "B" "C" "D" "pivot-grouping" "MEASURE"])
 
 (def ^:private pivot-spec
   {:pivot-rows [2 3]
@@ -20,7 +20,7 @@
 
 (deftest add-pivot-measures-test
   (testing "Given a `pivot-spec` without `:pivot-measures`, add them."
-    (is (= [4] (:pivot-measures (#'qp.pivot.postprocess/add-pivot-measures pivot-spec))))))
+    (is (= [5] (:pivot-measures (#'qp.pivot.postprocess/add-pivot-measures pivot-spec))))))
 
 (deftest all-values-for-test
   (testing "The `all-values-for` function correctly finds the values for the given column idx"
@@ -28,7 +28,7 @@
                                                 [1 false ["BA" "BB" "BC" "BD"]]
                                                 [2 true  ["CA" "CB" "CC" "CD" nil]]
                                                 [3 false ["DA" "DB" "DC" "DD"]]
-                                                [4 false [1]]]]
+                                                [5 false [1]]]]
       (testing (format "Column index %s has correct expected values." idx)
         (is (= expected-values
                (#'qp.pivot.postprocess/all-values-for pivot-base-rows idx include-nil?)))))))

@@ -67,7 +67,8 @@
                                                                 (map (fn [col-k]
                                                                        (all-values-for rows col-k false))
                                                                      pivot-cols)
-                                                                [measure-titles]))
+                                                                (when (seq measure-titles)
+                                                                  [measure-titles])))
         header-indices     (if multiple-measures?
                              ;; when there are more than 1 pivot-measures, we need to
                              ;; add one more header row that holds the titles of the measure columns
@@ -85,7 +86,7 @@
                   multiple-measures?
                   (= col-idx (last header-indices)))
                measure-titles
-               (repeat n-measures "Row totals")))))
+               (repeat (max 1 n-measures) "Row totals")))))
      header-indices)))
 
 (mu/defn ^:private col-grouper
