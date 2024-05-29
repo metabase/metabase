@@ -426,21 +426,12 @@ describeOSS("scenarios > notebook > data source", () => {
       display: "table",
       type: "model",
     });
-
     startNewQuestion();
-    popover().within(() => {
-      cy.findByPlaceholderText("Search for some data…");
-      cy.findAllByTestId("data-bucket-list-item")
-        .as("sources")
-        .should("have.length", 2);
-      cy.get("@sources")
-        .first()
-        .should("contain", "Models")
-        .and("have.attr", "aria-selected", "false");
-      cy.get("@sources")
-        .last()
-        .should("contain", "Raw Data")
-        .and("have.attr", "aria-selected", "false");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Models")
+        .closest("button").click();
+      cy.findByText("GUI Model").should("exist");
+      cy.findByText(/question/i).should("not.exist");
     });
   });
 });
