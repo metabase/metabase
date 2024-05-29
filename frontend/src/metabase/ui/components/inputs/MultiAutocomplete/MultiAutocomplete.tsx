@@ -150,7 +150,7 @@ export function MultiAutocomplete({
     }
   };
 
-  const info = (
+  const info = isFocused ? (
     <Tooltip
       label={
         <>
@@ -162,6 +162,8 @@ export function MultiAutocomplete({
     >
       <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
+  ) : (
+    <span />
   );
 
   return (
