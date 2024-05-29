@@ -96,7 +96,7 @@ export function ExpressionEditorSuggestions({
   return (
     <Popover
       position="bottom-start"
-      opened={true || (open && suggestions.length > 0)}
+      opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
       zIndex={DEFAULT_POPOVER_Z_INDEX}
