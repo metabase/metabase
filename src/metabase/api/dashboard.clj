@@ -859,7 +859,8 @@
                                                         query (lib/query mp (:dataset_query card))]
                                                     (lib/dependent-metadata query (:id card) (:type card)))) cards)))]
     {:tables (->> (:table dependents)
-                  (sort-by :id)
+                  (sort-by (fn [{card-or-table-id :id}]
+                             (or (lib.util/legacy-string-table-id->card-id card-or-table-id) card-or-table-id)))
                   (into []
                         (keep (fn [{card-or-table-id :id}]
                                 (try
@@ -876,15 +877,14 @@
                                      (api.database/get-database database-id {})
                                      (catch Exception e
                                        (log/warnf "Error in dashboard metadata %s %s: %s" :database database-id (ex-message e))))))))
-     :fields (sort-by :id
-                      (->> (:field dependents)
-                           (sort-by :id)
-                           (into []
-                                 (keep (fn [{field-id :id}]
-                                         (try
-                                           (api.field/get-field field-id {})
-                                           (catch Exception e
-                                             (log/warnf "Error in dashboard metadata %s %s: %s" :field field-id (ex-message e)))))))))}))
+     :fields (->> (:field dependents)
+                  (sort-by :id)
+                  (into []
+                        (keep (fn [{field-id :id}]
+                                (try
+                                  (api.field/get-field field-id {})
+                                  (catch Exception e
+                                    (log/warnf "Error in dashboard metadata %s %s: %s" :field field-id (ex-message e))))))))}))
 
 
 (api/defendpoint GET "/:id/query_metadata"
