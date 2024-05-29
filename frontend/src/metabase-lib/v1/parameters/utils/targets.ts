@@ -61,13 +61,23 @@ export function getParameterTargetField(
 
   if (isConcreteFieldReference(fieldRef)) {
     const [_, fieldIdOrName] = fieldRef;
+    const fields = metadata.fieldsList();
     if (typeof fieldIdOrName === "number") {
-      /*
-       performance optimization:
-       as we care only about real database fields, we can match by id directly
-       without finding this column via query
-      */
-      return metadata.fieldsList().find(field => field.id === fieldIdOrName);
+      // performance optimization 1:
+      // we can match by id directly without finding this column via query
+      return fields.find(field => field.id === fieldIdOrName);
+    }
+
+    const fieldsWithName = fields.filter(field => field.name === fieldIdOrName);
+    if (fieldsWithName.length === 0) {
+      // performance optimization 2:
+      // if there are no matching fields, do not call MBQL lib
+      return null;
+    }
+    if (fieldsWithName.length === 1) {
+      // performance optimization 3:
+      // if there is exactly 1 field, assume that metadata is correct and do not call MBQL lib
+      return fieldsWithName[0];
     }
 
     const query = question.query();
@@ -75,13 +85,9 @@ export function getParameterTargetField(
     const columns = Lib.visibleColumns(query, stageIndex);
 
     if (columns.length === 0) {
-      /*
-       query and metadata are not available:
-       1) no data permissions
-       2) embedding
-       we cannot correctly find a field in all cases this way
-      */
-      return metadata.fieldsList().find(field => field.name === fieldIdOrName);
+      // query and metadata are not available: 1) no data permissions 2) embedding
+      // we cannot correctly find a field in all cases this way
+      return fieldsWithName[0];
     }
 
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
