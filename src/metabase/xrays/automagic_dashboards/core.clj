@@ -606,8 +606,7 @@
 
 (defn- drilldown-fields
   [root available-dimensions]
-  (when (and (->> root :source (mi/instance-of? Table))
-             (-> root :entity magic.util/ga-table? not))
+  (when (->> root :source (mi/instance-of? Table))
     (->> available-dimensions
          vals
          (mapcat :matches)

@@ -3,12 +3,6 @@
    [clojure.test :refer :all]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]))
 
-(deftest ^:parallel ga-dimension?-test
-  (are [x expected] (= expected
-                       (dashboard-templates/ga-dimension? x))
-    "ga:foo" true
-    "foo"    false))
-
 (deftest ^:parallel ->type-test
   (are [x expected] (= expected
                        (#'dashboard-templates/->type x))

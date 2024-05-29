@@ -599,20 +599,6 @@
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
 
-(defn ga-id?
-  "Is this ID (presumably of a Metric or Segment) a GA one?"
-  [id]
-  (boolean
-   (when ((some-fn string? keyword?) id)
-     (re-find #"^ga(id)?:" (name id)))))
-
-(defn ga-metric-or-segment?
-  "Is this metric or segment clause not a Metabase Metric or Segment, but rather a GA one? E.g. something like `[:metric
-  ga:users]`. We want to ignore those because they're not the same thing at all as MB Metrics/Segments and don't
-  correspond to objects in our application DB."
-  [[_ id]]
-  (ga-id? id))
-
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (defn unique-name-generator

@@ -82,26 +82,19 @@
     [:filter MBQL]
     [:score  Score]]])
 
-(defn ga-dimension?
-  "Does string `t` denote a Google Analytics dimension?"
-  [t]
-  (str/starts-with? t "ga:"))
-
 (defn ->type
   "Turn `x` into proper type name."
   [x]
-  (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "type" x)))
+  (if (keyword? x)
+    x
+    (keyword "type" x)))
 
 (defn ->entity
   "Turn `x` into proper entity name."
   [x]
-  (cond
-    (keyword? x)      x
-    (ga-dimension? x) x
-    :else             (keyword "entity" x)))
+  (if (keyword? x)
+    x
+    (keyword "entity" x)))
 
 (defn- field-type?
   [t]
@@ -120,14 +113,10 @@
    [:fn {:error/message "valid table type"} table-type?]])
 
 (def ^:private FieldType
-  [:or
+  [:and
    {:decode/dashboard-template ->type}
-   [:and
-    :string
-    [:fn {:error/message "Google Analytics dimension"} ga-dimension?]]
-   [:and
-    :keyword
-    [:fn {:error/message "Valid Field type"} field-type?]]])
+   :keyword
+   [:fn {:error/message "Valid Field type"} field-type?]])
 
 (def ^:private AppliesTo
   [:or

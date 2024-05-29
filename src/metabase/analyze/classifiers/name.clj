@@ -193,7 +193,6 @@
                                             type))
                                         entity-types-patterns)
                                   (case (some-> (:db_id table) driver.u/database->driver)
-                                    :googleanalytics :entity/GoogleAnalyticsTable
-                                    :druid           :entity/EventTable
+                                    :druid :entity/EventTable
                                     nil)
                                   :entity/GenericTable))))

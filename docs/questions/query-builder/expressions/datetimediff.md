@@ -77,7 +77,6 @@ If your timestamps are stored as strings or numbers in your database, an admin c
 `datetimeDiff` is currently unavailable for the following databases:
 
 - Druid
-- Google Analytics
 
 ## Related functions
 
