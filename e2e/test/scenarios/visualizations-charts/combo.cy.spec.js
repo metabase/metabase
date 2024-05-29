@@ -44,7 +44,7 @@ describe("scenarios > visualizations > combo", () => {
       },
     });
     // First value label on the chart
-    cy.findAllByText("440.52");
+    cy.findAllByText("390.99");
   });
 
   it("should support stacking", () => {
