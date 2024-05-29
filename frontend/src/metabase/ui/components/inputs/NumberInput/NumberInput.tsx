@@ -4,6 +4,10 @@ import { forwardRef, useLayoutEffect, useState } from "react";
 
 import { TextInput } from "../TextInput";
 
+interface Props extends NumberInputProps {
+  parseValue?: (value: string) => number | "";
+}
+
 export const NumberInput = forwardRef(function NumberInput(
   {
     value,
@@ -11,8 +15,9 @@ export const NumberInput = forwardRef(function NumberInput(
     onChange,
     onFocus,
     onBlur,
+    parseValue = defaultParseValue,
     ...props
-  }: NumberInputProps,
+  }: Props,
   ref: Ref<HTMLInputElement>,
 ) {
   const [inputValue, setInputValue] = useState(formatValue(defaultValue ?? ""));
@@ -40,7 +45,7 @@ export const NumberInput = forwardRef(function NumberInput(
     if (!isFocused) {
       setInputValue(formatValue(value ?? parseValue(inputValue)));
     }
-  }, [value, inputValue, isFocused]);
+  }, [value, inputValue, isFocused, parseValue]);
 
   return (
     <TextInput
@@ -54,7 +59,7 @@ export const NumberInput = forwardRef(function NumberInput(
   );
 });
 
-function parseValue(value: string) {
+function defaultParseValue(value: string): number | "" {
   const number = parseFloat(value);
   return Number.isNaN(number) ? "" : number;
 }
