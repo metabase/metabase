@@ -204,10 +204,7 @@ export const CollectionContentView = ({
   };
 
   const canUpload =
-    uploadsEnabled &&
-    canUploadToDb &&
-    collection.can_write &&
-    !isTrashedCollection(collection);
+    canUploadToDb && collection.can_write && !isTrashedCollection(collection);
 
   const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 

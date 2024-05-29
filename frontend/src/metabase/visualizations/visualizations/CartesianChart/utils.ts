@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   DataKey,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -57,7 +57,7 @@ export const getGridSizeAdjustedSettings = (
 
 export const MAX_SERIES = 100;
 
-export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
+export const validateChartModel = (chartModel: CartesianChartModel) => {
   if (chartModel.seriesModels.length > MAX_SERIES) {
     throw new Error(
       t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,

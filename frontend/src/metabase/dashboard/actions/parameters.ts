@@ -100,7 +100,7 @@ function updateParameters(
 }
 
 export const setEditingParameter =
-  (parameterId: ParameterId) => (dispatch: Dispatch) => {
+  (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
     if (parameterId != null) {
       dispatch(
         setSidebar({

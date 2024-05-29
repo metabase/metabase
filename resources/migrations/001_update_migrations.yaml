@@ -6612,14 +6612,6 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v50.2024-04-09T15:55:22
-      author: calherries
-      comment: Create sample content
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContent"
-
-  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -7363,6 +7355,67 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:23
+      author: calherries
+      comment: Add metabase_database.uploads_enabled column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether uploads are enabled for this database
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:24
+      author: calherries
+      comment: Add metabase_database.uploads_schema_name column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_schema_name
+                  type: ${text.type}
+                  remarks: The schema name for uploads
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:25
+      author: calherries
+      comment: Add metabase_database.uploads_table_prefix column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_table_prefix
+                  type: ${text.type}
+                  remarks: The prefix for upload table names
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:26
+      author: calherries
+      comment: Update metabase_database.uploads_enabled value
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateUploadsSettings"
+
+  # This migration should be moved whenever the sample content is updated, so that it
+  # matches when the version that the sample content was updated from. See metabase#43200
+  # for an example where the content was updated.
+  - changeSet:
+      id: v50.2024-05-27T15:55:22
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
       id: v51.2024-05-13T15:30:57

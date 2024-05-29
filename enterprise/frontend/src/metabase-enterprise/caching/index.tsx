@@ -5,10 +5,13 @@ import CacheTTLField from "./components/CacheTTLField";
 import { DashboardStrategySidebar } from "./components/DashboardStrategySidebar";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
+import { ModelPersistenceConfiguration } from "./components/ModelPersistenceConfiguration";
+import { ModelPersistenceTab } from "./components/ModelPersistenceTab";
 import QuestionCacheTTLField from "./components/QuestionCacheTTLField";
 import { SidebarCacheForm } from "./components/SidebarCacheForm";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
 import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
+import { enterpriseOnlyCachingStrategies } from "./constants";
 import {
   getQuestionsImplicitCacheTTL,
   hasQuestionCacheSection,
@@ -36,4 +39,13 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.DashboardStrategySidebar = DashboardStrategySidebar;
   PLUGIN_CACHING.SidebarCacheSection = SidebarCacheSection;
   PLUGIN_CACHING.SidebarCacheForm = SidebarCacheForm;
+  PLUGIN_CACHING.strategies = {
+    inherit: PLUGIN_CACHING.strategies.inherit,
+    duration: enterpriseOnlyCachingStrategies.duration,
+    schedule: enterpriseOnlyCachingStrategies.schedule,
+    ttl: PLUGIN_CACHING.strategies.ttl,
+    nocache: PLUGIN_CACHING.strategies.nocache,
+  };
+  PLUGIN_CACHING.ModelPersistenceTab = ModelPersistenceTab;
+  PLUGIN_CACHING.ModelPersistenceConfiguration = ModelPersistenceConfiguration;
 }

@@ -40,12 +40,10 @@ export function CollectionContent({
     id: collectionId,
   });
 
-  const uploadDbId = useSelector(state =>
-    getSetting(state, "uploads-database-id"),
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
   );
-  const uploadsEnabled = useSelector(state =>
-    getSetting(state, "uploads-enabled"),
-  );
+  const uploadsEnabled = !!uploadDbId;
 
   const canUploadToDb = useSelector(
     state =>

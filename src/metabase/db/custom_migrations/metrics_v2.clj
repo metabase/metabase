@@ -53,7 +53,7 @@
                :parameters "[]"
                :parameter_mappings "[]"
                :visualization_settings "{}"
-               :display "line"))))
+               :display "scalar"))))
 
 (defn- create-metric-v2!
   "Create and persist a metric v2 question from `metric-v1` in

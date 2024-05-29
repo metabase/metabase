@@ -7,18 +7,21 @@ import { findWhere } from "underscore";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
+import { rootId } from "../constants/simple";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "../hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "../hooks/useSaveStrategy";
-import { useVerticallyOverflows } from "../hooks/useVerticallyOverflows";
-import type { UpdateTargetId } from "../strategies";
-import { rootId } from "../strategies";
+import type { UpdateTargetId } from "../types";
 
-import { Panel, TabWrapper } from "./StrategyEditorForDatabases.styled";
+import {
+  Panel,
+  TabWrapper,
+  RoundedBox,
+} from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
 const StrategyEditorForDatabases_Base = ({
@@ -92,11 +95,6 @@ const StrategyEditorForDatabases_Base = ({
 
   const targetDatabase = databases.find(db => db.id === targetId);
 
-  const {
-    verticallyOverflows: formPanelVerticallyOverflows,
-    ref: formPanelRef,
-  } = useVerticallyOverflows();
-
   const shouldAllowInvalidation = useMemo(() => {
     if (
       targetId === null ||
@@ -136,16 +134,7 @@ const StrategyEditorForDatabases_Base = ({
         </aside>
       </Stack>
       {confirmationModal}
-      <Box
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(5rem, 30rem) minmax(5rem, auto)",
-          overflow: "hidden",
-        }}
-        w="100%"
-        mx="0"
-        mb="1rem"
-      >
+      <RoundedBox twoColumns={canOverrideRootStrategy}>
         {canOverrideRootStrategy && (
           <PLUGIN_CACHING.StrategyFormLauncherPanel
             configs={configs}
@@ -157,10 +146,7 @@ const StrategyEditorForDatabases_Base = ({
             shouldShowResetButton={shouldShowResetButton}
           />
         )}
-        <Panel
-          ref={formPanelRef}
-          verticallyOverflows={formPanelVerticallyOverflows}
-        >
+        <Panel hasLeftBorder={canOverrideRootStrategy}>
           {targetId !== null && (
             <StrategyForm
               targetId={targetId}
@@ -170,12 +156,11 @@ const StrategyEditorForDatabases_Base = ({
               saveStrategy={saveStrategy}
               savedStrategy={savedStrategy}
               shouldAllowInvalidation={shouldAllowInvalidation}
-              formStyle={{ overflow: "auto" }}
               shouldShowName={targetId !== rootId}
             />
           )}
         </Panel>
-      </Box>
+      </RoundedBox>
     </TabWrapper>
   );
 };

@@ -413,7 +413,7 @@ describe("scenarios > notebook > data source", () => {
   });
 });
 
-describeOSS("scenarios > notebook > data source", () => {
+describeOSS("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore("setup");
     cy.signInAsAdmin();
@@ -428,10 +428,11 @@ describeOSS("scenarios > notebook > data source", () => {
     });
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models")
-        .closest("button").click();
-      cy.findByText("GUI Model").should("exist");
-      cy.findByText(/question/i).should("not.exist");
+      cy.findAllByRole("tab").should("have.length", 2);
+      entityPickerModalTab("Recents").should("not.exist");
+      entityPickerModalTab("Models").and("have.attr", "aria-selected", "true");
+      entityPickerModalTab("Tables").should("exist");
+      entityPickerModalTab("Saved questions").should("not.exist");
     });
   });
 });
