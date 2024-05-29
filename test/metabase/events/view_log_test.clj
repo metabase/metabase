@@ -285,4 +285,9 @@
             (is (partial= {:model "dashboard", :model_id (:id dash), :has_access true}
                           (latest-view nil (:id dash))))))))))
 
+(deftest premium-features-test
+  (is (true? (premium-features/log-enabled?)))
+  (is (= {}
+         (premium-features/*token-features*))))
+
 ;;; ---------------------------------------- API tests end -----------------------------------------
