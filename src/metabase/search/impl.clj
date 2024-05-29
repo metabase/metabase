@@ -510,7 +510,8 @@
         ;; the now COMPLETE map of collection IDs to info
         col-id->info (merge (if (seq to-fetch)
                               (t2/select-pk->fn #(select-keys % [:name :type :id]) :model/Collection :id [:in to-fetch])
-                              {}))
+                              {})
+                            (update-vals col-id->info #(dissoc % :effective_location)))
         annotate     (fn [x]
                         (cond-> x
                           (= (:model x) "dataset")
@@ -521,7 +522,7 @@
                                    []))))]
     (map annotate search-results)))
 
-(defn- add-collection-parents
+(defn- add-collection-effective-location
   "Batch-hydrates :effective_location and :effective_parent on collection search results. Keeps search results in
   order."
   [search-results]
@@ -531,7 +532,7 @@
     (map (fn [search-result]
            (if (mi/instance-of? :model/Collection search-result)
              (idx->coll (:id search-result))
-             search-result))
+             (assoc search-result :effective_location nil)))
          search-results)))
 
 ;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
@@ -576,7 +577,6 @@
          :collection_name
          :collection_type
          :display_name
-         :effective_location
          :effective_parent))))
 
 (defn- add-can-write [row]
@@ -626,7 +626,7 @@
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true                           hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true                           (add-collection-parents)
+                              true                           (add-collection-effective-location)
                               true                           (map serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item

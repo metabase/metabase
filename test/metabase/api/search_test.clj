@@ -1,5 +1,5 @@
 (ns ^:mb/once metabase.api.search-test
-  "There are  more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
+  "There are more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
   below into that namespace."
   (:require
    [clojure.set :as set]
@@ -134,7 +134,8 @@
     (cond-> result
       true (assoc :archived true)
       (= (:model result) "collection") (assoc :location (collection/trash-path)
-                                              :effective_location (collection/trash-path)))))
+                                              :effective_location (collection/trash-path)
+                                              :collection (assoc default-collection :id true :name true :type "trash")))))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -1587,12 +1588,12 @@
         (testing "the collection data includes the type under `item.type` for collections"
           (is (every? #(contains? % :type)
                       (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                              :data
-                              (filter #(= (:model %) "collection")))))
+                           :data
+                           (filter #(= (:model %) "collection")))))
           (is (not-any? #(contains? % :type)
                         (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                              :data
-                              (remove #(= (:model %) "collection"))))))
+                             :data
+                             (remove #(= (:model %) "collection"))))))
         (testing "`item.type` is correct for collections"
           (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
                                  :data
