@@ -46,7 +46,7 @@
   (let [unsigned (embed/unsign token)]
     (api.embed.common/check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
-      (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :embedded-question}))))
+      (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question}))))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -144,7 +144,7 @@
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params)
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :embedded-dashboard})))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -305,6 +305,6 @@
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
   (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query)
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :embedded-dashboard})))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/define-routes)
