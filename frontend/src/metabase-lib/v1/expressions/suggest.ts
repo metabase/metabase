@@ -47,10 +47,10 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 export const GROUPS = {
   popularExpressions: {
-    displayName: t`Most used functions`,
+    displayName: t`Common functions`,
   },
   popularAggregations: {
-    displayName: t`Most used aggregations`,
+    displayName: t`Common aggregations`,
   },
   shortcuts: {
     displayName: t`Shortcuts`,
