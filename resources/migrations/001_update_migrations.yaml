@@ -8106,11 +8106,41 @@ databaseChangeLog:
       rollback:
         - sqlFile:
             dbms: postgresql
-            path: trash/postgres_rollback.sql
+            path: trash/rollback.sql
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v50.2024-05-29T14:05:04
+      id: v50.2024-05-29T18:42:13
+      author: johnswanson
+      comment: Populate `trashed_directly` and `trash_operation_id`
+      changes:
+        - sqlFile:
+            dbms: h2
+            path: trash/h2.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: h2
+            path: trash/rollback.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:14
+      author: johnswanson
+      comment: Populate `trashed_directly` and `trash_operation_id`
+      changes:
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: trash/mysql.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: trash/rollback.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:18
       author: johnswanson
       comment: remove `report_card.trashed_from_collection_id`
       changes:
@@ -8129,7 +8159,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-05-29T14:05:10
+      id: v50.2024-05-29T18:42:21
       author: johnswanson
       comment: remove `report_dashboard.trashed_from_collection_id`
       changes:
@@ -8148,7 +8178,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-05-29T14:05:24
+      id: v50.2024-05-29T18:42:25
       author: johnswanson
       comment: remove `collection.trashed_from_location`
       changes:
