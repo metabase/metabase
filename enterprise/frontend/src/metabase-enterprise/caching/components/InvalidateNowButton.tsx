@@ -32,7 +32,7 @@ export const InvalidateNowButton = ({
         { include: "overrides", [targetModel]: targetId },
         { hasBody: false },
       );
-      await resolveSmoothly(invalidate);
+      await resolveSmoothly([invalidate]);
     } catch (e) {
       if (isErrorWithMessage(e)) {
         dispatch(
