@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
@@ -154,7 +154,7 @@ export type DashboardProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
@@ -195,7 +195,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setSharing,
     toggleSidebar,
-    queryParams,
+    parameterQueryParams,
     location,
   } = props;
 
@@ -265,7 +265,7 @@ function DashboardInner(props: DashboardProps) {
 
       const result = await fetchDashboard({
         dashId: dashboardId,
-        queryParams,
+        queryParams: parameterQueryParams,
         options: {
           clearCache: !isNavigatingBackToDashboard,
           preserveParameters: isNavigatingBackToDashboard,
@@ -306,7 +306,7 @@ function DashboardInner(props: DashboardProps) {
       handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
-      queryParams,
+      parameterQueryParams,
       setErrorPage,
     ],
   );
