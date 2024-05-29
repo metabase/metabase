@@ -14,6 +14,7 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
+import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
@@ -68,12 +69,17 @@ export const StrategyForm = ({
   savedStrategy,
   shouldAllowInvalidation = false,
   shouldShowName = true,
-  formStyle = {},
   onReset,
-  buttonLabels = {
-    save: t`Save changes`,
-    discard: t`Discard changes`,
-  },
+  isInSidebar = false,
+  buttonLabels = isInSidebar
+    ? {
+        save: t`Save`,
+        discard: t`Cancel`,
+      }
+    : {
+        save: t`Save changes`,
+        discard: t`Discard changes`,
+      },
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -83,9 +89,9 @@ export const StrategyForm = ({
   savedStrategy?: Strategy;
   shouldAllowInvalidation?: boolean;
   shouldShowName?: boolean;
-  formStyle?: React.CSSProperties;
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
   const defaultStrategy: Strategy = {
     type: targetId === rootId ? "nocache" : "inherit",
@@ -107,8 +113,8 @@ export const StrategyForm = ({
         setIsDirty={setIsDirty}
         shouldAllowInvalidation={shouldAllowInvalidation}
         shouldShowName={shouldShowName}
-        formStyle={formStyle}
         buttonLabels={buttonLabels}
+        isInSidebar={isInSidebar}
       />
     </FormProvider>
   );
@@ -121,8 +127,8 @@ const StrategyFormBody = ({
   setIsDirty,
   shouldAllowInvalidation,
   shouldShowName = true,
-  formStyle = {},
   buttonLabels,
+  isInSidebar,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -130,8 +136,8 @@ const StrategyFormBody = ({
   setIsDirty: (isDirty: boolean) => void;
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
-  formStyle?: React.CSSProperties;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
   const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
   const { setStatus } = useFormContext();
@@ -159,11 +165,11 @@ const StrategyFormBody = ({
 
   return (
     <FormWrapper>
-      <StyledForm style={{ ...formStyle }}>
+      <StyledForm style={{ overflow: isInSidebar ? undefined : "auto" }}>
         <FormBox className="strategy-form-box">
           {shouldShowName && (
-            <Box lh="1rem" px="lg" py="md" color="text-medium">
-              <Group spacing="lg">
+            <Box lh="1rem" pt="md" color="text-medium">
+              <Group spacing="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" color="inherit" />
                 )}
@@ -173,18 +179,17 @@ const StrategyFormBody = ({
               </Group>
             </Box>
           )}
-          <Stack
-            maw="35rem"
-            p="lg"
-            pt={targetId === rootId ? undefined : 0}
-            spacing="xl"
-          >
+          <Stack maw="35rem" pt={targetId === rootId ? "xl" : 0} spacing="xl">
             <StrategySelector targetId={targetId} model={targetModel} />
             {selectedStrategyType === "ttl" && (
               <>
                 <Field
                   title={t`Minimum query duration`}
-                  subtitle={t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                  subtitle={
+                    <Text size="sm">
+                      {t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                    </Text>
+                  }
                 >
                   <PositiveNumberInput
                     strategyType="ttl"
@@ -221,20 +226,31 @@ const StrategyFormBody = ({
           targetName={targetName}
           shouldAllowInvalidation={shouldAllowInvalidation}
           buttonLabels={buttonLabels}
+          isInSidebar={isInSidebar}
         />
       </StyledForm>
     </FormWrapper>
   );
 };
 
-const FormButtonsGroup = ({ children }: { children: ReactNode }) => {
+const FormButtonsGroup = ({
+  children,
+  isInSidebar,
+}: {
+  children: ReactNode;
+  isInSidebar?: boolean;
+}) => {
   return (
     <Group
-      p="md"
-      px="lg"
+      py="md"
       spacing="md"
-      bg="white"
+      bg={color("white")}
       className="form-buttons-group"
+      style={{
+        justifyContent: isInSidebar ? undefined : "flex-end",
+        paddingInlineStart: isInSidebar ? "2rem" : "2.5rem",
+        paddingInlineEnd: isInSidebar ? "1rem" : "2.5rem",
+      }}
     >
       {children}
     </Group>
@@ -247,6 +263,7 @@ type FormButtonsProps = {
   shouldAllowInvalidation: boolean;
   targetName?: string;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 };
 
 const FormButtons = ({
@@ -255,6 +272,7 @@ const FormButtons = ({
   shouldAllowInvalidation,
   targetName,
   buttonLabels,
+  isInSidebar,
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<Strategy>();
 
@@ -268,11 +286,12 @@ const FormButtons = ({
 
   if (isSavingPossible) {
     return (
-      <FormButtonsGroup>
+      <FormButtonsGroup isInSidebar={isInSidebar}>
         <SaveAndDiscardButtons
           dirty={dirty}
           isFormPending={isFormPending}
           buttonLabels={buttonLabels}
+          isInSidebar={isInSidebar}
         />
       </FormButtonsGroup>
     );
@@ -280,7 +299,7 @@ const FormButtons = ({
 
   if (shouldAllowInvalidation && targetId && targetName) {
     return (
-      <FormButtonsGroup>
+      <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton
           targetId={targetId}
           targetModel={targetModel}
@@ -333,10 +352,12 @@ const SaveAndDiscardButtons = ({
   dirty,
   isFormPending,
   buttonLabels,
+  isInSidebar,
 }: {
   dirty: boolean;
   isFormPending: boolean;
   buttonLabels: ButtonLabels;
+  isInSidebar?: boolean;
 }) => {
   return (
     <>
@@ -344,7 +365,7 @@ const SaveAndDiscardButtons = ({
         {buttonLabels.discard}
       </Button>
       <FormSubmitButton
-        miw="10rem"
+        miw={isInSidebar ? undefined : "10rem"}
         h="40px"
         label={buttonLabels.save}
         successLabel={
@@ -474,26 +495,18 @@ const getDefaultValueForField = (
 };
 
 const MultiplierFieldSubtitle = () => (
-  <div>
+  <Text size="sm">
     {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}{" "}
     <Tooltip
-      events={{
-        hover: true,
-        focus: true,
-        touch: true,
-      }}
+      multiline
       inline={true}
-      styles={{
-        tooltip: {
-          whiteSpace: "normal",
-        },
-      }}
+      position="bottom"
       label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
       maw="20rem"
     >
-      <Text tabIndex={0} lh="1" display="inline" c="brand">
+      <Text tabIndex={0} size="sm" lh="1" display="inline" c="brand">
         {t`Example`}
       </Text>
     </Tooltip>
-  </div>
+  </Text>
 );
