@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { pluralize } from "metabase/lib/formatting";
 import { Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -15,6 +16,7 @@ interface Props {
 
 export const OffsetInput = ({ query, stageIndex, value, onChange }: Props) => {
   const label = useMemo(() => getLabel(query, stageIndex), [query, stageIndex]);
+  const help = useMemo(() => getHelp(query, stageIndex), [query, stageIndex]);
 
   return (
     <Flex align="flex-end" pos="relative">
@@ -34,7 +36,7 @@ export const OffsetInput = ({ query, stageIndex, value, onChange }: Props) => {
         onChange={onChange}
       />
       <Text className={S.help} c="text-light" p="sm">
-        {getHelp()}
+        {help}
       </Text>
     </Flex>
   );
@@ -63,7 +65,37 @@ const getLabel = (query: Lib.Query, stageIndex: number): string => {
   return t`Previous period`;
 };
 
-const getHelp = (): string => {
-  // TODO: implement me
-  return t`period ago based on grouping`;
+const getHelp = (query: Lib.Query, stageIndex: number): string => {
+  const firstBreakout = Lib.breakouts(query, stageIndex)[0];
+
+  if (!firstBreakout) {
+    return t`periods ago based on grouping`;
+  }
+
+  const firstBreakoutColumn = Lib.breakoutColumn(
+    query,
+    stageIndex,
+    firstBreakout,
+  );
+  const firstBreakoutColumnInfo = Lib.displayInfo(
+    query,
+    stageIndex,
+    firstBreakoutColumn,
+  );
+
+  if (!Lib.isDate(firstBreakoutColumn)) {
+    return t`rows above based on “${firstBreakoutColumnInfo.displayName}”`;
+  }
+
+  const bucket = Lib.temporalBucket(firstBreakout);
+
+  if (!bucket) {
+    return t`periods ago based on “${firstBreakoutColumnInfo.displayName}”`;
+  }
+
+  const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+
+  return t`${pluralize(bucketInfo.displayName.toLowerCase())} ago based on “${
+    firstBreakoutColumnInfo.displayName
+  }”`;
 };
