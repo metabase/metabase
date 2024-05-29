@@ -31,7 +31,6 @@ describe("scenarios > reference > databases", () => {
     // in a state like we never clicked the edit button TODO: Fix
     cy.button(/Edit/).trigger("click");
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByPlaceholderText("No description yet").type("A pretty ok store");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
@@ -45,7 +44,6 @@ describe("scenarios > reference > databases", () => {
     // in a state like we never clicked the edit button TODO: Fix
     cy.button(/Edit/).trigger("click");
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByPlaceholderText("Nothing interesting yet").type(
       "Turns out it's not",
     );

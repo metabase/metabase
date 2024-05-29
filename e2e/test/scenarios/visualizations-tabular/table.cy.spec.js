@@ -98,8 +98,6 @@ describe("scenarios > visualizations > table", () => {
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-
     tableHeaderClick("City");
 
     popover().within(() => {

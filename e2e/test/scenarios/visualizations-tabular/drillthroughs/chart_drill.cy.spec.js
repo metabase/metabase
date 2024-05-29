@@ -562,7 +562,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     tableHeaderClick("Discount ($)");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values").click();

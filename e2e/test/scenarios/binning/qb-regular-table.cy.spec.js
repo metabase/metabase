@@ -118,7 +118,6 @@ describe("scenarios > binning > binning options", () => {
   context("via column popover", () => {
     it("should work for number", () => {
       openTable({ table: ORDERS_ID });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       tableHeaderClick("Total");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
@@ -132,7 +131,6 @@ describe("scenarios > binning > binning options", () => {
 
     it("should work for time series", () => {
       openTable({ table: ORDERS_ID });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       tableHeaderClick("Created At");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
@@ -146,7 +144,6 @@ describe("scenarios > binning > binning options", () => {
 
     it("should work for longitude/latitude", () => {
       openTable({ table: PEOPLE_ID });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       tableHeaderClick("Longitude");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
