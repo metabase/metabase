@@ -336,7 +336,7 @@
     (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
-                                           :archived :location :trashed_from_location]
+                                           :archived :location]
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]
