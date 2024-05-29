@@ -2255,6 +2255,7 @@
                 :series                 [{:name                   "Series Card"
                                           :description            nil
                                           :display                :table
+                                          :type                   :question
                                           :dataset_query          {}
                                           :visualization_settings {}}]
                 :created_at             true
@@ -4539,16 +4540,22 @@
                                               :card_id series-id-2
                                               :position 1}]
     (is (=?
-          {:fields {(mt/id :people :id) {:id (mt/id :people :id)}
-                    (mt/id :people :name) {:id (mt/id :people :name)}
-                    (mt/id :people :source) {:id (mt/id :people :source)}
-                    (mt/id :orders :user_id) {:id (mt/id :orders :user_id)}}
-           :tables {(mt/id :products) {:id (mt/id :products)
+          {:fields [{:id (mt/id :people :id)}
+                    {:id (mt/id :orders :user_id)}
+                    {:id (mt/id :people :source)}
+                    {:id (mt/id :people :name)}]
+           :tables [{:id (mt/id :categories)}
+                    {:id (mt/id :users)}
+                    {:id (mt/id :checkins)}
+                    {:id (mt/id :products)
                                        :fields sequential?
                                        :db map?
                                        :dimension_options map?}
-                    (mt/id :checkins) {:id (mt/id :checkins)}
-                    (mt/id :venues) {:id (mt/id :venues)}}
-           :databases {(mt/id) {:engine string?}}
-           :schemas {(mt/id) [(comp #{"public"} u/lower-case-en)]}}
-          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
+                    {:id (mt/id :venues)}]
+           :databases [{:id (mt/id) :engine string?}]}
+          (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
+              ;; The output is so large, these help debugging
+              #_#_#_
+              (update :fields #(map (fn [x] (select-keys x [:id])) %))
+              (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+              (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))

@@ -377,7 +377,8 @@
   [id include include_editable_data_model exclude_uneditable_details]
   {id      ms/PositiveInt
    include [:maybe [:enum "tables" "tables.fields"]]}
-  (get-database id {:include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
+  (get-database id {:include include
+                    :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
                     :exclude-uneditable-details? (Boolean/parseBoolean exclude_uneditable_details)}))
 
 (def ^:private database-usage-models
