@@ -47,10 +47,10 @@ export function getParameterTargetField(
   }
 
   const fieldRef = target[1];
-  const metadata = question.metadata();
 
   // native queries
   if (isTemplateTagReference(fieldRef)) {
+    const metadata = question.metadata();
     const dimension = TemplateTagDimension.parseMBQL(
       fieldRef,
       metadata,
@@ -63,6 +63,7 @@ export function getParameterTargetField(
     const query = question.query();
     const stageIndex = -1;
     const columns = Lib.visibleColumns(query, stageIndex);
+    const metadata = question.metadata();
 
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding

@@ -16,7 +16,6 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addFields, addParamValues } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import type { DashboardCard, DashboardId } from "metabase-types/api";
 
@@ -143,12 +142,10 @@ export const fetchDashboard = createAsyncThunk(
         dispatch(addFields(result.param_fields));
       }
 
-      const metadata = getMetadata(getState());
       const questions = getQuestions(getState());
       const parameters = getDashboardUiParameters(
         result.dashcards,
         result.parameters,
-        metadata,
         questions,
       );
 

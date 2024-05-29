@@ -363,16 +363,15 @@ const getQuestionsMemoized = createDeepEqualSelector(
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestionsMemoized],
-  (dashboard, metadata, questions) => {
-    if (!dashboard || !metadata) {
+  [getDashboardComplete, getQuestionsMemoized],
+  (dashboard, questions) => {
+    if (!dashboard) {
       return [];
     }
 
     return getDashboardUiParameters(
       dashboard.dashcards,
       dashboard.parameters,
-      metadata,
       questions,
     );
   },

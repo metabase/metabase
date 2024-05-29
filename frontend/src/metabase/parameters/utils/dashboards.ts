@@ -3,9 +3,8 @@ import _ from "underscore";
 import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { slugify } from "metabase/lib/formatting";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   UiParameter,
   FieldFilterUiParameter,
@@ -117,19 +116,13 @@ function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
 export function getDashboardUiParameters(
   dashcards: Dashboard["dashcards"],
   parameters: Dashboard["parameters"],
-  metadata: Metadata,
   questions: Record<CardId, Question>,
 ): UiParameter[] {
   const mappableDashcards = dashcards.filter(isQuestionDashCard);
   const mappings = getMappings(mappableDashcards);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
-      return buildFieldFilterUiParameter(
-        parameter,
-        mappings,
-        metadata,
-        questions,
-      );
+      return buildFieldFilterUiParameter(parameter, mappings, questions);
     }
 
     return {
@@ -143,7 +136,6 @@ export function getDashboardUiParameters(
 function buildFieldFilterUiParameter(
   parameter: Parameter,
   mappings: ExtendedMapping[],
-  metadata: Metadata,
   questions: Record<CardId, Question>,
 ): FieldFilterUiParameter {
   const mappingsForParameter = mappings.filter(
@@ -171,7 +163,7 @@ function buildFieldFilterUiParameter(
       };
     }
 
-    const question = questions[card.id] ?? new Question(card, metadata);
+    const question = questions[card.id];
     try {
       const field = getParameterTargetField(target, question);
 
