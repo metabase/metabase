@@ -14,7 +14,7 @@ import type { NotebookStep, OpenSteps } from "../types";
 
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
-type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
+type NotebookStepDef = Pick<NotebookStep, "type" | "clauseType" | "revert"> & {
   valid: (query: Query, stageIndex: number, metadata: Metadata) => boolean;
   active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
@@ -23,12 +23,14 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
+    clauseType: "data",
     valid: (_query, stageIndex) => stageIndex === 0,
     active: () => true,
     revert: null, // this step is non-reversible (i.e. non-removable)
   },
   {
     type: "join",
+    clauseType: "joins",
     valid: (query, stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
       return (
@@ -63,6 +65,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "expression",
+    clauseType: "expressions",
     valid: (query, _stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
       return hasData(query) && Boolean(database?.hasFeature("expressions"));
@@ -78,6 +81,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "filter",
+    clauseType: "filters",
     valid: query => {
       return hasData(query);
     },
@@ -93,6 +97,7 @@ const STEPS: NotebookStepDef[] = [
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
+    clauseType: "aggregation",
     valid: query => {
       return hasData(query);
     },
@@ -115,6 +120,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "sort",
+    clauseType: "order-by",
     valid: (query, stageIndex) => {
       const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
       const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
@@ -137,6 +143,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "limit",
+    clauseType: "limit",
     valid: (query, stageIndex) => {
       const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
       const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
@@ -241,6 +248,7 @@ function getStageSteps(
     const step: NotebookStep = {
       id,
       type: STEP.type,
+      clauseType: STEP.clauseType,
       stageIndex,
       itemIndex,
       question,
@@ -275,8 +283,6 @@ function getStageSteps(
 
     return [getStep(STEP)];
   });
-  // keep original steps to be able to get a step by index to preview query
-  const originalSteps = [...steps];
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -285,11 +291,11 @@ function getStageSteps(
     if (step.visible) {
       // only include previewQuery if the section would be visible (i.e. excluding "openSteps")
       if (step.active) {
-        step.previewQuery = getPreviewQuery(
+        step.previewQuery = Lib.previewQuery(
           query,
           stageIndex,
-          originalSteps,
-          i,
+          step.clauseType,
+          step.itemIndex,
         );
       }
 
@@ -313,28 +319,4 @@ function getStageSteps(
   }
 
   return { steps, actions };
-}
-function getPreviewQuery(
-  query: Lib.Query,
-  stageIndex: number,
-  steps: NotebookStep[],
-  activeStepIndex: number,
-): Lib.Query {
-  const queryWithoutNextStages = _.range(
-    Lib.stageCount(query) - 1,
-    stageIndex,
-    -1,
-  ).reduce(Lib.dropStage, query);
-
-  const queryWithoutNextStagesAndSteps = steps
-    .slice(activeStepIndex + 1, steps.length)
-    .reduceRight((query: Lib.Query, step: NotebookStep) => {
-      if (step.revert) {
-        return step.revert(query, step.stageIndex, step.itemIndex ?? undefined);
-      }
-
-      return query;
-    }, queryWithoutNextStages);
-
-  return queryWithoutNextStagesAndSteps;
 }
