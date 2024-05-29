@@ -8033,7 +8033,7 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.CreateSampleContent"
 
   - changeSet:
-      id: v50.2024-05-17T15:51:00
+      id: v50.2024-05-29T14:04:47
       author: johnswanson
       comment: Add `report_dashboard.trashed_directly`
       changes:
@@ -8049,53 +8049,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-05-17T20:43:50
-      author: johnswanson
-      comment: Set `report_dashboard.trashed_directly`
-      changes:
-        - sql:
-            sql: >-
-              DELETE FROM report_dashboard
-              WHERE trashed_from_collection_id IS NOT NULL AND NOT EXISTS (
-                SELECT 1 FROM collection WHERE type = 'trash'
-              );
-              UPDATE report_dashboard
-              SET trashed_directly = coalesce(
-                collection_id = (SELECT id FROM collection WHERE type = 'trash'),
-                false
-              ),
-              collection_id = trashed_from_collection_id
-              WHERE archived = true;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE report_dashboard
-              SET
-                trashed_from_collection_id = collection_id,
-                collection_id = (SELECT id FROM collection WHERE type = 'trash')
-              WHERE trashed_directly;
-
-  - changeSet:
-      id: v50.2024-05-17T20:43:55
-      author: johnswanson
-      comment: remove `report_dashboard.trashed_from_collection_id`
-      changes:
-        - dropColumn:
-            tableName: report_dashboard
-            columnName: trashed_from_collection_id
-      rollback:
-        - addColumn:
-            tableName: report_dashboard
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this dashboard was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-17T20:44:00
+      id: v50.2024-05-29T14:04:53
       author: johnswanson
       comment: Add `report_card.trashed_directly`
       changes:
@@ -8111,33 +8065,52 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-05-17T20:44:06
+      id: v50.2024-05-29T14:04:58
       author: johnswanson
-      comment: Set `report_card.trashed_directly`
+      comment: Add `collection.trash_operation_id`
       changes:
-        - sql:
-            sql: >-
-              DELETE FROM report_card
-              WHERE trashed_from_collection_id IS NOT NULL AND NOT EXISTS (
-                SELECT 1 FROM collection WHERE type = 'trash'
-              );
-              UPDATE report_card
-              SET trashed_directly = coalesce(
-                collection_id = (SELECT id FROM collection WHERE type = 'trash'),
-                false
-              ),
-              collection_id = trashed_from_collection_id
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE report_card
-              SET
-                trashed_from_collection_id = collection_id,
-                collection_id = (SELECT id FROM collection WHERE type = 'trash')
-              WHERE trashed_directly;
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: trash_operation_id
+                  type: char(36)
+                  remarks: "The UUID of the trash operation. Each time you trash a collection subtree, you get a unique ID."
+                  constraints:
+                    nullable: true
 
   - changeSet:
-      id: v50.2024-05-17T20:44:12
+      id: v50.2024-05-29T14:05:01
+      author: johnswanson
+      comment: Add `collection.trashed_directly`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: trashed_directly
+                  type: ${boolean.type}
+                  remarks: "Whether the item was trashed independently or as a subcollection"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-29T14:05:03
+      author: johnswanson
+      comment: Populate `trashed_directly` and `trash_operation_id`
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: trash/postgres.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: trash/postgres_rollback.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-05-29T14:05:04
       author: johnswanson
       comment: remove `report_card.trashed_from_collection_id`
       changes:
@@ -8156,32 +8129,40 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-05-22T14:05:22
+      id: v50.2024-05-29T14:05:10
       author: johnswanson
-      comment: Add `collection.trash_operation_id`
+      comment: remove `report_dashboard.trashed_from_collection_id`
       changes:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: trashed_from_collection_id
+      rollback:
         - addColumn:
-            tableName: collection
+            tableName: report_dashboard
             columns:
               - column:
-                  name: trash_operation_id
-                  type: char(36)
-                  remarks: "The UUID of the trash operation. Each time you trash a collection subtree, you get a unique ID."
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this dashboard was trashed *from*"
                   constraints:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-05-23T18:44:37
+      id: v50.2024-05-29T14:05:24
       author: johnswanson
-      comment: Add `collection.trashed_directly`
+      comment: remove `collection.trashed_from_location`
       changes:
+        - dropColumn:
+            tableName: collection
+            columnName: trashed_from_location
+      rollback:
         - addColumn:
             tableName: collection
             columns:
               - column:
-                  name: trashed_directly
-                  type: ${boolean.type}
-                  remarks: "Whether the item was trashed independently or as a subcollection"
+                  name: trashed_from_location
+                  type: ${text.type}
+                  remarks: "The previous location this collection was trashed from"
                   constraints:
                     nullable: true
 
