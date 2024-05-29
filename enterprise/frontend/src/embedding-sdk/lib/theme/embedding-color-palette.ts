@@ -27,6 +27,8 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   background: "bg-white",
   "background-hover": "bg-light",
   shadow: "shadow",
+  positive: "success",
+  negative: "danger",
 
   // positive: "success",
   // negative: "danger",

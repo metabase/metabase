@@ -1,13 +1,13 @@
 import { merge } from "icepick";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
+import type { MantineThemeOverride } from "metabase/ui";
 
 import type {
   MetabaseTheme,
   MetabaseColor,
   MetabaseComponentTheme,
 } from "../../types/theme";
-import type { EmbeddingThemeOverride } from "../../types/theme/private";
 
 import { colorTuple } from "./color-tuple";
 import {
@@ -26,13 +26,13 @@ const getFontFamily = (theme: MetabaseTheme) =>
  */
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
-): EmbeddingThemeOverride {
+): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
     theme.components,
   );
 
-  const override: EmbeddingThemeOverride = {
+  const override: MantineThemeOverride = {
     fontFamily: getFontFamily(theme),
 
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),

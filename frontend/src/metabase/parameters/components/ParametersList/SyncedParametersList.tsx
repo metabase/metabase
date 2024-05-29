@@ -1,31 +1,12 @@
-import PropTypes from "prop-types";
+import { useMemo } from "react";
 
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
-import ParametersList from "metabase/parameters/components/ParametersList";
+import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-const propTypes = {
-  parameters: PropTypes.array.isRequired,
-  editingParameter: PropTypes.object,
-  question: PropTypes.object,
-  dashboard: PropTypes.object,
+import { ParametersList } from "./ParametersList";
 
-  className: PropTypes.string,
-  hideParameters: PropTypes.string,
-
-  isFullscreen: PropTypes.bool,
-  isNightMode: PropTypes.bool,
-  isEditing: PropTypes.bool,
-  commitImmediately: PropTypes.bool,
-
-  setParameterValue: PropTypes.func,
-  setParameterIndex: PropTypes.func,
-  setEditingParameter: PropTypes.func,
-  setParameterValueToDefault: PropTypes.func,
-  enableParameterRequiredBehavior: PropTypes.bool,
-};
-
-export function SyncedParametersList({
+export const SyncedParametersList = ({
   parameters,
   editingParameter,
   question,
@@ -44,11 +25,13 @@ export function SyncedParametersList({
   setEditingParameter,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
-}) {
-  useSyncedQueryString(
+}: ParametersListProps) => {
+  const queryParams = useMemo(
     () => getParameterValuesBySlug(parameters),
     [parameters],
   );
+
+  useSyncedQueryString(queryParams);
 
   return (
     <ParametersList
@@ -69,8 +52,4 @@ export function SyncedParametersList({
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
     />
   );
-}
-
-SyncedParametersList.propTypes = propTypes;
-
-export default SyncedParametersList;
+};
