@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
+import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -9,7 +10,6 @@ import {
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { compareMappingOptionTargets } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   CardId,
   QuestionDashboardCard,
@@ -61,24 +61,22 @@ export function getMatchingParameterOption(
     return null;
   }
 
-  const sourceQuestion = questions[sourceDashcard.card.id];
   const targetQuestion = questions[targetDashcard.card.id];
 
-  return (
-    getParameterMappingOptions(
-      targetQuestion,
-      null,
-      targetDashcard.card,
-      targetDashcard,
-    ).find((param: { target: ParameterTarget }) =>
-      compareMappingOptionTargets(
-        targetDimension,
-        param.target,
-        sourceQuestion,
-        targetQuestion,
-      ),
-    ) ?? null
+  const mappingOptions = getParameterMappingOptions(
+    targetQuestion,
+    null,
+    targetDashcard.card,
+    targetDashcard,
   );
+
+  const matchedOption = getMappingOptionByTarget(
+    mappingOptions,
+    targetDashcard,
+    targetDimension,
+    targetQuestion,
+  );
+  return matchedOption ?? null;
 }
 
 export function getAutoWiredMappingsForDashcards(
