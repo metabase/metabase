@@ -410,30 +410,6 @@ export function getCartesianChartDataDensity(
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     return ["area", "line"].includes(seriesSettings.display ?? "");
   });
-  const totalNumberOfDots = dataset.reduce((sum, datum) => {
-    const numOfDotsPerDatum = seriesWithSymbols.filter(
-      seriesModel => datum[seriesModel.dataKey] != null,
-    ).length;
-
-    return sum + numOfDotsPerDatum;
-  }, 0);
-
-  const seriesDataKeysWithLabels: DataKey[] = [];
-  const stackedDisplayWithLabels: StackDisplay[] = [];
-  if (
-    !settings["graph.show_values"] ||
-    settings["graph.label_value_frequency"] === "all"
-  ) {
-    return {
-      type,
-      seriesDataKeysWithLabels,
-      stackedDisplayWithLabels,
-      totalNumberOfDots,
-      averageLabelWidth: 0,
-      totalNumberOfLabels: 0,
-    };
-  }
-
   const seriesWithLabels = seriesModels.filter(seriesModel => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
     if (
@@ -445,117 +421,104 @@ export function getCartesianChartDataDensity(
 
     return seriesSettings["show_series_values"];
   });
-  const totalNumberOfSeriesLabels =
-    seriesWithLabels.length > 0
-      ? dataset.reduce((sum, datum) => {
-          const numOfLabelsPerDatum = seriesWithLabels.filter(
-            seriesModel => datum[seriesModel.dataKey] != null,
-          ).length;
 
-          return sum + numOfLabelsPerDatum;
-        }, 0)
-      : 0;
+  let totalNumberOfDots = 0;
 
-  const totalNumberOfStackedLabels =
-    settings["stackable.stack_type"] !== "normalized"
-      ? dataset.reduce((sum, datum) => {
-          const numOfStackedLabelsPerDatum = stackModels.reduce(
-            (sum, stackModel) => {
-              const positiveStackCount =
-                getStackTotalValue(
-                  datum,
-                  stackModel.seriesKeys,
-                  POSITIVE_STACK_TOTAL_DATA_KEY,
-                ) !== null
-                  ? 1
-                  : 0;
-              const negativeStackCount =
-                getStackTotalValue(
-                  datum,
-                  stackModel.seriesKeys,
-                  NEGATIVE_STACK_TOTAL_DATA_KEY,
-                ) !== null
-                  ? 1
-                  : 0;
-
-              return sum + positiveStackCount + negativeStackCount;
-            },
-            0,
-          );
-
-          return sum + numOfStackedLabelsPerDatum;
-        }, 0)
-      : 0;
-  const totalNumberOfLabels =
-    totalNumberOfSeriesLabels + totalNumberOfStackedLabels;
-
-  seriesDataKeysWithLabels.push(
-    ...seriesWithLabels.map(series => series.dataKey),
-  );
-
-  if (settings["stackable.stack_type"] !== "normalized") {
-    stackedDisplayWithLabels.push(
-      ...stackModels.map(stackModel => stackModel.display),
-    );
-  }
-
+  let totalNumberOfSeriesLabels = 0;
+  let totalNumberOfStackedLabels = 0;
+  let sumOfSeriesLabelWidths = 0;
+  let sumOfStackedSeriesLabelWidths = 0;
   const fontStyle = {
     family: renderingContext.fontFamily,
     weight: CHART_STYLE.seriesLabels.weight,
     size: CHART_STYLE.seriesLabels.size,
   };
-  const sumOfLabelWidths = dataset.reduce((sum, datum) => {
-    const sumOfSeriesLabelsWidths = seriesWithLabels.reduce(
-      (seriesSum, seriesModel) => {
-        const value = datum[seriesModel.dataKey];
+
+  dataset.forEach(datum => {
+    totalNumberOfDots += seriesWithSymbols.filter(
+      seriesModel => datum[seriesModel.dataKey] != null,
+    ).length;
+
+    // if we will not be displaying any labels, we do not have to calculate the
+    // label statistics
+    if (
+      !settings["graph.show_values"] ||
+      settings["graph.label_value_frequency"] === "all"
+    ) {
+      return;
+    }
+
+    // series labels count + label width sum
+    seriesWithLabels.forEach(seriesModel => {
+      const value = datum[seriesModel.dataKey];
+
+      if (value != null) {
+        totalNumberOfSeriesLabels += 1;
+
         const formatter = seriesLabelsFormatters[seriesModel.dataKey];
+        sumOfSeriesLabelWidths += formatter
+          ? renderingContext.measureText(formatter(value), fontStyle)
+          : 0;
+      }
+    });
 
-        if (!formatter) {
-          return sum;
-        }
+    // stacked labels count + stacked label width sum
+    if (settings["stackable.stack_type"] !== "normalized") {
+      stackModels.forEach(stackModel => {
+        const formatter = stackedLabelsFormatters[stackModel.display];
 
-        const labelWidth = renderingContext.measureText(
-          formatter(value),
-          fontStyle,
+        const positiveStackTotal = getStackTotalValue(
+          datum,
+          stackModel.seriesKeys,
+          POSITIVE_STACK_TOTAL_DATA_KEY,
+        );
+        const negativeStackTotal = getStackTotalValue(
+          datum,
+          stackModel.seriesKeys,
+          NEGATIVE_STACK_TOTAL_DATA_KEY,
         );
 
-        return seriesSum + labelWidth;
-      },
-      0,
-    );
+        if (positiveStackTotal !== null) {
+          totalNumberOfStackedLabels += 1;
 
-    const sumOfStackedSeriesLabelsWidths = stackModels.reduce(
-      (stackSum, stackModel) => {
-        const formatter = stackedLabelsFormatters[stackModel.display];
-        if (!formatter) {
-          return 0;
+          sumOfStackedSeriesLabelWidths += formatter
+            ? renderingContext.measureText(
+                formatter(positiveStackTotal),
+                fontStyle,
+              )
+            : 0;
         }
+        if (negativeStackTotal !== null) {
+          totalNumberOfStackedLabels += 1;
 
-        const stackValues = [
-          POSITIVE_STACK_TOTAL_DATA_KEY,
-          NEGATIVE_STACK_TOTAL_DATA_KEY,
-        ].map(signKey => {
-          return getStackTotalValue(datum, stackModel.seriesKeys, signKey) ?? 0;
-        });
-        const sumOfLabelWidths = stackValues.reduce((sum, value) => {
-          const labelWidth = renderingContext.measureText(
-            formatter(value),
-            fontStyle,
-          );
+          sumOfStackedSeriesLabelWidths += formatter
+            ? renderingContext.measureText(
+                formatter(negativeStackTotal),
+                fontStyle,
+              )
+            : 0;
+        }
+      });
+    }
+  });
 
-          return sum + labelWidth;
-        }, 0);
-
-        return stackSum + sumOfLabelWidths;
-      },
-      0,
-    );
-
-    return sum + sumOfSeriesLabelsWidths + sumOfStackedSeriesLabelsWidths;
-  }, 0);
-
+  const sumOfLabelWidths =
+    sumOfSeriesLabelWidths + sumOfStackedSeriesLabelWidths;
+  const totalNumberOfLabels =
+    totalNumberOfSeriesLabels + totalNumberOfStackedLabels;
   const averageLabelWidth =
     totalNumberOfLabels > 0 ? sumOfLabelWidths / totalNumberOfLabels : 0;
+
+  const seriesDataKeysWithLabels: DataKey[] = [];
+  const stackedDisplayWithLabels: StackDisplay[] = [];
+  seriesDataKeysWithLabels.push(
+    ...seriesWithLabels.map(series => series.dataKey),
+  );
+  if (settings["stackable.stack_type"] !== "normalized") {
+    stackedDisplayWithLabels.push(
+      ...stackModels.map(stackModel => stackModel.display),
+    );
+  }
 
   return {
     type,

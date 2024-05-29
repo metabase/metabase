@@ -100,7 +100,7 @@ export type TimeSeriesAxisFormatter = (
   value: RowValue,
   unit?: DateTimeAbsoluteUnit,
 ) => string;
-export type SeriesFormatters = Record<DataKey, LabelFormatter>;
+export type SeriesFormatters = Record<DataKey, LabelFormatter | undefined>;
 export type StackedSeriesFormatters = { [T in StackDisplay]?: LabelFormatter };
 
 export type DateRange = [Dayjs, Dayjs];
