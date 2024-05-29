@@ -13,7 +13,7 @@ interface AggregationItemProps {
   query: Lib.Query;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onUpdate: (nextAggregation: Lib.Aggregable) => void;
+  onUpdate: (nextAggregations: Lib.Aggregable[]) => void;
   onRemove: () => void;
 }
 
@@ -52,8 +52,8 @@ export function AggregationItem({
           clauseIndex={aggregationIndex}
           operators={operators}
           hasExpressionInput={false}
-          onSelect={nextAggregation => {
-            onUpdate(nextAggregation);
+          onSelect={nextAggregations => {
+            onUpdate(nextAggregations);
             setIsOpened(false);
           }}
         />

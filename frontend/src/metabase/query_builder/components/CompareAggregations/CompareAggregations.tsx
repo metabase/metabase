@@ -150,6 +150,7 @@ export const CompareAggregations = ({
         offset,
       );
       onSubmit(aggregations);
+      onClose();
     }
   };
 

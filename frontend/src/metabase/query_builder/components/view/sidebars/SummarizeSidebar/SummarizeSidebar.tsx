@@ -40,21 +40,26 @@ export function SummarizeSidebar({
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
   const hasAggregations = aggregations.length > 0;
 
-  const handleAddAggregation = useCallback(
-    (aggregation: Lib.Aggregable) => {
-      const nextQuery = Lib.aggregate(query, STAGE_INDEX, aggregation);
+  const handleAddAggregations = useCallback(
+    (aggregations: Lib.Aggregable[]) => {
+      const nextQuery = aggregations.reduce(
+        (query, aggregation) => Lib.aggregate(query, STAGE_INDEX, aggregation),
+        query,
+      );
       onQueryChange(nextQuery);
     },
     [query, onQueryChange],
   );
 
   const handleUpdateAggregation = useCallback(
-    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregable) => {
-      const nextQuery = Lib.replaceClause(
-        query,
-        STAGE_INDEX,
-        aggregation,
-        nextAggregation,
+    (
+      aggregation: Lib.AggregationClause,
+      nextAggregations: Lib.Aggregable[],
+    ) => {
+      const [firstClause, ...remainingClauses] = nextAggregations;
+      const nextQuery = remainingClauses.reduce(
+        (query, aggregation) => Lib.aggregate(query, STAGE_INDEX, aggregation),
+        Lib.replaceClause(query, STAGE_INDEX, aggregation, firstClause),
       );
       onQueryChange(nextQuery);
     },
@@ -131,15 +136,15 @@ export function SummarizeSidebar({
             query={query}
             aggregation={aggregation}
             aggregationIndex={aggregationIndex}
-            onUpdate={nextAggregation =>
-              handleUpdateAggregation(aggregation, nextAggregation)
+            onUpdate={nextAggregations =>
+              handleUpdateAggregation(aggregation, nextAggregations)
             }
             onRemove={() => handleRemoveAggregation(aggregation)}
           />
         ))}
         <AddAggregationButton
           query={query}
-          onAddAggregation={handleAddAggregation}
+          onAddAggregations={handleAddAggregations}
         />
       </AggregationsContainer>
       {hasAggregations && (
