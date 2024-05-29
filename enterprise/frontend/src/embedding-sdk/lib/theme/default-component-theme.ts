@@ -42,7 +42,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
         // Makes the base font size relative to root embedding,
         // without affecting the Metabase app's font sizes.
         // SDK users can override this to set their label font sizes.
-        fontSize: "0.857em",
+        fontSize: "0.893em",
       },
     },
     chart: {
