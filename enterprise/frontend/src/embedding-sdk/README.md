@@ -235,7 +235,7 @@ const questionId = 1; // This is the question ID you want to embed
 
 You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
 
-Here are the full list of the theme properties you can customize. Every property is optional.
+Here is the full list of theme properties supported. All of them are optional.
 
 ```ts
 const theme = {

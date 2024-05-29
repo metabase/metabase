@@ -62,31 +62,30 @@
 
 (def card-defaults
   "The default card params."
-  {:archived                   false
-   :collection_id              nil
-   :collection_position        nil
-   :collection_preview         true
-   :dataset_query              {}
-   :type                       "question"
-   :description                nil
-   :display                    "scalar"
-   :enable_embedding           false
-   :initially_published_at     nil
-   :entity_id                  nil
-   :embedding_params           nil
-   :made_public_by_id          nil
-   :parameters                 []
-   :parameter_mappings         []
-   :moderation_reviews         ()
-   :public_uuid                nil
-   :query_type                 nil
-   :cache_ttl                  nil
-   :average_query_time         nil
-   :last_query_start           nil
-   :result_metadata            nil
-   :cache_invalidated_at       nil
-   :view_count                 0
-   :trashed_from_collection_id nil})
+  {:archived               false
+   :collection_id          nil
+   :collection_position    nil
+   :collection_preview     true
+   :dataset_query          {}
+   :type                   "question"
+   :description            nil
+   :display                "scalar"
+   :enable_embedding       false
+   :initially_published_at nil
+   :entity_id              nil
+   :embedding_params       nil
+   :made_public_by_id      nil
+   :parameters             []
+   :parameter_mappings     []
+   :moderation_reviews     ()
+   :public_uuid            nil
+   :query_type             nil
+   :cache_ttl              nil
+   :average_query_time     nil
+   :last_query_start       nil
+   :result_metadata        nil
+   :cache_invalidated_at   nil
+   :view_count             0})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
@@ -277,11 +276,9 @@
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
     (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2"}
-                   :model/Card card-3 {:name "Card 3"}]
+                   :model/Card card-2 {:name "Card 2", :archived true}
+                   :model/Card card-3 {:name "Card 3", :archived true}]
       (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-2)) {:archived true})
-        (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-3)) {:archived true})
         (is (= #{"Card 2" "Card 3"}
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
@@ -3496,16 +3493,6 @@
                            :crowberto :post 200
                            (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
-
-(deftest ^:parallel can-restore
-  (t2.with-temp/with-temp [:model/Collection collection-a {:name "A"}
-                           :model/Card {card-id :id} {:name "My Card"
-                                                      :collection_id (u/the-id collection-a)}]
-    ;; trash the card
-    (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
-    ;; trash the parent collection
-    (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
-    (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"

@@ -30,7 +30,6 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       name: "",
       description: "",
       can_write: true,
-      can_restore: true,
       cache_ttl: null,
       auto_apply_filters: true,
       archived: false,

@@ -1,7 +1,6 @@
 import {
   isRootCollection,
   isRootPersonalCollection,
-  isRootTrashCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -27,11 +26,6 @@ export function getCollectionIcon(
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
-
-  if (collection.type === "trash") {
-    return { name: "trash" };
-  }
-
   if (isRootPersonalCollection(collection)) {
     return { name: "person" };
   }
@@ -72,7 +66,6 @@ export function buildCollectionTree(
 ): CollectionTreeItem[] {
   return collections.flatMap(collection => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
-
     const isMatchedByFilter =
       !modelFilter ||
       collection.here?.some(modelFilter) ||
@@ -82,12 +75,10 @@ export function buildCollectionTree(
       return [];
     }
 
-    const children = !isRootTrashCollection(collection)
-      ? buildCollectionTree(
-          collection.children?.filter(child => !child.archived) || [],
-          modelFilter,
-        )
-      : [];
+    const children = buildCollectionTree(
+      collection.children?.filter(child => !child.archived) || [],
+      modelFilter,
+    );
 
     if (isPersonalRoot && children.length === 0) {
       return [];

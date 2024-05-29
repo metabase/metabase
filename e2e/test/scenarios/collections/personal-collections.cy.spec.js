@@ -168,10 +168,10 @@ describe("personal collections", () => {
 
           openCollectionMenu();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          popover().within(() => cy.findByText("Move to trash").click());
-          modal().findByRole("button", { name: "Move to trash" }).click();
+          popover().within(() => cy.findByText("Archive").click());
+          modal().findByRole("button", { name: "Archive" }).click();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Trashed collection");
+          cy.findByText("Archived collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
