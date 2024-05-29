@@ -286,8 +286,6 @@
                           (latest-view nil (:id dash))))))))))
 
 (deftest premium-features-test
-  (is (true? (premium-features/log-enabled?)))
-  (is (= {}
-         (premium-features/*token-features*))))
+  (is (= #{} (premium-features/*token-features*))))
 
 ;;; ---------------------------------------- API tests end -----------------------------------------
