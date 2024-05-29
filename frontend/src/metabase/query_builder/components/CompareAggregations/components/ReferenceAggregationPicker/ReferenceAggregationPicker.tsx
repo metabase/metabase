@@ -20,9 +20,10 @@ export const ReferenceAggregationPicker = ({
   stageIndex,
   onChange,
 }: Props) => {
-  const sections = useMemo(() => {
-    return getAggregationSections(query, stageIndex);
-  }, [query, stageIndex]);
+  const sections = useMemo(
+    () => getSections(query, stageIndex),
+    [query, stageIndex],
+  );
 
   const handleChange = useCallback(
     (item: AggregationItem) => {
@@ -49,7 +50,7 @@ const renderItemName = (item: AggregationItem) => item.displayName;
 
 const renderItemDescription = () => null;
 
-const getAggregationSections = (query: Lib.Query, stageIndex: number) => {
+const getSections = (query: Lib.Query, stageIndex: number) => {
   const aggregations = Lib.aggregations(query, stageIndex);
   const items = aggregations.map<AggregationItem>(aggregation => {
     const info = Lib.displayInfo(query, stageIndex, aggregation);
