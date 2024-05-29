@@ -198,6 +198,7 @@ export function MultiAutocomplete({
           height: "2em",
           color: color("brand"),
           background: color("bg-medium"),
+          fontWeight: "bold",
         },
         defaultValueRemove: {
           color: color("brand"),
