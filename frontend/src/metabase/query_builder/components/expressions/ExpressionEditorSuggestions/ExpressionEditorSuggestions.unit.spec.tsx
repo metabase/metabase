@@ -102,7 +102,7 @@ describe("ExpressionEditorSuggestions", () => {
 
   it("should show functions when first opened", () => {
     setup({ startRule: "expression" });
-    expect(screen.getByText("Most used functions")).toBeInTheDocument();
+    expect(screen.getByText("Common functions")).toBeInTheDocument();
 
     expect(screen.getByText("case")).toBeInTheDocument();
     expect(screen.getByText("coalesce")).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("ExpressionEditorSuggestions", () => {
 
   it("should not include popular functions when text has been typed", () => {
     setup({ source: "[", startRule: "expression" });
-    expect(screen.queryByText("Most used functions")).not.toBeInTheDocument();
+    expect(screen.queryByText("Common functions")).not.toBeInTheDocument();
 
     expect(screen.queryByText("case")).not.toBeInTheDocument();
     expect(screen.queryByText("coalesce")).not.toBeInTheDocument();
@@ -118,7 +118,7 @@ describe("ExpressionEditorSuggestions", () => {
 
   it("should highlight a suggestion when hovering it", () => {
     const { onHighlightSuggestion } = setup({ startRule: "expression" });
-    expect(screen.getByText("Most used functions")).toBeInTheDocument();
+    expect(screen.getByText("Common functions")).toBeInTheDocument();
 
     fireEvent.mouseOver(screen.getByText("case"));
     expect(onHighlightSuggestion).toHaveBeenCalled();
