@@ -310,6 +310,7 @@ describe("scenarios > notebook > data source", () => {
         cy.findByText("Orders Model")
           .should("exist")
           .and("contain.text", "Orders Model")
+          .closest("button")
           .and("have.attr", "aria-selected", "true");
 
         cy.button("Close").click();
@@ -332,6 +333,7 @@ describe("scenarios > notebook > data source", () => {
         cy.findByText("Orders Model")
           .should("exist")
           .and("contain.text", "Orders Model")
+          .closest("button")
           .and("have.attr", "aria-selected", "true");
       });
     });
