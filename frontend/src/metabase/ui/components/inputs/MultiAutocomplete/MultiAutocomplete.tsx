@@ -188,6 +188,9 @@ export function MultiAutocomplete({
         input: {
           padding: 0,
         },
+        searchInput: {
+          marginLeft: "0.35rem",
+        },
         values: {
           padding: "0.35em",
           gap: "0.35em",
