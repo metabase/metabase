@@ -239,7 +239,8 @@
   Should run in a separate thread since it can take a long time to complete."
   [{:keys [id external_id] :as migration} & {:keys [retry?]}]
   ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
-  ;; in the same process.
+  ;; in the same process, so use a random name.
+  ;; The docker image process runs in non-root, so write to a dir it can access.
   (let [dump-file (io/file (System/getProperty "java.io.tmpdir")
                            (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
