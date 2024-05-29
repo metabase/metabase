@@ -9,7 +9,6 @@
    [metabase.http-client :as client]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -23,7 +22,7 @@
                  {:order-by [[:id :desc]]}))
 
 (deftest card-read-ee-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is recorded in EE"
@@ -37,7 +36,7 @@
              (latest-view (u/id user) (u/id card))))))))
 
 (deftest card-read-oss-no-view-logging-test
-  (when-not (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
@@ -46,7 +45,7 @@
             "view log entries should not be made in OSS")))))
 
 (deftest collection-read-ee-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/Collection coll {}]
       (testing "A basic collection read event is recorded in EE"
         (events/publish-event! :event/collection-read {:object coll :user-id (mt/user->id :crowberto)})
@@ -59,7 +58,7 @@
              (latest-view (mt/user->id :crowberto) (u/id coll))))))))
 
 (deftest table-read-ee-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User user {}]
       (let [table (t2/select-one :model/Table :id (mt/id :users))]
         (testing "A basic table read event is recorded in EE"
@@ -83,7 +82,7 @@
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
 (deftest dashboard-read-ee-test
-  (when (premium-features/log-enabled?)
+  (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User          user      {}
                    :model/Dashboard     dashboard {:name "Test Dashboard"}
                    :model/Card          card      {:name "Dashboard Test Card"}
