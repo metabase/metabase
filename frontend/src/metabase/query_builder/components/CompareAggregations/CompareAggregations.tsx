@@ -2,14 +2,18 @@ import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, NumberInput, Stack } from "metabase/ui";
+import { Box, Button, Flex, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
-import { ColumnPicker, ReferenceAggregationPicker } from "./components";
+import {
+  ColumnPicker,
+  OffsetInput,
+  ReferenceAggregationPicker,
+} from "./components";
 import type { ColumnType } from "./types";
-import { getAggregations, getPeriodTitle, getTitle } from "./utils";
+import { canSubmit, getAggregations, getTitle } from "./utils";
 
 interface Props {
   query: Lib.Query;
@@ -85,18 +89,7 @@ export const CompareAggregations = ({
         <form onSubmit={handleSubmit}>
           <Stack p="lg" spacing="xl">
             <Stack spacing="md">
-              <NumberInput
-                label={getPeriodTitle()}
-                min={1}
-                parseValue={parsePeriodValue}
-                precision={0}
-                size="md"
-                step={1}
-                type="number"
-                value={offset}
-                onChange={setOffset}
-              />
-
+              <OffsetInput value={offset} onChange={setOffset} />
               <ColumnPicker value={columns} onChange={setColumns} />
             </Stack>
 
@@ -112,15 +105,4 @@ export const CompareAggregations = ({
       )}
     </Box>
   );
-};
-
-const parsePeriodValue = (value: string): number | "" => {
-  const number = parseInt(value, 10);
-  return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
-};
-
-const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
-  const isPeriodValid = typeof period === "number" && period > 0;
-  const areColumnsValid = columns.length > 0;
-  return isPeriodValid && areColumnsValid;
 };

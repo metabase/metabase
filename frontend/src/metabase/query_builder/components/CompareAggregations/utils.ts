@@ -51,11 +51,6 @@ export const getTitle = (
   return t`Compare “${info.displayName}” to previous ${period}`;
 };
 
-export const getPeriodTitle = (): string => {
-  // TODO: implement me
-  return t`Previous period`;
-};
-
 export const getAggregations = (
   query: Lib.Query,
   stageIndex: number,
@@ -84,4 +79,13 @@ export const getAggregations = (
   }
 
   return aggregations;
+};
+
+export const canSubmit = (
+  period: number | "",
+  columns: ColumnType[],
+): boolean => {
+  const isPeriodValid = typeof period === "number" && period > 0;
+  const areColumnsValid = columns.length > 0;
+  return isPeriodValid && areColumnsValid;
 };
