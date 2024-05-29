@@ -22,6 +22,8 @@ const DEFAULT_OFFSET = 1;
 
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
 
+const WIDTH = 472;
+
 export const CompareAggregations = ({
   query,
   stageIndex,
@@ -68,7 +70,7 @@ export const CompareAggregations = ({
   };
 
   return (
-    <Box data-testid="compare-aggregations">
+    <Box data-testid="compare-aggregations" miw={WIDTH} maw={WIDTH}>
       <ExpressionWidgetHeader title={title} onBack={handleBack} />
 
       {!aggregation && (
