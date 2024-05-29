@@ -385,7 +385,11 @@ export const fetchDashboardCardMetadata = createThunkAction(
     const dashboard = getDashboardComplete(getState());
     const dashboardType = getDashboardType(dashboard.id);
     if (dashboardType === "normal") {
-      await dispatch(Dashboards.actions.fetchMetadata({ id: dashboard.id }));
+      await dispatch(
+        Dashboards.actions.fetchMetadata({ id: dashboard.id }),
+      ).catch(error => {
+        console.error("Failed dashboard loading metadata", error);
+      });
       await dispatch(loadMetadataForLinkedTargets(dashboard.dashcards));
     }
     if (dashboardType === "transient") {
