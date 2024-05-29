@@ -61,10 +61,47 @@ export function getParameterTargetField(
 
   if (isConcreteFieldReference(fieldRef)) {
     const [_, fieldIdOrName] = fieldRef;
-    const fields = metadata.fieldsList();
-    return fields.find(
-      field => field.id === fieldIdOrName || field.name === fieldIdOrName,
+    if (typeof fieldIdOrName === "number") {
+      /*
+       performance optimization:
+       as we care only about real database fields, we can match by id directly
+       without finding this column via query
+      */
+      return metadata.fieldsList().find(field => field.id === fieldIdOrName);
+    }
+
+    const query = question.query();
+    const stageIndex = -1;
+    const columns = Lib.visibleColumns(query, stageIndex);
+
+    if (columns.length === 0) {
+      /*
+       query and metadata are not available:
+       1) no data permissions
+       2) embedding
+       we cannot correctly find a field in all cases this way
+      */
+      return metadata.fieldsList().find(field => field.name === fieldIdOrName);
+    }
+
+    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      columns,
+      [fieldRef],
     );
+    if (columnIndex < 0) {
+      return null;
+    }
+
+    const column = columns[columnIndex];
+    const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+    if (fieldValuesInfo.fieldId == null) {
+      // the column does not represent to a database field, e.g. coming from an aggregation clause
+      return null;
+    }
+
+    return metadata.field(fieldValuesInfo.fieldId);
   }
 
   return null;
