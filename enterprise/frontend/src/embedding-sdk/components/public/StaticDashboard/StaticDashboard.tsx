@@ -1,3 +1,4 @@
+import type { Query } from "history";
 import { pick } from "underscore";
 
 import {
@@ -11,7 +12,7 @@ import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
 import { PublicDashboard } from "metabase/public/containers/PublicDashboard/PublicDashboard";
 import { Box } from "metabase/ui";
-import type { DashboardId, ParameterId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 
 export const StaticDashboard = ({
   dashboardId,
@@ -24,7 +25,7 @@ export const StaticDashboard = ({
   hideParameters,
 }: {
   dashboardId: DashboardId;
-  parameterValues: Record<ParameterId, string | string[] | null | undefined>;
+  parameterValues: Query;
 } & Partial<EmbedDisplayParams>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,

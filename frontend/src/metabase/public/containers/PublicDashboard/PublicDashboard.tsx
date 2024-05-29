@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { Query } from "history";
 import { assoc } from "icepick";
 import type { ComponentType } from "react";
 import { Component } from "react";
@@ -80,7 +81,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboardId: DashboardId;
-  queryParams: Record<string, string | string[] | null | undefined>;
+  queryParams: Query;
 };
 
 type DisplayProps = Pick<
@@ -98,9 +99,7 @@ type DisplayProps = Pick<
 type PublicDashboardProps = OwnProps &
   ReduxProps &
   DisplayProps &
-  EmbedDisplayParams & {
-    queryParams: Record<string, string | string[] | null | undefined>;
-  };
+  EmbedDisplayParams;
 
 class PublicDashboardInner extends Component<PublicDashboardProps> {
   _initialize = async () => {

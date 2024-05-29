@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/search/constants";
@@ -44,7 +44,7 @@ export type FilterTypeKeys = keyof SearchFilterPropTypes;
 
 // All URL query parameters are returned as strings so we need to account
 // for that when parsing them to our filter components
-export type SearchQueryParamValue = string | string[] | null | undefined;
+export type SearchQueryParamValue = Query;
 export type URLSearchFilterQueryParams = Partial<
   Record<FilterTypeKeys, SearchQueryParamValue>
 >;

@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
@@ -154,7 +154,7 @@ export type DashboardProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
