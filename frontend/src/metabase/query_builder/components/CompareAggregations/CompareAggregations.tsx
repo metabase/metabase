@@ -74,7 +74,7 @@ export const CompareAggregations = ({
   };
 
   return (
-    <Box data-testid="compare-aggregations" miw={WIDTH} maw={WIDTH}>
+    <Box miw={WIDTH} maw={WIDTH}>
       <ExpressionWidgetHeader title={title} onBack={handleBack} />
 
       {!aggregation && (
