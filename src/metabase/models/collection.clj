@@ -1605,14 +1605,19 @@
   Collections."
   [colls]
   (when (seq colls)
-    ;; TODO PERFORMANCE, N+1 QUERIES BELOW
-    (for [coll colls
-          :let [trashed-directly? (:trashed_directly coll)
-                parent-archived? (t2/select-one-fn :archived :model/Collection
-                                                   :id (:parent_id (t2/hydrate coll :parent_id)))]]
-      (cond-> coll
-        (:archived coll) (assoc :can_restore (and (perms/set-has-full-permissions-for-set?
-                                                   @api/*current-user-permissions-set*
-                                                   (perms-for-archiving coll))
-                                                  trashed-directly?
-                                                  (not parent-archived?)))))))
+    (let [coll-id->parent-id (into {} (map (fn [{:keys [id parent_id]}]
+                                             [id parent_id])
+                                           (t2/hydrate (filter :archived colls) :parent_id)))
+          parent-ids (keep val coll-id->parent-id)
+          parent-id->archived? (when (seq parent-ids)
+                                 (t2/select-pk->fn :archived :model/Collection :id [:in parent-ids]))]
+      (for [coll colls
+            :let [parent-id (coll-id->parent-id (:id coll))
+                  trashed-directly? (:trashed_directly coll)
+                  parent-archived? (get parent-id->archived? parent-id false)]]
+        (cond-> coll
+          (:archived coll) (assoc :can_restore (and trashed-directly?
+                                                    (not parent-archived?)
+                                                    (perms/set-has-full-permissions-for-set?
+                                                     @api/*current-user-permissions-set*
+                                                     (perms-for-archiving coll)))))))))
