@@ -171,27 +171,29 @@ export const CompareAggregations = ({
       {aggregation && (
         <form onSubmit={handleSubmit}>
           <Stack p="lg" spacing="xl">
-            <NumberInput
-              label={getPeriodTitle()}
-              min={1}
-              parseValue={parsePeriodValue}
-              precision={0}
-              size="md"
-              step={1}
-              type="number"
-              value={offset}
-              onChange={setOffset}
-            />
+            <Stack spacing="md">
+              <NumberInput
+                label={getPeriodTitle()}
+                min={1}
+                parseValue={parsePeriodValue}
+                precision={0}
+                size="md"
+                step={1}
+                type="number"
+                value={offset}
+                onChange={setOffset}
+              />
 
-            <MultiAutocomplete
-              aria-label={t`Columns to create`}
-              data={COLUMN_OPTIONS}
-              placeholder={t`Columns to create`}
-              rightSection={null}
-              shouldCreate={() => false} // TODO
-              value={columns}
-              onChange={values => setColumns(values as ColumnType[])}
-            />
+              <MultiAutocomplete
+                label={t`Columns to create`}
+                data={COLUMN_OPTIONS}
+                placeholder={t`Columns to create`}
+                rightSection={null}
+                shouldCreate={() => false} // TODO
+                value={columns}
+                onChange={values => setColumns(values as ColumnType[])}
+              />
+            </Stack>
 
             <Flex justify="flex-end">
               <Button
