@@ -10,10 +10,10 @@ import { Flex, Text, List, Button, Box, Modal, Progress } from "metabase/ui";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
-import { getCheckoutUrl } from "./utils";
 
 interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
+  checkoutUrl: string;
 }
 
 const progressMessage: Record<InProgressStates, string> = {
@@ -25,6 +25,7 @@ const progressMessage: Record<InProgressStates, string> = {
 
 export const MigrationInProgress = ({
   migration,
+  checkoutUrl,
 }: MigrationInProgressProps) => {
   const dispatch = useDispatch();
 
@@ -46,8 +47,6 @@ export const MigrationInProgress = ({
       }),
     );
   };
-
-  const checkoutUrl = getCheckoutUrl(migration);
 
   return (
     <>
