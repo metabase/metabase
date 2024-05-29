@@ -22,7 +22,10 @@ const setup = () => {
     />,
   );
 
-  return { mockMigrationStart, store };
+  const STORE_URL = store.getState().settings.values["store-url"];
+  const metabaseStoreLink = `${STORE_URL}/checkout?migration-id=${BASE_RESPONSE.external_id}`;
+
+  return { mockMigrationStart, store, metabaseStoreLink };
 };
 
 describe("CloudPanel", () => {
@@ -53,9 +56,9 @@ describe("CloudPanel", () => {
       DONE_RESPONSE,
     ];
 
-    await startMigration(migrationResponses);
+    const { metabaseStoreLink } = await startMigration(migrationResponses);
 
-    await expectProgressState();
+    await expectProgressState(metabaseStoreLink);
 
     // should see the progress bar update as progress increases
     for (const { progress } of migrationProgressResponses) {
@@ -67,18 +70,18 @@ describe("CloudPanel", () => {
       });
     }
 
-    await expectSuccessState();
+    await expectSuccessState(metabaseStoreLink);
   });
 
   it("should be able to cancel a migration", async () => {
-    const { store } = await startMigration([
+    const { store, metabaseStoreLink } = await startMigration([
       UNINITIALIZED_RESPONSE,
       INIT_RESPONSE,
       SETUP_RESPONSE,
       CANCELED_RESPONSE,
     ]);
 
-    await expectProgressState();
+    await expectProgressState(metabaseStoreLink);
 
     const cancelButton = await screen.findByRole("button", {
       name: /Cancel migration/,
@@ -103,21 +106,21 @@ describe("CloudPanel", () => {
   });
 
   it("should show user error if something fails", async () => {
-    await startMigration([
+    const { metabaseStoreLink } = await startMigration([
       UNINITIALIZED_RESPONSE,
       INIT_RESPONSE,
       SETUP_RESPONSE,
       ERROR_RESPONSE,
     ]);
 
-    await expectProgressState();
+    await expectProgressState(metabaseStoreLink);
 
     await expectErrorState();
   });
 
   it("should be able to start a new migration after a failed migration", async () => {
     fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE);
-    const { mockMigrationStart } = setup();
+    const { mockMigrationStart, metabaseStoreLink } = setup();
 
     await expectErrorState();
     await expectInitState();
@@ -131,7 +134,7 @@ describe("CloudPanel", () => {
       { ...SETUP_RESPONSE, id: 2 },
     ]);
 
-    await expectProgressState();
+    await expectProgressState(metabaseStoreLink);
 
     expect(mockMigrationStart).toHaveBeenCalledTimes(1);
   });
@@ -139,9 +142,9 @@ describe("CloudPanel", () => {
   it("should be able to start a new migration after a successful migration", async () => {
     fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE);
 
-    const { mockMigrationStart } = setup();
+    const { mockMigrationStart, metabaseStoreLink } = setup();
 
-    await expectSuccessState();
+    await expectSuccessState(metabaseStoreLink);
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Restart the process/ }),
@@ -153,7 +156,7 @@ describe("CloudPanel", () => {
       { ...DUMP_RESPONSE, id: 2 },
     ]);
 
-    await expectProgressState();
+    await expectProgressState(metabaseStoreLink);
 
     expect(mockMigrationStart).toHaveBeenCalledTimes(1);
   });
@@ -229,9 +232,9 @@ const expectStartConfirmationModal = async () => {
   ).toBeInTheDocument();
 };
 
-const expectProgressState = async () => {
+const expectProgressState = async (STORE_LINK: string) => {
   expect(
-    await screen.findByText("Migrating to Metabase Cloud..."),
+    await screen.findByText("Migrating to Metabase Cloud…"),
   ).toBeInTheDocument();
 
   // expect to have correct store link for this exact migration
@@ -240,7 +243,7 @@ const expectProgressState = async () => {
   expect(storeLink).toHaveAttribute("href", STORE_LINK);
 };
 
-const expectSuccessState = async () => {
+const expectSuccessState = async (STORE_LINK: string) => {
   expect(
     await screen.findByText("The snapshot has been uploaded to the Cloud"),
   ).toBeInTheDocument();
@@ -261,7 +264,7 @@ const expectErrorState = async () => {
 
 const startMigration = async (migrationResponses: MockResponse[]) => {
   fetchMockCloudMigrationGetSequence(migrationResponses);
-  const { mockMigrationStart, store } = setup();
+  const { mockMigrationStart, store, metabaseStoreLink } = setup();
 
   await expectInitState();
   await userEvent.click(screen.getByRole("button", { name: /Get started/ }));
@@ -271,10 +274,8 @@ const startMigration = async (migrationResponses: MockResponse[]) => {
 
   expect(mockMigrationStart).toHaveBeenCalledTimes(1);
 
-  return { store };
+  return { store, metabaseStoreLink };
 };
-
-const STORE_LINK = `https://store.metabase.com/checkout?migration-id=${BASE_RESPONSE.external_id}`;
 
 function fetchMockCloudMigrationGetSequence(responses: MockResponse[]) {
   let called = 0;

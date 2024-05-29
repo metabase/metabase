@@ -76,7 +76,7 @@ export const MigrationInProgress = ({
             />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
-            <Text fw="bold">{t`Migrating to Metabase Cloud...`}</Text>
+            <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>
             {readOnly ? (
               <List size="md" mt="md">
                 <List.Item>{t`To complete the migration, set up your account in the Metabase Store`}</List.Item>

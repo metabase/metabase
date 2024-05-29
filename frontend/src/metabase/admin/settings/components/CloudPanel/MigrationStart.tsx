@@ -45,7 +45,7 @@ export const MigrationStart = ({
       <Modal.Root
         opened={isModalOpen}
         onClose={closeModal}
-        size={566}
+        size={"36rem"}
         data-testid="new-cloud-migration-confirmation"
       >
         <Modal.Overlay />
@@ -59,8 +59,8 @@ export const MigrationStart = ({
             <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
 
             <Text mt="1.5rem">
-              Just a heads up: your Metabase will be read-only for up to 30
-              minutes while we prep it for migration.{" "}
+              {t`Just a heads up: your Metabase will be read-only for up to 30
+              minutes while we prep it for migration.`}{" "}
               <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
             </Text>
 
