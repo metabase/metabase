@@ -236,6 +236,11 @@ export function AggregationPicker({
       <CompareAggregations
         query={query}
         stageIndex={stageIndex}
+        onSubmit={columns => {
+          for (const column of columns) {
+            onSelect(column);
+          }
+        }}
         onClose={handleCompareClose}
       />
     );

@@ -3,7 +3,14 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Box, Button, Flex, NumberInput, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  MultiAutocomplete,
+  NumberInput,
+  Stack,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
@@ -15,11 +22,18 @@ interface Props {
   query: Lib.Query;
   stageIndex: number;
   onClose: () => void;
+  onSubmit: (aggregations: Lib.ExpressionClause[]) => void;
 }
 
 type AggregationItem = Lib.AggregationClauseDisplayInfo & {
   aggregation: Lib.AggregationClause;
 };
+
+type ColumnType = "offset" | "diff-offset" | "percent-diff-offset";
+
+const DEFAULT_OFFSET = 1;
+
+const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
 
 const renderItemName = (item: AggregationItem) => item.displayName;
 
@@ -30,7 +44,65 @@ const parsePeriodValue = (value: string): number | "" => {
   return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
 };
 
-export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
+const canSubmit = (period: number | "", columns: ColumnType[]): boolean => {
+  const isPeriodValid = typeof period === "number" && period > 0;
+  const areColumnsValid = columns.length > 0;
+  return isPeriodValid && areColumnsValid;
+};
+
+const getAggregationSections = (
+  query: Lib.Query,
+  stageIndex: number,
+  aggregations: Lib.AggregationClause[],
+) => {
+  const items = aggregations.map<AggregationItem>(aggregation => {
+    const info = Lib.displayInfo(query, stageIndex, aggregation);
+    return { ...info, aggregation };
+  });
+  const sections = [{ items }];
+  return sections;
+};
+
+const getAggregations = (
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation: Lib.AggregationClause,
+  columns: ColumnType[],
+  offset: number,
+): Lib.ExpressionClause[] => {
+  const aggregations: Lib.ExpressionClause[] = [];
+
+  if (columns.includes("offset")) {
+    aggregations.push(Lib.offsetClause(query, stageIndex, aggregation, offset));
+  }
+
+  if (columns.includes("diff-offset")) {
+    aggregations.push(
+      Lib.diffOffsetClause(query, stageIndex, aggregation, offset),
+    );
+  }
+
+  if (columns.includes("percent-diff-offset")) {
+    aggregations.push(
+      Lib.percentDiffOffsetClause(query, stageIndex, aggregation, offset),
+    );
+  }
+
+  return aggregations;
+};
+
+const COLUMN_OPTIONS: { label: string; value: ColumnType }[] = [
+  { label: t`Previous value`, value: "offset" },
+  { label: t`Percentage difference`, value: "percent-diff-offset" },
+  { label: t`Value difference`, value: "diff-offset" },
+];
+
+export const CompareAggregations = ({
+  query,
+  stageIndex,
+  onClose,
+  onSubmit,
+}: Props) => {
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
@@ -38,22 +110,17 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
   const [aggregation, setAggregation] = useState(
     hasManyAggregations ? undefined : aggregations[0],
   );
-  const [period, setPeriod] = useState<number | "">(1);
-  const isValid = typeof period === "number" && period > 0; // TODO include columns to create
+  const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
+  const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
 
   const title = useMemo(
     () => getTitle(query, stageIndex, aggregation),
     [query, stageIndex, aggregation],
   );
 
-  const items = useMemo(() => {
-    return aggregations.map<AggregationItem>(aggregation => {
-      const info = Lib.displayInfo(query, stageIndex, aggregation);
-      return { ...info, aggregation };
-    });
+  const sections = useMemo(() => {
+    return getAggregationSections(query, stageIndex, aggregations);
   }, [query, stageIndex, aggregations]);
-
-  const sections = useMemo(() => [{ items }], [items]);
 
   const handleAggregationChange = useCallback((item: AggregationItem) => {
     setAggregation(item.aggregation);
@@ -69,7 +136,17 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    // TODO: implement me
+
+    if (aggregation && offset !== "") {
+      const aggregations = getAggregations(
+        query,
+        stageIndex,
+        aggregation,
+        columns,
+        offset,
+      );
+      onSubmit(aggregations);
+    }
   };
 
   return (
@@ -100,13 +177,23 @@ export const CompareAggregations = ({ query, stageIndex, onClose }: Props) => {
               size="md"
               step={1}
               type="number"
-              value={period}
-              onChange={setPeriod}
+              value={offset}
+              onChange={setOffset}
+            />
+
+            <MultiAutocomplete
+              aria-label={t`Columns to create`}
+              data={COLUMN_OPTIONS}
+              placeholder={t`Columns to create`}
+              rightSection={null}
+              shouldCreate={() => false} // TODO
+              value={columns}
+              onChange={values => setColumns(values as ColumnType[])}
             />
 
             <Flex justify="flex-end">
               <Button
-                disabled={!isValid}
+                disabled={!canSubmit(offset, columns)}
                 type="submit"
                 variant="filled"
               >{t`Done`}</Button>
