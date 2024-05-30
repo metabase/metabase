@@ -89,6 +89,11 @@ export type StructuredParameterDimensionTarget = [
 export type ParameterValueOrArray = string | number | Array<any>;
 export type ParameterValue = [RowValue];
 
+export type ParameterValuesMap = Record<
+  ParameterId,
+  ParameterValueOrArray | null
+>;
+
 export interface ParameterValues {
   values: ParameterValue[];
   has_more_values: boolean;

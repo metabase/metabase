@@ -49,7 +49,7 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import type { Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import EmbedFrame from "../../components/EmbedFrame";
+import { EmbedFrame } from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicDashboard.styled";
 

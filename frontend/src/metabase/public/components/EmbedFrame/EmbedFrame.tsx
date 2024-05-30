@@ -26,7 +26,7 @@ import type {
   Dashboard,
   Parameter,
   ParameterId,
-  ParameterValueOrArray,
+  ParameterValuesMap,
 } from "metabase-types/api";
 
 import type { DashboardUrlHashOptions } from "../../../dashboard/types";
@@ -48,8 +48,6 @@ import {
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
 
-type ParameterValues = Record<ParameterId, ParameterValueOrArray | null>;
-
 export type EmbedFrameBaseProps = Partial<{
   className: string;
   name: string | null;
@@ -59,8 +57,8 @@ export type EmbedFrameBaseProps = Partial<{
   actionButtons: JSX.Element | null;
   footerVariant: FooterVariant;
   parameters: Parameter[];
-  parameterValues: ParameterValues;
-  draftParameterValues: ParameterValues;
+  parameterValues: ParameterValuesMap;
+  draftParameterValues: ParameterValuesMap;
   hiddenParameterSlugs: string;
   enableParameterRequiredBehavior: boolean;
   setParameterValue: (parameterId: ParameterId, value: any) => void;
@@ -84,7 +82,7 @@ const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
   }
 };
 
-function EmbedFrame({
+export const EmbedFrame = ({
   className,
   children,
   name,
@@ -106,15 +104,17 @@ function EmbedFrame({
   theme,
   hide_parameters,
   hide_download_button,
-}: EmbedFrameProps) {
-  const isSdk = useSelector(getIsEmbeddingSdk);
+}: EmbedFrameProps) => {
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
     state => !getSetting(state, "hide-embed-branding?"),
   );
 
-  const ParametersListComponent = isSdk ? ParametersList : SyncedParametersList;
+  const ParametersListComponent = isEmbeddingSdk
+    ? ParametersList
+    : SyncedParametersList;
 
-  const [hasFrameScroll, setHasFrameScroll] = useState(!isSdk);
+  const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
 
   const [hasInnerScroll, setHasInnerScroll] = useState(
     document.documentElement.scrollTop > 0,
@@ -251,7 +251,7 @@ function EmbedFrame({
       )}
     </Root>
   );
-}
+};
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {
@@ -262,6 +262,3 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // takes too much space on small screens
   return parameterCount <= 5;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EmbedFrame;
