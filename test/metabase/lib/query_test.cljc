@@ -177,13 +177,12 @@
             {:fields [{:id                (meta/id :people :id)
                        :coercion-strategy :Coercion/UNIXSeconds->DateTime
                        :effective-type    effective-type}]})
-        ;; Query of a following form is input to `lib/query` in the wild.
         query {:database (meta/id)
-               :type     "query"
+               :type     :query
                :query    {:source-table (meta/id :people)
-                          :filter       ["and"
-                                         ["between"
-                                          ["field" (meta/id :people :id) {:base-type "type/BigInteger"}]
+                          :filter       [:and
+                                         [:between
+                                          [:field (meta/id :people :id) {:base-type :type/BigInteger}]
                                           "1969-10-12"
                                           "1971-10-12"]]}}]
     (testing "Effective type is added to coerced fields during legacy query transformation (part of issue #42931)"
