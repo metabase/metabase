@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
@@ -110,7 +110,9 @@ describe("ParameterSidebar", () => {
     // expect there to be an error message with the text "This label is already in use"
     const error = /this label is already in use/i;
     expect(screen.getByText(error)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(labelInput).toHaveValue("Foo");
     // the error message should disappear
@@ -118,7 +120,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with another value
     await fillValue(labelInput, "Bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(labelInput).toHaveValue("Bar");
   });
 

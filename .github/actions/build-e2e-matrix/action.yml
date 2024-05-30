@@ -45,6 +45,7 @@ runs:
             ["organization", {} ],
             ["permissions", {} ],
             ["question", {} ],
+            ["question-reproductions", {} ],
             ["search", {}],
             ["sharing", {} ],
             ["visualizations-charts", {} ],

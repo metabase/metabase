@@ -7,7 +7,6 @@ import {
   saveDashboard,
   sidebar,
   getDashboardCard,
-  popover,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -98,16 +97,11 @@ describe("issue 22788", () => {
 
 function addFilterAndAssert() {
   filterWidget().click();
-  popover().within(() => {
-    cy.findByText("Gizmo").click();
-    cy.button("Add filter").click();
-  });
+  cy.findByPlaceholderText("Enter some text").type("Gizmo{enter}");
+  cy.button("Add filter").click();
 
-  filterWidget()
-    .findByDisplayValue("Gizmo")
-    .should("not.exist")
-    .findByDisplayValue("Doohickey")
-    .should("not.exist");
+  cy.findAllByText("Gizmo");
+  cy.findAllByText("Doohickey").should("not.exist");
 }
 
 function openFilterSettings() {

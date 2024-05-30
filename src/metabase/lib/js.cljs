@@ -2232,22 +2232,34 @@
     (fn [_]
       (lib.core/can-run a-query (keyword card-type))))))
 
-(defn ^:export can-preview
-  "Returns true if the query is previewable.
+(defn ^:export preview-query
+  "*Truncates* a query for use in the Notebook editor's \"preview\" system.
 
-  This is a stronger condition than [[can-run]] - there are some cases where we want to be stricter about previews than
-  about regular save and run. For example, an `:offset` expression requires a sort order but sorting comes later in the
-  query builder than the expression. So the partial query we would preview at the expression step is invalid and it
-  fails `can-preview`. However, we don't currently have a good path for surfacing *reasons* a query can't be saved,
-  previewed or run. So we want [[can-save]] and [[can-run]] to be true for a query with an `:offset` expression and no
-  sort order (so the QP can return a good error message), but [[can-preview]] can be stricter.
+  Takes `a-query` and `stage-index` as usual.
+
+  - Stages later than `stage-index` are dropped.
+  - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
+  - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
+    `[0, clause-index]` are kept. (To keep no clauses, specify the earlier `clause-type`.)
+
+  The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
+
+  - `:data` - just the source data for the stage
+  - `:joins`
+  - `:expressions`
+  - `:filters`
+  - `:aggregation`
+  - `:breakout`
+  - `:order-by`
+  - `:limit`
+
+  If the resulting query fails [[can-preview]], returns nil.
 
   > **Code health:** Healthy, Single use."
-  [a-query]
-  (lib.cache/side-channel-cache
-    :can-preview a-query
-    (fn [_]
-      (lib.core/can-preview a-query))))
+  [a-query stage-number clause-type clause-index]
+  (let [truncated-query (lib.core/preview-query a-query stage-number (keyword clause-type) clause-index)]
+    (when (lib.core/can-preview truncated-query)
+      truncated-query)))
 
 (defn ^:export can-save
   "Returns true if the query can be saved.

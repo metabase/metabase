@@ -39,12 +39,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.4
+docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.5
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.4/metabase.jar
+1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.5/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -310,11 +310,12 @@ const theme = {
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
-      { base: "#e74c3c", tint: "#ee6b56", shade: "#cb4436" },
+      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" },
     ],
   },
 
   components: {
+    // Data table
     table: {
       cell: {
         // Text color of cells, defaults to `text-primary`
@@ -339,6 +340,15 @@ const theme = {
       value: {
         fontSize: "24px",
         lineHeight: "21px",
+      },
+    },
+
+    // Pivot table
+    pivotTable: {
+      // Pivot row toggle to expand or collapse row
+      rowToggle: {
+        textColor: "#FFFFFF",
+        backgroundColor: "#95A5A6",
       },
     },
   },
