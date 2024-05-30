@@ -158,7 +158,7 @@ export const addCardToDashboard =
     );
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    dispatch(loadMetadataForCard(card));
+    await dispatch(loadMetadataForCard(card));
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
   };
 
