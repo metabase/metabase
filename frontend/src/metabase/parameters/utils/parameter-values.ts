@@ -1,3 +1,5 @@
+import type { Query } from "history";
+
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -10,7 +12,7 @@ import type {
 
 export function getParameterValueFromQueryParams(
   parameter: Parameter,
-  queryParams: Record<string, string | string[] | null | undefined>,
+  queryParams: Query,
   lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   queryParams = queryParams || {};
@@ -104,7 +106,7 @@ function normalizeParameterValueForWidget(
 
 export function getParameterValuesByIdFromQueryParams(
   parameters: Parameter[],
-  queryParams: Record<string, string | string[] | null | undefined>,
+  queryParams: Query,
   lastUsedParametersValues?: Record<ParameterId, unknown>,
 ) {
   return Object.fromEntries(

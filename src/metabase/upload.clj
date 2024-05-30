@@ -790,8 +790,11 @@
     - the query is a GUI query, and does not have any joins
     - the base table of the card is based on an upload
     - the user has permissions to upload to the table
-    - uploads are enabled
-  Otherwise based_on_upload is nil."
+    - uploads are enabled for at least one database (users can append/replace an upload table as long as uploads are
+      enabled for a database, even if the table is not in a database for which uploads are enabled.)
+  Otherwise based_on_upload is nil.
+  Excluding checking the users write permissions for the card, `:based_on_upload` reflects the user's
+  ability to upload to the underlying table through the card."
   [cards]
   (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))
         card->maybe-model (comp id->model :id)]
