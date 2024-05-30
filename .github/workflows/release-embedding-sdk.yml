@@ -177,6 +177,7 @@ jobs:
                        --assignee "${GITHUB_ACTOR}"\
                        --title "Update SDK version to ${{ inputs.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
+          gh pr edit --add-reviewer @metabase/embedding
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
@@ -190,4 +191,4 @@ jobs:
         run: |
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish
+          npm publish --dry-run
