@@ -247,7 +247,7 @@ describe("issues 25884 and 34349", () => {
     tableHeaderClick("Country");
     cy.findByLabelText("Description").should("have.text", "");
 
-    tableHeaderClick("ID")
+    tableHeaderClick("ID");
     cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
   });
 });
