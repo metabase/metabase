@@ -856,7 +856,7 @@
                                                   (let [database-id (:database_id card)
                                                         mp (db->mp database-id)
                                                         query (lib/query mp (:dataset_query card))]
-                                                    (lib/dependent-metadata query))) cards)))]
+                                                    (lib/dependent-metadata query (:id card) (:type card)))) cards)))]
     {:tables (->> (:table dependents)
                   (sort-by (fn [{card-or-table-id :id}]
                              (or (lib.util/legacy-string-table-id->card-id card-or-table-id) card-or-table-id)))

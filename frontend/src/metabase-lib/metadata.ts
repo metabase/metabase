@@ -1,6 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
+import type {
+  CardId,
+  CardType,
+  DatabaseId,
+  DatasetColumn,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   AggregationClause,
@@ -211,6 +217,10 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
   return ML.display_info(query, -1, query);
 }
 
-export function dependentMetadata(query: Query): DependentItem[] {
-  return ML.dependent_metadata(query);
+export function dependentMetadata(
+  query: Query,
+  cardId: CardId | undefined,
+  cardType: CardType,
+): DependentItem[] {
+  return ML.dependent_metadata(query, cardId, cardType);
 }

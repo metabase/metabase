@@ -2,7 +2,6 @@ import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -24,21 +23,13 @@ export const loadMetadataForCards =
       const metadata = getMetadata(getState());
       return cards
         .map(card => new Question(card, metadata))
-        .flatMap(question => {
-          const dependencies = [...Lib.dependentMetadata(question.query())];
-          if (question.isSaved() && question.type() !== "question") {
-            const tableId = getQuestionVirtualTableId(question.id());
-            dependencies.push({ id: tableId, type: "table" });
-
-            if (metadata.table(tableId)) {
-              const adhocQuestion = question.composeQuestionAdhoc();
-              dependencies.push(
-                ...Lib.dependentMetadata(adhocQuestion.query()),
-              );
-            }
-          }
-          return dependencies;
-        });
+        .flatMap(question =>
+          Lib.dependentMetadata(
+            question.query(),
+            question.id(),
+            question.type(),
+          ),
+        );
     };
     await dispatch(loadMetadata(getDependencies, [], options));
   };
