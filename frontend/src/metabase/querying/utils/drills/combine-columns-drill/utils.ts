@@ -179,6 +179,6 @@ export function appendStageIfAggregated(query: Lib.Query, stageIndex: number) {
   const breakouts = Lib.breakouts(query, stageIndex);
 
   return aggregations.length > 0 || breakouts.length > 0
-    ? { query: Lib.appendStage(query), stageIndex: stageIndex + 1 }
+    ? { query: Lib.appendStage(query), stageIndex }
     : { query, stageIndex };
 }
