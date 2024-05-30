@@ -12,6 +12,7 @@ import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
 import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import barCorrectWidthWhenTwoYAxes from "./bar-correct-width-when-two-y-axes.json";
+import barDataLabelsNegatives from "./bar-data-labels-negatives.json";
 import barFormattingFull from "./bar-formatting-full.json";
 import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import barHistogramMultiSeriesBinned from "./bar-histogram-multi-series-binned.json";
@@ -106,6 +107,7 @@ export const data = {
   lineFullyNullDimension37902,
   areaFullyNullDimension37902,
   barCorrectWidthWhenTwoYAxes,
+  barDataLabelsNegatives,
   barLinearXScale,
   barHistogramXScale,
   barHistogramMultiSeries,
