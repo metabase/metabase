@@ -82,14 +82,35 @@ jobs:
         with:
           m2-cache-key: "release-sdk"
 
+      - name: Update readme
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+
+      - name: Bump published npm package version
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+
+      - name: Update changelog
+        run: |
+          yarn embedding-sdk:generate-changelog
+
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
+
+      - name: Generate SDK package.json in the build directory
+        run: yarn run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v4
         with:
           name: metabase-sdk
           path: ./resources/embedding-sdk
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-changelog
+          path: ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
   build-jar:
     needs: test
@@ -144,16 +165,16 @@ jobs:
 
       - name: Update readme
         run: |
-          sed -i -E 's|(embedding-sdk-)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
-          sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
+          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
 
       - name: Bump published npm package version
         run: |
-          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      - name: Update changelog
-        run: |
-          yarn embedding-sdk:generate-changelog
+      - name: Retrieve SDK changelog
+        uses: actions/download-artifact@v4
+        with:
+          name: sdk-changelog
 
       - uses: actions/create-github-app-token@v1
         id: app-token
@@ -161,7 +182,7 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
-      - name: Create a PR updating readme + published version
+      - name: Create a PR updating readme + published version, and changelog
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
@@ -179,9 +200,6 @@ jobs:
         with:
           name: metabase-sdk
           path: sdk
-
-      - name: Generate necessary files in the build directory
-        run: yarn run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact, so the artifact contains all the necessary files e.g. package.json, LICENSE.md, CHANGELOG.md
         uses: actions/upload-artifact@v4
