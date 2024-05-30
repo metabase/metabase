@@ -63,7 +63,6 @@ describe("scenarios > question > relative-datetime", () => {
     it("should not clobber filter when value is set to 1", () => {
       openOrdersTable();
 
-      // queryBuilderMain().findByText("Created At").click();
       tableHeaderClick("Created At");
 
       popover().within(() => {
@@ -298,7 +297,6 @@ const setStartingFromValue = value => {
 };
 
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
-  //cy.findByTextEnsureVisible("testcol").click();
   tableHeaderClick("testcol");
   cy.findByTextEnsureVisible("Filter by this column").click();
   cy.findByTextEnsureVisible("Relative dates…").click();
