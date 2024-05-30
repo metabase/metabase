@@ -150,4 +150,9 @@ export const InputSubtitle = styled.div`
   left: 1.25em;
   font-family: ${monospaceFontFamily};
   font-size: 0.75em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 90%;
 `;
