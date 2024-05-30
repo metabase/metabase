@@ -88,8 +88,8 @@ export interface MetabaseComponentTheme {
       /** Default background color of cells, defaults to `background` */
       backgroundColor?: string;
 
-      /** Font size of cell values, defaults to ~12px */
-      fontSize?: string;
+      /** Font size of cell values, defaults to ~12.5px */
+      fontSize: string;
     };
 
     idColumn?: {
@@ -120,10 +120,10 @@ export interface MetabaseComponentTheme {
   };
 
   /** Cartesian charts */
-  cartesian?: {
-    label?: {
+  cartesian: {
+    label: {
       /** Labels used in cartesian charts, such as axis ticks and series. */
-      fontSize?: string;
+      fontSize: string;
     };
   };
 }

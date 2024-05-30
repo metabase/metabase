@@ -113,9 +113,9 @@ const getXAxisTicksWidth = (
   dataset: ChartDataset,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   axisModel: XAxisModel,
-  { style, measureText, fontFamily }: RenderingContext,
+  { theme, measureText, fontFamily }: RenderingContext,
 ) => {
-  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+  const { fontSize } = theme.cartesian.label;
 
   if (!axisEnabledSetting) {
     return { firstXTickWidth: 0, lastXTickWidth: 0 };
@@ -160,9 +160,9 @@ const getXAxisTicksWidth = (
 const getXAxisTicksHeight = (
   maxXTickWidth: number,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
-  { style }: RenderingContext,
+  { theme }: RenderingContext,
 ) => {
-  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+  const { fontSize } = theme.cartesian.label;
 
   if (!axisEnabledSetting) {
     return 0;
@@ -213,8 +213,7 @@ const getAutoAxisEnabledSetting = (
   outerHeight: number,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
-  const { fontSize = CHART_STYLE.axisTicks.size } =
-    renderingContext.style?.label ?? {};
+  const { fontSize } = renderingContext.theme.cartesian.label;
 
   const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
@@ -356,9 +355,9 @@ export const getChartPadding = (
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
-  renderingContext: RenderingContext,
+  { theme }: RenderingContext,
 ): Padding => {
-  const { fontSize } = renderingContext.style?.label ?? {};
+  const { fontSize } = theme.cartesian.label;
 
   const axisNameFontSize = fontSize ?? CHART_STYLE.axisName.size;
   const seriesLabelFontSize = fontSize ?? CHART_STYLE.seriesLabels.size;

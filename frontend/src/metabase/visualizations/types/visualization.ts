@@ -32,13 +32,15 @@ export interface RenderingContext {
   measureText: TextWidthMeasurer;
   fontFamily: string;
 
-  style?: VisualizationStyle;
+  theme: VisualizationTheme;
 }
 
-/** Visualization styling overrides. */
-export interface VisualizationStyle {
-  label?: {
-    fontSize?: number;
+/** Visualization theming overrides. */
+export interface VisualizationTheme {
+  cartesian: {
+    label: {
+      fontSize: number;
+    };
   };
 }
 

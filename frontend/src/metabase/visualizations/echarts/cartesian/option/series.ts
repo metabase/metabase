@@ -106,9 +106,7 @@ export const buildEChartsLabelOptions = (
   formatter?: LabelFormatter,
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
-  const style = renderingContext.style;
-
-  const { fontSize = CHART_STYLE.seriesLabels.size } = style?.label ?? {};
+  const { fontSize } = renderingContext.theme.cartesian.label;
 
   return {
     silent: true,

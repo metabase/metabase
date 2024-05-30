@@ -40,9 +40,9 @@ function svgToImageUri(svgString: string) {
 export const getTimelineEventsSeries = (
   timelineEventsModel: TimelineEventsModel,
   selectedEventsIds: TimelineEventId[],
-  { fontFamily, getColor, style }: RenderingContext,
+  { fontFamily, getColor, theme }: RenderingContext,
 ): LineSeriesOption | null => {
-  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+  const { fontSize } = theme?.cartesian?.label ?? {};
 
   if (timelineEventsModel.length === 0) {
     return null;

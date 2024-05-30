@@ -65,13 +65,11 @@ export const getYAxisRange = (
 };
 
 export const getAxisNameDefaultOption = (
-  { getColor, fontFamily, style }: RenderingContext,
+  { getColor, fontFamily, theme }: RenderingContext,
   nameGap: number,
   name: string | undefined,
   rotate?: number,
 ): Partial<AxisBaseOptionCommon> => {
-  const { fontSize = CHART_STYLE.axisName.size } = style?.label ?? {};
-
   return {
     name,
     nameGap,
@@ -79,7 +77,7 @@ export const getAxisNameDefaultOption = (
     nameRotate: rotate,
     nameTextStyle: {
       color: getColor("text-dark"),
-      fontSize,
+      fontSize: theme.cartesian.label.fontSize,
       fontWeight: CHART_STYLE.axisName.weight,
       fontFamily,
     },
@@ -87,16 +85,14 @@ export const getAxisNameDefaultOption = (
 };
 
 export const getTicksDefaultOption = ({
-  style,
+  theme,
   getColor,
   fontFamily,
 }: RenderingContext) => {
-  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
-
   return {
     hideOverlap: true,
     color: getColor("text-dark"),
-    fontSize,
+    fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
   };
@@ -117,9 +113,9 @@ const getHistogramTicksOptions = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
-  { style }: RenderingContext,
+  { theme }: RenderingContext,
 ) => {
-  const { fontSize = CHART_STYLE.axisTicks.size } = style?.label ?? {};
+  const { fontSize } = theme.cartesian.label;
 
   if (settings["graph.x_axis.scale"] !== "histogram") {
     return {};

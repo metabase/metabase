@@ -16,12 +16,10 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
       fontSize: "12.5px",
+      textColor: "text-dark",
     },
     idColumn: {
       textColor: "brand",
-    },
-    cell: {
-      textColor: "text-dark",
     },
   },
   pivotTable: {
