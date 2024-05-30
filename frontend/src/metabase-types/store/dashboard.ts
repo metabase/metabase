@@ -85,10 +85,6 @@ export type DashboardCardsLoadingState = {
   endTime: number | null;
 };
 
-export type DashboardMetadataLoadingState = {
-  loadingStatus: DashboardLoadingStatus;
-};
-
 export type DashboardLoadingControls = {
   documentTitle?: string;
   showLoadCompleteFavicon?: boolean;
@@ -106,7 +102,6 @@ export interface DashboardState {
   draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
 
   loadingDashCards: DashboardCardsLoadingState;
-  loadingMetadata: DashboardMetadataLoadingState;
   loadingControls: DashboardLoadingControls;
 
   editingDashboard: Dashboard | null;
