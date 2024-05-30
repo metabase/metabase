@@ -428,10 +428,6 @@
     metabase.driver.druid.js                                      druid.js
     metabase.driver.druid.query-processor                         druid.qp
     metabase.driver.druid.sync                                    druid.sync
-    metabase.driver.googleanalytics.client                        ga.client
-    metabase.driver.googleanalytics.execute                       ga.execute
-    metabase.driver.googleanalytics.metadata                      ga.metadata
-    metabase.driver.googleanalytics.query-processor               ga.qp
     metabase.driver.impl                                          driver.impl
     metabase.driver.mongo.execute                                 mongo.execute
     metabase.driver.mongo.parameters                              mongo.params

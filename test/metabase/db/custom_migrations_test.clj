@@ -177,6 +177,60 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
+(deftest normalize-mbql-clause-impostor-in-visualization-settings-test
+  (let [viz-settings
+        {"table.pivot_column" "TAX",
+         "graph.metrics" ["expression"],
+         "pivot_table.column_split"
+         {"rows"
+          [["field" 39 {"base-type" "type/DateTime", "temporal-unit" "month"}]
+           ["expression" "expression"]
+           ["field"
+            33
+            {"base-type" "type/Float",
+             "binning" {"strategy" "num-bins", "min-value" 0, "max-value" 12, "num-bins" 8, "bin-width" 2}}]],
+          "columns" [],
+          "values" [["aggregation" 0]]},
+         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}},
+         "table.cell_column" "expression",
+         "table.column_formatting"
+         [{"columns" ["expression" nil "TAX" "count"],
+           "type" "single",
+           "operator" "is-null",
+           "value" 10,
+           "color" "#EF8C8C",
+           "highlight_row" false,
+           "id" 0}],
+         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}},
+         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}},
+         "graph.dimensions" ["CREATED_AT"]}]
+    (is (= {:table.pivot_column "TAX"
+            :graph.metrics ["expression"]
+            :pivot_table.column_split
+            {:rows
+             [[:field 39 {:base-type :type/DateTime, :temporal-unit :month}]
+              [:expression "expression"]
+              [:field
+               33
+               {:base-type :type/Float
+                :binning {:strategy :num-bins, :min-value 0, :max-value 12, :num-bins 8, :bin-width 2}}]]
+             :columns []
+             :values [[:aggregation 0]]}
+            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
+            :table.cell_column "expression"
+            :table.column_formatting
+            [{:columns ["expression" nil "TAX" "count"]
+              :type "single"
+              :operator "is-null"
+              :value 10
+              :color "#EF8C8C"
+              :highlight_row false
+              :id 0}]
+            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
+            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
+            :graph.dimensions ["CREATED_AT"]}
+           (mi/normalize-visualization-settings viz-settings)))))
+
 (deftest migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]

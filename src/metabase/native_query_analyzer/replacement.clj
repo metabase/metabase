@@ -131,18 +131,6 @@
           the-string
           replacements))
 
-;; remove this once Macaw#32 is fixed
-(defn- clean-renames-macaw-issue-32
-  [{:keys [tables columns]}]
-  (let [clean-column (fn [c] (or (:column c) c))
-        clean-table  (fn [t] (or (:table t) t))]
-    {:columns (-> columns
-                  (update-keys clean-column)
-                  (update-vals clean-column))
-     :tables  (-> tables
-                  (update-keys clean-table)
-                  (update-vals clean-table))}))
-
 (defn- param-values
   [query]
   (if (qp.store/initialized?)
@@ -159,5 +147,5 @@
         param->value                 (param-values query)
         {clean-query :query
          tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query param->value)
-        renamed-query                (macaw/replace-names clean-query (clean-renames-macaw-issue-32 renames))]
+        renamed-query                (macaw/replace-names clean-query renames {:allow-unused? true})]
     (replace-all renamed-query tt-subs)))
