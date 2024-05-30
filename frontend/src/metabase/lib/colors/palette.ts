@@ -20,7 +20,6 @@ export const colors = {
   accent7: "#7172AD",
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
-  black: "#2E353B",
   success: "#84BB4C",
   danger: "#ED6E6E",
   error: "#ED6E6E",

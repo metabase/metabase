@@ -53,7 +53,7 @@ export const LogsContent = styled.div`
   }
 
   ${LOG_PREFIX}-inverse {
-    color: ${color("black")};
+    color: var(--mb-color-text-dark);
     background-color: ${color("white")};
   }
 
