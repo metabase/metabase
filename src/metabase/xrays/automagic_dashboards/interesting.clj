@@ -229,15 +229,12 @@
 (defn- fieldspec-matcher
   "Generate a predicate of the form (f field) -> truthy value based on a fieldspec."
   [fieldspec]
-  (if (and (string? fieldspec)
-           (dashboard-templates/ga-dimension? fieldspec))
-    (comp #{fieldspec} :name)
-    (fn [{:keys [semantic_type target] :as field}]
-      (cond
-        ;; This case is mostly relevant for native queries
-        (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
-        target (recur target)
-        :else (and (not (magic.util/key-col? field)) (magic.util/field-isa? field fieldspec))))))
+  (fn [{:keys [semantic_type target] :as field}]
+    (cond
+      ;; This case is mostly relevant for native queries
+      (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
+      target (recur target)
+      :else (and (not (magic.util/key-col? field)) (magic.util/field-isa? field fieldspec)))))
 
 (defn- name-regex-matcher
   "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
