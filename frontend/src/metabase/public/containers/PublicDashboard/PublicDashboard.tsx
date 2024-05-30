@@ -111,6 +111,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
+      fetchDashboardCardMetadata,
       setErrorPage,
       location,
       params: { uuid, token },
@@ -135,7 +136,10 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     try {
       if (this.props.dashboard?.tabs?.length === 0) {
-        await fetchDashboardCardData({ reload: false, clearCache: true });
+        await Promise.all([
+          fetchDashboardCardData({ reload: false, clearCache: true }),
+          fetchDashboardCardMetadata(),
+        ]);
       }
     } catch (error) {
       console.error(error);
