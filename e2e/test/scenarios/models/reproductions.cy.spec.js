@@ -608,7 +608,6 @@ describe("filtering based on the remapped column name should result in a correct
   });
 
   it("when done through the column header action (metabase#22715-1)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     tableHeaderClick("Created At");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
