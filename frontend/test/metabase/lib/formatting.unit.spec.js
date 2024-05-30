@@ -266,7 +266,7 @@ describe("formatting", () => {
     it("should return a component for internal links in jsx + rich mode", () => {
       expect(
         isElementOfType(formatValue(SITE_URL, { jsx: true, rich: true }), Link),
-      ).toEqual(true);
+      ).toBe(true);
     });
     it("should return a component for relative links in jsx + rich mode", () => {
       const column = createMockColumn({
