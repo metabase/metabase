@@ -44,7 +44,7 @@ export const CombineColumnsDrill = ({
   stageIndex,
   onSubmit,
 }: Props) => {
-  const columnInfo = Lib.displayInfo(originalQuery, originalStageIndex, column);
+  const columnInfo = Lib.displayInfo(query, stageIndex, column);
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
   const defaultSeparator = getDefaultSeparator(column);
   const [isUsingDefaultSeparator, setIsUsingDefaultSeparator] = useState(true);
