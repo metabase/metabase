@@ -11,13 +11,19 @@ import type {
 import * as Lib from "metabase-lib";
 
 import { CombineColumnsDrill } from "./components";
+import { appendStageIfAggregated } from "./utils";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
-  query,
-  stageIndex,
+  query: originalQuery,
+  stageIndex: originalStageIndex,
   clicked,
 }) => {
+  const { query, stageIndex } = appendStageIfAggregated(
+    originalQuery,
+    originalStageIndex,
+  );
+
   if (!clicked.column || !hasCombinations(query, stageIndex)) {
     return [];
   }

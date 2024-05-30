@@ -22,7 +22,6 @@ import {
   getExample,
   getExpressionName,
   getNextColumnAndSeparator,
-  appendStageIfAggregated,
 } from "../../utils";
 import { ColumnAndSeparatorRow } from "../ColumnAndSeparatorRow";
 import { Example } from "../Example";
@@ -41,15 +40,11 @@ interface Props {
 
 export const CombineColumnsDrill = ({
   column,
-  query: originalQuery,
-  stageIndex: originalStageIndex,
+  query,
+  stageIndex,
   onSubmit,
 }: Props) => {
   const columnInfo = Lib.displayInfo(originalQuery, originalStageIndex, column);
-  const { query, stageIndex } = appendStageIfAggregated(
-    originalQuery,
-    originalStageIndex,
-  );
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
   const defaultSeparator = getDefaultSeparator(column);
   const [isUsingDefaultSeparator, setIsUsingDefaultSeparator] = useState(true);
