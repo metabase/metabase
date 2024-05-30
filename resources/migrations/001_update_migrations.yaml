@@ -8121,7 +8121,7 @@ databaseChangeLog:
       rollback:
         - sqlFile:
             dbms: h2
-            path: trash/rollback.sql
+            path: trash/h2-rollback.sql
             relativeToChangelogFile: true
 
   - changeSet:
