@@ -16,7 +16,7 @@ export const RemoveButton = styled.button<RemoveButtonProps>`
   border-left: 1px solid ${() => alpha(color("white"), 0.25)};
 
   color: ${props =>
-    props.isConditionComplete ? color("white") : color("brand")};
+    props.isConditionComplete ? "var(--mb-color-text-white)" : color("brand")};
 
   &:hover,
   &:focus {

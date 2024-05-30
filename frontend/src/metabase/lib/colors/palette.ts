@@ -155,6 +155,6 @@ export const getTextColorForBackground = (backgroundColor: string) => {
   );
 
   return whiteTextContrast > darkTextContrast
-    ? color("white")
+    ? color("text-white")
     : color("text-dark");
 };

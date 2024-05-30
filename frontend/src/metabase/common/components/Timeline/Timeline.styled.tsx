@@ -36,7 +36,7 @@ export const EventHeader = styled.div`
 `;
 
 export const Timestamp = styled.time`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.875em;
   padding-bottom: 0.5rem;
 `;

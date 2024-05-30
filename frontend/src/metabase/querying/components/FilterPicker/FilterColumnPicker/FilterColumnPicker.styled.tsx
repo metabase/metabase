@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 
 export const StyledAccordionList = styled(AccordionList)`
-  color: ${() => color("filter")};
+  color: var(--mb-color-filter);
   min-width: ${MIN_WIDTH}px;
   max-width: ${MAX_WIDTH}px;
 `;

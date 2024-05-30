@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Heading = styled.h4`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.125rem;
 `;
 
@@ -28,7 +28,7 @@ export const SidebarFooter = styled(SidebarContent)`
 `;
 
 export const ClickBehaviorPickerText = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: ${space(2)};
   margin-left: ${space(2)};
 `;

@@ -14,7 +14,7 @@ export const Root = styled.div`
   padding-right: 0.5rem;
   padding-bottom: 0.5rem;
 
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const ShortMessage = styled.span`

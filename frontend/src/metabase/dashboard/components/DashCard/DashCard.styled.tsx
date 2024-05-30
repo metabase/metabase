@@ -31,7 +31,7 @@ const hiddenBackgroundStyle = css`
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
 
   ${({ isNightMode, theme }) => isNightMode && getRootNightModeStyle(theme)}
   ${({ isUsuallySlow, theme }) => isUsuallySlow && getRootSlowCardStyle(theme)}
@@ -50,6 +50,6 @@ export const VirtualDashCardOverlayRoot = styled.div`
 `;
 
 export const VirtualDashCardOverlayText = styled.h4`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding: 1rem;
 `;

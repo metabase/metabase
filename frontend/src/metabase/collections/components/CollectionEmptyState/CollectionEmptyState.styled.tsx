@@ -9,7 +9,7 @@ export const EmptyStateRoot = styled.div`
 `;
 
 export const EmptyStateTitle = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 2rem;
@@ -23,6 +23,6 @@ export const EmptyStateIconForeground = styled.path`
 `;
 
 export const EmptyStateIconBackground = styled.path`
-  fill: ${() => color("brand-light")};
+  fill: var(--mb-color-brand-light);
   stroke: var(--mb-color-brand);
 `;

@@ -11,7 +11,7 @@ export const StyledAnchor = styled.a`
   justify-content: center;
   padding: 4px;
   &:hover {
-    color: ${() => color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 `;
 

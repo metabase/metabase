@@ -4,7 +4,8 @@ import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div<{ isNightMode: boolean }>`
   box-sizing: border-box;
-  color: ${({ isNightMode }) => (isNightMode ? "white" : "inherit")};
+  color: ${({ isNightMode }) =>
+    isNightMode ? "var(--mb-color-text-white)" : "inherit"};
   margin-top: ${space(4)};
 `;
 

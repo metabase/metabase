@@ -5,7 +5,7 @@ import SelectList from "metabase/components/SelectList";
 import { color, lighten } from "metabase/lib/colors";
 
 const getCompleteConditionStyle = (theme: Theme, isOpened = false) => css`
-  color: ${theme.fn.themeColor("white")};
+  color: var(--mb-color-text-white);
   background-color: ${isOpened ? lighten("brand", 0.1) : "transparent"};
 
   &:hover,

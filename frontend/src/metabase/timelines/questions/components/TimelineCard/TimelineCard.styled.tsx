@@ -23,14 +23,14 @@ export const CardCheckbox = styled(CheckBox)`
 export const CardLabel = styled.span`
   flex: 1 1 auto;
   margin: 0 0.5rem;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   font-size: 0.875rem;
   min-width: 0;
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 1.125rem;
   height: 1.125rem;
 `;

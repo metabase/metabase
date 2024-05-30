@@ -30,14 +30,14 @@ export const SearchInputContainer = styled.div<{
   align-items: center;
   position: relative;
 
-  ${({ isActive, theme }) => {
+  ${({ isActive }) => {
     if (isActive) {
       return css`
         background-color: var(--mb-color-bg-medium);
       `;
     }
     return css`
-      background-color: ${theme.fn.themeColor("white")};
+      background-color: var(--mb-color-bg-white);
 
       &:hover {
         background-color: var(--mb-color-bg-light);
@@ -147,12 +147,12 @@ export const CloseSearchButton = styled.button`
   width: 3rem;
   height: 100%;
 
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 
   cursor: pointer;
 
   &:hover {
-    color: ${() => color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 
@@ -161,7 +161,7 @@ export const SearchResultsFloatingContainer = styled.div`
   left: 0;
   right: 0;
 
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   ${breakpointMaxSmall} {
     top: ${APP_BAR_HEIGHT};

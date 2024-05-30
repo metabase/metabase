@@ -15,7 +15,7 @@ export const TableCellSpinner = styled(LoadingSpinner)`
 `;
 
 export const AddSampleDatabaseLink = styled.a`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   text-decoration: none;
 
   &:hover {

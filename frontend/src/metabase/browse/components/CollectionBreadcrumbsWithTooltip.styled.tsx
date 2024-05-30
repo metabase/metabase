@@ -13,7 +13,7 @@ export const Breadcrumb = styled(Anchor)<
     AnchorHTMLAttributes<HTMLAnchorElement> &
     RefProp<HTMLAnchorElement>
 >`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;

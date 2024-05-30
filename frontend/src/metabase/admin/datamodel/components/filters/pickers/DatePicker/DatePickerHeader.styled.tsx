@@ -40,7 +40,7 @@ export const BackButton = styled(TabButton)`
   border: none;
   border-radius: 0;
   margin-left: ${space(1)};
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: ${({ primaryColor }) => primaryColor};

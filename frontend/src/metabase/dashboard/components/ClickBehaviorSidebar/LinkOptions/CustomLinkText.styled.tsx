@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 export const Label = styled.label`
   display: block;
 
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 
   padding-top: 22px;

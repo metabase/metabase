@@ -22,17 +22,17 @@ export const PopoverContent = styled.div`
 `;
 
 export const FeatureTitle = styled.h4`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 `;
 
 export const FeatureDescriptionText = styled.p`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: 400;
 `;
 
 export const ErrorMessage = styled.p`
   width: 80%;
-  color: ${() => color("error")};
+  color: var(--mb-color-error);
   line-height: 1.5rem;
 `;

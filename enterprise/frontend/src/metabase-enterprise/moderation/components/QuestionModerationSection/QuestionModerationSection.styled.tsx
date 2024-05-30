@@ -15,7 +15,7 @@ export const VerifyButton = styled(Button)`
   padding: 8px;
 
   &:disabled {
-    color: ${() => color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 
   position: relative;

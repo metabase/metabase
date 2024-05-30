@@ -44,12 +44,12 @@ export const EmptyState = styled(UnstyledEmptyState)`
 
 export const EmptyModelStateContainer = styled.div`
   padding: ${space(2)};
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   text-align: center;
 `;
 
 export const EditButton = styled(Button)`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   padding: 0 0.5rem;
 `;
 

@@ -10,7 +10,7 @@ export const ObjectDetailHeaderWrapper = styled.div`
 `;
 
 export const ObjectIdLabel = styled.span`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: 0.5rem;
 `;
 

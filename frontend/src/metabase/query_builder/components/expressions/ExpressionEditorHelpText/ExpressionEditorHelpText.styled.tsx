@@ -13,7 +13,7 @@ export const Container = styled.div`
 `;
 
 export const FunctionHelpCode = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-family: ${monospaceFontFamily};
 
   font-size: 0.8125rem;
@@ -51,7 +51,7 @@ export const ArgumentTitle = styled.div`
 export const BlockSubtitleText = styled.div`
   margin-bottom: 0.5rem;
 
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const ExampleCode = styled.div`

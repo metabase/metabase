@@ -13,7 +13,7 @@ import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
 
 export const Table = styled.table<{ isInDragLayer?: boolean }>`
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
   table-layout: fixed;
   border-collapse: unset;
   border-radius: 0.5rem;
@@ -56,7 +56,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
     padding: 0.75em 1em 0.75em;
   }
   font-weight: bold;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   ${hideResponsively}
 `;
 
@@ -110,7 +110,7 @@ export const SortingIcon = styled(FixedSizeIcon)`
 `;
 
 export const DescriptionIcon = styled(FixedSizeIcon)`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 SortingIcon.defaultProps = {
@@ -118,7 +118,7 @@ SortingIcon.defaultProps = {
 };
 
 export const ModelDetailLink = styled(BaseModelDetailLink)`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   visibility: hidden;
 `;
 
@@ -136,7 +136,7 @@ export const SortingControlContainer = styled.div<{
   }
 
   &:hover {
-    color: ${() => color("text-dark")};
+    color: var(--mb-color-text-dark);
 
     .Icon {
       visibility: visible;
@@ -156,7 +156,7 @@ export const RowActionsContainer = styled.div`
 
 export const TableItemSecondaryField = styled.span`
   font-size: 0.95em;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const TBody = styled.tbody`

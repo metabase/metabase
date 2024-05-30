@@ -25,7 +25,7 @@ export interface GreetingMessageProps {
 }
 
 export const GreetingMessage = styled.span<GreetingMessageProps>`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
   line-height: 1.5rem;

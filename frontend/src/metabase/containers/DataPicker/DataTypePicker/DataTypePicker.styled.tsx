@@ -14,7 +14,7 @@ export const List = styled(SelectList)`
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const TitleContainer = styled.div`
@@ -23,7 +23,7 @@ export const TitleContainer = styled.div`
 `;
 
 export const ItemTitle = styled.span`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 14px;
   margin-left: ${space(1)};
@@ -34,7 +34,7 @@ export const ItemDescriptionContainer = styled.div`
 `;
 
 export const ItemDescription = styled.span`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 700;
   font-size: 12px;
 `;
@@ -44,7 +44,7 @@ export const ItemContainer = styled(SelectList.BaseItem as any)`
     ${ItemIcon},
     ${ItemTitle},
     ${ItemDescription} {
-      color: ${() => color("text-white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

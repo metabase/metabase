@@ -17,14 +17,14 @@ export const TableHeader = styled.div`
 `;
 
 export const TableTitle = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   font-weight: bold;
 `;
 
 export const TableLink = styled.div`
   display: inline-block;
-  color: ${() => color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   cursor: pointer;
 

@@ -13,5 +13,5 @@ export const GoogleFormHeader = styled.h2`
 `;
 
 export const GoogleFormCaption = styled.p`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

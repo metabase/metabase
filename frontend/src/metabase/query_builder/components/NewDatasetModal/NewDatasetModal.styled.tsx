@@ -19,7 +19,7 @@ export const DatasetTitle = styled.h2`
 `;
 
 export const DatasetValueProp = styled.li`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   list-style-type: disc;
   margin-left: ${space(2)};
   padding-bottom: ${space(2)};

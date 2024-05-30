@@ -15,5 +15,5 @@ export const RowCountButton = styled.button<{ highlighted?: boolean }>`
 `;
 
 export const RowCountStaticLabel = styled.span`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

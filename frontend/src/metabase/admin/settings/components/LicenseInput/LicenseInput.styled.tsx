@@ -17,5 +17,5 @@ export const LicenseTextInput = styled(Input)`
 export const LicenseErrorMessage = styled.div`
   margin-top: 8px;
   white-space: nowrap;
-  color: ${() => color("error")};
+  color: var(--mb-color-error);
 `;

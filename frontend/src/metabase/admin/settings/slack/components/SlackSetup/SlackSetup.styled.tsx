@@ -14,7 +14,7 @@ export const HeaderRoot = styled.header`
 `;
 
 export const HeaderTitle = styled.h2`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;
@@ -22,7 +22,7 @@ export const HeaderTitle = styled.h2`
 `;
 
 export const HeaderMessage = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const SectionRoot = styled.section`
@@ -67,7 +67,7 @@ export const SectionBody = styled.div`
 `;
 
 export const SectionMessage = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1.5rem;
   margin-bottom: 1.5rem;
 `;

@@ -39,5 +39,5 @@ export const EmptyColumnPlaceholder = styled.div`
   padding: 0.75rem;
   border-radius: 0.5rem;
   background-color: var(--mb-color-bg-light);
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

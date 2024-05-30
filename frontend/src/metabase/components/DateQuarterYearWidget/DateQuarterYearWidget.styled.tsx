@@ -16,14 +16,14 @@ export const QuarterRoot = styled.li<QuarterRootProps>`
   cursor: pointer;
 
   &:hover {
-    color: ${() => color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 
   ${({ isSelected, theme }) =>
     isSelected &&
     css`
-      color: ${theme.fn.themeColor("white")};
+      color: var(--mb-color-text-white);
       background-color: ${theme.fn.themeColor("brand")};
     `}
 `;

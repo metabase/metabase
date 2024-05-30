@@ -8,15 +8,15 @@ export const FileInput = styled.input`
     margin-right: 1rem;
     border-radius: 4px;
     border: 1px solid var(--mb-color-border);
-    background-color: ${() => color("white")};
-    color: ${() => color("text-dark")};
+    background-color: var(--mb-color-bg-white);
+    color: var(--mb-color-text-dark);
     transition: 200ms;
     cursor: pointer;
     font-family: var(--mb-default-font-family);
   }
 
   &::file-selector-button:hover {
-    color: ${() => color("brand")};
+    color: var(--mb-color-brand);
     background-color: var(--mb-color-bg-light);
   }
 `;

@@ -8,6 +8,6 @@ export const SettingRequiredLabel = styled.label`
   gap: 0.5rem;
   margin-top: 0.15rem;
   font-weight: 700;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   cursor: pointer;
 `;

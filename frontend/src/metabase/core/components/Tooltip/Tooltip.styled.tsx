@@ -12,5 +12,5 @@ export const TooltipTitle = styled.div`
 
 export const TooltipSubtitle = styled.div`
   font-weight: normal;
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 `;

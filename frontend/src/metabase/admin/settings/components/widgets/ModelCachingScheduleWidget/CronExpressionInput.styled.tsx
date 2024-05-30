@@ -5,7 +5,7 @@ import { Icon } from "metabase/ui";
 
 export const CustomScheduleLabel = styled.span`
   display: block;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.5rem;
@@ -14,7 +14,7 @@ export const CustomScheduleLabel = styled.span`
 `;
 
 export const ErrorMessage = styled.span`
-  color: ${() => color("error")};
+  color: var(--mb-color-error);
   margin-top: 4px;
 `;
 
@@ -32,7 +32,7 @@ export const InfoIcon = styled(Icon)`
   right: 1rem;
   top: 33%;
 
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: var(--mb-color-brand);
@@ -43,7 +43,7 @@ export const PopoverContent = styled.div`
   background-color: #222;
   padding: 18px;
 
-  color: ${() => color("text-white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const PopoverTitle = styled.span`

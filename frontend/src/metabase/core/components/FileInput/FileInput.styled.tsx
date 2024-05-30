@@ -11,7 +11,7 @@ export interface InputFieldProps {
 }
 
 export const InputField = styled.input<InputFieldProps>`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   flex: 1 1 auto;
   font-family: inherit;
   font-weight: ${props => (props.hasValue ? "bold" : "")};
@@ -33,7 +33,7 @@ export const InputButton = styled.span`
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   box-sizing: border-box;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   cursor: pointer;
   display: inline-block;
   font-family: inherit;
@@ -44,7 +44,7 @@ export const InputButton = styled.span`
   user-select: none;
 
   ${InputField}:focus + & {
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   ${InputField}:not(:focus-visible) + & {

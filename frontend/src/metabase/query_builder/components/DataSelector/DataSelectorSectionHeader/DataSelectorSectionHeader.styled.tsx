@@ -11,5 +11,5 @@ export const DataSelectorSectionHeaderContainer = styled.div`
 `;
 
 export const DataSelectorSectionHeading = styled.h3`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;

@@ -10,7 +10,7 @@ const getCardRootStyles = (theme: Theme) => css`
   padding: 1.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.375rem;
-  background-color: ${theme.fn.themeColor("white")};
+  background-color: var(--mb-color-bg-white);
   box-shadow: 0 1px 6px ${theme.fn.themeColor("shadow")};
   box-sizing: border-box;
 `;
@@ -56,7 +56,7 @@ export const CardIcon = styled(Icon)`
 
 export const CardMessage = styled.div`
   display: block;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1.25rem;
 
   p {

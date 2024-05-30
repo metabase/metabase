@@ -46,7 +46,7 @@ export const Message = styled.span<{ variant: Variant }>`
 export const MetabaseName = styled.span<{ isDark: boolean; variant: Variant }>`
   color: ${props => {
     if (props.isDark) {
-      return color("white");
+      return color("var(--mb-color-text-white)");
     }
     return color(props.variant === "large" ? "text-dark" : "brand");
   }};

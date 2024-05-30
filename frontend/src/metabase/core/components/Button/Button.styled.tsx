@@ -22,12 +22,12 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   ${({ purple, theme }) =>
     purple &&
     css`
-      color: ${theme.fn.themeColor("white")};
+      color: var(--mb-color-text-white);
       background-color: ${theme.fn.themeColor("filter")};
       border: 1px solid ${theme.fn.themeColor("filter")};
 
       &:hover {
-        color: ${theme.fn.themeColor("white")};
+        color: var(--mb-color-text-white);
         background-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
         border-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
       }

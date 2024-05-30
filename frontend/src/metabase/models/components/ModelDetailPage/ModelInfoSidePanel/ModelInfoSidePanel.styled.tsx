@@ -19,7 +19,7 @@ export const ModelInfoPanel = styled.div`
 
 export const ModelInfoTitle = styled.span`
   display: block;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 600;
 
   padding-left: 4px;
@@ -33,15 +33,15 @@ export const valueBlockStyle = css`
 
 export const ModelInfoText = styled.span`
   ${valueBlockStyle};
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const ModelDescription = styled(EditableText)`
   ${valueBlockStyle};
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const ModelInfoLink = styled(Link)`
   ${valueBlockStyle};
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

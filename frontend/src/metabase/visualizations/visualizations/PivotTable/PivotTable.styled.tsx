@@ -13,10 +13,10 @@ export const RowToggleIconRoot = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
   padding: 4px;
   border-radius: 4px;
-  background-color: ${() => color("text-light")};
+  background-color: var(--mb-color-text-light);
   transition: all 200ms;
   outline: none;
 
@@ -122,7 +122,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const ResizeHandle = styled.div`

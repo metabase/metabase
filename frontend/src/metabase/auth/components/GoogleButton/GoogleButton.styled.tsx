@@ -11,7 +11,7 @@ export const GoogleButtonRoot = styled.div`
 `;
 
 export const AuthError = styled.div`
-  color: ${() => color("error")};
+  color: var(--mb-color-error);
   text-align: center;
 `;
 
@@ -21,7 +21,7 @@ export const AuthErrorRoot = styled.div`
 
 export const TextLink = styled(Link)`
   cursor: pointer;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: var(--mb-color-brand);

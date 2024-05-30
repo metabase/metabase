@@ -11,14 +11,14 @@ export const EmptyStateRoot = styled.div`
 `;
 
 export const EmptyStateIcon = styled(Icon)`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 5rem;
   height: 5rem;
   margin-bottom: 2.5rem;
 `;
 
 export const EmptyStateText = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;

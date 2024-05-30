@@ -10,7 +10,7 @@ export const PaletteInput = styled(KBarSearch)`
   border-radius: 0.5rem;
   border: 1px solid var(--mb-color-border);
   background: var(--mb-color-bg-light);
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   line-height: 1rem;
 
   &:focus {

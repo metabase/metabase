@@ -22,7 +22,7 @@ export const SAMLFormSection = styled.div<SAMLFormSectionProps>`
 `;
 
 export const SAMLFormCaption = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 2rem;
 `;
 

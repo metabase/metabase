@@ -47,13 +47,13 @@ export const EditorContainer = styled.div<{
   }
 
   .ace_hidpi .ace_content {
-    color: ${() => color("text-dark")};
+    color: var(--mb-color-text-dark);
     font-weight: 700;
   }
 
   .ace-tm .ace_keyword,
   .ace-tm .ace_constant.ace_numeric {
-    color: ${() => color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   .ace-tm .ace_variable {
@@ -74,9 +74,9 @@ export const EditorContainer = styled.div<{
 
   .ace_content .error {
     position: absolute;
-    border-bottom: 2px solid ${() => color("error")};
+    border-bottom: 2px solid var(--mb-color-error);
     border-radius: 0px;
-    background-color: ${() => color("bg-error")};
+    background-color: var(--mb-color-bg-error);
   }
 `;
 
@@ -92,7 +92,7 @@ export const EditorEqualsSign = styled.div`
 `;
 
 export const ErrorMessageContainer = styled.div`
-  color: ${() => color("error")};
+  color: var(--mb-color-error);
   margin: 0.5rem 0;
   white-space: pre-wrap;
 `;

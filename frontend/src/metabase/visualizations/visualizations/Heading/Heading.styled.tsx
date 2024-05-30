@@ -50,7 +50,7 @@ export const TextInput = styled.input`
   border: none;
   background: none;
   max-height: 100%;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.375rem;
   font-weight: 700;
   height: inherit;

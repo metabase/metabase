@@ -28,7 +28,7 @@ export const CheckboxContainer = styled.div`
 
 const ToggleButton = styled(Button)`
   margin-left: ${space(0)};
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   border: none;
   background-color: transparent;
 

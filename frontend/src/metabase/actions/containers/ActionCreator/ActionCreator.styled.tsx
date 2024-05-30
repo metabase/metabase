@@ -66,7 +66,7 @@ export const ModalRight = styled.div`
     top: 0;
     padding: 1.5rem 1.5rem 0.5rem 1.5rem;
     margin: 0;
-    background-color: ${() => color("white")};
+    background-color: var(--mb-color-bg-white);
     z-index: 5;
   }
 `;

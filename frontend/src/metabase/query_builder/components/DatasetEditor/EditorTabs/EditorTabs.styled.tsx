@@ -40,7 +40,7 @@ export const Tab = styled.label<{ selected: boolean; disabled?: boolean }>`
   align-items: center;
   padding: 6px 12px;
 
-  color: ${() => color("text-white")};
+  color: var(--mb-color-text-white);
   font-weight: bold;
 
   border: 2px solid;

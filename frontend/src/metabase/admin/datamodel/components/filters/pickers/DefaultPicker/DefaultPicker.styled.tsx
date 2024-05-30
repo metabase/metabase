@@ -16,7 +16,7 @@ export const BetweenLayoutFieldContainer = styled.div`
 export const BetweenLayoutFieldSeparator = styled.div`
   padding: 0.5rem 0.5rem 0 0.5rem;
   font-weight: 700;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const DefaultPickerContainer = styled.div`

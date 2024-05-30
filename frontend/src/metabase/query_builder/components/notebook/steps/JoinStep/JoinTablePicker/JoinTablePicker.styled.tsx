@@ -8,5 +8,5 @@ import { NotebookCell } from "../../../NotebookCell";
 export const ColumnPickerButton = styled(IconButtonWrapper)`
   padding: ${NotebookCell.CONTAINER_PADDING};
   opacity: 0.5;
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
 `;

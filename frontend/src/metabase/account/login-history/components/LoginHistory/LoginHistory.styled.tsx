@@ -18,5 +18,5 @@ export const LoginItemInfo = styled.div`
 `;
 
 export const LoginActiveLabel = styled(Label)`
-  color: ${() => color("summarize")};
+  color: var(--mb-color-summarize);
 `;

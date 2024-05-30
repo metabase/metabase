@@ -64,5 +64,5 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
 `;
 
 export const AppBarProfileLinkContainer = styled.div`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 `;

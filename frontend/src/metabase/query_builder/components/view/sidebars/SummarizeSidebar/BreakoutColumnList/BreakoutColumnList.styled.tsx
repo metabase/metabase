@@ -8,7 +8,7 @@ export const ColumnGroupName = styled.div`
   font-weight: 700;
   font-size: 0.75rem;
   padding: 0 0.5rem;
-  color: ${() => color("summarize")};
+  color: var(--mb-color-summarize);
 `;
 
 export const SearchContainer = styled.div`

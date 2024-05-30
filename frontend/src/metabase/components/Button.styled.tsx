@@ -9,7 +9,7 @@ const FONT_SIZE_VARIANTS = {
 };
 
 export const TextButton = styled(Button)<{ size: "small" | "medium" }>`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: ${props =>
     FONT_SIZE_VARIANTS[props.size] || FONT_SIZE_VARIANTS.medium};
   border: none;
@@ -18,6 +18,6 @@ export const TextButton = styled(Button)<{ size: "small" | "medium" }>`
 
   &:hover {
     background-color: transparent;
-    color: ${() => color("text-brand")};
+    color: var(--mb-color-text-brand);
   }
 `;

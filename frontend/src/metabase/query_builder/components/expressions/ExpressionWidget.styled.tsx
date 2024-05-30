@@ -24,7 +24,7 @@ export const FieldLabel = styled.label`
   text-transform: uppercase;
   letter-spacing: 0.06em;
 
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const Footer = styled.div`

@@ -11,7 +11,7 @@ export const ColumnPickerHeaderContainer = styled.div`
   align-items: center;
   padding: 1rem 0.5rem;
   border-bottom: 1px solid var(--mb-color-border);
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const ColumnPickerHeaderTitleContainer = styled.a`

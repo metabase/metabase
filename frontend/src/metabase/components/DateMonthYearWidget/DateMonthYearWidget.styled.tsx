@@ -28,7 +28,7 @@ export const MonthRoot = styled.div<MonthRootProps>`
   margin: 0.5rem 0;
   padding: 0.5rem 1rem;
   border-radius: 99px;
-  color: ${props => props.isSelected && color("white")};
+  color: ${props => (props.isSelected ? "var(--mb-color-text-white)" : "")};
   background-color: ${props => props.isSelected && color("brand")};
 
   &:hover {

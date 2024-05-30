@@ -151,7 +151,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
 export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   ${breakpointMinSmall} {
     margin-left: auto;

@@ -29,7 +29,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
     ${({ hasValue, highlighted }) =>
       hasValue && highlighted ? color("brand") : "var(--mb-color-border)"};
   background-color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("brand") : color("white")};
+    hasValue && highlighted ? color("brand") : "var(--mb-color-bg-white)"};
   border-radius: ${space(1)};
   font-weight: 700;
   min-width: 104px;
@@ -38,7 +38,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
 
   &:focus {
     border-color: var(--mb-color-brand);
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   &:not(:focus-visible) {
@@ -47,7 +47,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
 
   &:disabled {
     background-color: var(--mb-color-bg-light);
-    color: ${() => color("text-medium")};
+    color: var(--mb-color-text-medium);
     pointer-events: none;
   }
 `;

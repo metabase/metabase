@@ -34,7 +34,7 @@ export const BackButton = styled.a`
   font-size: 16px;
   display: flex;
   align-items: center;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   border-bottom: 1px solid var(--mb-color-border);
   padding: 1rem;
 

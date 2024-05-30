@@ -7,8 +7,8 @@ import { color } from "metabase/lib/colors";
 export const StatusRoot = styled.div`
   width: 16rem;
   border-radius: 6px;
-  background-color: ${() => color("white")};
-  box-shadow: 0 1px 12px ${() => color("shadow")};
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 1px 12px var(--mb-color-shadow);
   overflow: hidden;
   margin-top: 1rem;
 `;
@@ -31,11 +31,11 @@ export const StatusTitle = styled.div`
 
 export const StatusToggle = styled(IconButtonWrapper)`
   flex: 0 0 auto;
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const StatusBody = styled.div`
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const StatusCardRoot = styled.div<{ hasBody?: boolean }>`
@@ -59,11 +59,11 @@ export const StatusCardIcon = styled.div`
   height: 2rem;
   border-radius: 1rem;
   color: var(--mb-color-brand);
-  background-color: ${() => color("brand-light")};
+  background-color: var(--mb-color-brand-light);
 `;
 
 export const StatusCardTitle = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
@@ -97,6 +97,6 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 1rem;
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
   background-color: ${props => color(props.isError ? "error" : "success")};
 `;

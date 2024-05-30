@@ -25,7 +25,7 @@ export const QueryErrorHeader = styled.div`
 
 export const QueryErrorTitle = styled.div`
   flex: 1 1 auto;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;
@@ -33,7 +33,7 @@ export const QueryErrorTitle = styled.div`
 
 export const QueryErrorIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${() => color("error")};
+  color: var(--mb-color-error);
   width: 1rem;
   height: 1rem;
   margin-right: 0.75rem;

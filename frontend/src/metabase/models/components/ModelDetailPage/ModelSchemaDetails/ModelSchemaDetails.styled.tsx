@@ -34,6 +34,6 @@ export const FieldListItem = styled.li`
   }
 
   &:hover {
-    background-color: ${() => color("brand-light")};
+    background-color: var(--mb-color-brand-light);
   }
 `;

@@ -13,7 +13,7 @@ export const TokenFieldContainer = styled.ul`
 
   max-height: 130px;
 
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
   overflow-x: auto;
   overflow-y: auto;
   border-radius: ${space(1)};
@@ -31,5 +31,5 @@ export const TokenInputItem = styled.li`
 export const PrefixContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

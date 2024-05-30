@@ -17,7 +17,7 @@ export const SuggestionMatch = styled.span`
 `;
 
 const getHighlightedStyle = (theme: Theme) => css`
-  color: ${theme.fn.themeColor("white")};
+  color: var(--mb-color-text-white);
   background-color: ${theme.fn.themeColor("brand")};
 `;
 
@@ -43,7 +43,7 @@ export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   background: white;
   height: 2rem;
   font-weight: bold;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   position: sticky;
   bottom: 0;
@@ -85,7 +85,7 @@ export const GroupTitle = styled(ExpressionListItem)`
   text-transform: uppercase;
   font-weight: bold;
   font-size: 12px;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   pointer-events: none;
 
   border-top: 1px solid var(--mb-color-border);

@@ -13,6 +13,6 @@ export const AmPmLabel = styled.span<AmPmLabelProps>`
   cursor: ${props => !props.isSelected && "pointer"};
 
   &:hover {
-    color: ${() => color("filter")};
+    color: var(--mb-color-filter);
   }
 `;

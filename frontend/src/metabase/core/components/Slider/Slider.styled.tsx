@@ -24,7 +24,7 @@ const getThumbStyles = (theme: Theme) => css`
   border-radius: 50%;
   border: 2px solid ${theme.fn.themeColor("brand")};
   box-sizing: border-box;
-  background-color: ${theme.fn.themeColor("white")};
+  background-color: var(--mb-color-bg-white);
   cursor: pointer;
   box-shadow: 0 0 2px 1px ${theme.fn.themeColor("brand")};
   pointer-events: all;
@@ -81,7 +81,7 @@ export const SliderTooltip = styled.div`
   text-align: center;
   padding: ${space(0.5)} ${space(1)};
   background: var(--mb-color-black);
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
   display: block;
   border-radius: ${space(1)};
   opacity: 0;

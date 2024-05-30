@@ -41,7 +41,8 @@ export const SelectableSidebarItemRoot = styled(BaseSidebarItemRoot)<{
   background-color: ${props =>
     props.isSelected ? color("brand") : "transparent"};
 
-  color: ${props => (props.isSelected ? color("white") : "inherit")};
+  color: ${props =>
+    props.isSelected ? "var(--mb-color-text-white)" : "inherit"};
 `;
 
 export const Content = styled.div`

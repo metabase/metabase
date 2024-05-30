@@ -15,7 +15,7 @@ export const BannerButton = ({
   <Button
     compact
     variant="outline"
-    color="white"
+    color="text-white"
     miw="2rem"
     h="2rem"
     onClick={onClick}

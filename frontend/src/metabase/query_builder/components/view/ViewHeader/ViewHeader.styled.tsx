@@ -82,7 +82,8 @@ export const HeaderButton = styled(Button)<{ active: boolean }>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
-  color: ${({ active }) => (active ? "white" : color("text-dark"))};
+  color: ${({ active }) =>
+    active ? "var(--mb-color-text-white)" : color("text-dark")};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
@@ -104,7 +105,7 @@ export const IconHeaderButton = styled(HeaderButton)`
 
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   //margin-left: 4px;
 
   ${breakpointMaxSmall} {
@@ -169,7 +170,7 @@ export const HeaderDivider = styled.span`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 `;
@@ -210,9 +211,10 @@ interface ViewRunButtonWithTooltipProps {
 export const ViewRunButtonWithTooltip = styled(
   RunButtonWithTooltip,
 )<ViewRunButtonWithTooltipProps>`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
-    color: ${props => (props.isDirty ? color("white") : color("brand"))};
+    color: ${props =>
+      props.isDirty ? "var(--mb-color-text-white)" : color("brand")};
   }
 `;

@@ -14,6 +14,7 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
+import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
@@ -233,7 +234,7 @@ const FormButtonsGroup = ({ children }: { children: ReactNode }) => {
       p="md"
       px="lg"
       spacing="md"
-      bg="white"
+      bg={color("bg-white")}
       className="form-buttons-group"
     >
       {children}

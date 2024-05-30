@@ -12,7 +12,7 @@ const Container = styled.div`
 `;
 
 const Title = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   text-transform: uppercase;
   margin-bottom: 0.5rem;

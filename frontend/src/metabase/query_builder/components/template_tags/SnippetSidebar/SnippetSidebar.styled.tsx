@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const SidebarIcon = styled(Icon)`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   margin-right: 0.5rem;
 `;
 
@@ -12,7 +12,7 @@ export const SidebarFooter = styled.div`
   display: flex;
   padding: 1rem;
   font-size: 0.875em;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   cursor: pointer;
 
   &:hover {

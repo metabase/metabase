@@ -28,7 +28,7 @@ export const Container = styled.span<{ variant: string }>`
 `;
 
 const DividerSpan = styled.span`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   font-size: 0.8em;
   font-weight: bold;
   padding-left: 0.5em;

@@ -9,7 +9,7 @@ export interface TextPickerInputProps {
 }
 
 export const TextPickerInput = styled.input<TextPickerInputProps>`
-  border-color: ${() => color("filter")};
+  border-color: var(--mb-color-filter);
 
   ${({ hasInvalidValues, theme }) =>
     hasInvalidValues &&
@@ -23,7 +23,7 @@ export interface TextPickerAreaProps {
 }
 
 export const TextPickerArea = styled(AutosizeTextarea)<TextPickerAreaProps>`
-  border-color: ${() => color("filter")};
+  border-color: var(--mb-color-filter);
 
   ${({ hasInvalidValues, theme }) =>
     hasInvalidValues &&

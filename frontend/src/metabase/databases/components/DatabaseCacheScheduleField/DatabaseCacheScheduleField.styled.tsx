@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 
 export const ScheduleOptionList = styled.div`
   border: 1px solid var(--mb-color-border);
-  box-shadow: 0 2px 2px ${() => color("shadow")};
+  box-shadow: 0 2px 2px var(--mb-color-shadow);
 `;
 
 interface ScheduleOptionRootProps {
@@ -68,7 +68,7 @@ export const ScheduleOptionContent = styled.div`
 `;
 
 export const ScheduleOptionText = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 1rem;
   line-height: 1.5rem;
   max-width: 38.75rem;

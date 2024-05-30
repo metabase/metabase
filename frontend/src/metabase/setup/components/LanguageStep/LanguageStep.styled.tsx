@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const StepDescription = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin: 0.875rem 0;
 `;
 
@@ -34,18 +34,20 @@ export interface LocaleContainerProps {
 export const LocaleButton = styled.span<LocaleContainerProps>`
   display: block;
   padding: 0.5rem;
-  color: ${props => color(props.checked ? "white" : "text-dark")};
+  color: ${props =>
+    props.checked ? "var(--mb-color-text-white)" : color("text-dark")};
   border-radius: 0.25rem;
-  background-color: ${props => color(props.checked ? "brand" : "white")};
+  background-color: ${props =>
+    props.checked ? color("brand") : "var(--mb-color-bg-white)"};
   font-weight: 700;
 
   &:hover {
-    color: ${() => color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

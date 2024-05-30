@@ -26,6 +26,6 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
 `;
 
 export const LabelIcon = styled(Icon)`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   margin-top: 0.2rem;
 `;

@@ -12,7 +12,7 @@ export const Content = styled.div`
 export const Description = styled.p`
   font-size: 1.143em;
   line-height: 1.5em;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   text-align: center;
 
   width: 80%;

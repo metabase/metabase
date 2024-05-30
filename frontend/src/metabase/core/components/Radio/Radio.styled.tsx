@@ -73,7 +73,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   }
 
   ${RadioInput}:focus + & {
-    outline: 2px solid ${() => color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   ${RadioInput}:focus:not(:focus-visible) + & {
@@ -98,7 +98,9 @@ export const RadioContainerBubble = styled(RadioContainer)`
   border-radius: 10rem;
   font-weight: bold;
   color: ${props =>
-    props.checked ? color("white") : getContrastSchemeColor(props.colorScheme)};
+    props.checked
+      ? "var(--mb-color-text-white)"
+      : getContrastSchemeColor(props.colorScheme)};
   background-color: ${props =>
     props.checked
       ? getSchemeColor(props.colorScheme)

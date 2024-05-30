@@ -35,7 +35,7 @@ export const FilterSection = styled.div`
 `;
 
 export const FilterField = styled(FilterSection)`
-  color: ${() => color("filter")};
+  color: var(--mb-color-filter);
   font-weight: 700;
 
   &:hover {
@@ -43,14 +43,14 @@ export const FilterField = styled(FilterSection)`
   }
 
   ${QueryOption} {
-    color: ${() => color("filter")};
+    color: var(--mb-color-filter);
   }
 `;
 
 export const FilterOperator = styled(FilterSection)`
-  color: ${() => color("filter")};
+  color: var(--mb-color-filter);
 
   ${QueryOption} {
-    color: ${() => color("filter")};
+    color: var(--mb-color-filter);
   }
 `;

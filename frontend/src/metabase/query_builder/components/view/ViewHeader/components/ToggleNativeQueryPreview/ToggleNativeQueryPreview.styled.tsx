@@ -9,7 +9,7 @@ interface SqlButtonProps {
 
 export const SqlButton = styled(IconButtonWrapper)<SqlButtonProps>`
   color: ${({ isSelected }) =>
-    isSelected ? color("white") : color("text-dark")};
+    isSelected ? "var(--mb-color-text-white)" : color("text-dark")};
   background-color: ${({ isSelected }) => isSelected && color("brand")};
   height: 2rem;
   width: 2rem;

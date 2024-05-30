@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 
 export const GroupName = styled.p`
   font-weight: 700;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const StyledSelect = styled(Select)``;

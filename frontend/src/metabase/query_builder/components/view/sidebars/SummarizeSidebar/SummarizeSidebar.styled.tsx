@@ -30,7 +30,7 @@ export const AggregationsContainer = styled(Section)`
 `;
 
 export const AggregationPicker = styled(BaseAggregationPicker)`
-  color: ${() => color("summarize")};
+  color: var(--mb-color-summarize);
 `;
 
 export const ColumnListContainer = styled(Section)`

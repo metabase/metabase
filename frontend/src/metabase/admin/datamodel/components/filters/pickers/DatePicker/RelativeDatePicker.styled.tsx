@@ -24,7 +24,7 @@ export const NumericInput = styled(BaseNumericInput)<BaseProps>`
 `;
 
 export const OptionsContainer = styled.div`
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
   padding: ${space(2)} ${space(1)};
 `;
 
@@ -57,7 +57,7 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
 
 export const MoreButton = styled(Button)<ButtonProps>`
   border: none;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: ${({ primaryColor = color("brand") }) => primaryColor};
@@ -78,5 +78,5 @@ export const GridContainer = styled.div<GridProps>`
 
 export const GridText = styled.div`
   font-size: 1em;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

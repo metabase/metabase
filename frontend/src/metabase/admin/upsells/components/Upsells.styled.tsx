@@ -30,7 +30,7 @@ export const UpsellPillComponent = styled(ExternalLink)`
 
   &:hover {
     background-color: ${upsellColors.primary};
-    color: ${() => color("white")};
+    color: var(--mb-color-text-white);
     border: 1px solid ${upsellColors.primary};
   }
 `;
@@ -54,7 +54,7 @@ export const UpsellCTALink = styled(ExternalLink)`
 
   &:hover {
     background-color: ${upsellColors.primary};
-    color: ${() => color("white")};
+    color: var(--mb-color-text-white);
   }
 `;
 

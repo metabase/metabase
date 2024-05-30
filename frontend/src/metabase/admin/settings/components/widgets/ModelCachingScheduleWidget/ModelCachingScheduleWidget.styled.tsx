@@ -28,7 +28,7 @@ export const StyledSettingSelect = styled(SettingSelect)`
 
 export const SelectLabel = styled.span`
   display: block;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 0.875rem;
@@ -38,5 +38,5 @@ export const SelectLabel = styled.span`
 
 export const Description = styled.span`
   margin-top: 1.5rem;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

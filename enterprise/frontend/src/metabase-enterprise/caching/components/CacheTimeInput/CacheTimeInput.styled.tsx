@@ -15,5 +15,5 @@ export const TimeInput = styled(NumericInput)`
 `;
 
 export const TimeInputMessage = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;

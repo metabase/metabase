@@ -116,7 +116,7 @@ export const MenuItem = styled.li`
   padding: 0.85em 1.45em;
   border-radius: 0.5em;
 
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   text-align: start;
   text-decoration: none;

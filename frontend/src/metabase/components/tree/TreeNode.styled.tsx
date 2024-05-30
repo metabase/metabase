@@ -13,7 +13,8 @@ interface TreeNodeRootProps {
 export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
-  color: ${props => (props.isSelected ? color("white") : color("brand"))};
+  color: ${props =>
+    props.isSelected ? "var(--mb-color-text-white)" : color("brand")};
   background-color: ${props => (props.isSelected ? color("brand") : "unset")};
   padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;

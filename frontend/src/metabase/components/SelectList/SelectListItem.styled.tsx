@@ -20,7 +20,7 @@ const getActiveItemCss = (theme: Theme) => css`
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
   }
 `;
 

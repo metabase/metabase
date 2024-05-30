@@ -56,7 +56,7 @@ DoneButton.defaultProps = {
 
 export const DragHandleIcon = styled(Icon)`
   cursor: grab;
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const ExpandIcon = styled(Icon)`
@@ -64,5 +64,5 @@ export const ExpandIcon = styled(Icon)`
 `;
 
 export const RemoveIcon = styled(Icon)`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;

@@ -42,8 +42,8 @@ export const BillingExternalLinkIcon = styled(Icon)`
 
 export const StoreButtonLink = styled(ExternalLink)`
   display: inline-flex;
-  background-color: ${() => color("brand")};
-  color: ${() => color("text-white")};
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
   align-items: center;
   font-weight: bold;
   padding: 0.75rem 1rem;

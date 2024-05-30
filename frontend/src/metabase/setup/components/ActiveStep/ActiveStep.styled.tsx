@@ -9,7 +9,7 @@ export const StepRoot = styled.section`
   margin-bottom: 1.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
 
   ${breakpointMinSmall} {
     padding: 4rem;
@@ -35,7 +35,7 @@ export const StepLabel = styled.div`
   height: 2.625rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 50%;
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const StepLabelText = styled.span`
@@ -45,6 +45,6 @@ export const StepLabelText = styled.span`
 `;
 
 export const StepDescription = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin: 0.875rem 0;
 `;

@@ -26,7 +26,7 @@ export const StyledTable = styled(Table)`
   }
 
   tbody > tr:hover {
-    background-color: ${() => color("brand-lighter")};
+    background-color: var(--mb-color-brand-lighter);
   }
 
   td {

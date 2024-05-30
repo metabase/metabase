@@ -13,7 +13,7 @@ const getHeaderBackgroundStyle = () =>
   `linear-gradient(to top, ${alpha(color("border"), 0.5)}, ${alpha(
     color("border"),
     0.5,
-  )} 1px, ${color("white")} 1px, ${color("white")} 100%)`;
+  )} 1px, var(--mb-color-bg-white) 1px, var(--mb-color-bg-white) 100%)`;
 
 export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
@@ -79,11 +79,11 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: ${() => color("admin-navbar")};
+  color: var(--mb-color-admin-navbar);
 `;
 
 export const HintIcon = styled(Icon)`
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

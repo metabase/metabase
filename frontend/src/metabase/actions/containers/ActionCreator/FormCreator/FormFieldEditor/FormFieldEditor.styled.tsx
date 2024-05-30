@@ -49,12 +49,12 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 `;
 
 export const Subtitle = styled.div`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.85rem;
   font-weight: 700;
 
@@ -62,7 +62,7 @@ export const Subtitle = styled.div`
 `;
 
 export const DragHandle = styled(Icon)`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;
 
@@ -79,7 +79,7 @@ export const PreviewContainer = styled(ContentContainer)`
   }
 
   ${FormField.Label} {
-    color: ${() => color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 `;
 

@@ -16,7 +16,7 @@ export const Container = styled.div<{ isSmall: boolean }>`
 `;
 
 export const TextCardDefault = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin: ${space(1)} 0;
   display: flex;
   flex-direction: row;
@@ -35,7 +35,7 @@ export const CardLabel = styled.div`
 
 export const Header = styled.h4`
   width: 100%;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: ${space(1)};
   text-align: center;
 `;
@@ -45,14 +45,14 @@ export const TargetButton = styled.div<{ variant: string }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
   cursor: pointer;
   border: 2px solid var(--mb-color-brand);
   border-radius: 8px;
   min-height: 30px;
   padding: 0.25em 0.5em;
   margin: 0 0.25rem;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   ${({ variant }) =>
     variant === "disabled" &&
@@ -67,7 +67,7 @@ export const TargetButton = styled.div<{ variant: string }>`
     css`
       border-color: ${theme.fn.themeColor("brand")};
       background-color: ${theme.fn.themeColor("brand")};
-      color: ${theme.fn.themeColor("white")};
+      color: var(--mb-color-text-white);
     `}
 
   ${({ variant, theme }) =>
@@ -84,7 +84,7 @@ export const TargetButton = styled.div<{ variant: string }>`
     css`
       border-color: ${theme.fn.themeColor("error")};
       background-color: ${theme.fn.themeColor("error")};
-      color: ${theme.fn.themeColor("white")};
+      color: var(--mb-color-text-white);
     `}
 `;
 
@@ -100,14 +100,14 @@ export const TargetButtonText = styled.span`
 `;
 
 export const CloseIconButton = styled(Button)<{ icon?: string; size?: number }>`
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
   background-color: transparent;
   border: none;
   padding: ${space(0)} !important;
 
   &:hover {
-    color: ${() => color("white")};
-    background-color: ${() => alpha("white", 0.2)};
+    color: var(--mb-color-text-white);
+    background-color: ${() => alpha("bg-white", 0.2)};
   }
 `;
 

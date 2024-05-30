@@ -53,6 +53,20 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-dark: ${({ theme }) => theme.fn.themeColor("text-dark")};
   --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
+  --mb-color-white: ${({ theme }) => theme.fn.themeColor("white")};
+
+  // TODO:
+  --mb-color-brand-light: ${({ theme }) => theme.fn.themeColor("brand-light")};
+  //--mb-color-bg-error
+  //--mb-color-brand-lighter
+  //--mb-color-danger
+  //--mb-color-dark
+  //--mb-color-error
+  //--mb-color-filter
+  //--mb-color-success
+  //--mb-color-summarize
+  //--mb-color-text-brand
+  //--mb-color-warning
 
   ${({ theme }) => getAceEditorStyles(theme)}
   ${saveDomImageStyles}

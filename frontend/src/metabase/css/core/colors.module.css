@@ -18,6 +18,9 @@
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
   --mb-color-black: #2e353b;
+  --mb-color-white: #fff;
+
+  --mb-color-brand-light: #eef6fc; /* TODO: update this value */
 }
 
 .textDefault {

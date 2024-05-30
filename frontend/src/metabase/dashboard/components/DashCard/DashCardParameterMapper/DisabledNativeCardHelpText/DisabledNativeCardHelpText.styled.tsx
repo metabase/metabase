@@ -11,14 +11,14 @@ export const NativeCardDefault = styled.div`
 `;
 
 export const NativeCardIcon = styled(Icon)`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 0.5rem;
   width: 1.25rem;
   height: 1.25rem;
 `;
 
 export const NativeCardText = styled.div`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   max-width: 15rem;
   text-align: center;
   line-height: 1.5rem;

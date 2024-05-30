@@ -12,7 +12,7 @@ export const Container = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background-color: ${() => color("white")};
+  background-color: var(--mb-color-bg-white);
   border-bottom: 1px solid var(--mb-color-border);
   padding: ${space(2)} ${space(3)};
 `;
@@ -20,14 +20,14 @@ export const Container = styled.div`
 export const LeftHeader = styled.div`
   display: flex;
   align-items: center;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   gap: ${space(2)};
 `;
 
 export const EditableText = styled(EditableTextBase)`
   font-weight: bold;
   font-size: 1.3em;
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const CompactSelect = styled(Select)`
@@ -35,7 +35,7 @@ export const CompactSelect = styled(Select)`
     border: none;
     border-radius: 6px;
     min-width: 80px;
-    color: ${() => color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
   ${SelectButton.Content} {
     margin-right: 6px;

@@ -26,7 +26,7 @@ export const Text = styled.span`
 `;
 
 export const Time = styled.time`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.766rem;
   line-height: 1.25rem;
 `;
@@ -38,6 +38,6 @@ export const IconButton = styled(Button)`
 
   &:hover {
     background-color: transparent;
-    color: ${() => color("danger")};
+    color: var(--mb-color-danger);
   }
 `;

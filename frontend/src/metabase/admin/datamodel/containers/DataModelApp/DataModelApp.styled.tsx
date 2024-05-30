@@ -13,7 +13,7 @@ export const NavBar = styled.div`
 `;
 
 export const ModelEducationButton = styled(Button)`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 ModelEducationButton.defaultProps = {

@@ -6,11 +6,11 @@ import { color } from "metabase/lib/colors";
 export const AddAggregationButtonRoot = styled(Button)`
   padding: 0.625rem;
 
-  color: ${() => color("summarize")};
+  color: var(--mb-color-summarize);
   background-color: var(--mb-color-bg-light);
 
   &:hover {
-    color: ${() => color("summarize")};
+    color: var(--mb-color-summarize);
     background-color: var(--mb-color-bg-medium);
   }
 `;

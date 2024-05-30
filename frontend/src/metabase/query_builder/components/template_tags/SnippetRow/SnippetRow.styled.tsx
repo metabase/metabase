@@ -9,7 +9,7 @@ export const SnippetButton = styled(Button)`
   margin-top: 0.5rem;
 
   &:hover {
-    color: ${() => color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

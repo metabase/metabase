@@ -32,5 +32,5 @@ export const IconWrapper = styled.div<{
   color: ${({ active, archived, type }) =>
     getColorForIconWrapper(active, archived, type)};
   flex-shrink: 0;
-  background: ${() => color("white")};
+  background: var(--mb-color-bg-white);
 `;

@@ -29,5 +29,5 @@ export const LastEditedInfoText = styled(LastEditInfoLabel)`
 `;
 
 export const LastEditedInfoTooltip = styled(LastEditInfoLabel)`
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
 `;

@@ -7,7 +7,7 @@ export const SortDirectionButton = styled.button`
   align-items: center;
   gap: 0.5rem;
 
-  color: ${() => color("white")};
+  color: var(--mb-color-text-white);
   font-weight: 700;
   cursor: pointer;
 `;

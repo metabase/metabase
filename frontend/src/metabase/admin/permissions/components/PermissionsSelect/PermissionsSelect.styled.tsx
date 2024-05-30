@@ -16,7 +16,7 @@ export const SelectedOption = styled(PermissionsSelectOption)`
   transition: color 200ms;
 
   &:hover {
-    color: ${() => color("filter")};
+    color: var(--mb-color-filter);
   }
 `;
 
@@ -30,7 +30,7 @@ export const OptionsListItem = styled.li`
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: ${() => color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${() => lighten("accent7", 0.1)};
   }
 `;
@@ -54,7 +54,7 @@ export const ToggleLabel = styled.label`
 
 export const WarningIcon = styled(Icon)`
   margin-right: 0.25rem;
-  color: ${() => color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 WarningIcon.defaultProps = {

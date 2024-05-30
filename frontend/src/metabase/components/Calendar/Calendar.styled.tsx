@@ -35,7 +35,7 @@ export const CalendarDay = styled.div<CalendarDayProps>`
   ${({ primaryColor, isSelectedStart, isSelectedEnd, theme }) =>
     (isSelectedStart || isSelectedEnd) &&
     css`
-      color: ${theme.fn.themeColor("white")} !important;
+      color: var(--mb-color-text-white) !important;
       background-color: ${primaryColor};
       z-index: 1;
     `}

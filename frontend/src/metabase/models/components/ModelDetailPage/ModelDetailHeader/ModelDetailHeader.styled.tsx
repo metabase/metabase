@@ -5,13 +5,13 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ModelTitle = styled(EditableText)`
-  color: ${() => color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 1.25rem;
 `;
 
 export const ModelFootnote = styled.p`
-  color: ${() => color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin: ${space(0)} 0 0 ${space(0)};
 `;
 

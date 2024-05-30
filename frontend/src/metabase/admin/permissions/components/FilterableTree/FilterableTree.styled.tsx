@@ -28,7 +28,8 @@ export const EmptyStateContainer = styled.div`
 `;
 
 export const AdminTreeNode = styled(Tree.Node)`
-  color: ${props => (props.isSelected ? color("white") : color("text-medium"))};
+  color: ${props =>
+    props.isSelected ? "var(--mb-color-text-white)" : color("text-medium")};
 
   background-color: ${props => (props.isSelected ? color("filter") : "unset")};
 

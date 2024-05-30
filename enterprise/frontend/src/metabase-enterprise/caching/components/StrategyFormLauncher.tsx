@@ -60,7 +60,7 @@ export const StrategyFormLauncher = ({
     <Flex
       w="100%"
       p="md"
-      bg={color(forRoot ? "bg-medium" : "white")}
+      bg={color(forRoot ? "bg-medium" : "bg-white")}
       justify="space-between"
       align="center"
       gap="md"
