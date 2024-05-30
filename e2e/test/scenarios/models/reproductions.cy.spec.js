@@ -139,6 +139,7 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
       cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
@@ -162,6 +163,7 @@ describe("issue 19737", () => {
 
     // Open question picker (this is crucial) so the collection list are loaded.
     entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -896,8 +898,8 @@ describe("issue 26091", () => {
         "true",
       );
       cy.findByText("New model").should("be.visible");
-      cy.findByText("Old model").should("not.exist");
-      cy.findByText("Orders Model").should("not.exist");
+      cy.findByText("Old model").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
 
       entityPickerModalTab("Models").click();
       cy.findByText("New model").should("be.visible");
