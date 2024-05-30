@@ -168,7 +168,9 @@ describe("DatabaseEditApp", () => {
 
       history.goBack();
 
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("leave-confirmation"),
+      ).toBeInTheDocument();
     });
 
     it("does not show custom warning modal after creating new database connection", async () => {

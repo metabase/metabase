@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen } from "__support__/ui";
+import { act, fireEvent, render, screen } from "__support__/ui";
 import { MultiAutocomplete, type MultiAutocompleteProps } from "metabase/ui";
 
 const EXAMPLE_DATA = [
@@ -41,7 +41,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "foo", {
       pointerEventsCheck: 0,
     });
-    input.blur();
+    fireEvent.blur(input);
 
     expect(onChange).toHaveBeenCalledWith(["foo"]);
     expect(input).toHaveValue("");
@@ -49,7 +49,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "bar", {
       pointerEventsCheck: 0,
     });
-    input.blur();
+    fireEvent.blur(input);
 
     expect(onChange).toHaveBeenCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
@@ -65,7 +65,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "foo", {
       pointerEventsCheck: 0,
     });
-    input.blur();
+    fireEvent.blur(input);
 
     expect(onChange).toHaveBeenLastCalledWith(["foo"]);
     expect(input).toHaveValue("");
@@ -74,7 +74,7 @@ describe("MultiAutocomplete", () => {
     await userEvent.type(input, "bar", {
       pointerEventsCheck: 0,
     });
-    input.blur();
+    fireEvent.blur(input);
 
     expect(onChange).toHaveBeenLastCalledWith(["foo"]);
     expect(input).toHaveValue("");
@@ -140,7 +140,7 @@ describe("MultiAutocomplete", () => {
 
   it("should accept quote-delimited values containing commas when pasting", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste('"foo bar",baz');
     expect(onChange).toHaveBeenLastCalledWith(["foo bar", "baz"]);
     expect(input).toHaveValue("");
@@ -148,7 +148,7 @@ describe("MultiAutocomplete", () => {
 
   it("should correctly parse escaped quotes when pasting", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste('"foo \\"bar\\"",baz');
     expect(onChange).toHaveBeenLastCalledWith(['foo "bar"', "baz"]);
     expect(input).toHaveValue("");
@@ -186,7 +186,7 @@ describe("MultiAutocomplete", () => {
 
   it("should accept comma-separated values when pasting", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste("foo,bar");
     expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
@@ -194,7 +194,7 @@ describe("MultiAutocomplete", () => {
 
   it("should accept newline-separated values when pasting", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste("foo\nbar");
     expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
@@ -202,7 +202,7 @@ describe("MultiAutocomplete", () => {
 
   it("should accept tab-separated values when pasting", async () => {
     const { input, onChange } = setup({ data: EXAMPLE_DATA });
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste("foo\tbar");
     expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
@@ -215,7 +215,7 @@ describe("MultiAutocomplete", () => {
         return value === "foo" || value === "bar";
       },
     });
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste("foo,bar,baz");
     expect(onChange).toHaveBeenLastCalledWith(["foo", "bar"]);
     expect(input).toHaveValue("");
@@ -229,7 +229,7 @@ describe("MultiAutocomplete", () => {
       pointerEventsCheck: 0,
     });
 
-    input.focus();
+    act(() => input.focus());
     // @ts-expect-error: input does have setSelectionRange, and testing-library does not provide a wrapper
     input.setSelectionRange(3, 3);
     await userEvent.paste("quu,xyz");
@@ -243,7 +243,7 @@ describe("MultiAutocomplete", () => {
       data: EXAMPLE_DATA,
     });
 
-    input.focus();
+    act(() => input.focus());
     await userEvent.paste('"quu');
 
     expect(input).toHaveValue('"quu');
@@ -254,7 +254,7 @@ describe("MultiAutocomplete", () => {
       data: EXAMPLE_DATA,
     });
 
-    input.focus();
+    act(() => input.focus());
     await userEvent.type(input, "a,a,b,b,a,a,", {
       pointerEventsCheck: 0,
     });
@@ -269,7 +269,7 @@ describe("MultiAutocomplete", () => {
       dir: "rtl",
     });
 
-    input.focus();
+    act(() => input.focus());
     await userEvent.type(input, "כּטקמ", {
       pointerEventsCheck: 0,
     });

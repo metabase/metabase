@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -110,7 +111,7 @@ describe("DataSelector", () => {
   );
   const SAVED_QUESTIONS_DATABASE = createMockSavedQuestionsDatabase();
 
-  it("should allow selecting db, schema, and table", () => {
+  it("should allow selecting db, schema, and table", async () => {
     const setTable = jest.fn();
     render(
       <DataSelector
@@ -125,7 +126,9 @@ describe("DataSelector", () => {
     );
 
     // displays dbs
-    expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Multi-schema Database"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
@@ -237,7 +240,7 @@ describe("DataSelector", () => {
       />,
     );
     await delay(1); // state isn't updated until the next tick
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
   it("shouldn't fetch databases until it's opened", async () => {
@@ -269,11 +272,11 @@ describe("DataSelector", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
   it("should expand multi-schema after clicking into single-schema", async () => {
@@ -291,7 +294,7 @@ describe("DataSelector", () => {
     fireEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     // check that tables are listed
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
     // click header to return to db list
     fireEvent.click(screen.getByText("Sample Database"));
     // click on a multi-schema db
@@ -325,7 +328,7 @@ describe("DataSelector", () => {
     // click into a single schema db, check for a table, and then return to db list
     fireEvent.click(screen.getByText("Sample Database"));
     await delay(1);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Sample Database"));
 
     // expand multi-schema db
@@ -336,7 +339,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should collapse expanded list of db's schemas", () => {
+  it("should collapse expanded list of db's schemas", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -380,10 +383,10 @@ describe("DataSelector", () => {
     );
     await delay(1);
 
-    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
-  it("should select schema in field picker", () => {
+  it("should select schema in field picker", async () => {
     render(
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
@@ -399,7 +402,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -418,7 +421,7 @@ describe("DataSelector", () => {
     ).toBeInTheDocument();
   });
 
-  it("should move between selected multi-schema dbs", () => {
+  it("should move between selected multi-schema dbs", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -452,16 +455,16 @@ describe("DataSelector", () => {
     );
 
     // click into the first db
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     expect(screen.getByText("Orders")).toBeInTheDocument();
 
     // click to go back
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
     // click back in
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });

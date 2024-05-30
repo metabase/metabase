@@ -415,7 +415,7 @@ describe("DashboardTabs", () => {
       await selectTab(2);
       expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
 
-      screen.getByText("Navigate away").click();
+      await userEvent.click(screen.getByText("Navigate away"));
       expect(screen.getByText("Another route")).toBeInTheDocument();
       expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
     });

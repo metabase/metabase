@@ -128,7 +128,7 @@ describe("Tooltip", () => {
     );
   });
 
-  it("should support using a reference element instead of a child target element", () => {
+  it("should support using a reference element instead of a child target element", async () => {
     function ReferenceTooltipTest() {
       const [eventTarget, setEventTarget] = useState();
       return (
@@ -149,7 +149,7 @@ describe("Tooltip", () => {
     render(<ReferenceTooltipTest />);
     expect(screen.queryByText("reference tooltip")).not.toBeInTheDocument();
 
-    screen.getByText("sibling element").click();
+    await userEvent.click(screen.getByText("sibling element"));
 
     expect(screen.getByText("reference tooltip")).toBeInTheDocument();
   });

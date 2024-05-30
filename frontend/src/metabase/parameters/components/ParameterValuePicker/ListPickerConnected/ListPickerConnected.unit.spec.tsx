@@ -407,7 +407,7 @@ describe("ListPickerConnected", () => {
       });
 
       const input = screen.getByPlaceholderText("Start typing to filter…");
-      userEvent.click(input);
+      await userEvent.click(input);
       await waitFor(() => {
         expect(fetchValuesMock).toHaveBeenCalledTimes(1);
       });

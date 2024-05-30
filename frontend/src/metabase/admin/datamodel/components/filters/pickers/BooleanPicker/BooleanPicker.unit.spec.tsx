@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
@@ -50,16 +51,16 @@ describe("BooleanPicker", () => {
   const invalidFilter = new Filter(["=", fieldRef], query);
 
   describe("BooleanPickerRadio", () => {
-    it("should hide empty options when empty options are not selected", () => {
+    it("should hide empty options when empty options are not selected", async () => {
       setup(filters.True);
 
       expect(screen.queryByLabelText("Empty")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Not empty")).not.toBeInTheDocument();
 
-      screen.getByText("More options").click();
+      await userEvent.click(screen.getByText("More options"));
 
-      expect(screen.getByLabelText("Empty")).toBeInTheDocument();
-      expect(screen.getByLabelText("Not empty")).toBeInTheDocument();
+      expect(await screen.findByLabelText("Empty")).toBeInTheDocument();
+      expect(await screen.findByLabelText("Not empty")).toBeInTheDocument();
     });
 
     it("should show empty options when given an empty filter", () => {
@@ -77,10 +78,10 @@ describe("BooleanPicker", () => {
         expect(screen.getByLabelText(label)).toBeChecked();
       });
 
-      it(`should correctly update the filter for the "${label}" option when it is selected`, () => {
+      it(`should correctly update the filter for the "${label}" option when it is selected`, async () => {
         setup(label === "True" ? filters.False : filters.True);
 
-        screen.getByText("More options").click();
+        await userEvent.click(screen.getByText("More options"));
 
         screen.getByLabelText(label).click();
         expect(mockOnFilterChange).toHaveBeenCalled();
@@ -127,7 +128,7 @@ describe("BooleanPicker", () => {
       });
     });
 
-    it("should toggle between true and false states", () => {
+    it("should toggle between true and false states", async () => {
       mockOnFilterChange.mockReset();
       render(
         <BooleanPickerCheckbox
@@ -136,13 +137,13 @@ describe("BooleanPicker", () => {
         />,
       );
 
-      screen.getByText("False").click();
+      await userEvent.click(screen.getByText("False"));
 
       const newFilter = mockOnFilterChange.mock.calls[0][0];
       expect(newFilter.raw()).toEqual(filters.False.raw());
     });
 
-    it("should remove true/false filter on deselect", () => {
+    it("should remove true/false filter on deselect", async () => {
       mockOnFilterChange.mockReset();
       render(
         <BooleanPickerCheckbox
@@ -151,7 +152,7 @@ describe("BooleanPicker", () => {
         />,
       );
 
-      screen.getByText("True").click();
+      await userEvent.click(screen.getByText("True"));
 
       const newFilter = mockOnFilterChange.mock.calls[0][0];
       expect(newFilter.raw()).toEqual(invalidFilter.raw());

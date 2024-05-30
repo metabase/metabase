@@ -13,7 +13,7 @@ describe("PreviewQueryModal (EE without token)", () => {
 
     expect(await screen.findByText("Query preview")).toBeInTheDocument();
     expect(
-      screen.getByText("Learn how to debug SQL errors"),
+      await screen.findByText("Learn how to debug SQL errors"),
     ).toBeInTheDocument();
   });
 
@@ -22,7 +22,7 @@ describe("PreviewQueryModal (EE without token)", () => {
 
     expect(await screen.findByText("Query preview")).toBeInTheDocument();
     expect(
-      screen.getByText("Learn how to debug SQL errors"),
+      await screen.findByText("Learn how to debug SQL errors"),
     ).toBeInTheDocument();
   });
 });

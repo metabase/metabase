@@ -64,10 +64,9 @@ const setup = async () => {
 };
 
 const editDatabasePermission = async () => {
-  const permissionsSelectElem =
-    screen.getAllByTestId("permissions-select")[
-      NATIVE_QUERIES_PERMISSION_INDEX
-    ];
+  const permissionsSelectElem = (
+    await screen.findAllByTestId("permissions-select")
+  )[NATIVE_QUERIES_PERMISSION_INDEX];
   fireEvent.click(permissionsSelectElem);
 
   const clickElement = screen.getByLabelText(/close icon/);
