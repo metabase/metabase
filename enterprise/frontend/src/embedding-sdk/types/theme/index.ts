@@ -121,9 +121,16 @@ export interface MetabaseComponentTheme {
 
   /** Cartesian charts */
   cartesian: {
+    /** Labels used in cartesian charts, such as axis ticks and series. */
     label: {
-      /** Labels used in cartesian charts, such as axis ticks and series. */
-      fontSize: string;
+      fontSize: number;
+    };
+
+    /** Overrides for goal lines. */
+    goalLine: {
+      label: {
+        fontSize: number;
+      };
     };
   };
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, MantineThemeOther } from "metabase/ui";
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type { ClickObject } from "metabase/visualizations/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -32,16 +32,8 @@ export interface RenderingContext {
   measureText: TextWidthMeasurer;
   fontFamily: string;
 
-  theme: VisualizationTheme;
-}
-
-/** Visualization theming overrides. */
-export interface VisualizationTheme {
-  cartesian: {
-    label: {
-      fontSize: number;
-    };
-  };
+  /** Visualization styling overrides. */
+  theme: MantineThemeOther;
 }
 
 export type OnChangeCardAndRunOpts = {

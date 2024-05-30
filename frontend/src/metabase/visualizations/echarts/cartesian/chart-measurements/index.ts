@@ -359,8 +359,10 @@ export const getChartPadding = (
 ): Padding => {
   const { fontSize } = theme.cartesian.label;
 
-  const axisNameFontSize = fontSize ?? CHART_STYLE.axisName.size;
-  const seriesLabelFontSize = fontSize ?? CHART_STYLE.seriesLabels.size;
+  // Update this when we have different font sizes
+  // for the axis names and the series labels.
+  const axisNameFontSize = fontSize;
+  const seriesLabelFontSize = fontSize;
 
   const padding: Padding = {
     top: CHART_STYLE.padding.y,

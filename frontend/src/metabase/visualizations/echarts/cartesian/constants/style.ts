@@ -16,17 +16,14 @@ export const CHART_STYLE = {
   axisTicksMarginX: 5,
   axisTicksMarginY: 10,
   axisTicks: {
-    size: 12,
     weight: 700,
   },
   seriesLabels: {
     weight: 600,
-    size: 12,
     offset: 4,
     zIndex: 10,
   },
   axisName: {
-    size: 12,
     weight: 700,
   },
   axisNameMargin: 12,
@@ -46,7 +43,6 @@ export const CHART_STYLE = {
   goalLine: {
     label: {
       margin: 4,
-      size: 14,
       weight: 600,
     },
     zIndex: 9,

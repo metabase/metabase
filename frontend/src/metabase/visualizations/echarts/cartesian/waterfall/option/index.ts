@@ -40,6 +40,7 @@ const getLabelLayoutFn = (
   dataset: ChartDataset,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
 ): LabelLayoutOptionCallback => {
   return params => {
     const { dataIndex, rect } = params;
@@ -47,16 +48,17 @@ const getLabelLayoutFn = (
       return {};
     }
 
+    const { fontSize } = renderingContext.theme.cartesian.label;
+
     const datum = dataset[dataIndex];
     const value = datum[WATERFALL_VALUE_KEY] ?? 0;
     const end = datum[WATERFALL_END_KEY] ?? 0;
     const isIncrease = getNumberOr(value, 0) >= 0;
 
-    const verticalAlignOffset =
-      CHART_STYLE.seriesLabels.size / 2 + CHART_STYLE.seriesLabels.offset;
+    const verticalAlignOffset = fontSize / 2 + CHART_STYLE.seriesLabels.offset;
 
     const hasBottomSpace =
-      rect.y + CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset <
+      rect.y + fontSize + CHART_STYLE.seriesLabels.offset <
       chartMeasurements.bounds.bottom;
 
     const barHeight = rect.height;
@@ -170,7 +172,12 @@ export const buildEChartsWaterfallSeries = (
       silent: true,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       symbolSize: 0,
-      labelLayout: getLabelLayoutFn(dataset, chartMeasurements, settings),
+      labelLayout: getLabelLayoutFn(
+        dataset,
+        chartMeasurements,
+        settings,
+        renderingContext,
+      ),
       encode: {
         y: WATERFALL_END_KEY,
         x: X_AXIS_DATA_KEY,

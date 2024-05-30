@@ -1,4 +1,4 @@
-export { rem, useMantineTheme } from "@mantine/core";
+export { px, rem, useMantineTheme } from "@mantine/core";
 export type {
   TabsValue,
   MantineTheme,

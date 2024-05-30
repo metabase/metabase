@@ -3,6 +3,7 @@ import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import type { DeepPartial } from "embedding-sdk/types/utils";
 
 /**
  * Default theme options for Metabase components.
@@ -30,34 +31,35 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   cartesian: {
     label: {
-      fontSize: "12px",
+      fontSize: 12,
+    },
+    goalLine: {
+      label: {
+        fontSize: 14,
+      },
     },
   },
 };
 
 /**
- * Default theme options, with overrides specific to the
- * Embedding SDK environment to provide nicer defaults.
+ * Theme overrides that are specific to the embedding SDK environment.
  */
-export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
-  DEFAULT_METABASE_COMPONENT_THEME,
+export const EMBEDDING_COMPONENT_THEME_OVERRIDES: DeepPartial<MetabaseComponentTheme> =
   {
     table: {
       cell: {
         backgroundColor: "bg-white",
+      },
+    },
+  };
 
-        // Makes the base font size relative to root embedding,
-        // without affecting the Metabase app's font sizes.
-        // SDK users can override this to set their label font sizes.
-        fontSize: "0.893em",
-      },
-    },
-    cartesian: {
-      label: {
-        fontSize: "0.857em",
-      },
-    },
-  },
+/**
+ * Default theme options with overrides specific to the
+ * embedding SDK environment to provide nicer defaults.
+ */
+export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
+  DEFAULT_METABASE_COMPONENT_THEME,
+  EMBEDDING_COMPONENT_THEME_OVERRIDES,
 );
 
 export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =

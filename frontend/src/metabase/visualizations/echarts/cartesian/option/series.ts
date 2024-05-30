@@ -58,8 +58,11 @@ export const getBarLabelLayout =
     dataset: ChartDataset,
     settings: ComputedVisualizationSettings,
     seriesDataKey: DataKey,
+    renderingContext: RenderingContext,
   ): BarSeriesOption["labelLayout"] =>
   params => {
+    const { fontSize } = renderingContext.theme.cartesian.label;
+
     const { dataIndex, rect } = params;
     if (dataIndex == null) {
       return {};
@@ -72,9 +75,7 @@ export const getBarLabelLayout =
 
     const barHeight = rect.height;
     const labelOffset =
-      barHeight / 2 +
-      CHART_STYLE.seriesLabels.size / 2 +
-      CHART_STYLE.seriesLabels.offset;
+      barHeight / 2 + fontSize / 2 + CHART_STYLE.seriesLabels.offset;
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
       dy: labelValue < 0 ? labelOffset : -labelOffset,
@@ -222,7 +223,12 @@ const buildEChartsBarSeries = (
       renderingContext,
       labelFormatter,
     ),
-    labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+    labelLayout: getBarLabelLayout(
+      dataset,
+      settings,
+      seriesModel.dataKey,
+      renderingContext,
+    ),
     itemStyle: {
       color: seriesModel.color,
     },

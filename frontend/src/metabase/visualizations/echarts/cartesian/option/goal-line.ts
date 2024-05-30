@@ -35,6 +35,8 @@ export function getGoalLineSeriesOption(
     return null;
   }
 
+  const goalTheme = renderingContext.theme.cartesian.goalLine;
+
   const goalValue = settings["graph.goal_value"];
 
   return {
@@ -79,7 +81,7 @@ export function getGoalLineSeriesOption(
       const align = hasRightYAxis ? ("right" as const) : ("left" as const);
       const labelX = hasRightYAxis ? xEnd : xStart;
       const labelY =
-        y - CHART_STYLE.goalLine.label.size - CHART_STYLE.goalLine.label.margin;
+        y - goalTheme.label.fontSize - CHART_STYLE.goalLine.label.margin;
 
       const label = {
         type: "text" as const,
@@ -94,7 +96,7 @@ export function getGoalLineSeriesOption(
           align,
           text: settings["graph.goal_label"] ?? "",
           fontFamily: renderingContext.fontFamily,
-          fontSize: CHART_STYLE.goalLine.label.size,
+          fontSize: goalTheme.label.fontSize,
           fontWeight: CHART_STYLE.goalLine.label.weight,
           fill: renderingContext.getColor("text-medium"),
         },
