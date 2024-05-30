@@ -50,11 +50,12 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require
+   [cemerick.pomegranate]
+   [cemerick.pomegranate.aether]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test]
    [dev.debug-qp :as debug-qp]
-   [dev.explain :as dev.explain]
    [dev.model-tracking :as model-tracking]
    [hashp.core :as hashp]
    [honey.sql :as sql]
@@ -390,3 +391,16 @@
         (when (failed?)
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
+
+(defn add-dep
+  "Add a dependency without restarting app, with either syntax:
+
+  (add-dep '[com.clojure-goes-fast/clj-async-profiler \"1.0.5\"])
+  (add-dep 'com.clojure-goes-fast/clj-async-profiler {:mvn/version \"1.0.5\"})"
+  ([dep-name mvn-spec]
+   (add-dep [dep-name (:mvn/version mvn-spec)]))
+  ([dep]
+   (cemerick.pomegranate/add-dependencies
+     :coordinates  [dep]
+     :repositories (merge cemerick.pomegranate.aether/maven-central
+                     {"clojars" "https://clojars.org/repo"}))))

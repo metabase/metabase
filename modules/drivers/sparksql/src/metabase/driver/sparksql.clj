@@ -193,6 +193,7 @@
                                 ResultSet/CONCUR_READ_ONLY)]
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (.setFetchSize stmt (sql-jdbc.execute/sql-jdbc-fetch-size))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e

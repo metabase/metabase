@@ -228,6 +228,7 @@
                                  {:mvn/version "1.2.0"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
                                  {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
+    clj-commons/pomegranate      {:mvn/version "1.2.23"}                    ; add dependencies in run-time
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2024.03.13"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
