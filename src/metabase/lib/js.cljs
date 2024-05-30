@@ -2162,15 +2162,17 @@
   (lib.types.isa/valid-filter-for? src-column dst-column))
 
 (defn ^:export dependent-metadata
-  "Return a JS array of entities which `a-query` requires to be loaded.
+  "Return a JS array of entities which `a-query` requires to be loaded. `card-id` is provided
+  when editing the card with that ID and in this case `a-query` is its definition (i.e., the
+  dataset-query). `card-type` specifies the type of the card being created or edited.
 
   Required entities are all tables and cards which are used as sources or joined in, etc.
 
   Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
 
   > **Code health:** Healthy"
-  [a-query]
-  (to-array (map clj->js (lib.core/dependent-metadata a-query))))
+  [a-query card-id card-type]
+  (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

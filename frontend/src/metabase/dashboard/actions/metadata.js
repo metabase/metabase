@@ -4,7 +4,7 @@ import { loadMetadataForCards } from "metabase/questions/actions";
 
 import { isVirtualDashCard } from "../utils";
 
-export const loadMetadataForDashboard = dashCards => async dispatch => {
+export const loadMetadataForDashcards = dashCards => async dispatch => {
   const cards = dashCards
     .filter(dc => !isVirtualDashCard(dc)) // exclude text cards
     .flatMap(dc => [dc.card].concat(dc.series || []));
@@ -21,7 +21,7 @@ const loadMetadataForAvailableCards = cards => dispatch => {
   return dispatch(loadMetadataForCards(availableCards));
 };
 
-const loadMetadataForLinkedTargets =
+export const loadMetadataForLinkedTargets =
   dashCards => async (dispatch, getState) => {
     const linkTargets = dashCards.flatMap(card =>
       getLinkTargets(card.visualization_settings),
