@@ -356,9 +356,10 @@ describe("scenarios > notebook > data source", () => {
         idAlias: "nestedQuestionId",
       });
 
+      cy.log("see nested question in our analytics");
+
       visitQuestion("@nestedQuestionId");
       openNotebook();
-
       openDataSelector();
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").should(
@@ -370,10 +371,9 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(1, sourceQuestionName);
 
         entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item").should("have.length", 1);
-        cy.findByTestId("result-item")
-          .should("exist")
-          .and("contain.text", "Nested Question")
+        cy.findByText("Nested Question")
+          .parents("button")
+          .should("be.visible")
           .and("not.have.attr", "aria-selected", "true");
 
         cy.button("Close").click();
@@ -428,10 +428,10 @@ describeOSS("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     });
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findAllByRole("tab").should("have.length", 2);
-      entityPickerModalTab("Recents").should("not.exist");
-      entityPickerModalTab("Models").and("have.attr", "aria-selected", "true");
-      entityPickerModalTab("Tables").should("exist");
+      cy.findAllByRole("tab").should("have.length", 3);
+      entityPickerModalTab("Recents").should("be.visible");
+      entityPickerModalTab("Tables").should("be.visible");
+      entityPickerModalTab("Models").should("be.visible");
       entityPickerModalTab("Saved questions").should("not.exist");
     });
   });

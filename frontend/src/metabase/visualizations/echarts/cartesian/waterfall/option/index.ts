@@ -140,14 +140,14 @@ export const buildEChartsWaterfallSeries = (
       },
       z: CHART_STYLE.series.zIndex,
       renderItem: (_params, api) => {
-        const dataIndex = api.value(0);
-        const barStart = api.value(1);
-        const barEnd = api.value(2);
+        const xValue = api.value(0);
+        const yStart = api.value(1);
+        const yEnd = api.value(2);
 
-        const startCoord = api.coord([dataIndex, barStart]);
-        const endCoord = api.coord([dataIndex, barEnd]);
+        const startCoord = api.coord([xValue, yStart]);
+        const endCoord = api.coord([xValue, yEnd]);
         const rectHeight = startCoord[1] - endCoord[1];
-        const isIncrease = barEnd >= barStart;
+        const isIncrease = yEnd >= yStart;
 
         const fill = isIncrease
           ? settings["waterfall.increase_color"]
