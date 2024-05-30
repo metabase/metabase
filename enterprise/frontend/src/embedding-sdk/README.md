@@ -310,11 +310,12 @@ const theme = {
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
-      { base: "#e74c3c", tint: "#ee6b56", shade: "#cb4436" },
+      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" },
     ],
   },
 
   components: {
+    // Data table
     table: {
       cell: {
         // Text color of cells, defaults to `text-primary`
@@ -339,6 +340,15 @@ const theme = {
       value: {
         fontSize: "24px",
         lineHeight: "21px",
+      },
+    },
+
+    // Pivot table
+    pivotTable: {
+      // Pivot row toggle to expand or collapse row
+      rowToggle: {
+        textColor: "#FFFFFF",
+        backgroundColor: "#95A5A6",
       },
     },
   },
