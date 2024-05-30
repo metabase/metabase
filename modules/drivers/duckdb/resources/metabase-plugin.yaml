@@ -17,6 +17,12 @@ driver:
       display-name: Database file
       placeholder: /tmp/data.db
       required: true
+      type: string
+    - name: additional_database_files
+      display-name: Additional database files to attach
+      placeholder: /tmp/data1.db, /tmp/data2.db
+      required: false
+      type: string
     - name: read_only
       display-name: Establish a read-only connection
       default: true
@@ -25,15 +31,15 @@ driver:
     - name: memory_limit
       display-name: Memory limit
       placeholder: 8GB
-      type: string
       required: false
+      type: string
       visible-if:
         advanced-options: true
     - name: temp_directory
       display-name: Temporary directory
       placeholder: /tmp/data.db.tmp
-      type: string
       required: false
+      type: string
       visible-if:
         advanced-options: true
     - default-advanced-options

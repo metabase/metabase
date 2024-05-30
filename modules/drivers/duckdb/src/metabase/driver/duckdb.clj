@@ -1,15 +1,19 @@
 (ns metabase.driver.duckdb
-  (:require [metabase.config :as config]
+  (:require [clojure.string :as str]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.lib.metadata :as lib.metadata]
+            [metabase.models.interface :as mi]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x])
   (:import
-    (java.sql ResultSet Types)
+    (java.sql Connection ResultSet Types)
     (java.time LocalDate LocalTime OffsetTime)))
 
 (set! *warn-on-reflection* true)
@@ -40,7 +44,7 @@
           :subname                    database_file
           "autoload_known_extensions" "false"
           "duckdb.read_only"          (str read_only)
-          "enable_external_access"    "false"
+          "enable_external_access"    "true"
           "lock_configuration"        "true"}
          (when (not-empty temp_directory) {"temp_directory" temp_directory})
          (when (not-empty memory_limit) {"memory_limit" memory_limit})))
@@ -104,6 +108,39 @@
 
 ;; The DuckDB JDBC driver does not implement getImportedKeys()
 (defmethod driver/describe-table-fks :duckdb [_ _ _] (set #{}))
+
+(defn- db-or-id-or-spec->database [db-or-id-or-spec]
+  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
+    db-or-id-or-spec
+
+    (int? db-or-id-or-spec)
+    (qp.store/with-metadata-provider db-or-id-or-spec
+      (lib.metadata/database (qp.store/metadata-provider)))
+
+    :else
+    nil))
+
+;; Extends the default implementation to attach any additional databases to the connection.
+;; Attached databases aren't persisted in the database, so it must be done on each connection.
+(defmethod sql-jdbc.execute/do-with-connection-with-options :duckdb
+  [driver db-or-id-or-spec options f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (let [db (db-or-id-or-spec->database db-or-id-or-spec)
+             additional-files (get-in db [:details :additional_database_files])]
+         (when (not (str/blank? additional-files))
+           (let [attach-statements (->> (str/split additional-files #",")
+                                        (map str/trim)
+                                        (map #(format "ATTACH IF NOT EXISTS '%s' (READ_ONLY);" %))
+                                        (str/join " "))]
+             (with-open [stmt (.createStatement conn)]
+               (.execute stmt attach-statements))))))
+     (f conn))))
 
 ;; DuckDB's ResultSet only accepts the old java.sql.Date and java.sql.Time, so convert
 ;; those to java.time.Date and java.time.Time respectively. Technically, these should
