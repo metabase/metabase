@@ -38,8 +38,10 @@ import {
   getDefaultMetricFilter,
   getAreDimensionsAndMetricsValid,
   getDefaultDimensions,
+  getDefaultShowStackValues,
   STACKABLE_DISPLAY_TYPES,
   getDefaultMetrics,
+  isShowStackValuesValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
@@ -52,11 +54,10 @@ export function getDefaultDimensionLabel(multipleSeries) {
 }
 
 function canHaveDataLabels(series, vizSettings) {
-  const hasLineSeries = getSeriesDisplays(series, vizSettings).some(
-    display => display === "line",
+  const areAllAreas = getSeriesDisplays(series, vizSettings).every(
+    display => display === "area",
   );
-
-  return hasLineSeries || vizSettings["stackable.stack_type"] !== "normalized";
+  return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
 
 export const GRAPH_DATA_SETTINGS = {
@@ -319,6 +320,20 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
         return true;
       }
 
+      const areAllBars = getSeriesDisplays(series, vizSettings).every(
+        display => display === "bar",
+      );
+      if (areAllBars && vizSettings["graph.show_stack_values"] === "series") {
+        return true;
+      }
+
+      const hasLines = getSeriesDisplays(series, vizSettings).some(
+        display => display === "line",
+      );
+      if (vizSettings["stackable.stack_type"] === "normalized" && !hasLines) {
+        return true;
+      }
+
       return !canHaveDataLabels(series, vizSettings);
     },
     props: {
@@ -330,12 +345,43 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getDefault: getDefaultDataLabelsFrequency,
     readDependencies: ["graph.show_values"],
   },
+  "graph.show_stack_values": {
+    section: t`Display`,
+    title: t`Stack values to show`,
+    widget: "segmentedControl",
+    getHidden: (series, vizSettings) => {
+      const hasBars = getSeriesDisplays(series, vizSettings).some(
+        display => display === "bar",
+      );
+      return (
+        vizSettings["stackable.stack_type"] !== "stacked" ||
+        vizSettings["graph.show_values"] !== true ||
+        !hasBars
+      );
+    },
+    isValid: (series, vizSettings) => {
+      return isShowStackValuesValid(
+        getSeriesDisplays(series, vizSettings),
+        vizSettings,
+      );
+    },
+    props: {
+      options: [
+        { name: t`Total`, value: "total" },
+        { name: t`Insides`, value: "series" },
+        { name: t`Both`, value: "all" },
+      ],
+    },
+    getDefault: (_series, settings) => getDefaultShowStackValues(settings),
+    readDependencies: ["graph.show_values", "stackable.stack_type"],
+  },
   "graph.label_value_formatting": {
     section: t`Display`,
     title: t`Auto formatting`,
     widget: "segmentedControl",
-    getHidden: (series, vizSettings) =>
-      vizSettings["stackable.stack_type"] === "normalized",
+    getHidden: (series, vizSettings) => {
+      return !canHaveDataLabels(series, vizSettings);
+    },
     props: {
       options: [
         { name: t`Auto`, value: "auto" },

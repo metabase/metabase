@@ -112,6 +112,7 @@ export function getScatterPlotModel(
   const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
     getSeriesLabelsFormatters(
       seriesModels,
+      [],
       transformedDataset,
       settings,
       renderingContext,
