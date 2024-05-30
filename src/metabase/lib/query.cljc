@@ -9,6 +9,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -78,6 +79,42 @@
   [query :- ::lib.schema/query]
   (can-run query))
 
+(defn add-types-to-fields
+  "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
+  `:effective-type` is required for coerced fields to pass schema checks."
+  [x metadata-provider]
+  (if-let [field-ids (mbql.u/match x
+                       [:field
+                        (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                        (id :guard integer? pos?)]
+                       (when-not (some #{:mbql/stage-metadata} &parents)
+                         id))]
+    ;; "pre-warm" the metadata provider
+    ;; lib.metadata.protocols/bulk-metadata
+    (do (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
+        ;; mbql.u/replace
+        (mbql.u/replace
+         x
+         [:field
+          (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+          (id :guard integer? pos?)]
+         (if (some #{:mbql/stage-metadata} &parents)
+           &match
+           (update &match 1 merge
+                   ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
+                   ;;       case no change is performed. Find a way how to handle this properly!
+                   (when-not (and (some? (:base-type options))
+                                  (not= (:base-type options)
+                                        (:base-type (lib.metadata/field metadata-provider id))))
+                     ;; Following key is used to track which base-types we added during `query` call. It is used in
+                     ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+                     ;; as legacy -> pmbql -> legacy looks closer to the original.
+                     (merge (when-not (contains? options :base-type)
+                              {::transformation-added-base-type true})
+                            (-> (lib.metadata/field metadata-provider id)
+                                (select-keys [:base-type :effective-type]))))))))
+    x))
+
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable stages]
@@ -104,7 +141,9 @@
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
   [metadata-providerable :- lib.metadata/MetadataProviderable
    query                 :- lib.util/LegacyOrPMBQLQuery]
-  (let [query (lib.convert/->pMBQL query)]
+  (let [query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                    (lib.convert/->pMBQL query))
+                  (add-types-to-fields metadata-providerable))]
     (query-with-stages metadata-providerable (:stages query))))
 
 (defmulti ^:private query-method
@@ -132,32 +171,26 @@
     (cond-> query
       converted?
       (assoc
-        :stages
-        (into []
-              (map (fn [[stage-number stage]]
-                     (mbql.u/replace stage
-                       [:field
-                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
-                        (field-id :guard (every-pred number? pos?))]
-                       (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
-                                           (select-keys [:base-type :effective-type]))]
-                         ;; Fallback if metadata is missing
-                         [:field (merge found-ref opts) field-id])
-                       [:expression
-                        (opts :guard (every-pred map? (complement (some-fn :base-type :effective-type))))
-                        expression-name]
-                       (let [found-ref (try
-                                         (m/remove-vals
-                                           #(= :type/* %)
-                                           (-> (lib.expression/expression-ref query stage-number expression-name)
-                                               second
-                                               (select-keys [:base-type :effective-type])))
-                                         (catch #?(:clj Exception :cljs :default) _
-                                           ;; This currently does not find expressions defined in join stages
-                                           nil))]
-                         ;; Fallback if metadata is missing
-                         [:expression (merge found-ref opts) expression-name]))))
-              (m/indexed stages))))))
+       :stages
+       (mapv (fn [[stage-number stage]]
+               (-> stage
+                   (add-types-to-fields metadata-provider)
+                   (mbql.u/replace
+                    [:expression
+                     (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                     expression-name]
+                    (let [found-ref (try
+                                      (m/remove-vals
+                                       #(= :type/* %)
+                                       (-> (lib.expression/expression-ref query stage-number expression-name)
+                                           second
+                                           (select-keys [:base-type :effective-type])))
+                                      (catch #?(:clj Exception :cljs :default) _
+                                        ;; This currently does not find expressions defined in join stages
+                                        nil))]
+                      ;; Fallback if metadata is missing
+                      [:expression (merge found-ref opts) expression-name]))))
+             (m/indexed stages))))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]

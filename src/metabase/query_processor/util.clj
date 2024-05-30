@@ -88,7 +88,6 @@
   [query :- :map]
   (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 
-
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
 
 (defn query->source-card-id
