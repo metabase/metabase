@@ -13,7 +13,7 @@ export const LayoutRoot = styled.div`
   position: relative;
   display: flex;
   min-height: 100%;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const LayoutBody = styled.div`

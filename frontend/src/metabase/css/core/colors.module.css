@@ -13,7 +13,7 @@
   --mb-color-bg-black: #2e353b;
   --color-bg-dark: #93a1ab;
   --color-bg-medium: #edf2f5;
-  --color-bg-light: #f9fbfc;
+  --mb-color-bg-light: #f9fbfc;
   --mb-color-bg-white: #fff;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
@@ -70,7 +70,7 @@
 
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
 }
 
 .bgMedium {
@@ -88,7 +88,7 @@
 }
 
 .bgLightBlue {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
 }
 
 .DashboardNight .bgLight {
@@ -100,5 +100,5 @@
 }
 
 .DashboardNight .textDark {
-  color: var(--color-bg-light);
+  color: var(--mb-color-bg-light);
 }

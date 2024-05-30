@@ -7,7 +7,7 @@ export const NoticeRoot = styled.div`
   display: flex;
   padding: 1rem 1rem 1rem 1.5rem;
   align-items: center;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const NoticeContent = styled.div`

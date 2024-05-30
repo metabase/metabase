@@ -269,7 +269,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-size: 12.64px;
     line-height: 20px;
     padding: 0 0.25em;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     border-radius: 8px;
   }
 
@@ -310,7 +310,7 @@ export const TextInput = styled.textarea<TextAreaProps>`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border: none;
   border-radius: 8px;
   box-shadow: none;

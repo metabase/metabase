@@ -17,7 +17,7 @@ export const IdleStateRoot = styled.div`
   justify-content: center;
   align-items: center;
   flex: 1 0 auto;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const IdleStateIcon = styled(Icon)`

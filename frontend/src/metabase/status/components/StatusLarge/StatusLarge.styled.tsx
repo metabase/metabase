@@ -23,7 +23,7 @@ export const StatusHeader = styled.div`
 export const StatusTitle = styled.div`
   flex: 1 1 auto;
   width: 100%;
-  color: ${color("bg-light")};
+  color: var(--mb-color-bg-light);
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
