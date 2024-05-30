@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMaxExtraLarge,
@@ -256,7 +256,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     border-bottom: 1px solid color-mod(${color("border")} alpha(-70%));
   }
   .text-card-markdown tr:nth-of-type(even) {
-    background-color: color-mod(${color("bg-black")} alpha(-98%));
+    background-color: ${() => alpha("bg-black", 0.05)};
   }
   .text-card-markdown th,
   .text-card-markdown td {
