@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import {
   fetchDashboard,
   fetchDashboardCardData,
-  fetchDashboardCardMetadata,
 } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import type { DashboardId } from "metabase-types/api";
@@ -28,7 +27,6 @@ export const useRefreshDashboard = ({
           options: { preserveParameters: true },
         }),
       );
-      dispatch(fetchDashboardCardMetadata());
       dispatch(
         fetchDashboardCardData({
           isRefreshing: true,

@@ -32,7 +32,11 @@ import type {
   StoreDashboard,
 } from "metabase-types/store";
 
-import { isQuestionCard, isQuestionDashCard } from "./utils";
+import {
+  hasDatabaseActionsEnabled,
+  isQuestionCard,
+  isQuestionDashCard,
+} from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -66,10 +70,12 @@ export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
-export function getDashcardData(state: State, dashcardId: DashCardId) {
-  const dashcardData = getDashcardDataMap(state);
-  return dashcardData[dashcardId];
-}
+export const getDashcardData = createSelector(
+  [getDashcardDataMap, (_state: State, dashcardId: DashCardId) => dashcardId],
+  (dashcardDataMap, dashcardId) => {
+    return dashcardDataMap[dashcardId];
+  },
+);
 
 export const getSlowCards = (state: State) => state.dashboard.slowCards;
 export const getParameterValues = (state: State) =>
@@ -88,9 +94,6 @@ export const getLoadingStartTime = (state: State) =>
   state.dashboard.loadingDashCards.startTime;
 export const getLoadingEndTime = (state: State) =>
   state.dashboard.loadingDashCards.endTime;
-
-export const getIsMetadataLoaded = (state: State) =>
-  state.dashboard.loadingMetadata.loadingStatus === "complete";
 
 export const getIsSlowDashboard = createSelector(
   [getLoadingStartTime, getLoadingEndTime],
@@ -532,4 +535,21 @@ export const getDisplayTheme = (state: State) => state.dashboard.theme;
 export const getIsNightMode = createSelector(
   [getDisplayTheme],
   theme => theme === "night",
+);
+
+export const getHasModelActionsEnabled = createSelector(
+  [getMetadata],
+  metadata => {
+    if (!metadata) {
+      return false;
+    }
+
+    const databases = metadata.databasesList();
+    const hasModelActionsEnabled = Object.values(databases).some(database =>
+      // @ts-expect-error Schema types do not match
+      hasDatabaseActionsEnabled(database),
+    );
+
+    return hasModelActionsEnabled;
+  },
 );
