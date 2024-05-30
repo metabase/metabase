@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
+import { hasCombinations } from "metabase/query_builder/components/expressions/CombineColumns";
 import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
@@ -17,7 +18,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   stageIndex,
   clicked,
 }) => {
-  if (!clicked.column) {
+  if (!clicked.column || !hasCombinations(query, stageIndex)) {
     return [];
   }
 

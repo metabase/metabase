@@ -157,5 +157,5 @@ const getColumnExample = (
 };
 
 export function hasCombinations(query: Lib.Query, stageIndex: number) {
-  return Lib.expressionableColumns(query, stageIndex).length > 0;
+  return Lib.expressionableColumns(query, stageIndex).length >= 2;
 }
