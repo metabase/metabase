@@ -50,7 +50,6 @@ export const PublicQuestion = ({
 
   const [card, setCard] = useState<Card | null>(null);
   const [result, setResult] = useState<Dataset | null>(null);
-  const [initialized, setInitialized] = useState(false);
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
@@ -99,10 +98,10 @@ export const PublicQuestion = ({
   });
 
   const setParameterValue = async (parameterId: ParameterId, value: any) => {
-    setParameterValues({
-      ...parameterValues,
+    setParameterValues(prevParameterValues => ({
+      ...prevParameterValues,
       [parameterId]: value,
-    });
+    }));
   };
 
   const setParameterValueToDefault = (parameterId: ParameterId) => {
@@ -158,14 +157,8 @@ export const PublicQuestion = ({
     run();
   }, [run]);
 
-  useEffect(() => {
-    if (result && !initialized) {
-      setInitialized(true);
-    }
-  }, [initialized, result]);
-
   const getParameters = () => {
-    if (!initialized || !card) {
+    if (!card) {
       return [];
     }
 
@@ -211,7 +204,7 @@ export const PublicQuestion = ({
     >
       <LoadingAndErrorWrapper
         className={CS.flexFull}
-        loading={!result || !initialized}
+        loading={!result}
         error={typeof result === "string" ? result : null}
         noWrapper
       >
@@ -223,9 +216,9 @@ export const PublicQuestion = ({
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,
             ) => {
-              setCard(
+              setCard(prevCard =>
                 updateIn(
-                  card,
+                  prevCard,
                   ["visualization_settings"],
                   previousSettings => ({ ...previousSettings, ...settings }),
                 ),
