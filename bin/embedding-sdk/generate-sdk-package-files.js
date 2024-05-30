@@ -91,3 +91,4 @@ if (!fs.existsSync(SDK_DIST_DIR)) {
 generateSdkPackage();
 copyFileToOutput("LICENSE.txt");
 copyFileToOutput("frontend/src/embedding-sdk/README.md", "README.md");
+copyFileToOutput("frontend/src/embedding-sdk/CHANGELOG.md", "CHANGELOG.md");
