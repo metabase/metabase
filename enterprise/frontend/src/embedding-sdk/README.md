@@ -8,12 +8,12 @@ Features currently supported:
 
 - embedding questions - static
 - embedding questions - w/drill-down
+- embedding dashboards - static
 - theming with CSS variables
 - plugins for custom actions
 
 Features planned:
 
-- embedding dashboards - static (WIP)
 - embedding dashboards - w/ drill-down
 - embedding the collection browser
 - subscribing to events
@@ -242,6 +242,55 @@ export default function App() {
 const questionId = 1; // This is the question ID you want to embed
 
 ```
+
+### Embedding a static dashboard
+
+After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
+
+The API follows the same configuration as that of public dashboard embeddings, which you can read about (here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#public-embed-parameters]
+
+
+#### Parameters
+
+- **dashboardId**: `DashboardId` (required) – The ID of the dashboard to embed.
+- **parameterQueryParams**: `Query` (required) – Query parameters for the dashboard.
+- **bordered**: `boolean` – Whether the dashboard should have a border.
+- **titled**: `boolean` – Whether the dashboard should display a title.
+- **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
+- **hideParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **font**: `string | null` – The font to use.
+- **theme**: `DisplayTheme` – The display theme (e.g., "light", "night", or "transparent" ).
+  
+
+```jsx
+import React from "react";
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const parameterQueryParams = {}; // Define your query parameters here
+
+  const font = "Inter"
+
+  return (
+    <MetabaseProvider config={config}>
+        <StaticDashboard 
+          dashboardId={dashboardId} 
+          parameterQueryParams={parameterQueryParams} 
+          bordered={true}
+          titled={false}
+          hideDownloadButton={null}
+          hideParameters={null}
+          font={null}
+          theme="light"
+        />
+    </MetabaseProvider>
+  );
+}
+```
+
 
 ### Customizing appearance
 

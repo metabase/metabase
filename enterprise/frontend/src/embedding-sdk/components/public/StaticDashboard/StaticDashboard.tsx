@@ -27,7 +27,8 @@ const _StaticDashboard = ({
 }: {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
-} & Partial<EmbedDisplayParams>) => {
+  hideParameters: string[];
+} & Partial<Omit<EmbedDisplayParams, "hideParameters">>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
     ...pick(
@@ -37,7 +38,7 @@ const _StaticDashboard = ({
         theme: userTheme,
         font,
         hideDownloadButton,
-        hideParameters,
+        hideParameters: hideParameters.join(","),
       },
       isNotNull,
     ),
@@ -80,4 +81,6 @@ const _StaticDashboard = ({
   );
 };
 
-export const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+
+export { EmbedDisplayParams, StaticDashboard };
