@@ -3,30 +3,28 @@ import type { MantineThemeOther } from "metabase/ui";
 import { convertFontSizeToPx } from "metabase/visualizations/shared/utils/font-size-to-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 
-const FALLBACK_LABEL_FONT_SIZE = 12;
-
 /**
  * Computes the visualization style from the Mantine theme.
  */
 export function getVisualizationStyleFromTheme(
   options: MantineThemeOther,
 ): VisualizationTheme {
-  const { cartesian, fontSize } = options;
+  const { cartesian } = options;
 
-  // This is used for the embedding sdk theming,
-  // where we allow sdk users to customize the base font size.
-  // this is not used in the Metabase app.
-  const rootFontSize = convertFontSizeToPx(fontSize);
+  // This allows sdk users to set the base font size,
+  // which scales the visualization's font sizes.
+  const baseFontSize = convertFontSizeToPx(options.fontSize);
 
-  // Fallback is applied when the user-supplied font size
-  // has an invalid unit.
-  const cartesianLabelSize =
-    convertFontSizeToPx(cartesian.label.fontSize, rootFontSize) ??
-    FALLBACK_LABEL_FONT_SIZE;
+  // ECharts requires font sizes in px for offset calculations.
+  const px = (value: string) =>
+    convertFontSizeToPx(value, baseFontSize) ?? baseFontSize ?? 14;
 
   return {
     cartesian: {
-      label: { fontSize: cartesianLabelSize },
+      label: { fontSize: px(cartesian.label.fontSize) },
+      goalLine: {
+        label: { fontSize: px(cartesian.goalLine.label.fontSize) },
+      },
     },
   };
 }

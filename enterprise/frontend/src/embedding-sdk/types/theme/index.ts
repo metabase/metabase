@@ -125,6 +125,13 @@ export interface MetabaseComponentTheme {
       /** Labels used in cartesian charts, such as axis ticks and series. */
       fontSize: string;
     };
+
+    goalLine: {
+      label: {
+        /** Font size of goal line labels */
+        fontSize: string;
+      };
+    };
   };
 }
 

@@ -29,8 +29,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   cartesian: {
-    label: {
-      fontSize: "12px",
+    label: { fontSize: "12px" },
+    goalLine: {
+      label: { fontSize: "14px" },
     },
   },
 };
@@ -45,16 +46,6 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
     table: {
       cell: {
         backgroundColor: "bg-white",
-
-        // Makes the base font size relative to root embedding,
-        // without affecting the Metabase app's font sizes.
-        // SDK users can override this to set their label font sizes.
-        fontSize: "0.893em",
-      },
-    },
-    cartesian: {
-      label: {
-        fontSize: "0.857em",
       },
     },
   },

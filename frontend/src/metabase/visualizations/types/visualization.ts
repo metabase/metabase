@@ -35,11 +35,19 @@ export interface RenderingContext {
   theme: VisualizationTheme;
 }
 
-/** Visualization theming overrides. */
+/**
+ * Visualization theming overrides.
+ * Refer to DEFAULT_METABASE_COMPONENT_THEME for the default values.
+ **/
 export interface VisualizationTheme {
   cartesian: {
     label: {
       fontSize: number;
+    };
+    goalLine: {
+      label: {
+        fontSize: number;
+      };
     };
   };
 }
