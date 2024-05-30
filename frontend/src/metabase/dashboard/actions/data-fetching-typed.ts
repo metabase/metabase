@@ -145,7 +145,7 @@ export const fetchDashboard = createAsyncThunk(
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(
-            result.parameters,
+            result.parameters ?? [],
             queryParams,
             lastUsedParametersValues,
           );
