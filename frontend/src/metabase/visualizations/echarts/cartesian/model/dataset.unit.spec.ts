@@ -32,6 +32,7 @@ import {
   getDatasetExtents,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
+  NO_X_AXIS_VALUES_ERROR_MESSAGE,
 } from "./dataset";
 import type {
   ChartDataset,
@@ -551,9 +552,7 @@ describe("dataset transform functions", () => {
             yAxisScaleTransforms,
             createMockComputedVisualizationSettings(),
           ),
-        ).toThrow(
-          "There is no data to display. Check the query to ensure there are non-null x-axis values.",
-        );
+        ).toThrow(NO_X_AXIS_VALUES_ERROR_MESSAGE);
       });
     });
 
