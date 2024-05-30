@@ -175,10 +175,11 @@ export const computeBarWidth = (
 
 function getDataLabelSeriesOption(
   dataKey: DataKey,
-  seriesOption: BarSeriesOption,
+  seriesOption: LineSeriesOption | BarSeriesOption,
   settings: ComputedVisualizationSettings,
   formatter: (params: CallbackDataParams) => string,
   position: "top" | "bottom",
+  showInBlur = true,
 ) {
   const stackName = seriesOption.stack;
 
@@ -208,6 +209,7 @@ function getDataLabelSeriesOption(
     blur: {
       label: {
         opacity: 1,
+        show: showInBlur,
       },
     },
   };
@@ -284,27 +286,17 @@ const buildEChartsBarSeries = (
     return seriesOption;
   }
 
-  const labelOptions = ["+" as const, "-" as const].map(sign => {
-    const option: BarSeriesOption = {
-      ...getDataLabelSeriesOption(
-        getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
-        seriesOption,
-        settings,
-        getDataLabelFormatter(
-          seriesModel,
-          yAxisScaleTransforms,
-          labelFormatter,
-        ),
-        sign === "+" ? "top" : "bottom",
-      ),
-      type: "bar", // ensure type is bar for typescript
-    };
-
-    if (option?.blur?.label != null) {
-      option.blur.label.show = false;
-    }
-    return option;
-  });
+  const labelOptions = ["+" as const, "-" as const].map(sign => ({
+    ...getDataLabelSeriesOption(
+      getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
+      seriesOption,
+      settings,
+      getDataLabelFormatter(seriesModel, yAxisScaleTransforms, labelFormatter),
+      sign === "+" ? "top" : "bottom",
+      false,
+    ),
+    type: "bar", // ensure type is bar for typescript
+  })) as BarSeriesOption[];
 
   if (seriesOption?.label != null) {
     seriesOption.label.show = false;
@@ -447,63 +439,6 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
-const generateStackOption = (
-  yAxisScaleTransforms: NumericAxisScaleTransforms,
-  settings: ComputedVisualizationSettings,
-  signKey: StackTotalDataKey,
-  stackDataKeys: DataKey[],
-  seriesOptionFromStack: LineSeriesOption | BarSeriesOption,
-  labelFormatter: LabelFormatter | undefined,
-) => {
-  const stackName = seriesOptionFromStack.stack;
-
-  const seriesOption = {
-    yAxisIndex: seriesOptionFromStack.yAxisIndex,
-    silent: true,
-    symbolSize: 0,
-    lineStyle: {
-      opacity: 0,
-    },
-    id: `${stackName}_${signKey}`,
-    stack: stackName,
-    encode: {
-      y: signKey,
-      x: X_AXIS_DATA_KEY,
-    },
-    label: {
-      ...seriesOptionFromStack.label,
-      show: true,
-      position:
-        signKey === POSITIVE_STACK_TOTAL_DATA_KEY
-          ? ("top" as const)
-          : ("bottom" as const),
-      formatter:
-        labelFormatter &&
-        getStackedDataLabelFormatter(
-          yAxisScaleTransforms,
-          signKey,
-          stackDataKeys,
-          labelFormatter,
-        ),
-    },
-    labelLayout: {
-      hideOverlap: settings["graph.label_value_frequency"] === "fit",
-    },
-    z: Z_INDEXES.dataLabels,
-    blur: {
-      label: {
-        opacity: 1,
-      },
-    },
-  };
-
-  if (seriesOptionFromStack.type === "bar") {
-    return { ...seriesOption, type: "bar" as const };
-  }
-
-  return { ...seriesOption, type: "line" as const };
-};
-
 function getStackedDataLabelFormatter(
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   signKey: StackTotalDataKey,
@@ -553,21 +488,31 @@ export const getStackTotalsSeries = (
     }
 
     return [
-      generateStackOption(
-        yAxisScaleTransforms,
-        settings,
+      getDataLabelSeriesOption(
         POSITIVE_STACK_TOTAL_DATA_KEY,
-        stackDataKeys,
-        firstSeriesInStack,
-        labelFormatter,
-      ),
-      generateStackOption(
-        yAxisScaleTransforms,
+        firstSeriesInStack, // TODO Fix
         settings,
+        labelFormatter &&
+          getStackedDataLabelFormatter(
+            yAxisScaleTransforms,
+            POSITIVE_STACK_TOTAL_DATA_KEY,
+            stackDataKeys,
+            labelFormatter,
+          ),
+        "top",
+      ),
+      getDataLabelSeriesOption(
         NEGATIVE_STACK_TOTAL_DATA_KEY,
-        stackDataKeys,
         firstSeriesInStack,
-        labelFormatter,
+        settings,
+        labelFormatter &&
+          getStackedDataLabelFormatter(
+            yAxisScaleTransforms,
+            NEGATIVE_STACK_TOTAL_DATA_KEY,
+            stackDataKeys,
+            labelFormatter,
+          ),
+        "bottom",
       ),
     ];
   });
