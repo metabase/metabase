@@ -331,9 +331,6 @@ function DashboardInner(props: DashboardProps) {
     } else if (hasTabChanged || hasParameterValueChanged) {
       fetchDashboardCardData();
     }
-    if (didDashboardLoad) {
-      fetchDashboardCardMetadata();
-    }
   }, [
     dashboard,
     dashboardId,
