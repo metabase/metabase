@@ -78,6 +78,8 @@ export type DashboardMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];
+  cards: Card[];
+  dashboards: Dashboard[];
 };
 
 export type DashCardId = number;

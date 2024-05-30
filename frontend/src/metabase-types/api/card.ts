@@ -2,7 +2,7 @@ import type { EmbeddingParameters } from "metabase/public/lib/types";
 
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId, DashCardId } from "./dashboard";
-import type { DatabaseId } from "./database";
+import type { DatabaseId, Database } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type {
@@ -11,6 +11,7 @@ import type {
   FieldReference,
   PublicDatasetQuery,
 } from "./query";
+import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { SmartScalarComparison } from "./visualization-settings";
 
@@ -220,6 +221,12 @@ export type CardFilterOption =
   | "popular"
   | "using_model"
   | "archived";
+
+export type CardMetadata = {
+  databases: Database[];
+  tables: Table[];
+  fields: Field[];
+};
 
 export interface ListCardsRequest {
   f?: CardFilterOption;

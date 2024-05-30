@@ -1,6 +1,7 @@
 import type {
   Card,
   CardId,
+  CardMetadata,
   CreateCardRequest,
   GetCardRequest,
   ListCardsRequest,
@@ -14,6 +15,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideCardMetadataTags,
 } from "./tags";
 
 export const cardApi = Api.injectEndpoints({
@@ -34,6 +36,14 @@ export const cardApi = Api.injectEndpoints({
         noEvent: ignore_error,
       }),
       providesTags: card => (card ? provideCardTags(card) : []),
+    }),
+    getCardMetadata: builder.query<CardMetadata, CardId>({
+      query: id => ({
+        method: "GET",
+        url: `/api/card/${id}/query_metadata`,
+      }),
+      providesTags: metadata =>
+        metadata ? provideCardMetadataTags(metadata) : [],
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({

@@ -33,6 +33,7 @@ import type {
   TimelineEvent,
   UserInfo,
   DashboardMetadata,
+  CardMetadata,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -131,6 +132,16 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
   return [
     idTag("card", card.id),
     ...(card.collection ? provideCollectionTags(card.collection) : []),
+  ];
+}
+
+export function provideCardMetadataTags(
+  metadata: CardMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
   ];
 }
 
@@ -233,6 +244,8 @@ export function provideDashboardMetadataTags(
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
+    ...provideCardListTags(metadata.cards),
+    ...provideDashboardListTags(metadata.dashboards),
   ];
 }
 
