@@ -13,10 +13,10 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { delay } from "__support__/utils";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import DatabasesPermissionsPage from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import { delay } from "metabase/lib/promise";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
