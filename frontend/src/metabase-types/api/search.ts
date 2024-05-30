@@ -117,13 +117,19 @@ export interface SearchResult<
   can_write: boolean | null;
 }
 
+export type SearchContext =
+  | "search-bar"
+  | "search-app"
+  | "command-palette"
+  | "entity-picker";
+
 export type SearchRequest = {
   q?: string;
   archived?: boolean;
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: "search-bar" | "search-app" | "command-palette" | "entity-picker";
+  context?: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;

@@ -6,6 +6,7 @@ import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
+import { trackSearchClick } from "metabase/search/analytics";
 import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModel,
@@ -106,6 +107,7 @@ export const EntityPickerSearchResults = <
                 key={item.model + item.id}
                 item={item}
                 onClick={() => {
+                  trackSearchClick("item", index, "entity-picker");
                   onItemSelect(item as unknown as Item);
                 }}
                 isSelected={
