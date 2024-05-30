@@ -1,0 +1,306 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 4,
+      "collection_position": null,
+      "table_id": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.25,
+                "q3": 2.75,
+                "max": 3,
+                "sd": 1,
+                "avg": 2
+              }
+            }
+          }
+        },
+        {
+          "display_name": "AUTO_FULL",
+          "field_ref": [
+            "field",
+            "AUTO_FULL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "AUTO_FULL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 500000,
+                "q1": 500000,
+                "q3": 887627.5643042056,
+                "max": 1000000,
+                "sd": 288675.1345948129,
+                "avg": 666666.6666666666
+              }
+            }
+          }
+        },
+        {
+          "display_name": "AUTO_COMPACT",
+          "field_ref": [
+            "field",
+            "AUTO_COMPACT",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "AUTO_COMPACT",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1000000,
+                "q1": 1000000,
+                "q3": 1000000,
+                "max": 1000000,
+                "sd": 0,
+                "avg": 1000000
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "native",
+      "name": "labels stack auto compact",
+      "last_query_start": "2024-05-30T01:47:55.40499Z",
+      "dashboard_count": 0,
+      "last_used_at": "2024-05-30T01:47:55.445472Z",
+      "type": "question",
+      "average_query_time": 62,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-05-30T01:59:33.798721Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 1 x, 500000 auto_full, 1000000 auto_compact\nunion all select 2, 500000 , 1000000\nunion all select 3, 1000000 , 1000000\n"
+        }
+      },
+      "id": 350,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "Yc4KXdmZkAXIOFRjoZAnG",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.show_values": true,
+        "graph.series_order_dimension": null,
+        "graph.label_value_frequency": "all",
+        "graph.metrics": ["AUTO_FULL", "AUTO_COMPACT"],
+        "graph.show_stack_values": "all",
+        "graph.label_value_formatting": "auto",
+        "graph.series_order": null,
+        "graph.dimensions": ["X"],
+        "stackable.stack_type": "stacked"
+      },
+      "collection": null,
+      "metabase_version": "v0.1.3-SNAPSHOT (5a3ae84)",
+      "parameters": [],
+      "created_at": "2024-05-30T01:11:00.872592Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        [1, 500000, 1000000],
+        [2, 500000, 1000000],
+        [3, 1000000, 1000000]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "AUTO_FULL",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "AUTO_FULL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "AUTO_FULL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "AUTO_COMPACT",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "AUTO_COMPACT",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "AUTO_COMPACT",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 1 x, 500000 auto_full, 1000000 auto_compact\nunion all select 2, 500000 , 1000000\nunion all select 3, 1000000 , 1000000"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.25,
+                  "q3": 2.75,
+                  "max": 3,
+                  "sd": 1,
+                  "avg": 2
+                }
+              }
+            }
+          },
+          {
+            "display_name": "AUTO_FULL",
+            "field_ref": [
+              "field",
+              "AUTO_FULL",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "AUTO_FULL",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 500000,
+                  "q1": 500000,
+                  "q3": 887627.5643042056,
+                  "max": 1000000,
+                  "sd": 288675.1345948129,
+                  "avg": 666666.6666666666
+                }
+              }
+            }
+          },
+          {
+            "display_name": "AUTO_COMPACT",
+            "field_ref": [
+              "field",
+              "AUTO_COMPACT",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "AUTO_COMPACT",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1000000,
+                  "q1": 1000000,
+                  "q3": 1000000,
+                  "max": 1000000,
+                  "sd": 0,
+                  "avg": 1000000
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

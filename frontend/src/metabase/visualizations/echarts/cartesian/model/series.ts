@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   CartesianChartDataDensity,
@@ -303,9 +304,9 @@ export function getStackTotalValue(
 function shouldRenderCompact(
   dataset: ChartDataset,
   getValue: (datum: Datum) => RowValue | null,
-  seriesModel: SeriesModel,
+  compactFormatter: LabelFormatter,
+  fullFormatter: LabelFormatter,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) {
   if (settings["graph.label_value_formatting"] === "compact") {
     return true;
@@ -317,11 +318,7 @@ function shouldRenderCompact(
   const getAvgLength = (compact: boolean) => {
     const lengths = dataset.map(datum => {
       const value = getValue(datum);
-      return renderingContext.formatValue(value, {
-        ...(settings.column?.(seriesModel.column) ?? {}),
-        jsx: false,
-        compact: compact,
-      }).length;
+      return (compact ? compactFormatter(value) : fullFormatter(value)).length;
     });
 
     return (
@@ -567,7 +564,9 @@ export const getStackedLabelsFormatters = (
 
   const hasDataLabels =
     settings["graph.show_values"] &&
-    settings["stackable.stack_type"] === "stacked";
+    settings["stackable.stack_type"] === "stacked" &&
+    (settings["graph.show_stack_values"] === "total" ||
+      settings["graph.show_stack_values"] === "all");
 
   if (!hasDataLabels) {
     return { formatters, compactStackedSeriesDataKeys };
@@ -579,6 +578,21 @@ export const getStackedLabelsFormatters = (
       return [];
     }
 
+    const compactFormatter = createSeriesLabelsFormatter(
+      seriesModel,
+      true,
+      {},
+      settings,
+      renderingContext,
+    );
+    const fullFormatter = createSeriesLabelsFormatter(
+      seriesModel,
+      false,
+      {},
+      settings,
+      renderingContext,
+    );
+
     // if either positive or negative need to be compact formatted
     // compact format both
     const isCompact = [
@@ -588,12 +602,13 @@ export const getStackedLabelsFormatters = (
       .map(signKey => {
         const getValue = (datum: Datum) =>
           getStackTotalValue(datum, seriesKeys, signKey);
+
         return shouldRenderCompact(
           dataset,
           getValue,
-          seriesModel,
+          compactFormatter,
+          fullFormatter,
           settings,
-          renderingContext,
         );
       })
       .some(isCompact => isCompact);
@@ -602,17 +617,7 @@ export const getStackedLabelsFormatters = (
       compactStackedSeriesDataKeys.push(seriesKeys[0]);
     }
 
-    const stackedFormatter = cachedFormatter((value: RowValue) => {
-      if (typeof value !== "number") {
-        return " ";
-      }
-
-      return renderingContext.formatValue(value, {
-        ...(settings.column?.(seriesModel.column) ?? {}),
-        jsx: false,
-        compact: isCompact,
-      });
-    });
+    const stackedFormatter = isCompact ? compactFormatter : fullFormatter;
 
     formatters[stackName] = stackedFormatter;
   });
@@ -620,8 +625,68 @@ export const getStackedLabelsFormatters = (
   return { formatters, compactStackedSeriesDataKeys };
 };
 
+const createSeriesLabelsFormatter = (
+  seriesModel: SeriesModel,
+  isCompact: boolean,
+  formattingOptions: OptionsType,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) =>
+  cachedFormatter((value: RowValue) => {
+    if (typeof value !== "number") {
+      return " ";
+    }
+    return renderingContext.formatValue(value, {
+      ...(settings.column?.(seriesModel.column) ?? {}),
+      jsx: false,
+      compact: isCompact,
+      ...formattingOptions,
+    });
+  });
+
+const getSeriesLabelsFormattingInfo = (
+  seriesModels: SeriesModel[],
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) => {
+  return seriesModels.map(seriesModel => {
+    const getValue = (datum: Datum) => datum[seriesModel.dataKey];
+
+    const compactFormatter = createSeriesLabelsFormatter(
+      seriesModel,
+      true,
+      {},
+      settings,
+      renderingContext,
+    );
+    const fullFormatter = createSeriesLabelsFormatter(
+      seriesModel,
+      false,
+      {},
+      settings,
+      renderingContext,
+    );
+    const isCompact = shouldRenderCompact(
+      dataset,
+      getValue,
+      compactFormatter,
+      fullFormatter,
+      settings,
+    );
+
+    return {
+      dataKey: seriesModel.dataKey,
+      fullFormatter,
+      compactFormatter,
+      isCompact,
+    };
+  });
+};
+
 export const getSeriesLabelsFormatters = (
   seriesModels: SeriesModel[],
+  stackModels: StackModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
@@ -632,43 +697,67 @@ export const getSeriesLabelsFormatters = (
   const formatters: SeriesFormatters = {};
   const compactSeriesDataKeys: DataKey[] = [];
 
-  seriesModels.forEach(seriesModel => {
+  if (!settings["graph.show_values"]) {
+    return { formatters, compactSeriesDataKeys };
+  }
+
+  const seriesModelsWithLabels = seriesModels.filter(seriesModel => {
     const seriesSettings =
       settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
-    const hasDataLabels =
-      settings["graph.show_values"] &&
-      seriesSettings["show_series_values"] &&
-      (settings["stackable.stack_type"] == null ||
-        seriesSettings.display === "line");
+    return !!seriesSettings["show_series_values"];
+  });
 
-    if (!hasDataLabels) {
-      return;
-    }
+  // Non-stacked series formatters
+  const stackedSeriesKeys = new Set(
+    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+  );
+  const nonStackedSeries = seriesModelsWithLabels.filter(
+    seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey),
+  );
 
-    const getValue = (datum: Datum) => datum[seriesModel.dataKey];
-    const isCompact = shouldRenderCompact(
+  getSeriesLabelsFormattingInfo(
+    nonStackedSeries,
+    dataset,
+    settings,
+    renderingContext,
+  ).forEach(({ isCompact, compactFormatter, fullFormatter, dataKey }) => {
+    formatters[dataKey] = isCompact ? compactFormatter : fullFormatter;
+    isCompact && compactSeriesDataKeys.push(dataKey);
+  });
+
+  // Bar stack series formatters
+  const shouldShowStackedBarSeriesLabels =
+    settings["graph.show_stack_values"] === "series" ||
+    settings["graph.show_stack_values"] === "all";
+  if (shouldShowStackedBarSeriesLabels) {
+    const barStackSeriesKeys = new Set(
+      stackModels.find(stackModel => stackModel.display === "bar")
+        ?.seriesKeys ?? [],
+    );
+    const barStackSeries = seriesModelsWithLabels.filter(seriesModel =>
+      barStackSeriesKeys.has(seriesModel.dataKey),
+    );
+    const barSeriesLabelsFormattingInfo = getSeriesLabelsFormattingInfo(
+      barStackSeries,
       dataset,
-      getValue,
-      seriesModel,
       settings,
       renderingContext,
     );
+    const shouldApplyCompactFormattingToBarStack =
+      barSeriesLabelsFormattingInfo.some(({ isCompact }) => isCompact);
 
-    if (isCompact) {
-      compactSeriesDataKeys.push(seriesModel.dataKey);
-    }
+    barSeriesLabelsFormattingInfo.forEach(
+      ({ compactFormatter, fullFormatter, dataKey }) => {
+        formatters[dataKey] = shouldApplyCompactFormattingToBarStack
+          ? compactFormatter
+          : fullFormatter;
 
-    const seriesFormatter = cachedFormatter((value: RowValue) => {
-      return renderingContext.formatValue(value, {
-        ...(settings.column?.(seriesModel.column) ?? {}),
-        jsx: false,
-        compact: isCompact,
-      });
-    });
-
-    formatters[seriesModel.dataKey] = seriesFormatter;
-  });
+        shouldApplyCompactFormattingToBarStack &&
+          compactSeriesDataKeys.push(dataKey);
+      },
+    );
+  }
 
   return { formatters, compactSeriesDataKeys };
 };
@@ -686,22 +775,32 @@ export const getWaterfallLabelFormatter = (
   }
 
   const getValue = (datum: Datum) => datum[WATERFALL_VALUE_KEY];
-  const isCompact = shouldRenderCompact(
-    dataset,
-    getValue,
+
+  const waterfallFormattingOptions = { negativeInParentheses: true };
+
+  const compactFormatter = createSeriesLabelsFormatter(
     seriesModel,
+    true,
+    waterfallFormattingOptions,
     settings,
     renderingContext,
   );
+  const fullFormatter = createSeriesLabelsFormatter(
+    seriesModel,
+    false,
+    waterfallFormattingOptions,
+    settings,
+    renderingContext,
+  );
+  const isCompact = shouldRenderCompact(
+    dataset,
+    getValue,
+    compactFormatter,
+    fullFormatter,
+    settings,
+  );
 
-  const formatter = cachedFormatter((value: RowValue) => {
-    return renderingContext.formatValue(value, {
-      ...(settings.column?.(seriesModel.column) ?? {}),
-      jsx: false,
-      compact: isCompact,
-      negativeInParentheses: true,
-    });
-  });
+  const formatter = isCompact ? compactFormatter : fullFormatter;
 
   return { formatter, isCompact };
 };
