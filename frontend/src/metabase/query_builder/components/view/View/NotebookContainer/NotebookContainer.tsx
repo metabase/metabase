@@ -68,7 +68,7 @@ export const NotebookContainer = ({
     HTMLDivElement,
     Partial<ResizableBoxProps> & { onResize?: any } //Mantine and react-resizeable have different opinions on what onResize should be
   >(function Handle(props, ref) {
-    const handleWidth = 6;
+    const handleWidth = 10;
     const borderWidth = 1;
     const left = rem(-((handleWidth + borderWidth) / 2));
 
