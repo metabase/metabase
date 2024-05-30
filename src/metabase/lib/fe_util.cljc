@@ -1,9 +1,7 @@
 (ns metabase.lib.fe-util
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -182,8 +180,7 @@
                         (integer? id))]
          {:type :field, :id id}))
      (when-let [card-id (:source-card base-stage)]
-       (let [card (lib.metadata/card metadata-providerable card-id)
-             definition (:dataset-query card)]
+       (let [card (lib.metadata/card metadata-providerable card-id)]
          (concat [{:type :table, :id (str "card__" card-id)}]
                  (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
                    (query-dependents-foreign-keys metadata-providerable card-columns)))))
