@@ -6,5 +6,5 @@ declare module "@mantine/core" {
    *
    * Refer to [https://v6.mantine.dev/theming/theme-object/#other]
    **/
-  export interface MantineThemeOther extends Partial<EmbeddingThemeOptions> {}
+  export interface MantineThemeOther extends EmbeddingThemeOptions {}
 }
