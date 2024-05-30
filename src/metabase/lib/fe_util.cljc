@@ -180,10 +180,9 @@
                         (integer? id))]
          {:type :field, :id id}))
      (when-let [card-id (:source-card base-stage)]
-       (let [card (lib.metadata/card metadata-providerable card-id)]
-         (concat [{:type :table, :id (str "card__" card-id)}]
-                 (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
-                   (query-dependents-foreign-keys metadata-providerable card-columns)))))
+       (concat [{:type :table, :id (str "card__" card-id)}]
+               (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
+                 (query-dependents-foreign-keys metadata-providerable card-columns))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
