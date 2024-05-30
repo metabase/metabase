@@ -67,7 +67,13 @@ describe("search > recently viewed", () => {
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
-    cy.findAllByTestId("recently-viewed-item-title").should("have.length", 3);
+    assertRecentlyViewedItem(3, "Orders Model", "Model");
+    assertRecentlyViewedItem(
+      4,
+      "Orders, Count, Grouped by Created At (year)",
+      "Question",
+    );
+    cy.findAllByTestId("recently-viewed-item-title").should("have.length", 5);
 
     const recentlyViewedItems = cy.findAllByTestId(
       "recently-viewed-item-title",
