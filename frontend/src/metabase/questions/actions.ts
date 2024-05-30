@@ -13,13 +13,21 @@ export interface LoadMetadataOptions {
 
 export const loadMetadataForCard =
   (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    await dispatch(Questions.actions.fetchMetadata({ id: card.id }, options));
+    try {
+      await dispatch(Questions.actions.fetchMetadata({ id: card.id }, options));
+    } catch (error) {
+      console.error("Error in loadMetadataForCard", error);
+    }
   };
 
 export const loadMetadataForTable =
   (tableId: TableId, options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch) => {
-    await dispatch(Tables.actions.fetchMetadata({ id: tableId }, options));
+    try {
+      await dispatch(Tables.actions.fetchMetadata({ id: tableId }, options));
+    } catch (error) {
+      console.error("Error in loadMetadataForTable", error);
+    }
   };
 
 // this function should be removed when x-ray dashboards get their own metadata endpoint
