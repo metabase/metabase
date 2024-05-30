@@ -82,15 +82,8 @@ jobs:
         with:
           m2-cache-key: "release-sdk"
 
-      - name: Bump published npm package version
-        run: |
-          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
-
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
-
-      - name: Generate SDK package.json in the build directory
-        run: yarn run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v4
@@ -158,6 +151,10 @@ jobs:
         run: |
           sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
 
+      - name: Update changelog
+        run: |
+          yarn embedding-sdk:generate-changelog
+
       - uses: actions/create-github-app-token@v1
         id: app-token
         with:
@@ -182,6 +179,15 @@ jobs:
         with:
           name: metabase-sdk
           path: sdk
+
+      - name: Generate necessary files in the build directory
+        run: yarn run embedding-sdk:generate-package
+
+      - name: Upload built SDK package as artifact, so the artifact contains all the necessary files e.g. package.json, LICENSE.md, CHANGELOG.md
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-metabase-sdk
+          path: ./resources/embedding-sdk
 
       - name: Publish to NPM
         run: |
