@@ -15,7 +15,6 @@ import {
   cancelFetchDashboardCardData,
   fetchDashboard,
   fetchDashboardCardData,
-  fetchDashboardCardMetadata,
   initialize,
   setParameterValue,
   setParameterValueToDefault,
@@ -67,7 +66,6 @@ const mapStateToProps = (state: State) => {
 const mapDispatchToProps = {
   initialize,
   cancelFetchDashboardCardData,
-  fetchDashboardCardMetadata,
   setParameterValueToDefault,
   setParameterValue,
   setErrorPage,
@@ -107,7 +105,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
-      fetchDashboardCardMetadata,
       setErrorPage,
       parameterQueryParams,
       dashboardId,
@@ -126,14 +123,9 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
     }
 
     try {
-      const requests = [];
       if (this.props.dashboard?.tabs?.length === 0) {
-        requests.push(
-          fetchDashboardCardData({ reload: false, clearCache: true }),
-        );
+        await fetchDashboardCardData({ reload: false, clearCache: true });
       }
-      requests.push(fetchDashboardCardMetadata());
-      await Promise.all(requests);
     } catch (error) {
       console.error(error);
       setErrorPage(error);

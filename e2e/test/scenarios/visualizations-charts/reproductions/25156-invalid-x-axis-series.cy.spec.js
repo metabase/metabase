@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
+import { createQuestion, echartsContainer, restore } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -21,17 +21,16 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 25156", () => {
+describe("issue 25156", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
   it("should handle invalid x-axis scale (metabase#25156)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.get(".bar").should("have.length.at.least", 20);
-    cy.get(".x.axis .tick")
+    echartsContainer()
       .should("contain", "2022")
       .and("contain", "2023")
       .and("contain", "2023")
