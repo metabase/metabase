@@ -12,7 +12,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
+   [metabase.types :as types]
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -263,3 +265,31 @@
        "query"    {"source-table" 1
                    "aggregation"  [["count"]]
                    "filter"       ["=" ["field" 1 nil] 4]}})))
+
+(deftest ^:parallel coerced-fields-effective-type-test
+  (let [effective-type (types/effective-type-for-coercion :Coercion/UNIXSeconds->DateTime)
+        mp (merged-mock/merged-mock-metadata-provider
+            meta/metadata-provider
+            {:fields [{:id                (meta/id :people :id)
+                       :coercion-strategy :Coercion/UNIXSeconds->DateTime
+                       :effective-type    effective-type}]})
+        ;; Query of a following form is input to `lib/query` in the wild.
+        query {:database (meta/id)
+               :type     "query"
+               :query    {:source-table (meta/id :people)
+                          :filter       ["and"
+                                         ["between"
+                                          ["field" (meta/id :people :id) {:base-type "type/BigInteger"}]
+                                          "1969-10-12"
+                                          "1971-10-12"]]}}]
+    (testing "Effective type is added to coerced fields during legacy query transformation (part of issue #42931)"
+      (is (=? {:stages [{:filters [[:between
+                                    {:lib/uuid string?}
+                                    [:field
+                                     {:lib/uuid       string?
+                                      :base-type      :type/BigInteger
+                                      :effective-type effective-type}
+                                     (meta/id :people :id)]
+                                    "1969-10-12"
+                                    "1971-10-12"]]}]}
+              (lib/query mp query))))))
