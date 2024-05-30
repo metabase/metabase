@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import { useEmbedFrameOptions } from "metabase/public/hooks/use-embed-frame-options";
+import { useEmbedFrameOptions } from "metabase/public/hooks";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
