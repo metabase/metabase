@@ -137,82 +137,36 @@
               (is (= "Grand Totals"
                      (first (last result)))))))))))
 
-
-(comment
-
-  ;; use this function to see the pivot results printed to your REPL. I find it helpful to have a look at the total expected output
-  ;; to help make sure the test assertions (in pivot-export-test) make sense.
-  (defn explore-pivot
-    []
+(deftest multi-measure-pivot-tables-headers-test
+  (testing "Pivot tables with multiple measures correctly include the measure titles in the final header row."
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {pivot-data-card-id :id}
-                     {:dataset_query {:database (mt/id)
-                                      :type     :native
-                                      :native
-                                      {:template-tags {}
-                                       :query         pivot-rows-query}}
-                      :result_metadata
-                      (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
-                                 {:name         field-name
-                                  :display_name field-name
-                                  :field_ref    [:field field-name {:base-type base-type}]
-                                  :base_type    base-type}))}
-                     :model/Card {pivot-card-id :id}
+      (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field "CATC" {:base-type :type/Text}]
-                                                          [:field "CATD" {:base-type :type/Text}]]
-                                                :columns [[:field "CATA" {:base-type :type/Text}]
-                                                          [:field "CATB" {:base-type :type/Text}]]
-                                                :values  [[:aggregation 0]]}}
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                                :values  [[:aggregation 0]
+                                                          [:aggregation 1]]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
-                                               {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
-                                                :breakout
-                                                [[:field "CATA" {:base-type :type/Text}]
-                                                 [:field "CATB" {:base-type :type/Text}]
-                                                 [:field "CATC" {:base-type :type/Text}]
-                                                 [:field "CATD" {:base-type :type/Text}]]
-                                                :source-table (format "card__%s" pivot-data-card-id)}}}]
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]],
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
                           csv/read-csv)]
-          result))))
-
-  ;; since the json export doesn't do any post processing, you can use that to see what the raw pivot rows look like:
-  (defn explore-raw-pivot
-    []
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card {pivot-data-card-id :id}
-                     {:dataset_query {:database (mt/id)
-                                      :type     :native
-                                      :native
-                                      {:template-tags {}
-                                       :query         pivot-rows-query}}
-                      :result_metadata
-                      (into [] (for [[_ field-name {:keys [base-type]}] pivot-fields]
-                                 {:name         field-name
-                                  :display_name field-name
-                                  :field_ref    [:field field-name {:base-type base-type}]
-                                  :base_type    base-type}))}
-                     :model/Card {pivot-card-id :id}
-                     {:display                :pivot
-                      :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field "CATC" {:base-type :type/Text}]
-                                                          [:field "CATD" {:base-type :type/Text}]]
-                                                :columns [[:field "CATA" {:base-type :type/Text}]
-                                                          [:field "CATB" {:base-type :type/Text}]]
-                                                :values  [[:aggregation 0]]}}
-                      :dataset_query          {:database (mt/id)
-                                               :type     :query
-                                               :query
-                                               {:aggregation  [[:sum [:field "MEASURE" {:base-type :type/Integer}]]]
-                                                :breakout
-                                                [[:field "CATA" {:base-type :type/Text}]
-                                                 [:field "CATB" {:base-type :type/Text}]
-                                                 [:field "CATC" {:base-type :type/Text}]
-                                                 [:field "CATD" {:base-type :type/Text}]]
-                                                :source-table (format "card__%s" pivot-data-card-id)}}}]
-        (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/json?format_rows=false" pivot-card-id))]
-            (take 20 result)))))
-  )
+          (is (= [["Created At" "Doohickey" "Doohickey" "Gadget" "Gadget" "Gizmo" "Gizmo" "Widget" "Widget" "Row totals" "Row totals"]
+                  ["Created At"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"
+                   "Sum of Price"
+                   "Average of Rating"]]
+               (take 2 result))))))))
