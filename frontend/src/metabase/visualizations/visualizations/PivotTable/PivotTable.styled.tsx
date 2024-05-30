@@ -1,7 +1,8 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color, alpha, darken } from "metabase/lib/colors";
+import { color, alpha, adjustBrightness } from "metabase/lib/colors";
+import type { MantineTheme } from "metabase/ui";
 
 import {
   CELL_HEIGHT,
@@ -13,17 +14,27 @@ export const RowToggleIconRoot = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: ${color("white")};
   padding: 4px;
   border-radius: 4px;
-  background-color: ${color("text-light")};
   transition: all 200ms;
   outline: none;
 
-  &:hover {
-    background-color: ${darken("text-light", 0.2)};
-  }
+  ${getRowToggleStyle}
 `;
+
+function getRowToggleStyle({ theme }: { theme: MantineTheme }) {
+  const { textColor, backgroundColor } = theme.other.pivotTable.rowToggle;
+  const hoverColor = adjustBrightness(backgroundColor, 0.2, 0.2);
+
+  return css`
+    color: ${color(textColor)};
+    background-color: ${color(backgroundColor)};
+
+    &:hover {
+      background-color: ${color(hoverColor)};
+    }
+  `;
+}
 
 interface PivotTableCellProps {
   isBold?: boolean;
@@ -35,23 +46,59 @@ interface PivotTableCellProps {
 }
 
 const getCellBackgroundColor = ({
+  theme,
   isEmphasized,
   isNightMode,
   isTransparent,
-}: Partial<PivotTableCellProps>) => {
+}: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
+  const backgroundColor = theme.other.table.cell.backgroundColor;
+
   if (isTransparent) {
     return "transparent";
   }
 
-  if (!isEmphasized) {
-    return isNightMode ? alpha("bg-black", 0.1) : color("white");
+  if (isEmphasized) {
+    if (isNightMode) {
+      return color("bg-black");
+    }
+
+    if (backgroundColor) {
+      return adjustBrightness(backgroundColor, 0.15, 0.05);
+    }
+
+    return alpha("border", 0.25);
   }
 
-  return isNightMode ? color("bg-black") : alpha("border", 0.25);
+  if (isNightMode) {
+    return alpha("bg-black", 0.1);
+  }
+
+  return color(backgroundColor ?? "white");
 };
 
-const getColor = ({ isNightMode }: PivotTableCellProps) => {
-  return isNightMode ? color("white") : color("text-dark");
+const getCellHoverBackground = (
+  props: PivotTableCellProps & { theme: MantineTheme },
+) => {
+  const { cell: cellTheme } = props.theme.other.table;
+
+  if (!cellTheme.backgroundColor) {
+    return color("border");
+  }
+
+  const backgroundColor = getCellBackgroundColor(props);
+
+  return adjustBrightness(backgroundColor, 0.15, 0.1);
+};
+
+const getColor = ({
+  theme,
+  isNightMode,
+}: PivotTableCellProps & { theme: MantineTheme }) => {
+  if (isNightMode) {
+    return color("white");
+  }
+
+  return color(theme.other.table.cell.textColor);
 };
 
 const getBorderColor = ({ isNightMode }: PivotTableCellProps) => {
@@ -82,7 +129,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     `}
 
   &:hover {
-    background-color: ${color("border")};
+    background-color: ${getCellHoverBackground};
   }
 `;
 
@@ -98,6 +145,7 @@ export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCells
     getCellBackgroundColor({
       isEmphasized: true,
       isNightMode: props.isNightMode,
+      theme: props.theme,
     })};
 `;
 
