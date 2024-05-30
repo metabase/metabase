@@ -201,12 +201,6 @@ jobs:
           name: metabase-sdk
           path: sdk
 
-      - name: Upload built SDK package as artifact, so the artifact contains all the necessary files e.g. package.json, LICENSE.md, CHANGELOG.md
-        uses: actions/upload-artifact@v4
-        with:
-          name: final-metabase-sdk
-          path: ./resources/embedding-sdk
-
       - name: Publish to NPM
         run: |
           cd sdk
