@@ -1,7 +1,12 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import {
+  loadMetadataForDashcards,
+  loadMetadataForLinkedTargets,
+} from "metabase/dashboard/actions/metadata";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
+import Dashboards from "metabase/entities/dashboards";
 import { defer } from "metabase/lib/promise";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -32,8 +37,6 @@ import {
   fetchDataOrError,
   getCurrentTabDashboardCards,
 } from "../utils";
-
-import { loadMetadataForDashboard } from "./metadata";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -381,8 +384,16 @@ export const fetchDashboardCardMetadata = createThunkAction(
   () => async (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const dashboardType = getDashboardType(dashboard.id);
-    if (dashboardType === "normal" || dashboardType === "transient") {
-      await dispatch(loadMetadataForDashboard(dashboard.dashcards));
+    if (dashboardType === "normal") {
+      await dispatch(
+        Dashboards.actions.fetchMetadata({ id: dashboard.id }),
+      ).catch(error => {
+        console.error("Failed dashboard loading metadata", error);
+      });
+      await dispatch(loadMetadataForLinkedTargets(dashboard.dashcards));
+    }
+    if (dashboardType === "transient") {
+      await dispatch(loadMetadataForDashcards(dashboard.dashcards));
     }
   },
 );
