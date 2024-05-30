@@ -13,13 +13,11 @@ import type {
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
-import { getIsMetadataLoaded } from "metabase/dashboard/selectors";
 import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import { getMainElement } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -102,7 +100,6 @@ type DashboardProps = {
   editingOnLoad?: string | string[];
 
   initialize: (opts?: { clearCache?: boolean }) => void;
-  fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -178,7 +175,6 @@ function DashboardInner(props: DashboardProps) {
     editingOnLoad,
     fetchDashboard,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     initialize,
     isEditing,
     isFullscreen,
@@ -205,7 +201,6 @@ function DashboardInner(props: DashboardProps) {
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
-  const isMetadataLoaded = useSelector(getIsMetadataLoaded);
 
   const currentTabDashcards = useMemo(() => {
     if (!Array.isArray(dashboard?.dashcards)) {
@@ -326,7 +321,6 @@ function DashboardInner(props: DashboardProps) {
     );
 
     if (hasDashboardLoaded) {
-      fetchDashboardCardMetadata();
       fetchDashboardCardData({ reload: false, clearCache: true });
     } else if (hasTabChanged || hasParameterValueChanged) {
       fetchDashboardCardData();
@@ -335,7 +329,6 @@ function DashboardInner(props: DashboardProps) {
     dashboard,
     dashboardId,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     handleLoadDashboard,
     parameterValues,
     previousDashboard,
@@ -416,7 +409,7 @@ function DashboardInner(props: DashboardProps) {
       isFullHeight={isEditing || isSharing}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
-      loading={!dashboard || !isMetadataLoaded}
+      loading={!dashboard}
       error={error}
     >
       {() => (
