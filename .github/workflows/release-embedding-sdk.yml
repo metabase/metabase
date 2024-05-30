@@ -152,7 +152,6 @@ jobs:
         run: |
           aws s3 cp $FILE s3://$BUCKET/$BUCKET_PATH
 
-
   publish-npm:
     needs: [build-sdk, upload-jar]
     runs-on: ubuntu-22.04
@@ -173,19 +172,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-util
+          path: ./bin/embedding-sdk/
+
+      - name: Log download release utils location
+        run: find . -name "release_utils.bash"
 
       - name: Update readme
         run: |
-          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
 
       - name: Bump published npm package version
         run: |
-          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
       - name: Retrieve SDK changelog
         uses: actions/download-artifact@v4
         with:
           name: sdk-changelog
+          path: ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
       - uses: actions/create-github-app-token@v1
         id: app-token
