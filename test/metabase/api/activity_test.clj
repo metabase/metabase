@@ -143,6 +143,7 @@
                    [{:model "dataset" :id (u/the-id dataset)}]
                    (reverse recent-views))))))))))
 
+;; Cal 2024-05-30: I'm commenting this out while Bryan and I work out the correct behaviour for recent views
 #_(deftest recent-CRU-views-test
   (clear-recent-views-for-user :crowberto)
   (mt/with-test-user :crowberto
