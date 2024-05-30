@@ -13,6 +13,7 @@ import {
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   isAny,
+  isDate,
   isDimension,
   isMetric,
   isNumeric,
@@ -241,6 +242,38 @@ export const getDefaultLegendIsReversed = (
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";
 
+export const getAvailableXAxisScales = (
+  [{ data }]: RawSeries,
+  settings: ComputedVisualizationSettings,
+) => {
+  const options = [];
+
+  const dimensionColumn = data.cols.find(
+    col => col != null && col.name === settings["graph.dimensions"]?.[0],
+  );
+
+  if (settings["graph.x_axis._is_timeseries"]) {
+    options.push({ name: t`Timeseries`, value: "timeseries" });
+  }
+
+  if (settings["graph.x_axis._is_numeric"]) {
+    options.push({ name: t`Linear`, value: "linear" });
+
+    // For relative date units such as day of week we do not want to show log, pow, histogram scales
+    if (!isDate(dimensionColumn)) {
+      if (!settings["graph.x_axis._is_histogram"]) {
+        options.push({ name: t`Power`, value: "pow" });
+        options.push({ name: t`Log`, value: "log" });
+      }
+      options.push({ name: t`Histogram`, value: "histogram" });
+    }
+  }
+
+  options.push({ name: t`Ordinal`, value: "ordinal" });
+
+  return options;
+};
+
 const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
 export const isXAxisScaleValid = (
   series: RawSeries,
@@ -248,10 +281,17 @@ export const isXAxisScaleValid = (
 ) => {
   const isWaterfall = series[0].card.display === "waterfall";
   const xAxisScale = settings["graph.x_axis.scale"];
+  const options = getAvailableXAxisScales(series, settings).map(
+    option => option.value,
+  );
+
+  if (xAxisScale && !options.includes(xAxisScale)) {
+    return false;
+  }
+
   return (
     !isWaterfall ||
-    xAxisScale == null ||
-    !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)
+    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
   );
 };
 

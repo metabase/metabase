@@ -143,7 +143,7 @@ describe("ActionCreator > Query Actions", () => {
 
       screen.getByLabelText("Action settings").click();
 
-      expect(screen.getByLabelText("Success message")).toBeDisabled();
+      expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
 
     it("blocks editing if actions are disabled for the database", async () => {
@@ -161,7 +161,7 @@ describe("ActionCreator > Query Actions", () => {
 
       screen.getByLabelText("Action settings").click();
 
-      expect(screen.getByLabelText("Success message")).toBeDisabled();
+      expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
   });
 });
