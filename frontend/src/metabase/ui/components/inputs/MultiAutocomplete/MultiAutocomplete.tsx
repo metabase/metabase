@@ -181,32 +181,6 @@ export function MultiAutocomplete({
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
       rightSection={info}
-      styles={{
-        wrapper: {
-          fontSize: "14px",
-        },
-        input: {
-          padding: 0,
-        },
-        searchInput: {
-          marginLeft: "0.35rem",
-        },
-        values: {
-          padding: "0.35em",
-          gap: "0.35em",
-          minHeight: "2.7em",
-        },
-        defaultValue: {
-          fontSize: "1em",
-          height: "2em",
-          color: color("brand"),
-          background: color("bg-medium"),
-          fontWeight: "bold",
-        },
-        defaultValueRemove: {
-          color: color("brand"),
-        },
-      }}
     />
   );
 }
