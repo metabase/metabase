@@ -310,7 +310,7 @@ const theme = {
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
-      { base: "#e74c3c", tint: "#ee6b56", shade: "#cb4436" },
+      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" },
     ],
   },
 
@@ -347,8 +347,8 @@ const theme = {
     pivotTable: {
       // Pivot row toggle to expand or collapse row
       rowToggle: {
-        textColor: "white",
-        backgroundColor: "text-light",
+        textColor: "#FFFFFF",
+        backgroundColor: "#95A5A6",
       },
     },
   },
