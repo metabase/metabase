@@ -173,12 +173,3 @@ function getCombinedColumnName(
   );
   return names.join(" ");
 }
-
-export function appendStageIfAggregated(query: Lib.Query, stageIndex: number) {
-  const aggregations = Lib.aggregations(query, stageIndex);
-  const breakouts = Lib.breakouts(query, stageIndex);
-
-  return aggregations.length > 0 || breakouts.length > 0
-    ? { query: Lib.appendStage(query), stageIndex }
-    : { query, stageIndex };
-}

@@ -11,7 +11,6 @@ import type {
 import * as Lib from "metabase-lib";
 
 import { CombineColumnsDrill } from "./components";
-import { appendStageIfAggregated } from "./utils";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
@@ -19,7 +18,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   stageIndex: originalStageIndex,
   clicked,
 }) => {
-  const { query, stageIndex } = appendStageIfAggregated(
+  const { query, stageIndex } = Lib.asReturned(
     originalQuery,
     originalStageIndex,
   );
