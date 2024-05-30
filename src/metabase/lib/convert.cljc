@@ -323,7 +323,13 @@
          (comp (disqualify)
                (remove (fn [[k _v]]
                          (= k :effective-type))))
-         m)))
+         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
+         ;; were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
+         (if (contains? m :metabase.lib.query/transformation-added-base-type)
+           (dissoc m
+                   :metabase.lib.query/transformation-added-base-type
+                   :base-type)
+           m))))
 
 (defn- aggregation->legacy-MBQL [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL) args)
