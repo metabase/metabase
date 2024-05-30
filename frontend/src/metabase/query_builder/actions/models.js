@@ -49,7 +49,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const metadata = getMetadata(getState());
   const dataset = metadata.question(question.id());
 
-  await dispatch(loadMetadataForCard(dataset.card()));
+  await dispatch(loadMetadataForCard(dataset.card(), { reload: true }));
 
   await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
 
