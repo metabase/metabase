@@ -101,25 +101,6 @@
                (expand-macros
                 (lib.tu.macros/mbql-query venues {:filter [:segment 2]})))))))))
 
-(deftest ^:parallel dont-expand-ga-metrics-test
-  (testing "make sure that we don't try to expand GA \"metrics\" (#6104)"
-    (doseq [metric ["ga:users" "gaid:users"]]
-      (is (= (mbql-query {:aggregation [[:metric metric]]})
-             (expand-macros
-              (mbql-query {:aggregation [[:metric metric]]}))))))
-  (testing "make sure expansion works with multiple GA \"metrics\" (#7399)"
-    (is (= (mbql-query {:aggregation [[:metric "ga:users"]
-                                      [:metric "ga:1dayUsers"]]})
-           (expand-macros
-            (mbql-query {:aggregation [[:metric "ga:users"]
-                                       [:metric "ga:1dayUsers"]]}))))))
-
-(deftest ^:parallel dont-expand-ga-segments-test
-  (testing "make sure we don't try to expand GA 'segments'"
-    (is (= (mbql-query {:filter [:segment "gaid:-11"]})
-           (expand-macros
-            (mbql-query {:filter [:segment "gaid:-11"]}))))))
-
 (deftest ^:parallel segments-in-share-clauses-test
   (testing "segments in :share clauses"
     (qp.store/with-metadata-provider mock-metadata-provider
