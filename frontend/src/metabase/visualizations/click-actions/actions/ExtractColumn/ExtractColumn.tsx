@@ -82,12 +82,10 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
 };
 
 export function appendStageIfAggregated(query: Lib.Query, stageIndex: number) {
-  const ret = Lib.asReturned(query, stageIndex);
-
-  const aggregations = Lib.aggregations(ret.query, ret.stageIndex);
-  const breakouts = Lib.breakouts(ret.query, ret.stageIndex);
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const breakouts = Lib.breakouts(query, stageIndex);
 
   return aggregations.length > 0 || breakouts.length > 0
-    ? { query: Lib.appendStage(ret.query), stageIndex: ret.stageIndex + 1 }
-    : ret;
+    ? { query: Lib.appendStage(query), stageIndex: stageIndex + 1 }
+    : { query, stageIndex };
 }
