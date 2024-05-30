@@ -108,7 +108,7 @@ describe("issue 31628", () => {
             setupDashboardWithQuestionInCards(SCALAR_QUESTION, cards);
 
             if (openSidebar) {
-              cy.wait(100);
+              cy.wait(1000);
               openNavigationSidebar();
             }
           });
