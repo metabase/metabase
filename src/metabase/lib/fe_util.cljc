@@ -224,4 +224,3 @@
            (cons {:type :table, :id (str "card__" card-id)}
                  (when-let [card (lib.metadata/card query card-id)]
                    (query-dependents query (lib.query/query query card))))))))
-
