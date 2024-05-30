@@ -1,9 +1,6 @@
 import { denormalize, normalize, schema } from "normalizr";
 
-import {
-  loadMetadataForDashcards,
-  loadMetadataForLinkedTargets,
-} from "metabase/dashboard/actions/metadata";
+import { loadMetadataForDashcards } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
@@ -180,12 +177,7 @@ export const fetchDashboardCardMetadata = createAsyncThunk(
   async (dashboard: Dashboard, { dispatch }) => {
     const dashboardType = getDashboardType(dashboard.id);
     if (dashboardType === "normal") {
-      await dispatch(
-        Dashboards.actions.fetchMetadata({ id: dashboard.id }),
-      ).catch((error: unknown) => {
-        console.error("Failed dashboard loading metadata", error);
-      });
-      await dispatch(loadMetadataForLinkedTargets(dashboard.dashcards));
+      await dispatch(Dashboards.actions.fetchMetadata({ id: dashboard.id }));
     }
     if (dashboardType === "transient") {
       await dispatch(loadMetadataForDashcards(dashboard.dashcards));

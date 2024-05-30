@@ -21,7 +21,7 @@ const loadMetadataForAvailableCards = cards => dispatch => {
   return dispatch(loadMetadataForCards(availableCards));
 };
 
-export const loadMetadataForLinkedTargets =
+const loadMetadataForLinkedTargets =
   dashCards => async (dispatch, getState) => {
     const linkTargets = dashCards.flatMap(card =>
       getLinkTargets(card.visualization_settings),
