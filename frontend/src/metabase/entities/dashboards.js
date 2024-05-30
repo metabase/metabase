@@ -19,7 +19,6 @@ import {
   compose,
   withAction,
   withAnalytics,
-  withCachedDataAndRequestState,
   withNormalize,
   withRequestState,
 } from "metabase/lib/redux";
@@ -170,11 +169,6 @@ const Dashboards = createEntity({
 
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withCachedDataAndRequestState(
-        ({ id }) => [...Dashboards.getObjectStatePath(id)],
-        ({ id }) => [...Dashboards.getObjectStatePath(id), "fetchMetadata"],
-        entityQuery => Dashboards.getQueryKey(entityQuery),
-      ),
       withNormalize({
         databases: [DatabaseSchema],
         tables: [TableSchema],

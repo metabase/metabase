@@ -16,12 +16,7 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import {
-  compose,
-  withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/lib/redux";
+import { compose, withAction, withNormalize } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -72,11 +67,6 @@ const Questions = createEntity({
   actions: {
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withCachedDataAndRequestState(
-        ({ id }) => [...Questions.getObjectStatePath(id)],
-        ({ id }) => [...Questions.getObjectStatePath(id), "fetchMetadata"],
-        entityQuery => Questions.getQueryKey(entityQuery),
-      ),
       withNormalize({
         databases: [DatabaseSchema],
         tables: [TableSchema],
