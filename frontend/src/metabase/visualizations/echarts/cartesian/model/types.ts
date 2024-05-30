@@ -213,6 +213,7 @@ export type CartesianChartModel = {
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters?: SeriesFormatters;
   stackedLabelsFormatters?: StackedSeriesFormatters;
+  waterfallLabelFormatter?: LabelFormatter;
 };
 
 export type ScatterPlotModel = CartesianChartModel & {
