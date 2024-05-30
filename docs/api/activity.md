@@ -20,7 +20,8 @@ Get the list of 5 popular things for the current user. Query takes 8 and limits 
 
 ## `GET /api/activity/recent_views`
 
-Get a list of 5 things the current user has been viewing most recently.
+Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
+  recently. Return a maximum of 20 model of each, if they've looked at at least 20.
 
 ---
 
