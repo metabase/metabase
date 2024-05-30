@@ -23,7 +23,7 @@ export const NoticeWarningIcon = styled(Icon)`
 `;
 
 export const NoticeCloseIcon = styled(Icon)`
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   cursor: pointer;
 
   &:hover {

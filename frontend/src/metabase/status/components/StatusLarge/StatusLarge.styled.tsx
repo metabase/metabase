@@ -71,7 +71,7 @@ export const StatusCardTitle = styled.div`
 `;
 
 export const StatusCardDescription = styled.div`
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   font-size: 0.6875rem;
   font-weight: bold;
   line-height: 0.8125rem;

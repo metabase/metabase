@@ -43,7 +43,7 @@ export const STEP_UI: Record<string, StepUIItem> = {
     icon: "add_data",
     component: ExpressionStep,
     transparent: true,
-    color: color("bg-dark"),
+    color: "var(--mb-color-bg-dark)",
   },
   filter: {
     title: t`Filter`,
@@ -79,7 +79,7 @@ export const STEP_UI: Record<string, StepUIItem> = {
     component: SortStep,
     compact: true,
     transparent: true,
-    color: color("bg-dark"),
+    color: "var(--mb-color-bg-dark)",
   },
   limit: {
     title: t`Row limit`,
@@ -87,6 +87,6 @@ export const STEP_UI: Record<string, StepUIItem> = {
     component: LimitStep,
     compact: true,
     transparent: true,
-    color: color("bg-dark"),
+    color: "var(--mb-color-bg-dark)",
   },
 };
