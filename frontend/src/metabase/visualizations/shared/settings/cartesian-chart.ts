@@ -88,6 +88,19 @@ export const isStackingValueValid = (
   return stackableDisplays.length > 1;
 };
 
+export const isShowStackValuesValid = (
+  seriesDisplays: string[],
+  settings: ComputedVisualizationSettings,
+) => {
+  const areAllAreas = seriesDisplays.every(display => display === "area");
+
+  return !areAllAreas && settings["stackable.stack_type"] !== "normalized";
+};
+
+export const getDefaultShowStackValues = (
+  settings: ComputedVisualizationSettings,
+) => (settings["stackable.stack_type"] === "normalized" ? "series" : "total");
+
 export const getDefaultStackingValue = (
   settings: ComputedVisualizationSettings,
   card: Card,
