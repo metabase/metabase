@@ -3,6 +3,7 @@ import type { FC } from "react";
 import { forwardRef, useEffect, useRef, useState } from "react";
 
 import { ResponsiveContainer } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
 import resizeObserver from "metabase/lib/resize-observer";
 import * as Urls from "metabase/lib/urls";
@@ -160,3 +161,16 @@ const PathSeparator = () => (
     {pathSeparatorChar}
   </Text>
 );
+
+export const SimpleCollectionDisplay = ({
+  collection,
+}: {
+  collection: CollectionEssentials;
+}) => {
+  return (
+    <Flex align="center">
+      <CollectionsIcon name="folder" />
+      <Ellipsified>{getCollectionName(collection)}</Ellipsified>
+    </Flex>
+  );
+};

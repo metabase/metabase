@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
@@ -17,14 +17,13 @@ import {
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
-import { getIsMetadataLoaded } from "metabase/dashboard/selectors";
 import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import Dashboards from "metabase/entities/dashboards";
 import { getMainElement } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import type {
   Dashboard as IDashboard,
   DashboardCard,
@@ -93,7 +92,6 @@ export type DashboardProps = {
   editingOnLoad?: string | string[];
 
   initialize: (opts?: { clearCache?: boolean }) => void;
-  fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -154,7 +152,7 @@ export type DashboardProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
@@ -180,7 +178,6 @@ function DashboardInner(props: DashboardProps) {
     editingOnLoad,
     fetchDashboard,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     initialize,
     isEditing,
     isFullscreen,
@@ -195,7 +192,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setSharing,
     toggleSidebar,
-    queryParams,
+    parameterQueryParams,
     location,
   } = props;
 
@@ -209,7 +206,6 @@ function DashboardInner(props: DashboardProps) {
   const previousDashboardId = usePrevious(dashboardId);
   const previousTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
-  const isMetadataLoaded = useSelector(getIsMetadataLoaded);
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -265,7 +261,7 @@ function DashboardInner(props: DashboardProps) {
 
       const result = await fetchDashboard({
         dashId: dashboardId,
-        queryParams,
+        queryParams: parameterQueryParams,
         options: {
           clearCache: !isNavigatingBackToDashboard,
           preserveParameters: isNavigatingBackToDashboard,
@@ -306,7 +302,7 @@ function DashboardInner(props: DashboardProps) {
       handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
-      queryParams,
+      parameterQueryParams,
       setErrorPage,
     ],
   );
@@ -331,7 +327,6 @@ function DashboardInner(props: DashboardProps) {
 
     if (hasDashboardLoaded) {
       fetchDashboardCardData({ reload: false, clearCache: true });
-      fetchDashboardCardMetadata();
     } else if (hasTabChanged || hasParameterValueChanged) {
       fetchDashboardCardData();
     }
@@ -339,7 +334,6 @@ function DashboardInner(props: DashboardProps) {
     dashboard,
     dashboardId,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     handleLoadDashboard,
     isInitialized,
     parameterValues,
@@ -423,7 +417,7 @@ function DashboardInner(props: DashboardProps) {
       isFullHeight={isEditing || isSharing}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
-      loading={!dashboard || !isMetadataLoaded}
+      loading={!dashboard}
       error={error}
     >
       {() => {

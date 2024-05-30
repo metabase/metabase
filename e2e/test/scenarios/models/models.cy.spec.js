@@ -104,12 +104,8 @@ describe("scenarios > models", () => {
         .findAllByText("Our analytics")
         .first()
         .click();
-      getCollectionItemCard("Products Model").within(() => {
-        cy.icon("model");
-      });
-      getCollectionItemRow("Q1").within(() => {
-        cy.icon("table");
-      });
+      getCollectionItemCard("Products Model").icon("model");
+      getCollectionItemRow("Q1").icon("table2");
 
       cy.url().should("not.include", "/question/" + id);
     });
@@ -160,9 +156,7 @@ describe("scenarios > models", () => {
     getCollectionItemCard("Product Model").within(() => {
       cy.icon("model");
     });
-    getCollectionItemRow("Q1").within(() => {
-      cy.icon("table");
-    });
+    getCollectionItemRow("Q1").icon("table2");
 
     cy.location("pathname").should("eq", "/collection/root");
   });

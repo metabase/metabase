@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
 import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha } from "metabase/lib/colors";
@@ -49,10 +48,11 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
 
+  font-size: ${({ theme }) => theme.other.fontSize ?? "0.875em"};
+
   ${aceEditorStyles}
   ${saveDomImageStyles}
   ${({ theme }) => getRootStyle(theme)}
-  ${({ theme }) => getWrapperStyle(theme)}
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
   ${({ fontFiles }) =>
@@ -71,8 +71,4 @@ const SdkContentWrapperInner = styled.div<
   :where(svg) {
     display: inline;
   }
-`;
-
-const getWrapperStyle = (theme: EmbeddingTheme) => css`
-  font-size: ${theme.other.fontSize ?? "0.875em"};
 `;

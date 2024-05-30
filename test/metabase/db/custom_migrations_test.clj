@@ -1898,15 +1898,15 @@
             (is (=? {uploads-db-id     {:uploads_enabled true,  :uploads_schema_name "uploads", :uploads_table_prefix "uploads_"}
                      not-uploads-db-id {:uploads_enabled false, :uploads_schema_name  nil,      :uploads_table_prefix nil}}
                     (m/index-by :id (t2/select :metabase_database))))
-            ;; TODO: delete the rest of the test after merging because down-migrations flake with MySQL:
-            (migrate! :down 49)
-            (testing "make sure the settings contain the same decrypted values after the migrations"
-              (let [settings-after (get-settings)]
-                (is (not-empty settings-after))
-                (is (every? encryption/possibly-encrypted-string?
-                            (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+            (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+              (migrate! :down 49)
+              (testing "make sure the settings contain the same decrypted values after the migrations"
+                (let [settings-after (get-settings)]
+                  (is (not-empty settings-after))
+                  (is (every? encryption/possibly-encrypted-string?
+                              (map :value settings-after)))
+                  (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
+                         (set (map #(update % :value encryption/maybe-decrypt) settings-after)))))))))))))
 
 (deftest migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -1942,3 +1942,42 @@
                                   :uploads_schema_name  nil
                                   :uploads_table_prefix nil}}
                   (m/index-by :id (t2/select :metabase_database)))))))))
+
+(deftest create-sample-content-test
+  (testing "The sample content is created iff *create-sample-content*=true"
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
+        (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
+          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+            (binding [custom-migrations/*create-sample-content* create?]
+              (is (false? (sample-content-created?)))
+              (migrate!)
+              (is ((if create? true? false?) (sample-content-created?)))))))))
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                      :engine     "h2"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details    "{}"})
+        (t2/query {:delete-from :metabase_database})
+        (migrate!)
+        (is (false? (sample-content-created?)))
+        (is (empty? (t2/query "SELECT * FROM metabase_database"))
+            "No database should have been created"))))
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks!
+         :core_user
+         {:first_name    "Rasta"
+          :last_name     "Toucan"
+          :email         "rasta@metabase.com"
+          :password      "password"
+          :password_salt "and pepper"
+          :date_joined   :%now})
+        (migrate!)
+        (is (false? (sample-content-created?)))))))

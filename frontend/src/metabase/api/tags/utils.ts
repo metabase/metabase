@@ -32,6 +32,7 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  DashboardMetadata,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -222,6 +223,16 @@ export function provideDashboardTags(
     ...(dashboard.collection
       ? provideCollectionTags(dashboard.collection)
       : []),
+  ];
+}
+
+export function provideDashboardMetadataTags(
+  metadata: DashboardMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
   ];
 }
 

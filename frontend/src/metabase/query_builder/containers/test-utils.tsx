@@ -323,7 +323,7 @@ export const startNewNotebookModel = async () => {
 
   const modal = await screen.findByTestId("entity-picker-modal");
   await waitForLoaderToBeRemoved();
-  await userEvent.click(within(modal).getByText("Orders"));
+  await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
@@ -365,7 +365,7 @@ export const triggerVisualizationQueryChange = async () => {
 };
 
 export const triggerNotebookQueryChange = async () => {
-  await userEvent.click(screen.getByText("Row limit"));
+  await userEvent.click(await screen.findByText("Row limit"));
 
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),

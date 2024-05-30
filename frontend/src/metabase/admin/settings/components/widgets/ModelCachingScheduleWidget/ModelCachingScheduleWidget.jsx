@@ -32,11 +32,7 @@ function formatCronExpression(cronExpression) {
   return partsWithoutSecondsAndYear.join(" ");
 }
 
-const PersistedModelRefreshIntervalWidget = ({
-  setting,
-  disabled,
-  onChange,
-}) => {
+export const ModelCachingScheduleWidget = ({ setting, disabled, onChange }) => {
   const [isCustom, setCustom] = useState(isCustomSchedule(setting));
   const [customCronSchedule, setCustomCronSchedule] = useState(
     // We don't allow to specify the "year" component, but it's present in the value
@@ -93,6 +89,4 @@ const PersistedModelRefreshIntervalWidget = ({
   );
 };
 
-PersistedModelRefreshIntervalWidget.propTypes = propTypes;
-
-export default PersistedModelRefreshIntervalWidget;
+ModelCachingScheduleWidget.propTypes = propTypes;

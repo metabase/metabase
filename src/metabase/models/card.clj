@@ -876,8 +876,8 @@ saved later when it is ready."
 
 (defn- replaced-inner-query-for-native-card
   [query {:keys [fields tables] :as _replacement-ids}]
-  (let [keyvals-set         #(set/union (into #{} (keys %))
-                                        (into #{} (vals %)))
+  (let [keyvals-set         #(set/union (set (keys %))
+                                        (set (vals %)))
         id->field           (if (empty? fields)
                               {}
                               (m/index-by :id
@@ -900,11 +900,14 @@ saved later when it is ready."
         get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
                                               (remove-id (get m k))
                                               (throw (ex-info "ID not found" {:id k :available m})))))
-        update-keyvals      (fn [m f] (-> m
-                                          (update-keys f)
-                                          (update-vals f)))
-        column-replacements (update-keyvals fields (get-or-throw-from id->field))
-        table-replacements  (update-keyvals tables (get-or-throw-from id->table))]
+        ids->replacements   (fn [id->replacement-id id->row row->identifier]
+                              (-> id->replacement-id
+                                  (u/update-keys-vals (get-or-throw-from id->row))
+                                  (update-vals row->identifier)))
+        ;; Note: we are naively providing unqualified new identifier names as the replacements.
+        ;; this will break if previously unambiguous identifiers become ambiguous due to the replacements
+        column-replacements (ids->replacements fields id->field :column)
+        table-replacements  (ids->replacements tables id->table :table)]
     (query-analyzer/replace-names query {:columns column-replacements
                                          :tables  table-replacements})))
 
