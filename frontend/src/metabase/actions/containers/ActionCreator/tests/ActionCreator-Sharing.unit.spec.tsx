@@ -46,9 +46,13 @@ describe("ActionCreator > Sharing", () => {
           isPublicSharingEnabled: true,
         });
 
-        screen.getByRole("button", { name: "Action settings" }).click();
+        await userEvent.click(
+          screen.getByRole("button", { name: "Action settings" }),
+        );
 
-        expect(screen.getByText("Action settings")).toBeInTheDocument();
+        const headerTitle = await screen.findByTestId("sidebar-header-title");
+        expect(headerTitle).toBeInTheDocument();
+        expect(headerTitle).toHaveTextContent("Action settings");
         const makePublicToggle = screen.getByRole("switch", {
           name: "Make public",
         });
@@ -57,7 +61,9 @@ describe("ActionCreator > Sharing", () => {
           screen.queryByRole("textbox", { name: "Public action form URL" }),
         ).not.toBeInTheDocument();
 
-        screen.getByRole("switch", { name: "Make public" }).click();
+        await userEvent.click(
+          screen.getByRole("switch", { name: "Make public" }),
+        );
 
         await waitFor(() => {
           expect(makePublicToggle).toBeChecked();
@@ -75,9 +81,13 @@ describe("ActionCreator > Sharing", () => {
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
-        screen.getByRole("button", { name: "Action settings" }).click();
+        await userEvent.click(
+          screen.getByRole("button", { name: "Action settings" }),
+        );
 
-        expect(screen.getByText("Action settings")).toBeInTheDocument();
+        const headerTitle = await screen.findByTestId("sidebar-header-title");
+        expect(headerTitle).toBeInTheDocument();
+        expect(headerTitle).toHaveTextContent("Action settings");
         const makePublicToggle = screen.getByRole("switch", {
           name: "Make public",
         });
@@ -87,11 +97,11 @@ describe("ActionCreator > Sharing", () => {
           screen.getByRole("textbox", { name: "Public action form URL" }),
         ).toHaveValue(expectedPublicLinkUrl);
 
-        makePublicToggle.click();
+        await userEvent.click(makePublicToggle);
         expect(
           screen.getByRole("heading", { name: "Disable this public link?" }),
         ).toBeInTheDocument();
-        screen.getByRole("button", { name: "Yes" }).click();
+        await userEvent.click(screen.getByRole("button", { name: "Yes" }));
 
         await waitFor(() => {
           expect(makePublicToggle).not.toBeChecked();
