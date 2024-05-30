@@ -342,7 +342,9 @@
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]
-      (t2/hydrate collections :effective_parent))))
+      (->> (t2/hydrate collections :effective_parent)
+
+           (map #(m/dissoc-in % [:effective_parent :type]))))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
