@@ -1,10 +1,9 @@
 import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 import type { MantineThemeOther } from "metabase/ui";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import { convertFontSizeToPx } from "metabase/visualizations/shared/utils/font-size-to-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 
-const FALLBACK_LABEL_FONT_SIZE = CHART_STYLE.axisTicks.size;
+const FALLBACK_LABEL_FONT_SIZE = 12;
 
 /**
  * Computes the visualization style from the Mantine theme.

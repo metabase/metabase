@@ -16,7 +16,6 @@ export const CHART_STYLE = {
   axisTicksMarginX: 5,
   axisTicksMarginY: 10,
   axisTicks: {
-    size: 12,
     weight: 700,
   },
   seriesLabels: {
@@ -26,7 +25,6 @@ export const CHART_STYLE = {
     zIndex: 10,
   },
   axisName: {
-    size: 12,
     weight: 700,
   },
   axisNameMargin: 12,
