@@ -14,6 +14,7 @@ import {
   pressPageUp,
   pressHome,
   pressEnd,
+  commandPaletteButton,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -203,5 +204,11 @@ describe("command palette", () => {
 
     openCommandPalette();
     commandPalette().should("exist");
+  });
+
+  it("The Search button should resize when on mobile", () => {
+    cy.viewport("iphone-x");
+    cy.visit("/");
+    commandPaletteButton().should("not.contain.text", "search");
   });
 });

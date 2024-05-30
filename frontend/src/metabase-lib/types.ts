@@ -94,6 +94,16 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
+export type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "order-by"
+  | "limit";
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
@@ -255,6 +265,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 export type ExpressionOperatorName =
   | "+"
+  | "-"
+  | "*"
+  | "/"
   | "="
   | "!="
   | ">"
@@ -275,7 +288,8 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment";
+  | "segment"
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 

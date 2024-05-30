@@ -4,15 +4,14 @@ import { t } from "ttag";
 import { NoDataError } from "metabase/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { getErrorMessage } from "metabase/selectors/app";
-
-import EmbedFrame from "./EmbedFrame";
 
 export const PublicError = () => {
   const message = useSelector(getErrorMessage) ?? t`An error occurred`;
 
   return (
-    <EmbedFrame className={CS.spread}>
+    <SyncedEmbedFrame className={CS.spread}>
       <div
         className={cx(CS.flex, CS.layoutCentered, CS.flexFull, CS.flexColumn)}
       >
@@ -21,6 +20,6 @@ export const PublicError = () => {
           {message}
         </div>
       </div>
-    </EmbedFrame>
+    </SyncedEmbedFrame>
   );
 };

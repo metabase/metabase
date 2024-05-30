@@ -1,19 +1,29 @@
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { useCancelCloudMigrationMutation } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, Text, List, Button, Box, Modal, Progress } from "metabase/ui";
+import {
+  Flex,
+  Text,
+  List,
+  Button,
+  Box,
+  Modal,
+  Progress,
+  Icon,
+} from "metabase/ui";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
-import { getCheckoutUrl } from "./utils";
 
 interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
+  checkoutUrl: string;
 }
 
 const progressMessage: Record<InProgressStates, string> = {
@@ -25,6 +35,7 @@ const progressMessage: Record<InProgressStates, string> = {
 
 export const MigrationInProgress = ({
   migration,
+  checkoutUrl,
 }: MigrationInProgressProps) => {
   const dispatch = useDispatch();
 
@@ -47,41 +58,56 @@ export const MigrationInProgress = ({
     );
   };
 
-  const checkoutUrl = getCheckoutUrl(migration);
-
   return (
     <>
       <MigrationCard>
-        <Flex gap="sm" align="center">
-          <Text fw="bold">{t`You are now migrating to Metabase Cloud`}</Text>
+        <Flex gap="1.5rem" align="start">
+          <Flex
+            bg={color("brand-light")}
+            h="64px"
+            style={{ borderRadius: "50%", flex: "0 0 64px" }}
+            justify="center"
+            align="center"
+          >
+            <Icon
+              name="cloud_filled"
+              size="2.375rem"
+              style={{ color: color("brand") }}
+            />
+          </Flex>
+          <Box style={{ flex: "1 0 0" }}>
+            <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>
+            {readOnly ? (
+              <List size="md" mt="md">
+                <List.Item>{t`To complete the migration, set up your account in the Metabase Store`}</List.Item>
+                <List.Item>{t`While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes`}</List.Item>
+              </List>
+            ) : (
+              <Text mt="md">{t`To complete the migration, set up your account in the Metabase Store`}</Text>
+            )}
+
+            <Box mt="lg" mb="md">
+              <Text size="md" c="text-medium">
+                {progressMessage[migration.state]}
+              </Text>
+              <Progress value={migration.progress} mt=".25rem" />
+            </Box>
+
+            <Flex justify="space-between">
+              <Button
+                mt="md"
+                onClick={openModal}
+                c="error"
+              >{t`Cancel migration`}</Button>
+              <Button
+                mt="md"
+                component={ExternalLink}
+                href={checkoutUrl}
+                variant="filled"
+              >{t`Go to Metabase Store`}</Button>
+            </Flex>
+          </Box>
         </Flex>
-        <List size="md" mt="md">
-          {readOnly ? (
-            <List.Item>{t`This instance will be in read-only mode when taking a snapshot. It could take up to 30 minutes.`}</List.Item>
-          ) : (
-            <List.Item>{t`This instance is no longer read-only.`}</List.Item>
-          )}
-          <List.Item>{c(`{0} is a link titled "Metabase Store"`)
-            .jt`In the meantime, you can go to the ${(
-            <ExternalLink
-              href={checkoutUrl}
-              key="link"
-            >{t`Metabase Store`}</ExternalLink>
-          )} to finish account creation and configuring your new Cloud instance.`}</List.Item>
-        </List>
-
-        <Box mt="lg" mb="md">
-          <Text size="md" c="text-medium">
-            {progressMessage[migration.state]}
-          </Text>
-          <Progress value={migration.progress} mt=".25rem" />
-        </Box>
-
-        <Button
-          mt="md"
-          onClick={openModal}
-          c="error"
-        >{t`Cancel migration`}</Button>
       </MigrationCard>
 
       <Modal.Root

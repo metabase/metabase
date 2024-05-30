@@ -18,11 +18,10 @@ import { ContentViewportContext } from "metabase/core/context/ContentViewportCon
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
-  isQuestionDashCard,
   getVisibleCardIds,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { color } from "metabase/lib/colors";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -31,9 +30,9 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
@@ -41,18 +40,15 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,
-  DashCardDataMap,
   DashCardId,
   Dashboard,
   DashboardTabId,
-  ParameterId,
-  ParameterValueOrArray,
   DashboardCard,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -67,6 +63,8 @@ import {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 } from "../actions";
+import { getNewCardUrl } from "../actions/getNewCardUrl";
+import { getDashcardDataMap, getParameterValues } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
@@ -104,6 +102,12 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
+const mapStateToProps = (state: State) => ({
+  metadata: getMetadata(state),
+  parameterValues: getParameterValues(state),
+  dashcardData: getDashcardDataMap(state),
+});
+
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
@@ -118,15 +122,13 @@ const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 };
-const connector = connect(null, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps);
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboard: Dashboard;
-  dashcardData: DashCardDataMap;
   selectedTabId: DashboardTabId | null;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;
   isEditingParameter: boolean;
@@ -136,8 +138,6 @@ type OwnProps = {
   isNightMode: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   mode?: Mode;
-  // TODO: only passed down, remove it
-  metadata: Metadata;
   // public dashboard passes it explicitly
   width?: number;
   // public dashboard passes it as noop
@@ -467,37 +467,40 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   };
 
-  onDashCardAddSeries(dc: BaseDashboardCard) {
+  onDashCardAddSeries = (dc: BaseDashboardCard) => {
     this.setState({ addSeriesModalDashCard: dc });
-  }
+  };
 
   onReplaceCard = (dashcard: BaseDashboardCard) => {
     this.setState({ replaceCardModalDashCard: dashcard });
   };
 
-  getDashboardCardIcon = (dashCard: BaseDashboardCard) => {
-    const { isRegularCollection } = PLUGIN_COLLECTIONS;
-    const { dashboard } = this.props;
-    const isRegularQuestion = isRegularCollection({
-      authority_level: dashCard.collection_authority_level,
-    });
-    const isRegularDashboard = isRegularCollection({
-      authority_level: dashboard.collection_authority_level,
-    });
-    const authorityLevel = dashCard.collection_authority_level;
-    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
-      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 14;
-      return {
-        name: opts.icon,
-        color: opts.color ? color(opts.color) : undefined,
-        tooltip: opts.tooltips?.belonging,
-        size: iconSize,
-
-        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
-        targetOffsetX: dashCard.col === 0 ? iconSize : 0,
-      };
+  getNewCardUrl = ({
+    nextCard,
+    previousCard,
+    dashcard,
+    objectId,
+  }: {
+    nextCard: Card;
+    previousCard: Card;
+    dashcard: DashboardCard;
+    objectId?: number | string;
+  }) => {
+    if (!isQuestionDashCard(dashcard)) {
+      return undefined;
     }
+
+    const { dashboard, metadata, parameterValues } = this.props;
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard,
+      previousCard,
+      objectId,
+    });
   };
 
   renderDashCard(
@@ -515,9 +518,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <DashCard
         dashcard={dc}
-        headerIcon={this.getDashboardCardIcon(dc)}
-        dashcardData={this.props.dashcardData}
-        parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
@@ -529,22 +529,25 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isMobile={isMobile}
         isPublic={this.props.isPublic}
         isXray={this.props.isXray}
-        onRemove={() => this.onDashCardRemove(dc)}
-        onAddSeries={() => this.onDashCardAddSeries(dc)}
-        onReplaceCard={() => this.onReplaceCard(dc)}
-        onUpdateVisualizationSettings={settings =>
-          this.props.onUpdateDashCardVisualizationSettings(dc.id, settings)
+        onRemove={this.onDashCardRemove}
+        onAddSeries={this.onDashCardAddSeries}
+        onReplaceCard={this.onReplaceCard}
+        onUpdateVisualizationSettings={
+          this.props.onUpdateDashCardVisualizationSettings
         }
-        onReplaceAllVisualizationSettings={settings =>
-          this.props.onReplaceAllDashCardVisualizationSettings(dc.id, settings)
+        onReplaceAllVisualizationSettings={
+          this.props.onReplaceAllDashCardVisualizationSettings
         }
         mode={this.props.mode}
+        getNewCardUrl={
+          this.props.navigateToNewCardFromDashboard
+            ? this.getNewCardUrl
+            : undefined
+        }
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
         onChangeLocation={this.props.onChangeLocation}
-        // TODO: get metadata in dashcard
-        metadata={this.props.metadata}
         dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
