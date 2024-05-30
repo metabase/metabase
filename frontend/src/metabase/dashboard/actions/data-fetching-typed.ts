@@ -8,7 +8,6 @@ import {
   getDashboardById,
   getDashCardById,
   getParameterValues,
-  getQuestions,
 } from "metabase/dashboard/selectors";
 import {
   expandInlineDashboard,
@@ -18,10 +17,8 @@ import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addFields, addParamValues } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
@@ -150,21 +147,12 @@ export const fetchDashboard = createAsyncThunk(
         await dispatch(addFields(result.param_fields));
       }
 
-      const metadata = getMetadata(getState());
-      const questions = getQuestions(getState());
-      const parameters = getDashboardUiParameters(
-        result.dashcards,
-        result.parameters,
-        metadata,
-        questions,
-      );
-
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(
-            parameters,
+            result.parameters ?? [],
             queryParams,
             lastUsedParametersValues,
           );
