@@ -10,10 +10,10 @@ import type { DashboardId } from "metabase-types/api";
 
 export const useRefreshDashboard = ({
   dashboardId,
-  queryParams,
+  parameterQueryParams,
 }: {
   dashboardId: DashboardId;
-  queryParams: Record<string, unknown>;
+  parameterQueryParams: Record<string, unknown>;
 }): {
   refreshDashboard: () => Promise<void>;
 } => {
@@ -24,7 +24,7 @@ export const useRefreshDashboard = ({
       await dispatch(
         fetchDashboard({
           dashId: dashboardId,
-          queryParams: queryParams,
+          queryParams: parameterQueryParams,
           options: { preserveParameters: true },
         }),
       );
@@ -37,7 +37,7 @@ export const useRefreshDashboard = ({
       );
       dispatch(fetchDashboardCardMetadata());
     }
-  }, [dashboardId, dispatch, queryParams]);
+  }, [dashboardId, dispatch, parameterQueryParams]);
 
   return { refreshDashboard };
 };

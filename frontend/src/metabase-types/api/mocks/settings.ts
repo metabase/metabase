@@ -226,6 +226,7 @@ export const createMockSettings = (
   "slack-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
+  "store-url": "https://store.staging.metabase.com",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
   "token-status": null,
