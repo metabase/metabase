@@ -18,13 +18,13 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
 import type {
-  Dashboard,
   DashCardId,
   Dataset,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
   DashboardCard,
+  DashboardId,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
@@ -42,7 +42,7 @@ import type {
 import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
-  dashboard: Dashboard;
+  dashboardId: DashboardId;
   dashcard: DashboardCard;
   series: Series;
   mode?: Mode;
@@ -89,7 +89,7 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  dashboard,
+  dashboardId,
   series,
   mode,
   getHref,
@@ -210,7 +210,7 @@ export function DashCardVisualization({
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
-        dashboardId={dashboard.id}
+        dashboardId={dashboardId}
         token={isEmbed ? String(dashcard.dashboard_id) : undefined}
       />
     );
@@ -223,7 +223,7 @@ export function DashCardVisualization({
     isPublic,
     isEditing,
     isXray,
-    dashboard.id,
+    dashboardId,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -238,7 +238,6 @@ export function DashCardVisualization({
       classNameWidgets={cx({
         [cx(CS.textLight, CS.textMediumHover)]: isEmbed,
       })}
-      dashboard={dashboard}
       dashcard={dashcard}
       rawSeries={series}
       metadata={metadata}

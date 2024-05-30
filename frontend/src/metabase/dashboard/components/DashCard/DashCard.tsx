@@ -325,7 +325,7 @@ function DashCardInner({
           />
         )}
         <DashCardVisualization
-          dashboard={dashboard}
+          dashboardId={dashboard.id}
           dashcard={dashcard}
           series={series}
           mode={mode}
