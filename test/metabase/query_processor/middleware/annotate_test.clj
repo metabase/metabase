@@ -467,7 +467,7 @@
                        :source         :aggregation
                        :field_ref      [:aggregation 0]}]}
               (add-column-info
-               (lib.tu.macros/mbql-query venues {:aggregation [[:metric "ga:totalEvents"]]})
+               (lib.tu.macros/mbql-query venues {:aggregation [[:metric 1]]})
                {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test-4
