@@ -809,7 +809,7 @@
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
-  (let [trash-operation-id      (random-uuid)
+  (let [trash-operation-id      (str (random-uuid))
         affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection
                                                                   :archived [:not= true]))]
