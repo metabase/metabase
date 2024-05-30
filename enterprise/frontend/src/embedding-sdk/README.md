@@ -22,7 +22,7 @@ Features planned:
 
 - You have an application using React 17 or higher
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
+- You have a running Metabase instance using a compatible version of the enterprise binary. The v1.50.0 release candidate is the only supported version at this time. We do not recommend running this in production.
 
 # Getting started
 
@@ -39,12 +39,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.5
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC1
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.5/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC1/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
