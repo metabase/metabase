@@ -16,6 +16,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  act,
   screen,
   renderWithProviders,
   waitForLoaderToBeRemoved,
@@ -127,7 +128,7 @@ describe("DashboardApp", () => {
     it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
       const { mockEventListener } = await setup();
 
-      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
       await userEvent.click(screen.getByTestId("dashboard-name-heading"));
       await userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
       // need to click away from the input to trigger the isDirty flag
@@ -142,7 +143,7 @@ describe("DashboardApp", () => {
     it("should not have a beforeunload event when the dashboard is unedited", async function () {
       const { mockEventListener } = await setup();
 
-      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -157,7 +158,7 @@ describe("DashboardApp", () => {
 
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       history.goBack();
 
@@ -169,8 +170,10 @@ describe("DashboardApp", () => {
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
       const { dashboardId, history } = await setup();
 
-      history.push("/");
-      history.push(`/dashboard/${dashboardId}`);
+      act(() => {
+        history.push("/");
+        history.push(`/dashboard/${dashboardId}`);
+      });
 
       await waitForLoaderToBeRemoved();
 
@@ -179,7 +182,9 @@ describe("DashboardApp", () => {
       await userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
       await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
@@ -187,7 +192,7 @@ describe("DashboardApp", () => {
     it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
       await setup();
 
-      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -199,7 +204,7 @@ describe("DashboardApp", () => {
     it("shows custom warning modal when leaving with unsaved changes via Cancel button", async () => {
       await setup();
 
-      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
       await userEvent.click(screen.getByTestId("dashboard-name-heading"));
       await userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
       await userEvent.tab(); // need to click away from the input to trigger the isDirty flag

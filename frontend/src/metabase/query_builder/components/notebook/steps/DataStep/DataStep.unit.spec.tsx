@@ -120,13 +120,13 @@ describe("DataStep", () => {
 
     const modal = await screen.findByTestId("entity-picker-modal");
     expect(
-      within(modal).getByText("Pick your starting data"),
+      await within(modal).findByText("Pick your starting data"),
     ).toBeInTheDocument();
 
     // Ensure the table picker not open
-    expect(within(modal).getByText("Orders")).toBeInTheDocument();
-    expect(within(modal).getByText("Products")).toBeInTheDocument();
-    expect(within(modal).getByText("People")).toBeInTheDocument();
+    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("People")).toBeInTheDocument();
   });
 
   it("should render with a selected table", async () => {
