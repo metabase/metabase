@@ -2,6 +2,7 @@ import type {
   BreakoutChartColumns,
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -30,6 +31,7 @@ const renderingContextMock: RenderingContext = {
   getColor: colorName => colorName,
   measureText: () => 0,
   fontFamily: "Lato",
+  theme: DEFAULT_VISUALIZATION_THEME,
 };
 
 describe("series", () => {

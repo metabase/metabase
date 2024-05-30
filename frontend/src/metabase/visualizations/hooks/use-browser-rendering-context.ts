@@ -21,7 +21,7 @@ export const useBrowserRenderingContext = (
   const theme = useMantineTheme();
 
   return useMemo(() => {
-    const style = getVisualizationStyleFromTheme(theme);
+    const style = getVisualizationStyleFromTheme(theme.other);
 
     return {
       getColor: name => color(name, palette),
