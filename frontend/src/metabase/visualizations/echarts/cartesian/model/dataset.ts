@@ -621,9 +621,11 @@ export const applyVisualizationSettingsDataTransformations = (
     isTimeSeriesAxis(xAxisModel) ||
     xAxisModel.isHistogram
   ) {
-    const filteredDataset = filterNullDimensionValues(dataset, showWarning);
-    if (filteredDataset.length > 0) {
-      dataset = filteredDataset;
+    dataset = filterNullDimensionValues(dataset, showWarning);
+    if (dataset.length === 0) {
+      throw new Error(
+        t`There is no data to display. Check the query to ensure there are non-null x-axis values.`,
+      );
     }
   }
 
