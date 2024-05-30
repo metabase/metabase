@@ -28,6 +28,7 @@ export const useRefreshDashboard = ({
           options: { preserveParameters: true },
         }),
       );
+      dispatch(fetchDashboardCardMetadata());
       dispatch(
         fetchDashboardCardData({
           isRefreshing: true,
@@ -35,7 +36,6 @@ export const useRefreshDashboard = ({
           clearCache: false,
         }),
       );
-      dispatch(fetchDashboardCardMetadata());
     }
   }, [dashboardId, dispatch, parameterQueryParams]);
 

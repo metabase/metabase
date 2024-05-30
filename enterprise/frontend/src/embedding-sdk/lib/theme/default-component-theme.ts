@@ -20,6 +20,15 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     idColumn: {
       textColor: "brand",
     },
+    cell: {
+      textColor: "text-dark",
+    },
+  },
+  pivotTable: {
+    rowToggle: {
+      textColor: "white",
+      backgroundColor: "text-light",
+    },
   },
   cartesian: {
     label: {
