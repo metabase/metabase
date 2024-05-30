@@ -135,12 +135,14 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
     }
 
     try {
+      const requests = [];
       if (this.props.dashboard?.tabs?.length === 0) {
-        await Promise.all([
+        requests.push(
           fetchDashboardCardData({ reload: false, clearCache: true }),
-          fetchDashboardCardMetadata(),
-        ]);
+        );
       }
+      requests.push(fetchDashboardCardMetadata());
+      await Promise.all(requests);
     } catch (error) {
       console.error(error);
       setErrorPage(error);
@@ -162,7 +164,6 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
 
     if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
       this.props.fetchDashboardCardData();
-      this.props.fetchDashboardCardMetadata();
       return;
     }
 
