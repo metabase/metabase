@@ -105,10 +105,10 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
 
     cy.findByTestId("TableInteractive-root").should("exist");
     combineColumns({
-      columns: ["Created At: Hour of day", "Count"],
-      newColumn: "Combined Created At: Hour of day, Count",
-      example: "2042-01-01 12:34:56.789 123",
-      newValue: "0 766",
+      columns: ["Created At: Hour of day", "Category"],
+      newColumn: "Combined Created At: Hour of day, Category",
+      example: "2042-01-01 12:34:56.789 text",
+      newValue: "0 Doohickey",
     });
   });
 });
