@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { act, screen } from "__support__/ui";
 
 import type { SetupOpts } from "./setup";
 import {
@@ -31,7 +31,9 @@ describe("[EE, with token] embedding settings", () => {
           await screen.findByRole("button", { name: "Manage" }),
         ).toBeDisabled();
 
-        history.push(staticEmbeddingSettingsUrl);
+        act(() => {
+          history.push(staticEmbeddingSettingsUrl);
+        });
 
         expect(history.getCurrentLocation().pathname).toEqual(
           embeddingSettingsUrl,
@@ -59,7 +61,9 @@ describe("[EE, with token] embedding settings", () => {
           await screen.findByRole("button", { name: "Configure" }),
         ).toBeDisabled();
 
-        history.push(interactiveEmbeddingSettingsUrl);
+        act(() => {
+          history.push(interactiveEmbeddingSettingsUrl);
+        });
 
         expect(history.getCurrentLocation().pathname).toEqual(
           embeddingSettingsUrl,
