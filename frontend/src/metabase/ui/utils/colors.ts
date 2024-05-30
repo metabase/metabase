@@ -22,6 +22,7 @@ const ORIGINAL_COLORS = [
 ];
 
 const CUSTOM_COLORS = [
+  "accent4",
   "accent5",
   "bg-black",
   "bg-dark",

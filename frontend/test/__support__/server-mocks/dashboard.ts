@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard, DashboardId, Database } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
@@ -8,6 +8,20 @@ export function setupDashboardEndpoints(dashboard: Dashboard) {
   fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async url => {
     const lastCall = fetchMock.lastCall(url);
     return createMockDashboard(await lastCall?.request?.json());
+  });
+}
+
+export function setupDashboardMetadataEndpoint(
+  dashboard: Dashboard,
+  databases: Database[],
+) {
+  const tables = databases.flatMap(database => database.tables ?? []);
+  const fields = tables.flatMap(table => table.fields ?? []);
+
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/query_metadata`, {
+    databases,
+    tables,
+    fields,
   });
 }
 
