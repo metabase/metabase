@@ -52,55 +52,43 @@ WHERE archived = true;
 
 -- Next: set `collection.trashed_directly`.
 
-WITH CollectionWithParentID AS (
+UPDATE collection AS child
+JOIN (
   SELECT
-  id,
-  archived,
-  CASE
+    id,
+    CASE
       WHEN location = '/' THEN NULL
-      ELSE RIGHT(TRIM(TRAILING '/' FROM location), POSITION('/' IN REVERSE(TRIM(TRAILING '/' FROM location))) - 1)::INTEGER
-  END AS parent_id
-  FROM
-  collection
+      ELSE SUBSTRING_INDEX(SUBSTRING_INDEX(location, '/', -2), '/', 1)
+    END AS parent_id
+    FROM collection
+) AS with_parent_id ON child.id = with_parent_id.id
+LEFT JOIN (
+  SELECT id, archived
+  FROM collection
+) AS parent ON with_parent_id.parent_id = parent.id
+SET trashed_directly = (
+  (with_parent_id.parent_id IS NULL OR NOT parent.archived)
 )
-
-UPDATE collection c
-SET trashed_directly = true
-FROM CollectionWithParentID cp
-WHERE c.id = cp.id
-AND cp.archived = true
-AND (
-  cp.parent_id IS NULL
-  OR NOT EXISTS (
-    SELECT 1
-    FROM CollectionWithParentID pp
-    WHERE pp.id = cp.parent_id
-    AND pp.archived = true
-  )
-);
+WHERE parent.archived;
 
 -- Set `collection.trash_operation_id` for collections that were trashed directly
 
 UPDATE collection
-SET trash_operation_id = LPAD(id::text, 36, '0')
+SET trash_operation_id = LPAD(CAST(id AS CHAR), 36, '0')
 WHERE archived AND trashed_directly;
 
 -- Set `collection.trash_operation_id` for descendants of collections that were trashed directly
 
-WITH CollectionWithAncestors AS (
+UPDATE collection AS descendants
+JOIN (
   SELECT
     id,
-    archived,
-    trash_operation_id,
+    location,
     trashed_directly,
-    (regexp_matches(location, '(\d+)/', 'g'))[array_length(regexp_matches(location, '(\d+)/', 'g'), 1)]::integer
-      AS ancestor_id
-  FROM
-  collection
-)
-UPDATE collection c
-SET trash_operation_id = ancestor.trash_operation_id
-FROM CollectionWithAncestors ca
-JOIN CollectionWithAncestors ancestor ON ancestor.id = ca.ancestor_id AND ancestor.trashed_directly = true
-WHERE ca.id = c.id
-AND ca.archived = true;
+    trash_operation_id
+  FROM collection
+  WHERE archived = true
+) AS ancestor ON descendants.location LIKE concat(ancestor.location, ancestor.id, '/%') AND ancestor.trashed_directly = true
+SET descendants.trash_operation_id = ancestor.trash_operation_id
+WHERE descendants.archived = true
+  AND descendants.trash_operation_id IS NULL;
