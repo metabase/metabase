@@ -1,4 +1,5 @@
 (ns metabase-enterprise.llm.api
+  "This feature is still in development."
   (:require
    [compojure.core :refer [GET POST]]
    [metabase-enterprise.llm.tasks.describe-dashboard :refer [describe-dashboard]]

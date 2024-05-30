@@ -24,6 +24,7 @@ import {
   getRowIndexToPKMap,
   getQueryBuilderMode,
   getUiControls,
+  getIsShowingRawTable,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -86,6 +87,7 @@ const mapStateToProps = state => ({
   rowIndexToPkMap: getRowIndexToPKMap(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
   scrollToLastColumn: getUiControls(state).scrollToLastColumn,
+  isRawTable: getIsShowingRawTable(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -751,7 +753,6 @@ class TableInteractive extends Component {
   // We should maybe rethink the approach to measurements or render a very basic table header, without react-draggable
   tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
-      card,
       data,
       isPivoted,
       hasMetadataPopovers,
@@ -771,15 +772,14 @@ class TableInteractive extends Component {
 
     const columnTitle = getColumnTitle(columnIndex);
     const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
-    const isDraggable = !isPivoted && !card.archived;
+    const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = Boolean(
       mode?.hasDrills &&
         query &&
         Lib.queryDisplayInfo(query, stageIndex).isEditable,
     );
-    const isSortable =
-      isClickable && column.source && !isPivoted && !card.archived;
+    const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
     const sortDirection = getColumnSortDirection(columnIndex);
@@ -1049,6 +1049,31 @@ class TableInteractive extends Component {
     document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
   };
 
+  _shouldShowShorcutButton() {
+    const { question, mode, isRawTable } = this.props;
+
+    if (!question || !mode?.clickActions) {
+      return false;
+    }
+
+    for (const action of mode.clickActions) {
+      const res = action({
+        question,
+        clicked: {
+          columnShortcuts: true,
+          extraData: {
+            isRawTable,
+          },
+        },
+      });
+      if (res?.length > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   render() {
     const {
       width,
@@ -1058,7 +1083,6 @@ class TableInteractive extends Component {
       scrollToColumn,
       scrollToLastColumn,
       theme,
-      question,
     } = this.props;
 
     if (!width || !height) {
@@ -1067,12 +1091,16 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-    const shortcutColumn = Number(!question?.isArchived());
-    const query = question?.query();
-    const info = query && Lib.queryDisplayInfo(query);
+    const shortcutColumn = this._shouldShowShorcutButton();
 
     const tableTheme = theme?.other?.table;
     const backgroundColor = tableTheme?.cell?.backgroundColor;
+
+    const totalWidth =
+      this.state.columnWidths?.reduce(
+        (sum, _c, index) => sum + this.getColumnWidth({ index }),
+        0,
+      ) + (gutterColumn ? SIDEBAR_WIDTH : 0);
 
     return (
       <DelayGroup>
@@ -1146,7 +1174,8 @@ class TableInteractive extends Component {
                 {shortcutColumn && (
                   <ColumnShortcut
                     height={headerHeight - 1}
-                    isEditable={info?.isEditable}
+                    pageWidth={width}
+                    totalWidth={totalWidth}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
@@ -1321,15 +1350,31 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
-function ColumnShortcut({ height, onClick, isEditable }) {
-  if (!isEditable) {
+const COLUMN_SHORTCUT_PADDING = 4;
+
+function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
+  if (!totalWidth) {
     return null;
   }
 
+  const isOverflowing = totalWidth > pageWidth;
+  const width = HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
+
   return (
-    <div className={TableS.shortcutsWrapper} style={{ height }}>
+    <div
+      className={cx(
+        TableS.shortcutsWrapper,
+        isOverflowing && TableS.isOverflowing,
+      )}
+      style={{
+        height,
+        width,
+        left: isOverflowing ? undefined : totalWidth,
+        right: isOverflowing ? 0 : undefined,
+      }}
+    >
       <UIButton
-        variant="filled"
+        variant="outline"
         compact
         leftIcon={<Icon name="add" />}
         title={t`Add column`}

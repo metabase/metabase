@@ -143,6 +143,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_filled_component from "./folder_filled.svg?component";
+import folder_filled_source from "./folder_filled.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -351,8 +353,6 @@ import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
-import trash_filled_component from "./trash_filled.svg?component";
-import trash_filled_source from "./trash_filled.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -678,6 +678,10 @@ export const Icons = {
   folder: {
     component: folder_component,
     source: folder_source,
+  },
+  folder_filled: {
+    component: folder_filled_component,
+    source: folder_filled_source,
   },
   gauge: {
     component: gauge_component,
@@ -1064,10 +1068,12 @@ export const Icons = {
     source: tab_source,
   },
   table: {
+    // for database tables
     component: table_component,
     source: table_source,
   },
   table2: {
+    // for questions with table visualizations
     component: table2_component,
     source: table2_source,
   },
@@ -1078,10 +1084,6 @@ export const Icons = {
   trash: {
     component: trash_component,
     source: trash_source,
-  },
-  trash_filled: {
-    component: trash_filled_component,
-    source: trash_filled_source,
   },
   triangle_left: {
     component: triangle_left_component,

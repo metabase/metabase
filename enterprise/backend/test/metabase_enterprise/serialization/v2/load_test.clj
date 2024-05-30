@@ -55,7 +55,7 @@
       (ts/with-dbs [source-db dest-db]
         (testing "extraction succeeds"
           (ts/with-db source-db
-            (ts/create! :model/Collection :name "Basic Collection" :entity_id eid1)
+            (ts/create! Collection :name "Basic Collection" :entity_id eid1)
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id eid1)))
@@ -64,8 +64,7 @@
         (testing "loading into an empty database succeeds"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            ;; the trash is serialized and loaded, so restrict to nil type
-            (let [colls (t2/select :model/Collection :type nil)]
+            (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
@@ -73,7 +72,7 @@
         (testing "loading again into the same database does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select :model/Collection :type nil)]
+            (let [colls (t2/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -108,7 +107,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (t2/count Collection :type nil)))
+              (is (= 4 (t2/count Collection)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))
@@ -1235,7 +1234,7 @@
             (is (thrown? clojure.lang.ExceptionInfo
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
             (is (= (str "qwe_" (:name coll))
-                   (t2/select-one-fn :name Collection :id (:id coll))))))))))
+                   (t2/select-one-fn :name Collection :id (:id card))))))))))
 
 (deftest circular-links-test
   (mt/with-empty-h2-app-db

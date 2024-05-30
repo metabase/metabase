@@ -14,17 +14,17 @@ Delete the publicly-accessible link to this Dashboard.
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
 ## `DELETE /api/dashboard/:id`
 
-Delete a Dashboard.
+Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/dashboard/`
 
@@ -38,7 +38,7 @@ This endpoint is currently unused by the Metabase frontend and may be out of dat
 
 ### PARAMS:
 
-*  **`f`** nullable enum of all, mine, archived
+-  **`f`** nullable enum of all, mine, archived.
 
 ## `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute`
 
@@ -46,11 +46,11 @@ Fetches the values for filling in execution parameters. Pass PK parameters and v
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`parameters`** value must be a valid JSON string.
+-  **`parameters`** value must be a valid JSON string.
 
 ## `GET /api/dashboard/:id`
 
@@ -58,7 +58,7 @@ Get Dashboard with ID.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/dashboard/:id/params/:param-key/search/:query`
 
@@ -73,13 +73,13 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`param-key`** 
+-  **`param-key`** 
 
-*  **`query`** value must be a non-blank string.
+-  **`query`** value must be a non-blank string.
 
-*  **`constraint-param-key->value`**
+-  **`constraint-param-key->value`**
 
 ## `GET /api/dashboard/:id/params/:param-key/values`
 
@@ -91,11 +91,11 @@ Fetch possible values of the parameter whose ID is `:param-key`. If the values c
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`param-key`** 
+-  **`param-key`** 
 
-*  **`constraint-param-key->value`**
+-  **`constraint-param-key->value`**
 
 ## `GET /api/dashboard/:id/related`
 
@@ -103,7 +103,7 @@ Return related entities.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/dashboard/:id/revisions`
 
@@ -111,7 +111,7 @@ Fetch `Revisions` for Dashboard with ID.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/dashboard/embeddable`
 
@@ -143,9 +143,9 @@ Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field I
 
 ### PARAMS:
 
-*  **`filtered`** vector of value must be an integer greater than zero.
+-  **`filtered`** vector of value must be an integer greater than zero.
 
-*  **`filtering`** nullable vector of value must be an integer greater than zero.
+-  **`filtering`** nullable vector of value must be an integer greater than zero.
 
 ## `GET /api/dashboard/public`
 
@@ -158,19 +158,19 @@ Create a new Dashboard.
 
 ### PARAMS:
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`parameters`** nullable sequence of parameter must be a map with :id and :type keys
+-  **`parameters`** nullable sequence of parameter must be a map with :id and :type keys.
 
-*  **`cache_ttl`** nullable value must be an integer greater than zero.
+-  **`cache_ttl`** nullable value must be an integer greater than zero.
 
-*  **`collection_id`** nullable value must be an integer greater than zero.
+-  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`collection_position`** nullable value must be an integer greater than zero.
+-  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`_dashboard`**
+-  **`_dashboard`**
 
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
 
@@ -178,13 +178,13 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** value must be an integer greater than zero.
+-  **`card-id`** value must be an integer greater than zero.
 
-*  **`parameters`** nullable sequence of value must be a parameter map with an id key
+-  **`parameters`** nullable sequence of value must be a parameter map with an id key.
 
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format`
 
@@ -196,17 +196,19 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** value must be an integer greater than zero.
+-  **`card-id`** value must be an integer greater than zero.
 
-*  **`export-format`** enum of csv, api, xlsx, json
+-  **`export-format`** enum of csv, api, xlsx, json.
 
-*  **`parameters`** nullable value must be a valid JSON string.
+-  **`parameters`** nullable value must be a valid JSON string.
 
-*  **`request-parameters`**
+-  **`format_rows`** nullable boolean.
+
+-  **`request-parameters`**
 
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute`
 
@@ -217,13 +219,13 @@ Execute the associated Action in the context of a `Dashboard` and `DashboardCard
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`parameters`** nullable map from <keyword> to <anything>
+-  **`parameters`** nullable map from <string> to <anything>.
 
-*  **`_body`**
+-  **`_body`**
 
 ## `POST /api/dashboard/:dashboard-id/public_link`
 
@@ -235,7 +237,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
 ## `POST /api/dashboard/:from-dashboard-id/copy`
 
@@ -243,19 +245,19 @@ Copy a Dashboard.
 
 ### PARAMS:
 
-*  **`from-dashboard-id`** nullable value must be an integer greater than zero.
+-  **`from-dashboard-id`** nullable value must be an integer greater than zero.
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`collection_id`** nullable value must be an integer greater than zero.
+-  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`collection_position`** nullable value must be an integer greater than zero.
+-  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`is_deep_copy`** nullable boolean
+-  **`is_deep_copy`** nullable boolean.
 
-*  **`_dashboard`**
+-  **`_dashboard`**
 
 ## `POST /api/dashboard/:id/revert`
 
@@ -263,9 +265,9 @@ Revert a Dashboard to a prior `Revision`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`revision_id`** value must be an integer greater than zero.
+-  **`revision_id`** value must be an integer greater than zero.
 
 ## `POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
 
@@ -273,13 +275,13 @@ Run a pivot table query for a specific DashCard.
 
 ### PARAMS:
 
-*  **`dashboard-id`** value must be an integer greater than zero.
+-  **`dashboard-id`** value must be an integer greater than zero.
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** value must be an integer greater than zero.
+-  **`card-id`** value must be an integer greater than zero.
 
-*  **`parameters`** nullable sequence of value must be a parameter map with an id key
+-  **`parameters`** nullable sequence of value must be a parameter map with an id key.
 
 ## `POST /api/dashboard/save`
 
@@ -287,7 +289,7 @@ Save a denormalized description of dashboard.
 
 ### PARAMS:
 
-*  **`dashboard`**
+-  **`dashboard`**
 
 ## `POST /api/dashboard/save/collection/:parent-collection-id`
 
@@ -295,9 +297,9 @@ Save a denormalized description of dashboard into collection with ID `:parent-co
 
 ### PARAMS:
 
-*  **`parent-collection-id`** value must be an integer greater than zero.
+-  **`parent-collection-id`** value must be an integer greater than zero.
 
-*  **`dashboard`**
+-  **`dashboard`**
 
 ## `PUT /api/dashboard/:id`
 
@@ -306,41 +308,41 @@ Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. Th
 
 ### PARAMS:
 
-*  **`parameters`** nullable sequence of parameter must be a map with :id and :type keys
+-  **`parameters`** nullable sequence of parameter must be a map with :id and :type keys.
 
-*  **`points_of_interest`** nullable string
+-  **`points_of_interest`** nullable string.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`dashcards`** nullable value must be seq of maps in which ids are unique
+-  **`dashcards`** nullable value must be seq of maps in which ids are unique.
 
-*  **`collection_position`** nullable value must be an integer greater than zero.
+-  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`tabs`** nullable value must be seq of maps in which ids are unique
+-  **`tabs`** nullable value must be seq of maps in which ids are unique.
 
-*  **`show_in_getting_started`** nullable boolean
+-  **`show_in_getting_started`** nullable boolean.
 
-*  **`enable_embedding`** nullable boolean
+-  **`enable_embedding`** nullable boolean.
 
-*  **`collection_id`** nullable value must be an integer greater than zero.
+-  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`dash-updates`** 
+-  **`dash-updates`** 
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`width`** nullable enum of fixed, full
+-  **`width`** nullable enum of fixed, full.
 
-*  **`caveats`** nullable string
+-  **`caveats`** nullable string.
 
-*  **`embedding_params`** nullable value must be a valid embedding params map.
+-  **`embedding_params`** nullable value must be a valid embedding params map.
 
-*  **`cache_ttl`** nullable value must be an integer greater than zero.
+-  **`cache_ttl`** nullable value must be an integer greater than zero.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`position`** nullable value must be an integer greater than zero.
+-  **`position`** nullable value must be an integer greater than zero.
 
 ## `PUT /api/dashboard/:id/cards`
 
@@ -361,11 +363,11 @@ Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. Th
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`cards`** value must be seq of maps in which ids are unique
+-  **`cards`** value must be seq of maps in which ids are unique.
 
-*  **`tabs`** nullable value must be seq of maps in which ids are unique
+-  **`tabs`** nullable value must be seq of maps in which ids are unique.
 
 ---
 

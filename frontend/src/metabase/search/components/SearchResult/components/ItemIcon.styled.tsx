@@ -3,12 +3,14 @@ import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
 import type { SearchModel } from "metabase-types/api";
 
-function getColorForIconWrapper(
-  active: boolean,
-  archived: boolean,
-  type: SearchModel,
-) {
-  if (!active || archived) {
+function getColorForIconWrapper({
+  active,
+  type,
+}: {
+  active: boolean;
+  type: SearchModel;
+}) {
+  if (!active) {
     return color("text-medium");
   }
   if (type === "collection") {
@@ -19,7 +21,6 @@ function getColorForIconWrapper(
 
 export const IconWrapper = styled.div<{
   active: boolean;
-  archived: boolean;
   type: SearchModel;
 }>`
   border: ${({ theme }) => `1px solid ${theme.fn.themeColor("border")}`};
@@ -29,8 +30,7 @@ export const IconWrapper = styled.div<{
   justify-content: center;
   width: 32px;
   height: 32px;
-  color: ${({ active, archived, type }) =>
-    getColorForIconWrapper(active, archived, type)};
+  color: ${({ active, type }) => getColorForIconWrapper({ active, type })};
   flex-shrink: 0;
   background: ${color("white")};
 `;

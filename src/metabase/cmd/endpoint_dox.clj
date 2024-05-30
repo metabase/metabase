@@ -29,13 +29,34 @@
 
 (def initialisms
   "Used to format initialisms/acronyms in generated docs."
-  '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON" "API" "LLM"])
+  '["SSO" "SAML" "GTAP" "LDAP" "SQL" "JSON" "API" "LLM" "SCIM"])
 
 (defn capitalize-initialisms
   "Converts initialisms to upper case."
   [name initialisms]
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
     (str/replace name re u/upper-case-en)))
+
+(defn- handle-nonstandard-namespaces
+  "Some namespaces are not named in a way that is easy to read. This function
+  handles those edge cases."
+  [name]
+  (-> name
+      (str/replace #"(.api.|-)" " ")
+      (str/replace ".api" "") ; account for `serialization.api` namespace
+      (str/replace "Llm" "LLM Auto-description")
+      (capitalize-initialisms initialisms)
+      (str/replace "SSO SSO" "SSO")))
+
+(defn- exclude-from-docs?
+  "Should we exclude the endpoint from the docs?"
+ [endpoint]
+  (let [ep-name (:ns-name endpoint)
+        eps-to-exclude #{
+                         "Cloud migration"
+                         "Routes" ; api/routes
+                         }]
+    (contains? eps-to-exclude ep-name)))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
@@ -47,10 +68,7 @@
       handle-enterprise-ns
       last
       u/capitalize-first-char
-      (str/replace #"(.api.|-)" " ")
-      (str/replace ".api" "") ; account for `serialization.api` namespace
-      (capitalize-initialisms initialisms)
-      (str/replace "SSO SSO" "SSO")))
+      handle-nonstandard-namespaces))
 
 (defn- handle-quotes
   "Used for formatting YAML string punctuation for frontmatter descriptions."
@@ -119,9 +137,8 @@
          :ns-name (endpoint-ns-name endpoint)))
 
 (def api-ns
-  "Regular expression to match endpoints. Needs to match namespaces like:
-   - metabase.api.search
-   - metabase-enterprise.serialization.api
+  "Regular expression to match endpoints. Needs to match namespaces like  - metabase.api.search
+  - metabase-enterprise.serialization.api
    - metabase.api.api-key"
   (re-pattern "^metabase(?:-enterprise\\.[\\w-]+)?\\.api(?:\\.[\\w-]+)?$"))
 
@@ -204,6 +221,7 @@
   []
   (->> (collect-endpoints)
        (map process-endpoint)
+       (remove exclude-from-docs?)
        (group-by :ns-name)
        (into (sorted-map-by (fn [a b] (compare
                                        (u/lower-case-en a)

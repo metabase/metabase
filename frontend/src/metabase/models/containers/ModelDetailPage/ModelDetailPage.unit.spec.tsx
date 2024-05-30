@@ -341,17 +341,16 @@ describe("ModelDetailPage", () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(await screen.findByText("Move to trash"));
+        await userEvent.click(await screen.findByText("Archive"));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        await userEvent.click(
-          screen.getByRole("button", { name: "Move to trash" }),
-        );
+        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
         await waitFor(() => {
           expect(modelUpdateSpy).toHaveBeenCalledWith(
             { id: model.id() },
             { archived: true },
+            expect.anything(),
           );
         });
       });

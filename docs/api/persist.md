@@ -18,7 +18,7 @@ Fetch a particular [[PersistedInfo]] by id.
 
 ### PARAMS:
 
-*  **`persisted-info-id`** nullable value must be an integer greater than zero.
+-  **`persisted-info-id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/persist/card/:card-id`
 
@@ -26,7 +26,7 @@ Fetch a particular [[PersistedInfo]] by card-id.
 
 ### PARAMS:
 
-*  **`card-id`** nullable value must be an integer greater than zero.
+-  **`card-id`** nullable value must be an integer greater than zero.
 
 ## `POST /api/persist/disable`
 
@@ -44,9 +44,9 @@ Set the cron schedule to refresh persisted models.
 
 ### PARAMS:
 
-*  **`cron`** Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>
+-  **`cron`** Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>.
 
-*  **`_body`**
+-  **`_body`**
 
 ---
 

@@ -4,6 +4,7 @@ import _ from "underscore";
 import {
   fetchDashboard,
   fetchDashboardCardData,
+  fetchDashboardCardMetadata,
 } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
@@ -152,6 +153,7 @@ export const updateDashboardAndCards = createThunkAction(
           clearCache: false,
         }),
       );
+      dispatch(fetchDashboardCardMetadata());
     };
   },
 );

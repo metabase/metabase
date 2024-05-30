@@ -195,6 +195,7 @@ export const DashboardControls = ComposedComponent =>
             reload: true,
             clearCache: false,
           });
+          this.props.fetchDashboardCardMetadata();
         }
         this.setRefreshElapsed(this._refreshElapsed);
       };

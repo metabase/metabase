@@ -7,7 +7,6 @@ import type {
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
   CollectionId,
-  DeleteCollectionRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -88,15 +87,6 @@ export const collectionApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
-    deleteCollection: builder.mutation<void, DeleteCollectionRequest>({
-      query: ({ id, ...body }) => ({
-        method: "DELETE",
-        url: `/api/collection/${id}`,
-        body,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
-    }),
   }),
 });
 
@@ -107,5 +97,4 @@ export const {
   useGetCollectionQuery,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
-  useDeleteCollectionMutation,
 } = collectionApi;

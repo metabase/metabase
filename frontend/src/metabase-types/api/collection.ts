@@ -13,18 +13,13 @@ import type { UserId } from "./user";
 
 export type RegularCollectionId = number;
 
-export type CollectionId =
-  | RegularCollectionId
-  | "root"
-  | "personal"
-  | "users"
-  | "trash";
+export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
 
 export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | "trash" | null;
+export type CollectionType = "instance-analytics" | null;
 
 export type LastEditInfo = {
   email: string;
@@ -57,11 +52,10 @@ export interface Collection {
   entity_id?: string;
   description: string | null;
   can_write: boolean;
-  can_restore: boolean;
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
-  type?: "instance-analytics" | "trash" | null;
+  type?: "instance-analytics" | null;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -96,7 +90,6 @@ export interface CollectionItem {
   model: CollectionItemModel;
   name: string;
   description: string | null;
-  archived: boolean;
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean | null;
@@ -112,7 +105,6 @@ export interface CollectionItem {
   here?: CollectionItemModel[];
   below?: CollectionItemModel[];
   can_write?: boolean;
-  can_restore?: boolean;
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
@@ -177,8 +169,4 @@ export interface ListCollectionsTreeRequest {
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
-}
-
-export interface DeleteCollectionRequest {
-  id: RegularCollectionId;
 }

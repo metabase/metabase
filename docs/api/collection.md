@@ -14,6 +14,14 @@ summary: |
   `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
   endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 
+## `DELETE /api/collection/:id`
+
+Delete a collection entirely.
+
+### PARAMS:
+
+-  **`id`** value must be an integer greater than zero.
+
 ## `GET /api/collection/`
 
 Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -29,13 +37,13 @@ Fetch a list of all Collections that the current user has read permissions for (
 
 ### PARAMS:
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`exclude-other-user-collections`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`exclude-other-user-collections`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
-*  **`personal-only`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`personal-only`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/collection/:id`
 
@@ -43,7 +51,7 @@ Fetch a specific Collection with standard details added.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/collection/:id/items`
 
@@ -57,17 +65,17 @@ Fetch a specific Collection's items with the following options:
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`models`** nullable sequence of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card, or enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card
+-  **`models`** nullable vector of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card.
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all
+-  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all.
 
-*  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at
+-  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at.
 
-*  **`sort_direction`** nullable enum of desc, asc
+-  **`sort_direction`** nullable enum of desc, asc.
 
 ## `GET /api/collection/:id/timelines`
 
@@ -75,11 +83,11 @@ Fetch a specific Collection's timelines.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`include`** nullable must equal events
+-  **`include`** nullable must equal events.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
 ## `GET /api/collection/graph`
 
@@ -89,7 +97,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/root`
 
@@ -97,7 +105,7 @@ Return the 'Root' Collection object with standard details added.
 
 ### PARAMS:
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/root/items`
 
@@ -117,17 +125,17 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** nullable sequence of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card, or enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card
+-  **`models`** nullable vector of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card.
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
-*  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all
+-  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all.
 
-*  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at
+-  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at.
 
-*  **`sort_direction`** nullable enum of desc, asc
+-  **`sort_direction`** nullable enum of desc, asc.
 
 ## `GET /api/collection/root/timelines`
 
@@ -135,9 +143,13 @@ Fetch the root Collection's timelines.
 
 ### PARAMS:
 
-*  **`include`** nullable must equal events
+-  **`include`** nullable must equal events.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
+
+## `GET /api/collection/trash`
+
+Fetch the trash collection, as in `/api/collection/:trash-id`.
 
 ## `GET /api/collection/tree`
 
@@ -162,17 +174,20 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below).
 
+  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
+  some point in the future.
+
 ### PARAMS:
 
-*  **`exclude-archived`** nullable boolean
+-  **`exclude-archived`** nullable boolean.
 
-*  **`exclude-other-user-collections`** nullable boolean
+-  **`exclude-other-user-collections`** nullable boolean.
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
-*  **`shallow`** nullable boolean
+-  **`shallow`** nullable boolean.
 
-*  **`collection-id`** nullable value must be an integer greater than zero.
+-  **`collection-id`** nullable value must be an integer greater than zero.
 
 ## `POST /api/collection/`
 
@@ -180,15 +195,15 @@ Create a new Collection.
 
 ### PARAMS:
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`description`** nullable value must be a non-blank string.
+-  **`description`** nullable value must be a non-blank string.
 
-*  **`parent_id`** nullable value must be an integer greater than zero.
+-  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
-*  **`authority_level`** nullable enum of official
+-  **`authority_level`** nullable enum of official.
 
 ## `PUT /api/collection/:id`
 
@@ -196,19 +211,19 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`description`** nullable value must be a non-blank string.
+-  **`description`** nullable value must be a non-blank string.
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`parent_id`** nullable value must be an integer greater than zero.
+-  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`authority_level`** nullable enum of official
+-  **`authority_level`** nullable enum of official.
 
-*  **`collection-updates`**
+-  **`collection-updates`**
 
 ## `PUT /api/collection/graph`
 
@@ -219,9 +234,9 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`namespace`** nullable value must be a non-blank string.
+-  **`namespace`** nullable value must be a non-blank string.
 
-*  **`body`** map
+-  **`body`** map.
 
 ---
 

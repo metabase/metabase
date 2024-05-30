@@ -223,8 +223,8 @@ export const QuestionActions = ({
 
   if (canWrite) {
     extraButtons.push({
-      title: t`Move to trash`,
-      icon: "trash",
+      title: t`Archive`,
+      icon: "archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });
@@ -263,15 +263,13 @@ export const QuestionActions = ({
   return (
     <>
       <QuestionActionsDivider />
-      {!question.isArchived() && (
-        <ViewHeaderIconButtonContainer>
-          <BookmarkToggle
-            onCreateBookmark={handleBookmark}
-            onDeleteBookmark={handleBookmark}
-            isBookmarked={isBookmarked}
-          />
-        </ViewHeaderIconButtonContainer>
-      )}
+      <ViewHeaderIconButtonContainer>
+        <BookmarkToggle
+          onCreateBookmark={handleBookmark}
+          onDeleteBookmark={handleBookmark}
+          isBookmarked={isBookmarked}
+        />
+      </ViewHeaderIconButtonContainer>
       <Tooltip tooltip={t`More info`}>
         <ViewHeaderIconButtonContainer>
           <Button
@@ -326,12 +324,12 @@ export const QuestionActions = ({
           </Tooltip>
         </>
       )}
-      {extraButtons.length > 0 && !question.isArchived() && (
+      {extraButtons.length > 0 && (
         <EntityMenu
-          triggerAriaLabel={t`Move, trash, and more...`}
+          triggerAriaLabel={t`Move, archive, and more...`}
           items={extraButtons}
           triggerIcon="ellipsis"
-          tooltip={t`Move, trash, and more...`}
+          tooltip={t`Move, archive, and more...`}
         />
       )}
     </>

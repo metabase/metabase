@@ -111,6 +111,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
       initialize,
       fetchDashboard,
       fetchDashboardCardData,
+      fetchDashboardCardMetadata,
       setErrorPage,
       location,
       params: { uuid, token },

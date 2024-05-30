@@ -221,7 +221,7 @@ export const useCommandPalette = ({
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
       filterRecentItems(recentItems ?? []).map(item => ({
-        id: `recent-item-${getName(item)}`,
+        id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
         name: getName(item),
         icon: getIcon(item).name,
         section: "recent",
