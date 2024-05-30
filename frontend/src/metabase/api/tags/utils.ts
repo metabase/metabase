@@ -34,6 +34,8 @@ import type {
   UserInfo,
   DashboardMetadata,
   CardMetadata,
+  CardId,
+  DashboardId,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -136,9 +138,11 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
 }
 
 export function provideCardMetadataTags(
+  id: CardId,
   metadata: CardMetadata,
 ): TagDescription<TagType>[] {
   return [
+    idTag("card", id),
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
@@ -238,9 +242,11 @@ export function provideDashboardTags(
 }
 
 export function provideDashboardMetadataTags(
+  id: DashboardId,
   metadata: DashboardMetadata,
 ): TagDescription<TagType>[] {
   return [
+    idTag("dashboard", id),
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
