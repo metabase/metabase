@@ -416,9 +416,10 @@
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
-  [{:keys [fields] :as metadata-response}]
+  [{:keys [fields] :as metadata-response} {:keys [trust-semantic-keys?]}]
   (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
-                                     (if (and (or (isa? semantic_type :type/PK)
+                                     (if (and (not trust-semantic-keys?)
+                                              (or (isa? semantic_type :type/PK)
                                                   (isa? semantic_type :type/FK))
                                               ;; if they have a user entered id let it stay
                                               (or (nil? id)
@@ -432,7 +433,7 @@
   {id ms/PositiveInt}
   (let [{:keys [database_id] :as card} (api/check-404
                                         (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id]
+                                                        :collection_id :database_id :type]
                                                        :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
@@ -442,14 +443,18 @@
                                                                         [:= :most_recent true]]
                                                              :order-by [[:id :desc]]
                                                              :limit    1}
-                                                            :id id)
+                                             :id id)
                                            first :status)
-        db (t2/select-one Database :id database_id)]
+        db (t2/select-one Database :id database_id)
+        ;; a native model can have columns with keys as semantic types on if a user specified it
+        trust-semantic-keys? (and (= (:type card) :model)
+                                     (= (-> card :dataset_query :type) :native))]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options db)
-        remove-nested-pk-fk-semantic-types)))
+        (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
+
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
