@@ -1,5 +1,7 @@
 import Color from "color";
 
+import type { ColorGetter } from "metabase/visualizations/types";
+
 import type { ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
@@ -146,15 +148,18 @@ export const getFocusColor = (
 // https://www.notion.so/Maz-notes-on-viz-settings-67aed0e4ddcc4d4a83028992c4301820?d=513f4f7fa9c143cb874c7e4525dfb1e9#277d6b3eeb464eac86088abd144fde9e
 const whiteTextColorPriorityFactor = 3;
 
-export const getTextColorForBackground = (backgroundColor: string) => {
+export const getTextColorForBackground = (
+  backgroundColor: string,
+  getColor: ColorGetter = color,
+) => {
   const whiteTextContrast =
-    Color(color(backgroundColor)).contrast(Color(color("white"))) *
+    Color(getColor(backgroundColor)).contrast(Color(getColor("white"))) *
     whiteTextColorPriorityFactor;
-  const darkTextContrast = Color(color(backgroundColor)).contrast(
-    Color(color("text-dark")),
+  const darkTextContrast = Color(getColor(backgroundColor)).contrast(
+    Color(getColor("text-dark")),
   );
 
   return whiteTextContrast > darkTextContrast
-    ? color("white")
-    : color("text-dark");
+    ? getColor("white")
+    : getColor("text-dark");
 };
