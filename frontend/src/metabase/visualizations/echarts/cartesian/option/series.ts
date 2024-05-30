@@ -49,6 +49,9 @@ import {
 
 import { getSeriesYAxisIndex } from "./utils";
 
+const CARTESIAN_LABEL_DENSITY_SCALE_FACTOR = 1.2;
+const WATERFALL_LABEL_DENSITY_SCALE_FACTOR = 0.6;
+
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
   hasMultipleSeries: boolean,
@@ -136,7 +139,10 @@ function getShowLabelFn(
     return () => true;
   }
 
-  const scaleFactor = type === "cartesian" ? 1 : 0.6;
+  const scaleFactor =
+    type === "cartesian"
+      ? CARTESIAN_LABEL_DENSITY_SCALE_FACTOR
+      : WATERFALL_LABEL_DENSITY_SCALE_FACTOR;
   const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
@@ -558,7 +564,7 @@ function getShowStackedLabelFn(
     return () => true;
   }
 
-  const scaleFactor = 1;
+  const scaleFactor = CARTESIAN_LABEL_DENSITY_SCALE_FACTOR;
   const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
   if (totalNumberOfLabels <= maxNumberOfLabels) {
     return () => true;
