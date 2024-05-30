@@ -4490,6 +4490,9 @@
 (deftest dependent-metadata-test
   (mt/with-temp
     [Dashboard           {dashboard-id :id}  {}
+     Dashboard           {link-dash :id}     {}
+     Card                {link-card :id}     {:dataset_query (mt/mbql-query reviews)
+                                              :database_id (mt/id)}
      Card                {card-id-1 :id}     {:dataset_query (mt/mbql-query products)
                                               :database_id (mt/id)}
      Card                {card-id-2 :id}     {:dataset_query
@@ -4524,9 +4527,15 @@
                                               :query_type :native
                                               :database_id (mt/id)}
      DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
-                                              :card_id card-id-1}
+                                              :card_id card-id-1
+                                              :visualization_settings {:click_behavior {:type :link
+                                                                                        :linkType "dashboard"
+                                                                                        :targetId link-dash}}}
      DashboardCard       _                   {:dashboard_id dashboard-id,
-                                              :card_id card-id-2}
+                                              :card_id card-id-2
+                                              :visualization_settings {:click_behavior {:type :link
+                                                                                        :linkType "question"
+                                                                                        :targetId link-card}}}
      Card                {series-id-1 :id}   {:name "Series Card 1"
                                               :dataset_query (mt/mbql-query checkins)
                                               :database_id (mt/id)}
@@ -4548,12 +4557,15 @@
            :tables (sort-by :id [{:id (mt/id :categories)}
                                  {:id (mt/id :users)}
                                  {:id (mt/id :checkins)}
+                                 {:id (mt/id :reviews)}
                                  {:id (mt/id :products)
                                   :fields sequential?
                                   :db map?
                                   :dimension_options map?}
                                  {:id (mt/id :venues)}])
-           :databases [{:id (mt/id) :engine string?}]}
+           :cards [{:id link-card}]
+           :databases [{:id (mt/id) :engine string?}]
+           :dashboards [{:id link-dash}]}
           (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
               ;; The output is so large, these help debugging
               #_#_#_
