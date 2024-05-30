@@ -135,14 +135,10 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
     }
 
     try {
-      const requests = [];
+      await fetchDashboardCardMetadata();
       if (this.props.dashboard?.tabs?.length === 0) {
-        requests.push(
-          fetchDashboardCardData({ reload: false, clearCache: true }),
-        );
+        await fetchDashboardCardData({ reload: false, clearCache: true });
       }
-      requests.push(fetchDashboardCardMetadata());
-      await Promise.all(requests);
     } catch (error) {
       console.error(error);
       setErrorPage(error);

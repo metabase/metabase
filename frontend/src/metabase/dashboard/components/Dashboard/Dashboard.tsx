@@ -326,8 +326,8 @@ function DashboardInner(props: DashboardProps) {
     );
 
     if (hasDashboardLoaded) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
       fetchDashboardCardMetadata();
+      fetchDashboardCardData({ reload: false, clearCache: true });
     } else if (hasTabChanged || hasParameterValueChanged) {
       fetchDashboardCardData();
     }
