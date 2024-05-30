@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 
+import { delay } from "__support__/utils";
 import { AdHocQuestionLoader } from "metabase/containers/AdHocQuestionLoader";
-import { delay } from "metabase/lib/promise";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
@@ -22,7 +22,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ databaseId: 1, tableId: 2 });
     const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)[1];
 
-    await render(
+    render(
       <AdHocQuestionLoader
         questionHash={questionHash}
         loadMetadataForCard={loadMetadataSpy}

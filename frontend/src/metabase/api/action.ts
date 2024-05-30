@@ -1,6 +1,5 @@
 import type { GetActionRequest, WritebackAction } from "metabase-types/api";
 
-//
 import { Api } from "./api";
 import { idTag } from "./tags";
 
