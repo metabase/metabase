@@ -42,16 +42,14 @@
   "Schema for a valid `Field` visibility type."
   (into [:enum] (map name field/visibility-types)))
 
-(api/defendpoint GET "/:id"
+(defn get-field
   "Get `Field` with ID."
-  [id include_editable_data_model]
-  {id                          ms/PositiveInt
-   include_editable_data_model ms/BooleanValue}
-  (let [field                       (-> (api/check-404 (t2/select-one Field :id id))
-                                        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
-        field                       (if include_editable_data_model
-                                      (field/hydrate-target-with-write-perms field)
-                                      (t2/hydrate field :target))]
+  [id {:keys [include-editable-data-model?]}]
+  (let [field (-> (api/check-404 (t2/select-one Field :id id))
+                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field (if include-editable-data-model?
+                (field/hydrate-target-with-write-perms field)
+                (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -60,11 +58,18 @@
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
-    (if include_editable_data_model
+    (if include-editable-data-model?
       (api/write-check Table (:table_id field))
       (api/check-403 (mi/can-read? field)))
     ;; ...but if we do, return the Field <3
     field))
+
+(api/defendpoint GET "/:id"
+  "Get `Field` with ID."
+  [id include_editable_data_model]
+  {id                          ms/PositiveInt
+   include_editable_data_model ms/BooleanValue}
+  (get-field id {:include-editable-data-model? include_editable_data_model}))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import { type MouseEvent, useState, Fragment } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
@@ -103,7 +103,7 @@ type DashboardHeaderProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;

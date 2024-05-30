@@ -1,26 +1,37 @@
-/* eslint "react/prop-types": 2 */
-
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CollapseSection from "metabase/components/CollapseSection";
 import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
-import ParametersList from "metabase/parameters/components/ParametersList";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
 import {
   getDefaultValuePopulatedParameters,
   PULSE_PARAM_USE_DEFAULT,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type {
+  Dashboard,
+  Parameter,
+  ParameterId,
+  Pulse,
+} from "metabase-types/api";
 
-function MutableParametersSection({
+type MutableParametersSectionProps = {
+  className?: string;
+  parameters: Parameter[];
+  dashboard: Dashboard;
+  pulse: Pulse;
+  setPulseParameters: (parameters: Parameter[]) => void;
+};
+
+export const MutableParametersSection = ({
   className,
   parameters,
   dashboard,
   pulse,
   setPulseParameters,
-}) {
+}: MutableParametersSectionProps) => {
   const pulseParameters = getPulseParameters(pulse);
   const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
@@ -32,7 +43,7 @@ function MutableParametersSection({
     pulseParamValuesById,
   );
 
-  const setParameterValue = (id, value) => {
+  const setParameterValue = (id: ParameterId, value: any) => {
     const parameter = parameters.find(parameter => parameter.id === id);
     const filteredParameters = pulseParameters.filter(
       parameter => parameter.id !== id,
@@ -64,14 +75,4 @@ function MutableParametersSection({
       />
     </CollapseSection>
   );
-}
-
-MutableParametersSection.propTypes = {
-  className: PropTypes.string,
-  parameters: PropTypes.array.isRequired,
-  dashboard: PropTypes.object.isRequired,
-  pulse: PropTypes.object.isRequired,
-  setPulseParameters: PropTypes.func.isRequired,
 };
-
-export default MutableParametersSection;
