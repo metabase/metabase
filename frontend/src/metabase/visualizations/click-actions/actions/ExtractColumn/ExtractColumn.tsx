@@ -13,7 +13,7 @@ import type { ClickActionPopoverProps } from "metabase/visualizations/types/clic
 import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
-  const { query, stageIndex } = Lib.asReturned(question.query(), -1);
+  const { query, stageIndex } = appendStageIfAggregated(question.query(), -1);
 
   const { isEditable } = Lib.queryDisplayInfo(query);
 
@@ -80,3 +80,14 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     },
   ];
 };
+
+export function appendStageIfAggregated(query: Lib.Query, stageIndex: number) {
+  const ret = Lib.asReturned(query, stageIndex);
+
+  const aggregations = Lib.aggregations(ret.query, ret.stageIndex);
+  const breakouts = Lib.breakouts(ret.query, ret.stageIndex);
+
+  return aggregations.length > 0 || breakouts.length > 0
+    ? { query: Lib.appendStage(ret.query), stageIndex: ret.stageIndex + 1 }
+    : ret;
+}
