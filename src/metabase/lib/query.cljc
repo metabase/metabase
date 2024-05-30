@@ -283,3 +283,47 @@
   [a-query :- ::lib.schema/query
    metric-id :- [:or ::lib.schema.id/legacy-metric :string]]
   (occurs-in-stage-clause? a-query :aggregation #(occurs-in-expression? % :metric metric-id)))
+
+(def ^:private clause-types-order
+  ;; When previewing some clause type `:x`, we drop the prefix of this list up to but excluding `:x`.
+  ;; So if previewing `:aggregation`, we drop `:limit` and `:order-by`;
+  ;; if previewing `:filters` we drop `:limit`, `:order-by`, `:aggregation` and `:breakout`.
+  ;; (In practice `:breakout` is never previewed separately, but the order is important to get the behavior above.
+  ;; There are tests for this.)
+  [:limit :order-by :aggregation :breakout :filters :expressions :joins :data])
+
+(defn- preview-stage [stage clause-type clause-index]
+  (let [to-drop (take-while #(not= % clause-type) clause-types-order)]
+    (cond-> (reduce dissoc stage to-drop)
+      clause-index (update clause-type #(vec (take (inc clause-index) %))))))
+
+(mu/defn preview-query :- [:maybe ::lib.schema/query]
+  "*Truncates* a query for use in the Notebook editor's \"preview\" system.
+
+  Takes `query` and `stage-index` as usual.
+
+  - Stages later than `stage-index` are dropped.
+  - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
+  - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
+    `[0, clause-index]` are kept. (To keep no clauses, specify the earlier `clause-type`.)
+
+  The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
+
+  - `:data` - just the source data for the stage
+  - `:joins`
+  - `:expressions`
+  - `:filters`
+  - `:breakout`
+  - `:aggregation`
+  - `:order-by`
+  - `:limit`"
+  [a-query      :- ::lib.schema/query
+   stage-number :- :int
+   clause-type  :- [:enum :data :joins :expressions :filters :aggregation :breakout :order-by :limit]
+   clause-index :- [:maybe :int]]
+  (when (native? a-query)
+    (throw (ex-info "preview-query cannot be called on native queries" {:query a-query})))
+  (let [stage-number (lib.util/canonical-stage-index a-query stage-number)]
+    (-> a-query
+        (update :stages #(vec (take (inc stage-number) %)))
+        (update-in [:stages stage-number] preview-stage clause-type clause-index))))
