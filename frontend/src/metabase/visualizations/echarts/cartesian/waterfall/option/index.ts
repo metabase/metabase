@@ -116,10 +116,9 @@ export const buildEChartsWaterfallSeries = (
     formatter:
       labelFormatter &&
       getDataLabelFormatter(
-        seriesModel,
+        WATERFALL_VALUE_KEY,
         chartModel.yAxisScaleTransforms,
         labelFormatter,
-        WATERFALL_VALUE_KEY,
       ),
   });
 

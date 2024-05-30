@@ -24,6 +24,7 @@ export const CHART_STYLE = {
     size: 12,
     offset: 4,
     zIndex: 10,
+    stackedPadding: 2,
   },
   axisName: {
     size: 12,
