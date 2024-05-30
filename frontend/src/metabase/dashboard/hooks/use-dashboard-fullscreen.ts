@@ -3,8 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { DashboardFullscreenControls } from "../types";
 
-export const useDashboardFullscreen = (): DashboardFullscreenControls => {
-  const { toggle, fullscreen } = useFullscreen();
+export const useDashboardFullscreen = (): DashboardFullscreenControls & {
+  ref: (element: HTMLElement | null) => void;
+} => {
+  const { ref, toggle, fullscreen } = useFullscreen();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -28,5 +30,5 @@ export const useDashboardFullscreen = (): DashboardFullscreenControls => {
     [isFullscreen, toggle],
   );
 
-  return { isFullscreen, onFullscreenChange };
+  return { ref, isFullscreen, onFullscreenChange };
 };
