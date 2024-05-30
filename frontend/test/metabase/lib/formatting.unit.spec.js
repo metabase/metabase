@@ -255,7 +255,7 @@ describe("formatting", () => {
         }),
       ).toEqual("122.41940000° W");
     });
-    it("should return the a component for external links in jsx + rich mode", () => {
+    it("should return the component for external links in jsx + rich mode", () => {
       expect(
         isElementOfType(
           formatValue("http://metabase.com/", { jsx: true, rich: true }),
