@@ -106,9 +106,10 @@ export interface MetabaseComponentTheme {
     };
   };
 
-  chart?: {
+  /** Cartesian charts */
+  cartesian?: {
     label?: {
-      /** Font size used in charts. */
+      /** Labels used in cartesian charts, such as axis ticks and series. */
       fontSize?: string;
     };
   };

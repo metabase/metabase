@@ -8,7 +8,7 @@ import type { VisualizationStyle } from "metabase/visualizations/types";
 export function getVisualizationStyleFromTheme(
   theme: MantineTheme,
 ): VisualizationStyle {
-  const chartTheme = theme.other.chart;
+  const chartTheme = theme.other.cartesian;
   const labelTheme = chartTheme?.label;
 
   const style: VisualizationStyle = { label: {} };

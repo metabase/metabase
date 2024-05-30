@@ -21,7 +21,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       textColor: "brand",
     },
   },
-  chart: {
+  cartesian: {
     label: {
       fontSize: "12px",
     },
@@ -45,7 +45,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
         fontSize: "0.893em",
       },
     },
-    chart: {
+    cartesian: {
       label: {
         fontSize: "0.857em",
       },
