@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { darken } from "metabase/lib/colors";
@@ -32,12 +32,12 @@ export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
   }
 `;
 
-export const tooltipSeparator = css`
-  border-top: 1px solid ${() => darken("bg-dark", 0.55)};
+export const getTooltipSeparatorStyle = (theme: Theme) => css`
+  border-top: 1px solid ${darken(theme.fn.themeColor("bg-dark"), 0.55)};
 `;
 
 export const DataPointTableBody = styled.tbody`
-  ${tooltipSeparator}
+  ${({ theme }) => getTooltipSeparatorStyle(theme)}
 
   &:before {
     ${tableRowSpacingStyle}
