@@ -73,6 +73,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
