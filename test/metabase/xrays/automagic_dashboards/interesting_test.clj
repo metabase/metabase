@@ -8,7 +8,6 @@
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
-   [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
 ;;; ------------------- `->reference` -------------------

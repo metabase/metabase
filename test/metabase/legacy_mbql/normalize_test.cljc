@@ -662,10 +662,6 @@
     {{:query {:aggregation [:count [:field-id 1000]]}}
      {:query {:aggregation [[:count [:field 1000 nil]]]}}}
 
-    "ags in the canonicalized format should pass thru ok"
-    {{:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}
-     {:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}}
-
     ":rows aggregation type, being deprecated since FOREVER, should just get removed"
     {{:query {:aggregation [:rows]}}
      {:query {:aggregation []}}
