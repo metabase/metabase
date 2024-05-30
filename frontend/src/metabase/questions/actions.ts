@@ -13,6 +13,11 @@ export interface LoadMetadataOptions {
 
 export const loadMetadataForCard =
   (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    if (!card.id) {
+      await dispatch(loadMetadataForCards([card], options));
+      return;
+    }
+
     try {
       await dispatch(Questions.actions.fetchMetadata({ id: card.id }, options));
     } catch (error) {
@@ -30,7 +35,6 @@ export const loadMetadataForTable =
     }
   };
 
-// this function should be removed when x-ray dashboards get their own metadata endpoint
 export const loadMetadataForCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
