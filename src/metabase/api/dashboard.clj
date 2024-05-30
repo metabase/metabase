@@ -847,9 +847,12 @@
   [dashboard]
   (let [dashcards (:dashcards dashboard)
         links (group-by :type (set (for [dashcard dashcards
-                                         :let [{:keys [linkType type targetId]} (get-in dashcard [:visualization_settings :click_behavior])]
+                                         :let [top-click-behavior (get-in dashcard [:visualization_settings :click_behavior])
+                                               col-click-behaviors (keep (comp :click_behavior val)
+                                                                         (get-in dashcard [:visualization_settings :column_settings]))]
+                                         {:keys [linkType type targetId]} (conj col-click-behaviors top-click-behavior)
                                          :when (and (= type "link")
-                                                 (contains? #{"question" "dashboard"} linkType))]
+                                                    (contains? #{"question" "dashboard"} linkType))]
                                      {:type (case linkType
                                               "question" :card
                                               "dashboard" :dashboard)
@@ -884,11 +887,11 @@
                   (sort-by (comp str :id))
                   (into []
                         (keep #(fetch-or-warn
-                                %
-                                (fn [card-or-table-id]
-                                  (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
-                                    (api.table/fetch-card-query-metadata card-id)
-                                    (api.table/fetch-table-query-metadata card-or-table-id {})))))))
+                                 %
+                                 (fn [card-or-table-id]
+                                   (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
+                                     (api.table/fetch-card-query-metadata card-id)
+                                     (api.table/fetch-table-query-metadata card-or-table-id {})))))))
      :databases (->> (:database dependents)
                      (sort-by :id)
                      (into []

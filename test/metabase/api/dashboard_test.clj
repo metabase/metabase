@@ -4528,9 +4528,11 @@
                                               :database_id (mt/id)}
      DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
                                               :card_id card-id-1
-                                              :visualization_settings {:click_behavior {:type :link
-                                                                                        :linkType "dashboard"
-                                                                                        :targetId link-dash}}}
+                                              :visualization_settings {:column_settings
+                                                                       {"[\"name\", 0]" ;; FE reference that must be json formatted
+                                                                        {:click_behavior {:type :link
+                                                                                          :linkType "dashboard"
+                                                                                          :targetId link-dash}}}}}
      DashboardCard       _                   {:dashboard_id dashboard-id,
                                               :card_id card-id-2
                                               :visualization_settings {:click_behavior {:type :link
