@@ -25,7 +25,13 @@ import {
 } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
-import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import {
+  DashboardSchema,
+  DatabaseSchema,
+  FieldSchema,
+  QuestionSchema,
+  TableSchema,
+} from "metabase/schema";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 const FETCH_METADATA = "metabase/entities/dashboards/FETCH_METADATA";
@@ -173,6 +179,8 @@ const Dashboards = createEntity({
         databases: [DatabaseSchema],
         tables: [TableSchema],
         fields: [FieldSchema],
+        cards: [QuestionSchema],
+        dashboards: [DashboardSchema],
       }),
     )(
       ({ id }) =>
