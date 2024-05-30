@@ -5,3 +5,4 @@ export { StaticQuestion } from "./StaticQuestion";
 export { InteractiveQuestion } from "./InteractiveQuestion";
 export { MetabaseProvider } from "./MetabaseProvider";
 export { StaticDashboard } from "./StaticDashboard";
+export {CollectionBrowser} from "./CollectionBrowser";

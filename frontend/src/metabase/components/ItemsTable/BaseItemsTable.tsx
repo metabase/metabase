@@ -16,6 +16,7 @@ import type {
 import { isTrashedCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
+import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -206,36 +207,54 @@ export const BaseItemsTable = ({
       )}
       <TBody>
         {items.map((item: CollectionItem) => {
+          console.log(item);
           const isSelected = getIsSelected(item);
 
           const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
           const key = `${item.model}-${item.id}`;
           return (
-            <ItemDragSource
-              item={item}
-              collection={collection}
-              isSelected={isSelected}
-              selected={selectedItems}
-              onDrop={onDrop}
-              key={`item-drag-source-${key}`}
-            >
-              <tr data-testid={testIdPrefix} style={{ height: 48 }}>
-                <ItemComponent
-                  testIdPrefix={testIdPrefix}
-                  item={item}
-                  isSelected={isSelected}
-                  databases={databases}
-                  bookmarks={bookmarks}
-                  createBookmark={createBookmark}
-                  deleteBookmark={deleteBookmark}
-                  collection={collection}
-                  isPinned={isPinned}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                  onToggleSelected={onToggleSelected}
-                />
-              </tr>
-            </ItemDragSource>
+            <tr key={`${testIdPrefix}-${key}`}>
+              <ItemComponent
+                testIdPrefix={testIdPrefix}
+                item={item}
+                isSelected={isSelected}
+                databases={databases}
+                bookmarks={bookmarks}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
+                collection={collection}
+                isPinned={isPinned}
+                onCopy={onCopy}
+                onMove={onMove}
+                onToggleSelected={onToggleSelected}
+              />
+            </tr>
+
+            // <ItemDragSource
+            //   item={item}
+            //   collection={collection}
+            //   isSelected={isSelected}
+            //   selected={selectedItems}
+            //   onDrop={onDrop}
+            //   key={`item-drag-source-${key}`}
+            // >
+            //   <tr data-testid={testIdPrefix} style={{ height: 48 }}>
+            //     <ItemComponent
+            //       testIdPrefix={testIdPrefix}
+            //       item={item}
+            //       isSelected={isSelected}
+            //       databases={databases}
+            //       bookmarks={bookmarks}
+            //       createBookmark={createBookmark}
+            //       deleteBookmark={deleteBookmark}
+            //       collection={collection}
+            //       isPinned={isPinned}
+            //       onCopy={onCopy}
+            //       onMove={onMove}
+            //       onToggleSelected={onToggleSelected}
+            //     />
+            //   </tr>
+            // </ItemDragSource>
           );
         })}
       </TBody>
@@ -269,6 +288,7 @@ const DefaultItemRenderer = ({
   bookmarks,
   testIdPrefix = "item",
 }: ItemRendererProps) => {
+  console.log("Rendering DefaultItemRenderer");
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
 

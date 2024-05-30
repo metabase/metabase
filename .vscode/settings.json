@@ -5,6 +5,8 @@
   "gulp.autoDetect": "off",
   "npm.autoDetect": "off",
   "eslint.options": {
+
     "rulePaths": ["frontend/lint/eslint-rules/"]
-  }
+  },
+  "eslint.format.enable": true
 }
