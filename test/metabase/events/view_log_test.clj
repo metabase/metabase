@@ -36,7 +36,7 @@
              (latest-view (u/id user) (u/id card))))))))
 
 (deftest card-read-oss-no-view-logging-test
-  (mt/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{}
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
