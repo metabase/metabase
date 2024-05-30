@@ -1,3 +1,5 @@
+import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
@@ -9,11 +11,18 @@ export interface LoadMetadataOptions {
   reload?: boolean;
 }
 
-export const loadMetadataForCard = (
-  card: Card,
-  options?: LoadMetadataOptions,
-) => loadMetadataForCards([card], options);
+export const loadMetadataForCard =
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    await dispatch(Questions.actions.fetchMetadata({ id: card.id }, options));
+  };
 
+export const loadMetadataForTable =
+  (tableId: TableId, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    await dispatch(Tables.actions.fetchMetadata({ id: tableId }, options));
+  };
+
+// this function should be removed when x-ray dashboards get their own metadata endpoint
 export const loadMetadataForCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
@@ -32,27 +41,6 @@ export const loadMetadataForCards =
         );
     };
     await dispatch(loadMetadata(getDependencies, [], options));
-  };
-
-export const loadMetadataForTable =
-  (tableId: TableId, options?: LoadMetadataOptions) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const dependencies: Lib.DependentItem[] = [{ type: "table", id: tableId }];
-    await dispatch(loadMetadataForDependentItems(dependencies));
-    const metadata = getMetadata(getState());
-    const table = metadata.table(tableId);
-    if (!table?.db_id) {
-      return;
-    }
-
-    const getDependencies = () => {
-      const metadataProvider = Lib.metadataProvider(
-        table.db_id,
-        getMetadata(getState()),
-      );
-      return Lib.tableOrCardDependentMetadata(metadataProvider, tableId);
-    };
-    await dispatch(loadMetadata(getDependencies, dependencies, options));
   };
 
 const loadMetadata =

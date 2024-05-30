@@ -83,7 +83,7 @@ const Questions = createEntity({
         fields: [FieldSchema],
       }),
     )(
-      ({ id }) =>
+      ({ id } = {}) =>
         dispatch =>
           entityCompatibleQuery(
             id,
