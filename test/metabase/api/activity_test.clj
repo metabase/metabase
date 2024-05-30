@@ -133,7 +133,14 @@
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
                       {:model "card" :id (u/the-id card1) :name "rand-name"}
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                     (map #(select-keys % [:model :id :name]) recent-views))))))
+                     (map #(select-keys % [:model :id :name]) recent-views))))
+            (let [recent-views-2 (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+              (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
+                      {:model "table" :id (u/the-id table1) :name "rand-name"}
+                      {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
+                      {:model "card" :id (u/the-id card1) :name "rand-name"}
+                      {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
+                     (map #(select-keys % [:model :id :name]) recent-views-2))))))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})

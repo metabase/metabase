@@ -112,11 +112,20 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(api/defendpoint GET "/recent_views"
+(api/defendpoint ^:deprecated GET "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
   {:recent_views (recent-views/get-list *current-user-id*)})
+
+(api/defendpoint GET "/recents"
+  "Get a list of recent items the current user has been viewing most recently.
+  Allows for filtering by context, either view or selection"
+  [:as {{:keys [context]} :params}]
+  {context [:maybe [:enum :views :selections :all]]}
+  (when (#{:selection nil :all} context)
+    (throw (ex-info "selections are not implemented " {})))
+  (when (= :views context) {:recent_views (recent-views/get-list *current-user-id*)}))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
