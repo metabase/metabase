@@ -132,7 +132,8 @@
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
-    :description      nil}
+    :description      nil
+    :type             "question"}
    kvs))
 
 (defn- ok-mbql-card []
@@ -1632,7 +1633,8 @@
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
-                   :description      nil}]
+                   :description      nil
+                   :type             "question"}]
                  (mt/user-http-request :lucky :get 200
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
@@ -1656,7 +1658,8 @@
                             :display_name     "Card 2"
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
-                            :description      nil}))))
+                            :description      nil
+                            :type             "question"}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
@@ -1682,7 +1685,8 @@
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
-                   :description      nil}]
+                   :description      nil
+                   :type             "model"}]
                  (mt/user-http-request :lucky :get 200
                                        (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
@@ -1705,7 +1709,8 @@
                             :display_name     "Card 2"
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
-                            :description      nil}))))
+                            :description      nil
+                            :type             "model"}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
