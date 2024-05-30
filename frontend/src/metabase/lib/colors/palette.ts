@@ -139,6 +139,18 @@ export const isDark = (c: string) => {
   return Color(color(c)).isDark();
 };
 
+/**
+ * Lighten or darken the color, based on whether it's dark or light.
+ * Can be used for deriving hover or highlight colors.
+ **/
+export const adjustBrightness = (
+  c: string,
+  lightenBy?: number,
+  darkenBy?: number,
+) => {
+  return isDark(c) ? lighten(c, lightenBy) : darken(c, darkenBy);
+};
+
 export const getFocusColor = (
   colorName: string,
   palette: ColorPalette = colors,

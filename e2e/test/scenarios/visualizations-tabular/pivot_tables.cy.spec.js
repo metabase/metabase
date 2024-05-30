@@ -71,12 +71,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     createTestQuestion();
 
     // Switch to "ordinary" table
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-    cy.icon("table").should("be.visible").click();
+    cy.findByTestId("view-footer").findByText("Visualization").click();
+    sidebar().icon("table2").should("be.visible").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`Started from ${QUESTION_NAME}`);
+    cy.findByTestId("app-bar").within(() => {
+      cy.findByText("Started from");
+      cy.findByText(QUESTION_NAME);
+    });
 
     cy.log("Assertions on a table itself");
     cy.findByTestId("query-visualization-root").within(() => {

@@ -6,3 +6,4 @@ export * from "./use-dashboard-refresh-period";
 export * from "./use-embed-theme";
 export * from "./use-dashboard-url-params";
 export * from "./use-refresh-dashboard";
+export * from "./use-location-sync";

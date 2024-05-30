@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -77,6 +78,7 @@ class Visualization extends PureComponent {
     hovered: null,
     clicked: null,
     error: null,
+    genericError: null,
     warnings: [],
     yAxisSplit: null,
     series: null,
@@ -152,6 +154,7 @@ class Visualization extends PureComponent {
     this.setState({
       hovered: null,
       error: null,
+      genericError: null,
       warnings: [],
       yAxisSplit: null,
       series: series,
@@ -301,17 +304,33 @@ class Visualization extends PureComponent {
 
   // Add the underlying card of current series to onChangeCardAndRun if available
   handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
-    const { rawSeries } = this.props;
+    this.props.onChangeCardAndRun({
+      nextCard,
+      previousCard: this.getPreviousCard(nextCard),
+      objectId,
+    });
+  };
 
+  getHref = () => {
+    if (!this.props.getHref) {
+      return undefined;
+    }
+
+    const nextCard = this.state.series[0].card;
+
+    return this.props.getHref({
+      nextCard,
+      previousCard: this.getPreviousCard(nextCard),
+    });
+  };
+
+  getPreviousCard = nextCard => {
+    const { rawSeries } = this.props;
     const previousCard =
       rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
       rawSeries[0].card;
 
-    this.props.onChangeCardAndRun({
-      nextCard,
-      previousCard,
-      objectId,
-    });
+    return previousCard;
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -321,6 +340,10 @@ class Visualization extends PureComponent {
   onRenderError = error => {
     console.error(error);
     this.setState({ error });
+  };
+
+  onErrorBoundaryError = genericError => {
+    this.setState({ genericError });
   };
 
   hideActions = () => {
@@ -349,7 +372,7 @@ class Visualization extends PureComponent {
       onOpenChartSettings,
       onUpdateVisualizationSettings,
     } = this.props;
-    const { visualization } = this.state;
+    const { genericError, visualization } = this.state;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
@@ -409,7 +432,7 @@ class Visualization extends PureComponent {
       }
     }
 
-    if (!error) {
+    if (!error && !genericError) {
       noResults = _.every(
         series,
         s => s && s.data && datasetContainsNoResults(s.data),
@@ -466,8 +489,10 @@ class Visualization extends PureComponent {
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
+    const href = this.getHref();
+
     return (
-      <ErrorBoundary>
+      <ErrorBoundary onError={this.onErrorBoundaryError}>
         <VisualizationRoot
           className={className}
           style={style}
@@ -481,6 +506,7 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
+                href={href}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun
@@ -500,6 +526,8 @@ class Visualization extends PureComponent {
               isSmall={small}
               isDashboard={isDashboard}
             />
+          ) : genericError ? (
+            <SmallGenericError bordered={false} />
           ) : loading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
@@ -531,6 +559,7 @@ class Visualization extends PureComponent {
                 onRender={this.onRender}
                 onActionDismissal={this.hideActions}
                 gridSize={gridSize}
+                href={href}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun
                     ? this.handleOnChangeCardAndRun

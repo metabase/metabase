@@ -16,8 +16,9 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+
+import { SyncedParametersList } from "../../../parameters/components/ParametersList";
 
 interface DashboardParameterListProps {
   isFullscreen: boolean;

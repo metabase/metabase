@@ -11,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
+import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame/SyncedEmbedFrame";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
@@ -29,8 +30,6 @@ import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/v1/queries/utils/card";
-
-import EmbedFrame from "../../components/EmbedFrame";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
@@ -209,7 +208,7 @@ class PublicQuestionInner extends Component {
     );
 
     return (
-      <EmbedFrame
+      <SyncedEmbedFrame
         name={card && card.name}
         description={card && card.description}
         actionButtons={actionButtons}
@@ -249,7 +248,7 @@ class PublicQuestionInner extends Component {
             />
           )}
         </LoadingAndErrorWrapper>
-      </EmbedFrame>
+      </SyncedEmbedFrame>
     );
   }
 }

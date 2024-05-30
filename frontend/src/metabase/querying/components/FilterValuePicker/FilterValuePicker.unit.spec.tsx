@@ -525,7 +525,9 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "a@b.com");
+      const input = screen.getByLabelText("Filter value");
+      await userEvent.type(input, "a@b.com");
+      input.blur();
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 

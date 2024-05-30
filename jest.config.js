@@ -13,6 +13,8 @@ const config = {
       "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+    "csv-parse/browser/esm/sync":
+      "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
   },
   transformIgnorePatterns: [
     "<rootDir>/node_modules/(?!(screenfull|echarts|zrender|rehype-external-links|hast.*|devlop|property-information|comma-separated-tokens|space-separated-tokens|vfile|vfile-message|html-void-elements|stringify-entities|character-entities-html4)/)",

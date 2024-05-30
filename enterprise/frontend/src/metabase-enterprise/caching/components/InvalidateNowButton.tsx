@@ -32,7 +32,7 @@ export const InvalidateNowButton = ({
         { include: "overrides", [targetModel]: targetId },
         { hasBody: false },
       );
-      await resolveSmoothly(invalidate);
+      await resolveSmoothly([invalidate]);
     } catch (e) {
       if (isErrorWithMessage(e)) {
         dispatch(
@@ -40,7 +40,7 @@ export const InvalidateNowButton = ({
             icon: "warning",
             message: e.data.message,
             toastColor: "error",
-            dismissIconColor: "white",
+            dismissIconColor: color("white"),
           }),
         );
       }
@@ -64,11 +64,9 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
   const confirmInvalidation = useCallback(
     () =>
       askConfirmation({
-        title: t`Invalidate all cached results for ${
-          targetName || t`this object`
-        }?`,
+        title: t`Clear all cached results for ${targetName || t`this object`}?`,
         message: "",
-        confirmButtonText: t`Invalidate`,
+        confirmButtonText: t`Clear cache`,
         onConfirm: submitForm,
       }),
     [askConfirmation, targetName, submitForm],
@@ -100,7 +98,7 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           successLabel={
             <Group spacing="sm">
               <IconInButton name="check" color={color("success")} />
-              <Text>{t`Done`}</Text>
+              <Text>{t`Cache cleared`}</Text>
             </Group>
           }
           failedLabel={

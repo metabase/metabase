@@ -22,7 +22,7 @@ interface ListValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate: (query: string) => boolean;
+  shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
   compact?: boolean;
   onChange: (newValues: string[]) => void;
