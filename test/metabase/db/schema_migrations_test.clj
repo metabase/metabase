@@ -14,6 +14,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
@@ -2063,7 +2064,7 @@
         (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
 
 (deftest trash-migrations-test
-  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-23T18:44:37"] [migrate!]
+  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-29T18:42:25"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
                                                       {:name     "Silly Collection"
@@ -2075,14 +2076,75 @@
                                                        :archived true
                                                        :location (collection/children-location (t2/select-one :model/Collection :id collection-id))})]
         (migrate!)
+        (is (:trashed_directly (t2/select-one :model/Collection :id collection-id)))
+        (is (not (:trashed_directly (t2/select-one :model/Collection :id subcollection-id))))
+        (is (= (:trash_operation_id (t2/select-one :model/Collection :id collection-id))
+               (:trash_operation_id (t2/select-one :model/Collection :id subcollection-id))))
         (let [trash-collection-id (collection/trash-collection-id)]
-          (testing "After a down-migration, it stays in the trash"
+          (testing "After a down-migration, the trash is removed entirely."
             (migrate! :down 49)
-            (is (= (str "/" trash-collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
-          (testing "but it's not really the trash anymore"
-            (is (nil? (:type (t2/select-one :model/Collection :id trash-collection-id)))))
+            (is (nil? (t2/select-one :model/Collection :name "Trash")))
+            (is (= "/" (t2/select-one-fn :location :model/Collection :id collection-id)))
+            (is (= (str "/" collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
           (testing "we can migrate back up"
             (migrate!)
+            (is (:trashed_directly (t2/select-one :model/Collection :id collection-id)))
+            (is (not (:trashed_directly (t2/select-one :model/Collection :id subcollection-id))))
             (is (not= trash-collection-id (t2/select-one-pk :model/Collection :type "trash")))
-            (is (= (str "/" (t2/select-one-pk :model/Collection :type "trash") "/")
+            (is (= (str "/" collection-id "/")
                    (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
+
+(deftest trash-migrations-make-trash-operation-ids-correctly
+  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-29T18:42:25"] [migrate!]
+    (with-redefs [collection/is-trash? (constantly false)]
+      (let [relevant-collection-ids (atom #{})
+            parent-id (fn [id]
+                        (:parent_id (t2/hydrate (t2/select-one :model/Collection :id id) :parent_id)))
+            make-collection! (fn [{:keys [archived? in]}]
+                               (let [result (t2/insert-returning-pk!
+                                             (t2/table-name :model/Collection) {:archived archived?
+                                                                                :name (str (gensym))
+                                                                                :slug (#'collection/slugify (str (gensym)))
+                                                                                :location (if in
+                                                                                            (collection/children-location (t2/select-one :model/Collection :id in))
+                                                                                            "/")})]
+                                 (swap! relevant-collection-ids conj result)
+                                 result))
+            a (make-collection! {:archived? true})
+            b (make-collection! {:archived? false :in a})
+            c (make-collection! {:archived? true :in b})
+            d (make-collection! {:archived? true :in c})
+            e (make-collection! {:archived? true :in d})
+            f (make-collection! {:archived? true :in e})
+            g (make-collection! {:archived? true :in e})
+            h (make-collection! {:archived? false :in g})
+            i (make-collection! {:archived? true :in h})]
+        (migrate!)
+        (let [trash-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :trash_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
+          (is (= 4 (count trash-operation-id->collection-ids)))
+          (testing "Each contiguous subtree has its own trash_operation_id"
+            (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
+                     #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
+                     #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
+                     #{b h}} ;; => not archived at all, `trash_operation_id` is nil
+                   (set (vals trash-operation-id->collection-ids))))))
+        ;; We can roll back. Nothing got moved around.
+        (migrate! :down 49)
+        (is (= nil (parent-id a)))
+        (is (= a (parent-id b)))
+        (is (= b (parent-id c)))
+        (is (= c (parent-id d)))
+        (is (= d (parent-id e)))
+        (is (= e (parent-id f)))
+        (is (= e (parent-id g)))
+        (is (= g (parent-id h)))
+        (is (= h (parent-id i)))
+        (migrate!)
+        (let [trash-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :trash_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
+          (is (= 4 (count trash-operation-id->collection-ids)))
+          (testing "Run the same test as above just to make sure that it survives the round trip"
+            (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
+                     #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
+                     #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
+                     #{b h}} ;; => not archived at all, `trash_operation_id` is nil
+                   (set (vals trash-operation-id->collection-ids))))))))))

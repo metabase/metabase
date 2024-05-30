@@ -7876,13 +7876,7 @@ databaseChangeLog:
               WHERE permissions.object IN (
                 SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
               );
-              UPDATE collection
-              SET
-                entity_id = NULL,
-                archived = true,
-                name = 'Trash (Auto-Generated)',
-                type = NULL
-              WHERE type = 'trash';
+              DELETE FROM collection WHERE type = 'trash';
 
   - changeSet:
       id: v50.2024-05-14T12:42:44
@@ -7900,7 +7894,12 @@ databaseChangeLog:
                   location = CONCAT('/', c2.id, '/')
               FROM (SELECT id FROM collection WHERE type = 'trash') AS c2
               WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback: # not needed. See above: `Trash` becomes a normal collection
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET location = trashed_from_location
+              WHERE collection.archived = true and collection.namespace IS NULL AND trashed_from_location IS NOT NULL;
 
   - changeSet:
       id: v50.2024-05-14T12:42:46
@@ -7917,7 +7916,12 @@ databaseChangeLog:
               SET trashed_from_location = c1.location,
                   location = CONCAT('/', (SELECT id FROM collection WHERE type = 'trash'), '/')
               WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback: # Not needed.
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET location = trashed_from_location
+              WHERE collection.archived = true and collection.namespace IS NULL AND trashed_from_location IS NOT NULL;
 
   - changeSet:
       id: v50.2024-05-14T12:42:48
@@ -7937,7 +7941,12 @@ databaseChangeLog:
               SET c1.trashed_from_location = c1.location,
                   c1.location = CONCAT('/', c2.id, '/')
               WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback: # Not needed
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET location = trashed_from_location
+              WHERE collection.archived = true and collection.namespace IS NULL AND trashed_from_location IS NOT NULL;
 
   - changeSet:
       id: v50.2024-05-14T12:42:50
@@ -8106,7 +8115,7 @@ databaseChangeLog:
       rollback:
         - sqlFile:
             dbms: postgresql
-            path: trash/rollback.sql
+            path: trash/postgres-rollback.sql
             relativeToChangelogFile: true
 
   - changeSet:
@@ -8136,7 +8145,7 @@ databaseChangeLog:
       rollback:
         - sqlFile:
             dbms: mysql,mariadb
-            path: trash/rollback.sql
+            path: trash/mysql-rollback.sql
             relativeToChangelogFile: true
 
   - changeSet:
