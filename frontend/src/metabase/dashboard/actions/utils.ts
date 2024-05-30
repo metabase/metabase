@@ -52,22 +52,10 @@ export function haveDashboardCardsChanged(
   newCards: QuestionDashboardCard[],
   oldCards: QuestionDashboardCard[],
 ) {
-  const newCardsWithMatchingOldCard = new Set();
-
   return (
-    !newCards.every(newCard => {
-      const hasMatch = oldCards.some(oldCard => _.isEqual(oldCard, newCard));
-      if (hasMatch) {
-        newCardsWithMatchingOldCard.add(newCard);
-      }
-      return hasMatch;
-    }) ||
-    !oldCards.every(oldCard =>
-      newCards.some(
-        newCard =>
-          newCardsWithMatchingOldCard.has(newCard) ||
-          _.isEqual(oldCard, newCard),
-      ),
+    newCards.length !== oldCards.length ||
+    !newCards.every(newCard =>
+      oldCards.some(oldCard => _.isEqual(oldCard, newCard)),
     )
   );
 }
