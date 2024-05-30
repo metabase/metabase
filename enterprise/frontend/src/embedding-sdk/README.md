@@ -203,7 +203,8 @@ export default function App() {
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
 
-You can optionally pass in `height` to change the height of the component.
+The component has a default height, which can be customized by using the `height` prop.
+To inherit the height from the parent container, you can pass `100%` to the height prop.
 
 ```jsx
 import React from "react";
