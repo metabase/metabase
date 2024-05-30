@@ -2,6 +2,7 @@ import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -138,7 +139,7 @@ export function buildColumnTarget(
 export function buildTemplateTagVariableTarget(
   variable: TemplateTagVariable,
 ): ParameterVariableTarget {
-  return ["variable", variable.mbql()];
+  return ["variable", normalize(variable.mbql())];
 }
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {
