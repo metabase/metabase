@@ -48,7 +48,6 @@ export const DashboardData = ComposedComponent =>
           initialize,
           fetchDashboard,
           fetchDashboardCardData,
-          fetchDashboardCardMetadata,
           setErrorPage,
           location,
           dashboardId,
@@ -71,13 +70,10 @@ export const DashboardData = ComposedComponent =>
         }
 
         try {
-          await Promise.all([
-            fetchDashboardCardData({
-              reload: false,
-              clearCache: !isNavigatingBackToDashboard,
-            }),
-            fetchDashboardCardMetadata(),
-          ]);
+          await fetchDashboardCardData({
+            reload: false,
+            clearCache: !isNavigatingBackToDashboard,
+          });
         } catch (error) {
           console.error(error);
           setErrorPage(error);
