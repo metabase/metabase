@@ -164,11 +164,11 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     createQuestion(questionDetails, { visitQuestion: true });
 
-    // there should be a hover instead of click
-    // but realHover is flaky
-    cy.get("[data-testid=cell-data]").contains("4966277046676").click();
+    cy.findByRole("gridcell", { name: "4966277046676" }).should("exist"); //Check that cell is rendered before mouseing over
+    cy.findByRole("gridcell", { name: "4966277046676" }).trigger("mouseover");
 
     cy.findByTestId("detail-shortcut")
+      .should("have.attr", "data-show-detail-rowindex", "9") // This ensures that the button is on the correct row before cypress clicks it
       .findByRole("button")
       .should("be.visible")
       .click();
