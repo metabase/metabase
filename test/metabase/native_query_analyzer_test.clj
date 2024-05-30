@@ -38,7 +38,7 @@
         (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
                (q "select id from venues"))))
       (testing "quotes stop case matching"
-        ;; MySQL does case-insensitive string comparisons by default; quoting does not make it conside case
+        ;; MySQL does case-insensitive string comparisons by default; quoting does not make it consider case
         ;; in field names either, so it's consistent behavior
         (if (= (mdb.connection/db-type) :mysql)
           (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
