@@ -37,9 +37,6 @@ describe("dashboard reducers", () => {
         endTime: null,
         loadingStatus: "idle",
       },
-      loadingMetadata: {
-        loadingStatus: "idle",
-      },
       parameterValues: {},
       draftParameterValues: {},
       sidebar: { props: {} },
