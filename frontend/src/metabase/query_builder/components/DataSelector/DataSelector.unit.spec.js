@@ -2,13 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  fireEvent,
-  getIcon,
-  render,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "metabase/lib/promise";
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 import {
@@ -133,7 +127,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
     // clicking reveals schemas
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
 
@@ -143,7 +137,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Sample Empty Database")).toBeInTheDocument();
 
     // clicking shows the table
-    fireEvent.click(screen.getByText("First Schema"));
+    await userEvent.click(screen.getByText("First Schema"));
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
 
     // db and schema are still visible
@@ -154,7 +148,7 @@ describe("DataSelector", () => {
     expect(screen.queryByText("Second Schema")).not.toBeInTheDocument();
 
     // clicking on the table
-    fireEvent.click(screen.getByText("Table in First Schema"));
+    await userEvent.click(screen.getByText("Table in First Schema"));
     const [tableId] = setTable.mock.calls[0];
     expect(tableId).toEqual(MULTI_SCHEMA_TABLE1_ID);
   });
@@ -204,7 +198,7 @@ describe("DataSelector", () => {
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
 
     // that triggers fetching schemas
     await delay(1);
@@ -217,7 +211,7 @@ describe("DataSelector", () => {
     rerenderWith(nextMetadata);
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Second Schema"));
+    await userEvent.click(screen.getByText("Second Schema"));
 
     // that triggers fetching tables
     await delay(1);
@@ -255,7 +249,7 @@ describe("DataSelector", () => {
       />,
     );
     expect(fetchDatabases).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText("button"));
+    await userEvent.click(screen.getByText("button"));
     await delay(1); // fetchDatabases hasn't been called until the next tick
     expect(fetchDatabases).toHaveBeenCalled();
   });
@@ -291,16 +285,16 @@ describe("DataSelector", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     // check that tables are listed
     expect(await screen.findByText("Orders")).toBeInTheDocument();
     // click header to return to db list
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     // click on a multi-schema db
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
-    fireEvent.click(screen.getByText("First Schema"));
+    await userEvent.click(screen.getByText("First Schema"));
     await delay(1);
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
@@ -321,20 +315,20 @@ describe("DataSelector", () => {
     );
 
     // expand a multi-schema db to make sure it's schemas are loaded
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
 
     // click into a single schema db, check for a table, and then return to db list
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
     await delay(1);
     expect(await screen.findByText("Orders")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Sample Database"));
+    await userEvent.click(screen.getByText("Sample Database"));
 
     // expand multi-schema db
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
-    fireEvent.click(screen.getByText("First Schema"));
+    await userEvent.click(screen.getByText("First Schema"));
     await delay(1);
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
@@ -352,7 +346,7 @@ describe("DataSelector", () => {
     );
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     // check that schemas are listed
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
@@ -360,7 +354,7 @@ describe("DataSelector", () => {
     expect(getIcon("chevronup")).toBeInTheDocument();
 
     // collapse db
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     // schemas are hidden, but databases are still shown
     expect(screen.queryByText("First Schema")).not.toBeInTheDocument();
     expect(screen.queryByText("Second Schema")).not.toBeInTheDocument();
@@ -398,11 +392,11 @@ describe("DataSelector", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("First Schema"));
+    await userEvent.click(screen.getByText("First Schema"));
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", async () => {
+  it("should open database picker with correct database selected", () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -433,11 +427,11 @@ describe("DataSelector", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Multi-schema Database"));
+    await userEvent.click(screen.getByText("Multi-schema Database"));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Other Multi-schema Database"));
+    await userEvent.click(screen.getByText("Other Multi-schema Database"));
     expect(screen.getByText("Other First Schema")).toBeInTheDocument();
     expect(screen.getByText("Other Second Schema")).toBeInTheDocument();
   });
@@ -469,7 +463,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", async () => {
+  it("shows an empty state without any databases", () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -503,7 +497,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Saved Questions")).toBeInTheDocument();
   });
 
-  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
+  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", () => {
     renderWithProviders(
       <DataSelector
         steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}

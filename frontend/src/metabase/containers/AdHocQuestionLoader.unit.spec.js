@@ -22,7 +22,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ databaseId: 1, tableId: 2 });
     const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)[1];
 
-    await render(
+    render(
       <AdHocQuestionLoader
         questionHash={questionHash}
         loadMetadataForCard={loadMetadataSpy}
