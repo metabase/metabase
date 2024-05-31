@@ -81,6 +81,7 @@
         "object",
         "null"
       ],
+      "description": "map of the filters used in the search query",
       "properties": {
         "content_type": {
           "description": "Filter for entity types (question, database, model, etc.)",
