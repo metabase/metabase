@@ -23,7 +23,6 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
-   [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
