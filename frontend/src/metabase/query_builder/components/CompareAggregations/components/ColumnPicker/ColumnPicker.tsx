@@ -6,11 +6,11 @@ import { Flex, MultiSelect, Text } from "metabase/ui";
 
 import type { ColumnType } from "../../types";
 
-type ItemType = {
+interface ItemType {
   example: string;
   label: string;
   value: ColumnType;
-};
+}
 
 interface Props {
   value: ColumnType[];
