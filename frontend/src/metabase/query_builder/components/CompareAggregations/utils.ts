@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { pluralize } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
 import type { ColumnType } from "./types";
@@ -32,8 +31,12 @@ export const getOffsetPeriod = (
   }
 
   const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+  const periodPlural = Lib.describeTemporalUnit(
+    bucketInfo.shortName,
+    2,
+  ).toLowerCase();
 
-  return pluralize(bucketInfo.displayName.toLowerCase());
+  return periodPlural;
 };
 
 export const getTitle = (

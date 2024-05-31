@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { pluralize } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
 export const getLabel = (query: Lib.Query, stageIndex: number): string => {
@@ -50,8 +49,10 @@ export const getHelp = (query: Lib.Query, stageIndex: number): string => {
   }
 
   const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+  const periodPlural = Lib.describeTemporalUnit(
+    bucketInfo.shortName,
+    2,
+  ).toLowerCase();
 
-  return t`${pluralize(bucketInfo.displayName.toLowerCase())} ago based on “${
-    firstBreakoutColumnInfo.displayName
-  }”`;
+  return t`${periodPlural} ago based on “${firstBreakoutColumnInfo.displayName}”`;
 };
