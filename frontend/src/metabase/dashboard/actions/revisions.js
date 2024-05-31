@@ -19,8 +19,8 @@ export const revertToRevision = createThunkAction(
         }),
       );
       await Promise.all([
-        dispatch(fetchDashboardCardData({ reload: false, clearCache: true })),
         dispatch(fetchDashboardCardMetadata()),
+        dispatch(fetchDashboardCardData({ reload: false, clearCache: true })),
       ]);
     };
   },
