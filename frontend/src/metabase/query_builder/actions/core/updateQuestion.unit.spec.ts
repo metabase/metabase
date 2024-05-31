@@ -1,5 +1,6 @@
 import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
+import * as questionActions from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
@@ -7,6 +8,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type {
   Card,
   ConcreteFieldReference,
+  Join,
   NativeDatasetQuery,
   StructuredDatasetQuery,
   TemplateTag,
@@ -35,6 +37,8 @@ import {
   PRODUCTS,
   PEOPLE,
   SAMPLE_DB_ID,
+  REVIEWS,
+  REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 import type { QueryBuilderMode } from "metabase-types/store";
 import {
@@ -169,6 +173,16 @@ async function setup({
   return { question, dispatch, result };
 }
 
+const REVIEW_JOIN_CLAUSE: Join = {
+  alias: "Products",
+  condition: [
+    "=",
+    ["field", ORDERS.ID, null],
+    ["field", REVIEWS.ID, { "join-alias": "Reviews" }],
+  ],
+  "source-table": REVIEWS_ID,
+};
+
 const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
   "field",
   ORDERS.CREATED_AT,
@@ -268,6 +282,16 @@ describe("QB Actions > updateQuestion", () => {
     TEST_CASE.STRUCTURED_MODEL,
     TEST_CASE.NATIVE_MODEL,
     TEST_CASE.COMPOSED_MODEL,
+  ];
+
+  const STRUCTURED_MODEL_TEST_CASES = [
+    TEST_CASE.STRUCTURED_MODEL,
+    TEST_CASE.COMPOSED_MODEL,
+  ];
+
+  const STRUCTURED_QUESTIONS_TEST_CASES = [
+    TEST_CASE.SAVED_STRUCTURED_QUESTION,
+    TEST_CASE.UNSAVED_STRUCTURED_QUESTION,
   ];
 
   const NATIVE_TEST_CASES = [
@@ -473,6 +497,95 @@ describe("QB Actions > updateQuestion", () => {
           expect(setModeSpy).toHaveBeenCalledWith("view", {
             shouldUpdateUrl: false,
           });
+        });
+      });
+    });
+  });
+
+  describe("structured", () => {
+    STRUCTURED_MODEL_TEST_CASES.forEach(testCase => {
+      const { getCard, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("refreshes question metadata if there's difference in dependent metadata", async () => {
+          const loadMetadataSpy = jest.spyOn(
+            questionActions,
+            "loadMetadataForCard",
+          );
+
+          const originalCard = getCard();
+          const originalQuery =
+            originalCard.dataset_query as StructuredDatasetQuery;
+
+          const cardWithJoin = {
+            ...originalCard,
+            dataset_query: createMockStructuredDatasetQuery({
+              ...originalQuery,
+              query: createMockStructuredQuery({
+                ...originalQuery.query,
+                joins: [REVIEW_JOIN_CLAUSE],
+              }),
+            }),
+          };
+
+          await setup({
+            card: cardWithJoin,
+            originalCard,
+          });
+
+          expect(loadMetadataSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              dataset_query: cardWithJoin.dataset_query,
+            }),
+          );
+        });
+      });
+    });
+
+    STRUCTURED_QUESTIONS_TEST_CASES.forEach(testCase => {
+      const { getCard, questionType } = testCase;
+
+      describe(questionType, () => {
+        it("doesn't refresh question metadata if dependent metadata doesn't change", async () => {
+          const loadMetadataSpy = jest.spyOn(
+            questionActions,
+            "loadMetadataForCard",
+          );
+
+          await setup({ card: getCard() });
+          expect(loadMetadataSpy).not.toHaveBeenCalled();
+        });
+
+        it("refreshes question metadata if there's difference in dependent metadata", async () => {
+          const loadMetadataSpy = jest.spyOn(
+            questionActions,
+            "loadMetadataForCard",
+          );
+          const originalCard = getCard();
+          const originalQuery =
+            originalCard.dataset_query as StructuredDatasetQuery;
+
+          const cardWithJoin = {
+            ...originalCard,
+            dataset_query: createMockStructuredDatasetQuery({
+              ...originalQuery,
+              query: createMockStructuredQuery({
+                ...originalQuery.query,
+                joins: [REVIEW_JOIN_CLAUSE],
+              }),
+            }),
+          };
+
+          await setup({
+            card: cardWithJoin,
+            originalCard: originalCard as Card,
+          });
+
+          expect(loadMetadataSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+              dataset_query: cardWithJoin.dataset_query,
+            }),
+          );
         });
       });
     });
