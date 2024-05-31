@@ -21,10 +21,11 @@ import {
   modal,
   enterCustomColumnDetails,
   createQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID, ORDERS } = SAMPLE_DATABASE;
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS, PRODUCTS_ID, ORDERS, REVIEWS, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 9339", () => {
   beforeEach(() => {
@@ -35,8 +36,7 @@ describe("issue 9339", () => {
   it("should not paste non-numeric values into single-value numeric filters (metabase#9339)", () => {
     openOrdersTable();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total").click();
+    tableHeaderClick("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     selectFilterOperator("Greater than");
@@ -161,8 +161,7 @@ describe("issue 16621", () => {
   });
 
   it("should be possible to create multiple filter that start with the same value (metabase#16621)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").click();
+    tableHeaderClick("Category");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Search the list").type("Gadget");
@@ -399,10 +398,7 @@ describe("issue 22730", () => {
     cy.findByText("Explore results").click();
     cy.wait("@dataset");
 
-    cy.findAllByTestId("header-cell")
-      .contains("time")
-      .should("be.visible")
-      .click();
+    tableHeaderClick("time");
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
@@ -425,16 +421,14 @@ describe("issue 24664", () => {
   });
 
   it("should be possible to create multiple filter that start with the same value (metabase#24664)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").click();
+    tableHeaderClick("Category");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Doohickey").click();
       cy.button("Add filter").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").click();
+    tableHeaderClick("Category");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Gizmo").click();
@@ -581,7 +575,7 @@ describe("issue 25927", () => {
   });
 
   it("column filter should work for questions with custom column (metabase#25927)", () => {
-    cy.findAllByTestId("header-cell").contains("Created At: Month").click();
+    tableHeaderClick("Created At: Month");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Last 30 days").click();
@@ -640,7 +634,7 @@ describe("issue 25990", () => {
 
     modal().within(() => {
       cy.findByText("Person").click();
-      cy.findByPlaceholderText("Enter an ID").type("10");
+      cy.findByPlaceholderText("Enter an ID").type("10").blur();
       cy.button("Apply filters").click();
     });
 
@@ -755,7 +749,7 @@ describe("issue 27123", () => {
   });
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
-    cy.findAllByTestId("header-cell").contains("Created At").click();
+    tableHeaderClick("Created At");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -825,10 +819,9 @@ describe("issue 30312", () => {
       { visitQuestion: true },
     );
 
-    cy.findAllByTestId("header-cell")
-      .eq(1)
-      .should("have.text", "Count")
-      .click();
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "Count");
+
+    tableHeaderClick("Count");
 
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Equal to");
@@ -877,7 +870,7 @@ describe("issue 31340", () => {
   });
 
   it("should properly display long column names in filter options search results (metabase#31340)", () => {
-    cy.findAllByTestId("header-cell").contains(LONG_COLUMN_NAME).click();
+    tableHeaderClick(LONG_COLUMN_NAME);
 
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Is");
@@ -950,6 +943,43 @@ describe("issue 36508", () => {
       cy.findByText("Equal to").should("exist");
       cy.findByText("Greater than").should("exist");
       cy.findByText("Less than").should("exist");
+    });
+  });
+});
+
+describe("metabase#32985", () => {
+  const questionDetails = {
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+    type: "query",
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when searching large field values sets in filters popover (metabase#32985)", () => {
+    // we need to mess with the field metadata to make the field values crazy
+    cy.request("PUT", `/api/field/${REVIEWS.REVIEWER}`, {
+      semantic_type: "type/PK",
+    });
+    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+      semantic_type: "type/FK",
+    });
+    cy.request("PUT", `/api/field/${PEOPLE.EMAIL}`, {
+      fk_target_field_id: REVIEWS.REVIEWER,
+    });
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    tableHeaderClick("Email");
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByPlaceholderText("Search by Email").type("foo");
     });
   });
 });

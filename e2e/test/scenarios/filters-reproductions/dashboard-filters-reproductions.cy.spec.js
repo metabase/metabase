@@ -2431,6 +2431,23 @@ describe("issue 43154", () => {
     },
   };
 
+  const questionDetails = modelId => ({
+    name: "Question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+    },
+  });
+
+  const questionWithAggregationDetails = modelId => ({
+    name: "Question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+      aggregation: [["count"]],
+    },
+  });
+
   function verifyNestedFilter(questionDetails) {
     createQuestion(modelDetails).then(({ body: model }) => {
       cy.createDashboardWithQuestions({
@@ -2452,24 +2469,6 @@ describe("issue 43154", () => {
       cy.button("Add filter").click();
     });
   }
-
-  const questionDetails = modelId => ({
-    name: "Question",
-    type: "question",
-    query: {
-      "source-table": `card__${modelId}`,
-    },
-  });
-
-  const questionWithAggregationDetails = modelId => ({
-    name: "Question",
-    type: "question",
-    query: {
-      "source-table": `card__${modelId}`,
-      aggregation: [["count"]],
-    },
-  });
-
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -2479,7 +2478,7 @@ describe("issue 43154", () => {
     verifyNestedFilter(questionDetails);
   });
 
-  it.skip("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
+  it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
     verifyNestedFilter(questionWithAggregationDetails);
   });
 });
