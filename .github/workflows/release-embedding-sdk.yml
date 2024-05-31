@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  git-tag:
+  check-git-tag:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
@@ -30,25 +30,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Setup git user
+      - name: check tags
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
-
-      - name: Create a new git tag
-        run: |
-          git tag ${{ env.tag }}
-
-      - name: Push the new tag
-        id : push-tag
-        run: |
-          git push origin ${{ env.tag }}
-      - if: ${{ failure() && steps.push-tag.outcome == 'failure' }}
-        run: echo "Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+          if [ $(git tag -l | grep $tag) ]
+          then
+            echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
+            exit 1
+          else
+            exit 0
+          fi
 
   test:
-    needs: git-tag
+    needs: check-git-tag
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
@@ -77,6 +73,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -86,9 +84,24 @@ jobs:
         with:
           m2-cache-key: "release-sdk"
 
+      - name: Update readme
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
+
       - name: Bump published npm package version
         run: |
-          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+
+      # TODO: Remove this step after the build utils script is merged to master
+      - name: Upload release utils script, so it can be used later on when checking out `master` branch
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-util
+          path: ./bin/embedding-sdk/release_utils.bash
+
+      - name: Update changelog
+        run: |
+          yarn embedding-sdk:generate-changelog
 
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
@@ -101,6 +114,12 @@ jobs:
         with:
           name: metabase-sdk
           path: ./resources/embedding-sdk
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-changelog
+          path: ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
   build-jar:
     needs: test
@@ -136,7 +155,6 @@ jobs:
         run: |
           aws s3 cp $FILE s3://$BUCKET/$BUCKET_PATH
 
-
   publish-npm:
     needs: [build-sdk, upload-jar]
     runs-on: ubuntu-22.04
@@ -153,14 +171,30 @@ jobs:
           git config --global user.email "metabase-bot@metabase.com"
           git config --global user.name "Metabase bot"
 
+      # TODO: Remove this step after the build utils script is merged to master
+      - name: Download release utils script
+        uses: actions/download-artifact@v4
+        with:
+          name: release-util
+          path: ./bin/embedding-sdk/
+
       - name: Update readme
         run: |
-          sed -i -E 's|(embedding-sdk-)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
-          sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1${{ inputs.sdk_version }}|' enterprise/frontend/src/embedding-sdk/README.md
+          bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
 
       - name: Bump published npm package version
         run: |
-          sed -i -E 's/("version": ").*"/\1${{ inputs.sdk_version }}"/' enterprise/frontend/src/embedding-sdk/package.template.json
+          bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
+
+      - name: Retrieve SDK changelog
+        uses: actions/download-artifact@v4
+        with:
+          name: sdk-changelog
+
+      # We need to do this because it's impossible to download an artifact to an existing location
+      - name: Move over the downloaded changelog
+        run: |
+          mv CHANGELOG.md ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
       - uses: actions/create-github-app-token@v1
         id: app-token
@@ -168,7 +202,7 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
-      - name: Create a PR updating readme + published version
+      - name: Create a PR updating readme + published version, and changelog
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
@@ -177,6 +211,7 @@ jobs:
                        --assignee "${GITHUB_ACTOR}"\
                        --title "Update SDK version to ${{ inputs.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
+          gh pr edit --add-reviewer @metabase/embedding
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
@@ -191,3 +226,29 @@ jobs:
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           npm publish
+
+  git-tag:
+    needs: publish-npm
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      tag: embedding-sdk-${{ inputs.sdk_version }}
+    steps:
+      - name: Check out the code using the provided ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Setup git user
+        run: |
+          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase bot"
+
+      - name: Create a new git tag
+        run: |
+          git tag ${{ env.tag }}
+
+      - name: Push the new tag
+        id : push-tag
+        run: |
+          git push origin ${{ env.tag }}

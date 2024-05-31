@@ -42,8 +42,8 @@ export const cardApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/card/${id}/query_metadata`,
       }),
-      providesTags: metadata =>
-        metadata ? provideCardMetadataTags(metadata) : [],
+      providesTags: (metadata, error, id) =>
+        metadata ? provideCardMetadataTags(id, metadata) : [],
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({

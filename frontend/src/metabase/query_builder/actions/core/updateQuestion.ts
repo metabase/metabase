@@ -4,7 +4,6 @@ import _ from "underscore";
 import { getTrashUndoMessage } from "metabase/archive/utils";
 import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -216,27 +215,6 @@ export const updateQuestion = (
       if (isVisible !== shouldBeVisible) {
         dispatch(setIsShowingTemplateTagsEditor(shouldBeVisible));
       }
-    }
-
-    const currentDependencies = currentQuestion
-      ? Lib.dependentMetadata(
-          currentQuestion.query(),
-          currentQuestion.id(),
-          currentQuestion.type(),
-        )
-      : [];
-    const nextDependencies = Lib.dependentMetadata(
-      newQuestion.query(),
-      newQuestion.id(),
-      newQuestion.type(),
-    );
-    try {
-      if (!_.isEqual(currentDependencies, nextDependencies)) {
-        await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
-    } catch (e) {
-      // this will fail if user doesn't have data permissions but thats ok
-      console.warn("Couldn't load metadata", e);
     }
 
     if (run) {

@@ -68,11 +68,7 @@ describe("PublicApp", () => {
 
   it("renders action buttons", () => {
     setup({
-      actionButtons: (
-        <div>
-          <button key="test">Click Me</button>
-        </div>
-      ),
+      actionButtons: <button key="test">Click Me</button>,
     });
     expect(
       screen.getByRole("button", { name: "Click Me" }),

@@ -49,8 +49,8 @@ export const dashboardApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/dashboard/${id}/query_metadata`,
       }),
-      providesTags: metadata =>
-        metadata ? provideDashboardMetadataTags(metadata) : [],
+      providesTags: (metadata, error, id) =>
+        metadata ? provideDashboardMetadataTags(id, metadata) : [],
     }),
     createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
       query: body => ({

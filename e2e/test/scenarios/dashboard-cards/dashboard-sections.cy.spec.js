@@ -135,9 +135,11 @@ function selectQuestion(question) {
 }
 
 function overwriteDashCardTitle(dashcardElement, textTitle) {
-  findDashCardAction(dashcardElement, "Show visualization options").click();
+  findDashCardAction(dashcardElement, "Show visualization options").click({
+    force: true,
+  });
   modal().within(() => {
-    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`);
+    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`).blur();
     cy.button("Done").click();
   });
 }

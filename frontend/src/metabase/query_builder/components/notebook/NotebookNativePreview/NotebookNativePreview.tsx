@@ -39,7 +39,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
-  const showError = !isFetching && canRun && error;
+  const showError = !isFetching && canRun && !!error;
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
