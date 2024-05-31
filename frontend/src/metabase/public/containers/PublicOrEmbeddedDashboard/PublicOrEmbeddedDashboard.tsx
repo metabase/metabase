@@ -41,7 +41,7 @@ import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicDashboard/WithPublicDashboardEndpoints";
+import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -50,7 +50,7 @@ import type { State } from "metabase-types/store";
 
 import EmbedFrame from "../../components/EmbedFrame";
 
-import { DashboardContainer } from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
 const mapStateToProps = (state: State) => {
   return {
@@ -94,12 +94,12 @@ type DisplayProps = Pick<
   | "hasNightModeToggle"
 >;
 
-type PublicDashboardProps = OwnProps &
+type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
   DisplayProps &
   EmbedDisplayParams;
 
-class PublicDashboardInner extends Component<PublicDashboardProps> {
+class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
   _initialize = async () => {
     const {
       initialize,
@@ -140,7 +140,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
     this.props.cancelFetchDashboardCardData();
   }
 
-  async componentDidUpdate(prevProps: PublicDashboardProps) {
+  async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
       return this._initialize();
     }
@@ -264,7 +264,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
               <DashboardContainer>
                 <DashboardGridConnected
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                  isPublic
+                  isPublicOrEmbedded
                   mode={PublicMode as unknown as Mode}
                   selectedTabId={this.props.selectedTabId}
                   slowCards={this.props.slowCards}
@@ -292,15 +292,17 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
-// Raw PublicDashboard used for SDK embedding
-export const PublicDashboard = connector(PublicDashboardInner);
+// Raw PublicOrEmbeddedDashboard used for SDK embedding
+export const PublicOrEmbeddedDashboard = connector(
+  PublicOrEmbeddedDashboardInner,
+);
 
 // PublicDashboardControlled used for embedding with location
 // Uses DashboardControls to handle display options, and uses WithPublicDashboardEndpoints to set endpoints for public/embed contexts
-export const PublicDashboardControlled = _.compose(
+export const PublicOrEmbeddedDashboardControlled = _.compose(
   title(
     ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
   ),
   WithPublicDashboardEndpoints,
   DashboardControls,
-)(PublicDashboard) as ComponentType<OwnProps>;
+)(PublicOrEmbeddedDashboard) as ComponentType<OwnProps>;
