@@ -191,7 +191,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sdk-changelog
-          path: ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+
+      # We need to do this because it's impossible to download an artifact to an existing location
+      - name: Move over the downloaded changelog
+        run: |
+          mv CHANGELOG.md ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
       - uses: actions/create-github-app-token@v1
         id: app-token
