@@ -252,7 +252,7 @@ The API follows the same configuration as that of public dashboard embeddings, w
 
 #### Parameters
 
-- **dashboardId**: `DashboardId` (required) – The ID of the dashboard. This is the ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
 - **parameterQueryParams**: `Record<string, string | string[]>` (required) – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
 - **bordered**: `boolean` – Whether the dashboard should have a border.
 - **titled**: `boolean` – Whether the dashboard should display a title.
