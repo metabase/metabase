@@ -3456,7 +3456,9 @@
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dashboard-card-query-url [dashboard-id card-id dashcard-id]
+(defn dashboard-card-query-url
+  "The URL for a request to execute a query for a Card on a Dashboard."
+  [dashboard-id card-id dashcard-id]
   (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
 
 (defn- dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]

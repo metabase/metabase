@@ -419,8 +419,8 @@
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (events/publish-event! :event/dashboard-read {:object dashboard :user-id api/*current-user-id*})
-    (last-edit/with-last-edit-info dashboard :dashboard)))
+    (u/prog1 (last-edit/with-last-edit-info dashboard :dashboard)
+      (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*}))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -1159,12 +1159,13 @@
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/process-query-for-dashcard
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id})))
+  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                     (merge
+                      body
+                      {:dashboard-id dashboard-id
+                       :card-id      card-id
+                       :dashcard-id  dashcard-id}))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
@@ -1205,12 +1206,13 @@
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
    parameters   [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/process-query-for-dashcard
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id
-              :qp           qp.pivot/run-pivot-query})))
+  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                     (merge
+                      body
+                      {:dashboard-id dashboard-id
+                       :card-id      card-id
+                       :dashcard-id  dashcard-id
+                       :qp           qp.pivot/run-pivot-query}))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/define-routes)
