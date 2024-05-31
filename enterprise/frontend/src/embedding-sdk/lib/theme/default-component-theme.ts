@@ -4,11 +4,14 @@ import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 
-const fromPx = (px: number) => ({ px: `${px}px`, em: `${px / 16}em` });
+// Use em units to scale font sizes relative to the base font size.
+// The em unit is used by default in the embedding SDK.
+const units = (px: number) => ({ px: `${px}px`, em: `${px / 16}em` });
 
-export const CHART_SIZES = {
-  label: fromPx(12),
-  goalLabel: fromPx(14),
+export const FONT_SIZES = {
+  tableCell: units(12.5),
+  label: units(12),
+  goalLabel: units(14),
 };
 
 /**
@@ -22,7 +25,7 @@ export const CHART_SIZES = {
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
-      fontSize: "12.5px",
+      fontSize: FONT_SIZES.tableCell.px,
       textColor: "text-dark",
     },
     idColumn: {
@@ -36,9 +39,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   cartesian: {
-    label: { fontSize: CHART_SIZES.label.px },
+    label: { fontSize: FONT_SIZES.label.px },
     goalLine: {
-      label: { fontSize: CHART_SIZES.goalLabel.px },
+      label: { fontSize: FONT_SIZES.goalLabel.px },
     },
   },
 };
@@ -52,16 +55,14 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
   {
     table: {
       cell: {
+        fontSize: FONT_SIZES.tableCell.em,
         backgroundColor: "bg-white",
       },
     },
-
-    // Apply em units to indicate that the font size
-    // is relative to the base font size by default.
     cartesian: {
-      label: { fontSize: CHART_SIZES.label.em },
+      label: { fontSize: FONT_SIZES.label.em },
       goalLine: {
-        label: { fontSize: CHART_SIZES.goalLabel.em },
+        label: { fontSize: FONT_SIZES.goalLabel.em },
       },
     },
   },
