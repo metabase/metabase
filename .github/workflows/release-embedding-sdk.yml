@@ -92,6 +92,7 @@ jobs:
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
+      # TODO: Remove this step after the build utils script is merged to master
       - name: Upload release utils script, so it can be used later on when checking out `master` branch
         uses: actions/upload-artifact@v4
         with:
@@ -170,14 +171,12 @@ jobs:
           git config --global user.email "metabase-bot@metabase.com"
           git config --global user.name "Metabase bot"
 
+      # TODO: Remove this step after the build utils script is merged to master
       - name: Download release utils script
         uses: actions/download-artifact@v4
         with:
           name: release-util
           path: ./bin/embedding-sdk/
-
-      - name: Log download release utils location
-        run: find . -name "release_utils.bash"
 
       - name: Update readme
         run: |
@@ -226,7 +225,7 @@ jobs:
         run: |
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish --dry-run
+          npm publish
 
   git-tag:
     needs: publish-npm
