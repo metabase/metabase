@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
-import { Flex, MultiAutocomplete, Text } from "metabase/ui";
+import { Flex, MultiSelect, Text } from "metabase/ui";
 
 import type { ColumnType } from "../../types";
 
@@ -44,20 +44,17 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
   );
 
   return (
-    <MultiAutocomplete
+    <MultiSelect
       label={t`Columns to create`}
       data={COLUMN_OPTIONS}
       itemComponent={Item}
       placeholder={t`Columns to create`}
       rightSection={null}
-      shouldCreate={shouldCreate}
       value={value}
       onChange={handleChange}
     />
   );
 };
-
-const shouldCreate = () => false;
 
 const Item = forwardRef<
   HTMLDivElement,
