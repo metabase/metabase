@@ -197,9 +197,7 @@ export const settings = {
     },
     getProps: (series: Series) => ({
       canHighlightRow: false,
-      cols: (series[0].data.cols as DatasetColumn[]).filter(
-        isFormattablePivotColumn,
-      ),
+      cols: series[0].data?.cols.filter(isFormattablePivotColumn),
     }),
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       !data?.cols.some(col => isFormattablePivotColumn(col)),
