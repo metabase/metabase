@@ -41,7 +41,7 @@ import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicDashboard/WithPublicDashboardEndpoints";
+import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -50,7 +50,7 @@ import type { State } from "metabase-types/store";
 
 import EmbedFrame from "../../components/EmbedFrame";
 
-import { DashboardContainer } from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
 const mapStateToProps = (state: State) => {
   return {

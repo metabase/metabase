@@ -32,7 +32,7 @@ import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicDashboard";
+import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";

@@ -2,7 +2,7 @@ import { Route } from "metabase/hoc/Title";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicAction from "metabase/public/containers/PublicAction";
 import PublicApp from "metabase/public/containers/PublicApp";
-import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicDashboard";
+import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 
 import { getApplicationName } from "./selectors/whitelabel";
