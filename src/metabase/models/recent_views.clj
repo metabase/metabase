@@ -20,6 +20,7 @@
   E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [colorize.core :as colorize]
    [java-time.api :as t]
    [malli.core :as mc]
@@ -56,8 +57,10 @@
 (defn- duplicate-model-ids
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
-  [user-id]
-  (->> (t2/select :model/RecentViews :user_id user-id {:order-by [[:timestamp :desc]]})
+  [user-id context]
+  (->> (t2/select :model/RecentViews :user_id user-id
+                  :context (name context)
+                  {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (mapcat (fn [[_ rows]] (drop 1 rows)))
@@ -70,15 +73,15 @@
                 ;;       distinguish between them.
    :dashboard :table :collection])
 
-(defn ->model
-  "Given a model of interest, returns the model for it."
-  [moi]
-  (keyword "model"
-           (if (#{:model :card} moi)
-             "card"
-             (name moi))))
+(mu/defn moi->type [moi :- (into [:enum] models-of-interest)]
+  (if (#{:model :card :metric} moi) "card" (name moi)))
 
-(defn- ids-to-prune-for-user+model [user-id model]
+(mu/defn moi->model
+  "Given a model of interest, returns the model for it."
+  [moi :- (into [:enum] models-of-interest)]
+  (keyword "model" (str/capitalize (moi->type moi))))
+
+(defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
                     :model/RecentViews
                     {:select [:rv.id]
@@ -86,8 +89,10 @@
                      :where [:and
                              [:= :rv.model (get {:model "card"} model (name model))]
                              [:= :rv.user_id user-id]
-                             (when (#{:card :model} model)
+                             [:= :rv.context (h2x/literal (name context))]
+                             (when (#{:card :model} model) ;; TODO add metric
                                [:= :rc.type (cond (= model :card) (h2x/literal "question")
+                                                  ;; TODO add metric
                                                   (= model :model) (h2x/literal "model"))])]
                      :left-join [[:report_card :rc]
                                  [:and
@@ -98,25 +103,24 @@
                      :limit 100000
                      :offset *recent-views-stored-per-user-per-model*}))
 
-(defn- overflowing-model-buckets [user-id]
-  (into #{} (mapcat #(ids-to-prune-for-user+model user-id %)) models-of-interest))
+(defn- overflowing-model-buckets [user-id context]
+  (into #{} (mapcat #(ids-to-prune-for-user+model user-id context %)) models-of-interest))
 
 (defn ids-to-prune
   "Returns IDs to prune, which includes 2 things:
   1. duplicated views for (user-id, model, model_id), this will return the IDs of the non-latest duplicates.
   2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
-  [user-id]
+  [user-id context]
   (set/union
-   (duplicate-model-ids user-id)
-   (overflowing-model-buckets user-id)))
+   (duplicate-model-ids user-id context)
+   (overflowing-model-buckets user-id context)))
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
   [user-id  :- [:maybe ms/PositiveInt]
-   model    :- [:or
-                [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
-                :string]
-   model-id :- ms/PositiveInt]
+   model    :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
+   model-id :- ms/PositiveInt
+   context :- [:maybe [:enum :view :selection]]]
   (when user-id
     (span/with-span!
       {:name       "update-users-recent-views!"
@@ -126,10 +130,11 @@
       (t2/with-transaction [_conn]
         (t2/insert! :model/RecentViews {:user_id  user-id
                                         :model    (u/lower-case-en (name model))
-                                        :model_id model-id})
-        (let [ids-to-prune (ids-to-prune user-id)]
-          (when (seq ids-to-prune)
-            (t2/delete! :model/RecentViews :id [:in ids-to-prune])))))))
+                                        :model_id model-id
+                                        :context (some-> context name)})
+        (let [prune-ids (ids-to-prune user-id context)]
+          (when (seq prune-ids)
+            (t2/delete! :model/RecentViews :id [:in prune-ids])))))))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."

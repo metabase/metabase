@@ -134,18 +134,15 @@
   {model (into [:enum] recent-views/models-of-interest)
    model_id ms/PositiveInt
    context [:enum :selection]}
-  (let
-   [model-id model_id]
-    (when-not (t2/exists? (recent-views/->model model) :id model_id)
-      (throw (ex-info "Model not found" {:model model :model_id model_id})))
-    (let [model (t2/select (recent-views/->model model) :id model_id)]
-      (when-not (mi/can-read? model)
-        (throw (ex-info "Can't read model" {:model model :model_id model_id})))
-      (t2/insert! :model/RecentViews
-                  {:user_id *current-user-id*
-                   :model model
-                   :model_id model-id
-                   :context context}))))
+  (let [moi model
+        model-id model_id]
+    (when-not (t2/exists? (recent-views/moi->model moi) :id model-id)
+      (throw (ex-info "Model not found" {:model moi :model_id model-id})))
+    (let [model-instance (t2/select-one (recent-views/moi->model model) :id model-id)]
+      (when-not (mi/can-read? model-instance)
+        (throw (ex-info "Can't read model" {:model moi :model_id model-id})))
+      (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context))))
+
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
