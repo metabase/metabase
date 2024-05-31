@@ -48,6 +48,8 @@ export const PublicQuestion = ({
 
   const metadata = useSelector(getMetadata);
 
+  const [initialized, setInitialized] = useState(false);
+
   const [card, setCard] = useState<Card | null>(null);
   const [result, setResult] = useState<Dataset | null>(null);
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
@@ -91,6 +93,7 @@ export const PublicQuestion = ({
 
       setCard(card);
       setParameterValues(parameterValuesById);
+      setInitialized(true);
     } catch (error) {
       console.error("error", error);
       dispatch(setErrorPage(error));
@@ -158,7 +161,7 @@ export const PublicQuestion = ({
   }, [run]);
 
   const getParameters = () => {
-    if (!card) {
+    if (!initialized || !card) {
       return [];
     }
 
