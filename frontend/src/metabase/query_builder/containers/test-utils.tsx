@@ -18,6 +18,7 @@ import {
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
+  setupCardMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -57,7 +58,7 @@ import type { RequestState, State } from "metabase-types/store";
 
 import QueryBuilder from "./QueryBuilder";
 
-const TEST_DB = createSampleDatabase();
+export const TEST_DB = createSampleDatabase();
 
 export const TEST_CARD = createMockCard({
   id: 1,
@@ -246,6 +247,7 @@ export const setup = async ({
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
+    setupCardMetadataEndpoint(card, TEST_DB);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);

@@ -1,6 +1,11 @@
 import fetchMock from "fetch-mock";
 
-import type { Dashboard, DashboardId, Database } from "metabase-types/api";
+import type {
+  Card,
+  Dashboard,
+  DashboardId,
+  Database,
+} from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
@@ -14,6 +19,8 @@ export function setupDashboardEndpoints(dashboard: Dashboard) {
 export function setupDashboardMetadataEndpoint(
   dashboard: Dashboard,
   databases: Database[],
+  cards: Card[] = [],
+  dashboards: Dashboard[] = [],
 ) {
   const tables = databases.flatMap(database => database.tables ?? []);
   const fields = tables.flatMap(table => table.fields ?? []);
@@ -22,6 +29,8 @@ export function setupDashboardMetadataEndpoint(
     databases,
     tables,
     fields,
+    cards,
+    dashboards,
   });
 }
 

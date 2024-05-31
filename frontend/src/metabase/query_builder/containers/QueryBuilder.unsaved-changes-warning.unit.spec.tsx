@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   setupCardCreateEndpoint,
   setupCardEndpoints,
+  setupCardMetadataEndpoint,
+  setupCardsEndpoints,
 } from "__support__/server-mocks";
 import {
   act,
@@ -17,7 +18,6 @@ import registerVisualizations from "metabase/visualizations/register";
 
 import {
   TEST_COLLECTION,
-  TEST_METADATA,
   TEST_MODEL_CARD,
   TEST_MODEL_CARD_SLUG,
   TEST_MODEL_DATASET,
@@ -35,6 +35,7 @@ import {
   waitForSaveChangesToBeDisabled,
   waitForSaveChangesToBeEnabled,
   waitForSaveToBeEnabled,
+  TEST_DB,
 } from "./test-utils";
 
 registerVisualizations();
@@ -94,6 +95,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
       setupCardCreateEndpoint();
       setupCardEndpoints(TEST_NATIVE_CARD);
+      setupCardMetadataEndpoint(TEST_NATIVE_CARD, TEST_DB);
 
       await startNewNotebookModel();
       await waitForSaveToBeEnabled();
@@ -506,8 +508,8 @@ describe("QueryBuilder - unsaved changes warning", () => {
         card: null,
         initialRoute: "/",
       });
-      fetchMock.post("path:/api/card", TEST_NATIVE_CARD);
-      fetchMock.get("path:/api/table/card__1/query_metadata", TEST_METADATA);
+      setupCardsEndpoints([TEST_NATIVE_CARD]);
+      setupCardMetadataEndpoint(TEST_NATIVE_CARD, TEST_DB);
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(
