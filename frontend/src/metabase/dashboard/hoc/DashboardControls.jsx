@@ -190,7 +190,6 @@ export const DashboardControls = ComposedComponent =>
             queryParams: this.props.location.query,
             options: { preserveParameters: true },
           });
-          this.props.fetchDashboardCardMetadata();
           this.props.fetchDashboardCardData({
             isRefreshing: true,
             reload: true,
