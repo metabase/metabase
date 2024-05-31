@@ -314,9 +314,9 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={() => onAddSeries(dashcard)}
-            onRemove={() => onRemove(dashcard)}
-            onReplaceCard={() => onReplaceCard(dashcard)}
+            onAddSeries={onAddSeries}
+            onRemove={onRemove}
+            onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             onReplaceAllVisualizationSettings={
               onReplaceAllVisualizationSettings
