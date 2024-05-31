@@ -8,12 +8,12 @@ Features currently supported:
 
 - embedding questions - static
 - embedding questions - w/drill-down
+- embedding dashboards - static
 - theming with CSS variables
 - plugins for custom actions
 
 Features planned:
 
-- embedding dashboards - static (WIP)
 - embedding dashboards - w/ drill-down
 - embedding the collection browser
 - subscribing to events
@@ -243,6 +243,57 @@ export default function App() {
 const questionId = 1; // This is the question ID you want to embed
 
 ```
+
+### Embedding a static dashboard
+
+After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
+
+The API follows the same configuration as that of public dashboard embeddings, which you can read about (here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#public-embed-parameters]
+
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **parameterQueryParams**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **bordered**: `boolean` – Whether the dashboard should have a border.
+- **titled**: `boolean` – Whether the dashboard should display a title.
+- **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
+- **hideParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **font**: `string | null` – The font to use. If not specified, the Metabase instance font or `theme.fontFamily` will be used instead.
+- **theme**: `DisplayTheme` – The display theme (e.g., "light", "night", or "transparent" ).
+
+
+```jsx
+import React from "react";
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const parameterQueryParams = {}; // Define your query parameters here
+
+  const font = "Inter"
+  // choose parameter names that are in your dashboard
+  const hideParameters = ["location", "city"]
+
+  return (
+    <MetabaseProvider config={config}>
+        <StaticDashboard
+          dashboardId={dashboardId}
+          parameterQueryParams={parameterQueryParams}
+          bordered={true}
+          titled={false}
+          hideDownloadButton={false}
+          hideParameters={hideParameters}
+          font={font}
+          theme="light"
+        />
+    </MetabaseProvider>
+  );
+}
+```
+
 
 ### Customizing appearance
 
