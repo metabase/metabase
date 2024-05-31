@@ -6,6 +6,7 @@ import {
   setupCardsEndpoints,
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
@@ -29,6 +30,7 @@ import {
   createMockParameter,
   createMockStructuredDatasetQuery,
   createMockPlaceholderDashboardCard,
+  createMockCardQueryMetadata,
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -110,6 +112,7 @@ const PIE_CHART_DASHCARD = createMockDashboardCard({
     },
   ],
 });
+const TEST_DB = createSampleDatabase();
 
 const HEADING_DASHCARD = createMockHeadingDashboardCard({ id: 3 });
 const TEXT_DASHCARD = createMockTextDashboardCard({ id: 4 });
@@ -149,10 +152,18 @@ function setup({
   dashboard = DASHBOARD,
   dashcards = DASHCARDS,
 }: SetupOpts = {}) {
+  setupDatabasesEndpoints([TEST_DB]);
   setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
   setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
+  setupCardQueryMetadataEndpoint(
+    ORDERS_TABLE_CARD,
+    createMockCardQueryMetadata({ databases: [TEST_DB] }),
+  );
   setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
-  setupDatabasesEndpoints([createSampleDatabase()]);
+  setupCardQueryMetadataEndpoint(
+    ORDERS_LINE_CHART_CARD,
+    createMockCardQueryMetadata({ databases: [TEST_DB] }),
+  );
 
   const dashboardState = createMockDashboardState({
     dashboardId: dashboard.id,

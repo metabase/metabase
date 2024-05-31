@@ -13,6 +13,7 @@ import {
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
   setupRecentViewsEndpoints,
+  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -440,6 +441,14 @@ const setup = async ({
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });
     setupCardsEndpoints(cards);
+    cards.forEach(card =>
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: `card__${card.id}`,
+          fields: card.result_metadata,
+        }),
+      ),
+    );
   } else {
     setupUnauthorizedCollectionsEndpoints(collections);
     setupUnauthorizedCardsEndpoints(cards);
