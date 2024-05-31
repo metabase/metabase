@@ -13,6 +13,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -126,6 +127,25 @@
   (when (#{:selection nil :all} context)
     (throw (ex-info "selections are not implemented " {})))
   (when (= :views context) {:recent_views (recent-views/get-list *current-user-id*)}))
+
+(api/defendpoint POST "/recents"
+  "Adds a model to the list of recently viewed or selected items."
+  [:as {{:keys [model model_id context]} :body}]
+  {model (into [:enum] recent-views/models-of-interest)
+   model_id ms/PositiveInt
+   context [:enum :selection]}
+  (let
+   [model-id model_id]
+    (when-not (t2/exists? (recent-views/->model model) :id model_id)
+      (throw (ex-info "Model not found" {:model model :model_id model_id})))
+    (let [model (t2/select (recent-views/->model model) :id model_id)]
+      (when-not (mi/can-read? model)
+        (throw (ex-info "Can't read model" {:model model :model_id model_id})))
+      (t2/insert! :model/RecentViews
+                  {:user_id *current-user-id*
+                   :model model
+                   :model_id model-id
+                   :context context}))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
