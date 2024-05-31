@@ -157,7 +157,7 @@ export function getDataLabelFormatter(
 }
 
 export const buildEChartsLabelOptions = (
-  seriesModel: SeriesModel,
+  dataKey: DataKey,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   renderingContext: RenderingContext,
   formatter?: LabelFormatter,
@@ -176,11 +176,7 @@ export const buildEChartsLabelOptions = (
     textBorderWidth: 3,
     formatter:
       formatter &&
-      getDataLabelFormatter(
-        seriesModel.dataKey,
-        yAxisScaleTransforms,
-        formatter,
-      ),
+      getDataLabelFormatter(dataKey, yAxisScaleTransforms, formatter),
   };
 };
 
@@ -283,63 +279,85 @@ const buildEChartsBarSeries = (
   hasMultipleSeries: boolean,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
-): BarSeriesOption => {
+): BarSeriesOption[] => {
   const isStacked = stackName != null;
 
-  return {
-    id: seriesModel.dataKey,
-    emphasis: {
-      focus: hasMultipleSeries ? "series" : "self",
+  const labelSeries = {
+    id: `${seriesModel.dataKey}_label`,
+    type: "scatter",
+    z: CHART_STYLE.seriesLabels.zIndex,
+    silent: true,
+    dimensions: [X_AXIS_DATA_KEY, `${seriesModel.dataKey}_label`],
+    symbolSize: 0,
+    labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+    encode: {
+      y: `${seriesModel.dataKey}_label`,
+      x: X_AXIS_DATA_KEY,
+    },
+    label: buildEChartsLabelOptions(
+      `${seriesModel.dataKey}_label`,
+      yAxisScaleTransforms,
+      renderingContext,
+      labelFormatter,
+    ),
+    animationDuration: 0,
+  };
+
+  return [
+    labelSeries,
+    {
+      id: seriesModel.dataKey,
+      emphasis: {
+        focus: hasMultipleSeries ? "series" : "self",
+        itemStyle: {
+          color: seriesModel.color,
+        },
+      },
+      blur: {
+        label: getBlurLabelStyle(settings, hasMultipleSeries),
+        itemStyle: {
+          opacity: CHART_STYLE.opacity.blur,
+        },
+      },
+      type: "bar",
+      z: CHART_STYLE.series.zIndex,
+      yAxisIndex,
+      barMinHeight: 1,
+      barGap: 0,
+      stack: stackName,
+      barWidth: computeBarWidth(
+        xAxisModel,
+        chartMeasurements.boundaryWidth,
+        barSeriesCount,
+        !!stackName,
+      ),
+      encode: {
+        y: seriesModel.dataKey,
+        x: X_AXIS_DATA_KEY,
+      },
+      label: isStacked
+        ? buildEChartsStackLabelOptions(
+            seriesModel,
+            labelFormatter,
+            originalDataset,
+            renderingContext,
+          )
+        : {
+            show: false,
+          },
+      labelLayout: isStacked
+        ? getBarInsideLabelLayout(
+            dataset,
+            settings,
+            seriesModel.dataKey,
+            chartMeasurements.stackedBarTicksRotation,
+          )
+        : undefined,
       itemStyle: {
         color: seriesModel.color,
       },
     },
-    blur: {
-      label: getBlurLabelStyle(settings, hasMultipleSeries),
-      itemStyle: {
-        opacity: CHART_STYLE.opacity.blur,
-      },
-    },
-    type: "bar",
-    z: CHART_STYLE.series.zIndex,
-    yAxisIndex,
-    barGap: 0,
-    stack: stackName,
-    barWidth: computeBarWidth(
-      xAxisModel,
-      chartMeasurements.boundaryWidth,
-      barSeriesCount,
-      !!stackName,
-    ),
-    encode: {
-      y: seriesModel.dataKey,
-      x: X_AXIS_DATA_KEY,
-    },
-    label: isStacked
-      ? buildEChartsStackLabelOptions(
-          seriesModel,
-          labelFormatter,
-          originalDataset,
-          renderingContext,
-        )
-      : buildEChartsLabelOptions(
-          seriesModel,
-          yAxisScaleTransforms,
-          renderingContext,
-          labelFormatter,
-        ),
-    labelLayout: isStacked
-      ? getBarInsideLabelLayout(
-          dataset,
-          settings,
-          seriesModel.dataKey,
-          chartMeasurements.stackedBarTicksRotation,
-        )
-      : getBarLabelLayout(dataset, settings, seriesModel.dataKey),
-    itemStyle: {
-      color: seriesModel.color,
-    },
-  };
+  ];
 };
 
 function getShowAutoSymbols(
@@ -457,7 +475,7 @@ const buildEChartsLineAreaSeries = (
       x: X_AXIS_DATA_KEY,
     },
     label: buildEChartsLabelOptions(
-      seriesModel,
+      seriesModel.dataKey,
       yAxisScaleTransforms,
       renderingContext,
       labelFormatter,

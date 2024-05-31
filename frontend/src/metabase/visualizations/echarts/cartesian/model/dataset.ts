@@ -296,6 +296,30 @@ export const getNullReplacerTransform = (
   };
 };
 
+export const getBarZeroReplacerTransform = (
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+): TransformFn => {
+  const replaceBarZerosWithNullsDataKeys = seriesModels
+    .filter(
+      seriesModel =>
+        settings.series(seriesModel.legacySeriesSettingsObjectKey).display ===
+        "bar",
+    )
+    .map(seriesModel => seriesModel.dataKey);
+
+  return datum => {
+    const transformedDatum = { ...datum };
+    for (const key of replaceBarZerosWithNullsDataKeys) {
+      const labelKey = `${key}_label`;
+      const isZero = datum[key] === 0;
+      transformedDatum[labelKey] = datum[key];
+      transformedDatum[key] = isZero ? null : datum[key];
+    }
+    return transformedDatum;
+  };
+};
+
 const hasInterpolatedAreaSeries = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
@@ -679,6 +703,10 @@ export const applyVisualizationSettingsDataTransformations = (
         stackModels.find(stackModel => stackModel.display === "area")
           ?.seriesKeys ?? [],
       ),
+    },
+    {
+      condition: true, // non stacked & data labels enabled
+      fn: getBarZeroReplacerTransform(settings, seriesModels),
     },
   ]);
 };

@@ -108,7 +108,7 @@ export const buildEChartsWaterfallSeries = (
 
   const buildLabelOption = () => ({
     ...buildEChartsLabelOptions(
-      seriesModel,
+      seriesModel.dataKey,
       chartModel.yAxisScaleTransforms,
       renderingContext,
       labelFormatter,
