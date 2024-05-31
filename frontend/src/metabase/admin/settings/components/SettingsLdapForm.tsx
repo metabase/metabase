@@ -226,11 +226,11 @@ export const SettingsLdapFormView = ({
 
 const getAttributeValues = (
   ldapAttributes: SettingKey[],
-  settings: Record<string, LdapFormSettingElement>,
+  settings: Record<SettingKey, LdapFormSettingElement>,
   values: SettingValues,
   defaultableAttrs: Set<string>,
 ): LdapFormValues => {
-  return Object.fromEntries(
+  const attributeValues = Object.fromEntries(
     ldapAttributes.map(key => [
       key,
       defaultableAttrs.has(key)
@@ -238,6 +238,15 @@ const getAttributeValues = (
         : values[key],
     ]),
   );
+
+  return {
+    ...attributeValues,
+    // ldap port is number | null, we need to edit as a string if it is a number
+    "ldap-port":
+      typeof attributeValues["ldap-port"] === "number"
+        ? "" + attributeValues["ldap-port"]
+        : attributeValues["ldap-port"],
+  };
 };
 
 const mapDispatchToProps = {
