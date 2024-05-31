@@ -15,6 +15,7 @@ import {
   expectGoodSnowplowEvent,
   resetSnowplow,
   expectNoBadSnowplowEvents,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -254,9 +255,7 @@ describeWithSnowplow("extract shortcut", () => {
 
     cy.get("#main-data-grid").scrollTo("left", { duration: 2000 / 60 });
 
-    cy.findAllByRole("columnheader", { name: "ID" })
-      .should("be.visible")
-      .click();
+    tableHeaderClick("ID");
 
     // Change sort direction
     popover().findAllByRole("button").first().click();

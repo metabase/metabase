@@ -58,8 +58,6 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
       ([subType, { searchTerm, value, representativeResult }], index) => {
         FieldFilter.setWidgetType(subType);
 
-        FieldFilter.openEntryForm({ isFilterRequired: true });
-
         searchTerm
           ? FieldFilter.pickDefaultValue(searchTerm, value)
           : FieldFilter.addDefaultStringFilter(value);

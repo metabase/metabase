@@ -24,6 +24,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     addCustomColumn();
     enterCustomColumnDetails({
       formula: "[Rating]{leftarrow}{leftarrow}{leftarrow}",
+      blur: false,
     });
 
     // accept the only suggested item, i.e. "[Rating]"
@@ -37,7 +38,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly accept the chosen function suggestion", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "LTRIM([Title])" });
+    enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
 
     // Place the cursor between "is" and "empty"
     cy.get("@formula").type("{leftarrow}".repeat(13));
@@ -59,7 +60,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should show expression function helper if a proper function is typed", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "lower(" });
+    enterCustomColumnDetails({ formula: "lower(", blur: false });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("lower(text)");
