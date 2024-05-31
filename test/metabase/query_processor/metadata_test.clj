@@ -65,8 +65,7 @@
                {:lib/type      :metadata/column
                 :name          "PRICE"
                 :database-type "INTEGER"
-                :base-type     :type/Integer
-                :original-name "PRICE"}]
+                :base-type     :type/Integer}]
               (qp.metadata/result-metadata query))))))
 
 (deftest ^:parallel native-query-fallback-metadata-test

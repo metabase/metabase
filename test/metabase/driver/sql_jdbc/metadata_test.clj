@@ -29,8 +29,7 @@
              {:lib/type      :metadata/column
               :name          "PRICE"
               :database-type "INTEGER"
-              :base-type     :type/Integer
-              :original-name "PRICE"}]
+              :base-type     :type/Integer}]
             (sql-jdbc.metadata/query-result-metadata
              :h2
              (mt/native-query {:query "SELECT * FROM venues WHERE id = ?;", :params [1]}))))))

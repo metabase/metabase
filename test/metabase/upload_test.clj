@@ -359,7 +359,7 @@
 
     (with-upload-table [table (create-upload-table! ...)]
       ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [[table-binding create-table-expr] & body]
   `(with-uploads-enabled
      (mt/with-model-cleanup [:model/Table]
@@ -877,10 +877,14 @@
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (mt/with-dynamic-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
-                                 future-call (fn [thunk]
-                                               (swap! in-future? (constantly true))
-                                               (thunk))]
+        (with-redefs [upload/scan-and-sync-table!
+                      (let [orig-scan-and-sync-table! @#'upload/scan-and-sync-table!]
+                        (fn [database table]
+                          ;; do away with the `future` invocation since we don't want race conditions in a test
+                          (with-redefs [future-call (fn [thunk]
+                                                      (swap! in-future? (constantly true))
+                                                      (thunk))]
+                            (orig-scan-and-sync-table! database table))))]
           (testing "Happy path with schema, and without table-prefix"
             (with-upload-table!
               [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :asynchronous))]

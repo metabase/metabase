@@ -861,9 +861,9 @@
                        :result_metadata [{:name "ID"
                                           :id   (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude
-                                          :field_ref     [:field (mt/id :airport :longitude) {:base-type :type/Float}]}
+                                          :name          "LONGITUDE"}
                                          {:semantic_type :type/Latitude
-                                          :field_ref     [:field (mt/id :airport :latitude) {:base-type :type/Float}]}]}]
+                                          :name          "LATITUDE"}]}]
         (mt/with-temp [Card {card-id :id} base-card
                        Card {model-id :id} model
                        Dashboard {dash-id :id} {}

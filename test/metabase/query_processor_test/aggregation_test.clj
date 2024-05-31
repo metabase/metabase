@@ -62,11 +62,11 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
-                  :rows [[3.4]]}
-                 (qp.test-util/rows-and-cols
-                  (mt/format-rows-by [1.0]
-                    (mt/process-query query))))))))))
+          (is (=? {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
+                   :rows [[3.4]]}
+                  (qp.test-util/rows-and-cols
+                   (mt/format-rows-by [1.0]
+                     (mt/process-query query))))))))))
 
 (deftest ^:parallel standard-deviation-unsupported-test
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
@@ -149,10 +149,10 @@
                                                  :settings {:is_priceless false}}]})
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
-                      :settings {:is_priceless false})
-               (or (-> results mt/cols first)
-                   results)))))))
+        (is (=? (assoc (qp.test-util/aggregate-col :sum :venues :price)
+                       :settings {:is_priceless false})
+                (or (-> results mt/cols first)
+                    results)))))))
 
 (deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"

@@ -783,6 +783,8 @@
             ;; to compare against.
             ;; Since we know that the Products sample data has 4 Product categories, we can reliably expect
             ;; that Adding a series to the card that is identical to the first card will result in 4 more path elements.
+            ;;
+            ;; this should = 16
             (is (= expected-dashcard-paths-count (count dashcard-path-elements)))))))))
 
 (defn- render-card
