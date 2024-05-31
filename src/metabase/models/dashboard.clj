@@ -483,9 +483,10 @@
                             (update :result_metadata #(or % (-> card
                                                                 :dataset_query
                                                                 result-metadata-for-query)))
-                            (dissoc :id))))]
+                            ;; Xrays populate this in their transient cards
+                            (dissoc :id :can_write_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :can_write_query :collection))))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
