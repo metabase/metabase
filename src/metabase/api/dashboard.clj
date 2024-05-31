@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.database :as api.database]
@@ -844,11 +845,34 @@
 (defn- dashboard-metadata
   [dashboard]
   (let [dashcards (:dashcards dashboard)
-        cards (for [{:keys [card series]} dashcards
-                    :let [all (conj series card)]
-                    card all
-                    :when (:dataset_query card)]
-                card)
+        links (group-by :type (set (for [dashcard dashcards
+                                         :let [top-click-behavior (get-in dashcard [:visualization_settings :click_behavior])
+                                               col-click-behaviors (keep (comp :click_behavior val)
+                                                                         (get-in dashcard [:visualization_settings :column_settings]))]
+                                         {:keys [linkType type targetId]} (conj col-click-behaviors top-click-behavior)
+                                         :when (and (= type "link")
+                                                    (contains? #{"question" "dashboard"} linkType))]
+                                     {:type (case linkType
+                                              "question" :card
+                                              "dashboard" :dashboard)
+                                      :id targetId})))
+
+        fetch-or-warn (fn [{entity-type :type entity-id :id} f & f-args]
+                        (try
+                          (apply f entity-id f-args)
+                          (catch Exception e
+                            (log/warnf "Error in dashboard metadata %s %s: %s" entity-type entity-id (ex-message e)))))
+        link-cards (->> (:card links)
+                        (sort-by :id)
+                        (into []
+                              (keep #(fetch-or-warn % api.card/get-card))))
+        cards (->> (concat
+                     (for [{:keys [card series]} dashcards
+                           :let [all (conj series card)]
+                           card all]
+                       card)
+                     link-cards)
+                   (filter :dataset_query))
         database-ids (set (map :database_id cards))
         db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
                              database-ids))
@@ -858,33 +882,28 @@
                                                         query (lib/query mp (:dataset_query card))]
                                                     (lib/dependent-metadata query (:id card) (:type card)))) cards)))]
     {:tables (->> (:table dependents)
-                  (sort-by (fn [{card-or-table-id :id}]
-                             (or (lib.util/legacy-string-table-id->card-id card-or-table-id) card-or-table-id)))
+                  ;; Can be int or "card__<id>"
+                  (sort-by (comp str :id))
                   (into []
-                        (keep (fn [{card-or-table-id :id}]
-                                (try
-                                  (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
-                                    (api.table/fetch-card-query-metadata card-id)
-                                    (api.table/fetch-table-query-metadata card-or-table-id {}))
-                                  (catch Exception e
-                                    (log/warnf "Error in dashboard metadata %s %s: %s" :table card-or-table-id (ex-message e))))))))
+                        (keep #(fetch-or-warn
+                                 %
+                                 (fn [card-or-table-id]
+                                   (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
+                                     (api.table/fetch-card-query-metadata card-id)
+                                     (api.table/fetch-table-query-metadata card-or-table-id {})))))))
      :databases (->> (:database dependents)
                      (sort-by :id)
                      (into []
-                           (keep (fn [{database-id :id}]
-                                   (try
-                                     (api.database/get-database database-id {})
-                                     (catch Exception e
-                                       (log/warnf "Error in dashboard metadata %s %s: %s" :database database-id (ex-message e))))))))
+                           (keep #(fetch-or-warn % api.database/get-database {}))))
      :fields (->> (:field dependents)
                   (sort-by :id)
                   (into []
-                        (keep (fn [{field-id :id}]
-                                (try
-                                  (api.field/get-field field-id {})
-                                  (catch Exception e
-                                    (log/warnf "Error in dashboard metadata %s %s: %s" :field field-id (ex-message e))))))))}))
-
+                        (keep #(fetch-or-warn % api.field/get-field {}))))
+     :cards link-cards
+     :dashboards (->> (:dashboard links)
+                      (sort-by :id)
+                      (into []
+                            (keep #(fetch-or-warn % get-dashboard))))}))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
