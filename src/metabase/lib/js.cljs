@@ -245,7 +245,9 @@
 
   > **Code health:** Healthy"
   [a-query stage-number]
-  (if (empty? (lib.core/aggregations a-query stage-number))
+  (if (and
+        (empty? (lib.core/aggregations a-query stage-number))
+        (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
     #js {:query      a-query
          :stageIndex stage-number}
