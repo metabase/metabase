@@ -254,7 +254,7 @@
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
 
-   :extra-paths ["dev/src" "local/src" "test" "test_resources"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -619,9 +619,9 @@
    :extra-deps
    {org.clojure/data.json {:mvn/version "2.5.0"}}}
 
-  ;;; Run tests for the build scripts:
-  ;;;
-  ;;; clj -X:dev:drivers:build:build-dev:build-test
+  ;; Run tests for the build scripts:
+  ;;
+  ;; clj -X:dev:drivers:build:build-dev:build-test
   :build-test
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
@@ -702,6 +702,12 @@
   :test/search
   {:exec-args {:only [metabase.api.search-test
                       "test/metabase/search"]}}
+
+  ;; test custom clj-kondo linters and hooks.
+  ;;
+  ;;    clj -X:dev:test:test/kondo
+  :test/kondo
+  {:exec-args {:only [".clj-kondo/test"]}}
 
   ;; watch and reload clojure namespaces
   :watch {:extra-deps
