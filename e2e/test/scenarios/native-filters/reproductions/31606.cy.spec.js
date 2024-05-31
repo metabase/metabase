@@ -76,7 +76,6 @@ describe("issue 31606", { tags: "@external" }, () => {
       .should("have.value", "ID")
       .should("be.disabled");
 
-    FieldFilter.openEntryForm({ isFilterRequired: true });
     FieldFilter.addDefaultStringFilter("2");
 
     cy.findByTestId("sidebar-content").within(() => {
@@ -97,7 +96,8 @@ describe("issue 31606", { tags: "@external" }, () => {
     });
 
     // Field Filter
-    SQLFilter.setWidgetValue("23");
+    filterWidget().click();
+    popover().findByPlaceholderText("Enter an ID").type("23");
     popover().findByText("Add filter").click();
 
     filterWidget().within(() => {

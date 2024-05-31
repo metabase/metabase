@@ -62,7 +62,8 @@ export interface DashCardProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
 
   onAddSeries: (dashcard: StoreDashcard) => void;
@@ -98,7 +99,7 @@ function DashCardInner({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
-  isPublic = false,
+  isPublicOrEmbedded = false,
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
@@ -313,14 +314,12 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={() => onAddSeries(dashcard)}
-            onRemove={() => onRemove(dashcard)}
-            onReplaceCard={() => onReplaceCard(dashcard)}
-            onUpdateVisualizationSettings={settings =>
-              onUpdateVisualizationSettings(dashcard.id, settings)
-            }
-            onReplaceAllVisualizationSettings={settings =>
-              onReplaceAllVisualizationSettings(dashcard.id, settings)
+            onAddSeries={onAddSeries}
+            onRemove={onRemove}
+            onReplaceCard={onReplaceCard}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            onReplaceAllVisualizationSettings={
+              onReplaceAllVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
@@ -351,11 +350,9 @@ function DashCardInner({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
-          isPublic={isPublic}
+          isPublicOrEmbedded={isPublicOrEmbedded}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={settings =>
-            onUpdateVisualizationSettings(dashcard.id, settings)
-          }
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }

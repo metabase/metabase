@@ -132,7 +132,8 @@ type OwnProps = {
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;
   isEditingParameter: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
@@ -347,7 +348,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   getRowHeight() {
     const { width } = this.props;
 
-    const contentViewportElement = this.context;
+    const contentViewportElement = this.context as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
@@ -527,7 +528,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isFullscreen={this.props.isFullscreen}
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
-        isPublic={this.props.isPublic}
+        isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
         onRemove={this.onDashCardRemove}
         onAddSeries={this.onDashCardAddSeries}

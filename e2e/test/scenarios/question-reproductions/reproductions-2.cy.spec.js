@@ -23,6 +23,7 @@ import {
   queryBuilderHeader,
   describeOSS,
   saveQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -214,7 +215,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
   });
 
   it("from a table header cell (metabase#24839-2)", () => {
-    cy.findAllByTestId("header-cell").contains("Average of Total").click();
+    tableHeaderClick("Average of Total");
 
     popover().contains("Distinct values").click();
 
@@ -258,8 +259,7 @@ describe("issue 25016", () => {
 
   it("should be possible to filter by a column in a multi-stage query (metabase#25016)", () => {
     visitQuestionAdhoc(questionDetails);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").click();
+    tableHeaderClick("Category");
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
@@ -738,7 +738,7 @@ describe("Custom columns visualization settings", () => {
   });
 
   it("should not show 'Save' after saving viz settings from the custom column dropdown", () => {
-    cy.findAllByTestId("header-cell").contains(EXPRESSION_NAME).click();
+    tableHeaderClick(EXPRESSION_NAME);
     popover().within(() => {
       cy.findByRole("button", { name: /gear icon/i }).click();
     });
