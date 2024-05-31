@@ -84,7 +84,29 @@ WHERE EXISTS (
 
 -- Set `collection.trash_operation_id` for collections that were trashed directly
 UPDATE collection
-SET trash_operation_id = LPAD(id::text, 36, '0')
+SET trash_operation_id =
+CASE
+    WHEN LENGTH(CAST(id AS VARCHAR)) <= 12 THEN
+        CONCAT('00000000-0000-0000-0000-', LPAD(CAST(id AS VARCHAR), 12, '0'))
+    WHEN LENGTH(CAST(id AS VARCHAR)) > 12 AND LENGTH(CAST(id AS VARCHAR)) <= 16 THEN
+        CONCAT('00000000-0000-0000-',
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 1, LENGTH(CAST(id AS VARCHAR)) - 12), 4, '0'), '-',
+               SUBSTRING(CAST(id AS VARCHAR), LENGTH(CAST(id AS VARCHAR)) - 11, 12))
+    WHEN LENGTH(CAST(id AS VARCHAR)) > 16 AND LENGTH(CAST(id AS VARCHAR)) <= 20 THEN
+        CONCAT('00000000-0000-',
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 1, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 5, 4), 4, '0'), '-',
+               SUBSTRING(CAST(id AS VARCHAR), 9))
+    WHEN LENGTH(CAST(id AS VARCHAR)) > 20 THEN
+        CONCAT(
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 1, 8), 8, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 9, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 13, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS VARCHAR), 17, 12), 12, '0')
+        )
+    -- If someone has >10^20 collections, they have bigger problems than a wrong `trash_operation_id`
+    ELSE '00000000-0000-0000-0000-000000000000'
+END
 WHERE archived AND trashed_directly;
 
 WITH Ancestors(id, archived, trashed_directly, trash_operation_id, location) AS (

@@ -72,9 +72,29 @@ SET trashed_directly = (
 WHERE parent.archived;
 
 -- Set `collection.trash_operation_id` for collections that were trashed directly
-
 UPDATE collection
-SET trash_operation_id = LPAD(CAST(id AS CHAR), 36, '0')
+SET trash_operation_id =
+CASE
+    WHEN LENGTH(CAST(id AS CHAR)) <= 12 THEN
+        CONCAT('00000000-0000-0000-0000-', LPAD(CAST(id AS CHAR), 12, '0'))
+    WHEN LENGTH(CAST(id AS CHAR)) > 12 AND LENGTH(CAST(id AS CHAR)) <= 16 THEN
+        CONCAT('00000000-0000-0000-',
+               LPAD(SUBSTRING(CAST(id AS CHAR), 1, LENGTH(CAST(id AS CHAR)) - 12), 4, '0'), '-',
+               SUBSTRING(CAST(id AS CHAR), LENGTH(CAST(id AS CHAR)) - 11, 12))
+    WHEN LENGTH(CAST(id AS CHAR)) > 16 AND LENGTH(CAST(id AS CHAR)) <= 20 THEN
+        CONCAT('00000000-0000-',
+               LPAD(SUBSTRING(CAST(id AS CHAR), 1, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS CHAR), 5, 4), 4, '0'), '-',
+               SUBSTRING(CAST(id AS CHAR), 9))
+    WHEN LENGTH(CAST(id AS CHAR)) > 20 THEN
+        CONCAT(
+               LPAD(SUBSTRING(CAST(id AS CHAR), 1, 8), 8, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS CHAR), 9, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS CHAR), 13, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(CAST(id AS CHAR), 17, 12), 12, '0')
+        )
+    ELSE '00000000-0000-0000-0000-000000000000'
+END
 WHERE archived AND trashed_directly;
 
 -- Set `collection.trash_operation_id` for descendants of collections that were trashed directly

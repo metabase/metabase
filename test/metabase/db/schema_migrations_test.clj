@@ -2147,6 +2147,9 @@
         (migrate!)
         (let [trash-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :trash_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
           (is (= 4 (count trash-operation-id->collection-ids)))
+          (doseq [id (keys trash-operation-id->collection-ids)]
+            (when-not (nil? id)
+              (is (uuid? (java.util.UUID/fromString id)))))
           (testing "Run the same test as above just to make sure that it survives the round trip"
             (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
                      #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree

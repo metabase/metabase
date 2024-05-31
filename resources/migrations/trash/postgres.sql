@@ -81,7 +81,29 @@ AND cp.archived = true;
 -- Set `collection.trash_operation_id` for collections that were trashed directly
 
 UPDATE collection
-SET trash_operation_id = LPAD(id::text, 36, '0')
+SET trash_operation_id =
+CASE
+    WHEN LENGTH(id::text) <= 12 THEN
+        CONCAT('00000000-0000-0000-0000-', LPAD(id::text, 12, '0'))
+    WHEN LENGTH(id::text) > 12 AND LENGTH(id::text) <= 16 THEN
+        CONCAT('00000000-0000-0000-',
+               LPAD(SUBSTRING(id::text, 1, LENGTH(id::text) - 12), 4, '0'), '-',
+               SUBSTRING(id::text, LENGTH(id::text) - 11, 12))
+    WHEN LENGTH(id::text) > 16 AND LENGTH(id::text) <= 20 THEN
+        CONCAT('00000000-0000-',
+               LPAD(SUBSTRING(id::text, 1, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(id::text, 5, 4), 4, '0'), '-',
+               SUBSTRING(id::text, 9))
+    WHEN LENGTH(id::text) > 20 THEN
+        CONCAT(
+               LPAD(SUBSTRING(id::text, 1, 8), 8, '0'), '-',
+               LPAD(SUBSTRING(id::text, 9, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(id::text, 13, 4), 4, '0'), '-',
+               LPAD(SUBSTRING(id::text, 17, 12), 12, '0')
+        )
+    -- If someone has >10^20 collections, they have bigger problems than a wrong `trash_operation_id`
+    ELSE '00000000-0000-0000-0000-000000000000'
+END
 WHERE archived AND trashed_directly;
 
 -- Set `collection.trash_operation_id` for descendants of collections that were trashed directly
