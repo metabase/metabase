@@ -37,7 +37,7 @@ import type {
   ParameterValuesMap,
 } from "metabase-types/api";
 
-export const PublicQuestion = ({
+export const PublicOrEmbeddedQuestion = ({
   params: { uuid, token },
   location,
 }: {
