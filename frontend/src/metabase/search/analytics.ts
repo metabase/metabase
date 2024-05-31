@@ -21,22 +21,21 @@ export const trackSearchRequest = (
   duration: number,
 ) => {
   trackSchemaEvent("search", "2-0-0", {
-    event: "new_search_query",
+    event: "search_query",
     filters: {
-      q: searchRequest.q,
-      created_by: searchRequest.created_by,
-      created_at: searchRequest.created_at,
-      last_edited_at: searchRequest.last_edited_at,
-      last_edited_by: searchRequest.last_edited_by,
-      verified: searchRequest.verified,
-      search_native_query: searchRequest.search_native_query,
-      models: searchRequest.models,
-      archived: searchRequest.archived,
+      content_type: searchRequest.models,
+      creator: !!searchRequest.created_by,
+      creation_date: !!searchRequest.created_at,
+      last_edit_date: !!searchRequest.last_edited_at,
+      last_editor: !!searchRequest.last_edited_by,
+      verified_items: !!searchRequest.verified,
+      search_native_queries: !!searchRequest.search_native_query,
+      search_archived: !!searchRequest.archived,
     },
     context: searchRequest.context,
     response_time: duration,
     total_results: searchResponse.total,
-    pageResults: searchResponse.limit,
+    page_results: searchResponse.limit,
   });
 };
 

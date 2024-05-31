@@ -16,7 +16,7 @@ import {
 } from "e2e/support/helpers";
 
 describeWithSnowplow("scenarios > search > snowplow", () => {
-  const NEW_SEARCH_QUERY_EVENT_NAME = "new_search_query";
+  const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
 
   beforeEach(() => {
@@ -39,7 +39,6 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "command-palette",
-          filters: { q: "Orders" },
         },
         1,
       );
@@ -68,7 +67,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       expectGoodSnowplowEvent({
         event: NEW_SEARCH_QUERY_EVENT_NAME,
         context: "entity-picker",
-        filters: { q: "second", models: ["collection"] },
+        filters: { content_type: ["collection"] },
       });
 
       entityPickerModal()
@@ -95,7 +94,6 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       expectGoodSnowplowEvent({
         event: NEW_SEARCH_QUERY_EVENT_NAME,
         context: "search-bar",
-        filters: { q: "coun" },
       });
 
       cy.findByTestId("search-bar-results-container")
@@ -118,7 +116,6 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
-          filters: { q: "orders" },
         });
 
         cy.findByRole("heading", { name: "Orders in a dashboard" }).click();
@@ -140,7 +137,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
             event: NEW_SEARCH_QUERY_EVENT_NAME,
 
             context: "search-app",
-            filters: { q: "orders", models: ["card"] },
+            filters: { content_type: ["card"] },
           },
           1,
         );
@@ -151,7 +148,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         cy.wait("@search");
         expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
-          filters: { q: "orders" },
+          filters: {},
           context: "search-app",
         });
 
@@ -168,7 +165,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
 
           context: "search-app",
           filters: {
-            models: [
+            content_type: [
               "dashboard",
               "card",
               "dataset",
@@ -176,7 +173,6 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
               "database",
               "table",
             ],
-            q: "orders",
           },
         });
       });
@@ -188,8 +184,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            models: ["card"],
+            content_type: ["card"],
           },
         });
 
@@ -201,8 +196,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            models: [],
+            content_type: [],
           },
         });
       });
@@ -216,8 +210,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_by: "1",
+            creator: true,
           },
         });
       });
@@ -228,9 +221,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
-          filters: {
-            q: "orders",
-          },
+          filters: { creator: false },
         });
 
         cy.findByTestId("created_by-search-filter").click();
@@ -243,8 +234,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_by: "1",
+            creator: true,
           },
         });
       });
@@ -256,8 +246,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_by: "1",
+            creator: true,
           },
         });
 
@@ -269,8 +258,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_by: undefined,
+            creator: false,
           },
         });
       });
@@ -284,8 +272,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_by: "1",
+            last_editor: true,
           },
         });
       });
@@ -297,7 +284,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
+            last_editor: false,
           },
         });
 
@@ -311,8 +298,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_by: "1",
+            last_editor: true,
           },
         });
       });
@@ -324,8 +310,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_by: "1",
+            last_editor: true,
           },
         });
 
@@ -337,8 +322,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_by: undefined,
+            last_editor: false,
           },
         });
       });
@@ -352,8 +336,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_at: "thisday",
+            creation_date: true,
           },
         });
       });
@@ -365,7 +348,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
+            creation_date: false,
           },
         });
 
@@ -378,8 +361,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_at: "thisday",
+            creation_date: true,
           },
         });
       });
@@ -391,8 +373,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_at: "thisday",
+            creation_date: true,
           },
         });
 
@@ -404,8 +385,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            created_at: undefined,
+            creation_date: false,
           },
         });
       });
@@ -419,8 +399,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_at: "thisday",
+            last_edit_date: true,
           },
         });
       });
@@ -432,7 +411,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
+            last_edit_date: false,
           },
         });
 
@@ -445,8 +424,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_at: "thisday",
+            last_edit_date: true,
           },
         });
       });
@@ -458,8 +436,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_at: "thisday",
+            last_edit_date: true,
           },
         });
 
@@ -471,8 +448,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            last_edited_at: undefined,
+            last_edit_date: false,
           },
         });
       });
@@ -490,8 +466,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            verified: "true",
+            verified_items: true,
           },
         });
       });
@@ -503,7 +478,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
+            verified_items: false,
           },
         });
 
@@ -515,8 +490,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            verified: "true",
+            verified_items: true,
           },
         });
       });
@@ -528,8 +502,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            verified: "true",
+            verified_items: true,
           },
         });
 
@@ -541,8 +514,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            verified: undefined,
+            verified_items: false,
           },
         });
       });
@@ -556,8 +528,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            search_native_query: "true",
+            search_native_queries: true,
           },
         });
       });
@@ -569,7 +540,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
+            search_native_queries: false,
           },
         });
 
@@ -581,8 +552,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            search_native_query: "true",
+            search_native_queries: true,
           },
         });
       });
@@ -594,8 +564,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            search_native_query: "true",
+            search_native_queries: true,
           },
         });
 
@@ -607,8 +576,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            search_native_query: undefined,
+            search_native_queries: false,
           },
         });
       });
@@ -622,8 +590,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            archived: "true",
+            search_archived: true,
           },
         });
       });
@@ -635,7 +602,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
+            search_archived: false,
           },
         });
 
@@ -647,8 +614,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            archived: "true",
+            search_archived: true,
           },
         });
       });
@@ -660,8 +626,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            archived: "true",
+            search_archived: true,
           },
         });
 
@@ -673,8 +638,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           filters: {
-            q: "orders",
-            archived: undefined,
+            search_archived: false,
           },
         });
       });
