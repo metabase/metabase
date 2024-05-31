@@ -876,30 +876,29 @@
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (binding [upload/*auxiliary-sync-steps* :synchronous]
-          (testing "Happy path with schema, and without table-prefix"
-            (with-upload-table!
-              [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :asynchronous))]
-              (is (=? {:display          :table
-                       :database_id      db-id
-                       :dataset_query    {:database db-id
-                                          :query    {:source-table (:id new-table)}
-                                          :type     :query}
-                       :creator_id       (mt/user->id :rasta)
-                       :name             #"(?i)example csv file(.*)"
-                       :collection_id    nil}
-                      (t2/select-one :model/Card :table_id (:id new-table)))
-                  "A new model is created")
-              (is (=? {:name      #"(?i)example(.*)"
-                       :schema    (re-pattern (str "(?i)" schema-name))
-                       :is_upload true}
-                      new-table)
-                  "A new table is created")
-              (is (= "complete"
-                     (:initial_sync_status new-table))
-                  "The table is synced and marked as complete")
-              (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
-                  "The sync actually runs"))))
+        (testing "Happy path with schema, and without table-prefix"
+          (with-upload-table!
+            [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :synchronous))]
+            (is (=? {:display          :table
+                     :database_id      db-id
+                     :dataset_query    {:database db-id
+                                        :query    {:source-table (:id new-table)}
+                                        :type     :query}
+                     :creator_id       (mt/user->id :rasta)
+                     :name             #"(?i)example csv file(.*)"
+                     :collection_id    nil}
+                    (t2/select-one :model/Card :table_id (:id new-table)))
+                "A new model is created")
+            (is (=? {:name      #"(?i)example(.*)"
+                     :schema    (re-pattern (str "(?i)" schema-name))
+                     :is_upload true}
+                    new-table)
+                "A new table is created")
+            (is (= "complete"
+                   (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
+                "The table is synced and marked as complete")
+            (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+                "The sync actually runs")))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
 
