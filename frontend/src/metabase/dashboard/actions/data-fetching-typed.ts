@@ -92,14 +92,18 @@ export const fetchDashboard = createAsyncThunk(
         };
       } else if (dashboardType === "transient") {
         const subPath = String(dashId).split("/").slice(3).join("/");
-        result = await AutoApi.dashboard(
-          { subPath },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const [entity, entityId] = subPath.split("/");
+        const [response] = await Promise.all([
+          AutoApi.dashboard(
+            { subPath },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          dispatch(Dashboards.actions.fetchXrayMetadata({ entity, entityId })),
+        ]);
         result = {
-          ...result,
+          ...response,
           id: dashId,
-          dashcards: result.dashcards.map((dc: DashboardCard) => ({
+          dashcards: response.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,
           })),

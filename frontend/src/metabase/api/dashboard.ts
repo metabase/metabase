@@ -110,11 +110,12 @@ export const dashboardApi = Api.injectEndpoints({
 });
 
 export const {
-  useCopyDashboardMutation,
-  useCreateDashboardMutation,
-  useDeleteDashboardMutation,
   useGetDashboardQuery,
+  useGetDashboardQueryMetadataQuery,
   useListDashboardsQuery,
-  useSaveDashboardMutation,
+  useCreateDashboardMutation,
   useUpdateDashboardMutation,
+  useSaveDashboardMutation,
+  useDeleteDashboardMutation,
+  useCopyDashboardMutation,
 } = dashboardApi;

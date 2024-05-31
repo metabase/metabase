@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { dashboardApi } from "metabase/api";
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -183,6 +183,25 @@ const Dashboards = createEntity({
             id,
             dispatch,
             dashboardApi.endpoints.getDashboardQueryMetadata,
+          ),
+    ),
+
+    fetchXrayMetadata: compose(
+      withAction(FETCH_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+        cards: [QuestionSchema],
+        dashboards: [DashboardSchema],
+      }),
+    )(
+      ({ entity, entityId }) =>
+        dispatch =>
+          entityCompatibleQuery(
+            { entity, entityId },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
     ),
   },

@@ -103,6 +103,7 @@ export const cardApi = Api.injectEndpoints({
 export const {
   useListCardsQuery,
   useGetCardQuery,
+  useGetCardQueryMetadataQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,

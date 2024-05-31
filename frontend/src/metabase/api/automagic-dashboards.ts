@@ -30,4 +30,7 @@ export const automagicDashboardsApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListDatabaseXraysQuery } = automagicDashboardsApi;
+export const {
+  useGetXrayDashboardQueryMetadataQuery,
+  useListDatabaseXraysQuery,
+} = automagicDashboardsApi;
