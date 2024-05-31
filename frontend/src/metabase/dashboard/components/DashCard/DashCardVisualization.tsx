@@ -76,7 +76,10 @@ interface DashCardVisualizationProps {
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
 
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (
+    id: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
@@ -123,7 +126,14 @@ export function DashCardVisualization({
       : null;
   }, [dashcard.card, metadata]);
 
-  const renderVisualizationOverlay = useCallback(() => {
+  const handleOnUpdateVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      onUpdateVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard.id, onUpdateVisualizationSettings],
+  );
+
+  const visualizationOverlay = useMemo(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
         getVisualizationRaw(series)?.disableClickBehavior;
@@ -177,7 +187,7 @@ export function DashCardVisualization({
     series,
   ]);
 
-  const renderActionButtons = useCallback(() => {
+  const actionButtons = useMemo(() => {
     if (!question) {
       return null;
     }
@@ -251,10 +261,10 @@ export function DashCardVisualization({
       isPreviewing={isPreviewing}
       isEditingParameter={isEditingParameter}
       isMobile={isMobile}
-      actionButtons={renderActionButtons()}
-      replacementContent={renderVisualizationOverlay()}
+      actionButtons={actionButtons}
+      replacementContent={visualizationOverlay}
       getExtraDataForClick={getExtraDataForClick}
-      onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+      onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
     />
