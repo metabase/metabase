@@ -1,7 +1,6 @@
 (ns metabase.api.search
   (:require
    [compojure.core :refer [GET]]
-  ;;  [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -77,7 +76,6 @@
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [
-     ;; start-time           (System/currentTimeMillis)
         models-set           (if (seq models)
                                (set models)
                                search/all-models)
@@ -99,24 +97,6 @@
                                 :search-string                       q
                                 :table-db-id                         table_db_id
                                 :verified                            verified}))]
-        ;; duration             (- (System/currentTimeMillis) start-time)
-        ;; has-advanced-filters (some some?
-        ;;                            [models created_by created_at last_edited_by
-        ;;                             last_edited_at search_native_query verified])]
-    ;; (when (contains? #{"search-app" "search-bar" "command-palette"} context)
-    ;;   (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
-    ;;                          {:runtime-milliseconds duration
-    ;;                           :context              context})
-    ;;   (when has-advanced-filters
-    ;;     (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
-    ;;                            {:runtime-milliseconds  duration
-    ;;                             :content-type          models
-    ;;                             :creator               (some? created_by)
-    ;;                             :creation-date         (some? created_at)
-    ;;                             :last-editor           (some? last_edited_by)
-    ;;                             :last-edit-date        (some? last_edited_at)
-    ;;                             :verified-items        (some? verified)
-    ;;                             :search-native-queries (some? search_native_query)})))
     results))
 
 (api/define-routes)
