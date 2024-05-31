@@ -1,6 +1,5 @@
 import { denormalize, normalize, schema } from "normalizr";
 
-import { loadMetadataForDashcards } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
@@ -92,7 +91,7 @@ export const fetchDashboard = createAsyncThunk(
         };
       } else if (dashboardType === "transient") {
         const subPath = String(dashId).split("/").slice(3).join("/");
-        const [entity, entityId] = subPath.split("/");
+        const [entity, entityId] = subPath.split(/[/?]/);
         const [response] = await Promise.all([
           AutoApi.dashboard(
             { subPath },
@@ -108,7 +107,6 @@ export const fetchDashboard = createAsyncThunk(
             dashboard_id: dashId,
           })),
         };
-        await dispatch(loadMetadataForDashcards(result.dashcards));
       } else if (dashboardType === "inline") {
         // HACK: this is horrible but the easiest way to get "inline" dashboards up and running
         // pass the dashboard in as dashboardId, and replace the id with [object Object] because
