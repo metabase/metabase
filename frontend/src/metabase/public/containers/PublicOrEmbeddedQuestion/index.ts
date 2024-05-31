@@ -1,1 +1,1 @@
-export { PublicQuestion } from "./PublicOrEmbeddedQuestion";
+export { PublicOrEmbeddedQuestion } from "./PublicOrEmbeddedQuestion";

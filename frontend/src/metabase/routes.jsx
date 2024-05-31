@@ -33,7 +33,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicOrEmbeddedDashboard";
-import { PublicQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
+import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -87,7 +87,7 @@ export const getRoutes = store => {
 
       {/* PUBLICLY SHARED LINKS */}
       <Route path="public">
-        <Route path="question/:uuid" component={PublicQuestion} />
+        <Route path="question/:uuid" component={PublicOrEmbeddedQuestion} />
         <Route
           path="dashboard/:uuid(/:tabSlug)"
           component={PublicOrEmbeddedDashboardControlled}

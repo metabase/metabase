@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { PublicQuestion } from "./PublicOrEmbeddedQuestion";
+import { PublicOrEmbeddedQuestion } from "./PublicOrEmbeddedQuestion";
 
 registerVisualizations();
 
@@ -68,7 +68,7 @@ async function setup() {
   );
 
   renderWithProviders(
-    <Route path="public/question/:uuid" component={PublicQuestion} />,
+    <Route path="public/question/:uuid" component={PublicOrEmbeddedQuestion} />,
     {
       storeInitialState: createMockState(),
       withRouter: true,
@@ -78,7 +78,7 @@ async function setup() {
   expect(await screen.findByText(QUESTION_NAME)).toBeInTheDocument();
 }
 
-describe("PublicQuestion", () => {
+describe("PublicOrEmbeddedQuestion", () => {
   it("should render data", async () => {
     await setup();
     expect(await screen.findByText("John W.")).toBeInTheDocument();
