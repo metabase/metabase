@@ -22,7 +22,6 @@ export function MultiAutocomplete({
   placeholder,
   autoFocus,
   shouldCreate = defaultShouldCreate,
-  rightSection,
   onChange,
   onSearchChange,
   onFocus,
@@ -151,7 +150,7 @@ export function MultiAutocomplete({
     }
   };
 
-  const defaultRightSection = (
+  const info = isFocused ? (
     <Tooltip
       label={
         <>
@@ -163,10 +162,9 @@ export function MultiAutocomplete({
     >
       <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
+  ) : (
+    <span />
   );
-
-  const finalRightSection =
-    typeof rightSection === "undefined" ? defaultRightSection : rightSection;
 
   return (
     <MultiSelect
@@ -182,7 +180,7 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
-      rightSection={isFocused ? finalRightSection : null}
+      rightSection={info}
     />
   );
 }
