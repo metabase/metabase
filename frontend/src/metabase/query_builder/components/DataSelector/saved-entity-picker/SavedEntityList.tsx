@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
