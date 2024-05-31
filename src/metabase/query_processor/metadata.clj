@@ -62,7 +62,10 @@
         (log/error e "Error running query to determine Card result metadata")
         []))))
 
-(mu/defn ^:private native-query-metadata :- [:sequential :map]
+(mu/defn ^:private metadata-from-driver :- [:sequential :map]
+  "Get metadata from the driver's implementation of [[metabase.driver/query-result-metadata]]. For JDBC-based drivers
+  this returns metadata without actually running queries; the default implementation will run the query with `LIMIT 1`
+  to get results."
   [query           :- :map
    current-user-id :- [:maybe ::lib.schema.id/user]]
   (let [query  (cond-> query
@@ -73,7 +76,7 @@
 (mu/defn ^:private result-metadata* :- [:sequential :map]
   [query current-user-id]
   (or (metadata-from-preprocessing query)
-      (native-query-metadata query current-user-id)))
+      (metadata-from-driver query current-user-id)))
 
 (mu/defn result-metadata :- [:sequential ::lib.schema.metadata/column]
   "Get result metadata for a query, hopefully without actually having to run the query itself. For MBQL queries we can

@@ -2,7 +2,6 @@
   "/api/card endpoints."
   (:require
    [cheshire.core :as json]
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -21,6 +20,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
    [metabase.models.card :as card]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -545,31 +545,29 @@
                check-allowed-to-modify-query
                check-allowed-to-change-embedding]]
       (f card-before-update card-updates))
-    ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan  (card/result-metadata-async {:original-query    (:dataset_query card-before-update)
-                                                             :query             dataset_query
-                                                             :metadata          result_metadata
-                                                             :original-metadata (:result_metadata card-before-update)
-                                                             :dataset?          is-model-after-update?})
-          card-updates          (merge card-updates
-                                       (when (and (some? type)
-                                                  is-model-after-update?)
-                                         {:display :table}))
-          metadata-timeout      (a/timeout card/metadata-sync-wait-ms)
-          [fresh-metadata port] (a/alts!! [result-metadata-chan metadata-timeout])
-          timed-out?            (= port metadata-timeout)
-          card-updates          (cond-> card-updates
-                                  (not timed-out?)
-                                  (assoc :result_metadata fresh-metadata
-                                         :verified-result-metadata? true))]
-      (u/prog1 (-> (card/update-card! {:card-before-update card-before-update
-                                       :card-updates       card-updates
-                                       :actor              @api/*current-user*})
-                   hydrate-card-details
-                   (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
-        (when timed-out?
-          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (card/save-metadata-async! result-metadata-chan <>))))))
+    (let [{:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+                                              {:original-query    (:dataset_query card-before-update)
+                                               :query             dataset_query
+                                               :metadata          result_metadata
+                                               :original-metadata (:result_metadata card-before-update)
+                                               :model?            is-model-after-update?})
+          card-updates                       (merge card-updates
+                                                    (when (and (some? type)
+                                                               is-model-after-update?)
+                                                      {:display :table}))
+          card-updates                       (cond-> card-updates
+                                               metadata
+                                               (assoc :result_metadata           metadata
+                                                      :verified-result-metadata? true))
+          card                               (-> (card/update-card! {:card-before-update card-before-update
+                                                                     :card-updates       card-updates
+                                                                     :actor              @api/*current-user*})
+                                                 hydrate-card-details
+                                                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+      (when metadata-future
+        (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
+        (card.metadata/save-metadata-async! metadata-future card))
+      card)))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------

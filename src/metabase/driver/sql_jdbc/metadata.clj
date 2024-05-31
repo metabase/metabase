@@ -38,8 +38,5 @@
                     {:lib/type      :metadata/column
                      :name          (.getColumnLabel rsmeta i)
                      :database-type database-type
-                     :base-type     (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
-                     ;; the following columns are extra 'bonus' metadata that's not actually used anywhere but maybe
-                     ;; helpful for debugging stuff.
-                     :original-name (.getColumnName rsmeta i)}))
+                     :base-type     (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))}))
                 (range 1 (inc (.getColumnCount rsmeta))))))))))

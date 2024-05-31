@@ -24,6 +24,7 @@
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
    [metabase.models.card :as card]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -967,9 +968,9 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   @#'card/legacy-result-metadata-for-query-async
+      (let [orig   @#'card.metadata/legacy-result-metadata-future
             called (atom 0)]
-        (with-redefs [card/legacy-result-metadata-for-query-async (fn [q]
+        (with-redefs [card.metadata/legacy-result-metadata-future (fn [q]
                                                                     (swap! called inc)
                                                                     (orig q))]
           (mt/with-model-cleanup [:model/Card]

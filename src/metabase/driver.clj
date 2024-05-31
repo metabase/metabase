@@ -489,7 +489,7 @@
 
   Metadata should be returned as a sequence of column maps matching the `:metabase.lib.schema.metadata/column` shape.
 
-  This is needed in certain circumstances such as saving native queries before they have been run them; metadata for
+  This is needed in certain circumstances such as saving native queries before they have been run; metadata for
   MBQL-only queries can usually be determined by looking at the query itself without any driver involvement.
 
   If this method does need to be invoked, ideally it can calculate this information without actually having to run the

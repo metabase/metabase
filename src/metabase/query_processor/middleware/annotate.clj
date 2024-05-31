@@ -263,8 +263,7 @@
                   :display_name (humanization/name->human-readable-name id-or-name)}))
 
       (integer? id-or-name)
-      (merge (let [{:keys [parent-id], :as field} (-> (lib.metadata/field (qp.store/metadata-provider) id-or-name)
-                                                      #_(dissoc :database-type))]
+      (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)
@@ -435,7 +434,6 @@
    {} ; ensure the type is a plain map rather than a Toucan 2 instance or whatever
    (when-let [field-id (:id source-metadata-col)]
      (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
-         #_(dissoc :database-type)
          #_{:clj-kondo/ignore [:deprecated-var]}
          qp.store/->legacy-metadata))
    source-metadata-col
