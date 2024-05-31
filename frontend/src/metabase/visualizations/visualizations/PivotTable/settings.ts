@@ -195,10 +195,14 @@ export const settings = {
         return hasOnlyFormattableColumns && !columnFormat.highlight_row;
       });
     },
-    getProps: (series: Series) => ({
-      canHighlightRow: false,
-      cols: series[0].data?.cols.filter(isFormattablePivotColumn),
-    }),
+    getProps: (series: Series) => {
+      const cols = series[0].data?.cols ?? [];
+
+      return {
+        canHighlightRow: false,
+        cols: cols.filter(isFormattablePivotColumn),
+      };
+    },
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       !data?.cols.some(col => isFormattablePivotColumn(col)),
   },
