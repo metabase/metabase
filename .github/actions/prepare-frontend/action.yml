@@ -18,11 +18,11 @@ runs:
       with:
         path: ~/.m2
         key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    # - name: Get node_modules cache
-    #   uses: actions/cache@v4
-    #   if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
-    #   with:
-    #     path: node_modules
-    #     key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v4
+      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash
