@@ -10,6 +10,12 @@ const EXAMPLE_DATA = [
   { label: "Bar (2)", value: "bar-2" },
 ];
 
+const NUMERIC_DATA = [
+  { label: "1", value: 1 },
+  { label: "2", value: 2 },
+  { label: "3", value: 3 },
+];
+
 type SetupOpts = Omit<TestInputProps, "onChange">;
 
 function setup(opts: SetupOpts) {
@@ -281,5 +287,87 @@ describe("MultiAutocomplete", () => {
 
     expect(onChange).toHaveBeenLastCalledWith(["כּטץ", "ףקמ"]);
     expect(input).toHaveValue("");
+  });
+
+  describe("numberic values", () => {
+    it("should work with number values", async () => {
+      const { input, onChange } = setup({
+        data: NUMERIC_DATA,
+        parseValue: str => parseFloat(str),
+      });
+
+      input.focus();
+      await userEvent.type(input, "55", {
+        pointerEventsCheck: 0,
+      });
+      expect(input).toHaveValue("55");
+      input.blur();
+
+      expect(onChange).toHaveBeenLastCalledWith([55]);
+      expect(input).toHaveValue("");
+
+      await userEvent.type(input, "42,12.34", {
+        pointerEventsCheck: 0,
+      });
+      input.blur();
+
+      expect(onChange).toHaveBeenLastCalledWith([55, 42, 12.34]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should accept comma-separated values when pasting", async () => {
+      const { input, onChange } = setup({
+        data: NUMERIC_DATA,
+        parseValue: str => parseFloat(str),
+      });
+
+      input.focus();
+      await userEvent.paste("33.333,42");
+      expect(onChange).toHaveBeenLastCalledWith([33.333, 42]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should not be possible to enter duplicate values", async () => {
+      const { input, onChange } = setup({
+        data: NUMERIC_DATA,
+        parseValue: str => parseFloat(str),
+      });
+
+      input.focus();
+      await userEvent.type(input, "1,1,2,2,1,1,", {
+        pointerEventsCheck: 0,
+      });
+
+      expect(onChange).toHaveBeenLastCalledWith([1, 2]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should not accept NaN values", async () => {
+      const { input, onChange } = setup({
+        data: EXAMPLE_DATA,
+        parseValue: str => parseFloat(str),
+      });
+      input.focus();
+      await userEvent.paste("10,11,12,not-a-number");
+      expect(onChange).toHaveBeenLastCalledWith([10, 11, 12]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should accept comma-separated values, but omit values not accepted by shouldCreate", async () => {
+      const { input, onChange } = setup({
+        data: EXAMPLE_DATA,
+        parseValue: str => parseFloat(str),
+        shouldCreate(value: number | string) {
+          if (typeof value !== "number") {
+            return false;
+          }
+          return value % 2 === 0;
+        },
+      });
+      input.focus();
+      await userEvent.paste("10,11,12,not-a-number");
+      expect(onChange).toHaveBeenLastCalledWith([10, 12]);
+      expect(input).toHaveValue("");
+    });
   });
 });

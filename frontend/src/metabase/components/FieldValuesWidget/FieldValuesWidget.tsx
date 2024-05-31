@@ -431,7 +431,7 @@ export function FieldValuesWidgetInner({
       : parseStringValue(value);
   };
 
-  const shouldCreate = (value: string) => {
+  const shouldCreate = (value: string | number) => {
     const res = parseFreeformValue(value);
     return res !== null;
   };
@@ -472,7 +472,7 @@ export function FieldValuesWidgetInner({
           <MultiAutocomplete
             onSearchChange={onInputChange}
             onChange={onChange}
-            value={value.filter(v => v != null)}
+            value={value.filter(v => v !== null)}
             data={options
               .flat()
               .filter((item): item is string => Boolean(item))}
@@ -480,6 +480,7 @@ export function FieldValuesWidgetInner({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             prefix={prefix}
+            parseValue={parseFreeformValue}
           />
         )}
       </div>

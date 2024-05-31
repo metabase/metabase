@@ -1,4 +1,4 @@
-import type { MultiSelectProps, SelectItem } from "@mantine/core";
+import type { MultiSelectProps } from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
@@ -10,12 +10,29 @@ import { Icon } from "metabase/ui";
 
 import { parseValues, unique } from "./utils";
 
-export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
-  shouldCreate?: (query: string, selectedValues: string[]) => boolean;
+export type SelectItem = {
+  label?: string;
+  value: string | number;
+};
+
+export type MultiAutocompleteProps = Omit<
+  MultiSelectProps,
+  "shouldCreate" | "data" | "filter" | "defaultValue" | "value" | "onChange"
+> & {
+  shouldCreate?: (
+    value: string | number,
+    selectedValues: (string | number)[],
+  ) => boolean;
+  filter?: (query: string, selected: boolean, item: SelectItem) => boolean;
+  data?: ReadonlyArray<string | number | SelectItem>;
+  defaultValue?: (string | number)[];
+  parseValue?: (str: string) => string | number | null;
+  value: (string | number)[];
+  onChange?: (value: (string | number)[]) => void;
 };
 
 export function MultiAutocomplete({
-  data,
+  data = [],
   value: controlledValue,
   defaultValue,
   searchValue: controlledSearchValue,
@@ -27,9 +44,13 @@ export function MultiAutocomplete({
   onFocus,
   onBlur,
   prefix,
+  filter = defaultFilter,
+  parseValue = defaultParseValue,
   ...props
 }: MultiAutocompleteProps) {
-  const [selectedValues, setSelectedValues] = useUncontrolled({
+  const [selectedValues, setSelectedValues] = useUncontrolled<
+    (string | number)[]
+  >({
     value: controlledValue,
     defaultValue,
     finalValue: [],
@@ -40,7 +61,8 @@ export function MultiAutocomplete({
     finalValue: "",
     onChange: onSearchChange,
   });
-  const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
+  const [lastSelectedValues, setLastSelectedValues] =
+    useState<(string | number)[]>(selectedValues);
   const [isFocused, setIsFocused] = useState(false);
   const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
@@ -61,14 +83,19 @@ export function MultiAutocomplete({
     onFocus?.(event);
   };
 
-  function isValid(value: string) {
-    return value !== "" && shouldCreate?.(value, lastSelectedValues);
+  function isValid(value: string | number | null) {
+    return (
+      value !== null &&
+      value !== "" &&
+      !Number.isNaN(value) &&
+      shouldCreate?.(value, lastSelectedValues)
+    );
   }
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
 
-    const values = parseValues(searchValue);
+    const values = parseValues(searchValue, parseValue);
     const validValues = values.filter(isValid);
 
     setSearchValue("");
@@ -95,7 +122,7 @@ export function MultiAutocomplete({
     const pasted = event.clipboardData.getData("text");
     const text = `${before}${pasted}${after}`;
 
-    const values = parseValues(text);
+    const values = parseValues(text, parseValue);
     const validValues = values.filter(isValid);
 
     if (values.length > 0) {
@@ -115,7 +142,7 @@ export function MultiAutocomplete({
     setSearchValue(newSearchValue);
 
     if (newSearchValue !== "") {
-      const values = parseValues(newSearchValue);
+      const values = parseValues(newSearchValue, parseValue);
       if (values.length >= 1) {
         const value = values[0] ?? newSearchValue;
         if (isValid(value)) {
@@ -135,7 +162,7 @@ export function MultiAutocomplete({
       last === "\n" ||
       (first === '"' && last === '"')
     ) {
-      const values = parseValues(newSearchValue);
+      const values = parseValues(newSearchValue, parseValue);
       const validValues = values.filter(isValid);
 
       if (values.length > 0) {
@@ -170,7 +197,10 @@ export function MultiAutocomplete({
   return (
     <MultiSelect
       {...props}
+      // @ts-expect-error: Mantine's types expects a string value,
+      // but does not depend on it being a string
       data={items}
+      // @ts-expect-error: see above
       value={visibleValues}
       searchValue={searchValue}
       placeholder={placeholder}
@@ -183,6 +213,7 @@ export function MultiAutocomplete({
       onPaste={handlePaste}
       rightSection={info}
       icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
+      filter={filter}
     />
   );
 }
@@ -193,19 +224,19 @@ function getSelectItem(item: string | number | SelectItem): SelectItem {
   }
 
   if (typeof item === "number") {
-    return { value: item.toString(), label: item.toString() };
+    return { value: item, label: item.toString() };
   }
 
   if (!item.label) {
-    return { value: item.value, label: item.value };
+    return { value: item.value, label: item.value?.toString() ?? "" };
   }
 
   return item;
 }
 
 function getAvailableSelectItems(
-  data: ReadonlyArray<string | SelectItem>,
-  selectedValues: string[],
+  data: ReadonlyArray<string | number | SelectItem>,
+  selectedValues: (string | number)[],
 ) {
   const all = [...data, ...selectedValues].map(getSelectItem);
   const seen = new Set();
@@ -220,8 +251,31 @@ function getAvailableSelectItems(
   });
 }
 
-function defaultShouldCreate(query: string, selectedValues: string[]) {
+function defaultShouldCreate(
+  value: string | number,
+  selectedValues: (string | number)[],
+) {
+  if (typeof value === "number") {
+    return !selectedValues.some(selectedValue => selectedValue === value);
+  }
+
   return (
-    query.trim().length > 0 && !selectedValues.some(value => value === query)
+    value.trim().length > 0 &&
+    !selectedValues.some(selectedValue => selectedValue === value)
   );
+}
+
+function defaultFilter(
+  query: string,
+  selected: boolean,
+  item: SelectItem,
+): boolean {
+  if (selected || !item.label) {
+    return false;
+  }
+  return item.label.toLowerCase().trim().includes(query.toLowerCase().trim());
+}
+
+function defaultParseValue(str: string): string | number | null {
+  return str;
 }

@@ -266,3 +266,17 @@ ReadOnlyXs.args = {
 <Canvas>
   <Story name="Read only, xs">{ReadOnlyXs}</Story>
 </Canvas>
+
+#### With number values
+
+export const WithNumberValues = DefaultTemplate.bind({});
+WithNumberValues.args = {
+  data: [
+    10, 20, 30, 40,
+  ],
+  parseValues: value => parseInt(value, 10),
+};
+
+<Canvas>
+  <Story name="With Number Values">{WithNumberValues}</Story>
+</Canvas>
