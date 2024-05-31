@@ -259,6 +259,8 @@ const getTicksDimensions = (
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
+  const { fontSize } = renderingContext.theme.cartesian.label;
+
   const ticksDimensions: TicksDimensions = {
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
@@ -300,6 +302,7 @@ const getTicksDimensions = (
   if (hasBottomAxis) {
     const fontStyle = {
       ...CHART_STYLE.axisTicks,
+      size: fontSize,
       family: renderingContext.fontFamily,
     };
 
@@ -501,10 +504,13 @@ const areHorizontalXAxisTicksOverlapping = (
   dataset: ChartDataset,
   dimensionWidth: number,
   formatter: AxisFormatter,
-  { measureText, fontFamily }: RenderingContext,
+  { theme, measureText, fontFamily }: RenderingContext,
 ) => {
+  const { fontSize } = theme.cartesian.label;
+
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
+    size: fontSize,
     family: fontFamily,
   };
 

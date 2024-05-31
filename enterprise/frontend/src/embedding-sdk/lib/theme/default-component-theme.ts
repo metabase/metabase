@@ -4,6 +4,16 @@ import { merge } from "icepick";
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 
+export const unit = (em: number) => ({
+  px: `${em * 16}px`,
+  em: `${em}em`,
+});
+
+const CARTESIAN_LABELS = {
+  label: unit(0.75),
+  goalLine: unit(0.875),
+};
+
 /**
  * Default theme options for Metabase components.
  *
@@ -29,9 +39,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   cartesian: {
-    label: { fontSize: "12px" },
+    label: { fontSize: CARTESIAN_LABELS.label.px },
     goalLine: {
-      label: { fontSize: "14px" },
+      label: { fontSize: CARTESIAN_LABELS.goalLine.px },
     },
   },
 };
@@ -46,6 +56,12 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
     table: {
       cell: {
         backgroundColor: "bg-white",
+      },
+    },
+    cartesian: {
+      label: { fontSize: CARTESIAN_LABELS.label.em },
+      goalLine: {
+        label: { fontSize: CARTESIAN_LABELS.goalLine.em },
       },
     },
   },

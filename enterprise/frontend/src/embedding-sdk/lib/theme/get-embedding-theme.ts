@@ -20,6 +20,9 @@ import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 const getFontFamily = (theme: MetabaseTheme) =>
   theme.fontFamily ?? DEFAULT_FONT;
 
+export const SDK_BASE_FONT_SIZE_EM = 0.875;
+export const SDK_BASE_FONT_SIZE = `${SDK_BASE_FONT_SIZE_EM}em`;
+
 /**
  * Transforms a public-facing Metabase theme configuration
  * into a Mantine theme override for internal use.
@@ -39,7 +42,7 @@ export function getEmbeddingThemeOverride(
 
     other: {
       ...components,
-      fontSize: theme.fontSize ?? "0.875em",
+      fontSize: theme.fontSize ?? SDK_BASE_FONT_SIZE,
     },
 
     components: EMBEDDING_SDK_COMPONENTS_OVERRIDES,
