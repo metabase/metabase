@@ -1071,6 +1071,8 @@
                END)
                WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
 
+    ;; json_extract on mariadb throws an error if the json is more than 32 levels nested. See #41924
+    ;; So we do this in clojure land for mariadb
     (:h2 :mariadb)
     (let [migrate! (fn [revision]
                      (let [object     (json/parse-string (:object revision) keyword)
