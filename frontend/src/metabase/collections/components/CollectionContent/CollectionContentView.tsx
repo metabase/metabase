@@ -1,71 +1,44 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
-import { useCallback, useEffect, useState } from "react";
-import { useDropzone } from "react-dropzone";
-import { usePrevious } from "react-use";
-import { t } from "ttag";
-import _ from "underscore";
+import {useCallback, useEffect, useState} from "react";
+import {useDropzone} from "react-dropzone";
+import {usePrevious} from "react-use";
+import {t} from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { deletePermanently } from "metabase/archive/actions";
-import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
-import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
-import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+import {deletePermanently} from "metabase/archive/actions";
+import {ArchivedEntityBanner} from "metabase/archive/components/ArchivedEntityBanner";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
-import type {
-  CreateBookmark,
-  DeleteBookmark,
-  OnFileUpload,
-  UploadFile,
-} from "metabase/collections/types";
-import {
-  isRootTrashCollection,
-  isPersonalCollectionChild,
-  isTrashedCollection,
-} from "metabase/collections/utils";
-import { ItemsTable } from "metabase/components/ItemsTable";
-import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
-import { SortDirection } from "metabase/components/ItemsTable/Columns";
-import PaginationControls from "metabase/components/PaginationControls";
+import type {CreateBookmark, DeleteBookmark, OnFileUpload, UploadFile,} from "metabase/collections/types";
+import {isPersonalCollectionChild, isRootTrashCollection, isTrashedCollection,} from "metabase/collections/utils";
+import type {SortingOptions} from "metabase/components/ItemsTable/BaseItemsTable";
+import {SortDirection} from "metabase/components/ItemsTable/Columns";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
-import CS from "metabase/css/core/index.css";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
-import { usePagination } from "metabase/hooks/use-pagination";
-import { useToggle } from "metabase/hooks/use-toggle";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import {useListSelect} from "metabase/hooks/use-list-select";
+import {usePagination} from "metabase/hooks/use-pagination";
+import {useToggle} from "metabase/hooks/use-toggle";
+import {useDispatch} from "metabase/lib/redux";
+import {addUndo} from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  Bookmark,
-  Collection,
-  CollectionId,
-  CollectionItem,
-} from "metabase-types/api";
+import type {Bookmark, Collection, CollectionId, CollectionItem, SearchModel, SearchRequest,} from "metabase-types/api";
 
-import type { CollectionOrTableIdProps } from "../ModelUploadModal";
-import { ModelUploadModal } from "../ModelUploadModal";
+import type {CollectionOrTableIdProps} from "../ModelUploadModal";
+import {ModelUploadModal} from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
 
-import {
-  CollectionEmptyContent,
-  CollectionMain,
-  CollectionRoot,
-  CollectionTable,
-} from "./CollectionContent.styled";
-import { getComposedDragProps } from "./utils";
+import {CollectionMain, CollectionRoot,} from "./CollectionContent.styled";
+import {getComposedDragProps} from "./utils";
+import {CollectionUnpinnedItems} from "metabase/collections/components/CollectionContent/CollectionUnpinnedItems";
+import {PAGE_SIZE} from "metabase/collections/components/CollectionContent/constants";
 
-const PAGE_SIZE = 25;
-
-const ALL_MODELS = [
+// TODO: do we remove pulses?
+const ALL_MODELS: SearchModel[] = [
   "dashboard",
   "dataset",
   "card",
   "metric",
-  "snippet",
-  "pulse",
   "collection",
 ];
 
@@ -212,9 +185,10 @@ export const CollectionContentView = ({
     ? getComposedDragProps(getRootProps())
     : {};
 
-  const unpinnedQuery = {
+  const unpinnedQuery: SearchRequest = {
     collection: collectionId,
-    models: ALL_MODELS,
+    // TODO: do we need snippets and pulses?
+    models: ALL_MODELS as SearchModel[],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     ...(isRootTrashCollection(collection)
@@ -317,96 +291,34 @@ export const CollectionContentView = ({
                 />
               </ErrorBoundary>
               <ErrorBoundary>
-                <Search.ListLoader
-                  query={unpinnedQuery}
-                  loadingAndErrorWrapper={false}
-                  keepListWhileLoading
-                  wrapped
-                >
-                  {({
-                    list: unpinnedItems = [],
-                    metadata = {},
-                    loading: loadingUnpinnedItems,
-                  }: {
-                    list: CollectionItem[];
-                    metadata: { total?: number };
-                    loading: boolean;
-                  }) => {
-                    const hasPagination: boolean =
-                      !!metadata.total && metadata.total > PAGE_SIZE;
-
-                    const unselected = unpinnedItems.filter(
-                      item => !getIsSelected(item),
-                    );
-                    const hasUnselected = unselected.length > 0;
-
-                    const handleSelectAll = () => {
-                      selectOnlyTheseItems(unpinnedItems);
-                    };
-
-                    const loading = loadingPinnedItems || loadingUnpinnedItems;
-                    const isEmpty =
-                      !loading && !hasPinnedItems && unpinnedItems.length === 0;
-
-                    if (isEmpty && !loadingUnpinnedItems) {
-                      return (
-                        <CollectionEmptyContent>
-                          <CollectionEmptyState collection={collection} />
-                        </CollectionEmptyContent>
-                      );
-                    }
-
-                    return (
-                      <>
-                        <CollectionTable data-testid="collection-table">
-                          <ItemsTable
-                            databases={databases}
-                            bookmarks={bookmarks}
-                            createBookmark={createBookmark}
-                            deleteBookmark={deleteBookmark}
-                            items={unpinnedItems}
-                            collection={collection}
-                            sortingOptions={unpinnedItemsSorting}
-                            onSortingOptionsChange={
-                              handleUnpinnedItemsSortingChange
-                            }
-                            selectedItems={selected}
-                            hasUnselected={hasUnselected}
-                            getIsSelected={getIsSelected}
-                            onToggleSelected={toggleItem}
-                            onDrop={clear}
-                            onMove={handleMove}
-                            onCopy={handleCopy}
-                            onSelectAll={handleSelectAll}
-                            onSelectNone={clear}
-                          />
-                          <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-                            {hasPagination && (
-                              <PaginationControls
-                                showTotal
-                                page={page}
-                                pageSize={PAGE_SIZE}
-                                total={metadata.total}
-                                itemsLength={unpinnedItems.length}
-                                onNextPage={handleNextPage}
-                                onPreviousPage={handlePreviousPage}
-                              />
-                            )}
-                          </div>
-                        </CollectionTable>
-                        <CollectionBulkActions
-                          collection={collection}
-                          selected={selected}
-                          clearSelected={clear}
-                          selectedItems={selectedItems}
-                          setSelectedItems={setSelectedItems}
-                          selectedAction={selectedAction}
-                          setSelectedAction={setSelectedAction}
-                        />
-                      </>
-                    );
-                  }}
-                </Search.ListLoader>
+                <CollectionUnpinnedItems
+                  hasPinnedItems={hasPinnedItems}
+                  selectedItems={selectedItems}
+                  setSelectedItems={setSelectedItems}
+                  selectedAction={selectedAction}
+                  setSelectedAction={setSelectedAction}
+                  unpinnedItemsSorting={unpinnedItemsSorting}
+                  handleNextPage={handleNextPage}
+                  handlePreviousPage={handlePreviousPage}
+                  page={page}
+                  clear={clear}
+                  getIsSelected={getIsSelected}
+                  selected={selected}
+                  selectOnlyTheseItems={selectOnlyTheseItems}
+                  toggleItem={toggleItem}
+                  handleUnpinnedItemsSortingChange={
+                    handleUnpinnedItemsSortingChange
+                  }
+                  handleMove={handleMove}
+                  handleCopy={handleCopy}
+                  unpinnedQuery={unpinnedQuery}
+                  loadingPinnedItems={loadingPinnedItems}
+                  databases={databases}
+                  bookmarks={bookmarks}
+                  collection={collection}
+                  createBookmark={createBookmark}
+                  deleteBookmark={deleteBookmark}
+                />
               </ErrorBoundary>
             </CollectionMain>
             <ItemsDragLayer
