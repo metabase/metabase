@@ -252,8 +252,8 @@ The API follows the same configuration as that of public dashboard embeddings, w
 
 #### Parameters
 
-- **dashboardId**: `DashboardId` (required) – The ID of the dashboard to embed.
-- **parameterQueryParams**: `Query` (required) – Query parameters for the dashboard.
+- **dashboardId**: `DashboardId` (required) – The ID of the dashboard. This is the ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **parameterQueryParams**: `Record<string, string | string[]>` (required) – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
 - **bordered**: `boolean` – Whether the dashboard should have a border.
 - **titled**: `boolean` – Whether the dashboard should display a title.
 - **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
@@ -273,6 +273,8 @@ export default function App() {
   const parameterQueryParams = {}; // Define your query parameters here
 
   const font = "Inter"
+  // choose parameter names that are in your dashboard
+  const hideParameters = ["location", "city"]
 
   return (
     <MetabaseProvider config={config}>
@@ -281,9 +283,9 @@ export default function App() {
           parameterQueryParams={parameterQueryParams} 
           bordered={true}
           titled={false}
-          hideDownloadButton={null}
-          hideParameters={null}
-          font={null}
+          hideDownloadButton={false}
+          hideParameters={hideParameters}
+          font={font}
           theme="light"
         />
     </MetabaseProvider>
