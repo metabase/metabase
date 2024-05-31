@@ -11,7 +11,7 @@ import {
 } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
-import { PublicDashboard } from "metabase/public/containers/PublicDashboard/PublicDashboard";
+import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -59,7 +59,7 @@ const _StaticDashboard = ({
 
   return (
     <Box ref={ref} style={{ overflow: "auto" }}>
-      <PublicDashboard
+      <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
         bordered={options.bordered}

@@ -98,6 +98,7 @@ describe(
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
       cy.intercept("GET", "/api/search?archived=true").as("getArchived");
       cy.intercept("GET", "/api/search?*").as("getSearchResults");
+      cy.intercept("GET", "/api/database?*").as("getDatabase");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -180,6 +181,7 @@ describe(
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
+      cy.wait("@getDatabase");
       fillActionQuery(QUERY);
 
       cy.findByRole("dialog").within(() => {

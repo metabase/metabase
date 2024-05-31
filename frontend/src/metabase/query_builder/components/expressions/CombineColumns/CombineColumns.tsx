@@ -32,12 +32,7 @@ type State = {
 
 const initialDefaultSeparator = " ";
 
-export function CombineColumns({
-  query: originalQuery,
-  stageIndex: originalStageIndex,
-  onSubmit,
-  width,
-}: Props) {
+export function CombineColumns({ query, stageIndex, onSubmit, width }: Props) {
   const [state, setState] = useState<State>({
     columnsAndSeparators: [
       {
@@ -54,11 +49,6 @@ export function CombineColumns({
   });
 
   const { columnsAndSeparators, isUsingDefaultSeparator } = state;
-
-  const { query, stageIndex } = Lib.asReturned(
-    originalQuery,
-    originalStageIndex,
-  );
 
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
 

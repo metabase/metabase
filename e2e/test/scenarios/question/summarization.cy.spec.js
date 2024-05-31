@@ -184,7 +184,6 @@ describe("scenarios > question > summarize sidebar", () => {
         formula:
           "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
       });
-      cy.get("@formula").blur();
     });
 
     popover().within(() => {
