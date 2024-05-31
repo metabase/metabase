@@ -146,7 +146,7 @@ function setup({
 
   function getRecentClause(): Lib.Clause {
     expect(onSelect).toHaveBeenCalledWith(expect.anything());
-    const [clause] = onSelect.mock.lastCall;
+    const [[clause]] = onSelect.mock.lastCall;
     return clause;
   }
 
