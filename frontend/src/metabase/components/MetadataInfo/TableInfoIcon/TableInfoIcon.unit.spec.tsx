@@ -1,5 +1,5 @@
 import { createMockEntitiesState } from "__support__/store";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -36,7 +36,9 @@ describe("TableInfoIcon", () => {
     expect(screen.queryByText(description)).not.toBeInTheDocument();
 
     fireEvent.mouseEnter(icon);
-    jest.advanceTimersByTime(1000);
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
 
     expect(screen.getByText(description, { exact: false })).toBeInTheDocument();
   });

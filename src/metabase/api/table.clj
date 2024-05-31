@@ -448,7 +448,7 @@
   [id]
   (let [{:keys [database_id] :as card} (api/check-404
                                         (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id :type :dataset_query]
+                                                        :collection_id :database_id :type]
                                                        :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]

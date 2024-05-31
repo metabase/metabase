@@ -284,7 +284,7 @@ function assertDashCardTitle(title) {
 function overwriteDashCardTitle(dashcardElement, textTitle) {
   findDashCardAction(dashcardElement, "Show visualization options").click();
   modal().within(() => {
-    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`);
+    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`).blur();
     cy.button("Done").click();
   });
 }

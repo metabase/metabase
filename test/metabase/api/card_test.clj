@@ -443,6 +443,7 @@
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name          "Card"
                                 :display       "line"
+                                :dataset_query (mt/mbql-query venues)
                                 :collection_id (t2/select-one-pk Collection :personal_owner_id (mt/user->id :crowberto))}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
@@ -3163,16 +3164,13 @@
   (testing "getting values"
     (with-card-param-values-fixtures [{:keys [card param-keys]}]
       (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          [["Brite Spot Family Restaurant"]
-                                   ["Red Medicine"]
-                                   ["Stout Burgers & Beers"]
-                                   ["The Apple Pan"]
-                                   ["Wurstküche"]]
+        (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                   ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                  :has_more_values false}
                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          [["Red Medicine"]]
+        (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
 

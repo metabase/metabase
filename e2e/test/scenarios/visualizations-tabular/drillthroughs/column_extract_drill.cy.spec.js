@@ -15,6 +15,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  tableHeaderClick,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
@@ -313,7 +314,8 @@ function extractColumnAndCheck({
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  cy.findByRole("columnheader", { name: column }).click();
+  tableHeaderClick(column);
+  // cy.findByRole("columnheader", { name: column }).click();
   popover().findByText(extraction).click();
   cy.wait(1);
 

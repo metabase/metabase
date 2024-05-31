@@ -108,10 +108,9 @@ describe("scenarios > visualizations > maps", () => {
 
       cy.wait("@geojson");
 
-      cy.get(".CardVisualization svg path")
-        .should("be.visible")
-        .eq(22)
-        .as("texas");
+      cy.get(".CardVisualization svg path").eq(22).as("texas");
+
+      cy.get("@texas").should("be.visible");
 
       // hover to see the tooltip
       cy.get("@texas").trigger("mousemove");

@@ -35,7 +35,9 @@ describe("DashboardHeader - enterprise", () => {
       dashboard: INSTANCE_ANALYTICS_DASHBOARD,
       collections: [INSTANCE_ANALYTICS_COLLECTION],
     });
-    expect(screen.getByRole("img", { name: /audit/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: /audit/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Make a copy")).toBeInTheDocument();
 
     //Other buttons
