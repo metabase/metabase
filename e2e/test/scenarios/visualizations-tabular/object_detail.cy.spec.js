@@ -158,6 +158,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
             "source-table": REVIEWS_ID,
           },
         ],
+        "order-by": [
+          "asc",
+          ["field", PRODUCTS.CREATED_AT, { "base-type": "type/BigInteger" }],
+        ],
         limit: 10,
       },
     };
