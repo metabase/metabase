@@ -134,6 +134,18 @@
                                                     [:= :f.active true]
                                                     (into [:or] (map table-query tables))]}))))
 
+(defn- macaw-options
+  "Given blaha. The list of drivers that were considered when"
+  [driver]
+  ;; This is actually a gross simplification as for example MySQL is never case-sensitive for columns, but whether
+  ;; it is case-sensitive for tables depends on the file system and database configuration. Similarly, for SQL Server
+  ;; each level of the hierarchy can be configured for case sensitivity. For now, we make pragmatic simplifications
+  ;; based on the default configuration and hosting of these databases.
+  {:case-insensitive?     true
+   ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
+   ;; and quoting has no effect on this.
+   :quotes-preserve-case? (not (#{:mysql :sqlserver} driver))})
+
 (defn field-ids-for-sql
   "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
@@ -146,6 +158,8 @@
              (:native query))
     (let [db-id        (:database query)
           sql-string   (:query (nqa.sub/replace-tags query))
+          ;; get the driver
+          ;; build options based on that
           parsed-query (macaw/query->components (macaw/parsed-query sql-string))
           direct-ids   (direct-field-ids-for-query parsed-query db-id)
           indirect-ids (set/difference
