@@ -50,8 +50,8 @@ SET
   trashed_from_location = NULL
 WHERE archived = true;
 
--- Next: set `collection.trashed_directly`.
 
+-- Next: set `collection.trashed_directly`.
 UPDATE collection AS child
 JOIN (
   SELECT
@@ -69,7 +69,7 @@ LEFT JOIN (
 SET trashed_directly = (
   (with_parent_id.parent_id IS NULL OR NOT parent.archived)
 )
-WHERE parent.archived;
+WHERE child.archived;
 
 -- Set `collection.trash_operation_id` for collections that were trashed directly
 UPDATE collection
@@ -98,17 +98,32 @@ END
 WHERE archived AND trashed_directly;
 
 -- Set `collection.trash_operation_id` for descendants of collections that were trashed directly
-
-UPDATE collection AS descendants
-JOIN (
+WITH RECURSIVE Ancestors (id, archived, trashed_directly, trash_operation_id, location) AS (
   SELECT
     id,
-    location,
+    archived,
     trashed_directly,
-    trash_operation_id
-  FROM collection
-  WHERE archived = true
-) AS ancestor ON descendants.location LIKE concat(ancestor.location, ancestor.id, '/%') AND ancestor.trashed_directly = true
-SET descendants.trash_operation_id = ancestor.trash_operation_id
-WHERE descendants.archived = true
-  AND descendants.trash_operation_id IS NULL;
+    trash_operation_id,
+    location
+  FROM
+    collection
+  WHERE
+    trashed_directly = true
+    AND archived = true
+
+  UNION ALL
+
+  SELECT
+    collection.id,
+    collection.archived,
+    collection.trashed_directly,
+    parent.trash_operation_id,
+    collection.location
+    FROM collection
+    JOIN Ancestors parent ON collection.location = concat(parent.location, parent.id, '/')
+  WHERE collection.archived = true
+)
+UPDATE collection
+JOIN Ancestors ancestor ON collection.id = ancestor.id
+SET collection.trash_operation_id = ancestor.trash_operation_id, collection.trashed_directly = false
+WHERE collection.trash_operation_id IS NULL AND collection.archived = true;
