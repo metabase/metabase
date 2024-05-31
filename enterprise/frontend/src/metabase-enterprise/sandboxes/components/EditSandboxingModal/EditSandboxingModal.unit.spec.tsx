@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -81,6 +82,7 @@ const setup = ({
     });
     fetchMock.get("path:/api/collection/1", EDITABLE_ROOT_COLLECTION);
     setupCardsEndpoints([TEST_CARD]);
+    setupCardMetadataEndpoint(TEST_CARD, database);
   }
 
   const onSave = jest.fn();
