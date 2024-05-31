@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useMantineTheme } from "metabase/ui";
-import { getVisualizationStyleFromTheme } from "metabase/visualizations/shared/utils/theme";
+import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 interface RenderingOptions {
@@ -21,7 +21,7 @@ export const useBrowserRenderingContext = (
   const theme = useMantineTheme();
 
   return useMemo(() => {
-    const style = getVisualizationStyleFromTheme(theme.other);
+    const style = getVisualizationTheme(theme.other);
 
     return {
       getColor: name => color(name, palette),

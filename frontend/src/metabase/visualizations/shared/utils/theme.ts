@@ -1,23 +1,23 @@
 import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 import type { MantineThemeOther } from "metabase/ui";
-import { convertFontSizeToPx } from "metabase/visualizations/shared/utils/font-size-to-px";
+import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 
 /**
  * Computes the visualization style from the Mantine theme.
  */
-export function getVisualizationStyleFromTheme(
+export function getVisualizationTheme(
   options: MantineThemeOther,
 ): VisualizationTheme {
   const { cartesian } = options;
 
   // This allows sdk users to set the base font size,
   // which scales the visualization's font sizes.
-  const baseFontSize = convertFontSizeToPx(options.fontSize);
+  const baseFontSize = getSizeInPx(options.fontSize);
 
   // ECharts requires font sizes in px for offset calculations.
   const px = (value: string) =>
-    convertFontSizeToPx(value, baseFontSize) ?? baseFontSize ?? 14;
+    getSizeInPx(value, baseFontSize) ?? baseFontSize ?? 14;
 
   return {
     cartesian: {
@@ -29,6 +29,6 @@ export function getVisualizationStyleFromTheme(
   };
 }
 
-export const DEFAULT_VISUALIZATION_THEME = getVisualizationStyleFromTheme(
+export const DEFAULT_VISUALIZATION_THEME = getVisualizationTheme(
   DEFAULT_METABASE_COMPONENT_THEME,
 );
