@@ -192,7 +192,7 @@ export type StackModel = {
   seriesKeys: DataKey[];
 };
 
-export type BaseCartesianChartModel = {
+export type CartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   dataset: ChartDataset;
@@ -216,8 +216,12 @@ export type BaseCartesianChartModel = {
   waterfallLabelFormatter?: LabelFormatter;
 };
 
-export type CartesianChartModel = BaseCartesianChartModel & {
+export type ScatterPlotModel = CartesianChartModel & {
   bubbleSizeDomain: Extent | null;
+};
+
+export type WaterfallChartModel = CartesianChartModel & {
+  waterfallLabelFormatter: LabelFormatter | undefined;
 };
 
 export type ShowWarning = (warning: string) => void;

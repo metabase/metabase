@@ -3,7 +3,6 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
-  getBubbleSizeDomain,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
@@ -20,7 +19,6 @@ import type {
   CartesianChartModel,
   ShowWarning,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import type {
@@ -32,8 +30,6 @@ import type { RawSeries, SingleSeries } from "metabase-types/api";
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
-
-const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
 // HACK: when multiple cards (datasets) are combined on a single dashboard card
 // the settings prop of the visualization contains only one set of metrics and dimensions
@@ -103,15 +99,16 @@ export const getCartesianChartModel = (
     ? unsortedSeriesModels
     : getSortedSeriesModels(unsortedSeriesModels, settings);
 
-  let dataset;
-  switch (rawSeries[0].card.display) {
-    case "scatter":
-      dataset = getScatterPlotDataset(rawSeries, cardsColumns);
-      break;
-    default:
-      dataset = getJoinedCardsDataset(rawSeries, cardsColumns, showWarning);
-  }
-  dataset = sortDataset(dataset, settings["graph.x_axis.scale"], showWarning);
+  const unsortedDataset = getJoinedCardsDataset(
+    rawSeries,
+    cardsColumns,
+    showWarning,
+  );
+  const dataset = sortDataset(
+    unsortedDataset,
+    settings["graph.x_axis.scale"],
+    showWarning,
+  );
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
@@ -137,13 +134,10 @@ export const getCartesianChartModel = (
     showWarning,
   );
 
-  const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
-    rawSeries[0].card.display,
-  );
-
   const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
     getSeriesLabelsFormatters(
       seriesModels,
+      stackModels,
       transformedDataset,
       settings,
       renderingContext,
@@ -163,7 +157,7 @@ export const getCartesianChartModel = (
     transformedDataset,
     settings,
     columnByDataKey,
-    isAutoSplitSupported,
+    true,
     stackModels,
     [...compactSeriesDataKeys, ...compactStackedSeriesDataKeys],
     renderingContext,
@@ -192,7 +186,6 @@ export const getCartesianChartModel = (
     leftAxisModel,
     rightAxisModel,
     trendLinesModel,
-    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
     seriesLabelsFormatters,
     stackedLabelsFormatters,
   };
