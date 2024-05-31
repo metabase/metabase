@@ -1,3 +1,43 @@
+;; # DataScript-powered MLv2
+;;
+;; This is a proof-of-concept for storing MBQL queries as a DataScript database rather than a regular data structure.
+;;
+;; ## DataScript
+;;
+;; DataScript is an in-memory database in the style of Datomic. Here's some high-level points if you're not familiar:
+;;
+;; - It is a "triple store", storing relationships (*attributes*) between *entities* and *values*.
+;; - Perhaps our entity is a particular user, and `:user/email` is `"braden@metabase.com"`.
+;; - There are no tables - any entity can have any attributes.
+;; - An entity can be viewed as a map, with attributes as keys and the values as, well, the values.
+;; - A DataScript database is a *value*, in the Clojure sense - it's an immutable object that can be passed around!
+;; - Schema is optional, but it makes good documentation. The only type that matters is `:db.type/ref` (pointers to
+;;   other entities); the only qualifiers that matter are `:db/unique` and `:db/cardinality` to mark list-y attributes
+;;   rather than singular ones.
+;; - **Set semantics**: DataScript treats everything as a set - unordered and de-duplicated.
+;;
+;; ## High-level Design
+;;
+;; An MBQL query is represented with a DataScript database. That database has only one query in it, but it includes all
+;; the metadata (tables, fields, etc.).
+;;
+;; Entity IDs are opaque, arbitrary numbers. But attributes marked as `:db.unique/identity` can be used to identify
+;; entities with a pair, eg. `[:metadata.table/id (meta/id :orders)]` uniquely identifies the Orders table.
+;;
+;; ### On Refs
+;;
+;; There are no MBQL refs - they are replaced with DataScript refs, that is, an attribute whose value is the Entity ID
+;; for some other entity. DataScript refs are indexed in both directions, and can therefore be navigated in both
+;; directions - `:mbql.join/condition` maps from a join clause to its conditions; `:mbql.join/_condition` from a
+;; condition clause to the *set* of incoming refs.
+;;
+;; Reverse direction is always a set, since there might be many refs to one entity; forward is singular or a set based
+;; on `:db/cardinality`.
+;;
+;; ### Sources
+;;
+;; Every column has a *source*, which is a ref to another entity. The sources can be of various types: tables, previous
+;; stages, an explicit join, an implicit join.
 (ns metabase.lib.datascript
   (:refer-clojure :exclude [filter])
   (:require
@@ -8,13 +48,20 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.util.log :as log]))
 
+;; ## Metadata
+;;
+;; Here is the part of the schema for the metadata. `foo_id` numbers are replaced, naturally, with refs to the `foo`
+;; itself. Some attributes are renamed to fit the broader pattern, eg. A field has `:metadata.column/source`, not
+;; `:metadata.field/table`.
 (def ^:private metadata-schema
-  {;; Databases - just exist for now.
+  {;; ### Databases
+   ;; Just exist with their Metabase IDs for now. Maybe settings or driver will be needed eventually.
    :metadata.database/id          {:db/cardinality :db.cardinality/one
                                    #_#_:db/valueType   :db.type/int
                                    :db/unique      :db.unique/identity}
 
-   ;; Tables - ID, name, database
+   ;; ### Tables
+   ;; ID, name, schema, database, display name.
    :metadata.table/id             {:db/cardinality :db.cardinality/one
                                    #_#_:db/valueType   :db.type/int
                                    :db/unique      :db.unique/identity}
@@ -23,37 +70,75 @@
    :metadata.table/schema         {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/string}
    :metadata.table/database       {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
 
-   ;; Fields - ID, name, table, fk-target, position, base-type, effective-type, semantic-type
-   ;; Note, however, that most of these are actually on the common ns :metadata.column/*.
-   ;; Only the truly Field-specific ones like :metadata.field/id are here.
+   ;; ### Fields
+   ;; Note that everything other than ID is actually in the `:metadata.column/*` namespace, since these attributes apply
+   ;; to all columns and not just Fields.
    :metadata.field/id             {:db/cardinality :db.cardinality/one
                                    #_#_:db/valueType   :db.type/int
                                    :db/unique      :db.unique/identity}
    :metadata.column/name           {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/string}
    :metadata.column/display-name   {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/string}
-   ;; Points at the :metadata.table/* for proper Fields; any arbitrary :mbql.source/* otherwise.
+
+   ;; `:metadata.column/source` points at the :metadata.table/* for proper Fields. See below for much more on sources.
+   ;;
+   ;; `:mbql/removal` is a custom meta-attribute used for `remove-clause` (which see).
    :metadata.column/source         {:db/cardinality :db.cardinality/one
                                     :db/valueType   :db.type/ref
                                     :mbql/removal   :mbql.removal/reverse}
-   ;; No :mbql/removal here - if the target column is removed then this *attribute* should be dropped
-   ;; (:db/retractEntity does this) but the would-be FK column still exists - it just isn't an FK anymore.
-   :metadata.column/fk-target      {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref} ; column
+
+   ;; `:metadata.column/fk-target` points directly to the foreign PK column, rather than giving just its ID.
+   ;; FKs are not marked for `:mbql/removal` - if the target column is removed then the `fk-target` ref should be
+   ;; dropped from this column, but the column itself still exists.
+   :metadata.column/fk-target      {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
    :metadata.column/base-type      {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
    :metadata.column/effective-type {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
    :metadata.column/semantic-type  {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
 
-   ;; [source-id mirror-id name] triples are unique.
+   ;; ### Handles
+   ;;
+   ;; `:metadata.column/handle` is a *tuple* which DataScript will maintain automatically. Since it has `:db/unique`,
+   ;; DataScript will ensure that any particular `[source-id mirror-id name]` triple is unique, and supports "upserting"
+   ;; rather than duplicating columns.
+
+   ;; Most columns only have one of `mirror` and `name`, but the triples still work as a unique key with `nil` for one
+   ;; of these attributes.
    :metadata.column/handle         {:db/cardinality :db.cardinality/one
                                     :db/tupleAttrs  [:metadata.column/source
                                                      :metadata.column/mirror
                                                      :metadata.column/name]
                                     :db/unique      :db.unique/identity}
 
-   ;; Mirroring is used for eg. explicit join columns which are straight copies of input columns with some adjustment.
+   ;; ### Mirroring
+   ;;
+   ;; Many times a column (on an explicit join, or exported from a query stage) is just a "copy" of another column
+   ;; elsewhere. In that case, we create a separate entity for that duplicate column with only
+   ;;
+   ;;     {:metadata.column/source the-join-or-stage
+   ;;      :metadata.column/mirror original-column}
+   ;;
+   ;; This supports the vital distinction between two copies of the same Field (from, say, the main source and an
+   ;; explicit join) but also makes it easy to follow `:metadata.column/mirror` recursively to the original column.
+   ;; (Mostly that's used to find its type, name, etc.)
+   ;;
+   ;; Note that mirror columns are marked `:mbql.removal/reverse`, so a mirror will be deleted when its original is
+   ;; deleted.
    :metadata.column/mirror         {:db/cardinality :db.cardinality/one
                                     :db/valueType   :db.type/ref
-                                    :mbql/removal   :mbql.removal/reverse}}) ; Remove mirror when the original goes.
+                                    :mbql/removal   :mbql.removal/reverse}
 
+   ;; ### Common attributes
+   ;; DataScript provides set semantics, but we care about the order of aggregation clauses, the order of expression
+   ;; arguments, etc. `:mbql/series` is used everywhere we care about order, and holds a 0-based index we can sort on.
+   :mbql/series                   {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/int}
+
+   ;; `:mbql/uuid` holds UUID strings, which are attached to most things. It can be used as an ID.
+   :mbql/uuid                     {:db/cardinality :db.cardinality/one
+                                   :db/unique      :db.unique/value ; Only one copy of the UUID allowed anywhere!
+                                   #_#_:db/valueType :db.type/string}})
+
+;; ### Machinery
+;;
+;; Here's a bunch of helpers for turning a `metadata-provider` into `tx-data` for feeding into DataScript.
 (defn- ns-keys [m nspace]
   (update-keys m #(keyword nspace (name %))))
 
@@ -91,11 +176,9 @@
           (let [fields (mapv field-tx (lib.metadata/fields metadata-provider (:id table)))]
             (assoc (table-tx table) :metadata.column/_source fields))))})
 
-#?(:clj
-   (comment
-     (require '[metabase.lib.metadata.jvm])
-     (def mp (metabase.lib.metadata.jvm/application-database-metadata-provider 1))))
-
+;; ## Schema for Queries
+;;
+;; First a couple of helpers, since there are many attributes with each of these definitions.
 (def ^:private component-one
   {:db/cardinality :db.cardinality/one
    :db/valueType   :db.type/ref
@@ -109,59 +192,79 @@
 
 (def query-schema
   "Schema for MBQL queries."
-  {;; A query is defined as the *last* stage.
+  {;; ### "Outer" query
+   ;; Like legacy MBQL, the outer query links to the database and to the stages.
+   ;;
+   ;; Note that the query points to the first and last stages (which might be the same) but also that every stage has
+   ;; `:mbql.stage/query` pointing back to the query.
    :mbql.query/database           {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
    :mbql.query/stage              component-one
    :mbql.query/stage0             component-one
 
-   ;; MBQL Stages - Effectively a doubly-linked list since DataScript refs are always indexed both ways.
-   ;; You can move from a later stage to an earlier one with `:mbql.stage/source`, and from an earlier stage to its
-   ;; successor with `:mbql.stage/_source`.
+   ;; ### Stages
+   ;; These form a doubly-linked list, since the `:mbql.stage/source` of a later stage is the previous stage, and that
+   ;; ref can be followed both ways.
    :mbql.stage/query              {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
 
-   ;; Sources are in several flavours: Tables, cards, previous stage. Both explicit and implicit joins are sources.
-
-   ;; Primary source of a stage - forms a linked list of stages in a multi-stage query.
-   ;; NOT a component, since deleting tables doesn't happen, and deleting a non-final stage is not
-   ;; supported.
-   ;; TODO: Is the above accurate? I'm not 100% certain that a middle stage can't get deleted.
+   ;; `:mbql.stage/source` is the primary source of a stage. In a multi-stage query it forms a linked list of stages;
+   ;; in the first stage it's a card or table. Note that `:mbql.stage/source` is not a component: we don't want to
+   ;; delete the table or card. Deleting a middle stage (rather than the last one) isn't supported.
    :mbql.stage/source             {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
-   ;; Stages which are not last have reified column lists.
+
+   ;; Stages other than the final stage have reified column lists in `:mbql.stage/returned`.
    :mbql.stage/returned           component-many
 
-   ;; Explicit Joins
-   ;; Joins on the stage are an ordered list (:mbql/series); each join has a source and condition list.
+   ;; ### Explicit Joins
+   ;; Joins on the stage are an ordered list (`:mbql/series`). Each join has a `source` and 1 or more `condition`s.
+
    :mbql.join/source              {:db/cardinality :db.cardinality/one
                                    :db/valueType   :db.type/ref
                                    ;; Not sure this can ever happen - tables/cards don't really get removed.
                                    ;; Joins typically cascade because a column used in the condition is removed.
                                    :mbql/removal   :mbql.removal/reverse}
+
+   ;; #### Conditions
    ;; Join conditions are components of the join and get deleted with it.
-   ;; These get removed both ways - if the join is deleted so are the conditions (:db/isComponent); and if the last
+   ;; These get removed both ways - if the join is deleted so are the conditions (`:db/isComponent`); and if the last
    ;; condition gets removed then so does the join.
+   ;;
+   ;; Note that the condition -> join cascade is currently the only *conditional* `:mbql/removal` cascade - see the
+   ;; function in [[remove-edge-conditions]] below.
    :mbql.join/condition           (merge component-many
-                                         ;; Only removed when the last condition is getting deleted.
-                                         ;; See the function in [[remove-edge-conditions]]
-                                         {:mbql/removal     :mbql.removal/reverse})
-   ;; Bidirectional link to the *output* columns for this join.
-   ;; The join is their `:metadata.column/source`, but we also want the `:db/isComponent` cascading deletes.
-   ;; TODO: Actually since :metadata.column/_source is in the "remove" edge set, this might be unnecessary?
+                                         {:mbql/removal :mbql.removal/reverse})
+
+   ;; #### Columns
+   ;; A join has a ref to its *output* columns. (It's bidirectional since the columns also have the join as their
+   ;; `:metadata.column/source`.) The columns are deleted if the join is deleted.
+   ;;
+   ;; TODO: Actually since `:metadata.column/_source` is already marked for `:mbql/removal`, this double link might be
+   ;; unnecessary?
    :mbql.join/column              component-many
 
-   ;; Implicit joins come in two parts - as a column and a source.
-   ;; Implicit join sources are unique on [stage fk-field].
-   ;; The column points to that implicit join source and to the :metadata.column/implicitly-joined
-   ;; (also a column). Columns need to be unique on [source name]. Sources are de-duped, so that's
-   ;; no problem. The name needs to be generated based on the FK column's name and the target's name:
-   ;; the existing library does that as a *join alias* of `TargetTable__via__FK_COLUMN`, but I think we
-   ;; should go farther: TargetTable__TARGET_COLUMN__via__SourceAlias__FK_COLUMN.
-   ;; That's longer, but it's unambiguous. That also implies that we need a way to turn every source
-   ;; into a unique, string name. Possibly it needs to be deduplicated as well, which is distressing.
-   ;; But at least we have indexing so it's fast to check.
-   ;; TODO: Make sure join aliases and de-duplication is actually implemented and tested.
+   ;; ### Implicit joins
+   ;;
+   ;; **Note: Implicit joins are not as battle-tested as most other parts of this model.** They work, but there might be
+   ;; lurking issues that need refactoring here.
+   ;;
+   ;; Implicit joins are modeled as a *column*, whose `:metadata.column/source` as an entity for the implicit join, and
+   ;; `:metadata.column/mirror` is the column we want to join.
+   ;;
+   ;; Implicit join *sources* are linked to the stage, and unique on `[stage fk-field]`. That is, on a given stage there
+   ;; is at most one implicit join source for each FK column on that stage. This is one case where separate column
+   ;; entities which `mirror` the same original is important: I might get `Orders.PRODUCT_ID` from both the source table
+   ;; and an explicit join; those are separate columns and could have two separate implicit joins to `Products`.
+
+   ;; #### Columns
+
+   ;; An implicitly joined column is a standard "mirror" column, whose `source` is the implicit join source and `mirror`
+   ;; is the column being joined in.
+   ;;
+   ;; Columns are de-duped on `[source-id mirror-id name]`, so if the same column is implicitly joined twice, say in
+   ;; a filter and an aggregation, they are one entity.
    :mbql.join.implicit/fk-column  {:db/cardinality :db.cardinality/one
                                    :db/valueType   :db.type/ref
                                    :mbql/removal   :mbql.removal/reverse} ; If FK is removed, so is this join.
+   ;; TODO: Should this be called `source`?
    :mbql.join.implicit/target     {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
    :mbql.join.implicit/stage      {:db/cardinality :db.cardinality/one,  :db/valueType :db.type/ref}
    :mbql.join.implicit/handle     {:db/cardinality :db.cardinality/one
@@ -169,82 +272,81 @@
                                                     :mbql.join.implicit/fk-column]
                                    :db/unique      :db.unique/identity}
 
-   ;; Stages have many parts:
-   ;; - A single(?) :mbql/source (always)
-   ;; - 0+ :mbql.stage/aggregation
-   ;; - 0+ :mbql.stage/expression
-   ;; - 0+ :mbql.stage/filter
-   ;; - 0+ :mbql.stage/breakout
+   ;; ### Stage contents
+   ;; Each type of clause on a stage is a list of entities.
    :mbql.stage/filter             component-many
    :mbql.stage/aggregation        component-many
    :mbql.stage/expression         component-many
    :mbql.stage/breakout           component-many
    :mbql.stage/join               component-many
 
-   ;; Aggregations have an `:mbql.aggregation/operator`, eg. `:count`, `:sum`, etc.
-   ;; Some have no argument (`:count`) and some have a column `:mbql.aggregation/column`.
-   ;; `:count-where` and `:sum-where` have `:mbql.aggregation/filter` (a `:mbql.clause/*` like filters).
-   ;; `:sum-where` has both `column` and `filter`.
-   ;; If part of the filter expression or target column get removed, so does the aggregation.
-   :mbql.aggregation/operator     {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
-   ;; If the column gets removed, the aggregation gets removed too, but removing the aggregation doesn't remove the
-   ;; column it's summing up.
-   :mbql.aggregation/column       {:db/cardinality :db.cardinality/one
-                                   :db/valueType   :db.type/ref
-                                   :mbql/removal   :mbql.removal/reverse}
-   ;; In contrast, the filter expression (if any) is a component and gets deleted with the aggregation.
-   :mbql.aggregation/filter       {:db/cardinality :db.cardinality/one
-                                   :db/valueType   :db.type/ref
-                                   :db/isComponent true                   ; Deleting the aggregation deletes the filter
-                                   :mbql/removal   :mbql.removal/reverse} ; And vice-versa.
-
-   ;; The human-defined name of an expression clause; attached to the topmost :mbql.clause/*.
-   :mbql.expression/name          {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/string}
-
-   ;; Breakouts are references to other columns, plus possibly binning or bucketing.
-   :mbql.breakout/origin          {:db/cardinality :db.cardinality/one
-                                   :db/valueType   :db.type/ref
-                                   :mbql/removal   :mbql.removal/reverse} ; Remove breakout if column is removed.
-   :mbql.breakout/temporal-unit   {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
-   :mbql.breakout/binning         component-one
-
-   :mbql.binning/num-bins         {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/int}
-   :mbql.binning/bin-width        {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/double}
-
-   ;; Filters are just a clause AST:
-   ;; - :mbql.clause/operator: keyword, like := or :concat
-   ;; - :mbql.clause/argument: many ref
+   ;; ### Expression clauses
+   ;;
+   ;; Much of MBQL is defined as a tree of `[:function arg...]` clauses. Here that is represented as an AST, where each
+   ;; node has `:mbql.clause/operator` (keywords as used in the clause arrays), and 0 or more `:mbql.clause/argument`s.
    :mbql.clause/operator          {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
    :mbql.clause/argument          (merge component-many
                                          ;; Remove the whole clause if one of its input refs is removed.
                                          {:mbql/removal :mbql.removal/reverse})
 
-   ;; Clause argument entities hold exactly one of three attributes:
-   ;; - :mbql/lit for literal values
-   ;; - :mbql/ref for references to eg. columns
-   ;; - :mbql/sub for subexpressions (:mbql.clause/* entities)
-   ;; Even though both of the latter are :db.type/ref, it makes sense to separate them since they have different
-   ;; MBQL removal properties.
+   ;; Each `:mbql.clause/argument` is an entity with `:mbql/series` for ordering, and **exactly one of:**
+   ;;
+   ;; - `:mbql/lit` holding a literal values (number, string, keyword, whatever)
+   ;; - `:mbql/ref` for references to columns
+   ;; - `:mbql/sub` for subexpressions (`:mbql.clause/*` entities)
+   ;;
+   ;; Even though both of the latter are `:db.type/ref`, it makes sense to separate them since they get deleted
+   ;; differently.
    :mbql/lit                      {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/any}
-   ;; Refs to columns are not `:db/isComponent`, since we don't want to delete the Field if the ref to it dies.
-   ;; If the referenced thing is deleted, then this argument (and its clause) will be deleted too.
+   ;; `:mbql/ref`s to columns are not `:db/isComponent`, since we don't want to delete a Field when a filter on that
+   ;; field is deleted. `:mbql/ref` is `:mbql.removal/reverse`, though: if a column is deleted (eg. because its join is
+   ;; getting deleted) then anything based on that column should be deleted too.
    :mbql/ref                      {:db/cardinality :db.cardinality/one
                                    :db/valueType   :db.type/ref
                                    :mbql/removal   :mbql.removal/reverse}
-   ;; Subexpressions are both `:db/isComponent` and `:mbql.removal/reverse`.
+   ;; `:mbql/sub` subexpressions are both `:db/isComponent` and `:mbql.removal/reverse`, so deletes cascade in both
+   ;; directions. Naturally a subexpression should be deleted any time the parent expression is deleted.
    :mbql/sub                      (merge component-one
                                          {:mbql/removal :mbql.removal/reverse})
 
-   ;; Common property for tracking the ordering of clauses like filters and aggregations.
-   :mbql/series                   {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/int}
-   ;; Common property for unique, upsertable UUID strings.
-   :mbql/uuid                     {:db/cardinality :db.cardinality/one
-                                   :db/unique      :db.unique/value ; Only one copy of the UUID allowed anywhere!
-                                   #_#_:db/valueType :db.type/string}
-   })
+   ;; ### Filters
+   ;; Filters are `:mbql.clause/*` entities with `:mbql/series` for ordering.
 
-;; Filters point to their stage, stages to their query as well as their predecessor.
-;; Queries point to both their 0th and last stages.
+   ;; ### Aggregations
+   ;; Aggregations always have an `:mbql.aggregation/operator`, eg. `:count`, `:sum`, etc. Then there are two optional
+   ;; attributes, depending on what the aggregation needs:
+   ;;
+   ;; `:mbql.aggregation/column` specifies the column of interest, for eg. `:sum`, `:max`. (Deleting the column deletes
+   ;; the aggregation.)
+   ;;
+   ;; `:mbql.aggregation/filter` specifies a condition for `:count-where`, `:sum-where`. (Likewise, deleting the filter
+   ;; cascades to the aggregation.)
+   :mbql.aggregation/operator     {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
+   :mbql.aggregation/column       {:db/cardinality :db.cardinality/one
+                                   :db/valueType   :db.type/ref
+                                   :mbql/removal   :mbql.removal/reverse}
+   :mbql.aggregation/filter       {:db/cardinality :db.cardinality/one
+                                   :db/valueType   :db.type/ref
+                                   :db/isComponent true
+                                   :mbql/removal   :mbql.removal/reverse}
+
+   ;; ### Custom expressions
+   ;; A top-level expression on a stage is a `:mbql.clause/*` entity with two extra attributes: `:mbql.expression/name`
+   ;; giving the human-defined name, and of course `:mbql/series`.
+   :mbql.expression/name          {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/string}
+
+   ;; ### Breakouts
+   ;; Breakouts are "remixes" of a column (`:mbql.breakout/origin`), with optional binning or bucketing added.
+   :mbql.breakout/origin          {:db/cardinality :db.cardinality/one
+                                   :db/valueType   :db.type/ref
+                                   :mbql/removal   :mbql.removal/reverse} ; Remove breakout if column is removed.
+   ;; `:mbql.breakout/temporal-unit` is the keyword (eg. `:month`) of the temporal unit.
+   :mbql.breakout/temporal-unit   {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/keyword}
+   ;; `:mbql.breakout/binning` is a standalone entity giving the binning details.
+   :mbql.breakout/binning         component-one
+
+   :mbql.binning/num-bins         {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/int}
+   :mbql.binning/bin-width        {:db/cardinality :db.cardinality/one,  #_#_:db/valueType :db.type/double}})
 
 (def ^:private schema
   (merge metadata-schema query-schema))
@@ -259,12 +361,13 @@
   []
   (d/empty-db schema))
 
+;; TODO: Probably remove anything `conn`-related, and stick to DB values?
 (defn fresh-conn
   "Create a blank mutable database with the schema but nothing else."
   []
   (d/conn-from-db (fresh-db)))
 
-;; Internals ====================================================================================
+;; ## Internal helpers
 (defn- entity? [possible-entity]
   (datascript.impl.entity/entity? possible-entity))
 
@@ -288,7 +391,7 @@
                 [:metadata.field/id :metadata.table/id :metadata.database/id]))
 
 (defn- external-entid
-  "Given any entity, return a portable entid for it.
+  "Given any Entity, return a portable entid for it.
 
   For metadata entities that exist in appdb, this is eg. `[:metadata.field/id 123]`.
   For fragments of queries (including columns), this is `[:mbql/uuid \"bcebd82a-4f29-48fa-8d8a-effd3f5dc574\"]`."
@@ -312,56 +415,10 @@
                    :when (not (external-key entity))]
                entity)))
 
-;; Stages 0 and N are pointers to the two ends.
-;; Negative numbers mean counting backwards from stage N.
-(def rules-stages
-  "Datalog **rules** for working with stages in queries."
-  '[;; Stage 0: Return the first stage.
-    [(stage-number ?query ?n ?stage)
-     [(= ?n 0)]
-     [?query :mbql.query/stage0 ?stage]]
-    ;; Stage -1: Return the last stage.
-    [(stage-number ?query ?n ?stage)
-     [(= ?n -1)]
-     [?query :mbql.query/stage  ?stage]]
-    ;; Positive number: start counting from stage0.
-    [(stage-number ?query ?n ?stage)
-     [(> ?n 0)]
-     [?query  :mbql.query/stage0    ?stage0]
-     (stages-asc ?stage0 ?n 1 ?stage)]
-
-    ;; Ascending order: k == target
-    [(stages-asc ?stage-k-1 ?target ?k ?stage)
-     [(= ?target ?k)]
-     [?stage :mbql.stage/source ?stage-k-1]]
-    ;; Ascending order: k < target
-    [(stages-asc ?stage-k-1 ?target ?k ?stage)
-     [(> ?target ?k)]
-     [?stage-k :mbql.stage/source ?stage-k-1]
-     [(inc ?k) ?k+1]
-     (stages-asc ?stage-k ?target ?k+1 ?stage)]])
-
-;; TODO: Sort out a way to memoize these.
-(defn- database-for [metadata-provider]
-  (d/db-with (fresh-db) [(metadata-tx metadata-provider)]))
-
-(defn query-stage
-  "Given a `query-entity` and stage index, return the stage as an entity."
-  [query-entity stage-number]
-  (let [db        (d/entity-db query-entity)
-        stage-eid (d/q '[:find ?stage .
-                         :in % $ ?query ?stage-number :where
-                         (stage-number ?query ?stage-number ?stage)]
-                       rules-stages db (:db/id query-entity) stage-number)]
-    (d/entity db stage-eid)))
-
-(defn filters
-  "Returns a list of all filters on the specified stage, in order."
-  [query-entity stage-number]
-  (->> (query-stage query-entity stage-number)
-       :mbql.stage/filter
-       (sort-by :mbql/series)
-       vec))
+(defn- entid? [x]
+  (and (vector? x)
+       (= (count x) 2)
+       (keyword? (first x))))
 
 ;; TODO: Fix up or delete this. It's unused currently and I think might be unnecessary.
 ;; If I do want to keep it, it should be reworked to handle the split of :mbql/ref and :mbql/sub into two.
@@ -394,12 +451,62 @@
 #_(defn- walk-refs [f expr]
   (walk-expression {:ref-fn f} expr))
 
-;; Query builder ===============================================================================
-;; Reproducing a bunch of the query building functions for easier testing.
-;; In this model, queries are passed and returned as Entities. That can be broken down into a database and EID with
-;; d/entity-db and :db/id.
-;; TODO: There are other options - one DB per query with a hard-coded EID;
-;; or a global DB passing just the EID. To be considered further.
+;; ## Stage numbers
+;; The stages are stored as a linked list (via `:mbql.stage/source`) and the query has pointers to the first and last
+;; stages. We need a way to turn a stage number (0, 1, -1) into the correct stage entity.
+;;
+;; With Entity smart maps, this can be done by logic to walk the stages. But to enable Datalog queries, we defined a set
+;; of Datalog **rules**, named Datalog subqueries with parameters.
+;;
+;; This is *by far* the most complex Datalog querying in the PoC; feel free to skip right over it.
+(def rules-stages
+  "Datalog **rules** for working with stages in queries."
+  '[;; Stage 0: Return the first stage.
+    [(stage-number ?query ?n ?stage)
+     [(= ?n 0)]
+     [?query :mbql.query/stage0 ?stage]]
+    ;; Stage -1: Return the last stage.
+    [(stage-number ?query ?n ?stage)
+     [(= ?n -1)]
+     [?query :mbql.query/stage  ?stage]]
+    ;; Positive number: start counting from stage0.
+    [(stage-number ?query ?n ?stage)
+     [(> ?n 0)]
+     [?query  :mbql.query/stage0    ?stage0]
+     (stages-asc ?stage0 ?n 1 ?stage)]
+
+    ;; Ascending order: k == target
+    [(stages-asc ?stage-k-1 ?target ?k ?stage)
+     [(= ?target ?k)]
+     [?stage :mbql.stage/source ?stage-k-1]]
+    ;; Ascending order: k < target
+    [(stages-asc ?stage-k-1 ?target ?k ?stage)
+     [(> ?target ?k)]
+     [?stage-k :mbql.stage/source ?stage-k-1]
+     [(inc ?k) ?k+1]
+     (stages-asc ?stage-k ?target ?k+1 ?stage)]])
+
+;; TODO: Sort out a way to memoize these.
+(defn- database-for [metadata-provider]
+  (d/db-with (fresh-db) [(metadata-tx metadata-provider)]))
+
+;; ## Library API
+;; A few parts of this are DataScript-specific, but most of it is lifted straight from `metabase.lib.js`.
+;;
+;; The main difference is that queries are passed as DataScript Entities - smart maps that can dynamically walk the
+;; indexes.
+(defn query-stage
+  "Given a `query-entity` and stage index, return the stage as an entity."
+  [query-entity stage-number]
+  (let [db        (d/entity-db query-entity)
+        stage-eid (d/q '[:find ?stage .
+                         :in % $ ?query ?stage-number :where
+                         (stage-number ?query ?stage-number ?stage)]
+                       rules-stages db (:db/id query-entity) stage-number)]
+    (d/entity db stage-eid)))
+
+;; ### Query builder
+;; TODO: There are other possible inputs to base a query on.
 (defn query
   "Construct a query for the indicated table."
   [metadata-provider table-metadata]
@@ -419,12 +526,25 @@
                       (d/with tx-data))]
     (d/entity (:db-after tx) (get-in tx [:tempids -1]))))
 
-(defn- with-stage [query-entity stage-number f]
+(defn- with-stage
+  "Important helper: takes a `query-entity`, `stage-number` and a function `(f stage-entity) => tx-data`.
+
+  Expects to pass in the `stage-entity` for the specified stage, and get back a transaction to apply."
+  [query-entity stage-number f]
   (let [stage (query-stage query-entity stage-number)]
     (-> query-entity
         d/entity-db
         (d/db-with (f stage))
         (d/entity (:db/id query-entity)))))
+
+;; ### Filters
+(defn filters
+  "Returns a list of all filters on the specified stage, in order."
+  [query-entity stage-number]
+  (->> (query-stage query-entity stage-number)
+       :mbql.stage/filter
+       (sort-by :mbql/series)
+       vec))
 
 (defn filter
   "Attaches the given `expr-parts` to the query as a filter.
@@ -438,12 +558,11 @@
         [{:db/id             (:db/id stage)
           :mbql.stage/filter new-filter}]))))
 
-(defn- entid? [x]
-  (and (vector? x)
-       (= (count x) 2)
-       (keyword? (first x))))
-
-(defn- clause-argument [arg]
+;; ### Expression clauses
+(defn- clause-argument
+  "Helper for turning user inputs into a `:mbql.clause/argument` entity with the right flavour of `:mbql/lit`,
+  `:mbql/ref` or `:mbql/sub`."
+  [arg]
   (cond
     (or (number? arg)
         (string? arg)
@@ -468,8 +587,9 @@
   "Shorthand for creating expression ASTs. This is like the named [[metabase.lib.expression/=]] etc., but I don't want
   to wrestle with the name collisions in this big playground namespace.
 
-  Arguments can be DataScript `Entities`, `[:metadata.field/id 12]` refs, maps (typically nested clauses), or literal
-  numbers and strings.
+  The `args` can be DataScript Entities, `[:metadata.field/id 12]` refs, maps (typically nested clauses), or literal
+  numbers and strings. (Note that they can't be plain numeric entity IDs - those will get interpreted as literal
+  numbers!)
 
   Returns the `:mbql.clause/*` entity in a transactable form."
   [op & args]
@@ -477,14 +597,14 @@
    :mbql.clause/operator op
    :mbql.clause/argument (clause-arguments args)})
 
-;; Aggregations =================================================================================
+;; ### Aggregations
 (defn- aggregation-clause
   "Builder for an aggregation. Takes 1 to 3 args:
 
   - `(aggregation-clause :count)`
   - `(aggregation-clause :sum [:metadata.field/id 12])`
   - `(aggregation-clause :sum-where [:metadata.field/id 12] (expr := [:metadata.field/id 9] 7))`
-      - `(aggregation-clause :count-where nil (expr := [:metadata.field/id 9] 7))`"
+      - `column` can be nil: `(aggregation-clause :count-where nil (expr := [:metadata.field/id 9] 7))`"
   ([op] (aggregation-clause op nil nil))
   ([op column] (aggregation-clause op column nil))
   ([op column filter-expr]
@@ -530,7 +650,7 @@
        vec))
 
 (defn aggregations
-  "Returns the (ordered) list of aggregations on the given stage, as a vector of entities."
+  "Returns the (ordered) list of aggregations on the given stage, as a vector of Entities."
   [query-entity stage-number]
   (stage-aggregations (query-stage query-entity stage-number)))
 
@@ -545,7 +665,7 @@
           :mbql.stage/aggregation (assoc aggregation :mbql/series series)}]))))
 
 
-;; Breakouts ====================================================================================
+;; ### Breakouts
 (defn- stage-breakouts [stage-entity]
   (->> stage-entity
        :mbql.stage/breakout
@@ -557,7 +677,11 @@
   [query-entity stage-number]
   (stage-breakouts (query-stage query-entity stage-number)))
 
-(defn- ->breakout [column-or-breakout]
+(defn- ->breakout
+  "Accepts a regular *column* or a breakout entity.
+
+  Wraps vanilla columns into a breakout Entity with `:mbql.breakout/origin`."
+  [column-or-breakout]
   (if (:mbql.breakout/origin column-or-breakout)
     column-or-breakout
     {:mbql.breakout/origin column-or-breakout
@@ -568,7 +692,7 @@
   ref to a field or column.
 
   Breakouts are stored with `:mbql.breakout/origin` pointing to the original column, field, etc.; if the input does not
-  have that attribute it will be used as the value for `:mbql.breakout/origin` in a new entity."
+  have that attribute then the entire input will be used as the value for `:mbql.breakout/origin` in a new entity."
   [query-entity stage-number breakout-clause]
   (let [series          (count (breakouts query-entity stage-number))]
     (with-stage query-entity stage-number
@@ -585,7 +709,7 @@
   [breakoutable temporal-unit]
   (assoc (->breakout breakoutable) :mbql.breakout/temporal-unit temporal-unit))
 
-;; Expressions ==================================================================================
+;; ### Custom expressions
 (defn- stage-expressions [stage-entity]
   (->> stage-entity
        :mbql.stage/expression
@@ -612,7 +736,7 @@
                                           :mbql.expression/name   expression-name
                                           :mbql/series            series})}]))))
 
-;; Explicit Joins ===============================================================================
+;; ### Explicit joins
 (declare returned-columns-method)
 
 (defn- stage-joins [stage-entity]
@@ -666,7 +790,12 @@
   "When adding a `join-clause` with conditions, those conditions will probably contain `:mbql/ref`s pointing to columns
   from the join's `source`. Since join columns are reified in the database with `:metadata.column/source the-join`
   and `:metadata.column/mirror original-column`, we should adjust those refs to point at the join's own columns instead
-  of the source's columns. They're easy to find: their `source` is the same as the join's `source`."
+  of directly at the source's columns.
+
+  This assumes the \"standard\" shape of join conditions, where the LHS references existing columns and the RHS
+  references join columns. (In most cases, we can tell them apart in any position because the `source` of the column is
+  the same as the join's `source`. But that doesn't work when joining the source table a second time, either directly or
+  via other joins.)"
   [series stage conditions]
   (let [join-clause (->> stage
                          :mbql.stage/join
@@ -691,9 +820,9 @@
 (defn join
   "Adds an explicit join to this stage, with the given source and conditions.
 
-  The `joinable` is either a source or a `:mbql.join/*` entity.
+  The `joinable` is either a source like a table, or a `:mbql.join/*` entity.
 
-  The columns for this join are reified in the DB; copied from their original form with the join as their source."
+  The columns for this join are reified in the DB: the join is their source and they `mirror` the original columns."
   ([query-entity stage-number joinable-source conditions]
    (let [source-entid (cond
                         (number? joinable-source)                       joinable-source
@@ -718,7 +847,7 @@
          (with-stage stage-number #(tx-join-columns series %))
          (with-stage stage-number #(fix-join-conditions series % (:mbql.join/condition join-clause)))))))
 
-;; Source type dispatch =========================================================================
+;; ### Internals: Source type dispatch
 ;; Sources come in a bunch of different flavours; this looks at sets of keys to determine what kind
 ;; of source this is.
 (def ^:private source-dispatch-keys
@@ -731,7 +860,8 @@
 (defn- source-dispatch [maplike]
   (some source-dispatch-keys (keys maplike)))
 
-;; Source names =================================================================================
+;; ### Source names
+;; These aren't actually used anywhere yet. I thought they would be needed but ended up using a different approach.
 (defmulti source-name
   "Given a `source`, return a unique name for it as a string. For now they can resemble the original
   MLv2 forms, until there's a reason to change. But these should be opaque, an internal matter for
@@ -762,7 +892,7 @@
         fk-source-name (-> fk-column :metadata.column/source source-name)]
     (str target-name "__via__" fk-source-name "__" (:metadata.column/name fk-column))))
 
-;; Column names for synthesized columns =========================================================
+;; ### Column names for synthesized columns
 (def ^:private column-dispatch-keys
   {:metadata.column/mirror    :column/mirror
    :metadata.field/id         :column/field
@@ -774,7 +904,7 @@
   (some column-dispatch-keys (keys maplike)))
 
 (defmulti column-name
-  "Returns a plausible, nearly unique (might need `_2` disambiguation) column names, based on the kind of column."
+  "Returns a plausible, nearly unique (might need `_2` disambiguation) column name, based on the kind of column."
   column-dispatch)
 
 (defmethod column-name :column/field [column]
@@ -794,7 +924,7 @@
 (defmethod column-name :column/breakout [column]
   (column-name (:mbql.breakout/origin column)))
 
-;; Returned columns =============================================================================
+;; ### Returned columns
 (defmulti returned-columns-method
   "Inner method for [[returned-columns]]. Dispatches based on the keys available in the entity
   argument."
@@ -811,7 +941,8 @@
        (sort-by :mbql/series)))
 
 (defmethod returned-columns-method :mbql/join.implicit [_imp-join-entity]
-  ;; Implicit joins don't exist directly; they only get used inside eg. filters, breakouts, join conditions.
+  ;; Implicit joins don't export columns directly. They only get returned when used for something that is exported, like
+  ;; a breakout. Those are handled in other [[returned-columns-method]]s.
   (log/warn "Tried to call returned-columns-method on an implicit join source?")
   [])
 
@@ -820,18 +951,19 @@
     ;; This isn't the last stage, so return the reified list of returned columns.
     (sort-by :mbql/series retcols)
 
-    ;; No reified columns, so return them dynamically.
-    (if-let [brks+aggs (not-empty (concat (stage-breakouts stage)
-                                          (stage-aggregations stage)))]
+    ;; Last stages don't have reified columns, so return them dynamically.
+    (or
       ;; With a breakout or aggregation: return the breakouts followed by the aggregations.
-      brks+aggs
+      (not-empty (concat (stage-breakouts stage)
+                         (stage-aggregations stage)))
 
-      ;; Unaggregated: main source, joins in order, expressions.
+      ;; With no breakouts or aggregations: main source then expressions then joins (in order).
+      ;; TODO: Is that actually the right order?
       (concat (returned-columns-method (:mbql.stage/source stage))
+              (stage-expressions stage)
               (->> (:mbql.stage/join stage)
                    (sort-by :mbql/series)
-                   (mapcat returned-columns-method))
-              (stage-expressions stage)))))
+                   (mapcat returned-columns-method))))))
 
 (defmethod returned-columns-method :metadata/table [table]
   (->> table
@@ -842,18 +974,24 @@
   "Given a query and stage number, return the (ordered) list of the columns it will return.
 
   - MBQL stages with aggregations return all their breakouts followed by all their aggregations, each in order.
-  - MBQL stages without aggregations return the columns from: main source, explicit joins in order, expressions."
+  - MBQL stages without aggregations return the columns from: main source, expressions, explicit joins in order."
   ;; TODO: Double-check that ordering.
   [query-entity stage-number]
   (returned-columns-method (query-stage query-entity stage-number)))
 
-;; Visible columns ==============================================================================
-;; Correcting an error in the OG implementation - rather than returning the columns and then grouping them later, let's
-;; return the groups at the top level, and concat them into one list if desired.
+;; ### Visible columns
+;; This reverses the "column groups" flow from the original API - the primary function [[visible-column-groups]] returns
+;; the groups. [[visible-columns]] calls that and `concat`s the column lists of each group. This is more natural and
+;; avoids expensively inferring the groups from the combined column list.
 (defn- root-column
-  "Note: This is only safe to follow for unchanging metadata like fk-target and effective-type.
-  Don't call this expecting to compare columns or anything like that. Any clause which transforms a column
-  (eg. a breakout) should return a new, fresh column and not be mirrored."
+  "Recursively follow `:metadata.column/mirror` to find the original column.
+
+  **Note:** This should only be used to get the name, types, etc. for a column. It is not safe to use for comparisons
+  or anything else. Even when \"the same\" column is coming from multiple sources, they should be treated as separate.
+
+  Any clause which transforms a column (eg. a breakout) should be considered a new, fresh column and not have
+  `:metadata.column/mirror`. (Breakouts even without bucketing or binning are new columns, since breakouts are sorted
+  and de-duped via `GROUP BY`.)"
   [column-entity]
   (if-let [mirror (:metadata.column/mirror column-entity)]
     (recur mirror)
@@ -914,12 +1052,12 @@
   [query-entity stage-number]
   (mapcat :metabase.lib.column-group/columns (visible-column-groups query-entity stage-number)))
 
-;; Multiple stages ==============================================================================
+;; ### Multiple stages
 (defn append-stage
-  "Appends a new stage to the provided query. This stage will have reified columns for all its [[returned-columns]],
-  with `:metadata.column/mirror` pointed at the original column, and `:metadata.column/source` pointed at the earlier
-  stage."
-  ;; TODO: Update columns for intermediate stages when they get edited.
+  "Appends a new stage to the provided query. The previous stage will have reified columns added for all its
+  [[returned-columns]], with `:metadata.column/mirror` pointed at the original column, and `:metadata.column/source`
+  pointed at that earlier stage."
+  ;; TODO: Update the reified columns for intermediate stages when they get edited.
   [query-entity]
   (let [stage   (:mbql.query/stage query-entity)
         reified (map-indexed (fn [i column]
@@ -938,10 +1076,12 @@
             :mbql.stage/returned reified}])
         (d/entity (:db/id query-entity)))))
 
-;; Paths to columns etc. ========================================================================
-;; These are all test helpers to navigate a starting entity. See [[stage>]] for the details.
-;; Note that convention that all functions of this shape `(foo> entity path...)` *end* with `>`,
-;; while all functions that build path fragments *start* with `>`, like [[>cols]].
+;; ### Paths
+;; These are test helpers to replace a lot of `(meta/field-metadata ...)` calls etc.
+
+;; See [[in>]] for the details.
+
+;; Note the convention that all functions of this shape `(foo> entity path...)` *end* with `>`.
 (defn- path-step [x path-part]
   (cond
     (entity? path-part)  (first (core/filter #(= (:db/id %) (:db/id path-part)) x))
@@ -986,16 +1126,18 @@
 ;; ## Remove and Replace
 ;;
 ;; This is one of the most complex parts of the original MLv2 implementation and a real proof (or disproof) of the value
-;; of this database-powered model.
+;; of this database-powered approach.
 
 ;; ### Schema attributes
 
 ;; The DataScript schema has been augmented with our own meta-attribute `:mbql/removal`, which has a value of
 ;; `:mbql.removal/forward`, `:mbql.removal/reverse` or `:mbql.removal/bidirectional`.
-;; (Currently everything is `:mbql.removal/reverse`, but that's just a coincidence.)
+;; (Currently everything is `:mbql.removal/reverse`, but I think that's just a coincidence? Or maybe the forward
+;; direction is captured by `:db/isComponent`?)
 
 ;; In addition we use the built-in `:db/isComponent true` meta-attribute, which will be followed when transacting with
-;; `:db.fn/retractEntity`.
+;; `:db.fn/retractEntity`. This is useful for deleting parts of entities that cannot outlive the parent -
+;; subexpressions, join conditions, etc.
 
 ;; The difference here is important: the `:mbql/removal` edges give the MBQL sense of cascading deletes, eg. deleting
 ;; an explicit join should delete anything that references its columns (even across stages). These edges go both
@@ -1005,16 +1147,17 @@
 
 ;; These are separate because there are cases where we need to control each separately. For example, when a complex
 ;; aggregation like `:sum-where` is deleted, its `:mbql.aggregation/filter` expression tree needs to be (recursively)
-;; deleted too; that's handled with `:db/isComponent`. The column being summed (`:mbql.aggregation/column`) might be a
-;; global `[:metadata.field/id 123]`, and should not be deleted.
+;; deleted too; that's handled with `:db/isComponent`. In contrast, the column being summed (`:mbql.aggregation/column`)
+;; might be a global `[:metadata.field/id 123]`, and should not be deleted.
 
-;; Going the other way, if a join gets removed so do its columns, and if one of those columns was used in either the
+;; Going the other way, if a join gets removed so do its columns, and if one of those columns was used in *either* the
 ;; aggregation's `filter` or `column`, then the entire aggregation should be removed. This is the MBQL cascading delete
 ;; powered by `:mbql/removal`.
 
 ;; ### Removal process
 
 ;; Removal proceeds like this:
+;;
 ;; 1. Wrap the target clause we want to delete into a set of `removals`.
 ;; 2. Recursively follow the `:mbql/removal` edges until the set stops growing - this is the transitive closure of
 ;;    things to remove.
@@ -1026,36 +1169,30 @@
 ;;       `:db/isComponent` refs and deletes them entirely as well.
 ;; 5. Walk each stage and each ordered slice, and fix any `:mbql/series` indexing that's now broken.
 ;;    It's easier to walk the entire query for this than it is to try to keep track of what needs to change.
-
+;;
 ;; ### Replace
-
+;;
 ;; This is straightforward, since any references to the changing clause are just entity ID numbers; they don't copy its
 ;; column name or anything like that.
-;; TODO: That's not quite true since I think we copy `:metadata.column/name` in some places where we shouldn't.
-;; The `:metadata.column/handle` index contains three fields only because exactly one of `:metadata.column/name` and
-;; `:metadata.column/mirror` will be set on any column. Fields and expressions have names; aggregations don't need them,
-;; and everything else (breakouts, join exports, etc.) are mirrors.
-;; So I need to make sure we're not needlessly copying the name, since there might be drift in that case.
-
-;; TODO: Also add tests for column-name.
-
+;;
 ;; ### Swap
-
-;; Swap is just exchanging the `:mbql/series` numbers of two entities of the same kind in the same stage.
+;;
 ;; We expect the two entities to be the same kind, which means that they both have eg. `:mbql.stage/_aggregation`
 ;; pointing to the same stage. This is an easy check on the entities.
-
+;;
 ;; There's an additional condition for expressions. Call the two expressions `earlier` and `later`:
-;; - None of the expressions in (`earlier`, `later`] can depend on `earlier`
-;; - `later` cannot depend on [`earlier`, `later`)
-;; Those conditions are easy enough to check with [[d/query]].
-
-;; Likewise for joins, except that we don't allow swapping for those.
-
-;; Assuming all the conditions pass, enacting a swap is trivial: swap their `:mbql/series` values.
+;;
+;; - None of the expressions in `(earlier, later]` can depend on `earlier`
+;; - `later` cannot depend on `[earlier, later)`
+;;
+;; Those conditions are easy enough to check with [[d/query]]. (The same would be true for joins, except that we don't
+;; allow swapping their order.)
+;;
+;; Assuming those preconditions pass, enacting a swap is trivial: swap their `:mbql/series` values.
 
 ;; TODO: Support order-by, which I've been ignoring pretty much completely. Should be straightforward.
 ;; TODO: Make sure order-by is included in removal!
+;; TODO: Add limit as well.
 
 (def ^:private remove-edges
   "The set of attributes (forward or reverse) that should be followed to find \"parent\" entities when something is
@@ -1141,12 +1278,19 @@
         (d/entity (:db/id query-entity))
         fix-series-indexing)))
 
-;; Problem: Populating metadata DB ==============================================================
-;; On JS we can maintain a single, sometimes updated atom with the entire picture in it; the FE takes
-;; care of requesting metadata on demand. But perhaps we can point the arrow the other way? Make the
-;; DataScript DB the source of truth for metadata, and avoid the need to backwards-update it?
-;; Probably yes; it's all hidden behind the `Metadata` class.
+;; # Thoughts and Notes
+
+;; ## Problem: Updating metadata
+;; Currently in the FE we maintain a `Metadata` object and periodically update it; each query gets a `metadata-provider`
+;; which wraps the JS `Metadata` object at creation time. Those objects never change, and are replaced outright when
+;; new metadata is retrieved from the server.
 ;;
+;; There's no "bleeding" issue here but I think DataScript offers a tantalizing possibility of a much smarter "sync"
+;; process between server and client, with the atomically updated DB as the source of truth rather than the JS object.
+;; (It's straightforward to support the JS API on top of the DB.) We could (1) cache the metadata in LocalStorage,
+;; (2) send diffs from the server rather than re-fetching things we already have, (3) be more reactive in trying to
+;; render things, failing due to missing or mismatched metadata, trigger a refresh, and then reactively update.
+
 ;; On JVM, the entire metadata is accessible but we generally access it on demand, synchronously.
 ;; There's no way currently to plug lazy access into DataScript, even when we can block on JVM.
 ;; But I think we can tackle it with a pre-tx step that examines the transaction we're about to
@@ -1155,65 +1299,63 @@
 ;; That function can be a no-op on the CLJS side, since there we would assume the FE had already
 ;; populated the data.
 
-;; Sources =======================================================================================
-;; A source is an entity, with a `many` of columns. Columns have a name, the three types
-;; (base-type required, the others optional) and an origin, which is another column or perhaps a
-;; :metadata.field/...
+;; ## Miscellaneous ideas
+;;
+;; ### Updating metadata on existing queries
+;;
+;; Manipulating the `:next-eid` in DataScript to separate metadata from the query from caches gives us a fast way to
+;; delete or select either the metadata or the query parts en bloc.
+;;
+;; To update the metadata, select all the query-related datoms with `(d/seek-datoms db :eavt query-slice-eid0)`, build
+;; the new metadata DB, and reapply the query datoms on top.
 
-;; Types of sources:
-;; - :mbql.source/table is a ref to the table metadata - these columns are fields.
-;; - :mbql.source/card is a ref to a :metadata/card
-;; - :mbql.source/model is a ref to a model (also a :metadata/card, but possibly with a metadata
-;;   wrapper)
-;; - :mbql.source/implicit-join points at the target column (not field!), and
-;;   :mbql.source/foreign-key points to the FK column. (Columns not fields so that these work for
-;;   models.)
-;; - :mbql.source/select is a pseudosource, which reorders and filters columns coming from a
-;;   previous source.
-;; - :mbql.source/explicit-join has a source, but it might be the a select around the proper join
-;;   source
+;; ### One big database
+;;
+;; Rather than each query getting its own database, they could all live in one big database. That's more
+;; memory-efficient but there's some tricky parts. There's no good way to tell that a query hasn't been used in a long
+;; time and can be dropped from the working DB. (Perhaps that's not an issue if the whole DB is ephemeral.)
+;;
+;; The big concern to me here is the handling of ad-hoc queries vs. their original forms. There's a vital difference
+;; between a saved query and the ad-hoc query we created by editing it but haven't yet saved. Treating each query as a
+;; different, immutable DB *value* gives us exactly the semantics we need. If only the saved questions live in the big
+;; database, that's effectively just sharing the metadata.
 
-;; Data model for sources:
-;; - Selecting columns is on the *input* side, on stages and joins.
-;; - The output of a stage is quite dependent, since it depends on whether there are aggrgations
-;;   on the stage. Hard (but perhaps not impossible?) to query in Datalog.
-
-;; - Columns are "fat" refs, small entities that add extra information about a further ref.
-;;   - Columns point to the source and the specific column from it.
-
-;; A stage has an (ordered?) set of columns it returns, and so can act as a source itself.
-;; - Reified or implied? Implied I think:
-;;   - If there are aggregations, then all breakouts followed by all aggregations, each in order.
-;;   - If not: primary source, joins in order, expressions, (breakouts?)
-;;   - That logic would be difficult to express in a Datalog query...
-;; - Stages point at their predecessor directly, but it might also be their mbql.stage/source.
-;; - Is "select" worth representing anywhere except at the stage level?
-;;   - We surface it on joins in the UI, but it's not necessary to store it there.
-;;   - Even though I like the *idea* of a separate "select" layer, there's no need to model
-;;     it that way either. The sources are already reified as entities, they can include a
-;;     field list.
-;;     - I think it does make sense to store them on joins...
-;; - Column names are immaterial inside the database - they can just refer to real fields etc.
-;;   - Every source needs to have a defined name... but I'm not sure how to frame that.
-
-
-;; Columns proper are "fat refs", entities that specify some extra things while linking two
-;; other entities.
-;; A column is identified by :mbql.column/source, which points at the source, and by
-;; :mbql.column/origin, which points to its original form.
-;; That might be an expression or aggregation in an earlier stage, or elsewhere...
-
-;; Or should I do things fully reified, with all columns fully modeled in the database?
-;; It feels more heavyweight, but perhaps it's not hard to update them incrementally?
-;; - On adding a join, its own source must be queried to find all the columns, and export
-;;   versions of them added to the export list.
-;; - On removing a join, every output column that references it needs to be dropped
-;;   - That's an easy, indexed ref query, and it can cascade through aggregations, etc.
-
-
-;; Miscellaneous thoughts ========================================================================
-;; - Manipulating the `:next-eid` in DataScript to separate metadata from the query from caches
-;;   makes a fast way to delete en bloc when eg. the metadata updates.
-;;   Grab all the query-zone datoms, rebuild the metadata portion, and reapply the query portion.
-;; - Slicing each query to like a 64K region on round values gives a way to keep all the queries in
-;;   one database without interleaving them.
+;; ### Saved questions and find/replace
+;;
+;; In the light of the find/replace features we're planning, I think there's some powerful tools in the navigability of
+;; the DataScript DB. Since the links formed by field refs are reified and queryable in both directions, and no data is
+;; cloned or copied, it is possible to perform sophisticated, efficiently indexed walks of the cards.
+;;
+;; **Thought experiment:** If we have in appdb an index of all the queries touching a certain table or field, we can
+;; load them all into DataScript. Now consider some possible find/replace things:
+;;
+;; - Changing the name of a field? Every ref to it everywhere is found in the transitive closure of `:mbql/_ref` and
+;;   `:metadata.column/_mirror`. Collect the list of query IDs that need updating, and write out the legacy MBQL.
+;; - Removing a field? We already have the logic for this and it doesn't care about query boundaries! Run that, skim the
+;;   set of deletions to get the set of touched queries, and write them back out to legacy.
+;; - New field on a table? Add it to all reified column lists (on joins, non-final stages) that aren't marked as being
+;;   an explicit `:fields` clause!
+;;
+;; ### Why even appDB?
+;;
+;; This is considerably more radical, but there's no fundamental reason that we have to store the appdb data in SQL at
+;; all. The server could store the metadata (Database, Table, Field) and at least the `:dataset_query` part of cards
+;; in a DataScript-based durable DB like Datahike. (The rest of the cards and all the other data could stay in SQL, with
+;; just the Datahike entity IDs for queries, databases, etc. in it.)
+;;
+;; - Datahike keeps history, like Datomic. That enables two things:
+;;     - Let a client keep a local cache, and send it batched updates over the network - cheap and easy diff sync!
+;;     - Querying at any point in time, enabling us to expose the history of any table, card, model, etc. transparently.
+;; - No added deployment overhead. Datahike has pluggable storage, including a mature JDBC backend.
+;;     - So the Datahike data goes in new tables in the existing appdb.
+;;     - (The Datahike data are stored opaquely in binary blobs; it's not visible to SQL.)
+;; - Big migrations need big upsides!
+;;     - I think the remarks above about the power of *real* refs in queries linking to metadata, and how much leverage
+;;       that gives for find/replace, is a compelling upside.
+;;     - A clear history and the ability to stream updates to the client is very powerful.
+;; - From this POV, storing JSON-encoded data like `:dataset_query` opaquely in SQL makes the SQL part pure friction.
+;;     - We have to do a lot of expensive, fragile custom logic to reconstruct the references between parts of queries
+;;       and metadata. Moving to real, navigable references (even if only in memory) is a huge increase in leverage.
+;;
+;; I wouldn't go so far as to advocate for making this a Thing We Plan to Do. But I think it's far too powerful -
+;; especially when it comes to find/replace - to dismiss it out of hand.
