@@ -23,7 +23,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (def ^:private Col
@@ -70,28 +70,29 @@
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
-        (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
+        (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
-                               expected-count actual-count))
-                 {:expected-columns (map :name cols)
-                  :first-row        (first rows)
-                  :type             qp.error-type/qp}))))))
+                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                                  expected-count actual-count))
+                        {:expected-columns (map :name cols)
+                         :first-row        (first rows)
+                         :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
-    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
-           (let [col-name (name col-name)]
-             (merge
-              {:display_name (u/qualified-name col-name)
-               :source       :native}
-              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
-              ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
-              ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
-              ;; valid `:field`, omit the `:field_ref`.
-              (when-not (str/blank? col-name)
-                {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
-              driver-col-metadata))))))
+    (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
+            (let [col-name (name col-name)]
+              (merge
+               {:display_name (u/qualified-name col-name)
+                :source       :native}
+               ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
+               ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
+               ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
+               ;; valid `:field`, omit the `:field_ref`.
+               (when-not (str/blank? col-name)
+                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+               driver-col-metadata)))
+          cols)))
 
 (defmethod column-info :native
   [_query {:keys [cols rows] :as _results}]
@@ -263,7 +264,7 @@
 
       (integer? id-or-name)
       (merge (let [{:keys [parent-id], :as field} (-> (lib.metadata/field (qp.store/metadata-provider) id-or-name)
-                                                      (dissoc :database-type))]
+                                                      #_(dissoc :database-type))]
                #_{:clj-kondo/ignore [:deprecated-var]}
                (if-not parent-id
                  (qp.store/->legacy-metadata field)
@@ -434,7 +435,7 @@
    {} ; ensure the type is a plain map rather than a Toucan 2 instance or whatever
    (when-let [field-id (:id source-metadata-col)]
      (-> (lib.metadata/field (qp.store/metadata-provider) field-id)
-         (dissoc :database-type)
+         #_(dissoc :database-type)
          #_{:clj-kondo/ignore [:deprecated-var]}
          qp.store/->legacy-metadata))
    source-metadata-col

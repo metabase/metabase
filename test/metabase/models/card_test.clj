@@ -940,7 +940,7 @@
    (is (= [2 1 0]
           (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
 
-(deftest average-query-time-and-last-query-started-test
+(deftest ^:parallel average-query-time-and-last-query-started-test
   (let [now       (t/offset-date-time)
         yesterday (t/minus now (t/days 1))]
     (mt/with-temp
@@ -954,7 +954,14 @@
                                    :cache_hit    false
                                    :running_time 100}]
       (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
-      (is (= now (-> card (t2/hydrate :last_query_start) :last_query_start))))))
+      ;; the DB might save last_query_start with a different level of precision than the JVM does, on my machine
+      ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_query_start` is coming back with
+      ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+      ;; times we're comparing.
+      (is (= (.withNano now 0)
+             (-> (-> card (t2/hydrate :last_query_start) :last_query_start)
+                 t/offset-date-time
+                 (.withNano 0)))))))
 
 (deftest save-mlv2-card-test
   (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"

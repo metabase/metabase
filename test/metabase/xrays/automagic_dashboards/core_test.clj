@@ -1,20 +1,18 @@
 (ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
   (:require
    [cheshire.core :as json]
-   [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models
-    :refer [Card Collection Database Field LegacyMetric Segment Table]]
+   [metabase.models :refer [Card Collection Database Field LegacyMetric Segment Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query :as query :refer [Query]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -311,10 +309,7 @@
           (test-automagic-analysis (t2/select-one Card :id card-id) 2))))))
 
 (defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 1000)])))
+  (qp.metadata/result-metadata query {:legacy-metadata? true}))
 
 (deftest explicit-filter-test
   (mt/with-non-admin-groups-no-root-collection-perms

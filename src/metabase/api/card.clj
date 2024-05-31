@@ -208,7 +208,9 @@
       (when-not ignore_view
         (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
 
-(defn- dataset-query->query [metadata-provider dataset-query]
+(defn- dataset-query->query
+  "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
+  [metadata-provider dataset-query]
   (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]
     (lib/query metadata-provider pMBQL-query)))
 
@@ -562,7 +564,7 @@
                    (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
         (when timed-out?
           (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (card/schedule-metadata-saving result-metadata-chan <>))))))
+          (card/save-metadata-async! result-metadata-chan <>))))))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------

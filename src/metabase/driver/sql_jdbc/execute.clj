@@ -659,8 +659,8 @@
         #_:original_name #_(.getColumnName rsmeta i)
         #_:jdbc_type #_ (u/ignore-exceptions
                           (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-        #_:db_type   #_db-type-name
-        :base_type   (or base-type :type/*)}))
+        :base_type     (or base-type :type/*)
+        :database_type db-type-name}))
    (column-range rsmeta)))
 
 (defn reducible-rows

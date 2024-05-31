@@ -23,6 +23,7 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
+   [metabase.models.card :as card]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -30,7 +31,6 @@
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -940,6 +940,37 @@
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
+            (let [{card-id :id :as card} (mt/user-http-request
+                                          :crowberto :post 200
+                                          "card"
+                                          (card-with-name-and-query "card-name"
+                                                                    query))
+                  ;; simulate a user changing the query without rerunning the query
+                  updated   (mt/user-http-request
+                             :crowberto :put 200 (str "card/" card-id)
+                             (assoc card :dataset_query modified-query))
+                  retrieved (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+              (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
+                      card))
+              (is (= ["ID" "NAME" "PRICE"]
+                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
+              (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
+                (is (=
+                     (-> updated
+                         (update :last-edit-info dissoc :timestamp)
+                         (dissoc :collection))
+                     (-> retrieved
+                         (update :last-edit-info dissoc :timestamp)
+                         (dissoc :collection))))))))))))
+
+(deftest updating-card-updates-metadata
+  (let [query          (updating-card-updates-metadata-query)
+        modified-query (mt/mbql-query venues {:fields [$id $name $price]})]
+    (testing "Updating query updates metadata"
+      (doseq [[query-type query modified-query] [["mbql" query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
                                             :crowberto :post 200
@@ -966,17 +997,18 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   qp.async/result-metadata-for-query-async
+      (let [orig   @#'card/legacy-result-metadata-for-query-async
             called (atom 0)]
-        (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
-                                                                 (swap! called inc)
-                                                                 (orig q))]
+        (with-redefs [card/legacy-result-metadata-for-query-async (fn [q]
+                                                                    (swap! called inc)
+                                                                    (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
               (is (= @called 1))
-              (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+              (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
+                      card))
               (mt/user-http-request
                :crowberto :put 200 (str "card/" (u/the-id card))
                (assoc card

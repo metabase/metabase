@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.analyze :as analyze]
    [metabase.api.common :as api]
+   [metabase.async.util :as async.u]
    [metabase.compatibility :as compatibility]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
@@ -23,9 +24,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.parameter-card
-    :as parameter-card
-    :refer [ParameterCard]]
+   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
@@ -36,10 +35,8 @@
    [metabase.moderation :as moderation]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.util.i18n :refer [trs]]
@@ -577,6 +574,27 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
+(mu/defn ^:private legacy-result-metadata-for-query-async :- async.u/PromiseChan
+  [query :- :map]
+  (let [chan            (a/promise-chan)
+        current-user-id api/*current-user-id*
+        futur           (future
+                          (let [result (try
+                                         #_{:clj-kondo/ignore [:deprecated-var]}
+                                         (qp.metadata/legacy-result-metadata query current-user-id)
+                                         (catch Throwable e
+                                           (log/errorf e "Error calculating result metadata for Card: %s" (ex-message e))
+                                           []))]
+                            (a/put! chan result)
+                            (a/close! chan)))]
+    ;; if the result channel gets closed before the metadata is returned, then cancel the future so it's not running
+    ;; despite the fact it will never return a result.
+    (a/go
+      (when (nil? (a/<! chan))
+        (future-cancel futur)))
+    ;; return the async channel
+    chan))
+
 (mu/defn result-metadata-async :- (ms/InstanceOfClass ManyToManyChannel)
   "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
   `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
@@ -622,13 +640,13 @@
         (a/go (let [metadata' (if valid-metadata?
                                 (map mbql.normalize/normalize-source-metadata metadata)
                                 original-metadata)
-                    fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+                    fresh     (a/<! (legacy-result-metadata-for-query-async query))]
                 (qp.util/combine-metadata fresh metadata'))))
       :else
       ;; compute fresh
       (do
         (log/debug (trs "Querying for metadata"))
-        (qp.async/result-metadata-for-query-async query)))))
+        (legacy-result-metadata-for-query-async query)))))
 
 (def metadata-sync-wait-ms
   "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
@@ -640,10 +658,11 @@ saved later when it is ready."
   minutes."
   (u/minutes->ms 15))
 
-(defn schedule-metadata-saving
+(mu/defn save-metadata-async!
   "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
   to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
-  [result-metadata-chan card]
+  [result-metadata-chan :- (ms/InstanceOfClass ManyToManyChannel)
+   card                 :- :map]
   (a/go
     (let [timeoutc        (a/timeout metadata-async-timeout-ms)
           [metadata port] (a/alts! [result-metadata-chan timeoutc])
@@ -704,7 +723,7 @@ saved later when it is ready."
      ;; returned one -- See #4283
      (u/prog1 card
        (when timed-out?
-         (schedule-metadata-saving result-metadata-chan <>))))))
+         (save-metadata-async! result-metadata-chan <>))))))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
