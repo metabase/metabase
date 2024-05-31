@@ -1,11 +1,6 @@
 ## [0.1.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.5...embedding-sdk-0.1.6) (2024-05-31)
 
 
-### Bug Fixes
-
-* **sdk:** Add Static Dashboards to README ([#43392](https://github.com/metabase/metabase/issues/43392)) ([d711251](https://github.com/metabase/metabase/commit/d711251a7033713dcd35a079b8f4cc96b3153173))
-
-
 ### Features
 
 * **sdk:** Add static dashboards to embedding SDK ([#41973](https://github.com/metabase/metabase/issues/41973)) ([d0314b2](https://github.com/metabase/metabase/commit/d0314b2e9c4d6df53f6134855889c800d605b5e9))
