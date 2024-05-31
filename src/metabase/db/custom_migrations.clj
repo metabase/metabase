@@ -1053,22 +1053,22 @@
     ;; parse the json. We use negative look behind to avoid matching `\\u0000` (metabase#40835)
     (t2/query ["UPDATE revision
                SET object = replace(jsonb_set(
-               (regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb, '{type}',
-               to_jsonb(CASE
-               WHEN ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset')::boolean THEN 'model'
-               ELSE 'question'
-               END)::jsonb, true)::text, '286b707c-e895-4cd3-acfc-569147f54371', '\\u0000')
+                  (regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb, '{type}',
+                  to_jsonb(CASE
+                              WHEN ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset')::boolean THEN 'model'
+                              ELSE 'question'
+                           END)::jsonb, true)::text, '286b707c-e895-4cd3-acfc-569147f54371', '\\u0000')
                WHERE model = 'Card' AND ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset') IS NOT NULL;"])
 
     :mysql
     (t2/query ["UPDATE revision
                SET object = JSON_SET(
-               object,
-               '$.type',
-               CASE
-               WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) = 'true' THEN 'model'
-               ELSE 'question'
-               END)
+                   object,
+                   '$.type',
+                   CASE
+                       WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) = 'true' THEN 'model'
+                       ELSE 'question'
+                   END)
                WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
 
     ;; json_extract on mariadb throws an error if the json is more than 32 levels nested. See #41924
@@ -1089,30 +1089,30 @@
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
-               SET object = jsonb_set(
-               object::jsonb - 'type',
-               '{dataset}',
-               to_jsonb(CASE
-               WHEN (object::jsonb->>'type') = 'model'
-               THEN true ELSE false
-               END)
-               )
-               WHERE model = 'Card' AND (object::jsonb->>'type') IS NOT NULL;"])
+                SET object = jsonb_set(
+                    object::jsonb - 'type',
+                    '{dataset}',
+                    to_jsonb(CASE
+                                 WHEN (object::jsonb->>'type') = 'model'
+                                 THEN true ELSE false
+                             END)
+                )
+                WHERE model = 'Card' AND (object::jsonb->>'type') IS NOT NULL;"])
 
     :mysql
     (do
      (t2/query ["UPDATE revision
-                SET object = JSON_SET(
-                object,
-                '$.dataset',
-                CASE
-                WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) = 'model'
-                THEN true ELSE false
-                END)
-                WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
+                 SET object = JSON_SET(
+                     object,
+                     '$.dataset',
+                     CASE
+                         WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) = 'model'
+                         THEN true ELSE false
+                     END)
+                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
      (t2/query ["UPDATE revision
-                SET object = JSON_REMOVE(object, '$.type')
-                WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
+                 SET object = JSON_REMOVE(object, '$.type')
+                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
 
     (:h2 :mariadb)
     (let [rollback! (fn [revision]
