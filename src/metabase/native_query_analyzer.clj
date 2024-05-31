@@ -69,6 +69,9 @@
   [field value]
   (if-let [quote-stripper (quote-strippers (first value))]
     [:= field (quote-stripper value)]
+    ;; Technically speaking this is not correct for all databases.
+    ;; For some databases an unquoted reference is expected to mean an explicitly uppercase or lowercase name.
+    ;; i.e. if you created a column called "MixedCaseThing" then `SELECT MixedCaseThing` would *NOT* match it.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
