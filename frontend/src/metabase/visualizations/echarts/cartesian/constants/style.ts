@@ -22,6 +22,7 @@ export const CHART_STYLE = {
     weight: 600,
     offset: 4,
     zIndex: 10,
+    stackedPadding: 2,
   },
   axisName: {
     weight: 700,
