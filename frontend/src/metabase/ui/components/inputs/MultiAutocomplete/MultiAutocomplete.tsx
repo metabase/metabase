@@ -187,9 +187,13 @@ export function MultiAutocomplete({
   );
 }
 
-function getSelectItem(item: string | SelectItem): SelectItem {
+function getSelectItem(item: string | number | SelectItem): SelectItem {
   if (typeof item === "string") {
     return { value: item, label: item };
+  }
+
+  if (typeof item === "number") {
+    return { value: item.toString(), label: item.toString() };
   }
 
   if (!item.label) {
