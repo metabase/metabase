@@ -5,9 +5,9 @@ import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import styles from "./MultiAutocomplete.module.css";
 import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
@@ -161,9 +161,12 @@ export function MultiAutocomplete({
         </>
       }
     >
-      <Icon name="info_filled" className={styles.icon} />
+      <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
   );
+
+  const finalRightSection =
+    typeof rightSection === "undefined" ? defaultRightSection : rightSection;
 
   return (
     <MultiSelect
@@ -179,9 +182,7 @@ export function MultiAutocomplete({
       onBlur={handleBlur}
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
-      rightSection={
-        typeof rightSection === "undefined" ? defaultRightSection : rightSection
-      }
+      rightSection={isFocused ? finalRightSection : null}
     />
   );
 }

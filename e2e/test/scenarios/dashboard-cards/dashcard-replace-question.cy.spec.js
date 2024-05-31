@@ -151,7 +151,6 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     // Ensure can replace with a question
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Next question",
-      collectionName: "First collection",
     });
     expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
@@ -191,7 +190,6 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Next question",
-      collectionName: "First collection",
     });
 
     // There're two toasts: "Undo replace" and "Undo parameters auto-wiring"

@@ -43,7 +43,7 @@
                       "2014-01-01T08:30:00"]]
                    (-> results :data :rows)))))))))
 
-(deftest post-process-select-query-test
+(deftest ^:parallel post-process-select-query-test
   (testing "Test that we can still return results from native :select queries, even if we no longer generate them"
     ;; example results adapted from https://github.com/apache/druid/blob/d00747774208dbbfcb272ee7d1c30cf879887838/docs/querying/select-query.md
     (let [results (with-open [r (io/reader "modules/drivers/druid/test/metabase/driver/druid/execute_test/select_results.json")]

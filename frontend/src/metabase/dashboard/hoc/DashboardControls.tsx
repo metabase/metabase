@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 
 import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
@@ -7,6 +7,8 @@ import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { useDispatch } from "metabase/lib/redux";
+import { setOptions } from "metabase/redux/embed";
 
 import type {
   DashboardControlsPassedProps,
@@ -27,11 +29,13 @@ export const DashboardControls = <T extends DashboardControlsProps>(
     location,
     ...props
   }: DashboardControlsProps) {
-    const queryParams = location.query;
+    const dispatch = useDispatch();
+
+    const parameterQueryParams = location.query;
 
     const { refreshDashboard } = useRefreshDashboard({
       dashboardId,
-      queryParams,
+      parameterQueryParams,
     });
 
     const {
@@ -61,6 +65,14 @@ export const DashboardControls = <T extends DashboardControlsProps>(
 
     useSyncURLSlug({ location });
 
+    useEffect(() => {
+      dispatch(
+        setOptions({
+          font: font ?? undefined,
+        }),
+      );
+    }, [dispatch, font, location]);
+
     return (
       <ComposedComponent
         {...(props as T)}
@@ -86,7 +98,7 @@ export const DashboardControls = <T extends DashboardControlsProps>(
         titled={titled}
         font={font}
         setFont={setFont}
-        queryParams={queryParams}
+        parameterQueryParams={parameterQueryParams}
       />
     );
   }

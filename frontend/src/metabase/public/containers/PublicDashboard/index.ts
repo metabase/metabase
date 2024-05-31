@@ -1,1 +1,1 @@
-export { PublicDashboard } from "./PublicDashboard";
+export { PublicDashboardControlled } from "./PublicDashboard";

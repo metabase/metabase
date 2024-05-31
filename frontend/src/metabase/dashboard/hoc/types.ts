@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 
 import type { DashboardId } from "metabase-types/api";
 
@@ -11,5 +11,5 @@ export type DashboardControlsProps = {
 
 export type DashboardControlsPassedProps = DashboardDisplayOptionControls &
   DashboardControlsProps & {
-    queryParams: Record<string, string | string[] | null | undefined>;
+    parameterQueryParams: Query;
   };
