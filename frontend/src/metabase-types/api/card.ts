@@ -126,6 +126,7 @@ export type TableColumnOrderSetting = {
 };
 
 export type StackType = "stacked" | "normalized" | null;
+export type StackValuesDisplay = "total" | "all" | "series";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = typeof numericScale[number];
@@ -137,6 +138,7 @@ export type YAxisScale = NumericScale;
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
+  "graph.show_stack_values"?: StackValuesDisplay;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];

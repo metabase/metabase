@@ -22,7 +22,7 @@ Features planned:
 
 - You have an application using React 17 or higher
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. For now, we supply specific compatible versions as Jar files and Docker images. Note these are not considered stable.
+- You have a running Metabase instance using a compatible version of the enterprise binary. The v1.50.0 release candidate is the only supported version at this time. We do not recommend running this in production.
 
 # Getting started
 
@@ -39,12 +39,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-dev:embedding-sdk-0.1.5
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC1
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from http://downloads.metabase.com/sdk/v0.1.5/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC1/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -203,7 +203,8 @@ export default function App() {
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
 
-You can optionally pass in `height` to change the height of the component.
+The component has a default height, which can be customized by using the `height` prop.
+To inherit the height from the parent container, you can pass `100%` to the height prop.
 
 ```jsx
 import React from "react";
@@ -310,11 +311,12 @@ const theme = {
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
-      { base: "#e74c3c", tint: "#ee6b56", shade: "#cb4436" },
+      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" },
     ],
   },
 
   components: {
+    // Data table
     table: {
       cell: {
         // Text color of cells, defaults to `text-primary`
@@ -339,6 +341,15 @@ const theme = {
       value: {
         fontSize: "24px",
         lineHeight: "21px",
+      },
+    },
+
+    // Pivot table
+    pivotTable: {
+      // Pivot row toggle to expand or collapse row
+      rowToggle: {
+        textColor: "#FFFFFF",
+        backgroundColor: "#95A5A6",
       },
     },
   },

@@ -32,6 +32,7 @@ import {
   getDatasetExtents,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
+  NO_X_AXIS_VALUES_ERROR_MESSAGE,
 } from "./dataset";
 import type {
   ChartDataset,
@@ -492,6 +493,66 @@ describe("dataset transform functions", () => {
         );
 
         expect(result).toHaveLength(dataset.length);
+      });
+    });
+
+    describe("null dimension values", () => {
+      const validDatum = {
+        [X_AXIS_DATA_KEY]: dayjs().toISOString(),
+        count: 110,
+        created_at: dayjs().toISOString(),
+      };
+
+      const nullishDatum = {
+        [X_AXIS_DATA_KEY]: null,
+        count: 250,
+        created_at: null,
+      };
+
+      const xAxisModel: XAxisModel = {
+        axisType: "time",
+        intervalsCount: 0,
+        interval: { unit: "year", count: 100 },
+        timezone: "UTC",
+        range: [dayjs(), dayjs()],
+        formatter: value => String(value),
+        fromEChartsAxisValue: () => dayjs(),
+        toEChartsAxisValue: val => String(val),
+      };
+
+      const seriesModels = [createMockSeriesModel({ dataKey: "count" })];
+
+      it("should filter out null dimension values", () => {
+        const dataset = [validDatum, nullishDatum];
+
+        const result = applyVisualizationSettingsDataTransformations(
+          dataset,
+          [],
+          xAxisModel,
+          seriesModels,
+          yAxisScaleTransforms,
+          createMockComputedVisualizationSettings(),
+        );
+
+        expect(result).toEqual([
+          {
+            ...validDatum,
+            [ORIGINAL_INDEX_DATA_KEY]: 0,
+          },
+        ]);
+      });
+
+      it("should throw an error if dataset ends up empty after filtering null dimension values", () => {
+        expect(() =>
+          applyVisualizationSettingsDataTransformations(
+            [nullishDatum],
+            [],
+            xAxisModel,
+            seriesModels,
+            yAxisScaleTransforms,
+            createMockComputedVisualizationSettings(),
+          ),
+        ).toThrow(NO_X_AXIS_VALUES_ERROR_MESSAGE);
       });
     });
 

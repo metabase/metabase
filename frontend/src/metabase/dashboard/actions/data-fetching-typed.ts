@@ -1,24 +1,26 @@
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
+  loadMetadataForDashcards,
+  loadMetadataForLinkedTargets,
+} from "metabase/dashboard/actions/metadata";
+import {
   getDashboardById,
   getDashCardById,
   getParameterValues,
-  getQuestions,
 } from "metabase/dashboard/selectors";
 import {
   expandInlineDashboard,
   getDashboardType,
 } from "metabase/dashboard/utils";
+import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addFields, addParamValues } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
-import type { DashboardCard, DashboardId } from "metabase-types/api";
+import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -123,6 +125,8 @@ export const fetchDashboard = createAsyncThunk(
 
       fetchDashboardCancellation = null;
 
+      await dispatch(fetchDashboardCardMetadata(result));
+
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
         // copy over any virtual cards from the dashcard to the underlying card/question
@@ -137,27 +141,18 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_values) {
-        dispatch(addParamValues(result.param_values));
+        await dispatch(addParamValues(result.param_values));
       }
       if (result.param_fields) {
-        dispatch(addFields(result.param_fields));
+        await dispatch(addFields(result.param_fields));
       }
-
-      const metadata = getMetadata(getState());
-      const questions = getQuestions(getState());
-      const parameters = getDashboardUiParameters(
-        result.dashcards,
-        result.parameters,
-        metadata,
-        questions,
-      );
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(
-            parameters,
+            result.parameters ?? [],
             queryParams,
             lastUsedParametersValues,
           );
@@ -176,6 +171,24 @@ export const fetchDashboard = createAsyncThunk(
         console.error(error);
       }
       return rejectWithValue(error);
+    }
+  },
+);
+
+export const fetchDashboardCardMetadata = createAsyncThunk(
+  "metabase/dashboard/FETCH_DASHBOARD_METADATA",
+  async (dashboard: Dashboard, { dispatch }) => {
+    const dashboardType = getDashboardType(dashboard.id);
+    if (dashboardType === "normal") {
+      await dispatch(
+        Dashboards.actions.fetchMetadata({ id: dashboard.id }),
+      ).catch((error: unknown) => {
+        console.error("Failed dashboard loading metadata", error);
+      });
+      await dispatch(loadMetadataForLinkedTargets(dashboard.dashcards));
+    }
+    if (dashboardType === "transient") {
+      await dispatch(loadMetadataForDashcards(dashboard.dashcards));
     }
   },
 );
