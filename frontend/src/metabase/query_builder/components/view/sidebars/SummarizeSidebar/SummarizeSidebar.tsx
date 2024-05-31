@@ -52,14 +52,12 @@ export function SummarizeSidebar({
   );
 
   const handleUpdateAggregation = useCallback(
-    (
-      aggregation: Lib.AggregationClause,
-      nextAggregations: Lib.Aggregable[],
-    ) => {
-      const [firstClause, ...remainingClauses] = nextAggregations;
-      const nextQuery = remainingClauses.reduce(
-        (query, aggregation) => Lib.aggregate(query, STAGE_INDEX, aggregation),
-        Lib.replaceClause(query, STAGE_INDEX, aggregation, firstClause),
+    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregable) => {
+      const nextQuery = Lib.replaceClause(
+        query,
+        STAGE_INDEX,
+        aggregation,
+        nextAggregation,
       );
       onQueryChange(nextQuery);
     },
@@ -136,8 +134,9 @@ export function SummarizeSidebar({
             query={query}
             aggregation={aggregation}
             aggregationIndex={aggregationIndex}
-            onUpdate={nextAggregations =>
-              handleUpdateAggregation(aggregation, nextAggregations)
+            onAdd={handleAddAggregations}
+            onUpdate={nextAggregation =>
+              handleUpdateAggregation(aggregation, nextAggregation)
             }
             onRemove={() => handleRemoveAggregation(aggregation)}
           />

@@ -31,7 +31,8 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onSelect: (operator: Lib.Aggregable[]) => void;
+  onAdd: (aggregations: Lib.Aggregable[]) => void;
+  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
 }
 
@@ -75,6 +76,7 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
+  onAdd,
   onSelect,
   onClose,
 }: AggregationPickerProps) {
@@ -161,7 +163,7 @@ export function AggregationPicker({
         setOperator(item.operator);
       } else {
         const clause = Lib.aggregationClause(item.operator);
-        onSelect([clause]);
+        onSelect(clause);
         onClose?.();
       }
     },
@@ -178,7 +180,7 @@ export function AggregationPicker({
         return;
       }
       const clause = Lib.aggregationClause(operator, column);
-      onSelect([clause]);
+      onSelect(clause);
       onClose?.();
     },
     [operator, onSelect, onClose],
@@ -186,7 +188,7 @@ export function AggregationPicker({
 
   const handleMetricSelect = useCallback(
     (item: MetricListItem) => {
-      onSelect([item.metric]);
+      onSelect(item.metric);
       onClose?.();
     },
     [onSelect, onClose],
@@ -225,7 +227,7 @@ export function AggregationPicker({
   const handleClauseChange = useCallback(
     (name: string, clause: Lib.AggregationClause | Lib.ExpressionClause) => {
       const updatedClause = Lib.withExpressionName(clause, name);
-      onSelect([updatedClause]);
+      onSelect(updatedClause);
       onClose?.();
     },
     [onSelect, onClose],
@@ -233,10 +235,10 @@ export function AggregationPicker({
 
   const handleCompareSubmit = useCallback(
     (aggregations: Lib.Aggregable[]) => {
-      onSelect(aggregations);
+      onAdd(aggregations);
       onClose?.();
     },
-    [onSelect, onClose],
+    [onAdd, onClose],
   );
 
   if (isComparing) {

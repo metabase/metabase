@@ -53,8 +53,12 @@ export function AddAggregationButton({
           stageIndex={STAGE_INDEX}
           operators={operators}
           hasExpressionInput={false}
-          onSelect={aggregations => {
+          onAdd={aggregations => {
             onAddAggregations(aggregations);
+            setIsOpened(false);
+          }}
+          onSelect={aggregation => {
+            onAddAggregations([aggregation]);
             setIsOpened(false);
           }}
         />

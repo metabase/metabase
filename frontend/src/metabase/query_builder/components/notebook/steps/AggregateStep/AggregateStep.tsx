@@ -29,14 +29,19 @@ export function AggregateStep({
     updateQuery(nextQuery);
   };
 
-  const handleUpdateAggregations = (
+  const handleAddAggregation = (aggregation: Lib.Aggregable) => {
+    handleAddAggregations([aggregation]);
+  };
+
+  const handleUpdateAggregation = (
     currentClause: Lib.AggregationClause,
-    nextClauses: Lib.Aggregable[],
+    nextClause: Lib.Aggregable,
   ) => {
-    const [firstClause, ...remainingClauses] = nextClauses;
-    const nextQuery = remainingClauses.reduce(
-      (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
-      Lib.replaceClause(query, stageIndex, currentClause, firstClause),
+    const nextQuery = Lib.replaceClause(
+      query,
+      stageIndex,
+      currentClause,
+      nextClause,
     );
 
     updateQuery(nextQuery);
@@ -77,8 +82,9 @@ export function AggregateStep({
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
+          onAddAggregation={handleAddAggregation}
           onAddAggregations={handleAddAggregations}
-          onUpdateAggregations={handleUpdateAggregations}
+          onUpdateAggregation={handleUpdateAggregation}
           onClose={onClose}
         />
       )}
@@ -93,11 +99,12 @@ interface AggregationPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   clause?: Lib.AggregationClause;
-  onUpdateAggregations: (
+  onUpdateAggregation: (
     currentClause: Lib.AggregationClause,
-    nextClauses: Lib.Aggregable[],
+    nextClause: Lib.Aggregable,
   ) => void;
-  onAddAggregations: (aggregation: Lib.Aggregable[]) => void;
+  onAddAggregation: (aggregation: Lib.Aggregable) => void;
+  onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
 
   clauseIndex?: number;
 
@@ -109,8 +116,9 @@ function AggregationPopover({
   stageIndex,
   clause,
   clauseIndex,
+  onAddAggregation,
   onAddAggregations,
-  onUpdateAggregations,
+  onUpdateAggregation,
   onClose,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
@@ -129,11 +137,12 @@ function AggregationPopover({
       clause={clause}
       clauseIndex={clauseIndex}
       operators={operators}
-      onSelect={aggregations => {
+      onAdd={onAddAggregations}
+      onSelect={aggregation => {
         if (isUpdate) {
-          onUpdateAggregations(clause, aggregations);
+          onUpdateAggregation(clause, aggregation);
         } else {
-          onAddAggregations(aggregations);
+          onAddAggregation(aggregation);
         }
       }}
       onClose={onClose}

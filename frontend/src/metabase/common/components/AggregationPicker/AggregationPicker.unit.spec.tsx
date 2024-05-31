@@ -131,6 +131,7 @@ function setup({
     : baseOperators;
 
   const onSelect = jest.fn();
+  const onAdd = jest.fn();
 
   renderWithProviders(
     <AggregationPicker
@@ -139,6 +140,7 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
+      onAdd={onAdd}
       onSelect={onSelect}
     />,
     { storeInitialState: state },
@@ -146,7 +148,7 @@ function setup({
 
   function getRecentClause(): Lib.Clause {
     expect(onSelect).toHaveBeenCalledWith(expect.anything());
-    const [[clause]] = onSelect.mock.lastCall;
+    const [clause] = onSelect.mock.lastCall;
     return clause;
   }
 
