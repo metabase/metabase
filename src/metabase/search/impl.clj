@@ -610,11 +610,12 @@
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
-                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
+                            ;; MySQL returns booleans as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark bit->boolean))
-
                             (map #(update % :archived bit->boolean))
+                            (map #(update % :trashed_directly bit->boolean))
+
                             (filter (partial check-permissions-for-model search-ctx))
 
                             (map #(update % :pk_ref json/parse-string))
