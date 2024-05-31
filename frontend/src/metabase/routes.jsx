@@ -32,7 +32,7 @@ import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { PublicDashboardControlled } from "metabase/public/containers/PublicDashboard";
+import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicDashboard";
 import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -90,7 +90,7 @@ export const getRoutes = store => {
         <Route path="question/:uuid" component={PublicQuestion} />
         <Route
           path="dashboard/:uuid(/:tabSlug)"
-          component={PublicDashboardControlled}
+          component={PublicOrEmbeddedDashboardControlled}
         />
       </Route>
 

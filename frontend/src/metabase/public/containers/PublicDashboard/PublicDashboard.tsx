@@ -94,12 +94,12 @@ type DisplayProps = Pick<
   | "hasNightModeToggle"
 >;
 
-type PublicDashboardProps = OwnProps &
+type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
   DisplayProps &
   EmbedDisplayParams;
 
-class PublicDashboardInner extends Component<PublicDashboardProps> {
+class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
   _initialize = async () => {
     const {
       initialize,
@@ -140,7 +140,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
     this.props.cancelFetchDashboardCardData();
   }
 
-  async componentDidUpdate(prevProps: PublicDashboardProps) {
+  async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
       return this._initialize();
     }
@@ -292,15 +292,17 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
-// Raw PublicDashboard used for SDK embedding
-export const PublicDashboard = connector(PublicDashboardInner);
+// Raw PublicOrEmbeddedDashboard used for SDK embedding
+export const PublicOrEmbeddedDashboard = connector(
+  PublicOrEmbeddedDashboardInner,
+);
 
 // PublicDashboardControlled used for embedding with location
 // Uses DashboardControls to handle display options, and uses WithPublicDashboardEndpoints to set endpoints for public/embed contexts
-export const PublicDashboardControlled = _.compose(
+export const PublicOrEmbeddedDashboardControlled = _.compose(
   title(
     ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
   ),
   WithPublicDashboardEndpoints,
   DashboardControls,
-)(PublicDashboard) as ComponentType<OwnProps>;
+)(PublicOrEmbeddedDashboard) as ComponentType<OwnProps>;
