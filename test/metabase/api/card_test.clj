@@ -940,37 +940,6 @@
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
-            (let [{card-id :id :as card} (mt/user-http-request
-                                          :crowberto :post 200
-                                          "card"
-                                          (card-with-name-and-query "card-name"
-                                                                    query))
-                  ;; simulate a user changing the query without rerunning the query
-                  updated   (mt/user-http-request
-                             :crowberto :put 200 (str "card/" card-id)
-                             (assoc card :dataset_query modified-query))
-                  retrieved (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
-              (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
-                      card))
-              (is (= ["ID" "NAME" "PRICE"]
-                     (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
-              (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
-                (is (=
-                     (-> updated
-                         (update :last-edit-info dissoc :timestamp)
-                         (dissoc :collection))
-                     (-> retrieved
-                         (update :last-edit-info dissoc :timestamp)
-                         (dissoc :collection))))))))))))
-
-(deftest updating-card-updates-metadata
-  (let [query          (updating-card-updates-metadata-query)
-        modified-query (mt/mbql-query venues {:fields [$id $name $price]})]
-    (testing "Updating query updates metadata"
-      (doseq [[query-type query modified-query] [["mbql" query modified-query]
-                                                 ["native" (to-native query) (to-native modified-query)]]]
-        (testing (str "For: " query-type)
-          (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
                                             :crowberto :post 200

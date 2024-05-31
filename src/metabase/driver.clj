@@ -11,14 +11,12 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver.impl :as driver.impl]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [potemkin :as p]
    [toucan2.core :as t2]))
 

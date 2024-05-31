@@ -11,11 +11,10 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.middleware.fix-bad-references
-    :as fix-bad-refs]
+   [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [metabase.query-processor.metadata :as qp.metadata])
+   [toucan2.core :as t2])
   (:import
    (java.time Instant)
    (java.time.temporal ChronoUnit)))
