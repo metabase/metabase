@@ -428,10 +428,6 @@
     metabase.driver.druid.js                                      druid.js
     metabase.driver.druid.query-processor                         druid.qp
     metabase.driver.druid.sync                                    druid.sync
-    metabase.driver.googleanalytics.client                        ga.client
-    metabase.driver.googleanalytics.execute                       ga.execute
-    metabase.driver.googleanalytics.metadata                      ga.metadata
-    metabase.driver.googleanalytics.query-processor               ga.qp
     metabase.driver.impl                                          driver.impl
     metabase.driver.mongo.execute                                 mongo.execute
     metabase.driver.mongo.parameters                              mongo.params
@@ -687,6 +683,9 @@
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -785,9 +784,6 @@
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
-   metabase.api.common/defendpoint                                              macros.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async                                        macros.metabase.api.common/defendpoint
-   metabase.api.common/defendpoint-async-schema                                 macros.metabase.api.common/defendpoint
    metabase.api.common/define-routes                                            macros.metabase.api.common/define-routes
    metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing

@@ -6,7 +6,7 @@ import type { MantineThemeOverride } from "metabase/ui";
 
 // Use em units to scale font sizes relative to the base font size.
 // The em unit is used by default in the embedding SDK.
-const units = (px: number) => ({ px: `${px}px`, em: `${px / 16}em` });
+const units = (px: number) => ({ px: `${px}px`, em: `${px / 14}em` });
 
 export const FONT_SIZES = {
   tableCell: units(12.5),

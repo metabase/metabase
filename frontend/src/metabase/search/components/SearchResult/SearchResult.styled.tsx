@@ -1,7 +1,12 @@
 import isPropValid from "@emotion/is-prop-valid";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
+import type {
+  AnchorHTMLAttributes,
+  HTMLAttributes,
+  RefObject,
+  PropsWithChildren,
+} from "react";
 
 import Markdown from "metabase/core/components/Markdown";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -104,7 +109,7 @@ export const XRayButton = styled(Button)<
   height: 2rem;
 `;
 
-export const DescriptionSection = styled(Box)`
+export const DescriptionSection = styled(Box)<PropsWithChildren>`
   margin-top: 0.5rem;
 `;
 

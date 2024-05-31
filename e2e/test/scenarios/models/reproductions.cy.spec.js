@@ -50,6 +50,7 @@ import {
   openNotebook,
   visualize,
   focusNativeEditor,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -139,6 +140,7 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
       cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
@@ -162,6 +164,7 @@ describe("issue 19737", () => {
 
     // Open question picker (this is crucial) so the collection list are loaded.
     entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -605,8 +608,7 @@ describe("filtering based on the remapped column name should result in a correct
   });
 
   it("when done through the column header action (metabase#22715-1)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
+    tableHeaderClick("Created At");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -896,8 +898,8 @@ describe("issue 26091", () => {
         "true",
       );
       cy.findByText("New model").should("be.visible");
-      cy.findByText("Old model").should("not.exist");
-      cy.findByText("Orders Model").should("not.exist");
+      cy.findByText("Old model").should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
 
       entityPickerModalTab("Models").click();
       cy.findByText("New model").should("be.visible");

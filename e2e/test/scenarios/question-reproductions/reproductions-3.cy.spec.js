@@ -625,11 +625,7 @@ describe("issue 42957", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Models").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
+      entityPickerModalTab("Models").click();
 
       cy.findByText("Collection without models").should("not.exist");
     });

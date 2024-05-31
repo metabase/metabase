@@ -50,7 +50,7 @@ describe("issue 25990", () => {
 
     modal().within(() => {
       cy.findByText("Person").click();
-      cy.findByPlaceholderText("Enter an ID").type("10");
+      cy.findByPlaceholderText("Enter an ID").type("10").blur();
       cy.button("Apply filters").click();
     });
 
