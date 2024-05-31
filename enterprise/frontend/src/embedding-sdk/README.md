@@ -258,7 +258,7 @@ The API follows the same configuration as that of public dashboard embeddings, w
 - **titled**: `boolean` – Whether the dashboard should display a title.
 - **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
 - **hideParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
-- **font**: `string | null` – The font to use.
+- **font**: `string | null` – The font to use. If not specified, the Metabase instance font or `theme.fontFamily` will be used instead.
 - **theme**: `DisplayTheme` – The display theme (e.g., "light", "night", or "transparent" ).
 
 
