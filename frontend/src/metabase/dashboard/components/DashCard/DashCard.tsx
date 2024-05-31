@@ -63,7 +63,8 @@ export interface DashCardProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
 
   onAddSeries: (dashcard: StoreDashcard) => void;
@@ -97,7 +98,7 @@ function DashCardInner({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
-  isPublic = false,
+  isPublicOrEmbedded = false,
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
@@ -345,7 +346,7 @@ function DashCardInner({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
-          isPublic={isPublic}
+          isPublicOrEmbedded={isPublicOrEmbedded}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={settings =>
             onUpdateVisualizationSettings(dashcard.id, settings)
