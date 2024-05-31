@@ -3658,7 +3658,7 @@
                                {:id (mt/id :orders :user_id)}
                                {:id (mt/id :people :source)}
                                {:id (mt/id :people :name)}])
-             :tables empty
+             :tables empty?
              :databases [{:id (mt/id) :engine string?}]}
             (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                 ;; The output is so large, these help debugging
