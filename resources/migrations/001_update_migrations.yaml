@@ -8139,12 +8139,28 @@ databaseChangeLog:
       comment: Populate `trashed_directly` and `trash_operation_id`
       changes:
         - sqlFile:
-            dbms: mysql,mariadb
+            dbms: mysql
             path: trash/mysql.sql
             relativeToChangelogFile: true
       rollback:
         - sqlFile:
-            dbms: mysql,mariadb
+            dbms: mysql
+            path: trash/mysql-rollback.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v50.2024-05-29T18:42:15
+      author: johnswanson
+      comment: Populate `trashed_directly` and `trash_operation_id`
+      changes:
+        - sqlFile:
+            dbms: mariadb
+            path: trash/mariadb.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: mariadb
+            # we can reuse the mysql rollback here, not a typo
             path: trash/mysql-rollback.sql
             relativeToChangelogFile: true
 
