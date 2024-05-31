@@ -16,7 +16,7 @@ const TestComponent = ({ settingName }: { settingName: keyof Settings }) => {
   );
 };
 
-describe("useTableListQuery", () => {
+describe("useSetting", () => {
   it("should get a string setting", async () => {
     renderWithProviders(<TestComponent settingName={"admin-email"} />);
     expect(screen.getByText('"admin@metabase.test"')).toBeInTheDocument();
