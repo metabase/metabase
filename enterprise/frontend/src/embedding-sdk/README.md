@@ -253,14 +253,14 @@ The API follows the same configuration as that of public dashboard embeddings, w
 #### Parameters
 
 - **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
-- **parameterQueryParams**: `Record<string, string | string[]>` (required) – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **parameterQueryParams**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
 - **bordered**: `boolean` – Whether the dashboard should have a border.
 - **titled**: `boolean` – Whether the dashboard should display a title.
 - **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
 - **hideParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 - **font**: `string | null` – The font to use.
 - **theme**: `DisplayTheme` – The display theme (e.g., "light", "night", or "transparent" ).
-  
+
 
 ```jsx
 import React from "react";
@@ -278,9 +278,9 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-        <StaticDashboard 
-          dashboardId={dashboardId} 
-          parameterQueryParams={parameterQueryParams} 
+        <StaticDashboard
+          dashboardId={dashboardId}
+          parameterQueryParams={parameterQueryParams}
           bordered={true}
           titled={false}
           hideDownloadButton={false}
