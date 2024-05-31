@@ -3,11 +3,6 @@ import { t } from "ttag";
 import { pluralize } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
-export const parsePeriodValue = (value: string): number | "" => {
-  const number = parseInt(value, 10);
-  return Number.isNaN(number) ? "" : Math.max(Math.abs(number), 1);
-};
-
 export const getLabel = (query: Lib.Query, stageIndex: number): string => {
   const firstBreakout = Lib.breakouts(query, stageIndex)[0];
 
