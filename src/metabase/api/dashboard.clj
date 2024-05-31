@@ -100,6 +100,7 @@
     (t2/hydrate dashboard [:dashcards
                            [:card [:moderation_reviews :moderator_details]]
                            [:card :can_write]
+                           [:card :can_write_query]
                            :series
                            :dashcard/action
                            :dashcard/linkcard-info]

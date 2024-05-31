@@ -321,7 +321,15 @@
                                     [dashboard
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
-                                     (make-grid grid-width (* n grid-width))]))]
+                                     (make-grid grid-width (* n grid-width))]))
+         dashboard (update dashboard :dashcards (fn [dashcards]
+                                                  (let [cards (map :card dashcards)]
+                                                    (mapv
+                                                      (fn [dashcard card]
+                                                        (m/assoc-some dashcard :card card))
+                                                      dashcards
+                                                      (card/with-can-write-query cards)))))]
+
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)
                  title

@@ -17,6 +17,8 @@
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
@@ -142,6 +144,35 @@
          (into {}))
    :id
    {:default 0}))
+
+(defn with-can-write-query
+  "Adds can_write_query to each card."
+  [cards]
+  (mi/instances-with-hydrated-data
+    cards :can_write_query
+    (fn []
+      (let [db->mp (into {}
+                         (comp
+                           (keep :database_id)
+                           (map (juxt identity
+                                      lib.metadata.jvm/application-database-metadata-provider)))
+                         cards)]
+        (into {}
+              (comp
+                (remove nil?)
+                (filter (comp not-empty :dataset_query))
+                (map
+                  (fn [{card-id :id :keys [database_id dataset_query]}]
+                    (let [query (lib/query (get db->mp database_id) dataset_query)]
+                     [card-id
+                     (:is-editable (lib/display-info query query))]))))
+              cards)))
+    :id
+    {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_write_query]
+  [_model _k cards]
+  (with-can-write-query cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]

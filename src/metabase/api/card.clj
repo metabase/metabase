@@ -187,6 +187,7 @@
                     :last_query_start
                     :parameter_usage_count
                     :can_restore
+                    :can_write_query
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card

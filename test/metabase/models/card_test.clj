@@ -998,3 +998,14 @@
                      :table_id      (mt/id :orders)
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
+
+(deftest can-write-query-test
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (mt/with-temp [:model/Card card {:dataset_query query}
+                   :model/Card no-query {}]
+      (is (=? {:can_write_query true}
+              (t2/hydrate card :can_write_query)))
+      (is (=? {:can_write_query false}
+              (t2/hydrate no-query :can_write_query))))))
