@@ -64,7 +64,7 @@ describe("issue 43154", () => {
     verifyNestedFilter(questionDetails);
   });
 
-  it.skip("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
+  it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
     verifyNestedFilter(questionWithAggregationDetails);
   });
 });
