@@ -872,15 +872,11 @@
     (let [db                   (mt/db)
           db-id                (u/the-id db)
           original-sync-values (select-keys db [:is_on_demand :is_full_sync])
-          in-future?           (atom false)
           schema-name          (sql.tx/session-schema driver/*driver*)
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (mt/with-dynamic-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
-                                 future-call (fn [thunk]
-                                               (swap! in-future? (constantly true))
-                                               (thunk))]
+        (binding [upload/*auxiliary-sync-steps* :synchronous]
           (testing "Happy path with schema, and without table-prefix"
             (with-upload-table!
               [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :asynchronous))]
@@ -903,9 +899,7 @@
                      (:initial_sync_status new-table))
                   "The table is synced and marked as complete")
               (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
-                  "The sync actually runs")
-              (is (true? @in-future?)
-                  "Table has been synced in a separate thread"))))
+                  "The sync actually runs"))))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
 
