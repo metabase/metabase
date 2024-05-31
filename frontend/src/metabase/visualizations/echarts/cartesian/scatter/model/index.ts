@@ -139,6 +139,7 @@ export function getScatterPlotModel(
     leftAxisModel,
     rightAxisModel,
     trendLinesModel,
-    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset), // TODO move function
+    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset), // TODO move function,
+    seriesLabelsFormatters: {},
   };
 }

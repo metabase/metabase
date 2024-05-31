@@ -139,5 +139,6 @@ export const getWaterfallChartModel = (
     },
     waterfallLabelFormatter,
     dataDensity,
+    seriesLabelsFormatters: {},
   };
 };

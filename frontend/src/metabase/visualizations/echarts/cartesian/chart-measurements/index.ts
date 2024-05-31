@@ -529,7 +529,7 @@ const areHorizontalXAxisTicksOverlapping = (
 };
 
 const countFittingLabels = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   barStack: StackModel,
   barWidth: number,
   renderingContext: RenderingContext,
@@ -586,7 +586,7 @@ const BAR_WIDTH_PRECISION = 0.85;
 const HORIZONTAL_LABELS_COUNT_THRESHOLD = 0.8;
 
 const getStackedBarTicksRotation = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   boundaryWidth: number,
   renderingContext: RenderingContext,
 ) => {
