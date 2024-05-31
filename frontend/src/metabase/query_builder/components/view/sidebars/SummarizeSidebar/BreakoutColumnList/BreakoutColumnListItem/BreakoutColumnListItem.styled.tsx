@@ -11,13 +11,17 @@ export const Content = styled.div`
   flex: auto;
   align-items: center;
   border-radius: 6px;
+
+  ${BucketPickerPopover.TriggerButton} {
+    height: 100%;
+  }
 `;
 
 export const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   margin-left: 0.5rem;
-  padding: 0;
+  padding: 0.5rem 0;
   flex-grow: 1;
 `;
 

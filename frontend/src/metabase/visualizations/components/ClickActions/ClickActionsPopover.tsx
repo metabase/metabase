@@ -169,6 +169,8 @@ export class ClickActionsPopover extends Component<
               name: "preventOverflow",
               options: {
                 padding: 16,
+                altAxis: true,
+                tether: false,
               },
             },
           ],

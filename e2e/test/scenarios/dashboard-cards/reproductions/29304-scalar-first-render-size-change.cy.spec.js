@@ -67,7 +67,7 @@ describe("issue 29304", () => {
         cy.tick(WAIT_TIME + 1);
 
         const expectedWidth = 130;
-        cy.findByTestId("scalar-value").then(([$scalarValue]) => {
+        cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
             expectedWidth * 0.1,
@@ -92,7 +92,7 @@ describe("issue 29304", () => {
         cy.tick(WAIT_TIME + 1);
 
         const expectedWidth = 39;
-        cy.findByTestId("scalar-value").then(([$scalarValue]) => {
+        cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
             expectedWidth * 0.1,

@@ -22,7 +22,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -41,6 +40,7 @@ import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  DashCardGetNewCardUrlHandler,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -53,7 +53,6 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  metadata: Metadata;
   mode?: Mode;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
@@ -63,13 +62,17 @@ export interface DashCardProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
 
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
+  getNewCardUrl?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => string | undefined;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -89,7 +92,6 @@ function DashCardInner({
   dashcard,
   dashboard,
   slowCards,
-  metadata,
   gridItemWidth,
   totalNumGridCols,
   mode,
@@ -97,13 +99,14 @@ function DashCardInner({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
-  isPublic = false,
+  isPublicOrEmbedded = false,
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   onAddSeries,
   onReplaceCard,
   onRemove,
+  getNewCardUrl,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -256,26 +259,30 @@ function DashCardInner({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler = useMemo(() => {
-    if (!navigateToNewCardFromDashboard) {
-      return null;
-    }
+  const changeCardAndRunHandler =
+    useCallback<DashCardOnChangeCardAndRunHandler>(
+      ({ nextCard, previousCard, objectId }) => {
+        return navigateToNewCardFromDashboard?.({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      },
+      [dashcard, navigateToNewCardFromDashboard],
+    );
 
-    const handler: DashCardOnChangeCardAndRunHandler = ({
-      nextCard,
-      previousCard,
-      objectId,
-    }) => {
-      navigateToNewCardFromDashboard({
+  const getHref = useCallback<DashCardGetNewCardUrlHandler>(
+    ({ nextCard, previousCard, objectId }) => {
+      return getNewCardUrl?.({
         nextCard,
         previousCard,
         dashcard,
         objectId,
       });
-    };
-
-    return handler;
-  }, [dashcard, navigateToNewCardFromDashboard]);
+    },
+    [dashcard, getNewCardUrl],
+  );
 
   return (
     <ErrorBoundary>
@@ -307,14 +314,12 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={() => onAddSeries(dashcard)}
-            onRemove={() => onRemove(dashcard)}
-            onReplaceCard={() => onReplaceCard(dashcard)}
-            onUpdateVisualizationSettings={settings =>
-              onUpdateVisualizationSettings(dashcard.id, settings)
-            }
-            onReplaceAllVisualizationSettings={settings =>
-              onReplaceAllVisualizationSettings(dashcard.id, settings)
+            onAddSeries={onAddSeries}
+            onRemove={onRemove}
+            onReplaceCard={onReplaceCard}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            onReplaceAllVisualizationSettings={
+              onReplaceAllVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
@@ -324,7 +329,6 @@ function DashCardInner({
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          metadata={metadata}
           mode={mode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
@@ -332,6 +336,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          getHref={getNewCardUrl ? getHref : null}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
@@ -345,12 +350,12 @@ function DashCardInner({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
-          isPublic={isPublic}
+          isPublicOrEmbedded={isPublicOrEmbedded}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={settings =>
-            onUpdateVisualizationSettings(dashcard.id, settings)
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onChangeCardAndRun={
+            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
-          onChangeCardAndRun={changeCardAndRunHandler}
           onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>

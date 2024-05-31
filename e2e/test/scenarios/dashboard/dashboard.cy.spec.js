@@ -173,6 +173,10 @@ describe("scenarios > dashboard", () => {
             .should("have.text", "Our analytics")
             .click();
         });
+
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         entityPickerModal()
           .findByText("Create a new collection")
           .click({ force: true });
@@ -873,16 +877,17 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
-            "loadDashboard",
-          );
+          cy.intercept(
+            "GET",
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+          ).as("queryMetadata");
         });
       },
     );
     cy.signInAsNormalUser();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.wait("@loadDashboard");
+    cy.wait("@queryMetadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

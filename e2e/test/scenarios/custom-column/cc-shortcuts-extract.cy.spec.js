@@ -153,6 +153,23 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
       .findByTestId("expression-name")
       .should("have.value", "Hour of day (1)");
   });
+
+  it("should be possible to edit a previous stages' columns when an aggregation is present (metabase#43226)", () => {
+    openOrdersTable({ mode: "notebook", limit: 5 });
+
+    cy.button("Summarize").click();
+    popover().findByText("Count of rows").click();
+
+    addCustomColumn();
+    selectExtractColumn();
+
+    cy.findAllByTestId("dimension-list-item").contains("Created At").click();
+    popover().findAllByRole("button").contains("Hour of day").click();
+
+    expressionEditorWidget()
+      .findByTestId("expression-name")
+      .should("have.value", "Hour of day");
+  });
 });
 
 function selectExtractColumn() {

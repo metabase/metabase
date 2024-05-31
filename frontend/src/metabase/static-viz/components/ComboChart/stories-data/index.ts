@@ -11,6 +11,7 @@ import autoYSplit from "./auto-y-split.json";
 import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
 import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
+import barCorrectWidthWhenTwoYAxes from "./bar-correct-width-when-two-y-axes.json";
 import barFormattingFull from "./bar-formatting-full.json";
 import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import barHistogramMultiSeriesBinned from "./bar-histogram-multi-series-binned.json";
@@ -28,8 +29,13 @@ import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
+import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
+import barStackedSeriesLabelsAndTotals from "./bar-stacked-series-labels-and-totals.json";
+import barStackedSeriesLabelsAutoCompactness from "./bar-stacked-series-labels-auto-compactness.json";
+import barStackedSeriesLabelsNoTotals from "./bar-stacked-series-labels-no-totals.json";
+import barStackedSeriesLabelsRotated from "./bar-stacked-series-labels-rotated.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
@@ -103,6 +109,7 @@ export const data = {
   lineCustomYAxisRangeEqualsExtents,
   lineFullyNullDimension37902,
   areaFullyNullDimension37902,
+  barCorrectWidthWhenTwoYAxes,
   barLinearXScale,
   barHistogramXScale,
   barHistogramMultiSeries,
@@ -115,6 +122,7 @@ export const data = {
   barOrdinalXScaleAutoRotatedLabels,
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
+  barStackedSeriesLabelsAutoCompactness,
   barStackedTotalFormattedValues,
   barStackedPowYAxis,
   barStackedPowYAxisNegatives,
@@ -186,4 +194,8 @@ export const data = {
   twoBarsTwoAreasOneLineLog,
   barFormattingFull,
   yAxisCompactWithoutDataLabels,
+  barStackedNormalizedSeriesLabels,
+  barStackedSeriesLabelsAndTotals,
+  barStackedSeriesLabelsNoTotals,
+  barStackedSeriesLabelsRotated,
 };

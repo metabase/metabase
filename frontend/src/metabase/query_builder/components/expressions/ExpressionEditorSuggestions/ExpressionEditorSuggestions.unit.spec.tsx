@@ -1,5 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  fireEvent,
+} from "__support__/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
@@ -19,6 +24,7 @@ type WrapperProps = {
   suggestions?: Suggestion[];
   highlightedIndex: number;
   onSuggestionMouseDown: () => void;
+  onHighlightSuggestion: (index: number) => void;
   startRule: string;
 };
 
@@ -47,11 +53,14 @@ function setup({ source = "", startRule }: SetupOpts) {
     getColumnIcon,
   });
 
+  const onHighlightSuggestion = jest.fn();
+
   const props = {
     query,
     stageIndex,
     suggestions,
     onSuggestionMouseDown: jest.fn(),
+    onHighlightSuggestion,
     highlightedIndex: -1,
     startRule,
   };
@@ -60,6 +69,10 @@ function setup({ source = "", startRule }: SetupOpts) {
 
   // force rerender to make sure the target prop has a value
   rerender(<Wrapper {...props} />);
+
+  return {
+    onHighlightSuggestion,
+  };
 }
 
 describe("ExpressionEditorSuggestions", () => {
@@ -89,7 +102,7 @@ describe("ExpressionEditorSuggestions", () => {
 
   it("should show functions when first opened", () => {
     setup({ startRule: "expression" });
-    expect(screen.getByText("Most used functions")).toBeInTheDocument();
+    expect(screen.getByText("Common functions")).toBeInTheDocument();
 
     expect(screen.getByText("case")).toBeInTheDocument();
     expect(screen.getByText("coalesce")).toBeInTheDocument();
@@ -97,9 +110,17 @@ describe("ExpressionEditorSuggestions", () => {
 
   it("should not include popular functions when text has been typed", () => {
     setup({ source: "[", startRule: "expression" });
-    expect(screen.queryByText("Most used functions")).not.toBeInTheDocument();
+    expect(screen.queryByText("Common functions")).not.toBeInTheDocument();
 
     expect(screen.queryByText("case")).not.toBeInTheDocument();
     expect(screen.queryByText("coalesce")).not.toBeInTheDocument();
+  });
+
+  it("should highlight a suggestion when hovering it", () => {
+    const { onHighlightSuggestion } = setup({ startRule: "expression" });
+    expect(screen.getByText("Common functions")).toBeInTheDocument();
+
+    fireEvent.mouseMove(screen.getByText("case"));
+    expect(onHighlightSuggestion).toHaveBeenCalled();
   });
 });

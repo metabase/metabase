@@ -3,7 +3,8 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
+
+import { SyncedParametersList } from "../../parameters/components/ParametersList";
 
 export const FilterButton = styled(Button)`
   color: ${color("brand")};

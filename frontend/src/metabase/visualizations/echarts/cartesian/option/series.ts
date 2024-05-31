@@ -3,10 +3,12 @@ import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 import _ from "underscore";
 
+import { getTextColorForBackground } from "metabase/lib/colors/palette";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -35,7 +37,10 @@ import type {
 } from "metabase/visualizations/types";
 import type { SeriesSettings } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../chart-measurements/types";
+import type {
+  ChartMeasurements,
+  TicksRotation,
+} from "../chart-measurements/types";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -81,16 +86,68 @@ export const getBarLabelLayout =
     };
   };
 
+export const getBarInsideLabelLayout =
+  (
+    dataset: ChartDataset,
+    settings: ComputedVisualizationSettings,
+    seriesDataKey: DataKey,
+    ticksRotation?: TicksRotation,
+  ): BarSeriesOption["labelLayout"] =>
+  params => {
+    const { dataIndex, rect, labelRect } = params;
+    if (dataIndex == null) {
+      return {};
+    }
+
+    // HACK: On the first render, labelRect values are provided as if the label has not been rotated.
+    // If we decide to rotate it here, labelRect will be computed for the already rotated label on the next render.
+    // Since we can't determine whether it's the initial render or if labelRect is computed for a rotated label,
+    // we need to figure out the actual text width of the label based on the known side of the rectangle, which is the text size.
+    const labelTextWidth =
+      labelRect.width === CHART_STYLE.seriesLabels.size
+        ? labelRect.height
+        : labelRect.width;
+    const paddedLabelTextWidth =
+      CHART_STYLE.seriesLabels.stackedPadding * 2 + labelTextWidth;
+    const paddedLabelTextHeight =
+      CHART_STYLE.seriesLabels.stackedPadding * 2 +
+      CHART_STYLE.seriesLabels.size;
+
+    let canFit = false;
+    if (ticksRotation === "horizontal") {
+      canFit =
+        rect.width > paddedLabelTextWidth &&
+        rect.height > paddedLabelTextHeight;
+    } else if (ticksRotation === "vertical") {
+      canFit =
+        rect.height > paddedLabelTextWidth &&
+        rect.width > paddedLabelTextHeight;
+    }
+
+    if (!canFit) {
+      return {
+        fontSize: 0,
+      };
+    }
+
+    const labelValue = dataset[dataIndex][seriesDataKey];
+    if (typeof labelValue !== "number") {
+      return {};
+    }
+
+    return {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+      rotate: ticksRotation === "vertical" ? 90 : 0,
+    };
+  };
+
 export function getDataLabelFormatter(
-  seriesModel: SeriesModel,
+  dataKey: DataKey,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   formatter: LabelFormatter,
-  labelDataKey?: DataKey,
 ) {
-  const accessKey = labelDataKey ?? seriesModel.dataKey;
-
   return (params: CallbackDataParams) => {
-    const value = (params.data as Datum)[accessKey];
+    const value = (params.data as Datum)[dataKey];
 
     if (typeof value !== "number") {
       return " ";
@@ -107,8 +164,8 @@ export const buildEChartsLabelOptions = (
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
   return {
-    silent: true,
     show: !!formatter,
+    silent: true,
     position,
     opacity: 1,
     fontFamily: renderingContext.fontFamily,
@@ -119,7 +176,11 @@ export const buildEChartsLabelOptions = (
     textBorderWidth: 3,
     formatter:
       formatter &&
-      getDataLabelFormatter(seriesModel, yAxisScaleTransforms, formatter),
+      getDataLabelFormatter(
+        seriesModel.dataKey,
+        yAxisScaleTransforms,
+        formatter,
+      ),
   };
 };
 
@@ -127,7 +188,6 @@ export const computeContinuousScaleBarWidth = (
   xAxisModel: TimeSeriesXAxisModel | NumericXAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   stackedOrSingleSeries: boolean,
 ) => {
   let barWidth =
@@ -138,8 +198,6 @@ export const computeContinuousScaleBarWidth = (
     barWidth /= barSeriesCount;
   }
 
-  barWidth /= yAxisWithBarSeriesCount;
-
   return barWidth;
 };
 
@@ -147,7 +205,6 @@ export const computeBarWidth = (
   xAxisModel: XAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   isStacked: boolean,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
@@ -159,7 +216,6 @@ export const computeBarWidth = (
       xAxisModel,
       boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       stackedOrSingleSeries,
     );
   }
@@ -176,8 +232,46 @@ export const computeBarWidth = (
   return barWidth;
 };
 
+export const buildEChartsStackLabelOptions = (
+  seriesModel: SeriesModel,
+  formatter: LabelFormatter | undefined,
+  originalDataset: ChartDataset,
+  renderingContext: RenderingContext,
+): SeriesLabelOption | undefined => {
+  if (!formatter) {
+    return;
+  }
+
+  return {
+    silent: true,
+    position: "inside",
+    opacity: 1,
+    show: true,
+    fontFamily: renderingContext.fontFamily,
+    fontWeight: CHART_STYLE.seriesLabels.weight,
+    fontSize: CHART_STYLE.seriesLabels.size,
+    color: getTextColorForBackground(
+      seriesModel.color,
+      renderingContext.getColor,
+    ),
+    formatter: (params: CallbackDataParams) => {
+      const transformedDatum = params.data as Datum;
+      const originalIndex =
+        transformedDatum[ORIGINAL_INDEX_DATA_KEY] ?? params.dataIndex;
+      const datum = originalDataset[originalIndex];
+      const value = datum[seriesModel.dataKey];
+
+      if (typeof value !== "number") {
+        return " ";
+      }
+      return formatter(value);
+    },
+  };
+};
+
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
+  originalDataset: ChartDataset,
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   chartMeasurements: ChartMeasurements,
@@ -186,11 +280,12 @@ const buildEChartsBarSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): BarSeriesOption => {
+  const isStacked = stackName != null;
+
   return {
     id: seriesModel.dataKey,
     emphasis: {
@@ -214,20 +309,33 @@ const buildEChartsBarSeries = (
       xAxisModel,
       chartMeasurements.boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       !!stackName,
     ),
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
-    label: buildEChartsLabelOptions(
-      seriesModel,
-      yAxisScaleTransforms,
-      renderingContext,
-      labelFormatter,
-    ),
-    labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+    label: isStacked
+      ? buildEChartsStackLabelOptions(
+          seriesModel,
+          labelFormatter,
+          originalDataset,
+          renderingContext,
+        )
+      : buildEChartsLabelOptions(
+          seriesModel,
+          yAxisScaleTransforms,
+          renderingContext,
+          labelFormatter,
+        ),
+    labelLayout: isStacked
+      ? getBarInsideLabelLayout(
+          dataset,
+          settings,
+          seriesModel.dataKey,
+          chartMeasurements.stackedBarTicksRotation,
+        )
+      : getBarLabelLayout(dataset, settings, seriesModel.dataKey),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -372,6 +480,7 @@ const generateStackOption = (
   stackDataKeys: DataKey[],
   seriesOptionFromStack: LineSeriesOption | BarSeriesOption,
   labelFormatter: LabelFormatter | undefined,
+  renderingContext: RenderingContext,
 ) => {
   const stackName = seriesOptionFromStack.stack;
 
@@ -403,6 +512,12 @@ const generateStackOption = (
           stackDataKeys,
           labelFormatter,
         ),
+      fontFamily: renderingContext.fontFamily,
+      fontWeight: CHART_STYLE.seriesLabels.weight,
+      fontSize: CHART_STYLE.seriesLabels.size,
+      color: renderingContext.getColor("text-dark"),
+      textBorderColor: renderingContext.getColor("white"),
+      textBorderWidth: 3,
     },
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -448,6 +563,7 @@ export const getStackTotalsSeries = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
+  renderingContext: RenderingContext,
 ) => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter(s => s.stack != null),
@@ -478,6 +594,7 @@ export const getStackTotalsSeries = (
         stackDataKeys,
         firstSeriesInStack,
         labelFormatter,
+        renderingContext,
       ),
       generateStackOption(
         yAxisScaleTransforms,
@@ -486,6 +603,7 @@ export const getStackTotalsSeries = (
         stackDataKeys,
         firstSeriesInStack,
         labelFormatter,
+        renderingContext,
       ),
     ];
   });
@@ -538,25 +656,6 @@ export const buildEChartsSeries = (
     {} as Record<DataKey, number>,
   );
 
-  const barSeriesCountByYAxisIndex = chartModel.seriesModels.reduce(
-    (acc, seriesModel) => {
-      const isBar =
-        seriesSettingsByDataKey[seriesModel.dataKey].display === "bar";
-
-      if (isBar) {
-        const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
-        acc[yAxisIndex] = (acc[yAxisIndex] ?? 0) + 1;
-      }
-
-      return acc;
-    },
-    {} as Record<number, number>,
-  );
-
-  const yAxisWithBarSeriesCount = Object.keys(
-    barSeriesCountByYAxisIndex,
-  ).length;
-
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
@@ -600,6 +699,7 @@ export const buildEChartsSeries = (
         case "bar":
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
+            chartModel.dataset,
             chartModel.xAxisModel,
             chartModel.yAxisScaleTransforms,
             chartMeasurements,
@@ -608,7 +708,6 @@ export const buildEChartsSeries = (
             settings,
             yAxisIndex,
             barSeriesCount,
-            yAxisWithBarSeriesCount,
             hasMultipleSeries,
             chartModel?.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
@@ -618,16 +717,23 @@ export const buildEChartsSeries = (
     .flat()
     .filter(isNotNull);
 
-  if (
+  const hasStackedSeriesTotalLabels =
+    settings["graph.show_values"] &&
     settings["stackable.stack_type"] === "stacked" &&
-    settings["graph.show_values"]
-  ) {
+    (settings["graph.show_stack_values"] === "total" ||
+      settings["graph.show_stack_values"] === "all");
+  if (hasStackedSeriesTotalLabels) {
     series.push(
       ...getStackTotalsSeries(
         chartModel,
         chartModel.yAxisScaleTransforms,
         settings,
-        series,
+        // It's guranteed that no series here will be scatter, since with
+        // scatter plots the `stackable.stack_type` is undefined. We can maybe
+        // remove this later after refactoring the scatter implementation to a
+        // separate codepath.
+        series as (LineSeriesOption | BarSeriesOption)[],
+        renderingContext,
       ),
     );
   }

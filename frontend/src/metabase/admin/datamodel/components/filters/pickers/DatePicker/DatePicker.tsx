@@ -143,7 +143,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
 };
 
-const DatePicker: React.FC<Props> = props => {
+const DatePicker: React.FC<React.PropsWithChildren<Props>> = props => {
   const {
     className,
     filter,

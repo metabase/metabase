@@ -9,7 +9,6 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import type { Query } from "metabase-lib";
-import * as Lib from "metabase-lib";
 
 import NotebookStepPreview from "../NotebookStepPreview";
 import type {
@@ -106,8 +105,7 @@ function NotebookStep({
     component: NotebookStepComponent,
   } = STEP_UI[step.type] || {};
 
-  const canPreview =
-    step.previewQuery != null && Lib.canPreview(step.previewQuery);
+  const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 

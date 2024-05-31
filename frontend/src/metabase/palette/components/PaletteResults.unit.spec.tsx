@@ -18,12 +18,13 @@ import {
   mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
-import type { Settings } from "metabase-types/api";
+import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
   createMockRecentCollectionItem,
+  createMockRecentTableItem,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -104,10 +105,15 @@ mockScrollIntoView();
 const setup = ({
   query,
   settings = {},
-}: { query?: string; settings?: Partial<Settings> } = {}) => {
+  recents = [recents_1, recents_2],
+}: {
+  query?: string;
+  settings?: Partial<Settings>;
+  recents?: RecentItem[];
+} = {}) => {
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
-  setupRecentViewsEndpoints([recents_1, recents_2]);
+  setupRecentViewsEndpoints(recents);
 
   renderWithProviders(
     <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
@@ -163,6 +169,27 @@ describe("PaletteResults", () => {
         await screen.findByRole("option", { name: "Foo Question" }),
       ).findByRole("img", { name: /verified_filled/ }),
     ).toBeInTheDocument();
+  });
+
+  it("should show recent items with the same name", async () => {
+    setup({
+      recents: [
+        createMockRecentCollectionItem({
+          model: "dataset",
+          name: "My Awesome Data",
+        }),
+        createMockRecentTableItem({
+          model: "table",
+          display_name: "My Awesome Data",
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+
+    expect(
+      await screen.findAllByRole("option", { name: "My Awesome Data" }),
+    ).toHaveLength(2);
   });
 
   it("should allow you to search entities, and provide a docs link", async () => {

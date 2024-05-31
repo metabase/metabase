@@ -267,37 +267,6 @@
 ;;; Metric
 ;;;
 
-(derive :metadata/legacy-metric :model/LegacyMetric)
-
-(methodical/defmethod t2.model/resolve-model :metadata/legacy-metric
-  [model]
-  (classloader/require 'metabase.models.legacy-metric)
-  model)
-
-(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/legacy-metric
-                                             #_resolved-query clojure.lang.IPersistentMap
-                                             #_k              :default]
-  [model honeysql k v]
-  (let [k (if (not (qualified-key? k))
-            (keyword "metric" (name k))
-            k)]
-    (next-method model honeysql k v)))
-
-(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                         #_model          :metadata/legacy-metric
-                                         #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-args honeysql]
-  (merge
-   (next-method query-type model parsed-args honeysql)
-   {:select    [:metric/id
-                :metric/table_id
-                :metric/name
-                :metric/description
-                :metric/archived
-                :metric/dataset_query]
-    :from      [[(t2/table-name :model/Card) :metric]]
-    :where     [:= :metric/type "metric"]}))
-
 (derive :metadata/metric :model/Card)
 
 (t2/define-after-select :metadata/metric
@@ -384,9 +353,6 @@
 
     :metadata/metric
     (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)
-
-    :metadata/legacy-metric
-    (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
 
     :metadata/segment
     (t2/select :metadata/segment :table_id table-id, :archived false)))

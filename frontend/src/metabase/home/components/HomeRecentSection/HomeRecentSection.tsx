@@ -38,7 +38,7 @@ export const HomeRecentSection = () => {
           <HomeModelCard
             key={index}
             title={getName(item)}
-            icon={getIcon(item, { variant: "secondary" })}
+            icon={getIcon(item)}
             url={Urls.modelToUrl(item) ?? ""}
           />
         ))}

@@ -9,7 +9,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
@@ -221,7 +221,7 @@ export const useCommandPalette = ({
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
       filterRecentItems(recentItems ?? []).map(item => ({
-        id: `recent-item-${getName(item)}`,
+        id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
         name: getName(item),
         icon: getIcon(item).name,
         section: "recent",

@@ -9,7 +9,6 @@ import { Icon } from "metabase/ui";
 export const TriggerIcon = styled(Icon)`
   color: ${color("white")} !important;
   flex: 0 0 auto;
-  margin-left: 0.5rem;
 `;
 
 export const ChevronDown = styled(Icon)`
@@ -23,14 +22,14 @@ export const ChevronDown = styled(Icon)`
 export const TriggerButton = styled.button`
   display: flex;
   align-items: center;
-  min-width: 0;
+  min-width: 35%;
+  max-width: 50%;
+  gap: 0.5rem;
 
   color: ${alpha(color("white"), 0.5)};
   font-weight: 700;
-  border-left: 2px solid transparent;
-  padding: 0.5rem;
   border-left: 2px solid ${alpha(color("border"), 0.1)};
-  margin-left: auto;
+  padding: 0.5rem;
 
   cursor: pointer;
 
@@ -41,15 +40,6 @@ export const TriggerButton = styled.button`
   &:hover {
     color: ${color("white")};
   }
-`;
-
-export const Dot = styled.div`
-  width: 3px;
-  height: 3px;
-  margin-right: 0.5em;
-  background: currentColor;
-  border-radius: 100%;
-  opacity: 0.25;
 `;
 
 export const SelectListItem = styled(BaseSelectList.Item)<{

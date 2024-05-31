@@ -1,4 +1,3 @@
-import { createMockMetadata } from "__support__/metadata";
 import { queryIcon, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
@@ -62,8 +61,6 @@ const erroringDashcardData = {
   },
 };
 
-const metadata = createMockMetadata({});
-
 function setup({
   dashboard = testDashboard,
   dashcard = tableDashcard,
@@ -79,10 +76,10 @@ function setup({
       gridItemWidth={4}
       totalNumGridCols={24}
       slowCards={{}}
-      metadata={metadata}
       isEditing={false}
       isEditingParameter={false}
       {...props}
+      getNewCardUrl={jest.fn()}
       onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       onRemove={jest.fn()}

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
-import { getShortStrategyLabel } from "metabase/admin/performance/strategies";
+import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheSectionProps } from "metabase/plugins";
 import { Flex } from "metabase/ui";

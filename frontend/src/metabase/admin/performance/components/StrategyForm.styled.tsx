@@ -27,8 +27,22 @@ export const StyledForm = styled(Form)`
   flex-grow: 1;
 `;
 
-export const FormBox = styled(Box)<BoxProps>`
+export const FormBox = styled(Box)<
+  BoxProps & {
+    isInSidebar?: boolean;
+  }
+>`
   border-bottom: 1px solid ${color("border")};
   overflow: auto;
   flex-grow: 1;
+  padding-bottom: 2.5rem;
+  ${({ isInSidebar }) =>
+    isInSidebar
+      ? `
+  padding-inline-start: 2rem;
+  padding-inline-end: 1rem;
+  `
+      : `
+  padding-inline: 2.5rem;
+`}
 `;

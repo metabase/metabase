@@ -655,7 +655,7 @@
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
-(deftest collection-items-based-on-upload-test
+(deftest ^:mb/once collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
       (api.card-test/run-based-on-upload-test!

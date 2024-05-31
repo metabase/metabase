@@ -151,7 +151,6 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     // Ensure can replace with a question
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Next question",
-      collectionName: "First collection",
     });
     expectGoodSnowplowEvent({ event: "dashboard_card_replaced" });
     findTargetDashcard().within(() => {
@@ -191,7 +190,6 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     replaceQuestion(findTargetDashcard(), {
       nextQuestionName: "Next question",
-      collectionName: "First collection",
     });
 
     // There're two toasts: "Undo replace" and "Undo parameters auto-wiring"
@@ -286,7 +284,7 @@ function assertDashCardTitle(title) {
 function overwriteDashCardTitle(dashcardElement, textTitle) {
   findDashCardAction(dashcardElement, "Show visualization options").click();
   modal().within(() => {
-    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`);
+    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`).blur();
     cy.button("Done").click();
   });
 }

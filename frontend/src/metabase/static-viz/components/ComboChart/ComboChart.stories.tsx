@@ -675,6 +675,48 @@ TwoBarsTwoAreasOneLineLog.args = {
   renderingContext,
 };
 
+export const BarCorrectWidthWhenTwoYAxes = Template.bind({});
+BarCorrectWidthWhenTwoYAxes.args = {
+  rawSeries: data.barCorrectWidthWhenTwoYAxes as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedNormalizedSeriesLabels = Template.bind({});
+BarStackedNormalizedSeriesLabels.args = {
+  rawSeries: data.barStackedNormalizedSeriesLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsAndTotals = Template.bind({});
+BarStackedSeriesLabelsAndTotals.args = {
+  rawSeries: data.barStackedSeriesLabelsAndTotals as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsNoTotals = Template.bind({});
+BarStackedSeriesLabelsNoTotals.args = {
+  rawSeries: data.barStackedSeriesLabelsNoTotals as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsRotated = Template.bind({});
+BarStackedSeriesLabelsRotated.args = {
+  rawSeries: data.barStackedSeriesLabelsRotated as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsAutoCompactness = Template.bind({});
+BarStackedSeriesLabelsAutoCompactness.args = {
+  rawSeries: data.barStackedSeriesLabelsAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

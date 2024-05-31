@@ -26,6 +26,7 @@ function _CartesianChart(props: VisualizationProps) {
     rawSeries,
     settings: originalSettings,
     card,
+    href,
     gridSize,
     width,
     showTitle,
@@ -99,6 +100,7 @@ function _CartesianChart(props: VisualizationProps) {
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
+          href={canSelectTitle ? href : undefined}
           onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
           width={width}
         />
@@ -116,8 +118,8 @@ function _CartesianChart(props: VisualizationProps) {
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
       >
+        {/**@ts-expect-error emotion does not properly provide prop types due */}
         <CartesianChartRenderer
-          // @ts-expect-error emotion does not properly provide prop types due
           // to it not working with the `WrappedComponent` class defined in
           // ExplicitSize
           option={option}

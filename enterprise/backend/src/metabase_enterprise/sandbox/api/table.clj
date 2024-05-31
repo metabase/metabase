@@ -8,6 +8,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.table :as table :refer [Table]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -47,6 +48,25 @@
     (update query-metadata-response :fields #(filter (comp (set gtap-field-ids) u/the-id) %))
     query-metadata-response))
 
+(defenterprise fetch-table-query-metadata
+  "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
+  :feature :none
+  [id opts]
+  (let [table            (api/check-404 (t2/select-one Table :id id))
+        sandboxed-perms? (only-sandboxed-perms? table)
+        thunk            (fn []
+                           (api.table/fetch-query-metadata* table opts))]
+    ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see the
+    ;; metadata
+    (if sandboxed-perms?
+      (maybe-filter-fields
+       table
+       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+           (thunk))))
+      (thunk))))
+
 (api/defendpoint GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
@@ -58,22 +78,8 @@
    include_sensitive_fields    [:maybe ms/BooleanValue]
    include_hidden_fields       [:maybe ms/BooleanValue]
    include_editable_data_model [:maybe ms/BooleanValue]}
-  (let [table            (api/check-404 (t2/select-one Table :id id))
-        sandboxed-perms? (only-sandboxed-perms? table)
-        thunk            (fn []
-                           (api.table/fetch-query-metadata
-                            table
-                            {:include-sensitive-fields?    include_sensitive_fields
-                             :include-hidden-fields?       include_hidden_fields
-                             :include-editable-data-model? include_editable_data_model}))]
-    ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see the
-    ;; metadata
-    (if sandboxed-perms?
-      (maybe-filter-fields
-       table
-       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
-           (thunk))))
-      (thunk))))
+  (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
+                                  :include-hidden-fields?       include_hidden_fields
+                                  :include-editable-data-model? include_editable_data_model}))
 
 (api/define-routes)

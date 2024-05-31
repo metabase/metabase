@@ -184,7 +184,7 @@ describe("visualization.lib.timeseries", () => {
         {
           xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
           xInterval: { interval: "month", count: 1 },
-          chartWidth: 800,
+          chartWidth: 700,
           tickFormat: fakeTickFormat,
         },
         { expectedUnit: "month", expectedCount: 3 },
