@@ -70,8 +70,11 @@
   (if-let [quote-stripper (quote-strippers (first value))]
     [:= field (quote-stripper value)]
     ;; Technically speaking this is not correct for all databases.
-    ;; For some databases an unquoted reference is expected to mean an explicitly uppercase or lowercase name.
-    ;; i.e. if you created a column called "MixedCaseThing" then `SELECT MixedCaseThing` would *NOT* match it.
+    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case sensitive match.
+    ;; i.e. given a column called "MixedCaseThing" (i.e. it was defined using quotes)
+    ;;      and an unquoted reference like `SELECT MixedCaseThing FROM x`
+    ;;      the query is equivalent to `SELECT "MIXEDCASETHING" FROM x"
+    ;;      and will fail because "MixedCaseThing" != "MIXEDCASETHING"
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
