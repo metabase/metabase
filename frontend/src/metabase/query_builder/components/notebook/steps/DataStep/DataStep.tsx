@@ -2,7 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { FieldPicker } from "metabase/common/components/FieldPicker";
+import { useDispatch } from "metabase/lib/redux";
 import { NotebookDataPicker } from "metabase/query_builder/components/notebook/NotebookDataPicker";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -18,9 +20,10 @@ export const DataStep = ({
   color,
   updateQuery,
 }: NotebookStepUiComponentProps) => {
-  const { stageIndex } = step;
+  const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const dispatch = useDispatch();
 
   const isRaw = useMemo(() => {
     return (
@@ -31,11 +34,14 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleTableChange = (
+  const handleTableChange = async (
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => {
-    updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, table));
+    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    const newQuestion = question.withoutNameAndId().setQuery(newQuery);
+    await dispatch(loadMetadataForCard(newQuestion.card()));
+    await updateQuery(newQuery);
   };
 
   return (

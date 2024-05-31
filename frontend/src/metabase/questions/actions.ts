@@ -5,25 +5,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card, TableId } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
   reload?: boolean;
 }
-
-export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    if (!card.id) {
-      await dispatch(loadMetadataForCards([card], options));
-      return;
-    }
-
-    try {
-      await dispatch(Questions.actions.fetchMetadata({ id: card.id }, options));
-    } catch (error) {
-      console.error("Error in loadMetadataForCard", error);
-    }
-  };
 
 export const loadMetadataForTable =
   (tableId: TableId, options?: LoadMetadataOptions) =>
@@ -35,7 +22,34 @@ export const loadMetadataForTable =
     }
   };
 
+export const loadMetadataForCard =
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    await dispatch(loadMetadataForCards([card], options));
+  };
+
 export const loadMetadataForCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const savedCards = cards.filter(card => isSavedCard(card));
+    const adhocCards = cards.filter(card => !isSavedCard(card));
+    await Promise.all([
+      dispatch(loadMetadataForSavedCards(savedCards, options)),
+      dispatch(loadMetadataForAdhocCards(adhocCards, options)),
+    ]);
+  };
+
+const loadMetadataForSavedCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const actions = cards.map(card =>
+      Questions.actions.fetchMetadata({ id: card.id }, options),
+    );
+    return Promise.all(actions.map(dispatch)).catch(error => {
+      console.error("Error in loadMetadataForSavedCards", error);
+    });
+  };
+
+const loadMetadataForAdhocCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
