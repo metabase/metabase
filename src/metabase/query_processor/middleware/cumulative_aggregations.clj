@@ -52,8 +52,8 @@
   (cond
     ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions
     (driver.u/supports? driver/*driver*
-                               :window-functions/cumulative
-                               (lib.metadata/database (qp.store/metadata-provider)))
+                        :window-functions/cumulative
+                        (lib.metadata/database (qp.store/metadata-provider)))
     query
 
     ;; nothing to rewrite

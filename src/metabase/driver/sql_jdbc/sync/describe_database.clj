@@ -139,7 +139,7 @@
   [driver conn]
   ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
   ;; It's basically a N+1 operation where N is the number of tables in the database
-  (if (driver.u/supports? driver :table-privileges nil)
+  (if (driver/database-supports? driver :table-privileges nil)
     (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver conn)]
       (fn [{schema :schema table :name ttype :type}]
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
