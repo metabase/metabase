@@ -132,6 +132,8 @@ export const updateDashboardAndCards = createThunkAction(
         duration_milliseconds,
       });
 
+      dispatch(setEditingDashboard(null));
+
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       await dispatch(
         fetchDashboard({
@@ -140,8 +142,6 @@ export const updateDashboardAndCards = createThunkAction(
           options: { preserveParameters: false },
         }),
       ); // disable using query parameters when saving
-
-      dispatch(setEditingDashboard(null));
 
       // There might have been changes to dashboard card-filter wiring,
       // which require re-fetching card data (issue #35503). We expect
@@ -178,7 +178,7 @@ export const updateDashboard = createThunkAction(
       }
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      await dispatch(
+      dispatch(
         fetchDashboard({
           dashId: dashboard.id,
           queryParam: null,

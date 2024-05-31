@@ -1,12 +1,28 @@
-import type { DatabaseCandidate, DatabaseId } from "metabase-types/api";
+import type {
+  DatabaseXray,
+  DatabaseId,
+  DashboardQueryMetadata,
+  GetXrayDashboardQueryMetadataRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideDatabaseCandidateListTags } from "./tags";
+import {
+  provideDashboardMetadataTags,
+  provideDatabaseCandidateListTags,
+} from "./tags";
 
-// a "database candidate" is a set of sample x-rays we suggest for new users
 export const automagicDashboardsApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listDatabaseCandidates: builder.query<DatabaseCandidate[], DatabaseId>({
+    getXrayDashboardQueryMetadata: builder.query<
+      DashboardQueryMetadata,
+      GetXrayDashboardQueryMetadataRequest
+    >({
+      query: ({ entity, entityId }) =>
+        `/api/automagic-dashboards/${entity}/${entityId}/query_metadata`,
+      providesTags: metadata =>
+        metadata ? provideDashboardMetadataTags(metadata) : [],
+    }),
+    listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
       query: id => `/api/automagic-dashboards/database/${id}/candidates`,
       providesTags: (candidates = []) =>
         provideDatabaseCandidateListTags(candidates),
@@ -14,4 +30,4 @@ export const automagicDashboardsApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListDatabaseCandidatesQuery } = automagicDashboardsApi;
+export const { useListDatabaseXraysQuery } = automagicDashboardsApi;

@@ -12,7 +12,7 @@ import type {
   Dashboard,
   DashboardSubscription,
   Database,
-  DatabaseCandidate,
+  DatabaseXray,
   Field,
   FieldDimension,
   FieldId,
@@ -35,7 +35,6 @@ import type {
   DashboardQueryMetadata,
   CardQueryMetadata,
   CardId,
-  DashboardId,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -187,7 +186,7 @@ export function provideCollectionTags(
 }
 
 export function provideDatabaseCandidateListTags(
-  candidates: DatabaseCandidate[],
+  candidates: DatabaseXray[],
 ): TagDescription<TagType>[] {
   return [
     listTag("schema"),
@@ -196,7 +195,7 @@ export function provideDatabaseCandidateListTags(
 }
 
 export function provideDatabaseCandidateTags(
-  candidate: DatabaseCandidate,
+  candidate: DatabaseXray,
 ): TagDescription<TagType>[] {
   return [idTag("schema", candidate.schema)];
 }
@@ -242,11 +241,9 @@ export function provideDashboardTags(
 }
 
 export function provideDashboardMetadataTags(
-  id: DashboardId,
   metadata: DashboardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [
-    idTag("dashboard", id),
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
