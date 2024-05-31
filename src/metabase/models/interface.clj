@@ -270,8 +270,14 @@
           (normalize-mbql-clauses [form]
             (walk/postwalk
              (fn [form]
-               (cond-> form
-                 (mbql-field-clause? form) mbql.normalize/normalize))
+               (try
+                 (cond-> form
+                   (mbql-field-clause? form) mbql.normalize/normalize)
+                 (catch Exception e
+                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
+                              (u/pprint-to-str 'red form)
+                              (ex-message e))
+                   form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
