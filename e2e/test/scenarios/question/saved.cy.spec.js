@@ -42,7 +42,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Save").click();
     });
     cy.wait("@cardCreate");
-    modal().button("Not now").click();
+    cy.button("Not now").click();
 
     // Add a filter in order to be able to save question again
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
@@ -130,9 +130,7 @@ describe("scenarios > question > saved", () => {
       cy.wait("@cardCreate");
     });
 
-    modal().within(() => {
-      cy.findByText("Not now").click();
-    });
+    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
@@ -174,9 +172,7 @@ describe("scenarios > question > saved", () => {
       cy.wait("@cardCreate");
     });
 
-    modal().within(() => {
-      cy.findByText("Not now").click();
-    });
+    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");

@@ -146,6 +146,7 @@ export type TableDisplayInfo = {
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   schema: SchemaId;
+  isQuestion?: boolean;
   isModel?: boolean;
 };
 

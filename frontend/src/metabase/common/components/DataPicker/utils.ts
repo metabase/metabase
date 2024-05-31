@@ -1,10 +1,8 @@
 import { humanize, titleize } from "metabase/lib/formatting";
 import { isNullOrUndefined } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import TableEntity from "metabase-lib/v1/metadata/Table";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type {
-  Card,
   CollectionItem,
   CollectionItemModel,
   Database,
@@ -34,36 +32,7 @@ export const generateKey = (
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
 
-export const dataPickerValueFromCard = (card: Card): DataPickerValue => {
-  return {
-    id: card.id,
-    name: card.name,
-    model: card.type === "model" ? "dataset" : "card",
-  };
-};
-
-export const dataPickerValueFromTable = (
-  table: Table | TableEntity | null,
-): TablePickerValue | undefined => {
-  if (table === null) {
-    return undefined;
-  }
-
-  // Temporary, for backward compatibility in DataStep, until entity framework is no more
-  if (table instanceof TableEntity) {
-    return tablePickerValueFromTableEntity(table);
-  }
-
-  return {
-    db_id: table.db_id,
-    id: table.id,
-    model: "table",
-    name: table.display_name,
-    schema: table.schema,
-  };
-};
-
-export const dataPickerValueFromJoinable = (
+export const getDataPickerValue = (
   query: Lib.Query,
   stageIndex: number,
   joinable: Lib.Joinable,
@@ -75,7 +44,7 @@ export const dataPickerValueFromJoinable = (
     return undefined;
   }
 
-  if (typeof pickerInfo.cardId === "number") {
+  if (pickerInfo.cardId != null) {
     return {
       id: pickerInfo.cardId,
       name: displayInfo.displayName,
@@ -89,21 +58,6 @@ export const dataPickerValueFromJoinable = (
     model: "table",
     db_id: pickerInfo.databaseId,
     schema: getSchemaName(displayInfo.schema),
-  };
-};
-
-const tablePickerValueFromTableEntity = (
-  table: TableEntity,
-): TablePickerValue => {
-  // In DBs without schemas, API will use an empty string to indicate the default, virtual schema
-  const NO_SCHEMA_FALLBACK = "";
-
-  return {
-    db_id: table.db_id,
-    id: table.id,
-    model: "table",
-    name: table.display_name,
-    schema: table.schema_name ?? table.schema?.name ?? NO_SCHEMA_FALLBACK,
   };
 };
 
@@ -155,16 +109,16 @@ export const getSchemaDisplayName = (schemaName: SchemaName | undefined) => {
   return titleize(humanize(schemaName));
 };
 
-export const isModelItem = (
-  value: DataPickerValue | undefined,
-): value is ModelItem => {
-  return value?.model === "dataset";
-};
-
 export const isQuestionItem = (
   value: DataPickerValue | undefined,
 ): value is QuestionItem => {
   return value?.model === "card";
+};
+
+export const isModelItem = (
+  value: DataPickerValue | undefined,
+): value is ModelItem => {
+  return value?.model === "dataset";
 };
 
 export const isTableItem = (
@@ -174,7 +128,7 @@ export const isTableItem = (
 };
 
 export const isValidValueItem = (model: SearchModel): boolean => {
-  return ["dataset", "card", "table"].includes(model);
+  return ["table", "card", "dataset", "metric"].includes(model);
 };
 
 export const createShouldShowItem = (

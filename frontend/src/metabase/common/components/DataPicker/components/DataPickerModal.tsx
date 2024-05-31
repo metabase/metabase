@@ -36,13 +36,14 @@ interface Props {
   databaseId?: DatabaseId;
   title: string;
   value: DataPickerValue | undefined;
+  models?: DataPickerValue["model"][];
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
 
-const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
-
 const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+
+const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -56,11 +57,14 @@ export const DataPickerModal = ({
   databaseId,
   title,
   value,
+  models = ["table", "card", "dataset"],
   onChange,
   onClose,
 }: Props) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { hasModels, hasQuestions } = useAvailableData({ databaseId });
+  const { hasQuestions, hasModels } = useAvailableData({
+    databaseId,
+  });
 
   const modelsShouldShowItem = useMemo(() => {
     return createShouldShowItem(["dataset"], databaseId);
@@ -104,7 +108,7 @@ export const DataPickerModal = ({
     hasModels && hasNestedQueriesEnabled
       ? {
           displayName: t`Models`,
-          model: "dataset",
+          model: "dataset" as const,
           icon: "model",
           element: (
             <QuestionPicker
@@ -119,7 +123,7 @@ export const DataPickerModal = ({
       : undefined,
     {
       displayName: t`Tables`,
-      model: "table",
+      model: "table" as const,
       icon: "table",
       element: (
         <TablePicker
@@ -132,7 +136,7 @@ export const DataPickerModal = ({
     hasQuestions && hasNestedQueriesEnabled
       ? {
           displayName: t`Saved questions`,
-          model: "card",
+          model: "card" as const,
           icon: "folder",
           element: (
             <QuestionPicker
@@ -147,7 +151,7 @@ export const DataPickerModal = ({
       : undefined,
   ].filter(
     (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
-      tab != null,
+      tab != null && models.includes(tab.model),
   );
 
   return (

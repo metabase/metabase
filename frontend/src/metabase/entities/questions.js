@@ -13,16 +13,20 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
+import { compose, withAction, withNormalize } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions/core/types";
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+
+const FETCH_METADATA = "metabase/entities/questions/FETCH_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -55,6 +59,25 @@ const Questions = createEntity({
       ),
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
+  },
+
+  actions: {
+    fetchMetadata: compose(
+      withAction(FETCH_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+      }),
+    )(
+      ({ id } = {}) =>
+        dispatch =>
+          entityCompatibleQuery(
+            id,
+            dispatch,
+            cardApi.endpoints.getCardQueryMetadata,
+          ),
+    ),
   },
 
   objectActions: {
