@@ -724,6 +724,15 @@ BarStackedSeriesLabelsAndTotalsOrdinal.args = {
   renderingContext,
 };
 
+export const BarStackedSeriesLabelsNormalizedAutoCompactness = Template.bind(
+  {},
+);
+BarStackedSeriesLabelsNormalizedAutoCompactness.args = {
+  rawSeries: data.barStackedSeriesLabelsNormalizedAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
