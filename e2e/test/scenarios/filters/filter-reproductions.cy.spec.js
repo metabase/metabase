@@ -1,6 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, tableHeaderClick } from "e2e/support/helpers";
 
 const { REVIEWS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -32,7 +32,7 @@ describe("filter bug reproductions", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByTestId("TableInteractive-root").findByText("Email").click();
+    tableHeaderClick("Email");
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();

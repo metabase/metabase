@@ -2,7 +2,8 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
-import ReactDOM from "react-dom";
+import { findDOMNode } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -158,6 +159,7 @@ class TableInteractive extends Component {
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
     this._div.style.zIndex = "-1";
+    this._root = undefined;
 
     if (this.props.isEmbeddingSdk) {
       const rootElement = document.getElementById(
@@ -317,9 +319,11 @@ class TableInteractive extends Component {
       data: { cols, rows },
     } = this.props;
 
-    ReactDOM.render(
+    this._root = createRoot(this._div);
+
+    this._root.render(
       <EmotionCacheProvider>
-        <div style={{ display: "flex" }}>
+        <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
           {cols.map((column, columnIndex) => (
             <div className="fake-column" key={"column-" + columnIndex}>
               {this.tableHeaderRenderer({
@@ -341,42 +345,47 @@ class TableInteractive extends Component {
           ))}
         </div>
       </EmotionCacheProvider>,
-      this._div,
-      () => {
-        const contentWidths = [].map.call(
-          this._div.getElementsByClassName("fake-column"),
-          columnElement => columnElement.offsetWidth,
-        );
-
-        const columnWidths = cols.map((col, index) => {
-          if (this.columnNeedsResize) {
-            if (
-              this.columnNeedsResize[index] &&
-              !this.columnHasResized[index]
-            ) {
-              this.columnHasResized[index] = true;
-              return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-            } else if (this.state.columnWidths[index]) {
-              return this.state.columnWidths[index];
-            } else {
-              return 0;
-            }
-          } else {
-            return contentWidths[index] + 1;
-          }
-        });
-
-        // Doing this on next tick makes sure it actually gets removed on initial measure
-        setTimeout(() => {
-          ReactDOM.unmountComponentAtNode(this._div);
-        }, 0);
-
-        delete this.columnNeedsResize;
-
-        this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
-      },
     );
   }
+
+  onMeasureHeaderRender = div => {
+    const {
+      data: { cols },
+    } = this.props;
+
+    if (div === null) {
+      return;
+    }
+
+    const contentWidths = [].map.call(
+      div.getElementsByClassName("fake-column"),
+      columnElement => columnElement.offsetWidth,
+    );
+
+    const columnWidths = cols.map((col, index) => {
+      if (this.columnNeedsResize) {
+        if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
+          this.columnHasResized[index] = true;
+          return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+        } else if (this.state.columnWidths[index]) {
+          return this.state.columnWidths[index];
+        } else {
+          return 0;
+        }
+      } else {
+        return contentWidths[index] + 1;
+      }
+    });
+
+    // Doing this on next tick makes sure it actually gets removed on initial measure
+    setTimeout(() => {
+      this._root.unmount();
+    }, 0);
+
+    delete this.columnNeedsResize;
+
+    this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
+  };
 
   recomputeGridSize = () => {
     if (this.header && this.grid) {
@@ -1011,7 +1020,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = ReactDOM.findDOMNode(this.grid)?.scrollTop || 0;
+    const scrollOffset = findDOMNode(this.grid)?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1278,7 +1287,7 @@ class TableInteractive extends Component {
   }
 
   _benchmark() {
-    const grid = ReactDOM.findDOMNode(this.grid);
+    const grid = findDOMNode(this.grid);
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();

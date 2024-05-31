@@ -609,7 +609,7 @@ describe("scenarios > visualizations > line chart", () => {
       series.forEach(serie => {
         const [old_name, new_name] = serie;
 
-        cy.findByDisplayValue(old_name).clear().type(new_name);
+        cy.findByDisplayValue(old_name).clear().type(new_name).blur();
       });
 
       modal()
@@ -695,6 +695,11 @@ describe("scenarios > visualizations > line chart", () => {
       dataset_query: testQuery,
       display: "line",
     });
+
+    queryBuilderMain().within(() => {
+      echartsContainer().findByText("Quantity").should("exist");
+    });
+    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
     cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)

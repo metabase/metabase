@@ -13,7 +13,8 @@ describe("issue 34330", () => {
     const editor = openNativeEditor();
 
     // can't use cy.type because it does not simulate the bug
-    editor.type("USER_");
+    // Delay needed for React 18. TODO: fix shame
+    editor.type("USER").type("_", { delay: 1000 });
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);

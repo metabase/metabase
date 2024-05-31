@@ -69,7 +69,8 @@ interface DashCardVisualizationProps {
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
 
   error?: { message?: string; icon?: IconName };
@@ -103,7 +104,7 @@ export function DashCardVisualization({
   isSlow,
   isPreviewing,
   isEmbed,
-  isPublic,
+  isPublicOrEmbedded,
   isXray,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
@@ -197,7 +198,7 @@ export function DashCardVisualization({
       result: mainSeries,
       isXray,
       isEmbed,
-      isPublic,
+      isPublicOrEmbedded,
       isEditing,
     });
 
@@ -220,7 +221,7 @@ export function DashCardVisualization({
     dashcard.dashboard_id,
     series,
     isEmbed,
-    isPublic,
+    isPublicOrEmbedded,
     isEditing,
     isXray,
     dashboard.id,

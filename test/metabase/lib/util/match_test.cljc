@@ -295,7 +295,7 @@
     (t/is (= [:and nil [:= [:field 100 nil] 20]]
              (lib.util.match/replace [:and
                                       [:=
-                                       [:field "ga:date" {:temporal-unit :day}]
+                                       [:field 1 {:temporal-unit :day}]
                                        [:absolute-datetime #inst "2016-11-08T00:00:00.000-00:00" :day]]
                                       [:= [:field 100 nil] 20]]
                [_ [:field _ (_ :guard :temporal-unit)] & _] nil)))))
