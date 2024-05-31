@@ -4,14 +4,14 @@ import { merge } from "icepick";
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 
-export const unit = (em: number) => ({
-  px: `${em * 16}px`,
-  em: `${em}em`,
+export const unit = (px: number) => ({
+  px: `${px}px`,
+  em: `${px / 16}em`,
 });
 
 const CARTESIAN_LABELS = {
-  label: unit(0.75),
-  goalLine: unit(0.875),
+  label: unit(12),
+  goalLine: unit(14),
 };
 
 /**
