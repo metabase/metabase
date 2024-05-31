@@ -113,7 +113,7 @@ export const tableApi = Api.injectEndpoints({
 export const {
   useListTablesQuery,
   useGetTableQuery,
-  useGetTableMetadataQuery,
+  useGetTableQueryMetadataQuery,
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
