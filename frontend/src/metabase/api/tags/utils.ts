@@ -32,8 +32,8 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
-  DashboardMetadata,
-  CardMetadata,
+  DashboardQueryMetadata,
+  CardQueryMetadata,
   CardId,
   DashboardId,
 } from "metabase-types/api";
@@ -139,7 +139,7 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
 
 export function provideCardMetadataTags(
   id: CardId,
-  metadata: CardMetadata,
+  metadata: CardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [
     idTag("card", id),
@@ -243,7 +243,7 @@ export function provideDashboardTags(
 
 export function provideDashboardMetadataTags(
   id: DashboardId,
-  metadata: DashboardMetadata,
+  metadata: DashboardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [
     idTag("dashboard", id),

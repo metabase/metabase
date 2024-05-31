@@ -18,7 +18,7 @@ import {
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
-  setupCardMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -35,6 +35,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockColumn,
   createMockDataset,
@@ -247,7 +248,10 @@ export const setup = async ({
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
-    setupCardMetadataEndpoint(card, [TEST_DB]);
+    setupCardQueryMetadataEndpoint(
+      card,
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);

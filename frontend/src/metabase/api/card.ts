@@ -1,7 +1,7 @@
 import type {
   Card,
   CardId,
-  CardMetadata,
+  CardQueryMetadata,
   CreateCardRequest,
   GetCardRequest,
   ListCardsRequest,
@@ -37,7 +37,7 @@ export const cardApi = Api.injectEndpoints({
       }),
       providesTags: card => (card ? provideCardTags(card) : []),
     }),
-    getCardMetadata: builder.query<CardMetadata, CardId>({
+    getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
       query: id => ({
         method: "GET",
         url: `/api/card/${id}/query_metadata`,

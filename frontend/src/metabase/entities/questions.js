@@ -78,7 +78,7 @@ const Questions = createEntity({
           entityCompatibleQuery(
             id,
             dispatch,
-            cardApi.endpoints.getCardMetadata,
+            cardApi.endpoints.getCardQueryMetadata,
           ),
     ),
   },

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupCardMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -18,7 +18,10 @@ import type {
   StructuredDatasetQuery,
   WritebackQueryAction,
 } from "metabase-types/api";
-import { createMockQueryAction } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockQueryAction,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createStructuredModelCard,
@@ -45,7 +48,10 @@ async function setup({
 }) {
   setupDatabasesEndpoints([database]);
   setupCardsEndpoints([model]);
-  setupCardMetadataEndpoint(model, [database]);
+  setupCardQueryMetadataEndpoint(
+    model,
+    createMockCardQueryMetadata({ databases: [database] }),
+  );
   setupModelActionsEndpoints(actions, model.id);
 
   renderWithProviders(getModelRoutes(), {

@@ -8,7 +8,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupCardMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   fireEvent,
@@ -38,6 +38,7 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
+  createMockCardQueryMetadata,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
@@ -164,7 +165,7 @@ function createNativeModelCard(card?: Partial<Card>) {
   });
 }
 
-const TEST_QUERY = "UPDATE orders SET status = 'shipped";
+const TEST_QUERY = "UPDATE orders SET status = 'shipped'";
 
 function createMockQueryAction(
   opts?: Partial<WritebackQueryAction>,
@@ -224,7 +225,19 @@ async function setup({
   );
 
   setupCardsEndpoints([card]);
-  setupCardMetadataEndpoint(card, databases);
+  setupCardQueryMetadataEndpoint(
+    card,
+    createMockCardQueryMetadata({
+      databases,
+      tables: [
+        createMockTable({
+          id: `card__${card.id}`,
+          name: card.name,
+          fields: card.result_metadata,
+        }),
+      ],
+    }),
+  );
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });
 

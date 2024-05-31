@@ -5,12 +5,16 @@ import {
   setupUnauthorizedSchemaEndpoints,
   setupUnauthorizedCardEndpoints,
   setupDatabaseEndpoints,
-  setupCardMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
 import Question from "metabase-lib/v1/Question";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockColumn,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 const databaseMock = createSampleDatabase();
@@ -37,7 +41,12 @@ const setupQuestion = ({ id, name, hasAccess }) => {
 
   if (hasAccess) {
     setupCardEndpoints(q.card());
-    setupCardMetadataEndpoint(q.card(), [databaseMock]);
+    setupCardQueryMetadataEndpoint(
+      q.card(),
+      createMockCardQueryMetadata({
+        databases: [databaseMock],
+      }),
+    );
   } else {
     setupUnauthorizedCardEndpoints(q.card());
   }

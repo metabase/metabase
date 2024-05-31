@@ -4,7 +4,7 @@ import { within } from "@testing-library/react";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
-  setupCardMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
   setupDatabaseEndpoints,
   setupTableEndpoints,
@@ -24,6 +24,7 @@ import {
 } from "metabase/query_builder/actions";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -65,7 +66,12 @@ const setup = ({
   const TEST_CARD = createMockCard();
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
-    setupCardMetadataEndpoint(TEST_CARD, [TEST_DB]);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [TEST_DB],
+      }),
+    );
   } else {
     setupUnauthorizedCardEndpoints(TEST_CARD);
   }

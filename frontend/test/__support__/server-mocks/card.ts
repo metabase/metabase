@@ -1,7 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card, CardId, Database, Dataset } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  CardQueryMetadata,
+  Dataset,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -15,15 +20,11 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}/series`, []);
 }
 
-export function setupCardMetadataEndpoint(card: Card, databases: Database[]) {
-  const tables = databases.flatMap(database => database.tables ?? []);
-  const fields = tables.flatMap(table => table.fields ?? []);
-
-  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, {
-    databases,
-    tables,
-    fields,
-  });
+export function setupCardQueryMetadataEndpoint(
+  card: Card,
+  metadata: CardQueryMetadata,
+) {
+  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, metadata);
 }
 
 export function setupCardsEndpoints(cards: Card[]) {

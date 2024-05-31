@@ -233,7 +233,7 @@ export type CardFilterOption =
   | "using_model"
   | "archived";
 
-export type CardMetadata = {
+export type CardQueryMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];

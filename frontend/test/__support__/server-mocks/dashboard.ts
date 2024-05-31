@@ -1,10 +1,9 @@
 import fetchMock from "fetch-mock";
 
 import type {
-  Card,
   Dashboard,
   DashboardId,
-  Database,
+  DashboardQueryMetadata,
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -16,22 +15,11 @@ export function setupDashboardEndpoints(dashboard: Dashboard) {
   });
 }
 
-export function setupDashboardMetadataEndpoint(
+export function setupDashboardQueryMetadataEndpoint(
   dashboard: Dashboard,
-  databases: Database[],
-  cards: Card[] = [],
-  dashboards: Dashboard[] = [],
+  metadata: DashboardQueryMetadata,
 ) {
-  const tables = databases.flatMap(database => database.tables ?? []);
-  const fields = tables.flatMap(table => table.fields ?? []);
-
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/query_metadata`, {
-    databases,
-    tables,
-    fields,
-    cards,
-    dashboards,
-  });
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}/query_metadata`, metadata);
 }
 
 export function setupDashboardsEndpoints(dashboards: Dashboard[]) {

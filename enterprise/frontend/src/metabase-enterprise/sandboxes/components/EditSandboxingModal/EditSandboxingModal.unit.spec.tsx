@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupCardMetadataEndpoint,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -17,7 +17,11 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockCollection,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PEOPLE,
@@ -82,7 +86,12 @@ const setup = ({
     });
     fetchMock.get("path:/api/collection/1", EDITABLE_ROOT_COLLECTION);
     setupCardsEndpoints([TEST_CARD]);
-    setupCardMetadataEndpoint(TEST_CARD, [database]);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [database],
+      }),
+    );
   }
 
   const onSave = jest.fn();

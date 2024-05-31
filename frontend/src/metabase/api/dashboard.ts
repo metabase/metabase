@@ -3,7 +3,7 @@ import type {
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
-  DashboardMetadata,
+  DashboardQueryMetadata,
   GetDashboardRequest,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -44,7 +44,10 @@ export const dashboardApi = Api.injectEndpoints({
       providesTags: dashboard =>
         dashboard ? provideDashboardTags(dashboard) : [],
     }),
-    getDashboardMetadata: builder.query<DashboardMetadata, DashboardId>({
+    getDashboardQueryMetadata: builder.query<
+      DashboardQueryMetadata,
+      DashboardId
+    >({
       query: id => ({
         method: "GET",
         url: `/api/dashboard/${id}/query_metadata`,
