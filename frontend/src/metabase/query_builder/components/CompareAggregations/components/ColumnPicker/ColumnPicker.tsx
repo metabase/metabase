@@ -59,7 +59,7 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
 const Item = forwardRef<
   HTMLDivElement,
   ItemType & ComponentPropsWithoutRef<"div">
->(function SelectItem({ example, label, ...props }, ref) {
+>(function SelectItem({ example, label, value, ...props }, ref) {
   return (
     <div ref={ref} {...props}>
       <Flex align="center" justify="space-between">
