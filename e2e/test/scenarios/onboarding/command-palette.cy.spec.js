@@ -101,17 +101,25 @@ describe("command palette", () => {
     commandPalette().should("not.exist");
 
     openCommandPalette();
-    //wait for things to render
+
     commandPalette()
-      .findByRole("option", { name: "New question" })
-      .should("exist");
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
+
+    commandPalette()
+      .findByRole("option", { name: "Orders" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageDown();
+
     commandPalette()
       .findByRole("option", { name: "New dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
+
     commandPalette()
       .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
@@ -119,11 +127,6 @@ describe("command palette", () => {
     pressPageUp();
     commandPalette()
       .findByRole("option", { name: "New question" })
-      .should("have.attr", "aria-selected", "true");
-
-    pressPageUp();
-    commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressEnd();

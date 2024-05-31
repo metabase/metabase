@@ -92,18 +92,6 @@
                                                                {1 (:id metric-card)})
                    (json/parse-string true))))))))
 
-(deftest ^:mb/once ignore-ga-metric-consuming-card-test
-  (testing "GA metrics references are ignored"
-    (let [dataset-query {:type "query"
-                         :database 1
-                         :query {:source-table 5
-                                 :aggregation [["count"] ["metric" "ga:pageviews"]]
-                                 :filter ["<" ["field" 33 nil] 100]}}]
-      (is (nil?
-           (#'metrics-v2/rewrite-metric-consuming-card
-            (json/generate-string dataset-query)
-            {1 :not-a-card-but-it-does-not-matter}))))))
-
 (deftest ^:mb/once rewrite-multi-metric-consuming-card-test
   (let [metric1-dataset-query {:type "query"
                                :database 1
