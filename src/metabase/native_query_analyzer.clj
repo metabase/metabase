@@ -52,7 +52,7 @@
 ;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
 (def ^:private quotes "\"`")
 
-(defn- quote-stripper
+(defn- quote->stripper
   "Construct a function which unquotes values which use the given character as their quote."
   [quote-char]
   (let [doubled (str quote-char quote-char)
@@ -62,7 +62,7 @@
 
 (def ^:private quote-strippers
   "Pre-constructed lambdas, to save some memory allocations."
-  (zipmap quotes (map quote-stripper quotes)))
+  (zipmap quotes (map quote->stripper quotes)))
 
 (defn- field-query
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
