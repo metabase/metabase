@@ -309,7 +309,8 @@
           (test-automagic-analysis (t2/select-one Card :id card-id) 2))))))
 
 (defn- result-metadata-for-query [query]
-  (qp.metadata/result-metadata query {:legacy-metadata? true}))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query nil))
 
 (deftest explicit-filter-test
   (mt/with-non-admin-groups-no-root-collection-perms

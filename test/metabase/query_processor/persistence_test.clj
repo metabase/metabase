@@ -85,7 +85,7 @@
 
 (defn- populate-metadata [{query :dataset_query id :id :as _model}]
   (let [updater (a/thread
-                  (let [metadata (qp.metadata/result-metadata query {:legacy-metadata? true})]
+                  (let [metadata #_{:clj-kondo/ignore [:deprecated-var]} (qp.metadata/legacy-result-metadata query nil)]
                     (t2/update! :model/Card id {:result_metadata metadata})))]
     ;; 4 seconds is long but redshift can be a little slow
     (when (= ::timed-out (mt/wait-for-result updater 4000 ::timed-out))
