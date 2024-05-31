@@ -62,6 +62,7 @@ const getMinDistanceFromTimelineEventGroup = (
 
   const countLabelWidth = renderingContext.measureText(eventsCount.toString(), {
     ...CHART_STYLE.axisTicks,
+    size: renderingContext.theme.cartesian.label.fontSize,
     family: renderingContext.fontFamily,
   });
 

@@ -45,7 +45,7 @@ const getYAxisTicksWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
-  { measureText, fontFamily }: RenderingContext,
+  { measureText, fontFamily, theme }: RenderingContext,
 ): number => {
   if (!settings["graph.y_axis.axis_enabled"]) {
     return 0;
@@ -54,7 +54,9 @@ const getYAxisTicksWidth = (
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     family: fontFamily,
+    size: theme.cartesian.label.fontSize,
   };
+
   // extents need to be untransformed to get the value of the tick label
   const [min, max] = axisModel.extent.map(extent =>
     yAxisScaleTransforms.fromEChartsAxisValue(extent),
@@ -129,7 +131,7 @@ const getXAxisTicksWidth = (
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
-    fontSize,
+    size: fontSize,
     family: fontFamily,
   };
 

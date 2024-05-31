@@ -1,17 +1,14 @@
-import type { MantineThemeOverride } from "@mantine/core";
 import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import type { MantineThemeOverride } from "metabase/ui";
 
-export const unit = (px: number) => ({
-  px: `${px}px`,
-  em: `${px / 16}em`,
-});
+const fromPx = (px: number) => ({ px: `${px}px`, em: `${px / 16}em` });
 
-const CARTESIAN_LABELS = {
-  label: unit(12),
-  goalLine: unit(14),
+export const CHART_SIZES = {
+  label: fromPx(12),
+  goalLabel: fromPx(14),
 };
 
 /**
@@ -39,9 +36,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   cartesian: {
-    label: { fontSize: CARTESIAN_LABELS.label.px },
+    label: { fontSize: CHART_SIZES.label.px },
     goalLine: {
-      label: { fontSize: CARTESIAN_LABELS.goalLine.px },
+      label: { fontSize: CHART_SIZES.goalLabel.px },
     },
   },
 };
@@ -58,10 +55,13 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
         backgroundColor: "bg-white",
       },
     },
+
+    // Apply em units to indicate that the font size
+    // is relative to the base font size by default.
     cartesian: {
-      label: { fontSize: CARTESIAN_LABELS.label.em },
+      label: { fontSize: CHART_SIZES.label.em },
       goalLine: {
-        label: { fontSize: CARTESIAN_LABELS.goalLine.em },
+        label: { fontSize: CHART_SIZES.goalLabel.em },
       },
     },
   },
