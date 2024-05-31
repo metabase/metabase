@@ -244,7 +244,7 @@ const getAttributeValues = (
     // ldap port is number | null, we need to edit as a string if it is a number
     "ldap-port":
       typeof attributeValues["ldap-port"] === "number"
-        ? "" + attributeValues["ldap-port"]
+        ? String(attributeValues["ldap-port"])
         : attributeValues["ldap-port"],
   };
 };
