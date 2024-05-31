@@ -70,6 +70,14 @@
                 ;;       distinguish between them.
    :dashboard :table :collection])
 
+(defn ->model
+  "Given a model of interest, returns the model for it."
+  [moi]
+  (keyword "model"
+           (if (#{:model :card} moi)
+             "card"
+             (name moi))))
+
 (defn- ids-to-prune-for-user+model [user-id model]
   (t2/select-fn-set :id
                     :model/RecentViews

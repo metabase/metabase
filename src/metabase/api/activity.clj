@@ -123,10 +123,10 @@
   "Get a list of recent items the current user has been viewing most recently.
   Allows for filtering by context, either view or selection"
   [:as {{:keys [context]} :params}]
-  {context [:maybe [:enum :views :selections :all]]}
-  (when (#{:selection nil :all} context)
-    (throw (ex-info "selections are not implemented " {})))
-  (when (= :views context) {:recent_views (recent-views/get-list *current-user-id*)}))
+  {context [:enum :views :selections :all]}
+  (let [recent-views-list (recent-views/get-list *current-user-id*)]
+    (merge (when (#{:all :views} context) {:recent_views recent-views-list})
+           (when (#{:all :selections} context) {:recent_selections recent-views-list}))))
 
 (api/defendpoint POST "/recents"
   "Adds a model to the list of recently viewed or selected items."
