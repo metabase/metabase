@@ -20,7 +20,11 @@ export const DashboardLoadingAndErrorWrapper = styled(
     isNightMode,
     className,
     ...props
-  }: ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
+  }: {
+    isFullscreen?: boolean;
+    isNightMode?: boolean;
+    isFullHeight?: boolean;
+  } & ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
     return (
       <LoadingAndErrorWrapper
         className={cx(className, DashboardS.Dashboard, {

@@ -1,25 +1,10 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import type { LoadingAndErrorWrapperProps } from "metabase/components/LoadingAndErrorWrapper/types";
 import { Transition } from "metabase/ui";
 
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
-
-export type LoadingAndErrorWrapperProps = {
-  className?: string;
-  error: any;
-  loading: any;
-  noBackground?: boolean;
-  noWrapper?: boolean;
-  children?: ReactNode;
-  style?: object;
-  showSpinner?: boolean;
-  loadingMessages?: string[];
-  messageInterval?: number;
-  loadingScenes?: string[];
-  renderError?: (error: any) => ReactNode;
-  "data-testid"?: string;
-};
 
 /**
  * A loading/error display component that waits a bit before appearing
