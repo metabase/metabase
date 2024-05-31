@@ -220,7 +220,6 @@
   [driver feature database]
   (try
     (u/with-timeout supports?-timeout-ms
-      ;; clj-kondo this
       (driver/database-supports? driver feature database))
     (catch Throwable e
       (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
