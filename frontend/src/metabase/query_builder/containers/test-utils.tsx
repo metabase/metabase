@@ -247,7 +247,7 @@ export const setup = async ({
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
-    setupCardMetadataEndpoint(card, TEST_DB);
+    setupCardMetadataEndpoint(card, [TEST_DB]);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);

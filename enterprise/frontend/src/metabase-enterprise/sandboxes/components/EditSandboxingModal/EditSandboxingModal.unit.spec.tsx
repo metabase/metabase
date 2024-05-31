@@ -82,7 +82,7 @@ const setup = ({
     });
     fetchMock.get("path:/api/collection/1", EDITABLE_ROOT_COLLECTION);
     setupCardsEndpoints([TEST_CARD]);
-    setupCardMetadataEndpoint(TEST_CARD, database);
+    setupCardMetadataEndpoint(TEST_CARD, [database]);
   }
 
   const onSave = jest.fn();

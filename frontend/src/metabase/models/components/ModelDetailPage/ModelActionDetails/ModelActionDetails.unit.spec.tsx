@@ -45,7 +45,7 @@ async function setup({
 }) {
   setupDatabasesEndpoints([database]);
   setupCardsEndpoints([model]);
-  setupCardMetadataEndpoint(model, database);
+  setupCardMetadataEndpoint(model, [database]);
   setupModelActionsEndpoints(actions, model.id);
 
   renderWithProviders(getModelRoutes(), {

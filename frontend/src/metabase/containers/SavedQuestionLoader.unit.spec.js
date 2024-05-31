@@ -37,7 +37,7 @@ const setupQuestion = ({ id, name, hasAccess }) => {
 
   if (hasAccess) {
     setupCardEndpoints(q.card());
-    setupCardMetadataEndpoint(q.card(), databaseMock);
+    setupCardMetadataEndpoint(q.card(), [databaseMock]);
   } else {
     setupUnauthorizedCardEndpoints(q.card());
   }

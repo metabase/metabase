@@ -15,8 +15,7 @@ export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}/series`, []);
 }
 
-export function setupCardMetadataEndpoint(card: Card, database: Database) {
-  const databases = [database];
+export function setupCardMetadataEndpoint(card: Card, databases: Database[]) {
   const tables = databases.flatMap(database => database.tables ?? []);
   const fields = tables.flatMap(table => table.fields ?? []);
 

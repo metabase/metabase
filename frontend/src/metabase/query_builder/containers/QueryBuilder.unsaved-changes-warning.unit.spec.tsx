@@ -95,7 +95,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
       setupCardCreateEndpoint();
       setupCardEndpoints(TEST_NATIVE_CARD);
-      setupCardMetadataEndpoint(TEST_NATIVE_CARD, TEST_DB);
+      setupCardMetadataEndpoint(TEST_NATIVE_CARD, [TEST_DB]);
 
       await startNewNotebookModel();
       await waitForSaveToBeEnabled();
@@ -509,7 +509,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/",
       });
       setupCardsEndpoints([TEST_NATIVE_CARD]);
-      setupCardMetadataEndpoint(TEST_NATIVE_CARD, TEST_DB);
+      setupCardMetadataEndpoint(TEST_NATIVE_CARD, [TEST_DB]);
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(

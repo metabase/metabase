@@ -65,7 +65,7 @@ const setup = ({
   const TEST_CARD = createMockCard();
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
-    setupCardMetadataEndpoint(TEST_CARD, TEST_DB);
+    setupCardMetadataEndpoint(TEST_CARD, [TEST_DB]);
   } else {
     setupUnauthorizedCardEndpoints(TEST_CARD);
   }

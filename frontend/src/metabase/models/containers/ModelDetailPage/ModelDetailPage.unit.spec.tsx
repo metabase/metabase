@@ -8,6 +8,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupCardMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   fireEvent,
@@ -223,6 +224,7 @@ async function setup({
   );
 
   setupCardsEndpoints([card]);
+  setupCardMetadataEndpoint(card, databases);
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });
 
