@@ -1,4 +1,4 @@
-import { fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import {
@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { PublicQuestion } from "./PublicQuestion";
+import { PublicOrEmbeddedQuestion } from "./PublicOrEmbeddedQuestion";
 
 registerVisualizations();
 
@@ -68,7 +68,7 @@ async function setup() {
   );
 
   renderWithProviders(
-    <Route path="public/question/:uuid" component={PublicQuestion} />,
+    <Route path="public/question/:uuid" component={PublicOrEmbeddedQuestion} />,
     {
       storeInitialState: createMockState(),
       withRouter: true,
@@ -78,17 +78,17 @@ async function setup() {
   expect(await screen.findByText(QUESTION_NAME)).toBeInTheDocument();
 }
 
-describe("PublicQuestion", () => {
+describe("PublicOrEmbeddedQuestion", () => {
   it("should render data", async () => {
     await setup();
-    expect(screen.getByText("John W.")).toBeInTheDocument();
+    expect(await screen.findByText("John W.")).toBeInTheDocument();
   });
 
   it("should update card settings when visualization component changes them (metabase#37429)", async () => {
     await setup();
 
-    fireEvent.click(
-      screen.getByRole("button", {
+    await userEvent.click(
+      await screen.findByRole("button", {
         name: /update settings/i,
       }),
     );
