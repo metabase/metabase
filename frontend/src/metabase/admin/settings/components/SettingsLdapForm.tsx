@@ -226,7 +226,7 @@ export const SettingsLdapFormView = ({
 
 const getAttributeValues = (
   ldapAttributes: SettingKey[],
-  settings: Record<SettingKey, LdapFormSettingElement>,
+  settings: Record<string, LdapFormSettingElement>,
   values: SettingValues,
   defaultableAttrs: Set<string>,
 ): LdapFormValues => {
