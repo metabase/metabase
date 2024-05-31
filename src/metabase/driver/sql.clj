@@ -9,6 +9,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -38,12 +39,12 @@
                       :full-join]]
   (defmethod driver/database-supports? [:sql join-feature]
     [driver _feature db]
-    (driver/database-supports? driver :foreign-keys db)))
+    (driver.u/supports? driver :foreign-keys db)))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
   (and
-    (driver/database-supports? driver :persist-models db)
+    (driver.u/supports? driver :persist-models db)
     (-> db :settings :persist-models-enabled)))
 
 (defmethod driver/mbql->native :sql

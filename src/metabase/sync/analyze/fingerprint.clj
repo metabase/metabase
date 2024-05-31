@@ -233,7 +233,7 @@
   [database        :- i/DatabaseInstance
    tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
-  (if (driver/database-supports? (:engine database) :fingerprint database)
+  (if (driver.u/supports? (:engine database) :fingerprint database)
     (fingerprint-fields-for-db!* database tables log-progress-fn)
     (empty-stats-map 0)))
 

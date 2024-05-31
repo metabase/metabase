@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
@@ -20,10 +21,13 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
-   (com.fasterxml.jackson.core JsonFactory JsonParser JsonToken JsonParser$NumberType)
+   (com.fasterxml.jackson.core
+    JsonFactory
+    JsonParser
+    JsonParser$NumberType
+    JsonToken)
    (java.sql Connection DatabaseMetaData ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -188,7 +192,7 @@
              :json-unfolding    json?}
             (when semantic-type
               {:semantic-type semantic-type})
-            (when (and json? (driver/database-supports? driver :nested-field-columns db))
+            (when (and json? (driver.u/supports? driver :nested-field-columns db))
               {:visibility-type :details-only}))))))
 
 (defn describe-table-fields-xf

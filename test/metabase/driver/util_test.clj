@@ -3,13 +3,15 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures])
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u])
   (:import
    (java.nio.charset StandardCharsets)
    (java.util Base64)
@@ -276,8 +278,30 @@
    (is (=? {:driver-name "H2", :superseded-by :deprecated}
            (:h2 (driver.u/available-drivers-info))))))
 
-(deftest ^:paralell database-id->driver-use-qp-store-test
+(deftest ^:parallel database-id->driver-use-qp-store-test
   (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                     {:database (assoc meta/database :id Integer/MAX_VALUE, :engine :wow)})
     (is (= :wow
            (driver.u/database->driver Integer/MAX_VALUE)))))
+
+(deftest supports?-failure-test
+  (let [fake-test-db (mt/db)]
+    (testing "supports? returns false when `driver/database-supports?` throws an exception"
+      (with-redefs [driver/database-supports? (fn [_ _ _] (throw (Exception. "test exception message")))]
+        (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
+                             (is (false? (driver.u/supports? :test-driver :test-feature fake-test-db))))]
+          (is (some (fn [[level exception message]]
+                      (and (= level :error)
+                           (= (.getMessage exception) "test exception message")
+                           (= message (u/format-color 'red "failed to check feature 'test-feature' for database 'test-data'"))))
+                    log-messages)))))
+    (testing "supports? returns false when `driver/database-supports?` takes longer than the timeout"
+      (with-redefs [driver.u/supports?-timeout-ms 100
+                    driver/database-supports?     (fn [_ _ _] (Thread/sleep 200) true)]
+        (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
+                             (is (false? (driver.u/supports? :test-driver :test-feature fake-test-db))))]
+          (is (some (fn [[level exception message]]
+                      (and (= level :error)
+                           (= (.getMessage exception) "Timed out after 100.0 ms")
+                           (= message (u/format-color 'red "failed to check feature 'test-feature' for database 'test-data'"))))
+                    log-messages)))))))

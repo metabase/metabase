@@ -415,17 +415,17 @@
 
 (defn- columns-with-auto-pk [columns]
   (cond-> columns
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (#'upload/columns-with-auto-pk)))
 
 (defn- header-with-auto-pk [header]
   (cond->> header
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (cons @#'upload/auto-pk-column-name)))
 
 (defn- rows-with-auto-pk [rows]
   (cond->> rows
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
@@ -449,7 +449,7 @@
                                 ["number" {:base_type :type/Float}]
                                 ["date" {:base_type :type/Date}]
                                 ["datetime" {:base_type :type/DateTime}]]
-                        (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                        (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                         (cons ["_mb_row_id" {:semantic_type     :type/PK
                                              :base_type         :type/BigInteger}]))
                       (->> (t2/select :model/Field :table_id (:id table))
@@ -912,7 +912,7 @@
 (deftest create-csv-upload!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Happy path with table prefix, and without schema"
-      (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+      (if (driver.u/supports? driver/*driver* :schemas (mt/db))
         (is (thrown-with-msg?
               java.lang.Exception
               #"^A schema has not been set."
@@ -1221,7 +1221,7 @@
                               - extra_1")
 
                      ["_mb_row_id,id, extra 2"]
-                     (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                     (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                        (trim-lines "The CSV file is missing columns that are in the table:
                                    - name
 
@@ -1685,7 +1685,7 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
-              (doseq [auto-pk-column? (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+              (doseq [auto-pk-column? (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                                         [true false]
                                         [false])]
                 (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
