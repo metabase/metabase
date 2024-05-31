@@ -52,7 +52,7 @@
 ;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
 (def ^:private quotes "\"`")
 
-(defn- quote->stripper
+(defn- quote-stripper
   "Construct a function which unquotes values which use the given character as their quote."
   [quote-char]
   (let [doubled (str quote-char quote-char)
@@ -60,15 +60,15 @@
     #(-> (subs % 1 (dec (count %)))
          (str/replace doubled single))))
 
-(def ^:private quote-strippers
+(def ^:private quote->stripper
   "Pre-constructed lambdas, to save some memory allocations."
-  (zipmap quotes (map quote->stripper quotes)))
+  (zipmap quotes (map quote-stripper quotes)))
 
 (defn- field-query
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
   [field value]
-  (if-let [quote-stripper (quote-strippers (first value))]
-    [:= field (quote-stripper value)]
+  (if-let [f (quote->stripper (first value))]
+    [:= field (f value)]
     ;; Technically speaking this is not correct for all databases.
     ;;
     ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
