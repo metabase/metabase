@@ -210,7 +210,12 @@
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver database]
   (set (for [feature driver/features
-             :when (driver/database-supports? driver feature database)]
+             :when (try
+                     ;; catch any exceptions thrown by the driver to avoid crashing the app
+                     (driver/database-supports? driver feature database)
+                     (catch Throwable e
+                       (log/error e (u/format-color 'red "failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+                       false))]
          feature)))
 
 (defn available-drivers
