@@ -1,12 +1,27 @@
 import type { DatabaseId } from "metabase-types/api/database";
 
-export interface DatabaseCandidate {
-  id: string;
-  schema: string;
-  tables: TableCandidate[];
+export type XrayEntityType =
+  | "table"
+  | "segment"
+  | "metric"
+  | "model"
+  | "question"
+  | "adhoc"
+  | "field"
+  | "transform";
+
+export interface GetXrayDashboardQueryMetadataRequest {
+  entity: XrayEntityType;
+  entityId: number | string;
 }
 
-export interface TableCandidate {
+export interface DatabaseXray {
+  id: string;
+  schema: string;
+  tables: TableXray[];
+}
+
+export interface TableXray {
   title: string;
   url: string;
 }
