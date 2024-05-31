@@ -162,6 +162,10 @@
       (map (fn [database]
              (cond-> database
                (= (:engine database) "h2") (assoc :details "{}")))))
+    :model/Setting
+    ;; Never create dumps with read-only-mode turned on.
+    ;; It will be confusing to restore from and prevent key rotation.
+    (remove (fn [{k :key}] (= k "read-only-mode")))
     ;; else
     identity))
 

@@ -55,7 +55,7 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    popover().findByText("Gizmo").click();
+    cy.findByPlaceholderText("Enter some text").type("Gizmo").blur();
     cy.button("Add filter").click();
 
     cy.findAllByText("Doohickey").should("not.exist");

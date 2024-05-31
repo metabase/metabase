@@ -294,3 +294,10 @@ OrdinalNullDimension.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const TwoBarsWithTotal = Template.bind({});
+TwoBarsWithTotal.args = {
+  rawSeries: data.twoBarsWithTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};

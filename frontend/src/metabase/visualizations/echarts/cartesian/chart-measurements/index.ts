@@ -1,11 +1,15 @@
 import { isNotNull } from "metabase/lib/types";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import {
+  ORIGINAL_INDEX_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
   CartesianChartModel,
   ChartDataset,
   NumericAxisScaleTransforms,
+  StackModel,
   XAxisModel,
   YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -27,7 +31,7 @@ const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
 
 const getValuesToMeasure = (min: number, max: number): number[] => {
   if (min === max) {
-    return [min, max];
+    return [min];
   }
 
   const stepsCount = 4;
@@ -524,6 +528,104 @@ const areHorizontalXAxisTicksOverlapping = (
   });
 };
 
+const countFittingLabels = (
+  chartModel: CartesianChartModel,
+  barStack: StackModel,
+  barWidth: number,
+  renderingContext: RenderingContext,
+) => {
+  return barStack.seriesKeys.reduce(
+    (fitCounts, seriesKey) => {
+      const formatter = chartModel.seriesLabelsFormatters?.[seriesKey];
+      if (!formatter) {
+        return fitCounts;
+      }
+
+      const seriesFitCounts = chartModel.transformedDataset.reduce(
+        (fitCounts, datum, index) => {
+          const originalDatumIndex = datum[ORIGINAL_INDEX_DATA_KEY ?? index];
+          const value =
+            originalDatumIndex != null
+              ? chartModel.dataset[originalDatumIndex][seriesKey]
+              : null;
+
+          // Nulls and zeros should not be considered because they can't have labels
+          if (value == null || value === 0) {
+            return fitCounts;
+          }
+
+          const valueWidth = renderingContext.measureText(formatter(value), {
+            weight: CHART_STYLE.seriesLabels.weight,
+            size: CHART_STYLE.seriesLabels.size,
+            family: renderingContext.fontFamily,
+          });
+
+          const canFitHorizontally =
+            valueWidth + 2 * CHART_STYLE.seriesLabels.stackedPadding < barWidth;
+
+          if (canFitHorizontally) {
+            fitCounts.horizontalFitCount += 1;
+          }
+          fitCounts.valuesCount += 1;
+
+          return fitCounts;
+        },
+        { horizontalFitCount: 0, valuesCount: 0 },
+      );
+
+      fitCounts.valuesCount += seriesFitCounts.valuesCount;
+      fitCounts.horizontalFitCount += seriesFitCounts.horizontalFitCount;
+
+      return fitCounts;
+    },
+    { horizontalFitCount: 0, valuesCount: 0 },
+  );
+};
+
+const BAR_WIDTH_PRECISION = 0.85;
+const HORIZONTAL_LABELS_COUNT_THRESHOLD = 0.8;
+
+const getStackedBarTicksRotation = (
+  chartModel: CartesianChartModel,
+  boundaryWidth: number,
+  renderingContext: RenderingContext,
+) => {
+  const barStack = chartModel.stackModels.find(
+    stackModel => stackModel.display === "bar",
+  );
+
+  if (!barStack) {
+    return;
+  }
+
+  const barWidth =
+    getDimensionWidth(chartModel, boundaryWidth) *
+    CHART_STYLE.series.barWidth *
+    BAR_WIDTH_PRECISION;
+
+  if (barWidth < CHART_STYLE.seriesLabels.size) {
+    return;
+  }
+
+  const labelsFit = countFittingLabels(
+    chartModel,
+    barStack,
+    barWidth,
+    renderingContext,
+  );
+
+  if (labelsFit.valuesCount === 0) {
+    return;
+  }
+
+  // We prefer horizontal labels as they are easier to read.
+  // If we can't display a sufficient number of horizontal labels, we will try rendering them rotated.
+  return labelsFit.horizontalFitCount / labelsFit.valuesCount >=
+    HORIZONTAL_LABELS_COUNT_THRESHOLD
+    ? "horizontal"
+    : "vertical";
+};
+
 export const getChartMeasurements = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -556,6 +658,12 @@ export const getChartMeasurements = (
     ticksDimensions.yTicksWidthLeft -
     ticksDimensions.yTicksWidthRight;
 
+  const stackedBarTicksRotation = getStackedBarTicksRotation(
+    chartModel,
+    boundaryWidth,
+    renderingContext,
+  );
+
   return {
     ticksDimensions,
     padding,
@@ -563,5 +671,6 @@ export const getChartMeasurements = (
     boundaryWidth,
     outerHeight: height,
     axisEnabledSetting,
+    stackedBarTicksRotation,
   };
 };

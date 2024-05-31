@@ -2,6 +2,7 @@ import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -60,18 +61,36 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
+    const [_, fieldIdOrName] = fieldRef;
+    const fields = metadata.fieldsList();
+    if (typeof fieldIdOrName === "number") {
+      // performance optimization:
+      // we can match by id directly without finding this column via query
+      return fields.find(field => field.id === fieldIdOrName);
+    }
+
+    const fieldsWithName = fields.filter(
+      field => typeof field.id === "number" && field.name === fieldIdOrName,
+    );
+    if (fieldsWithName.length === 0) {
+      // performance optimization:
+      // if there are no matching fields, do not call MBQL lib
+      return null;
+    }
+    if (fieldsWithName.length === 1) {
+      // performance optimization:
+      // if there is exactly 1 field, assume that it's related to this query and do not call MBQL lib
+      return fieldsWithName[0];
+    }
+
     const query = question.query();
     const stageIndex = -1;
     const columns = Lib.visibleColumns(query, stageIndex);
 
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
-      // we cannot correctly find a field in all cases this way
-      const [_, fieldIdOrName] = fieldRef;
-      const fields = metadata.fieldsList();
-      return fields.find(
-        field => field.id === fieldIdOrName || field.name === fieldIdOrName,
-      );
+      // there is no way to find the correct field so pick the first one matching by name
+      return fieldsWithName[0];
     }
 
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
@@ -120,7 +139,7 @@ export function buildColumnTarget(
 export function buildTemplateTagVariableTarget(
   variable: TemplateTagVariable,
 ): ParameterVariableTarget {
-  return ["variable", variable.mbql()];
+  return ["variable", normalize(variable.mbql())];
 }
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {

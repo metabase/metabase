@@ -6,17 +6,13 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
-import { getIsMetadataLoaded } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
 
 export function Dashboard({ dashboard, className, style, ...props }) {
-  const isMetadataLoaded = useSelector(getIsMetadataLoaded);
-
   return (
     <LoadingAndErrorWrapper
       className={cx(DashboardS.Dashboard, CS.p1, CS.flexFull, className)}
       style={style}
-      loading={!dashboard || !isMetadataLoaded}
+      loading={!dashboard}
       noBackground
     >
       {() => (

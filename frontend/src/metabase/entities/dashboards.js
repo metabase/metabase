@@ -8,7 +8,7 @@ import {
 import {
   getCollectionType,
   normalizedCollection,
-} from "metabase/entities/collections";
+} from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -19,12 +19,22 @@ import {
   compose,
   withAction,
   withAnalytics,
+  withCachedDataAndRequestState,
+  withNormalize,
   withRequestState,
 } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
+import {
+  DashboardSchema,
+  DatabaseSchema,
+  FieldSchema,
+  QuestionSchema,
+  TableSchema,
+} from "metabase/schema";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
+const FETCH_METADATA = "metabase/entities/dashboards/FETCH_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -157,6 +167,30 @@ const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
+
+    fetchMetadata: compose(
+      withAction(FETCH_METADATA),
+      withCachedDataAndRequestState(
+        ({ id }) => [...Dashboards.getObjectStatePath(id)],
+        ({ id }) => [...Dashboards.getObjectStatePath(id), "fetchMetadata"],
+        entityQuery => Dashboards.getQueryKey(entityQuery),
+      ),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+        cards: [QuestionSchema],
+        dashboards: [DashboardSchema],
+      }),
+    )(
+      ({ id }) =>
+        dispatch =>
+          entityCompatibleQuery(
+            id,
+            dispatch,
+            dashboardApi.endpoints.getDashboardMetadata,
+          ),
+    ),
   },
 
   reducer: (state = {}, { type, payload, error }) => {
