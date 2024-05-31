@@ -1032,10 +1032,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       dragColumnHeader(totalHeaderColHandle, 100);
 
       cy.findByTestId("pivot-table").within(() => {
-        cy.findByText("User → Source").then($headerTextEl => {
+        cy.findByText("User → Source").should($headerTextEl => {
           expect(getCellWidth($headerTextEl)).equal(80); // min width is 80
         });
-        cy.findByText("Row totals").then($headerTextEl => {
+        cy.findByText("Row totals").should($headerTextEl => {
           expect(getCellWidth($headerTextEl)).equal(200);
         });
       });

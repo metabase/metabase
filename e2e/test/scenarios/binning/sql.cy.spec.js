@@ -10,6 +10,7 @@ import {
   cartesianChartCircle,
   chartPathWithFillColor,
   echartsContainer,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -187,8 +188,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for time series", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("CREATED_AT").click();
+      tableHeaderClick("CREATED_AT");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -209,8 +209,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for number", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("TOTAL").click();
+      tableHeaderClick("TOTAL");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -221,8 +220,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for longitude", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("LONGITUDE").click();
+      tableHeaderClick("LONGITUDE");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 

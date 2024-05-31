@@ -3,24 +3,24 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnCombineViaPlusModal } from "metabase/query_builder/analytics";
-import { CombineColumns } from "metabase/query_builder/components/expressions/CombineColumns";
+import {
+  CombineColumns,
+  hasCombinations,
+} from "metabase/query_builder/components/expressions/CombineColumns";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
 export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
   const { query, stageIndex } = Lib.asReturned(question.query(), -1);
-
   const { isEditable } = Lib.queryDisplayInfo(query);
-  const isExpressionable =
-    Lib.expressionableColumns(query, stageIndex).length > 0;
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    !isExpressionable
+    !hasCombinations(query, stageIndex)
   ) {
     return [];
   }

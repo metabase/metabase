@@ -164,7 +164,7 @@ function TableSimpleInner({
   );
 
   const renderColumnHeader = useCallback(
-    (col, colIndex: number) => {
+    (col: DatasetColumn, colIndex: number) => {
       const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
       const onClick = () => setSort(colIndex);
       return (

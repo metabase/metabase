@@ -8,7 +8,7 @@ import {
 import {
   getCollectionType,
   normalizedCollection,
-} from "metabase/entities/collections";
+} from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,

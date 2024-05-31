@@ -135,7 +135,8 @@ interface QueryDownloadWidgetOpts {
   result?: Dataset;
   isXray?: boolean;
   isEmbed: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isEditing: boolean;
 }
 
@@ -157,7 +158,7 @@ DashCardMenu.shouldRender = ({
   result,
   isXray,
   isEmbed,
-  isPublic,
+  isPublicOrEmbedded,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
@@ -171,7 +172,7 @@ DashCardMenu.shouldRender = ({
   }
   return (
     !isInternalQuery &&
-    !isPublic &&
+    !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))
