@@ -96,7 +96,6 @@ export interface IFieldValuesWidgetProps {
 
   multi?: boolean;
   autoFocus?: boolean;
-  className?: string;
   prefix?: string;
   placeholder?: string;
   checkedColor?: string;
@@ -127,7 +126,6 @@ export function FieldValuesWidgetInner({
   onChange,
   multi,
   autoFocus,
-  className,
   prefix,
   placeholder,
   checkedColor,
@@ -481,7 +479,6 @@ export function FieldValuesWidgetInner({
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            className={className}
             prefix={prefix}
           />
         )}
