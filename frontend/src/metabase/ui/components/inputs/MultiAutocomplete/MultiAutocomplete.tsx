@@ -26,6 +26,7 @@ export function MultiAutocomplete({
   onSearchChange,
   onFocus,
   onBlur,
+  prefix,
   ...props
 }: MultiAutocompleteProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
@@ -181,6 +182,7 @@ export function MultiAutocomplete({
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
       rightSection={info}
+      icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
     />
   );
 }
