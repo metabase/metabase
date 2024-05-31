@@ -73,8 +73,12 @@
                 ;;       distinguish between them.
    :dashboard :table :collection])
 
-(mu/defn moi->type [moi :- (into [:enum] models-of-interest)]
-  (if (#{:model :card :metric} moi) "card" (name moi)))
+(defn- moi->type
+  "Turns a model of interest into the base name of its table"
+  [moi]
+  (if (#{:model :card :metric} moi)
+    "card"
+    (name moi)))
 
 (mu/defn moi->model
   "Given a model of interest, returns the model for it."
@@ -424,10 +428,14 @@
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))
 
-(defn ^:private do-query [user-id]
+(defn ^:private do-query [user-id context]
   (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
                                  :from [[:recent_views :rv]]
-                                 :where [:= :rv.user_id user-id]
+                                 :where [:and
+                                         [:= :rv.user_id user-id]
+                                         (cond (= context :all) nil
+                                               (= context :views) [:= :rv.context "view"]
+                                               (= context :selections) [:= :rv.context "selection"])]
                                  :left-join [[:report_card :rc]
                                              [:and
                                               ;; only want to join on card_type if it's a card
@@ -446,7 +454,8 @@
         (some-> (assoc recent-view :model_object model-object)
                 fill-recent-view-info
                 (dissoc :card_type)
-                (update :model model->return-model))))))
+                (update :model model->return-model)
+                (assoc ::context (:context recent-view)))))))
 
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
@@ -474,19 +483,23 @@
                   (me/humanize (mr/explain Item item))))))
 
 (defn get-list
-  "Gets all recent views for a given user. Returns a list of at most 20 [[Item]]s per [[models-of-interest]].
+  "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[models-of-interest]], per context.
 
-  [[do-query]] can return nils, and we remove them here becuase models can be deleted, and we don't want to show those
-  in the recent views.
+  [[do-query]] can return nils, and we remove them here becuase there can be recent views for deleted entities, and we
+  don't want to show those in the recent views.
 
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
   sequence, so there's no need to do it twice."
-  [user-id]
-  (if-let [views (not-empty (do-query user-id))]
-    (let [entity->id->data (get-entity->id->data views)]
-      (into []
-            (comp
-             (keep (partial post-process entity->id->data))
-             (keep error-avoider))
-            views))
-    []))
+  ([user-id] (get-list user-id :all))
+  ([user-id context]
+   (let [views (do-query user-id context)
+         entity->id->data (get-entity->id->data views)
+         view-items (into []
+                          (comp
+                           (keep (partial post-process entity->id->data))
+                           (keep error-avoider))
+                          views)
+         {:keys [selection view]} (group-by (comp keyword ::context) view-items)]
+     (merge
+      (when (not-empty view) {:recent-views (mapv #(dissoc % ::context) view)})
+      (when (not-empty selection) {:recent-selections (mapv #(dissoc % ::context) selection)})))))

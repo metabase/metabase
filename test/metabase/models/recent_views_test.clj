@@ -152,7 +152,8 @@
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
-                       (recent-views/get-list (mt/user->id :rasta))))))))))
+                       (:recent-views
+                        (recent-views/get-list (mt/user->id :rasta) :views))))))))))
 
 
 (deftest update-users-recent-views!-duplicates-test
@@ -487,6 +488,7 @@
           (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
                  ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
                  (frequencies (map :model
-                                   (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
-                                     (mt/with-test-user :rasta
-                                       (recent-views/get-list (mt/user->id :rasta)))))))))))))
+                                   (:recent-views
+                                    (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                      (mt/with-test-user :rasta
+                                        (recent-views/get-list (mt/user->id :rasta) :views)))))))))))))
