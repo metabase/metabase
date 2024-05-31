@@ -1,4 +1,4 @@
-import { restore, popover } from "e2e/support/helpers";
+import { restore, popover, tableHeaderClick } from "e2e/support/helpers";
 
 describe("issue 22730", () => {
   beforeEach(() => {
@@ -24,10 +24,7 @@ describe("issue 22730", () => {
     cy.findByText("Explore results").click();
     cy.wait("@dataset");
 
-    cy.findAllByTestId("header-cell")
-      .contains("time")
-      .should("be.visible")
-      .click();
+    tableHeaderClick("time");
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();

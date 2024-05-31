@@ -23,10 +23,10 @@ describe("issue 18063", () => {
 
     popover().contains("Pin map").click();
 
-    // Click anywhere to close both popovers that open automatically.
+    // Click anywhere to close both popovers that open automatically. Need to click twice to dismiss both popovers
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Latitude field").click();
+    cy.findByText("New question").click().click();
   });
 
   it("should show the correct tooltip details for pin map even when some locations are null (metabase#18063)", () => {
@@ -51,5 +51,5 @@ function selectFieldValue(field, value) {
       cy.findByText("Select a field").click();
     });
 
-  popover().contains(value).click();
+  popover().findByText(value).click();
 }

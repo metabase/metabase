@@ -4,6 +4,7 @@ import {
   queryBuilderMain,
   restore,
   selectFilterOperator,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -37,10 +38,9 @@ describe("issue 30312", () => {
       { visitQuestion: true },
     );
 
-    cy.findAllByTestId("header-cell")
-      .eq(1)
-      .should("have.text", "Count")
-      .click();
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "Count");
+
+    tableHeaderClick("Count");
 
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Equal to");

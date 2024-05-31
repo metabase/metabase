@@ -19,6 +19,7 @@ import {
   selectFilterOperator,
   entityPickerModal,
   collectionOnTheGoModal,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -80,8 +81,7 @@ describe("scenarios > question > saved", () => {
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity").click();
+    tableHeaderClick("Quantity");
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Equal to");
     popover().within(() => {

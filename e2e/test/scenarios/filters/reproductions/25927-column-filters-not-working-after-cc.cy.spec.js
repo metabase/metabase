@@ -1,6 +1,11 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore, visitQuestionAdhoc } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  tableHeaderClick,
+  visitQuestionAdhoc,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -30,7 +35,7 @@ describe("issue 25927", () => {
   });
 
   it("column filter should work for questions with custom column (metabase#25927)", () => {
-    cy.findAllByTestId("header-cell").contains("Created At: Month").click();
+    tableHeaderClick("Created At: Month");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Last 30 days").click();

@@ -109,9 +109,12 @@ export function addWidgetNumberFilter(
  * @return {function}
  */
 export function addDefaultNumberFilter(value) {
-  return isBetweenFilter(value)
-    ? addBetweenFilter(value)
-    : enterDefaultValue(value);
+  if (isBetweenFilter(value)) {
+    cy.findByText("Enter a default value…").click();
+    addBetweenFilter(value);
+  } else {
+    enterDefaultValue(value);
+  }
 }
 
 // UI PATTERNS
@@ -180,7 +183,9 @@ function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
  */
 function enterDefaultValue(value, buttonLabel = "Add filter") {
   cy.findByText("Enter a default value…").click();
-  cy.findByPlaceholderText("Enter a default value…").type(`${value}{enter}`);
+  cy.findByPlaceholderText("Enter a default value…")
+    .type(`${value}{enter}`)
+    .blur();
   cy.button(buttonLabel).click();
 }
 

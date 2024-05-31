@@ -317,11 +317,9 @@ function DashCardInner({
             onAddSeries={() => onAddSeries(dashcard)}
             onRemove={() => onRemove(dashcard)}
             onReplaceCard={() => onReplaceCard(dashcard)}
-            onUpdateVisualizationSettings={settings =>
-              onUpdateVisualizationSettings(dashcard.id, settings)
-            }
-            onReplaceAllVisualizationSettings={settings =>
-              onReplaceAllVisualizationSettings(dashcard.id, settings)
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            onReplaceAllVisualizationSettings={
+              onReplaceAllVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
@@ -354,9 +352,7 @@ function DashCardInner({
           isMobile={isMobile}
           isPublicOrEmbedded={isPublicOrEmbedded}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={settings =>
-            onUpdateVisualizationSettings(dashcard.id, settings)
-          }
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }

@@ -17,7 +17,7 @@ import type { DashboardId } from "metabase-types/api";
 
 const _StaticDashboard = ({
   dashboardId,
-  parameterQueryParams,
+  parameterQueryParams = {},
   bordered,
   titled,
   theme: userTheme,
@@ -26,8 +26,9 @@ const _StaticDashboard = ({
   hideParameters,
 }: {
   dashboardId: DashboardId;
-  parameterQueryParams: Query;
-} & Partial<EmbedDisplayParams>) => {
+  parameterQueryParams?: Query;
+  hideParameters?: string[];
+} & Partial<Omit<EmbedDisplayParams, "hideParameters">>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
     ...pick(
@@ -37,7 +38,7 @@ const _StaticDashboard = ({
         theme: userTheme,
         font,
         hideDownloadButton,
-        hideParameters,
+        hideParameters: hideParameters ? hideParameters.join(",") : null,
       },
       isNotNull,
     ),
@@ -80,4 +81,6 @@ const _StaticDashboard = ({
   );
 };
 
-export const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+
+export { EmbedDisplayParams, StaticDashboard };

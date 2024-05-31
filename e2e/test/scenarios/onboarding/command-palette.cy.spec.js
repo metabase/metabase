@@ -26,7 +26,7 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
-    //Add a description for a check
+    // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
     });
@@ -200,7 +200,7 @@ describe("command palette", () => {
     cy.get("@database").should("be.null");
     cy.get("@search").should("be.null");
 
-    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText(/Email address/).type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message");
