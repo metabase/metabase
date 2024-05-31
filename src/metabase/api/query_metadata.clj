@@ -39,11 +39,13 @@
   (let [database-ids (set (map :database_id cards))
         db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
                              database-ids))]
-    (group-by :type (set (mapcat (fn [card]
-                                   (let [database-id (:database_id card)
-                                         mp (db->mp database-id)
-                                         query (lib/query mp (:dataset_query card))]
-                                     (lib/dependent-metadata query (:id card) (:type card)))) cards)))))
+    (group-by :type (set (mapcat (fn [{card-type :type card-id :id :keys [database_id dataset_query]}]
+                                   (let [mp (db->mp database_id)
+                                         query (lib/query mp dataset_query)]
+                                     (if (and (pos-int? card-id) (some? card-type))
+                                       (lib/dependent-metadata query card-id card-type)
+                                       ;; xray cards don't have real ids
+                                       (lib/dependent-metadata query nil :question)))) cards)))))
 
 (defn dashboard-metadata
   "Fetches dependent query-metadata for a given dashboard"
@@ -70,7 +72,8 @@
                            card all]
                        card)
                      link-cards)
-                   (filter :dataset_query))
+                   (filter :dataset_query)
+                   (into []))
         dependents (dependents-for-cards cards)
         dashboard-specific {:cards link-cards
                             :dashboards (->> (:dashboard links)
