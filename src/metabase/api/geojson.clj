@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -50,12 +51,12 @@
   []
   (if (default-maps-enabled)
     {:us_states       {:name        "United States"
-                       :url         "app/assets/geojson/us-states.json"
+                       :url         (str (public-settings/site-url) "/app/assets/geojson/us-states.json")
                        :region_key  "STATE"
                        :region_name "NAME"
                        :builtin     true}
      :world_countries {:name        "World"
-                       :url         "app/assets/geojson/world.json"
+                       :url         (str (public-settings/site-url) "/app/assets/geojson/world.json")
                        :region_key  "ISO_A2"
                        :region_name "NAME"
                        :builtin     true}}
