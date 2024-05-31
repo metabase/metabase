@@ -200,14 +200,14 @@ type BaseChartDataDensity = {
 
 export type ChartDataDensity =
   | WaterFallChartDataDensity
-  | CartesianChartDataDensity;
+  | ComboChartDataDensity;
 
 export type WaterFallChartDataDensity = BaseChartDataDensity & {
   type: "waterfall";
 };
 
-export type CartesianChartDataDensity = BaseChartDataDensity & {
-  type: "cartesian";
+export type ComboChartDataDensity = BaseChartDataDensity & {
+  type: "combo";
   seriesDataKeysWithLabels: DataKey[];
   stackedDisplayWithLabels: StackDisplay[];
   totalNumberOfDots: number;
@@ -237,7 +237,7 @@ export type BaseCartesianChartModel = {
 
 export type CartesianChartModel = BaseCartesianChartModel & {
   stackedLabelsFormatters: StackedSeriesFormatters;
-  dataDensity: CartesianChartDataDensity;
+  dataDensity: ComboChartDataDensity;
 };
 
 export type ScatterPlotModel = BaseCartesianChartModel & {

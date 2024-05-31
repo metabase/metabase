@@ -4,7 +4,7 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
-  CartesianChartDataDensity,
+  ComboChartDataDensity,
   ChartDataset,
   DataKey,
   Datum,
@@ -388,7 +388,7 @@ export function getWaterfallChartDataDensity(
   };
 }
 
-export function getCartesianChartDataDensity(
+export function getComboChartDataDensity(
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
   dataset: ChartDataset,
@@ -396,8 +396,8 @@ export function getCartesianChartDataDensity(
   stackedLabelsFormatters: StackedSeriesFormatters,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): CartesianChartDataDensity {
-  const type = "cartesian";
+): ComboChartDataDensity {
+  const type = "combo";
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     seriesModels,
     stackModels,

@@ -29,7 +29,7 @@ import type {
   LabelFormatter,
   ChartDataDensity,
   CartesianChartModel,
-  CartesianChartDataDensity,
+  ComboChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
@@ -197,7 +197,7 @@ function getShowLabelFn(
   }
 
   const scaleFactor =
-    type === "cartesian"
+    type === "combo"
       ? CARTESIAN_LABEL_DENSITY_SCALE_FACTOR
       : WATERFALL_LABEL_DENSITY_SCALE_FACTOR;
   const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
@@ -459,7 +459,7 @@ const buildEChartsLineAreaSeries = (
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
-  chartDataDensity: CartesianChartDataDensity,
+  chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
@@ -535,7 +535,7 @@ const buildEChartsLineAreaSeries = (
 };
 
 function getShowSymbol(
-  chartDataDensity: CartesianChartDataDensity,
+  chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   seriesSettings: SeriesSettings,
 ): boolean {
@@ -564,7 +564,7 @@ const generateStackOption = (
   stackDataKeys: DataKey[],
   seriesOptionFromStack: LineSeriesOption | BarSeriesOption,
   labelFormatter: LabelFormatter | undefined,
-  chartDataDensity: CartesianChartDataDensity,
+  chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   renderingContext: RenderingContext,
 ) => {
@@ -633,7 +633,7 @@ function getStackedDataLabelFormatter(
   stackDataKeys: DataKey[],
   stackName: string | undefined,
   formatter: LabelFormatter,
-  chartDataDensity: CartesianChartDataDensity,
+  chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   settings: ComputedVisualizationSettings,
 ) {
@@ -666,7 +666,7 @@ function getStackedDataLabelFormatter(
 function getShowStackedLabelFn(
   chartWidth: number,
   stackName: string | undefined,
-  chartDataDensity: CartesianChartDataDensity,
+  chartDataDensity: ComboChartDataDensity,
   settings: ComputedVisualizationSettings,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
@@ -699,7 +699,7 @@ function getShowStackedLabelFn(
 }
 
 function getStackedSelectionFrequency(
-  chartDataDensity: CartesianChartDataDensity,
+  chartDataDensity: ComboChartDataDensity,
   maxNumberOfLabels: number,
   stackName: string | undefined,
 ) {
