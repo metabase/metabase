@@ -2127,7 +2127,12 @@
                      #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
                      #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
                      #{b h}} ;; => not archived at all, `trash_operation_id` is nil
-                   (set (vals trash-operation-id->collection-ids))))))
+                   (set (vals trash-operation-id->collection-ids)))))
+          (testing "Trashed directly is correctly set"
+            (is (= {true #{a c i}
+                    false #{d e f g}
+                    nil #{b h}}
+                   (m/map-vals #(into #{} (map :id %)) (group-by :trashed_directly (t2/select :model/Collection :id [:in @relevant-collection-ids])))))))
         ;; We can roll back. Nothing got moved around.
         (migrate! :down 49)
         (is (= nil (parent-id a)))

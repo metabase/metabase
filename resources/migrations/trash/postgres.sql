@@ -65,11 +65,7 @@ WITH CollectionWithParentID AS (
 )
 
 UPDATE collection c
-SET trashed_directly = true
-FROM CollectionWithParentID cp
-WHERE c.id = cp.id
-AND cp.archived = true
-AND (
+SET trashed_directly = (
   cp.parent_id IS NULL
   OR NOT EXISTS (
     SELECT 1
@@ -77,7 +73,10 @@ AND (
     WHERE pp.id = cp.parent_id
     AND pp.archived = true
   )
-);
+)
+FROM CollectionWithParentID cp
+WHERE c.id = cp.id
+AND cp.archived = true;
 
 -- Set `collection.trash_operation_id` for collections that were trashed directly
 
@@ -86,21 +85,25 @@ SET trash_operation_id = LPAD(id::text, 36, '0')
 WHERE archived AND trashed_directly;
 
 -- Set `collection.trash_operation_id` for descendants of collections that were trashed directly
-
-WITH CollectionWithAncestors AS (
-  SELECT
+WITH Ancestors(id, archived, trashed_directly, trash_operation_id, location) AS (
+    SELECT
     id,
     archived,
-    trash_operation_id,
     trashed_directly,
-    (regexp_matches(location, '(\d+)/', 'g'))[array_length(regexp_matches(location, '(\d+)/', 'g'), 1)]::integer
-      AS ancestor_id
+    trash_operation_id,
+    location
   FROM
-  collection
+    collection
+  WHERE
+    trashed_directly = true
+    AND archived = true
 )
-UPDATE collection c
-SET trash_operation_id = ancestor.trash_operation_id
-FROM CollectionWithAncestors ca
-JOIN CollectionWithAncestors ancestor ON ancestor.id = ca.ancestor_id AND ancestor.trashed_directly = true
-WHERE ca.id = c.id
-AND ca.archived = true;
+UPDATE collection
+SET trash_operation_id = (
+  SELECT a.trash_operation_id
+  FROM Ancestors a
+  WHERE collection.location LIKE concat(a.location, a.id, '/%')
+  ORDER BY LENGTH(a.location) DESC
+  LIMIT 1
+), trashed_directly = false
+WHERE trash_operation_id IS NULL AND archived = true;
