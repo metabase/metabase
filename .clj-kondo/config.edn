@@ -1,5 +1,5 @@
 ;; -*- comment-column: 100; -*-
-{:config-paths ["macros"]
+{:config-paths ["macros" "src"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
   :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
