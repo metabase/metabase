@@ -32,7 +32,7 @@
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
      :model/Card       {card-id         :id} {:type "question" :name "name" :display "display" :collection_id coll-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
              :name "name",
@@ -50,7 +50,7 @@
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
      :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
              :name "name",
@@ -67,7 +67,7 @@
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
      :model/Dashboard {dash-id         :id} {:name "name" :collection_id coll-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
     (is (= [{:description nil,
              :can_write true,
              :name "name",
@@ -88,7 +88,7 @@
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "parent coll"}
      :model/Collection {my-coll-id :id} {:name "name" :location (->location coll-id)}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection my-coll-id)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection my-coll-id :view)
     (is (= [{:description nil
              :can_write true
              :name "name"
@@ -108,7 +108,7 @@
      :model/Collection {coll-id-b :id} {:name "grandparent coll" :location (->location coll-id-a)}
      :model/Collection {coll-id-c :id} {:name "parent coll" :location (->location coll-id-a coll-id-b)}
      :model/Collection {coll-id-d :id} {:name "record scratch, yep that's me coll" :location (->location coll-id-a coll-id-b coll-id-c)}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection coll-id-d)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection coll-id-d :view)
     (is (= [{:id coll-id-d
              :description nil
              :can_write true
@@ -126,7 +126,7 @@
   (mt/with-temp
     [:model/Database {db-id :id} {:name "test-data"}
      :model/Table {table-id :id} {:name "name" :db_id db-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
     (doseq [[read? write? expected] [[false true []]
                                      [false false []]
                                      [true false [{:description nil,
@@ -159,7 +159,7 @@
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
     (mt/with-temp [:model/Card {card-id :id} {:type "question"}]
       ;; twenty five views
-      (dotimes [_ 25] (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id))
+      (dotimes [_ 25] (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view))
       (is (= 0 (count (filter (comp #{:dataset} :model) (mt/with-test-user :rasta
                                                           (recent-views/get-list (mt/user->id :rasta)))))))
       (is (= 1 (count (filter (comp #{:card} :model)    (mt/with-test-user :rasta
@@ -185,7 +185,7 @@
                                     [:model/Dashboard dashboard-id]
                                     [:model/Collection collection-id]
                                     [:model/Table table-id]]]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view))
           (is (= [{:id "ID",
                    :name "tablet",
                    :description nil,
@@ -254,13 +254,13 @@
          :model/Table      {table-id        :id} {:db_id db-id, :is_upload true}
          :model/Table      {table-id-2      :id} {:db_id db-id, :is_upload true}
          :model/Table      {table-id-3      :id} {:db_id db-id, :is_upload true}]
-        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id :view)
         (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
                                    [:model/Card       [model-id model-id-2 model-id-3]]
                                    [:model/Collection [collection-id collection-id-2 collection-id-3]]
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)
             (is (= [dashboard-id]
                    (keep #(when ((comp #{:dashboard} :model) %) (:id %))
                          (mt/with-test-user :rasta
@@ -272,12 +272,12 @@
                              :model/Card      {model-id-2   :id} {:type "model"}
                              :model/Dashboard {dashboard-id :id} {}]
       ;; insert 6
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2 :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id-2 :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id :view)
       ;; can't read? can't see:
       (is (= 0 (count (recent-views/get-list (mt/user->id :rasta)))))
 
@@ -293,16 +293,16 @@
 
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-2)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-2 :view)
       (is (= dash-id-2 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id)
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
       (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta)))))))
 
 (deftest id-pruning-test
@@ -365,7 +365,7 @@
         (testing (str "Bucket size: " bucket-size)
           (is (= ids-to-prune
                  (vec (sort (map #(- % 1337000)
-                                 (#'recent-views/ids-to-prune (mt/user->id :rasta))))))))))))
+                                 (#'recent-views/ids-to-prune (mt/user->id :rasta) :view)))))))))))
 
 (deftest recent-views-for-non-existent-entity-test
   (testing "If a user views a model that doesn't exist, it should not be added to recent views"
@@ -374,22 +374,22 @@
                    :model/Collection _             {}
                    :model/Dashboard  _             {}
                    :model/Card       {card-id :id} {:type "question"}]
-      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
       (let [before-ghosts (recent-views/get-list (mt/user->id :rasta))
             missing-card-id (inc (apply max (t2/select-pks-vec :model/Card)))
             missing-dashboard-id (inc (apply max (t2/select-pks-vec :model/Dashboard)))
             missing-collection-id (inc (apply max (t2/select-pks-vec :model/Collection)))
             missing-table-id (inc (apply max (t2/select-pks-vec :model/Table)))]
-        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card missing-card-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card missing-card-id :view)
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")
-        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard missing-dashboard-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard missing-dashboard-id :view)
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")
-        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection missing-collection-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection missing-collection-id :view)
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")
-        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table missing-table-id)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table missing-table-id :view)
         (is (= before-ghosts (recent-views/get-list (mt/user->id :rasta)))
             "If a user views a model that doesn't exist, it should not be added to recent views")))))
 
@@ -423,7 +423,7 @@
                                              [:model/Collection :collection [collection-id collection-id-2 collection-id-3]]
                                              [:model/Table :table [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view))
           (testing (format "When user views %s %ss, the latest %s per model are kept. "
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
@@ -474,7 +474,7 @@
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
 
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id)))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
         (is (= {:card 3, :dataset 3, :dashboard 3, :collection 3, :table 2}
                ;; There are 3 tables in recent_view, but 1 gets filtered out.
                (frequencies (map :model
@@ -482,8 +482,8 @@
                                    (mt/with-test-user :rasta (recent-views/get-list (mt/user->id :rasta))))))))
         (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
           (is (= 5
-                 (count (set (recent-views/ids-to-prune (mt/user->id :rasta))))))
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4)
+                 (count (set (recent-views/ids-to-prune (mt/user->id :rasta) :view)))))
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4 :view)
           (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
                  ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
                  (frequencies (map :model
