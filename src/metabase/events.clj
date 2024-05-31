@@ -108,44 +108,40 @@
 
 (methodical/defmethod publish-event! :around :default
   [topic event]
-  (span/with-span!
-    {:name       "publish-event!"
-     :attributes {:event/topic topic
-                  :events/initialized (some? @events-initialized?)}}
-    (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
-    (if-not @events-initialized?
-      ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
-      (do
-        (initialize-events!)
-        (publish-event! topic event))
-      (do
+  (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
+  (if-not @events-initialized?
+    ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
+    (do
+      (initialize-events!)
+      (publish-event! topic event))
+    (do
+      (span/with-span!
+        {:name       "publish-event!.logging"
+         :attributes {}}
+        (let [{:keys [object]} event]
+          (log/debugf "Publishing %s event (name and id):\n\n%s"
+                      (u/colorize :yellow (pr-str topic))
+                      (u/pprint-to-str (let [model (mi/model object)]
+                                         (cond-> (select-keys object [:name :id])
+                                           model
+                                           (assoc :model model))))))
+        (assert (and (qualified-keyword? topic)
+                     (isa? topic :metabase/event))
+                (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+        (assert (map? event)
+                (format "Invalid event %s: event must be a map." (pr-str event))))
+      (try
+        (when-let [schema (events.schema/topic->schema topic)]
+          (mu/validate-throw schema event))
         (span/with-span!
-          {:name       "publish-event!.logging"
+          {:name       "publish-event!.next-method"
            :attributes {}}
-          (let [{:keys [object]} event]
-            (log/debugf "Publishing %s event (name and id):\n\n%s"
-                       (u/colorize :yellow (pr-str topic))
-                       (u/pprint-to-str (let [model (mi/model object)]
-                                          (cond-> (select-keys object [:name :id])
-                                            model
-                                            (assoc :model model))))))
-          (assert (and (qualified-keyword? topic)
-                       (isa? topic :metabase/event))
-                  (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-          (assert (map? event)
-                  (format "Invalid event %s: event must be a map." (pr-str event))))
-        (try
-          (when-let [schema (events.schema/topic->schema topic)]
-            (mu/validate-throw schema event))
-          (span/with-span!
-            {:name       "publish-event!.next-method"
-             :attributes {}}
-            (next-method topic event))
-          (catch Throwable e
-            (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
-                            {:topic topic, :event event}
-                            e))))
-        event))))
+          (next-method topic event))
+        (catch Throwable e
+          (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                          {:topic topic, :event event}
+                          e))))
+      event)))
 
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.

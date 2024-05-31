@@ -11,6 +11,7 @@
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.recent-views :as recent-views]
    [metabase.models.table :refer [Table]]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -124,9 +125,9 @@
   Allows for filtering by context, either view or selection"
   [:as {{:keys [context]} :params}]
   {context [:enum :views :selections :all]}
-  (let [recent-views-list (recent-views/get-list *current-user-id*)]
-    (merge (when (#{:all :views} context) {:recent_views recent-views-list})
-           (when (#{:all :selections} context) {:recent_selections recent-views-list}))))
+  (update-keys
+   (recent-views/get-list *current-user-id* context)
+   u/->snake_case_en))
 
 (api/defendpoint POST "/recents"
   "Adds a model to the list of recently viewed or selected items."
@@ -138,11 +139,8 @@
         model-id model_id]
     (when-not (t2/exists? (recent-views/moi->model moi) :id model-id)
       (throw (ex-info "Model not found" {:model moi :model_id model-id})))
-    (let [model-instance (t2/select-one (recent-views/moi->model model) :id model-id)]
-      (when-not (mi/can-read? model-instance)
-        (throw (ex-info "Can't read model" {:model moi :model_id model-id})))
-      (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context))))
-
+    (api/read-check (t2/select-one (recent-views/moi->model model) :id model-id))
+    (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context)))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards

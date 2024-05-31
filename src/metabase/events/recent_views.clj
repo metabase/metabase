@@ -27,7 +27,7 @@
         (let [model    (audit-log/model-name object)
               model-id (u/id object)
               user-id  (or user-id api/*current-user-id*)]
-          (recent-views/update-users-recent-views! user-id model model-id)))
+          (recent-views/update-users-recent-views! user-id model model-id :view)))
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
 
@@ -42,20 +42,19 @@
     (let [user-id  (or user-id api/*current-user-id*)]
       ;; we don't want to count pinned card views
       (when-not (#{:collection :dashboard} context)
-        (recent-views/update-users-recent-views! user-id :model/Card card-id)))
+        (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
 
 (derive ::legacy-card-event :metabase/event)
-(derive :event/card-create ::legacy-card-event)
+;; in practice, updating or creating a card will immediately trigger a card-read
 (derive :event/card-read ::legacy-card-event)
-(derive :event/card-update ::legacy-card-event)
 
 (m/defmethod events/publish-event! ::legacy-card-event
   "Handle recent view processing for CRU (not D) events"
   [topic {:keys [object user-id]}]
   (try
-    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card (:id object))
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card (:id object) :view)
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
 
@@ -67,6 +66,6 @@
   "Handle processing for a single collection touch event."
   [topic {:keys [collection-id user-id] :as _event}]
   (try
-    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Collection collection-id)
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Collection collection-id :view)
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
