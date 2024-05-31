@@ -7438,6 +7438,24 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
 
+
+  - changeSet:
+      id: v51.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: ${text.type}
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
