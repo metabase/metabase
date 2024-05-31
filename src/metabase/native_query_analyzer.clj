@@ -75,7 +75,7 @@
     ;; Similarly, Postgres treat all non-quoted identifiers as lowercase, and again expects an exact match.
     ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
     ;;
-    ;; MySQL on the other hand is truly case-insensitive, and as the lowest common denominator it's what we cater for.
+    ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
     ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
     ;; unlikely to ever cause issues in practice.
     [:= [:lower field] (u/lower-case-en value)]))
