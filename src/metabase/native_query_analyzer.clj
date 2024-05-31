@@ -70,11 +70,14 @@
   (if-let [quote-stripper (quote-strippers (first value))]
     [:= field (quote-stripper value)]
     ;; Technically speaking this is not correct for all databases.
-    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case sensitive match.
-    ;; i.e. given a column called "MixedCaseThing" (i.e. it was defined using quotes)
-    ;;      and an unquoted reference like `SELECT MixedCaseThing FROM x`
-    ;;      the query is equivalent to `SELECT "MIXEDCASETHING" FROM x"
-    ;;      and will fail because "MixedCaseThing" != "MIXEDCASETHING"
+    ;;
+    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
+    ;; Similarly, Postgres treat all non-quoted identifiers as lowercase, and again expects an exact match.
+    ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
+    ;;
+    ;; MySQL on the other hand is truly case-insensitive, and as the lowest common denominator it's what we cater for.
+    ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
+    ;; unlikely to ever cause issues in practice.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
