@@ -49,11 +49,26 @@
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :join [[:metabase_table :t] [:= :table_id :t.id]]})
 
+;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
+(def ^:private quotes "\"`")
+
+(defn- quote-stripper
+  "Construct a function which unquotes values which use the given character as their quote."
+  [quote-char]
+  (let [doubled (str quote-char quote-char)
+        single  (str quote-char)]
+    #(-> (subs % 1 (dec (count %)))
+         (str/replace doubled single))))
+
+(def ^:private quote-strippers
+  "Pre-constructed lambdas, to save some memory allocations."
+  (zipmap quotes (map quote-stripper quotes)))
+
 (defn- field-query
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
   [field value]
-  (if (= (first value) \")
-    [:= field (-> value (subs 1 (dec (count value))) (str/replace "\"\"" "\""))]
+  (if-let [quote-stripper (quote-strippers (first value))]
+    [:= field (quote-stripper value)]
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
