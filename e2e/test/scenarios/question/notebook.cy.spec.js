@@ -176,7 +176,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Price] > 1" });
-    cy.get("@formula").blur();
 
     cy.button("Done").click();
 
@@ -361,7 +360,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
-      cy.get("@formula").blur();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/^redundant input/i).should("not.exist");
@@ -933,7 +931,7 @@ function assertTableRowCount(expectedCount) {
 }
 
 function addSimpleCustomColumn(name) {
-  enterCustomColumnDetails({ formula: "C" });
+  enterCustomColumnDetails({ formula: "C", blur: false });
   cy.findByText("ategory").click();
   cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();

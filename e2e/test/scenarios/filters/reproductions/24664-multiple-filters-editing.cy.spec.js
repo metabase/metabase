@@ -1,4 +1,9 @@
-import { restore, openProductsTable, popover } from "e2e/support/helpers";
+import {
+  restore,
+  openProductsTable,
+  popover,
+  tableHeaderClick,
+} from "e2e/support/helpers";
 
 describe("issue 24664", () => {
   beforeEach(() => {
@@ -8,16 +13,14 @@ describe("issue 24664", () => {
   });
 
   it("should be possible to create multiple filter that start with the same value (metabase#24664)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").click();
+    tableHeaderClick("Category");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Doohickey").click();
       cy.button("Add filter").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").click();
+    tableHeaderClick("Category");
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Gizmo").click();

@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Box } from "metabase/ui";
 
-export const ListBox = styled(Box)`
+export const ListBox = styled(Box)<React.PropsWithChildren>`
   border-right: 1px solid ${color("border")};
   height: 100%;
   width: 365px;

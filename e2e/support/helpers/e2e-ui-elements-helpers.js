@@ -239,3 +239,13 @@ export const undoToastList = () => {
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
+
+export function tableHeaderClick(headerString) {
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
+}

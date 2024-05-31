@@ -31,7 +31,7 @@ describe("issue 18344", { tags: "@external" }, () => {
     cy.icon("palette").click();
 
     modal().within(() => {
-      cy.findByDisplayValue("Orders").type("Foo");
+      cy.findByDisplayValue("Orders").type("Foo").blur();
 
       cy.button("Done").click();
     });

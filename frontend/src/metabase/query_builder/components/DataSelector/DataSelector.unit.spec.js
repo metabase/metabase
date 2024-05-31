@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
-import { delay } from "metabase/lib/promise";
+import { delay } from "__support__/utils";
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 import {
   createMockDatabase,
