@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupCardMetadataEndpoint,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -34,16 +35,17 @@ const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });
 async function setup({
   model = TEST_MODEL,
   actions = [TEST_ACTION],
-  databases = [TEST_DATABASE_WITH_ACTIONS],
+  database = TEST_DATABASE_WITH_ACTIONS,
   initialRoute = `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
 }: {
   model?: Card<StructuredDatasetQuery>;
   actions?: WritebackQueryAction[];
-  databases?: Database[];
+  database?: Database;
   initialRoute?: string;
 }) {
-  setupDatabasesEndpoints(databases);
+  setupDatabasesEndpoints([database]);
   setupCardsEndpoints([model]);
+  setupCardMetadataEndpoint(model, database);
   setupModelActionsEndpoints(actions, model.id);
 
   renderWithProviders(getModelRoutes(), {

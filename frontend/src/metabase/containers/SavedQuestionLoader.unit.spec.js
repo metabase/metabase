@@ -5,6 +5,7 @@ import {
   setupUnauthorizedSchemaEndpoints,
   setupUnauthorizedCardEndpoints,
   setupDatabaseEndpoints,
+  setupCardMetadataEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
@@ -36,6 +37,7 @@ const setupQuestion = ({ id, name, hasAccess }) => {
 
   if (hasAccess) {
     setupCardEndpoints(q.card());
+    setupCardMetadataEndpoint(q.card(), databaseMock);
   } else {
     setupUnauthorizedCardEndpoints(q.card());
   }
