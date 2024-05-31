@@ -49,11 +49,35 @@
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :join [[:metabase_table :t] [:= :table_id :t.id]]})
 
+;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
+(def ^:private quotes "\"`")
+
+(defn- quote-stripper
+  "Construct a function which unquotes values which use the given character as their quote."
+  [quote-char]
+  (let [doubled (str quote-char quote-char)
+        single  (str quote-char)]
+    #(-> (subs % 1 (dec (count %)))
+         (str/replace doubled single))))
+
+(def ^:private quote->stripper
+  "Pre-constructed lambdas, to save some memory allocations."
+  (zipmap quotes (map quote-stripper quotes)))
+
 (defn- field-query
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
   [field value]
-  (if (= (first value) \")
-    [:= field (-> value (subs 1 (dec (count value))) (str/replace "\"\"" "\""))]
+  (if-let [f (quote->stripper (first value))]
+    [:= field (f value)]
+    ;; Technically speaking this is not correct for all databases.
+    ;;
+    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
+    ;; Similarly, Postgres treat all non-quoted identifiers as lowercase, and again expects an exact match.
+    ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
+    ;;
+    ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
+    ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
+    ;; unlikely to ever cause issues in practice.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
