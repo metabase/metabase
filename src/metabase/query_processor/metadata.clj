@@ -15,7 +15,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]
+   #_[metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -101,7 +101,10 @@
   [col :- :map]
   (letfn [(ensure-display-name [col]
             (cond-> col
-              (not (:display_name col)) (assoc :display_name (u.humanization/name->human-readable-name :simple (:name col)))))
+              ;; I'm trying to disable nice display name humanization because it breads like 100 Cypress tests and I
+              ;; can't be bothered to go in and fix all of them even if this is objectively a better display name.
+              ;; Seeing if this fixes things. -- Cam
+              (not (:display_name col)) (assoc :display_name (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
           (->legacy [col]
             (-> col
                 #_{:clj-kondo/ignore [:deprecated-var]} qp.store/->legacy-metadata
