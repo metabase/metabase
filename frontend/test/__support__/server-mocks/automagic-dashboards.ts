@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
 
-import type { DatabaseCandidate, DatabaseId } from "metabase-types/api";
+import type { DatabaseXray, DatabaseId } from "metabase-types/api";
 
 export function setupDatabaseCandidatesEndpoint(
   id: DatabaseId,
-  candidates: DatabaseCandidate[],
+  candidates: DatabaseXray[],
 ) {
   fetchMock.get(
     `path:/api/automagic-dashboards/database/${id}/candidates`,

@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useListDatabaseCandidatesQuery } from "metabase/api";
+import { skipToken, useListDatabaseXraysQuery } from "metabase/api";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select from "metabase/core/components/Select";
@@ -12,7 +12,7 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseCandidate } from "metabase-types/api";
+import type { DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
@@ -31,7 +31,7 @@ import {
 export const HomeXraySection = () => {
   const databaseListState = useDatabaseListQuery();
   const database = getXrayDatabase(databaseListState.data);
-  const candidateListState = useListDatabaseCandidatesQuery(
+  const candidateListState = useListDatabaseXraysQuery(
     database?.id ?? skipToken,
   );
   const isLoading = databaseListState.isLoading || candidateListState.isLoading;
@@ -52,7 +52,7 @@ export const HomeXraySection = () => {
 
 interface HomeXrayViewProps {
   database: Database;
-  candidates?: DatabaseCandidate[];
+  candidates?: DatabaseXray[];
 }
 
 const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {

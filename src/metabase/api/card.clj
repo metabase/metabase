@@ -11,6 +11,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.compatibility :as compatibility]
    [metabase.driver :as driver]
    [metabase.events :as events]
@@ -19,7 +20,8 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
+   [metabase.models :refer [Card CardBookmark Collection Database
+                            PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -212,7 +214,7 @@
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
 
 (defn- dataset-query->query [metadata-provider dataset-query]
   (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]
@@ -570,6 +572,11 @@
           (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
           (card/schedule-metadata-saving result-metadata-chan <>))))))
 
+(api/defendpoint GET "/:id/query_metadata"
+  "Get all of the required query metadata for a card."
+  [id]
+  {id ms/PositiveInt}
+  (api.query-metadata/card-metadata (get-card id)))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 

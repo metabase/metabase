@@ -5,7 +5,6 @@ import {
   openOrdersTable,
   visitDashboard,
   queryBuilderHeader,
-  modal,
   chartPathWithFillColor,
 } from "e2e/support/helpers";
 
@@ -33,7 +32,7 @@ describe("issue 23293", () => {
     });
 
     cy.wait("@saveQuestion").then(({ response }) => {
-      modal().button("Not now").click();
+      cy.button("Not now").click();
 
       const id = response.body.id;
       const questionDetails = {

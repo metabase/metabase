@@ -1131,6 +1131,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByTestId("qb-header-action-panel").findByText("Save").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
       cy.wait("@createCard");
+      cy.url().should("include", "/question/");
       cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
       cy.reload();
       cy.wait("@cardPivotQuery");
