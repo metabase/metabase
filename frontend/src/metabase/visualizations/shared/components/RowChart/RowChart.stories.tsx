@@ -84,7 +84,7 @@ const DEFAULT_ROW_CHART_ARGS = {
 export const Default = Template.bind({});
 Default.args = DEFAULT_ROW_CHART_ARGS;
 
-const EmbeddedRowChart = () => {
+const ThemedRowChart = () => {
   const theme = useRowChartTheme({ fontFamily: "Lato" });
 
   return (
@@ -94,8 +94,8 @@ const EmbeddedRowChart = () => {
   );
 };
 
-export const HugeLabel = () => (
+export const HugeFont = () => (
   <SdkVisualizationWrapper theme={{ fontSize: "20px" }}>
-    <EmbeddedRowChart />
+    <ThemedRowChart />
   </SdkVisualizationWrapper>
 );

@@ -69,20 +69,18 @@ export const getAxisNameDefaultOption = (
   nameGap: number,
   name: string | undefined,
   rotate?: number,
-): Partial<AxisBaseOptionCommon> => {
-  return {
-    name,
-    nameGap,
-    nameLocation: "middle",
-    nameRotate: rotate,
-    nameTextStyle: {
-      color: getColor("text-dark"),
-      fontSize: theme.cartesian.label.fontSize,
-      fontWeight: CHART_STYLE.axisName.weight,
-      fontFamily,
-    },
-  };
-};
+): Partial<AxisBaseOptionCommon> => ({
+  name,
+  nameGap,
+  nameLocation: "middle",
+  nameRotate: rotate,
+  nameTextStyle: {
+    color: getColor("text-dark"),
+    fontSize: theme.cartesian.label.fontSize,
+    fontWeight: CHART_STYLE.axisName.weight,
+    fontFamily,
+  },
+});
 
 export const getTicksDefaultOption = ({
   theme,
