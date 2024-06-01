@@ -647,7 +647,7 @@
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (mapv
-   (fn [^Integer i]
+   (fn [^Long i]
      (let [col-name     (.getColumnLabel rsmeta i)
            db-type-name (.getColumnTypeName rsmeta i)
            base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]

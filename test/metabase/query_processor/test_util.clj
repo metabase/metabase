@@ -283,7 +283,7 @@
 
   By default, does't call fns on `nil` values; pass a truthy value as optional param `format-nil-values`? to override
   this behavior."
-  {:style/indent 1}
+  {:style/indent [:form]}
   ([format-fns response]
    (format-rows-by format-fns false response))
 
@@ -316,8 +316,8 @@
                                                   (.getName (class v))
                                                   (pr-str v)
                                                   (.getMessage e))
-                                   {:f f, :v v, :format-nil-values? format-nil-values?}
-                                   e)))))))))
+                                          {:f f, :v v, :format-nil-values? format-nil-values?}
+                                          e)))))))))
 
               :else
               (throw (ex-info "Unexpected response: rows are not sequential!" {:response response})))))))))
