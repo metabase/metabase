@@ -357,13 +357,15 @@ function getStackedValueTransformFunction(
       const rawBelowTotal = belowSeriesKeys
         .map(belowSeriesKey => datum[belowSeriesKey])
         .reduce((total: number, rowValue) => {
-          const value = getNumberOrZero(rowValue);
-
-          if (sign === "+" && value >= 0) {
-            return total + value;
+          if (typeof rowValue !== "number") {
+            return total;
           }
-          if (sign === "-" && value < 0) {
-            return total + value;
+
+          if (sign === "+" && rowValue >= 0) {
+            return total + rowValue;
+          }
+          if (sign === "-" && rowValue < 0) {
+            return total + rowValue;
           }
           return total;
         }, 0);
@@ -420,10 +422,15 @@ function getStackedDataLabelTransform(
       const transformedDatum = { ...datum };
 
       seriesDataKeys.forEach(seriesDataKey => {
-        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+        const value = datum[seriesDataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+
+        if (value >= 0) {
           transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
         }
-        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+        if (value < 0) {
           transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
         }
       });
@@ -450,11 +457,15 @@ function getBarSeriesDataLabelTransform(
       const transforedDatum = { ...datum };
 
       barSeriesModels.forEach(({ dataKey }) => {
-        if (getNumberOrZero(datum[dataKey]) > 0) {
+        const value = datum[dataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+        if (value >= 0) {
           transforedDatum[getBarSeriesDataLabelKey(dataKey, "+")] =
             Number.MIN_VALUE;
         }
-        if (getNumberOrZero(datum[dataKey]) < 0) {
+        if (value < 0) {
           transforedDatum[getBarSeriesDataLabelKey(dataKey, "-")] =
             -Number.MIN_VALUE;
         }

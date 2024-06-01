@@ -29,6 +29,7 @@ import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotate
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
+import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
@@ -192,4 +193,5 @@ export const data = {
   twoBarsTwoAreasOneLineLog,
   barFormattingFull,
   yAxisCompactWithoutDataLabels,
+  barStackedLabelsNullVsZero,
 };
