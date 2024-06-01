@@ -606,7 +606,7 @@ describe("issue 30165", () => {
       cy.findByText("Save").click();
     });
     cy.wait("@createQuestion");
-    modal().button("Not now").click();
+    cy.button("Not now").click();
 
     cy.findByTestId("native-query-editor").type(" WHERE TOTAL < 20");
     queryBuilderHeader().findByText("Save").click();
