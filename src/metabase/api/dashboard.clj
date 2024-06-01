@@ -98,9 +98,7 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (t2/hydrate dashboard [:dashcards
-                           [:card [:moderation_reviews :moderator_details]]
-                           [:card :can_write]
-                           [:card :can_write_query]
+                           [:card :can_write :can_write_query [:moderation_reviews :moderator_details]]
                            :series
                            :dashcard/action
                            :dashcard/linkcard-info]

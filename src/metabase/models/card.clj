@@ -170,8 +170,10 @@
     :id
     {:default false}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Card :can_write_query]
-  [_model _k cards]
+(mi/define-batched-hydration-method add-can-write-query
+  :can_write_query
+  "Hydrate can_write_query onto cards"
+  [cards]
   (with-can-write-query cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
