@@ -37,8 +37,9 @@ const MOCK_SERIES = [
         NumberColumn({ name: "Count" }),
       ],
       rows: [
-        ["foo", 1],
-        ["bar", 2],
+        ["foo", 4],
+        ["bar", 20],
+        ["baz", 12],
       ],
     },
   },
