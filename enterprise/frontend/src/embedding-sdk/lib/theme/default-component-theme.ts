@@ -4,9 +4,14 @@ import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 
+export const DEFAULT_SDK_FONT_SIZE = 14;
+
 // Use em units to scale font sizes relative to the base font size.
 // The em unit is used by default in the embedding SDK.
-const units = (px: number) => ({ px: `${px}px`, em: `${px / 14}em` });
+const units = (px: number) => ({
+  px: `${px}px`,
+  em: `${px / DEFAULT_SDK_FONT_SIZE}em`,
+});
 
 export const FONT_SIZES = {
   tableCell: units(12.5),

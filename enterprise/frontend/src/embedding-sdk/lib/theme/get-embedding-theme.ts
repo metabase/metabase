@@ -12,6 +12,7 @@ import type {
 import { colorTuple } from "./color-tuple";
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
+  DEFAULT_SDK_FONT_SIZE,
   EMBEDDING_SDK_COMPONENTS_OVERRIDES,
 } from "./default-component-theme";
 import type { MappableSdkColor } from "./embedding-color-palette";
@@ -20,7 +21,7 @@ import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 const getFontFamily = (theme: MetabaseTheme) =>
   theme.fontFamily ?? DEFAULT_FONT;
 
-const SDK_BASE_FONT_SIZE = "0.875em";
+const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
 
 /**
  * Transforms a public-facing Metabase theme configuration
