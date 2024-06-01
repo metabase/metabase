@@ -151,22 +151,23 @@
   (mi/instances-with-hydrated-data
     cards :can_write_query
     (fn []
-      (let [db->mp (into {}
-                         (comp
-                           (keep :database_id)
-                           (map (juxt identity
-                                      lib.metadata.jvm/application-database-metadata-provider)))
-                         cards)]
-        (into {}
-              (comp
-                (remove nil?)
-                (filter (comp not-empty :dataset_query))
-                (map
-                  (fn [{card-id :id :keys [database_id dataset_query]}]
-                    (let [query (lib/query (get db->mp database_id) dataset_query)]
-                     [card-id
-                     (:is-editable (lib/display-info query query))]))))
-              cards)))
+      (mu/disable-enforcement
+        (let [db->mp (into {}
+                           (comp
+                             (keep :database_id)
+                             (map (juxt identity
+                                        lib.metadata.jvm/application-database-metadata-provider)))
+                           cards)]
+          (into {}
+                (comp
+                  (remove nil?)
+                  (filter (comp not-empty :dataset_query))
+                  (map
+                    (fn [{card-id :id :keys [database_id dataset_query]}]
+                      (let [query (lib/query (get db->mp database_id) dataset_query)]
+                        [card-id
+                         (:is-editable (lib/display-info query query))]))))
+                cards))))
     :id
     {:default false}))
 
