@@ -61,9 +61,10 @@
 (mu/defn ^:private fingerprint-table!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
-  (let [rff (fn [_metadata]
+  (let [known-type-fields (filter #(not= (:base_type %) :type/*) fields)
+        rff (fn [_metadata]
               (redux/post-complete
-               (analyze/fingerprint-fields fields)
+               (analyze/fingerprint-fields known-type-fields)
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
@@ -78,10 +79,10 @@
                              (save-fingerprint! field fingerprint)
                              (update count-info :updated-fingerprints inc))))
                          (empty-stats-map (count fingerprints))
-                         (map vector fields fingerprints)))))
+                         (map vector known-type-fields fingerprints)))))
         driver (driver.u/database->driver (table/database table))
         opts {:truncation-size *truncation-size*}]
-    (driver/table-rows-sample driver table fields rff opts)))
+    (driver/table-rows-sample driver table known-type-fields rff opts)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
