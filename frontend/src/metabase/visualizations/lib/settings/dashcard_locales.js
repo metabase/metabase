@@ -704,6 +704,22 @@ const TITLE_LOCALES_BN = {
     'en' : 'Trainee Statistics Based on Attainment of Certificate of Completed Training',
     'bn' : 'সম্পন্ন প্রশিক্ষণ সমূহের সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
   },
+  'admin.dashboard.ppe.total.school' : {
+    'en' : 'Total Pre-primary School',
+    'bn' : 'মোট প্রাক-প্রাথমিক বিদ্যালয়'
+  },
+  'admin.dashboard.ppe.four.plus.school' : {
+    'en' : 'Total 4+ School',
+    'bn' : 'মোট ৪+ বিদ্যালয়'
+  },
+  'admin.dashboard.ppe.five.plus.school' : {
+    'en' : 'Total 5+ School',
+    'bn' : 'মোট ৫+ বিদ্যালয়'
+  },
+  'admin.dashboard.ppe.dedicated.classroom.school' : {
+    'en' : 'Pre-primary specific Schools with classrooms',
+    'bn' : 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণীকক্ষবিশিষ্ট বিদ্যালয়'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
