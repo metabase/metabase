@@ -15,7 +15,7 @@ import { QuestionDataSource } from "./components/QuestionDataSource";
 export const ViewHeaderContainer = styled(ViewSection)<{
   isNavBarOpen?: boolean;
 }>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
@@ -184,7 +184,7 @@ export const ViewHeaderActionPanel = styled.div`
     margin-left: 0;
     width: 100%;
     justify-content: space-between;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
   }

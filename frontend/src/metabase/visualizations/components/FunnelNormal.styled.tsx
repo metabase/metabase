@@ -17,7 +17,7 @@ interface FunnelStepProps {
 export const FunnelStep = styled.div<FunnelStepProps>`
   width: 100%;
   min-width: 20px;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid var(--mb-color-border);
   display: flex;
   flex-direction: column;
 

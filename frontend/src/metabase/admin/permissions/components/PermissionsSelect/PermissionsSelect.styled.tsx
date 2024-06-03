@@ -36,7 +36,7 @@ export const OptionsListItem = styled.li`
 `;
 
 export const ActionsList = styled(OptionsList)`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const ToggleContainer = styled.div`

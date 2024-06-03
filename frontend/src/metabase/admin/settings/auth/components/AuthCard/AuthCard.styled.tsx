@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 export const CardRoot = styled.div`
   flex: 1;
   max-width: 52rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-bottom: 2rem;
 `;
 

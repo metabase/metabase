@@ -12,7 +12,9 @@ const cellStyles = (props: CellProps) => css`
   padding: 1rem 0.5rem;
   font-weight: bold;
   color: ${props.isSecondary ? color("text-medium") : color("text-dark")};
-  border-bottom: ${props.isBordered ? `1px solid ${color("border")}` : "none"};
+  border-bottom: ${props.isBordered
+    ? `1px solid var(--mb-color-border)`
+    : "none"};
 `;
 
 export const ColumnNameCell = styled.td`
@@ -27,5 +29,5 @@ export const DataTypeCell = styled.td`
 
 export const HeaderCell = styled.th`
   padding: 1rem 0.5rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;

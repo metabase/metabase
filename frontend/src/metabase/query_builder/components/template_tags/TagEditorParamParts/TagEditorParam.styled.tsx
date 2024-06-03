@@ -6,7 +6,7 @@ import ParameterValueWidget from "metabase/parameters/components/ParameterValueW
 export const TagContainer = styled.div`
   padding: 1.5rem 1.5rem 0 1.5rem;
   margin-bottom: 1.5rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 export const TagName = styled.h3`
   font-weight: 900;
@@ -46,7 +46,7 @@ export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
   color: ${color("text-medium")};
   border-radius: 0.5rem;
   background-color: ${color("white")};
-  border: 2px solid ${color("border")};
+  border: 2px solid var(--mb-color-border);
 `;
 
 export const ToggleContainer = styled.div`

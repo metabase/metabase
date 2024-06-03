@@ -21,7 +21,7 @@ export const ItemList = styled.ul`
 `;
 
 export const ToggleItem = styled.li`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   margin-bottom: 0.5em;
 
   ${ItemTitle} {

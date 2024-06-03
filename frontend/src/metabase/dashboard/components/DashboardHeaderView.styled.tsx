@@ -172,7 +172,7 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
     padding-top: 0.375rem;
     padding-left: 1rem;
     padding-right: 1rem;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
   }
 `;
 

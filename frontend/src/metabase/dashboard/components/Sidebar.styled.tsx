@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const SidebarAside = styled.aside<{ $width: number }>`
   display: flex;
   flex-direction: column;
   width: ${props => props.$width}px;
   min-width: ${props => props.$width}px;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
   background: var(--mb-color-bg-white);
 `;
 
@@ -25,5 +23,5 @@ export const ButtonContainer = styled.div<{ spaceBetween?: boolean }>`
   align-items: center;
   gap: 20px;
   padding: 12px 32px;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

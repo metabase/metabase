@@ -109,7 +109,7 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
     props.isResizable &&
     css`
       margin-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
     `}
 `;
 

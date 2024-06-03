@@ -8,7 +8,7 @@ export const Container = styled.div`
   display: flex;
   flex-wrap: nowrap;
   padding-left: ${space(1)};
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 type TabButtonProps = {

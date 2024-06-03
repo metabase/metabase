@@ -15,7 +15,7 @@ export const CellRoot = styled.td<{
   text-align: ${props => (props.isRightAligned ? "right" : "unset")};
   white-space: nowrap;
 
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 
   background-color: ${props => props.backgroundColor ?? "unset"};
 `;

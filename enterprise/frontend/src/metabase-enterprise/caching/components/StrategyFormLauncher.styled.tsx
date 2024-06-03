@@ -20,9 +20,9 @@ export const PolicyToken = styled(Button)<
   justify-content: center;
   ${({ variant }) =>
     css`
-      border-color: ${color(
-        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-      )} !important;
+      border-color: ${["filled", "outline"].includes(variant || "")
+        ? color("brand")
+        : "var(--mb-color-border)"} !important;
     `};
   span {
     gap: 0.5rem;
@@ -52,15 +52,16 @@ export const StyledLauncher = styled(Flex)<
   width: 100%;
   ${({ variant }) =>
     css`
-      border-color: ${color(
-        ["filled", "outline"].includes(variant || "") ? "brand" : "border",
-      )} !important;
+      border-color: ${["filled", "outline"].includes(variant || "")
+        ? color("brand")
+        : "var(--mb-color-border)"} !important;
     `};
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
   background-color: ${({ forRoot }) =>
     forRoot ? "var(--mb-color-bg-medium)" : color("white")};
-  ${({ forRoot }) => (forRoot ? "" : `border: 1px solid ${color("border")}`)};
+  ${({ forRoot }) =>
+    forRoot ? "" : `border: 1px solid var(--mb-color-border)`};
   flex-direction: row;
   align-items: center;
   ${breakpointMaxSmall} {

@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
-import { color, alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 export const MigrationCard = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   padding: 2rem 3rem;
 `;

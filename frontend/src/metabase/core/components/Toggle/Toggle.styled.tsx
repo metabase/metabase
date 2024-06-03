@@ -39,7 +39,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   width: ${props => (props.small ? "28px" : "48px")};
   height: ${props => (props.small ? "17px" : "24px")};
   border-radius: 99px;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   background-color: var(--mb-color-bg-medium);
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;

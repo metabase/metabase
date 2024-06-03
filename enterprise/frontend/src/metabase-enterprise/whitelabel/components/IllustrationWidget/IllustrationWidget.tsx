@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Icon, Paper, Select, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
@@ -147,7 +146,7 @@ export function IllustrationWidget({
           align="center"
           justify="center"
           w="7.5rem"
-          style={{ borderRight: `1px solid ${color("border")}` }}
+          style={{ borderRight: `1px solid var(--mb-color-border)` }}
         >
           {getPreviewImage({
             value,

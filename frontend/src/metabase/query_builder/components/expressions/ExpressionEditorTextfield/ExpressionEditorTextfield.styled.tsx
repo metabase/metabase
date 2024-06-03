@@ -10,7 +10,7 @@ export const EditorContainer = styled.div<{
   hasError: boolean;
 }>`
   border: 1px solid;
-  border-color: ${color("border")};
+  border-color: var(--mb-color-border);
   border-radius: ${space(1)};
   display: flex;
   position: relative;
