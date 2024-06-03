@@ -4,7 +4,7 @@ title: API changelog
 
 # Breaking changes to the API interface
 
-## Metabase 0.51.0
+## Metabase 0.50.0
 
 - `GET /api/dashboard/:id/query_metadata`
 
@@ -15,8 +15,6 @@ title: API changelog
 
   New endpoint that combines responses for `/api/field/:id`, `/api/database/:id`, and `/api/table/:id/query_metadata`.
   This should drastically cut down on the required number of requests to display a dashboard.
-
-## Metabase 0.50.0
 
 - `GET /api/collection/tree` and `GET /api/collection/:id/items`
   These API endpoints will always return official collections first, before other items in the collection.
