@@ -1,4 +1,7 @@
-import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
+import {
+  fillWithDefaultValue,
+  getCommonStaticVizSettings,
+} from "metabase/static-viz/lib/settings";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import {
   getCardsSeriesModels,
@@ -52,17 +55,6 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
-
-export const fillWithDefaultValue = (
-  settings: Record<string, unknown>,
-  key: string,
-  defaultValue: unknown,
-  isValid = true,
-) => {
-  if (typeof settings[key] === "undefined" || !isValid) {
-    settings[key] = defaultValue;
-  }
-};
 
 const getSeriesFunction = (
   rawSeries: RawSeries,
