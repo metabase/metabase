@@ -48,7 +48,7 @@ export const QueryErrorMessage = styled.div`
   line-height: 1.125rem;
   border: 1px solid ${color("brand")};
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   overflow-wrap: break-word;
 `;
 

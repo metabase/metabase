@@ -428,12 +428,29 @@
     (when (some? value)
       (condp #(isa? %2 %1) base-type
         :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
-                             (UUID/fromString  value))
+                             (try
+                               (UUID/fromString value)
+                               (catch IllegalArgumentException _
+                                 (h2x/with-type-info value {:database-type "text"}))))
         :type/IPAddress    (h2x/cast :inet value)
         :type/PostgresEnum (if (quoted? database-type)
                              (h2x/cast database-type value)
                              (h2x/quoted-cast database-type value))
         (sql.qp/->honeysql driver value)))))
+
+(defmethod sql.qp/->honeysql [:postgres ::cast]
+  [driver [_ expr database-type]]
+  (h2x/maybe-cast database-type (sql.qp/->honeysql driver expr)))
+
+(doseq [op [:= :!= :contains :starts-with :ends-with]]
+  (defmethod sql.qp/->honeysql [:postgres op]
+    [driver [op field arg :as clause]]
+    ((get-method sql.qp/->honeysql [:sql-jdbc op])
+     driver
+     (cond-> clause
+       (and (isa? (:base-type (get field 2)) :type/UUID)
+            (= (:database-type (h2x/type-info (sql.qp/->honeysql driver arg))) "text"))
+       (assoc 1 [::cast field "text"])))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]

@@ -58,7 +58,7 @@ export const AddSnippetIcon = styled(Icon)<AddSnippetIconProps>`
   border-radius: 0.5rem;
 
   &:hover {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 

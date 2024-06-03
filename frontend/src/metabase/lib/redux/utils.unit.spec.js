@@ -1,4 +1,4 @@
-import { delay } from "metabase/lib/promise";
+import { delay } from "__support__/utils";
 
 import { fetchData, updateData, mergeEntities } from "./utils";
 

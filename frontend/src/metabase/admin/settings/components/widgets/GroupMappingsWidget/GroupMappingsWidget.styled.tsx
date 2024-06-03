@@ -20,7 +20,7 @@ export const GroupMappingsWidgetRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   display: flex;

@@ -17,7 +17,7 @@ export const CodeContainer = styled.pre<CodeContainerProps>`
   border: 1px solid ${props => color(props.isHighlighted ? "brand" : "border")};
   border-radius: 0.5rem;
   background-color: ${props =>
-    color(props.isHighlighted ? "brand-light" : "bg-light")};
+    props.isHighlighted ? color("brand-light") : "var(--mb-color-bg-light)"};
   overflow: auto;
 `;
 
@@ -43,7 +43,7 @@ export const CodeCopyButton = styled(IconButtonWrapper)<CodeCopyButtonProps>`
   height: 1rem;
   color: ${color("brand")};
   background-color: ${props =>
-    color(props.isHighlighted ? "brand-light" : "bg-light")};
+    props.isHighlighted ? color("brand-light") : "var(--mb-color-bg-light)"};
   visibility: hidden;
 `;
 

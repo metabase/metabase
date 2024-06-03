@@ -5,9 +5,9 @@ import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import styles from "./MultiAutocomplete.module.css";
 import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
@@ -150,7 +150,7 @@ export function MultiAutocomplete({
     }
   };
 
-  const info = (
+  const info = isFocused ? (
     <Tooltip
       label={
         <>
@@ -160,8 +160,10 @@ export function MultiAutocomplete({
         </>
       }
     >
-      <Icon name="info_filled" className={styles.icon} />
+      <Icon name="info_filled" fill={color("text-light")} />
     </Tooltip>
+  ) : (
+    <span />
   );
 
   return (

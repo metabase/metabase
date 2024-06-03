@@ -11,13 +11,13 @@ import {
 } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
-import { PublicDashboard } from "metabase/public/containers/PublicDashboard/PublicDashboard";
+import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 const _StaticDashboard = ({
   dashboardId,
-  parameterQueryParams,
+  parameterQueryParams = {},
   bordered,
   titled,
   theme: userTheme,
@@ -26,8 +26,9 @@ const _StaticDashboard = ({
   hideParameters,
 }: {
   dashboardId: DashboardId;
-  parameterQueryParams: Query;
-} & Partial<EmbedDisplayParams>) => {
+  parameterQueryParams?: Query;
+  hideParameters?: string[];
+} & Partial<Omit<EmbedDisplayParams, "hideParameters">>) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
     ...pick(
@@ -37,7 +38,7 @@ const _StaticDashboard = ({
         theme: userTheme,
         font,
         hideDownloadButton,
-        hideParameters,
+        hideParameters: hideParameters ? hideParameters.join(",") : null,
       },
       isNotNull,
     ),
@@ -58,7 +59,7 @@ const _StaticDashboard = ({
 
   return (
     <Box ref={ref} style={{ overflow: "auto" }}>
-      <PublicDashboard
+      <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
         bordered={options.bordered}
@@ -80,4 +81,6 @@ const _StaticDashboard = ({
   );
 };
 
-export const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+
+export { EmbedDisplayParams, StaticDashboard };
