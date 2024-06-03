@@ -29,7 +29,10 @@ const config = {
     "<rootDir>/frontend/src",
     "<rootDir>/enterprise/frontend/src",
   ],
-  modulePathIgnorePatterns: ["<rootDir>/target/cljs_release/.*"],
+  modulePathIgnorePatterns: [
+    "<rootDir>/target/cljs_release/.*",
+    "<rootDir>/resources/frontend_client",
+  ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",
