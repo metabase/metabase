@@ -367,7 +367,13 @@ class Question {
   }
 
   canWriteQuery(): boolean {
-    return this._card && this._card.can_write_query;
+    if (this.isSaved()) {
+      return this._card.can_write_query;
+    }
+
+    const query = this.query();
+    const { isEditable } = Lib.queryDisplayInfo(query);
+    return isEditable;
   }
 
   canWriteActions(): boolean {

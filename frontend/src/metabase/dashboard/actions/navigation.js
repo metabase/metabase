@@ -48,23 +48,23 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       const { dashboardId, dashboards, parameterValues } = getState().dashboard;
       const dashboard = dashboards[dashboardId];
 
-      const cardAfterClick = getCardAfterVisualizationClick(
+      const previousQuestion = new Question(previousCard, metadata);
+      const nextCardAfterClick = getCardAfterVisualizationClick(
         nextCard,
         previousCard,
       );
 
-      let question = new Question(cardAfterClick, metadata);
-      if (previousCard.can_write_query) {
-        question = question
-          .setDisplay(cardAfterClick.display || previousCard.display)
-          .setSettings(dashcard.card.visualization_settings)
-          .lockDisplay();
-      } else {
-        question = question.setCard(dashcard.card).setDashboardProps({
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-        });
-      }
+      const nextQuestion = previousQuestion.canWriteQuery()
+        ? new Question(nextCardAfterClick, metadata)
+            .setDisplay(nextCardAfterClick.display || previousCard.display)
+            .setSettings(dashcard.card.visualization_settings)
+            .lockDisplay()
+        : new Question(nextCardAfterClick, metadata)
+            .setCard(dashcard.card)
+            .setDashboardProps({
+              dashboardId: dashboard.id,
+              dashcardId: dashcard.id,
+            });
 
       const parametersMappedToCard = getParametersMappedToDashcard(
         dashboard,
@@ -72,7 +72,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       );
 
       const url = ML_Urls.getUrlWithParameters(
-        question,
+        nextQuestion,
         parametersMappedToCard,
         parameterValues,
         {
