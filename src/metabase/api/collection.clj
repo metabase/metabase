@@ -1124,6 +1124,10 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
            (collection/perms-for-moving collection-before-update new-parent)))
+
+        ;; We can't move a collection to the Trash
+        (api/check-400
+         (not (collection/is-trash? new-parent)))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 

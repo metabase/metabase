@@ -713,6 +713,10 @@
           dash-updates                       (api/updates-with-trashed-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
+      ;; Can't move things to the Trash.
+      (when (some-> dash-updates :collection_id (= (collection/trash-collection-id)))
+        (throw (ex-info (tru "Cannot move a card to the trash collection.")
+                        {:status-code 400})))
       (api/check-500
         (do
           (t2/with-transaction [_conn]

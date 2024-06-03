@@ -904,7 +904,8 @@
         will-be-trashed? (str/starts-with? new-location (trash-path))]
     (when will-be-trashed?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
-                      {:collection collection :new-location new-location})))
+                      {:collection collection
+                       :new-location new-location})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)

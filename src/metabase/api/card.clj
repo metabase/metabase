@@ -547,6 +547,10 @@
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
+    ;; Can't move a card to the trash
+    (when (and collection_id (= collection_id (collection/trash-collection-id)))
+      (throw (ex-info (tru "Cannot move a card to the trash collection.")
+                      {:status-code 400})))
     ;; Do various permissions checks
     (doseq [f [collection/check-allowed-to-change-collection
                check-allowed-to-modify-query

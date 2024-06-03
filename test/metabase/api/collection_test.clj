@@ -2204,3 +2204,17 @@
       (t2.with-temp/with-temp [:model/Collection collection {:name "A"}]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
         (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection)))))))))
+
+(deftest nothing-can-be-moved-to-the-trash
+  (t2.with-temp/with-temp [:model/Dashboard dashboard {}
+                           :model/Collection collection {}
+                           :model/Card card {}]
+    (testing "Collections can't be moved to the trash"
+      (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id collection)) {:parent_id (collection/trash-collection-id)})
+      (is (not (t2/exists? :model/Collection :location (collection/trash-path)))))
+    (testing "Dashboards can't be moved to the trash"
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" (u/the-id dashboard)) {:collection_id (collection/trash-collection-id)})
+      (is (not (t2/exists? :model/Dashboard :collection_id (collection/trash-collection-id)))))
+    (testing "Cards can't be moved to the trash"
+      (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
+      (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
