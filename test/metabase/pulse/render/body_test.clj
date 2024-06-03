@@ -628,7 +628,7 @@
                                                                                                    [:avg [:field (mt/id :orders :subtotal) nil]]]}}
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results (pu/execute-multi-card card nil)
+                combined-cards-results [(pu/execute-card card card nil)]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events
@@ -772,18 +772,19 @@
                                                                :card_id      card-a-id}
                        :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                      :card_id          card-b-id}]
-          (let [card-doc               (render.tu/render-card-as-hickory card-a-id)
-                dashcard-doc           (render.tu/render-dashcard-as-hickory dashcard-id)
-                card-path-elements     (hik.s/select (hik.s/tag :path) card-doc)
-                card-paths-count       (count card-path-elements)
-                dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
-                expected-dashcard-paths-count (+ 4 card-paths-count)]
-            ;; SVG Path elements are used to draw the bars in a bar graph.
-            ;; They are also used to create the axes lines, so we establish a count of a single card's path elements
-            ;; to compare against.
-            ;; Since we know that the Products sample data has 4 Product categories, we can reliably expect
-            ;; that Adding a series to the card that is identical to the first card will result in 4 more path elements.
-            (is (= expected-dashcard-paths-count (count dashcard-path-elements)))))))))
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [card-doc               (render.tu/render-card-as-hickory card-a-id)
+                  dashcard-doc           (render.tu/render-dashcard-as-hickory dashcard-id)
+                  card-path-elements     (hik.s/select (hik.s/tag :path) card-doc)
+                  card-paths-count       (count card-path-elements)
+                  dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
+                  expected-dashcard-paths-count (+ 4 card-paths-count)]
+              ;; SVG Path elements are used to draw the bars in a bar graph.
+              ;; They are also used to create the axes lines, so we establish a count of a single card's path elements
+              ;; to compare against.
+              ;; Since we know that the Products sample data has 4 Product categories, we can reliably expect
+              ;; that Adding a series to the card that is identical to the first card will result in 4 more path elements.
+              (is (= expected-dashcard-paths-count (count dashcard-path-elements))))))))))
 
 (deftest multiseries-dashcard-render-filters-test
   (testing "Multi-series dashcards render with every series properly filtered (#39083)"
@@ -801,7 +802,8 @@
                        :model/Card {card-b-id :id} {:name          "series_b"
                                                     :display       :bar
                                                     :dataset_query q}
-                       :model/Dashboard {dash-id :id} {:parameters [{:id        "944bba5f"
+                       :model/Dashboard {dash-id :id} {:parameters [{:name      "Date Filter"
+                                                                     :id        "944bba5f"
                                                                      :type      :date/month-year
                                                                      :sectionId "date"}]}
                        :model/DashboardCard {dashcard-id :id}
@@ -821,23 +823,24 @@
                           :target       [:dimension [:field (mt/id :orders :created_at) {:base-type :type/DateTime}]]}]}
                        :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                      :card_id          card-b-id}]
-          (let [dashcard-doc           (render.tu/render-dashcard-as-hickory
-                                        dashcard-id
-                                        [{:value     "2019-05"
-                                          :id        "944bba5f"
-                                          :sectionId "date"
-                                          :type      :date/relative
-                                          :target    [:dimension [:field (mt/id :orders :created_at) {:base-type :type/DateTime}]]}])
-                dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
-                ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
-                ;; and remove any paths that are 'transparent'
-                series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
-                                           (dissoc "transparent")
-                                           (update-vals count))]
-            ;; The series count should be 1 for each series, since we're filtering by a single month of the year
-            ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.
-            (is (= [1 1]
-                   (vals series-counts)))))))))
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [dashcard-doc           (render.tu/render-dashcard-as-hickory
+                                          dashcard-id
+                                          [{:value     "2019-05"
+                                            :id        "944bba5f"
+                                            :sectionId "date"
+                                            :type      :date/month-year
+                                            :target    [:dimension [:field (mt/id :orders :created_at) {:base-type :type/DateTime}]]}])
+                  dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
+                  ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
+                  ;; and remove any paths that are 'transparent'
+                  series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
+                                             (dissoc "transparent")
+                                             (update-vals count))]
+              ;; The series count should be 1 for each series, since we're filtering by a single month of the year
+              ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.
+              (is (= [1 1]
+                     (vals series-counts))))))))))
 
 (defn- render-card
   [render-type card data]

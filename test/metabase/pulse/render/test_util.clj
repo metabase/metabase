@@ -19,6 +19,7 @@
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -669,17 +670,14 @@
   Functions from `hickory.select` can be used on the output of this function and are particularly useful for writing test assertions."
   ([dashcard-id] (render-dashcard-as-hickory dashcard-id []))
   ([dashcard-id parameters]
-   (let [dashcard (t2/select-one :model/DashboardCard :id dashcard-id)
-         card     (t2/select-one :model/Card :id (:card_id dashcard))
-         viz      (or (:visualilzation_settings dashcard)
-                      (:visualilzation_settings card))
-         query    (qp.card/query-for-card card parameters nil {:process-viz-settings? true})
-         results  (qp/process-query (assoc query :viz-settings viz :async? false))]
+   (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
+         card                      (t2/select-one :model/Card :id (:card_id dashcard))
+         {:keys [result dashcard]} (pu/execute-dashboard-subscription-card dashcard parameters)]
      (with-redefs [js-svg/svg-string->bytes       identity
                    image-bundle/make-image-bundle (fn [_ s]
                                                     {:image-src   s
                                                      :render-type :inline})]
-       (let [content (-> (render/render-pulse-card :inline "UTC" card dashcard results)
+       (let [content (-> (render/render-pulse-card :inline "UTC" card dashcard result)
                          :content)]
          (-> content
              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
