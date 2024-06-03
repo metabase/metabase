@@ -527,6 +527,10 @@
       (h value)]
      :render/text (str value)}))
 
+(defn- result-k->data-k
+  [m]
+  (m/map-keys (fn [k] (if (= :results k) :data k)) m))
+
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
 ;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
@@ -535,22 +539,14 @@
 ;; Trend charts were added more recently and will not have multi-series.
 (mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
   [_chart-type render-type _timezone-id card dashcard data]
-  (let [combined-cards-results                 (if dashcard
-                                                 (:series-results dashcard)
-                                                 [{:card   card
-                                                   :result data}])
-        cards-with-data                        (m/distinct-by
-                                                #(get-in % [:card :id])
-                                                (map
-                                                 (comp
-                                                  add-dashcard-timeline-events
-                                                  (fn [c d] {:card c :data d}))
-                                                 (cond-> (map :card combined-cards-results)
-                                                   dashcard (conj card))
-                                                 (cond-> (map #(get-in % [:result :data]) combined-cards-results)
-                                                   dashcard (conj data))))
-        dashcard-viz-settings                  (get dashcard :visualization_settings)
-        {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
+  (let [series-cards-results                   (:series-results dashcard)
+        cards-with-data                        (->> series-cards-results
+                                                    (map result-k->data-k)
+                                                    (cons {:card card :data data})
+                                                    (map add-dashcard-timeline-events))
+        viz-settings                           (or (get card :visualization_settings)
+                                                   (get dashcard :visualization_settings))
+        {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data viz-settings)]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
