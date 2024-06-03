@@ -11,7 +11,7 @@ import { ViewTitleHeader } from "./ViewHeader";
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   height: 100%;
   position: relative;
 `;
@@ -64,7 +64,7 @@ export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
 
 export const QueryBuilderViewHeaderContainer = styled.div`
   flex-shrink: 0;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   position: relative;
   z-index: 3;
 `;

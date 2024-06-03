@@ -89,7 +89,7 @@ export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 

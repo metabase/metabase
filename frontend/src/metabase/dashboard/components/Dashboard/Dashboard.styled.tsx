@@ -72,7 +72,7 @@ export const DashboardHeaderContainer = styled.header<{
   position: relative;
   z-index: 2;
 
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   border-bottom: 1px solid ${color("border")};
 
   ${({ isFullscreen }) =>

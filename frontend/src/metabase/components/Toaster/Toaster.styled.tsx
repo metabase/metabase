@@ -40,7 +40,8 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${alpha(color("bg-white"), 0.1)};
+  background-color: ${({ theme }) =>
+    alpha(theme.fn.themeColor("bg-white"), 0.1)};
   border-radius: 6px;
   color: ${color("white")};
   width: 90px;
@@ -51,7 +52,8 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${alpha(color("bg-white"), 0.3)};
+    background-color: ${({ theme }) =>
+      alpha(theme.fn.themeColor("bg-white"), 0.3)};
   }
 `;
 

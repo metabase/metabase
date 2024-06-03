@@ -60,7 +60,7 @@ export const InputField = styled.input<InputProps>`
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
   background-color: ${props =>
-    props.readOnly ? "var(--mb-color-bg-light)" : color("bg-white")};
+    props.readOnly ? "var(--mb-color-bg-light)" : "var(--mb-color-bg-white)"};
   outline: none;
   text-align: inherit;
 
