@@ -56,6 +56,12 @@ Now that you have your database info you can connect to your database. Sweet, sw
 
 For more on connecting to databases, see [Adding and managing databases](../databases/connecting.md).
 
+## Activate your license
+
+If you're self-hosting Metabase on the [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, Metabase will prompt you for your license. This is just a convenience. You don't need to enter your license here; you can [activate your license](../paid-features/activating-the-enterprise-edition.md) at any time. Just know that all of your paid features won't work until you've activated your license.
+
+If you're running Pro on Metabase Cloud, we'll handle this step for you. Your Pro features should already be available.
+
 ## Usage data preferences
 
 One last quick thing that you’ll have to decide is if it’s okay for us to collect some anonymous info about how you use the product — it helps us make Metabase better. Like the box says:
