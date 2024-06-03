@@ -9,6 +9,7 @@ import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 
 import type { StaticChartProps } from "../StaticVisualization";
 
+import { getPieChartLegend } from "./legend";
 import { computeStaticPieChartSettings } from "./settings";
 
 export function PieChart({
@@ -37,6 +38,13 @@ export function PieChart({
     computedVizSettings,
     renderingContext,
   );
+  const { legendHeight, Legend } = getPieChartLegend(
+    chartModel,
+    formatters,
+    computedVizSettings,
+    DIMENSIONS.sideLen,
+    DIMENSIONS.paddingTop,
+  );
 
   const chart = init(null, null, {
     renderer: "svg",
@@ -54,9 +62,13 @@ export function PieChart({
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={DIMENSIONS.sideLen}
-      height={DIMENSIONS.sideLen + DIMENSIONS.paddingTop}
+      height={DIMENSIONS.sideLen + DIMENSIONS.paddingTop + legendHeight}
     >
-      <Group dangerouslySetInnerHTML={{ __html: chartSvg }}></Group>
+      <Legend />
+      <Group
+        top={DIMENSIONS.paddingTop + legendHeight}
+        dangerouslySetInnerHTML={{ __html: chartSvg }}
+      ></Group>
     </svg>
   );
 }
