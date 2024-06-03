@@ -448,6 +448,7 @@ export type DrillThruType =
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
   | "drill-thru/combine-columns"
+  | "drill-thru/compare-aggregations"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -480,6 +481,9 @@ export type ColumnExtractDrillThruInfo =
     displayName: string;
     extractions: ColumnExtractionInfo[];
   };
+
+export type CompareAggregationsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
 
 export type CombineColumnsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/combine-columns">;
@@ -550,6 +554,7 @@ export type ZoomTimeseriesDrillThruInfo =
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
+  | CompareAggregationsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
