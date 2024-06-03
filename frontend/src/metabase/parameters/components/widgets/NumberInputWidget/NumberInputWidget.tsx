@@ -63,17 +63,13 @@ export function NumberInputWidget({
     return res !== null;
   }
 
-  const handleChange = (value: (string | number)[]) => {
-    setUnsavedArrayValue(value.filter((x): x is number => Number.isFinite(x)));
-  };
-
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
-          <MultiAutocomplete
-            onChange={handleChange}
+          <MultiAutocomplete<number>
+            onChange={setUnsavedArrayValue}
             value={unsavedArrayValue}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
@@ -93,7 +89,9 @@ export function NumberInputWidget({
               onChange={newValue => {
                 setUnsavedArrayValue(unsavedArrayValue => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = newValue;
+                  if (newValue) {
+                    newUnsavedValue[i] = newValue;
+                  }
                   return newUnsavedValue;
                 });
               }}
