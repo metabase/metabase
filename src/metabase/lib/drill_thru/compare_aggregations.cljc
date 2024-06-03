@@ -29,4 +29,4 @@
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/compare-aggregations
   [_query _stage-number _drill & _args]
-  (throw (ex-info "Do not call drill-thru for compare-aggregations; add the expression directly" {})))
+  (throw (ex-info "Do not call drill-thru for compare-aggregations; add the aggregations directly" {})))
