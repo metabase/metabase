@@ -1,8 +1,9 @@
-import { t } from "ttag";
-
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
+import {
+  CompareAggregations,
+  getTitle,
+} from "metabase/query_builder/components/CompareAggregations";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
@@ -24,6 +25,8 @@ export const CompareAggregationsAction: LegacyDrill = ({
   ) {
     return [];
   }
+
+  const title = getTitle(query, stageIndex);
 
   const Popover = ({
     onChangeCardAndRun,
@@ -58,8 +61,8 @@ export const CompareAggregationsAction: LegacyDrill = ({
   return [
     {
       name: "compare-aggregations",
-      title: t`Compare to previous month`, // TODO
-      tooltip: t`Compare to previous month`, // TODO
+      title,
+      tooltip: title,
       buttonType: "horizontal",
       icon: "lines",
       default: true,
