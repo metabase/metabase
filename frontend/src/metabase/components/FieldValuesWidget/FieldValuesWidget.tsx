@@ -481,6 +481,7 @@ export function FieldValuesWidgetInner({
             autoFocus={autoFocus}
             prefix={prefix}
             parseValue={parseFreeformValue}
+            maxSelectedValues={multi ? undefined : 1}
           />
         )}
       </div>
