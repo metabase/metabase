@@ -8,7 +8,6 @@ import {
   popover,
   visitQuestionAdhoc,
   visitQuestion,
-  runQuery,
   openPublicLinkPopoverFromMenu,
   queryBuilderMain,
   visitDashboard,
@@ -21,6 +20,14 @@ import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const { COLLECTION_GROUP } = USER_GROUPS;
+
+function runQuery() {
+  cy.findByTestId("qb-header").within(() => {
+    cy.icon("play").click();
+  });
+
+  cy.wait("@cardQuery");
+}
 
 describe("issue 9357", () => {
   beforeEach(() => {
@@ -802,14 +809,6 @@ describe("issue 21160", () => {
     },
     display: "scalar",
   };
-
-  function runQuery() {
-    cy.findByTestId("qb-header").within(() => {
-      cy.icon("play").click();
-    });
-
-    cy.wait("@cardQuery");
-  }
 
   function resultAssertion(res) {
     cy.findByTestId("scalar-value").invoke("text").should("eq", res);
