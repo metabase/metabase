@@ -489,8 +489,6 @@ class Visualization extends PureComponent {
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
-    const href = this.getHref();
-
     return (
       <ErrorBoundary onError={this.onErrorBoundaryError}>
         <VisualizationRoot
@@ -506,7 +504,7 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
-                href={href}
+                getHref={this.getHref}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun
@@ -559,7 +557,7 @@ class Visualization extends PureComponent {
                 onRender={this.onRender}
                 onActionDismissal={this.hideActions}
                 gridSize={gridSize}
-                href={href}
+                getHref={this.getHref}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun
                     ? this.handleOnChangeCardAndRun
