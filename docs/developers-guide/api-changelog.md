@@ -9,12 +9,12 @@ title: API changelog
 - `GET /api/dashboard/:id/query_metadata`
 
   New endpoint that combines responses for `/api/field/:id`, `/api/database/:id`, and `/api/table/:id/query_metadata`.
-  This should drastically cut down on the required number of requests to display a card.
+  This should drastically cut down on the required number of requests to display a dashboard.
 
 - `GET /api/card/:id/query_metadata`
 
   New endpoint that combines responses for `/api/field/:id`, `/api/database/:id`, and `/api/table/:id/query_metadata`.
-  This should drastically cut down on the required number of requests to display a dashboard.
+  This should drastically cut down on the required number of requests to display a card.
 
 - `GET /api/collection/tree` and `GET /api/collection/:id/items`
   These API endpoints will always return official collections first, before other items in the collection.
