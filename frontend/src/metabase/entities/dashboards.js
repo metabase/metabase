@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { dashboardApi } from "metabase/api";
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   getCollectionType,
@@ -16,7 +16,6 @@ import {
   compose,
   withAction,
   withAnalytics,
-  withCachedDataAndRequestState,
   withNormalize,
   withRequestState,
 } from "metabase/lib/redux";
@@ -164,11 +163,6 @@ const Dashboards = createEntity({
 
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withCachedDataAndRequestState(
-        ({ id }) => [...Dashboards.getObjectStatePath(id)],
-        ({ id }) => [...Dashboards.getObjectStatePath(id), "fetchMetadata"],
-        entityQuery => Dashboards.getQueryKey(entityQuery),
-      ),
       withNormalize({
         databases: [DatabaseSchema],
         tables: [TableSchema],
@@ -182,7 +176,26 @@ const Dashboards = createEntity({
           entityCompatibleQuery(
             id,
             dispatch,
-            dashboardApi.endpoints.getDashboardMetadata,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+          ),
+    ),
+
+    fetchXrayMetadata: compose(
+      withAction(FETCH_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+        cards: [QuestionSchema],
+        dashboards: [DashboardSchema],
+      }),
+    )(
+      ({ entity, entityId }) =>
+        dispatch =>
+          entityCompatibleQuery(
+            { entity, entityId },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
     ),
   },
