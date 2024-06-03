@@ -411,6 +411,9 @@ const getYAxisFormatter = (
     return renderingContext.formatValue(value, {
       column,
       ...(settings.column?.(column) ?? {}),
+      // since we already transformed the dataset values, we do not need to
+      // consider scaling anymore
+      scale: undefined,
       ...formattingOptions,
     });
   };

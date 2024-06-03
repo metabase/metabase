@@ -640,6 +640,9 @@ const createSeriesLabelsFormatter = (
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: isCompact,
+      // since we already transformed the dataset values, we do not need to
+      // consider scaling anymore
+      scale: undefined,
       ...formattingOptions,
     });
   });
