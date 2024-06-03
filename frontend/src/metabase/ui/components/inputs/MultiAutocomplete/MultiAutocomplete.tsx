@@ -27,7 +27,7 @@ export type MultiAutocompleteProps = Omit<
   data?: ReadonlyArray<string | number | SelectItem>;
   defaultValue?: (string | number)[];
   parseValue?: (str: string) => string | number | null;
-  value: (string | number)[];
+  value?: (string | number)[];
   onChange?: (value: (string | number)[]) => void;
 };
 
