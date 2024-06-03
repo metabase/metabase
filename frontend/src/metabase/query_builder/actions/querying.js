@@ -23,6 +23,7 @@ import {
   getTimeoutId,
 } from "../selectors";
 
+import { getQuestionWithDefaultVisualizationSettings } from "./core/utils";
 import { updateUrl } from "./navigation";
 
 export const SET_DOCUMENT_TITLE = "metabase/qb/SET_DOCUMENT_TITLE";
@@ -200,6 +201,29 @@ export const queryCompleted = (
         getSensibleDisplays(data),
         prevData && getSensibleDisplays(prevData),
       );
+    }
+
+    const previousQuestion = getQuestion(getState());
+    const previousVizSettings = previousQuestion?.settings() ?? {};
+
+    const series = [{ card: question.card(), data }];
+    const vizSettings = getQuestionWithDefaultVisualizationSettings(
+      question,
+      series,
+    ).settings();
+
+    const isLineAreaBar = ["line", "area", "bar"].includes(question.display());
+    if (isLineAreaBar) {
+      question = question.updateSettings({
+        "graph.dimensions":
+          vizSettings["graph.dimensions"].length > 0
+            ? vizSettings["graph.dimensions"]
+            : previousVizSettings["graph.dimensions"],
+        "graph.metrics":
+          vizSettings["graph.metrics"].length > 0
+            ? vizSettings["graph.metrics"]
+            : previousVizSettings["graph.metrics"],
+      });
     }
 
     const card = question.card();
