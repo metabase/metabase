@@ -62,6 +62,19 @@
                                     "question"  :model/Card)
                                   :id [:in ids]))))
 
+(defn- check-cache-access [models id]
+  (if (or (nil? id)
+          ;; sometimes its a sequence and we're going to check for settings access anyway
+          (not (number? id))
+          (zero? id))
+    ;; if you're not accessing a concrete entity, you should be able to access settings
+    (validation/check-has-application-permission :setting)
+    (api/write-check (case (first models)
+                       "database" :model/Database
+                       "dashboard" :model/Dashboard
+                       "question" :model/Card)
+        id)))
+
 (api/defendpoint GET "/"
   "Return cache configuration."
   [:as {{:strs [model collection id]
@@ -71,10 +84,10 @@
    ;; note that `nil` in `collection` means all configurations not scoped to any particular collection
    collection [:maybe ms/PositiveInt]
    id         [:maybe ms/PositiveInt]}
-  (validation/check-has-application-permission :setting)
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+  (check-cache-access model id)
   {:data (cache-config/get-list model collection id)})
 
 (api/defendpoint PUT "/"
@@ -85,6 +98,7 @@
    strategy (CacheStrategyAPI)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
+  (check-cache-access [model] model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
 (api/defendpoint DELETE "/"
@@ -94,6 +108,7 @@
    model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
+  (check-cache-access [model] model_id)
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
