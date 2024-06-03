@@ -12,6 +12,7 @@ import {
   visitModel,
   visitQuestion,
   describeOSS,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -57,9 +58,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           visitModel(id);
         });
 
-        cy.findByTestId("TableInteractive-root").within(() => {
-          cy.findByText("Last Name").click();
-        });
+        tableHeaderClick("Last Name");
 
         popover().findByText("Filter by this column").click();
         cy.wait("@fieldValues");
@@ -83,7 +82,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           expect(response.statusCode).to.eq(200);
         });
 
-        modal().button("Not now").click();
+        cy.button("Not now").click();
 
         cy.log("saving copied question");
 

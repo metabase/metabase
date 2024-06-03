@@ -26,7 +26,7 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
-    //Add a description for a check
+    // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
     });
@@ -101,17 +101,25 @@ describe("command palette", () => {
     commandPalette().should("not.exist");
 
     openCommandPalette();
-    //wait for things to render
+
     commandPalette()
-      .findByRole("option", { name: "New question" })
-      .should("exist");
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
+
+    commandPalette()
+      .findByRole("option", { name: "Orders" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageDown();
+
     commandPalette()
       .findByRole("option", { name: "New dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
+
     commandPalette()
       .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
@@ -119,11 +127,6 @@ describe("command palette", () => {
     pressPageUp();
     commandPalette()
       .findByRole("option", { name: "New question" })
-      .should("have.attr", "aria-selected", "true");
-
-    pressPageUp();
-    commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressEnd();
@@ -197,7 +200,7 @@ describe("command palette", () => {
     cy.get("@database").should("be.null");
     cy.get("@search").should("be.null");
 
-    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText(/Email address/).type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message");

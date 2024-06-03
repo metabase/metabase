@@ -33,15 +33,10 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
-import { loadMetadataForDashboard } from "./metadata";
-
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
-
-export const FETCH_DASHBOARD_CARD_METADATA =
-  "metabase/dashboard/FETCH_DASHBOARD_CARD_METADATA";
 
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
 export const FETCH_CARD_DATA_PENDING =
@@ -375,17 +370,6 @@ export const fetchDashboardCardData =
       });
     }
   };
-
-export const fetchDashboardCardMetadata = createThunkAction(
-  FETCH_DASHBOARD_CARD_METADATA,
-  () => async (dispatch, getState) => {
-    const dashboard = getDashboardComplete(getState());
-    const dashboardType = getDashboardType(dashboard.id);
-    if (dashboardType === "normal" || dashboardType === "transient") {
-      await dispatch(loadMetadataForDashboard(dashboard.dashcards));
-    }
-  },
-);
 
 export const reloadDashboardCards = () => async (dispatch, getState) => {
   const dashboard = getDashboardComplete(getState());

@@ -1005,15 +1005,6 @@ export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
 
-export const canUploadToQuestion = question => state => {
-  const canUploadToDb = Databases.selectors
-    .getObject(state, {
-      entityId: question.databaseId(),
-    })
-    ?.canUpload();
-  return canUploadToDb;
-};
-
 export const getTemplateTags = createSelector([getCard], card =>
   getIn(card, ["dataset_query", "native", "template-tags"]),
 );

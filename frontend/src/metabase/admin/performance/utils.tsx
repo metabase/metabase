@@ -173,10 +173,10 @@ const delay = (milliseconds: number) =>
  * An example of jumpiness: clicking a save button results in
  * displaying a loading spinner for 10 ms and then a success message */
 export const resolveSmoothly = async (
-  promise: Promise<any>,
+  promises: Promise<any>[],
   timeout: number = 300,
 ) => {
-  return await Promise.all([delay(timeout), promise]);
+  return await Promise.all([delay(timeout), ...promises]);
 };
 
 export const getFrequencyFromCron = (cron: string) => {

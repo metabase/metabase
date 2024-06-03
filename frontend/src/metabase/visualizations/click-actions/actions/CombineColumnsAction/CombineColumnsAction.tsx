@@ -3,20 +3,24 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnCombineViaPlusModal } from "metabase/query_builder/analytics";
-import { CombineColumns } from "metabase/query_builder/components/expressions/CombineColumns";
+import {
+  CombineColumns,
+  hasCombinations,
+} from "metabase/query_builder/components/expressions/CombineColumns";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
 export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const { query, stageIndex } = Lib.asReturned(question.query(), -1);
+  const { isEditable } = Lib.queryDisplayInfo(query);
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
-    clicked.extraData?.isRawTable ||
-    !isEditable
+    !isEditable ||
+    !hasCombinations(query, stageIndex)
   ) {
     return [];
   }
@@ -25,8 +29,6 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
-    const query = question.query();
-    const stageIndex = -1;
     const dispatch = useDispatch();
 
     function handleSubmit(name: string, clause: Lib.ExpressionClause) {

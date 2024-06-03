@@ -609,7 +609,7 @@
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
-(defn- dashcard-url
+(defn dashcard-url
   "URL for fetching results of a public DashCard."
   [dash card dashcard]
   (format "public/dashboard/%s/dashcard/%d/card/%d" (:public_uuid dash) (u/the-id dashcard) (u/the-id card)))
@@ -1416,7 +1416,7 @@
             (testing "parameter with source is card"
               (is (= {:values          [["African"]]
                       :has_more_values false}
-                     (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "af")))))
+                     (client/client :get 200 (param-values-url :dashboard uuid (:card param-keys) "afr")))))
 
             (testing "parameter with source is a chain filter"
               (is (= {:values          [["Fast Food"] ["Food Truck"] ["Seafood"]]
@@ -1441,8 +1441,8 @@
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys))))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                        ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys))))))
 
@@ -1463,7 +1463,7 @@
                      (client/client :get 200 (param-values-url :card card-uuid (:static-list param-keys) "af")))))
 
             (testing "parameter with source is a card"
-              (is (= {:values          [["Red Medicine"]]
+              (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                       :has_more_values false}
                      (client/client :get 200 (param-values-url :card card-uuid (:card param-keys) "red")))))
 
@@ -1512,17 +1512,17 @@
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:static-list param-keys)))))
 
-                  (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                            ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+                  (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                            ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:card param-keys))))))
 
                 (testing "GET /api/public/card/:uuid/params/:param-key/search/:query"
                   (is (= {:values          [["African"]]
                           :has_more_values false}
-                         (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "af"))))
+                         (client/client :get 200 (param-values-url :card uuid (:static-list param-keys) "afr"))))
 
-                  (is (= {:values          [["Red Medicine"]]
+                  (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                           :has_more_values false}
                          (client/client :get 200 (param-values-url :card uuid (:card param-keys) "red")))))))))))))
 

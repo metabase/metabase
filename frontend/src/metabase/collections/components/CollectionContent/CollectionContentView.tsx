@@ -82,7 +82,7 @@ export const CollectionContentView = ({
   isAdmin,
   uploadFile,
   uploadsEnabled,
-  canUploadToDb,
+  canCreateUploadInDb,
 }: {
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -94,7 +94,7 @@ export const CollectionContentView = ({
   isAdmin: boolean;
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
-  canUploadToDb: boolean;
+  canCreateUploadInDb: boolean;
 }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
@@ -203,10 +203,14 @@ export const CollectionContentView = ({
     deleteBookmark(collectionId.toString(), "collection");
   };
 
-  const canUpload =
-    canUploadToDb && collection.can_write && !isTrashedCollection(collection);
+  const canCreateUpload =
+    canCreateUploadInDb &&
+    collection.can_write &&
+    !isTrashedCollection(collection);
 
-  const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
+  const dropzoneProps = canCreateUpload
+    ? getComposedDragProps(getRootProps())
+    : {};
 
   const unpinnedQuery = {
     collection: collectionId,
@@ -247,7 +251,7 @@ export const CollectionContentView = ({
 
         return (
           <CollectionRoot {...dropzoneProps}>
-            {canUpload && (
+            {canCreateUpload && (
               <>
                 <ModelUploadModal
                   collectionId={collectionId}
@@ -295,7 +299,7 @@ export const CollectionContentView = ({
                   )}
                   onCreateBookmark={handleCreateBookmark}
                   onDeleteBookmark={handleDeleteBookmark}
-                  canUpload={canUpload}
+                  canUpload={canCreateUpload}
                   uploadsEnabled={uploadsEnabled}
                   saveFile={saveFile}
                 />

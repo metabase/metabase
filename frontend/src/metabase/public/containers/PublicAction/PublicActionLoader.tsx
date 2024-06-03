@@ -3,12 +3,11 @@ import { connect } from "react-redux";
 import { useMount } from "react-use";
 
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { setErrorPage } from "metabase/redux/app";
 import { PublicApi } from "metabase/services";
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor } from "metabase-types/store";
-
-import EmbedFrame from "../../components/EmbedFrame";
 
 import PublicAction from "./PublicAction";
 import {
@@ -62,11 +61,11 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
   }, [action, params.uuid, setErrorPage]);
 
   return (
-    <EmbedFrame footerVariant="large">
+    <SyncedEmbedFrame footerVariant="large">
       <LoadingAndErrorWrapper loading={!action}>
         {renderContent}
       </LoadingAndErrorWrapper>
-    </EmbedFrame>
+    </SyncedEmbedFrame>
   );
 }
 

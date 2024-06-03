@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -114,9 +115,13 @@
   ^bytes [query :- [:maybe :map]]
   ;; convert to pMBQL first if this is a legacy query.
   (let [query (try
-                (cond-> query
-                  (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
-                  (#{:query :native} (:type query))   lib.convert/->pMBQL)
+                ;; Expression type check supression is necessary because coerced fields in `query` may not have
+                ;; `:effective-type` populated. That's the case during call to this function in
+                ;; `process-userland-query-middleware` that occurs before normalization.
+                (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                  (cond-> query
+                    (#{"query" "native"} (:type query)) (#(lib.convert/->pMBQL (mbql.normalize/normalize %)))
+                    (#{:query :native} (:type query))   lib.convert/->pMBQL))
                 (catch Throwable e
                   (throw (ex-info "Error hashing query. Is this a valid query?"
                                   {:query query}

@@ -3,21 +3,26 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnExtractViaPlusModal } from "metabase/query_builder/analytics";
-import { ExtractColumn } from "metabase/query_builder/components/expressions/ExtractColumn";
+import {
+  ExtractColumn,
+  hasExtractions,
+} from "metabase/query_builder/components/expressions/ExtractColumn";
 import { rem, Box } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
 
 export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const { query, stageIndex } = Lib.asReturned(question.query(), -1);
+
+  const { isEditable } = Lib.queryDisplayInfo(query);
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
-    clicked?.extraData?.isRawTable ||
-    !isEditable
+    !isEditable ||
+    !hasExtractions(query, stageIndex)
   ) {
     return [];
   }
@@ -26,8 +31,6 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
-    const query = question.query();
-    const stageIndex = -1;
     const dispatch = useDispatch();
 
     function handleSubmit(

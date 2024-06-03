@@ -155,7 +155,7 @@ function ModelDetailPage({
   );
 
   const handleDescriptionChange = useCallback(
-    description => {
+    (description?: string | null) => {
       if (model.description() !== description) {
         const nextCard = model.setDescription(description).card();
         onChangeModel(nextCard as Card);

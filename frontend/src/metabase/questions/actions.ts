@@ -1,20 +1,55 @@
+import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card, TableId } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
   reload?: boolean;
 }
 
-export const loadMetadataForCard = (
-  card: Card,
-  options?: LoadMetadataOptions,
-) => loadMetadataForCards([card], options);
+export const loadMetadataForTable =
+  (tableId: TableId, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    try {
+      await dispatch(Tables.actions.fetchMetadata({ id: tableId }, options));
+    } catch (error) {
+      console.error("Error in loadMetadataForTable", error);
+    }
+  };
+
+export const loadMetadataForCard =
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    await dispatch(loadMetadataForCards([card], options));
+  };
 
 export const loadMetadataForCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const savedCards = cards.filter(card => isSavedCard(card));
+    const adhocCards = cards.filter(card => !isSavedCard(card));
+    await Promise.all([
+      dispatch(loadMetadataForSavedCards(savedCards, options)),
+      dispatch(loadMetadataForAdhocCards(adhocCards, options)),
+    ]);
+  };
+
+const loadMetadataForSavedCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const actions = cards.map(card =>
+      Questions.actions.fetchMetadata({ id: card.id }, options),
+    );
+    return Promise.all(actions.map(dispatch)).catch(error => {
+      console.error("Error in loadMetadataForSavedCards", error);
+    });
+  };
+
+const loadMetadataForAdhocCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
@@ -32,27 +67,6 @@ export const loadMetadataForCards =
         );
     };
     await dispatch(loadMetadata(getDependencies, [], options));
-  };
-
-export const loadMetadataForTable =
-  (tableId: TableId, options?: LoadMetadataOptions) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const dependencies: Lib.DependentItem[] = [{ type: "table", id: tableId }];
-    await dispatch(loadMetadataForDependentItems(dependencies));
-    const metadata = getMetadata(getState());
-    const table = metadata.table(tableId);
-    if (!table?.db_id) {
-      return;
-    }
-
-    const getDependencies = () => {
-      const metadataProvider = Lib.metadataProvider(
-        table.db_id,
-        getMetadata(getState()),
-      );
-      return Lib.tableOrCardDependentMetadata(metadataProvider, tableId);
-    };
-    await dispatch(loadMetadata(getDependencies, dependencies, options));
   };
 
 const loadMetadata =
