@@ -9,13 +9,14 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
-   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   #_[metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -53,7 +54,7 @@
     (str/starts-with? region "cn-") ".amazonaws.com.cn"
     :else ".amazonaws.com"))
 
-(defmethod sql-jdbc.conn/connection-details->spec :athena
+#_(defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
   (-> (merge
        {:classname      "com.simba.athena.jdbc.Driver"
@@ -73,6 +74,30 @@
        ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests.
        (dissoc details :db :catalog :metabase.driver.athena/schema))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+
+;; Athena jdbc 3.2 uses different parameters, class name and subprotocol.
+;; https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-connection-parameters.html
+;; https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-getting-started.html#jdbc-v3-driver-running-the-driver
+(defmethod sql-jdbc.conn/connection-details->spec :athena
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as _details}]
+  (-> (merge
+       {:classname      "com.amazon.athena.jdbc.AthenaDriver"
+        :subprotocol    "athena"
+        :subname        (str "//athena." region (endpoint-for-region region) ":443")
+        :User           access_key
+        :Password       secret_key
+        :OutputLocation s3_staging_dir
+        :WorkGroup      workgroup
+        :Region         region
+        :LogLevel       "OFF"}
+       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
+         {:CredentialsProvider "DefaultChain"})
+       ;; TODO: Why proxy? (In context of "WARN results.PaginatingAsyncQueryResultsBase :: Items requested for query
+       ;;       execution ID, but subscription is cancelled" warning.)
+       (when-not (str/blank? catalog)
+         {:MetadataRetrievalMethod "ProxyAPI"
+          :Catalog                 catalog}))
+      (dissoc :db :catalog :metabase.driver.athena/schema)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
   [_driver {:keys [catalog], s3-results-bucket :s3_staging_dir}]
@@ -126,6 +151,7 @@
     "time"
     (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
 
+    ;; Following is redundant in 3.2 jdbc driver
     "timestamp with time zone"
     (fn read-column-as-ZonedDateTime []
       (when-let [s (.getString rs i)]
@@ -137,6 +163,16 @@
             nil))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
+
+;; TIMESTAMP WITH TIMEZONE is returned as java.sql.Timestamp
+(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIMESTAMP_WITH_TIMEZONE]
+  [_driver rs _rs-meta i]
+  (fn []
+    (t/offset-date-time
+     (.getObject ^java.sql.ResultSet rs ^int i)
+     (qp.timezone/results-timezone-id))))
+
+;; TODO: Handle time values as well ie. `read-time-and-timestamp-with-time-zone-columns-test`
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
@@ -380,7 +416,7 @@
                         (catch Throwable _
                           (set nil))))))))
 
-(defn- get-tables
+#_(defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
@@ -395,6 +431,38 @@
                                                  "MATERIALIZED VIEW"
                                                  "MANAGED_TABLE"]))]
     (vec (jdbc/metadata-result rs))))
+
+;; Other table types are not available with 3.2 jdbc driver.
+(defn- get-tables
+  "Athena can query EXTERNAL and MANAGED tables."
+  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+  ;; tablePattern "%" = match all tables
+  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+                             (into-array String ["TABLE"
+                                                 "VIEW"]))]
+    (vec (jdbc/metadata-result rs))))
+
+#_:clj-kondo/ignore
+(comment
+  ;; Define `spec` and execute the following to see available table types.
+  (with-open [conn (clojure.jdbc/get-connection spec)]
+    (let [db-meta-rs (.getMetaData conn)]
+      (with-open [table-types (.getTableTypes db-meta-rs)]
+        (let [table-types-meta (.getMetaData table-types)
+              columns (mapv (fn [idx]
+                              {:column-name (.getColumnName table-types-meta idx)
+                               :column-label (.getColumnLabel table-types-meta idx)})
+                            (map inc (range (.getColumnCount table-types-meta))))
+              rows (loop [rows []]
+                     (.next table-types)
+                     (if (.isAfterLast table-types)
+                       rows
+                       (recur (conj rows (mapv (fn [idx]
+                                                 (.getObject table-types idx))
+                                               (map inc (range (.getColumnCount table-types-meta))))))))]
+          [columns rows]))))
+
+  )
 
 (defn- fast-active-tables
   "Required because we're calling our own custom private get-tables method to support Athena.

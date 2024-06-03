@@ -50,4 +50,6 @@ init:
   - step: load-namespace
     namespace: metabase.driver.athena
   - step: register-jdbc-driver
-    class: com.simba.athena.jdbc.Driver
+    #class: com.simba.athena.jdbc.Driver
+    # https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-getting-started.html#jdbc-v3-driver-upgrading-from-the-athena-jdbc-v2-driver-to-v3 -- Driver class
+    class: com.amazon.athena.jdbc.AthenaDriver
