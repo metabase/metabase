@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
-import { Box } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
@@ -41,27 +40,18 @@ export const CompareAggregationsAction: LegacyDrill = ({
       const nextQuestion = question.setQuery(nextQuery);
       const nextCard = nextQuestion.card();
 
-      // trackColumnExtractViaPlusModal(
-      //   newQuery,
-      //   stageIndex,
-      //   extraction,
-      //   nextQuestion,
-      // );
-
       dispatch(setUIControls({ scrollToLastColumn: true }));
       onChangeCardAndRun({ nextCard });
       onClose();
     }
 
     return (
-      <Box>
-        <CompareAggregations
-          query={query}
-          stageIndex={stageIndex}
-          onSubmit={handleSubmit}
-          onClose={onClose}
-        />
-      </Box>
+      <CompareAggregations
+        query={query}
+        stageIndex={stageIndex}
+        onSubmit={handleSubmit}
+        onClose={onClose}
+      />
     );
   };
 
