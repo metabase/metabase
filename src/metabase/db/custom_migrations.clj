@@ -32,6 +32,7 @@
    [toucan2.execute :as t2.execute])
   (:import
    (java.util Locale)
+   (javax.sql DataSource)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -1033,7 +1034,7 @@
 
 (defn- mariadb?
   [ds]
-  (with-open [conn (.getConnection ds)]
+  (with-open [conn (.getConnection ^DataSource ds)]
     (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
 
 (defn- db-type*
