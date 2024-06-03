@@ -109,14 +109,14 @@ const mapStateToProps = state => ({
 
 const connector = connect(mapStateToProps, null);
 
-function getMapUrl(details, { isSdk, sdkMetabaseInstanceUrl, settings }) {
+function getMapUrl(details, props) {
   if (details.builtin) {
-    if (isSdk && sdkMetabaseInstanceUrl) {
-      return new URL(details.url, sdkMetabaseInstanceUrl).href;
+    if (props?.isSdk && props?.sdkMetabaseInstanceUrl) {
+      return new URL(details.url, props.sdkMetabaseInstanceUrl).href;
     }
     return details.url;
   }
-  return "api/geojson/" + settings["map.region"];
+  return "api/geojson/" + props.settings["map.region"];
 }
 
 class ChoroplethMapInner extends Component {

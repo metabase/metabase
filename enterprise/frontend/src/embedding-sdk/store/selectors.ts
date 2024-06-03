@@ -19,4 +19,4 @@ export const getErrorComponent = (state: SdkStoreState) =>
   state.sdk.errorComponent;
 
 export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
-  state.sdk.metabaseInstanceUrl;
+  state.sdk?.metabaseInstanceUrl;
