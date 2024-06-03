@@ -1,7 +1,13 @@
 import type { TokenFeatures } from "metabase-types/api";
 import { tokenFeatures } from "metabase-types/api";
 
-export type Plan = "oss" | "starter" | "pro-cloud" | "pro-self-hosted";
+export type Plan =
+  | "oss"
+  | "starter"
+  | "starter-with-dwh"
+  | "pro-cloud"
+  | "pro-cloud-with-dwh"
+  | "pro-self-hosted";
 
 export const getPlan = (features?: TokenFeatures | null): Plan => {
   if (!features) {
@@ -13,10 +19,18 @@ export const getPlan = (features?: TokenFeatures | null): Plan => {
   );
 
   if (!hasAnyProFeatures) {
-    return features.hosting ? "starter" : "oss";
+    if (features.hosting) {
+      return features.attached_dwh ? "starter-with-dwh" : "starter";
+    }
+
+    return "oss";
   }
 
-  return features.hosting ? "pro-cloud" : "pro-self-hosted";
+  if (features.hosting) {
+    return features.attached_dwh ? "pro-cloud-with-dwh" : "pro-cloud";
+  }
+
+  return "pro-self-hosted";
 };
 
 const ssoFeatures = ["sso_google", "sso_jwt", "sso_ldap", "sso_saml"] as const;

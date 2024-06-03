@@ -15,12 +15,30 @@ describe("common/utils/columns", () => {
       );
     });
 
+    it("returns `starter-with-dwh` if the token features object has only the `hosting` and `attached_dwh` features", () => {
+      expect(
+        getPlan(createMockTokenFeatures({ hosting: true, attached_dwh: true })),
+      ).toBe("starter-with-dwh");
+    });
+
     it("returns `pro-cloud` if the token features object has the `hosting` feature and any other feature", () => {
       expect(
         getPlan(
           createMockTokenFeatures({
             hosting: true,
             advanced_permissions: true,
+          }),
+        ),
+      ).toBe("pro-cloud");
+    });
+
+    it("returns `pro-cloud-with-dwh` if the token features object has the `hosting` and `attached_dwh` features and any other feature", () => {
+      expect(
+        getPlan(
+          createMockTokenFeatures({
+            hosting: true,
+            advanced_permissions: true,
+            attached_dwh: true,
           }),
         ),
       ).toBe("pro-cloud");

@@ -99,6 +99,7 @@ export const createMockTokenStatus = (
 export const createMockTokenFeatures = (
   opts?: Partial<TokenFeatures>,
 ): TokenFeatures => ({
+  attached_dwh: false,
   advanced_permissions: false,
   audit_app: false,
   cache_granular_controls: false,
