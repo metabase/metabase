@@ -6,6 +6,7 @@ export interface TimeOnlyOptions {
 }
 
 export interface OptionsType extends TimeOnlyOptions {
+  _numberFormatter?: any;
   click_behavior?: any;
   clicked?: any;
   column?: any;

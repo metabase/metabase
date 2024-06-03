@@ -581,16 +581,16 @@ export const getStackedLabelsFormatters = (
     const compactFormatter = createSeriesLabelsFormatter(
       seriesModel,
       true,
-      {},
       settings,
       renderingContext,
+      {},
     );
     const fullFormatter = createSeriesLabelsFormatter(
       seriesModel,
       false,
-      {},
       settings,
       renderingContext,
+      {},
     );
 
     // if either positive or negative need to be compact formatted
@@ -628,14 +628,15 @@ export const getStackedLabelsFormatters = (
 const createSeriesLabelsFormatter = (
   seriesModel: SeriesModel,
   isCompact: boolean,
-  formattingOptions: OptionsType,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  formattingOptions?: OptionsType,
 ) =>
   cachedFormatter((value: RowValue) => {
     if (typeof value !== "number") {
       return "";
     }
+
     return renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
@@ -652,6 +653,7 @@ const getSeriesLabelsFormattingInfo = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  formattingOptions?: OptionsType,
 ) => {
   return seriesModels.map(seriesModel => {
     const getValue = (datum: Datum) => datum[seriesModel.dataKey];
@@ -659,16 +661,16 @@ const getSeriesLabelsFormattingInfo = (
     const compactFormatter = createSeriesLabelsFormatter(
       seriesModel,
       true,
-      {},
       settings,
       renderingContext,
+      formattingOptions,
     );
     const fullFormatter = createSeriesLabelsFormatter(
       seriesModel,
       false,
-      {},
       settings,
       renderingContext,
+      formattingOptions,
     );
     const isCompact = shouldRenderCompact(
       dataset,
@@ -741,11 +743,17 @@ export const getSeriesLabelsFormatters = (
     const barStackSeries = seriesModelsWithLabels.filter(seriesModel =>
       barStackSeriesKeys.has(seriesModel.dataKey),
     );
+
+    const isNormalized = settings["stackable.stack_type"] === "normalized";
+    const formattingOptions = isNormalized
+      ? { number_style: "percent", _numberFormatter: undefined }
+      : {};
     const barSeriesLabelsFormattingInfo = getSeriesLabelsFormattingInfo(
       barStackSeries,
       dataset,
       settings,
       renderingContext,
+      formattingOptions,
     );
     const shouldApplyCompactFormattingToBarStack =
       barSeriesLabelsFormattingInfo.some(({ isCompact }) => isCompact);
@@ -784,16 +792,16 @@ export const getWaterfallLabelFormatter = (
   const compactFormatter = createSeriesLabelsFormatter(
     seriesModel,
     true,
-    waterfallFormattingOptions,
     settings,
     renderingContext,
+    waterfallFormattingOptions,
   );
   const fullFormatter = createSeriesLabelsFormatter(
     seriesModel,
     false,
-    waterfallFormattingOptions,
     settings,
     renderingContext,
+    waterfallFormattingOptions,
   );
   const isCompact = shouldRenderCompact(
     dataset,

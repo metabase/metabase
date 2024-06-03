@@ -8,7 +8,6 @@ import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -341,7 +340,6 @@ export const computeBarWidth = (
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
   formatter: LabelFormatter | undefined,
-  originalDataset: ChartDataset,
   renderingContext: RenderingContext,
 ): SeriesLabelOption | undefined => {
   if (!formatter) {
@@ -361,10 +359,7 @@ export const buildEChartsStackLabelOptions = (
       renderingContext.getColor,
     ),
     formatter: (params: CallbackDataParams) => {
-      const transformedDatum = params.data as Datum;
-      const originalIndex =
-        transformedDatum[ORIGINAL_INDEX_DATA_KEY] ?? params.dataIndex;
-      const datum = originalDataset[originalIndex];
+      const datum = params.data as Datum;
       const value = datum[seriesModel.dataKey];
 
       if (typeof value !== "number") {
@@ -483,7 +478,6 @@ const buildEChartsBarSeries = (
       ? buildEChartsStackLabelOptions(
           seriesModel,
           labelFormatter,
-          originalDataset,
           renderingContext,
         )
       : buildEChartsLabelOptions(
