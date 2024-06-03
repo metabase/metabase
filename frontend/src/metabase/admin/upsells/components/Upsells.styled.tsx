@@ -64,4 +64,5 @@ export const UpsellCardComponent = styled.div`
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid ${upsellColors.secondary};
+  background-color: ${color("white")};
 `;

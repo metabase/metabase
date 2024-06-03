@@ -7,6 +7,7 @@ import {
   visualize,
   popover,
   resetTestTable,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 ["postgres", "mysql"].forEach(dialect => {
@@ -39,7 +40,7 @@ import {
 
       visualize();
 
-      cy.findAllByTestId("header-cell").contains("Numeric").click();
+      tableHeaderClick("Numeric");
       popover().findByText(/^Sum$/).click();
 
       cy.wait("@dataset");

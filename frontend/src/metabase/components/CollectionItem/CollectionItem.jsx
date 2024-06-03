@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { getCollectionIcon } from "metabase/entities/collections";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 
 import {
   ItemLink,

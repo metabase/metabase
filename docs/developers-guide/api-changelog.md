@@ -8,9 +8,13 @@ title: API changelog
 
 - `GET /api/dashboard/:id/query_metadata`
 
-  New endpoint that combines responses for `/api/field/:id`, `/api/dashboard/:id`, `/api/dashboard/:id/schemas`,
-  and `/api/table/:id/query_metadata`. This should drastically cut down on the required number of requests to display a
-  dashboard.
+  New endpoint that combines responses for `/api/field/:id`, `/api/database/:id`, and `/api/table/:id/query_metadata`.
+  This should drastically cut down on the required number of requests to display a card.
+
+- `GET /api/card/:id/query_metadata`
+
+  New endpoint that combines responses for `/api/field/:id`, `/api/database/:id`, and `/api/table/:id/query_metadata`.
+  This should drastically cut down on the required number of requests to display a dashboard.
 
 ## Metabase 0.50.0
 

@@ -611,7 +611,7 @@
                             (lib/filter (lib/> (m/find-first #(= (:name "count") %) base-cols)
                                                100)))
           two-stage-agg (lib/aggregate two-stage (lib/count))]
-      (testing "does not change a query with no aggregations"
+      (testing "does not change a query with no aggregations or breakouts"
         (doseq [stage [0 -1]]
           (let [obj (lib.js/as-returned simple-query stage)]
             (is (=? simple-query (.-query obj)))
@@ -635,4 +635,36 @@
         (let [obj (lib.js/as-returned two-stage-agg 1)]
           (is (=? (lib/append-stage two-stage-agg)
                   (.-query obj)))
-          (is (=? -1 (.-stageIndex obj))))))))
+          (is (=? -1 (.-stageIndex obj)))))
+
+      (testing "only breakouts"
+        (let [brk-only  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
+              two-stage (-> brk-only
+                            lib/append-stage
+                            (lib/filter (lib/> (first (lib/returned-columns brk-only)) 100)))]
+          (testing "uses an existing later stage if it exists"
+            (let [obj (lib.js/as-returned two-stage 0)]
+              (is (=? two-stage (.-query obj)))
+              (is (=? 1         (.-stageIndex obj)))))
+          (testing "appends a new stage if necessary"
+            (let [obj (lib.js/as-returned brk-only 0)]
+              (is (=? (lib/append-stage brk-only)
+                      (.-query obj)))
+              (is (=? -1 (.-stageIndex obj)))))))
+
+      (testing "only aggregations"
+        (let [agg-only  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count)))
+              two-stage (-> agg-only
+                            lib/append-stage
+                            (lib/filter (lib/> (first (lib/returned-columns agg-only)) 100)))]
+          (testing "uses an existing later stage if it exists"
+            (let [obj (lib.js/as-returned two-stage 0)]
+              (is (=? two-stage (.-query obj)))
+              (is (=? 1         (.-stageIndex obj)))))
+          (testing "appends a new stage if necessary"
+            (let [obj (lib.js/as-returned agg-only 0)]
+              (is (=? (lib/append-stage agg-only)
+                      (.-query obj)))
+              (is (=? -1 (.-stageIndex obj))))))))))
