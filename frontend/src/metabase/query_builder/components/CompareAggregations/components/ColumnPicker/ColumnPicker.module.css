@@ -3,7 +3,7 @@
 }
 
 .item[data-hovered] {
-  background-color: hsl(208.2deg, 72.4%, 96.2%) !important;
+  background-color: var(--mb-color-brand-lighter) !important;
 }
 
 .itemContent {
