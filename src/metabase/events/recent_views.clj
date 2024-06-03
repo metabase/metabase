@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.recent-views :as recent-views]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -18,17 +17,12 @@
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for a single event notification which should update the recent views for a user."
   [topic {:keys [object-id user-id] :as _event}]
-  (span/with-span!
-    {:name (str "recent-views-" (name topic))
-     :topic topic
-     :user-id user-id}
-    (try
-      (let [model    (audit-log/model-name :model/Dashboard)
-            model-id object-id
-            user-id  (or user-id api/*current-user-id*)]
-        (recent-views/update-users-recent-views! user-id model model-id :view))
-      (catch Throwable e
-        (log/warnf e "Failed to process recent_views event: %s" topic)))))
+  (try
+    (let [model-id object-id
+          user-id  (or user-id api/*current-user-id*)]
+      (recent-views/update-users-recent-views! user-id :model/Dashboard model-id :view))
+    (catch Throwable e
+      (log/warnf e "Failed to process recent_views event: %s" topic))))
 
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
@@ -42,16 +36,14 @@
      :user-id user-id}
     (try
       (when object
-        (let [model    (audit-log/model-name object)
-              model-id (u/id object)
+        (let [model-id (u/id object)
               user-id  (or user-id api/*current-user-id*)]
-          (recent-views/update-users-recent-views! user-id model model-id :view)))
+          (recent-views/update-users-recent-views! user-id :model/Table model-id :view)))
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
 
 (derive ::card-query-event :metabase/event)
 (derive :event/card-query ::card-query-event)
-
 
 (m/defmethod events/publish-event! ::card-query-event
   "Handle processing for a single card query event."
