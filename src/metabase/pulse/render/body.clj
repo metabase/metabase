@@ -405,7 +405,7 @@
         settings                    {:percent_visibility (:pie.percent_visibility viz-settings) :show_total (:pie.show_total viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
-                                     (js-svg/categorical-donut rows legend-colors settings))
+                                     (js-svg/categorical-donut rows legend-colors settings)) ;;delete?
         {label-viz-settings :x}     (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)]
     {:attachments
      (when image-bundle
