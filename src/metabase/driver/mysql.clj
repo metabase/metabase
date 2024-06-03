@@ -480,7 +480,7 @@
     :DATETIME   :type/DateTime
     :DECIMAL    :type/Decimal
     :DOUBLE     :type/Float
-    :ENUM       :type/*
+    :ENUM       :type/Text
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer
