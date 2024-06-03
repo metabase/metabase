@@ -50,7 +50,7 @@ export const compareAggregationsDrill: Drill<
   return [
     {
       name: "compare-aggregations",
-      title: t`Combine columns`, // TODO
+      title: t`Compare to previous...`, // TODO
       section: "compare-aggregations",
       icon: "lines",
       buttonType: "horizontal",
