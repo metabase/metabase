@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { forwardRef, useCallback, useMemo } from "react";
+import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Flex, MultiSelect, Text } from "metabase/ui";
@@ -10,7 +10,6 @@ import S from "./ColumnPicker.module.css";
 
 interface ItemType {
   example: string;
-  isSelected: boolean;
   label: string;
   value: ColumnType;
 }
@@ -20,7 +19,7 @@ interface Props {
   onChange: (value: ColumnType[]) => void;
 }
 
-const COLUMN_OPTIONS: Omit<ItemType, "isSelected">[] = [
+const COLUMN_OPTIONS: ItemType[] = [
   {
     example: "1826, 3004",
     label: t`Previous value`,
@@ -46,16 +45,9 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
     [onChange],
   );
 
-  const options = useMemo(() => {
-    return COLUMN_OPTIONS.map(option => ({
-      ...option,
-      isSelected: value.includes(option.value),
-    }));
-  }, [value]);
-
   return (
     <MultiSelect
-      data={options}
+      data={COLUMN_OPTIONS}
       disableSelectedItemFiltering
       itemComponent={Item}
       label={t`Columns to create`}
@@ -84,12 +76,12 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
 
 const Item = forwardRef<
   HTMLDivElement,
-  ItemType & ComponentPropsWithoutRef<"div">
->(function SelectItem({ example, isSelected, label, value, ...props }, ref) {
+  ItemType & ComponentPropsWithoutRef<"div"> & { selected: boolean }
+>(function Item({ example, label, selected, value, ...props }, ref) {
   return (
     <div ref={ref} {...props}>
       <Flex align="center" gap="sm">
-        <Checkbox checked={isSelected} readOnly />
+        <Checkbox checked={selected} readOnly />
 
         <Flex align="center" className={S.itemContent} justify="space-between">
           <Text>{label}</Text>
