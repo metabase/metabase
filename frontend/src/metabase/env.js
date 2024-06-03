@@ -12,3 +12,7 @@ export const shouldLogAnalytics = process.env.MB_LOG_ANALYTICS === "true";
 export const isChartsDebugLoggingEnabled =
   // eslint-disable-next-line no-undef
   process.env.MB_LOG_CHARTS_DEBUG === "true";
+
+export const isInstrumentationEnabled =
+  // eslint-disable-next-line no-undef
+  process.env.MB_FE_INSTRUMENTATION === "true";

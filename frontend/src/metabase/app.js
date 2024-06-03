@@ -43,6 +43,7 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
+import { dashboardPerformanceTracker } from "metabase/instrumentation";
 
 import { getStore } from "./store";
 
@@ -96,6 +97,7 @@ function _init(reducers, getRoutes, callback) {
 
 export function init(...args) {
   if (document.readyState !== "loading") {
+    dashboardPerformanceTracker.trackEvent("app-init");
     _init(...args);
   } else {
     document.addEventListener("DOMContentLoaded", () => _init(...args));

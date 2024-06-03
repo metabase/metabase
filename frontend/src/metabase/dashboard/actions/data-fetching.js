@@ -37,6 +37,7 @@ import {
   fetchDataOrError,
   getCurrentTabDashboardCards,
 } from "../utils";
+import { dashboardPerformanceTracker } from "metabase/instrumentation";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -374,6 +375,7 @@ export const fetchDashboardCardData =
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
       Promise.all(promises).then(() => {
+        dashboardPerformanceTracker.trackEvent("dashcards-data-loaded");
         dispatch(loadingComplete());
       });
     }
