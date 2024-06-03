@@ -1,13 +1,24 @@
+import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
+
 import type { StaticChartProps } from "../StaticVisualization";
 
 import { computeStaticPieChartSettings } from "./settings";
 
-export function PieChart({ rawSeries, dashcardSettings }: StaticChartProps) {
+export function PieChart({
+  rawSeries,
+  dashcardSettings,
+  renderingContext,
+}: StaticChartProps) {
   const computedVizSettings = computeStaticPieChartSettings(
     rawSeries,
     dashcardSettings,
   );
-  console.log("computedVizSettings", computedVizSettings);
+  const chartModel = getPieChartModel(
+    rawSeries,
+    computedVizSettings,
+    renderingContext,
+  );
+  console.log("chartModel", chartModel);
 
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={500} height={500}>

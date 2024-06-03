@@ -1,8 +1,7 @@
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
-
-import { DEFAULT_PIE_SLICE_THRESHOLD } from "../constants";
 
 export const getDefaultShowLegend = () => true;
 
@@ -10,7 +9,7 @@ export const getDefaultShowTotal = () => true;
 
 export const getDefaultPercentVisibility = () => "legend";
 
-export const getDefaultSliceThreshold = () => DEFAULT_PIE_SLICE_THRESHOLD * 100;
+export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 
 export function getDefaultColors(
   rawSeries: RawSeries,
