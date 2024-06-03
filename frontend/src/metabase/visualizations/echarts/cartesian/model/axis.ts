@@ -405,7 +405,7 @@ const getYAxisFormatter = (
 
   return (value: RowValue) => {
     if (!isNumber(value)) {
-      return " ";
+      return "";
     }
 
     return renderingContext.formatValue(value, {

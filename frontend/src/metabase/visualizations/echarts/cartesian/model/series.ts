@@ -634,7 +634,7 @@ const createSeriesLabelsFormatter = (
 ) =>
   cachedFormatter((value: RowValue) => {
     if (typeof value !== "number") {
-      return " ";
+      return "";
     }
     return renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
