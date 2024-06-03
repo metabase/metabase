@@ -6,7 +6,7 @@ import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
   numberParameterValueToMBQL,
-  fieldFilterParameterToFilter,
+  applyFilterParameter,
 } from "metabase-lib/v1/parameters/utils/mbql";
 import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
@@ -245,7 +245,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return null for parameter targets that are not field dimension targets", () => {
       expect(
-        fieldFilterParameterToFilter(query, stageIndex, {
+        applyFilterParameter(query, stageIndex, {
           target: null,
           type: "category",
           value: ["foo"],
@@ -253,7 +253,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        fieldFilterParameterToFilter(query, stageIndex, {
+        applyFilterParameter(query, stageIndex, {
           target: [],
           type: "category",
           value: ["foo"],
@@ -261,7 +261,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        fieldFilterParameterToFilter(query, stageIndex, {
+        applyFilterParameter(query, stageIndex, {
           target: ["dimension"],
           type: "category",
           value: ["foo"],
@@ -269,7 +269,7 @@ describe("parameters/utils/mbql", () => {
       ).toBe(null);
 
       expect(
-        fieldFilterParameterToFilter(query, stageIndex, {
+        applyFilterParameter(query, stageIndex, {
           target: ["dimension", ["template-tag", "foo"]],
           type: "category",
           value: ["foo"],
@@ -278,7 +278,7 @@ describe("parameters/utils/mbql", () => {
     });
 
     it("should return mbql filter for date parameter", () => {
-      const filter = fieldFilterParameterToFilter(query, stageIndex, {
+      const filter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
         type: "date/single",
         value: "01-01-2020",
@@ -289,7 +289,7 @@ describe("parameters/utils/mbql", () => {
     });
 
     it("should return mbql filter for string parameter", () => {
-      const containsFilter = fieldFilterParameterToFilter(query, stageIndex, {
+      const containsFilter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "string/contains",
         value: "foo",
@@ -298,7 +298,7 @@ describe("parameters/utils/mbql", () => {
         displayName: "Category contains foo",
       });
 
-      const startsFilter = fieldFilterParameterToFilter(query, stageIndex, {
+      const startsFilter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "string/starts-with",
         value: ["foo"],
@@ -309,7 +309,7 @@ describe("parameters/utils/mbql", () => {
     });
 
     it("should return mbql filter for category parameter", () => {
-      const filter = fieldFilterParameterToFilter(query, stageIndex, {
+      const filter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "category",
         value: ["foo", "bar"],
@@ -320,7 +320,7 @@ describe("parameters/utils/mbql", () => {
     });
 
     it("should return mbql filter for number parameter", () => {
-      const valueFilter = fieldFilterParameterToFilter(query, stageIndex, {
+      const valueFilter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/=",
         value: 111,
@@ -329,7 +329,7 @@ describe("parameters/utils/mbql", () => {
         displayName: "Rating is equal to 111",
       });
 
-      const arrayFilter = fieldFilterParameterToFilter(query, stageIndex, {
+      const arrayFilter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/=",
         value: [111],
@@ -338,7 +338,7 @@ describe("parameters/utils/mbql", () => {
         displayName: "Rating is equal to 111",
       });
 
-      const betweenFilter = fieldFilterParameterToFilter(query, stageIndex, {
+      const betweenFilter = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/between",
         value: [1, 100],
