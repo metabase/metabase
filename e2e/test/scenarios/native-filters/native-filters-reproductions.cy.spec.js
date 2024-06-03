@@ -692,7 +692,7 @@ describe("issue 16756", () => {
 
     cy.button("Add filter").click();
 
-    runQuery();
+    SQLFilter.runQuery();
 
     // We expect "No results"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
