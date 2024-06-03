@@ -24,6 +24,14 @@ import {
   getFriendlyName,
   computeMaxDecimalsForValues,
 } from "metabase/visualizations/lib/utils";
+import { DEFAULT_PIE_SLICE_THRESHOLD } from "metabase/visualizations/shared/constants";
+import {
+  getDefaultShowLegend,
+  getDefaultPercentVisibility,
+  getDefaultShowTotal,
+  getDefaultSliceThreshold,
+  getDefaultColors,
+} from "metabase/visualizations/shared/settings/pie";
 import {
   getDefaultSize,
   getMinSize,
@@ -43,7 +51,6 @@ const MAX_PIE_SIZE = 550;
 const INNER_RADIUS_RATIO = 3 / 5;
 
 const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
-const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 export default class PieChart extends Component {
@@ -126,7 +133,7 @@ export default class PieChart extends Component {
       section: t`Display`,
       title: t`Show legend`,
       widget: "toggle",
-      default: true,
+      getDefault: getDefaultShowLegend,
       inline: true,
       marginBottom: "1rem",
     },
@@ -134,14 +141,14 @@ export default class PieChart extends Component {
       section: t`Display`,
       title: t`Show total`,
       widget: "toggle",
-      default: true,
+      getDefault: getDefaultShowTotal,
       inline: true,
     },
     "pie.percent_visibility": {
       section: t`Display`,
       title: t`Show percentages`,
       widget: "radio",
-      default: "legend",
+      getDefault: getDefaultPercentVisibility,
       props: {
         options: [
           { name: t`Off`, value: "off" },
@@ -154,22 +161,18 @@ export default class PieChart extends Component {
       section: t`Display`,
       title: t`Minimum slice percentage`,
       widget: "number",
-      default: SLICE_THRESHOLD * 100,
+      getDefault: getDefaultSliceThreshold,
     },
     "pie.colors": {
       section: t`Display`,
       title: t`Colors`,
       widget: "colors",
-      getDefault: (series, settings) =>
-        settings["pie._dimensionValues"]
-          ? getColorsForValues(settings["pie._dimensionValues"])
-          : [],
+      getDefault: getDefaultColors,
       getProps: (series, settings) => ({
         seriesValues: settings["pie._dimensionValues"] || [],
         seriesTitles: settings["pie._dimensionTitles"] || [],
       }),
       getDisabled: (series, settings) => !settings["pie._dimensionValues"],
-      readDependencies: ["pie._dimensionValues", "pie._dimensionTitles"],
     },
     // this setting recomputes color assignment using pie.colors as the existing
     // assignments in case the user previous modified pie.colors and a new value
@@ -336,7 +339,7 @@ export default class PieChart extends Component {
     const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
-        : SLICE_THRESHOLD;
+        : DEFAULT_PIE_SLICE_THRESHOLD;
 
     const [slices, others] = _.chain(rows)
       .map((row, index) => ({
