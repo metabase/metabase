@@ -323,7 +323,7 @@ function Widget({
   }
 
   if (isTemporalUnitParameter(parameter)) {
-    return <TemporalUnitWidget setValue={setValue} />;
+    return <TemporalUnitWidget setValue={setValue} onClose={onPopoverClose} />;
   }
 
   if (isTextWidget(parameter)) {

@@ -597,7 +597,7 @@
 (defn ^:export available-temporal-units
   "The temporal bucketing units for date type expressions."
   []
-  (to-array (map clj->js [:year])))
+  (to-array (map clj->js (lib.core/available-temporal-units))))
 
 
 ;; # Manipulating Clauses
