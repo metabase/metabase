@@ -198,7 +198,8 @@
 }
 
 .Dashboard :global(text.value-label),
-.Dashboard :global(text.value-label-white) {
+.Dashboard :global(text.value-label-white),
+.Dashboard .LineAreaBarChart :global(.dc-chart .axis text) {
   font-size: 12px;
 }
 
