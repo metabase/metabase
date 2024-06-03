@@ -1,8 +1,9 @@
-import { t } from "ttag";
-
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
+import {
+  CompareAggregations,
+  getTitle,
+} from "metabase/query_builder/components/CompareAggregations";
 import type {
   ClickActionPopoverProps,
   Drill,
@@ -12,12 +13,13 @@ import * as Lib from "metabase-lib";
 export const compareAggregationsDrill: Drill<
   Lib.CompareAggregationsDrillThruInfo
 > = ({ question, query, stageIndex, clicked }) => {
-  if (!clicked.column) {
+  if (!clicked.column || typeof clicked.column.aggregation_index !== "number") {
     return [];
   }
 
-  // TODO compute aggregation out of column
-  // const column = Lib.fromLegacyColumn(query, stageIndex, clicked.column);
+  const aggregation = Lib.aggregations(query, stageIndex)[
+    clicked.column.aggregation_index
+  ];
 
   const DrillPopover = ({
     onChangeCardAndRun,
@@ -50,7 +52,7 @@ export const compareAggregationsDrill: Drill<
   return [
     {
       name: "compare-aggregations",
-      title: t`Compare to previous...`, // TODO
+      title: getTitle(query, stageIndex, aggregation),
       section: "compare-aggregations",
       icon: "lines",
       buttonType: "horizontal",
