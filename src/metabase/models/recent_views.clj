@@ -108,11 +108,11 @@
                      :offset *recent-views-stored-per-user-per-model*}))
 
 (defn- overflowing-model-buckets [user-id context]
-  (into #{} (mapcat #(ids-to-prune-for-user+model user-id context %)) models-of-interest))
+  (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) models-of-interest))
 
 (defn ids-to-prune
   "Returns IDs to prune, which includes 2 things:
-  1. duplicated views for (user-id, model, model_id), this will return the IDs of the non-latest duplicates.
+  1. duplicated views for (user-id, model, model_id, context), this will return the IDs of all duplicates except the newest.
   2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
   [user-id context]
   (set/union
@@ -477,24 +477,28 @@
                   (pr-str item)
                   (me/humanize (mr/explain Item item))))))
 
-(defn get-list
+(mu/defn get-recents
   "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[models-of-interest]], per context.
+
+  Returns: [:map
+             [:recent-views {:optional true} [:sequential Item]]
+             [:recent-selections {:optional true} [:sequential Item]]]
 
   [[do-query]] can return nils, and we remove them here becuase there can be recent views for deleted entities, and we
   don't want to show those in the recent views.
 
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
   sequence, so there's no need to do it twice."
-  ([user-id] (get-list user-id :all))
-  ([user-id context]
-   (let [views (do-query user-id context)
-         entity->id->data (get-entity->id->data views)
+  ([user-id] (get-recents user-id :all))
+  ([user-id context :- [:enum :all :views :selections]]
+   (let [recent-items (do-query user-id context)
+         entity->id->data (get-entity->id->data recent-items)
          view-items (into []
                           (comp
                            (keep (partial post-process entity->id->data))
                            (keep error-avoider))
-                          views)
+                          recent-items)
          {:keys [selection view]} (group-by (comp keyword ::context) view-items)]
      (merge
-      (when (not-empty view) {:recent-views (mapv #(dissoc % ::context) view)})
-      (when (not-empty selection) {:recent-selections (mapv #(dissoc % ::context) selection)})))))
+      (when (#{:all :views} context) {:recent-views (mapv #(dissoc % ::context) view)})
+      (when (#{:all :selections} context) {:recent-selections (mapv #(dissoc % ::context) selection)})))))

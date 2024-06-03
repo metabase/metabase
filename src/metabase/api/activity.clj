@@ -118,7 +118,7 @@
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  {:recent_views (recent-views/get-list *current-user-id*)})
+  {:recent_views (recent-views/get-recents *current-user-id*)})
 
 (api/defendpoint GET "/recents"
   "Get a list of recent items the current user has been viewing most recently.
@@ -126,7 +126,7 @@
   [:as {{:keys [context]} :params}]
   {context [:enum :views :selections :all]}
   (update-keys
-   (recent-views/get-list *current-user-id* context)
+   (recent-views/get-recents *current-user-id* context)
    u/->snake_case_en))
 
 (api/defendpoint POST "/recents"

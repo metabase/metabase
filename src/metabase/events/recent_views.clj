@@ -70,15 +70,14 @@
 
 (m/defmethod events/publish-event! ::legacy-card-event
   "Handle recent-view processing for card reads"
-  [topic {:keys [object user-id context]}]
+  [topic {:keys [object-id user-id context]}]
   (when (= context :question)
     ;; GET /api/card/:id will trigger a card-read event. We don't want to count _pinned collection views_ as recent-views,
     ;; so a collection with pinned questions will send a request with context==:collection, which we skip below:
     (try
-      (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card (:id object) :view)
+      (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)
       (catch Throwable e
         (log/warnf e "Failed to process recent_views event: %s" topic)))))
-
 
 (derive ::collection-touch-event :metabase/event)
 (derive :event/collection-touch ::collection-touch-event)

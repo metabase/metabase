@@ -150,8 +150,7 @@
                    [{:model "dataset" :id (u/the-id dataset)}]
                    (reverse recent-views))))))))))
 
-;; Cal 2024-05-30: I'm commenting this out while Bryan and I work out the correct behaviour for recent views
-#_(deftest recent-CRU-views-test
+(deftest recent-CRU-views-test
   (clear-recent-views-for-user :crowberto)
   (mt/with-test-user :crowberto
     (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
@@ -320,3 +319,18 @@
                       :popular_items
                       (filter #(test-ids (:id %)))
                       (map (juxt :model :id))))))))))
+
+(deftest recents-endpoint-context-test
+  (testing "Context query param is required"
+    (is (= {:context "enum of :views, :selections, :all"}
+           (:errors (mt/user-http-request :crowberto :get 400 "activity/recents")))))
+  (testing "Context query param controls return values: views"
+    (is (= {:recent_views []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))
+  (testing "Context query param controls return values: selections"
+    (is (= {:recent_selections []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections"))))
+  (testing "Context query param controls return values: selections"
+    (is (= {:recent_selections []
+            :recent_views []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=all")))))
