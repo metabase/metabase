@@ -287,6 +287,32 @@ describeWithSnowplow("extract shortcut", () => {
       "be.visible",
     );
   });
+
+  it("should be possible to extract columns from table with breakouts", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    extractColumnAndCheck({
+      column: "Created At: Month",
+      option: "Month of year",
+    });
+
+    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
+      "be.visible",
+    );
+  });
 });
 
 function extractColumnAndCheck({

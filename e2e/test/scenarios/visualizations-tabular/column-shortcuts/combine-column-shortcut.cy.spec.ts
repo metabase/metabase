@@ -12,7 +12,7 @@ import {
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
-const { PEOPLE, PEOPLE_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
   beforeEach(() => {
@@ -79,6 +79,36 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
       newColumn: "Combined Created At: Hour of day, Count",
       example: "2042-01-01 12:34:56.789 123",
       newValue: "0 766",
+    });
+  });
+
+  it("should allow combining columns on a table with just breakouts", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 1,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
+            ],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("TableInteractive-root").should("exist");
+    combineColumns({
+      columns: ["Created At: Hour of day", "Category"],
+      newColumn: "Combined Created At: Hour of day, Category",
+      example: "2042-01-01 12:34:56.789 text",
+      newValue: "0 Doohickey",
     });
   });
 });
