@@ -1,0 +1,11 @@
+.item[data-selected] {
+  background-color: transparent !important;
+}
+
+.item[data-hovered] {
+  background-color: hsl(208.2deg, 72.4%, 96.2%) !important;
+}
+
+.itemContent {
+  flex: 1;
+}

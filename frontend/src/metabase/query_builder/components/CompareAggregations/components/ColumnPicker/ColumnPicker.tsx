@@ -1,13 +1,16 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { forwardRef, useCallback } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { Flex, MultiSelect, Text } from "metabase/ui";
+import { Checkbox, Flex, MultiSelect, Text } from "metabase/ui";
 
 import type { ColumnType } from "../../types";
 
+import S from "./ColumnPicker.module.css";
+
 interface ItemType {
   example: string;
+  isSelected: boolean;
   label: string;
   value: ColumnType;
 }
@@ -17,7 +20,7 @@ interface Props {
   onChange: (value: ColumnType[]) => void;
 }
 
-const COLUMN_OPTIONS: ItemType[] = [
+const COLUMN_OPTIONS: Omit<ItemType, "isSelected">[] = [
   {
     example: "1826, 3004",
     label: t`Previous value`,
@@ -43,10 +46,21 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
     [onChange],
   );
 
+  const options = useMemo(() => {
+    return COLUMN_OPTIONS.map(option => ({
+      ...option,
+      isSelected: value.includes(option.value),
+    }));
+  }, [value]);
+
   return (
     <MultiSelect
       label={t`Columns to create`}
-      data={COLUMN_OPTIONS}
+      classNames={{
+        item: S.item,
+      }}
+      data={options}
+      disableSelectedItemFiltering
       itemComponent={Item}
       placeholder={t`Columns to create`}
       rightSection={null}
@@ -59,14 +73,18 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
 const Item = forwardRef<
   HTMLDivElement,
   ItemType & ComponentPropsWithoutRef<"div">
->(function SelectItem({ example, label, value, ...props }, ref) {
+>(function SelectItem({ example, isSelected, label, value, ...props }, ref) {
   return (
     <div ref={ref} {...props}>
-      <Flex align="center" justify="space-between">
-        <Text>{label}</Text>
-        <Text c="text-light" size="sm">
-          {example}
-        </Text>
+      <Flex align="center" gap="sm">
+        <Checkbox checked={isSelected} readOnly />
+
+        <Flex align="center" className={S.itemContent} justify="space-between">
+          <Text>{label}</Text>
+          <Text c="text-light" size="sm">
+            {example}
+          </Text>
+        </Flex>
       </Flex>
     </div>
   );
