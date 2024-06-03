@@ -16,9 +16,12 @@ const NUMERIC_DATA = [
   { label: "3", value: 3 },
 ];
 
-type SetupOpts = Omit<TestInputProps, "onChange">;
+type SetupOpts<ValueType extends string | number> = Omit<
+  TestInputProps<ValueType>,
+  "onChange"
+>;
 
-function setup(opts: SetupOpts) {
+function setup<ValueType extends string | number>(opts: SetupOpts<ValueType>) {
   const onChange = jest.fn();
   render(<TestInput {...opts} onChange={onChange} aria-label="Filter value" />);
 
@@ -26,14 +29,17 @@ function setup(opts: SetupOpts) {
   return { onChange, input };
 }
 
-type TestInputProps = MultiAutocompleteProps & {
-  initialValue?: (string | number)[];
-};
+type TestInputProps<ValueType extends string | number> =
+  MultiAutocompleteProps<ValueType> & {
+    initialValue?: ValueType[];
+  };
 
-function TestInput(props: TestInputProps) {
+function TestInput<ValueType extends string | number>(
+  props: TestInputProps<ValueType>,
+) {
   const [value, setValue] = useState(props.initialValue ?? []);
 
-  function handleChange(value: (string | number)[]) {
+  function handleChange(value: ValueType[]) {
     setValue(value);
     props.onChange?.(value);
   }
@@ -316,7 +322,7 @@ describe("MultiAutocomplete", () => {
     });
 
     it("should accept comma-separated values when pasting", async () => {
-      const { input, onChange } = setup({
+      const { input, onChange } = setup<number>({
         data: NUMERIC_DATA,
         parseValue: str => parseFloat(str),
       });
@@ -328,7 +334,7 @@ describe("MultiAutocomplete", () => {
     });
 
     it("should not be possible to enter duplicate values", async () => {
-      const { input, onChange } = setup({
+      const { input, onChange } = setup<number>({
         data: NUMERIC_DATA,
         parseValue: str => parseFloat(str),
       });
@@ -343,8 +349,8 @@ describe("MultiAutocomplete", () => {
     });
 
     it("should not accept NaN values", async () => {
-      const { input, onChange } = setup({
-        data: EXAMPLE_DATA,
+      const { input, onChange } = setup<number>({
+        data: NUMERIC_DATA,
         parseValue: str => parseFloat(str),
       });
       input.focus();
@@ -354,8 +360,8 @@ describe("MultiAutocomplete", () => {
     });
 
     it("should accept comma-separated values, but omit values not accepted by shouldCreate", async () => {
-      const { input, onChange } = setup({
-        data: EXAMPLE_DATA,
+      const { input, onChange } = setup<number>({
+        data: NUMERIC_DATA,
         parseValue: str => parseFloat(str),
         shouldCreate(value: number | string) {
           if (typeof value !== "number") {

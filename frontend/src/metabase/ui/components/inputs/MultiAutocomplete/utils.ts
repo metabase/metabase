@@ -1,9 +1,9 @@
 import { parse } from "csv-parse/browser/esm/sync";
 
-export function parseValues(
+export function parseValues<ValueType extends string | number>(
   str: string,
-  parser: (str: string) => string | number | null = defaultParser,
-): (string | number)[] {
+  parser: (str: string) => ValueType | null = defaultParser,
+): ValueType[] {
   try {
     const strings = parse(str, {
       delimiter: [",", "\t", "\n"],
@@ -21,10 +21,15 @@ export function parseValues(
   }
 }
 
-function defaultParser(str: string): string | number | null {
+function defaultParser<ValueType extends string | number>(
+  str: string,
+): ValueType | null {
+  // @ts-expect-error: for the default case we ignore the type
   return str;
 }
 
-export function unique(values: (string | number)[]): (string | number)[] {
+export function unique<ValueType extends string | number>(
+  values: ValueType[],
+): ValueType[] {
   return Array.from(new Set(values));
 }

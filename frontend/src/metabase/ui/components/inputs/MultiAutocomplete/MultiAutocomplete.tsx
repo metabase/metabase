@@ -10,28 +10,33 @@ import { Icon } from "metabase/ui";
 
 import { parseValues, unique } from "./utils";
 
-export type SelectItem = {
+type Base = string | number;
+
+type SelectItem<ValueType extends Base> = {
   label?: string;
-  value: string | number;
+  value: ValueType;
 };
 
-export type MultiAutocompleteProps = Omit<
+type FilterFn<ValueType extends Base> = (
+  query: string,
+  selected: boolean,
+  item: SelectItem<ValueType>,
+) => boolean;
+
+export type MultiAutocompleteProps<ValueType extends Base> = Omit<
   MultiSelectProps,
   "shouldCreate" | "data" | "filter" | "defaultValue" | "value" | "onChange"
 > & {
-  shouldCreate?: (
-    value: string | number,
-    selectedValues: (string | number)[],
-  ) => boolean;
-  filter?: (query: string, selected: boolean, item: SelectItem) => boolean;
-  data?: ReadonlyArray<string | number | SelectItem>;
-  defaultValue?: (string | number)[];
-  parseValue?: (str: string) => string | number | null;
-  value?: (string | number)[];
-  onChange?: (value: (string | number)[]) => void;
+  shouldCreate?: (value: ValueType, selectedValues: ValueType[]) => boolean;
+  filter?: FilterFn<ValueType>;
+  data?: ReadonlyArray<ValueType | SelectItem<ValueType>>;
+  defaultValue?: ValueType[];
+  parseValue?: (str: string) => ValueType | null;
+  value?: ValueType[];
+  onChange?: (value: ValueType[]) => void;
 };
 
-export function MultiAutocomplete({
+export function MultiAutocomplete<ValueType extends Base>({
   data = [],
   value: controlledValue,
   defaultValue,
@@ -47,10 +52,8 @@ export function MultiAutocomplete({
   filter = defaultFilter,
   parseValue = defaultParseValue,
   ...props
-}: MultiAutocompleteProps) {
-  const [selectedValues, setSelectedValues] = useUncontrolled<
-    (string | number)[]
-  >({
+}: MultiAutocompleteProps<ValueType>) {
+  const [selectedValues, setSelectedValues] = useUncontrolled<ValueType[]>({
     value: controlledValue,
     defaultValue,
     finalValue: [],
@@ -61,8 +64,10 @@ export function MultiAutocomplete({
     finalValue: "",
     onChange: onSearchChange,
   });
+
   const [lastSelectedValues, setLastSelectedValues] =
-    useState<(string | number)[]>(selectedValues);
+    useState<ValueType[]>(selectedValues);
+
   const [isFocused, setIsFocused] = useState(false);
   const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
@@ -71,7 +76,7 @@ export function MultiAutocomplete({
     [data, lastSelectedValues],
   );
 
-  const handleChange = (newValues: string[]) => {
+  const handleChange = (newValues: ValueType[]) => {
     const values = unique(newValues);
     setSelectedValues(values);
     setLastSelectedValues(values);
@@ -83,7 +88,7 @@ export function MultiAutocomplete({
     onFocus?.(event);
   };
 
-  function isValid(value: string | number | null) {
+  function isValid(value: ValueType | null) {
     return (
       value !== null &&
       value !== "" &&
@@ -206,6 +211,7 @@ export function MultiAutocomplete({
       placeholder={placeholder}
       searchable
       autoFocus={autoFocus}
+      // @ts-expect-error: see above
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
@@ -213,12 +219,15 @@ export function MultiAutocomplete({
       onPaste={handlePaste}
       rightSection={info}
       icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-      filter={filter}
+      // @ts-expect-error: see above
+      filter={filter as FilterFn<ValueType>}
     />
   );
 }
 
-function getSelectItem(item: string | number | SelectItem): SelectItem {
+function getSelectItem<ValueType extends Base>(
+  item: ValueType | SelectItem<ValueType>,
+): SelectItem<ValueType> {
   if (typeof item === "string") {
     return { value: item, label: item };
   }
@@ -234,9 +243,9 @@ function getSelectItem(item: string | number | SelectItem): SelectItem {
   return item;
 }
 
-function getAvailableSelectItems(
-  data: ReadonlyArray<string | number | SelectItem>,
-  selectedValues: (string | number)[],
+function getAvailableSelectItems<ValueType extends Base>(
+  data: ReadonlyArray<ValueType | SelectItem<ValueType>>,
+  selectedValues: ValueType[],
 ) {
   const all = [...data, ...selectedValues].map(getSelectItem);
   const seen = new Set();
@@ -251,9 +260,9 @@ function getAvailableSelectItems(
   });
 }
 
-function defaultShouldCreate(
-  value: string | number,
-  selectedValues: (string | number)[],
+function defaultShouldCreate<ValueType extends Base>(
+  value: ValueType,
+  selectedValues: ValueType[],
 ) {
   if (typeof value === "number") {
     return !selectedValues.some(selectedValue => selectedValue === value);
@@ -265,10 +274,10 @@ function defaultShouldCreate(
   );
 }
 
-function defaultFilter(
+function defaultFilter<ValueType extends Base>(
   query: string,
   selected: boolean,
-  item: SelectItem,
+  item: SelectItem<ValueType>,
 ): boolean {
   if (selected || !item.label) {
     return false;
@@ -276,6 +285,9 @@ function defaultFilter(
   return item.label.toLowerCase().trim().includes(query.toLowerCase().trim());
 }
 
-function defaultParseValue(str: string): string | number | null {
+function defaultParseValue<ValueType extends Base>(
+  str: string,
+): ValueType | null {
+  // @ts-expect-error: for the default case we ignore the type
   return str;
 }
