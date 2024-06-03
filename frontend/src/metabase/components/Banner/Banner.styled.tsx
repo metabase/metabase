@@ -6,5 +6,5 @@ export const BannerRoot = styled.div`
   padding: 0.75rem;
   border-radius: 6px;
   color: ${color("text-medium")};
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;

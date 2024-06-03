@@ -34,6 +34,8 @@ const SdkContentWrapperInner = styled.div<
   }
 >`
   --mb-default-font-family: "${({ theme }) => theme.fontFamily}";
+  --mb-color-bg-light: ${({ theme }) => theme.fn.themeColor("bg-light")};
+  --mb-color-bg-dark: ${({ theme }) => theme.fn.themeColor("bg-dark")};
   --mb-color-brand: ${({ theme }) => theme.fn.themeColor("brand")};
   --mb-color-brand-alpha-04: ${({ theme }) =>
     alpha(theme.fn.themeColor("brand"), 0.04)};

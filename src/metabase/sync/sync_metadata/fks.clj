@@ -3,7 +3,6 @@
   (:require
    [honey.sql :as sql]
    [metabase.db :as mdb]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -100,7 +99,7 @@
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
-     (let [schema-names (when (driver/database-supports? (driver.u/database->driver database) :schemas database)
+     (let [schema-names (when (driver.u/supports? (driver.u/database->driver database) :schemas database)
                           [(:schema table)])
            fk-metadata  (into [] (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))]
        {:total-fks   (count fk-metadata)
@@ -116,7 +115,7 @@
   [database :- i/DatabaseInstance]
   (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
              (let [driver       (driver.u/database->driver database)
-                   schema-names (when (driver/database-supports? driver :schemas database)
+                   schema-names (when (driver.u/supports? driver :schemas database)
                                   (sync-util/db->sync-schemas database))
                    fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
                (transduce (map (fn [x]

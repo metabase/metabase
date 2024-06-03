@@ -5,6 +5,8 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -12,7 +14,9 @@
    [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config
+    :as search.config
+    :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
@@ -499,9 +503,9 @@
         ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
         ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
         to-fetch     (into #{} (comp (keep :effective_location)
-                                      (mapcat collection/location-path->ids)
+                                     (mapcat collection/location-path->ids)
                                       ;; already have these names
-                                      (remove col-id->info))
+                                     (remove col-id->info))
                             (vals col-id->info))
         ;; the now COMPLETE map of collection IDs to info
         col-id->info (merge (if (seq to-fetch)
@@ -517,6 +521,63 @@
                                         (map col-id->info))
                                    []))))]
     (map annotate search-results)))
+
+(defn- add-collection-effective-location
+  "Batch-hydrates :effective_location and :effective_parent on collection search results. Keeps search results in
+  order."
+  [search-results]
+  (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
+        hydrated-colls (t2/hydrate collections :effective_parent)
+        idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
+    (map (fn [search-result]
+           (if (mi/instance-of? :model/Collection search-result)
+             (idx->coll (:id search-result))
+             (assoc search-result :effective_location nil)))
+         search-results)))
+
+;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
+;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
+;;; endpoint itself, not in the search impl.
+(defn serialize
+  "Massage the raw result from the DB and match data into something more useful for the client"
+  [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
+                      collection_authority_level collection_type collection_effective_ancestors effective_parent]}]
+  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
+        match-context-thunk (first (keep :match-context-thunk relevant-scores))]
+    (-> result
+        (assoc
+         :name           (if (and (contains? matching-columns :display_name) display_name)
+                           display_name
+                           name)
+         :context        (when (and match-context-thunk
+                                    (empty?
+                                     (remove matching-columns search.config/displayed-columns)))
+                           (match-context-thunk))
+         :collection     (merge {:id              collection_id
+                                 :name            collection_name
+                                 :authority_level collection_authority_level
+                                 :type            collection_type}
+                                (when effective_parent
+                                  effective_parent)
+                                (when collection_effective_ancestors
+                                  {:effective_ancestors collection_effective_ancestors}))
+         :scores          all-scores)
+        (update :dataset_query (fn [dataset-query]
+                                 (when-let [query (some-> dataset-query json/parse-string)]
+                                   (if (get query "type")
+                                     (mbql.normalize/normalize query)
+                                     (not-empty (lib/normalize query))))))
+        (dissoc
+         :all-scores
+         :relevant-scores
+         :collection_effective_ancestors
+         :trashed_from_collection_id
+         :collection_id
+         :collection_location
+         :collection_name
+         :collection_type
+         :display_name
+         :effective_parent))))
 
 (defn- add-can-write [row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
@@ -547,9 +608,6 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
-                            (map #(if (t2/instance-of? :model/Collection %)
-                                    (t2/hydrate % :effective_location)
-                                    (assoc % :effective_location nil)))
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
@@ -566,9 +624,10 @@
 
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                              true hydrate-user-metadata
+                              true                           hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true (map scoring/serialize))
+                              true                           (add-collection-effective-location)
+                              true                           (map serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)

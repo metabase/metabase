@@ -32,9 +32,11 @@ import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-
 import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
 import barStackedPowYAxis from "./bar-stacked-pow-y-axis.json";
+import barStackedSeriesLabelsAndTotalsOrdinal from "./bar-stacked-series-labels-and-totals-ordinal.json";
 import barStackedSeriesLabelsAndTotals from "./bar-stacked-series-labels-and-totals.json";
 import barStackedSeriesLabelsAutoCompactness from "./bar-stacked-series-labels-auto-compactness.json";
 import barStackedSeriesLabelsNoTotals from "./bar-stacked-series-labels-no-totals.json";
+import barStackedSeriesLabelsNormalizedAutoCompactness from "./bar-stacked-series-labels-normalized-auto-compactness.json";
 import barStackedSeriesLabelsRotated from "./bar-stacked-series-labels-rotated.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
@@ -198,4 +200,6 @@ export const data = {
   barStackedSeriesLabelsAndTotals,
   barStackedSeriesLabelsNoTotals,
   barStackedSeriesLabelsRotated,
+  barStackedSeriesLabelsAndTotalsOrdinal,
+  barStackedSeriesLabelsNormalizedAutoCompactness,
 };
