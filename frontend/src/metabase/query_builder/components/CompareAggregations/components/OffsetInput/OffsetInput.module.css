@@ -8,5 +8,5 @@
 
 .help {
   position: absolute;
-  inset-inline-start: 50px;
+  left: 50px;
 }
