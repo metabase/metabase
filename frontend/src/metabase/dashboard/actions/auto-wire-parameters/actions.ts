@@ -10,6 +10,7 @@ import {
 import {
   getAllDashboardCardsWithUnmappedParameters,
   getAutoWiredMappingsForDashcards,
+  getAutoWiredMappingsForParameter,
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
@@ -30,6 +31,37 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
+
+export function autoWireDashcardsWithMatchingParameter(
+  parameterId: ParameterId,
+) {
+  return function (dispatch: Dispatch, getState: GetState) {
+    const state = getState().dashboard;
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    if (!state.dashboardId || !parameter) {
+      return;
+    }
+
+    const dashcards = getExistingDashCards(
+      state.dashboards,
+      state.dashcards,
+      state.dashboardId,
+    );
+    const questions = getQuestions(getState());
+    const dashcardAttributes = getAutoWiredMappingsForParameter(
+      parameter,
+      dashcards,
+      questions,
+    );
+    dispatch(
+      setMultipleDashCardAttributes({
+        dashcards: dashcardAttributes,
+      }),
+    );
+  };
+}
 
 export function autoWireDashcardsWithMatchingParameters(
   parameter_id: ParameterId,

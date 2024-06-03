@@ -2,7 +2,10 @@ import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import {
+  autoWireDashcardsWithMatchingParameter,
+  autoWireDashcardsWithMatchingParameters,
+} from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
@@ -52,6 +55,7 @@ import {
   getParameters,
   getParameterValues,
   getParameterMappingsBeforeEditing,
+  getEditingParameterId,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -145,8 +149,12 @@ export const ADD_TEMPORAL_UNIT_PARAMETER =
   "metabase/dashboard/ADD_TEMPORAL_UNIT_PARAMETER";
 export const addTemporalUnitParameter = createThunkAction(
   ADD_TEMPORAL_UNIT_PARAMETER,
-  () => dispatch => {
-    dispatch(addParameter(buildTemporalUnitOption()));
+  () => async (dispatch, getState) => {
+    await dispatch(addParameter(buildTemporalUnitOption()));
+    const parameterId = getEditingParameterId(getState());
+    if (parameterId) {
+      await dispatch(autoWireDashcardsWithMatchingParameter(parameterId));
+    }
   },
 );
 
