@@ -14,7 +14,6 @@ import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
-import { getSetting } from "metabase/selectors/settings";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -106,7 +105,6 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 const mapStateToProps = state => ({
   isSdk: getIsEmbeddingSdk(state),
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
-  isDefaultMapsEnabled: getSetting(state, "default-maps-enabled"),
 });
 
 const connector = connect(mapStateToProps, null);
