@@ -17,19 +17,18 @@ export const compareAggregationsDrill: Drill<
     return [];
   }
 
-  // TODO: pass aggregation to CompareAggregations
-
-  const aggregation = Lib.aggregations(query, stageIndex)[
-    clicked.column.aggregation_index
-  ];
+  const aggregations = Lib.aggregations(query, stageIndex);
+  const aggregation = aggregations[clicked.column.aggregation_index];
 
   const DrillPopover = ({
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
     const dispatch = useDispatch();
+
     return (
       <CompareAggregations
+        aggregations={[aggregation]}
         query={query}
         stageIndex={stageIndex}
         onSubmit={aggregations => {
