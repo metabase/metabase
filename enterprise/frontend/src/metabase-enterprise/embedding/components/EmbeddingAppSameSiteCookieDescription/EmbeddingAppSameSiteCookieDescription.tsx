@@ -59,6 +59,11 @@ function AuthorizedOriginsNote() {
 function authorizedOriginsContainsNonInstanceDomain(
   authorizedOriginsString: string,
 ): boolean {
+  // temporarily disabled because it suggest wrong SameSite value
+  // for local development, where the origin is localhost and when the protocol is not specified
+  // metabase#43523
+  return false;
+
   if (isEmpty(authorizedOriginsString)) {
     return false;
   }
