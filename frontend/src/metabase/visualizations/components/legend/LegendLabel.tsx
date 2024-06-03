@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { LinkProps } from "react-router";
 import { Link } from "react-router";
+import { useEffectOnce } from "react-use";
 
 import S from "./LegendLabel.module.css";
 
@@ -33,15 +34,15 @@ export const LegendLabel = ({
     },
     [onClick],
   );
-  const [href, setHref] = useState<LinkProps["to"]>("");
+  const [href, setHref] = useState<LinkProps["to"]>();
 
-  const handleMouseEnter = () => {
-    if (!href && getHref) {
+  useEffectOnce(() => {
+    if (getHref) {
       setHref(getHref());
     }
-  };
+  });
 
-  if (!getHref) {
+  if (!href) {
     return (
       <div
         className={cx(S.text, className, {
@@ -59,7 +60,6 @@ export const LegendLabel = ({
       className={cx(S.text, S.link, className)}
       to={href}
       onClick={handleLinkClick}
-      onMouseEnter={handleMouseEnter}
     >
       {children}
     </Link>
