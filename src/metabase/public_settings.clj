@@ -817,9 +817,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 ;;; Deprecated uploads settings begin
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; These settings were removed in 50.0 and will be erased from the code in 53.0. They are kept here for backwards compatibility
-;; to avoid breaking existing installations that may have set these values with environment variables, or via the config
-;; file.
+;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
+;; to migrate to the new way to set uploads settings.
 
 (defsetting ^{:deprecated "0.50.0"} uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
