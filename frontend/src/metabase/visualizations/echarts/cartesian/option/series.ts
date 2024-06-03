@@ -380,6 +380,7 @@ function getDataLabelSeriesOption(
   settings: ComputedVisualizationSettings,
   formatter: (params: CallbackDataParams) => string,
   position: "top" | "bottom",
+  renderingContext: RenderingContext,
   showInBlur = true,
 ) {
   const stackName = seriesOption.stack;
@@ -402,6 +403,12 @@ function getDataLabelSeriesOption(
       show: true,
       position,
       formatter,
+      fontFamily: renderingContext.fontFamily,
+      fontWeight: CHART_STYLE.seriesLabels.weight,
+      fontSize: CHART_STYLE.seriesLabels.size,
+      color: renderingContext.getColor("text-dark"),
+      textBorderColor: renderingContext.getColor("white"),
+      textBorderWidth: 3,
     },
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -522,6 +529,7 @@ const buildEChartsBarSeries = (
         chartDataDensity,
       ),
       sign === "+" ? "top" : "bottom",
+      renderingContext,
       false,
     ),
     type: "bar", // ensure type is bar for typescript
@@ -749,6 +757,7 @@ export const getStackTotalsSeries = (
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
+  renderingContext: RenderingContext,
 ) => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter(s => s.stack != null),
@@ -788,6 +797,7 @@ export const getStackTotalsSeries = (
             settings,
           ),
         "top",
+        renderingContext,
       ),
       getDataLabelSeriesOption(
         NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -805,6 +815,7 @@ export const getStackTotalsSeries = (
             settings,
           ),
         "bottom",
+        renderingContext,
       ),
     ];
   });
@@ -903,6 +914,7 @@ export const buildEChartsSeries = (
         settings,
         chartWidth,
         series,
+        renderingContext,
       ),
     );
   }
