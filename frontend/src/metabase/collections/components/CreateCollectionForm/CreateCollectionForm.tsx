@@ -117,7 +117,7 @@ function CreateCollectionForm({
             name="name"
             title={t`Name`}
             placeholder={t`My new fantastic collection`}
-            autoFocus
+            data-autofocus
           />
           <FormTextArea
             name="description"
