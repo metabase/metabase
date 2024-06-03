@@ -15,18 +15,22 @@ export const CompareAggregationsAction: LegacyDrill = ({
   const query = question.query();
   const stageIndex = -1;
   const { isEditable } = Lib.queryDisplayInfo(query);
+  const aggregations = Lib.aggregations(query, stageIndex);
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    Lib.aggregations(query, stageIndex).length === 0
+    aggregations.length === 0
   ) {
     return [];
   }
 
-  const title = getTitle(query, stageIndex);
+  const title =
+    aggregations.length === 1
+      ? getTitle(query, stageIndex, aggregations[0])
+      : getTitle(query, stageIndex);
 
   const Popover = ({
     onChangeCardAndRun,
