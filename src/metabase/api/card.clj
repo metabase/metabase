@@ -185,6 +185,7 @@
                     :creator
                     :dashboard_count
                     :can_write
+                    :can_run_adhoc_query
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count

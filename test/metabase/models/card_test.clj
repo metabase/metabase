@@ -1003,9 +1003,10 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
-    (mt/with-temp [:model/Card card {:dataset_query query}
-                   :model/Card no-query {}]
-      (is (=? {:can_run_adhoc_query true}
-              (t2/hydrate card :can_run_adhoc_query)))
-      (is (=? {:can_run_adhoc_query false}
-              (t2/hydrate no-query :can_run_adhoc_query))))))
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-temp [:model/Card card {:dataset_query query}
+                     :model/Card no-query {}]
+        (is (=? {:can_run_adhoc_query true}
+                (t2/hydrate card :can_run_adhoc_query)))
+        (is (=? {:can_run_adhoc_query false}
+                (t2/hydrate no-query :can_run_adhoc_query)))))))
