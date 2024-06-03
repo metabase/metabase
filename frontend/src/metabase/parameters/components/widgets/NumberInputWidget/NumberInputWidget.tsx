@@ -2,7 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import TokenField from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { parseNumberValue } from "metabase/lib/number";
@@ -13,6 +12,7 @@ import {
   Footer,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import { MultiAutocomplete } from "metabase/ui";
 import type { Parameter } from "metabase-types/api";
 
 export type NumberInputWidgetProps = {
@@ -40,7 +40,7 @@ export function NumberInputWidget({
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<(number | undefined)[]>(arrayValue);
+    useState<number[]>(arrayValue);
 
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
@@ -58,22 +58,28 @@ export function NumberInputWidget({
     }
   };
 
+  function shouldCreate(value: string | number) {
+    const res = parseNumberValue(value);
+    return res !== null;
+  }
+
+  const handleChange = (value: (string | number)[]) => {
+    setUnsavedArrayValue(value.filter((x): x is number => Number.isFinite(x)));
+  };
+
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
-          <TokenField
-            multi
-            updateOnInputChange
-            autoFocus={autoFocus}
+          <MultiAutocomplete
+            onChange={handleChange}
             value={unsavedArrayValue}
-            parseFreeformValue={parseNumberValue}
-            onChange={newValue => {
-              setUnsavedArrayValue(newValue);
-            }}
-            options={[]}
             placeholder={placeholder}
+            shouldCreate={shouldCreate}
+            parseValue={parseNumberValue}
+            autoFocus={autoFocus}
+            maxSelectedValues={typeof arity === "number" ? arity : undefined}
           />
         </TokenFieldWrapper>
       ) : (
@@ -115,7 +121,7 @@ export function NumberInputWidget({
 
 function normalize(value: number[] | undefined): number[] {
   if (Array.isArray(value)) {
-    return value;
+    return value.filter(x => x !== undefined);
   } else {
     return [];
   }
