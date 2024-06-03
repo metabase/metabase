@@ -972,3 +972,15 @@
                          (partition 2 clauses))
                  (when (odd? (count clauses))
                    (list (last clauses))))))))))
+
+(defn update-keys-vals
+  "A combination of [[update-keys]] and [[update-vals]], which simultaneously re-maps keys and values."
+  ([m f]
+   (update-keys-vals m f f))
+  ([m key-f val-f]
+   (let [ret (persistent!
+              (reduce-kv (fn [acc k v]
+                           (assoc! acc (key-f k) (val-f v)))
+                         (transient {})
+                         m))]
+     (with-meta ret (meta m)))))

@@ -15,25 +15,28 @@ describe("scenarios > question > custom column > help text", () => {
   });
 
   it("should appear while inside a function", () => {
-    enterCustomColumnDetails({ formula: "Lower(" });
+    enterCustomColumnDetails({ formula: "Lower(", blur: false });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("lower(text)");
   });
 
   it("should appear after a field reference", () => {
-    enterCustomColumnDetails({ formula: "Lower([Category]" });
+    enterCustomColumnDetails({ formula: "Lower([Category]", blur: false });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("lower(text)");
   });
 
   it("should not appear while outside a function", () => {
-    enterCustomColumnDetails({ formula: "Lower([Category])" });
+    enterCustomColumnDetails({ formula: "Lower([Category])", blur: false });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("lower(text)").should("not.exist");
   });
 
   it("should not appear when formula field is not in focus (metabase#15891)", () => {
-    enterCustomColumnDetails({ formula: "rou{enter}1.5){leftArrow}" });
+    enterCustomColumnDetails({
+      formula: "rou{enter}1.5){leftArrow}",
+      blur: false,
+    });
 
     cy.findByTestId("expression-helper-popover").findByText(
       "round([Temperature])",
@@ -56,7 +59,7 @@ describe("scenarios > question > custom column > help text", () => {
   });
 
   it("should not disappear when clicked on (metabase#17548)", () => {
-    enterCustomColumnDetails({ formula: "rou{enter}" });
+    enterCustomColumnDetails({ formula: "rou{enter}", blur: false });
 
     // Shouldn't hide on click
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

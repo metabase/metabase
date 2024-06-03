@@ -26,15 +26,12 @@ describe("scenarios > reference > databases", () => {
 
   it("should let an admin edit details about the database", () => {
     cy.visit("/reference/databases/1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Edit").click();
+
+    // For some unknown reason, calling .click() causes the form to immediately reset, putting us
+    // in a state like we never clicked the edit button TODO: Fix
+    cy.button(/Edit/).trigger("click");
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Description")
-      .parent()
-      .parent()
-      .find("textarea")
-      .type("A pretty ok store");
+    cy.findByPlaceholderText("No description yet").type("A pretty ok store");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -43,15 +40,13 @@ describe("scenarios > reference > databases", () => {
 
   it("should let an admin start to edit and cancel without saving", () => {
     cy.visit("/reference/databases/1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Edit").click();
+    // For some unknown reason, calling .click() causes the form to immediately reset, putting us
+    // in a state like we never clicked the edit button TODO: Fix
+    cy.button(/Edit/).trigger("click");
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Why this")
-      .parent()
-      .parent()
-      .find("textarea")
-      .type("Turns out it's not");
+    cy.findByPlaceholderText("Nothing interesting yet").type(
+      "Turns out it's not",
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Cancel").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -60,8 +55,10 @@ describe("scenarios > reference > databases", () => {
 
   it("should let an admin edit the database name", () => {
     cy.visit("/reference/databases/1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Edit").click();
+    // For some unknown reason, calling .click() causes the form to immediately reset, putting us
+    // in a state like we never clicked the edit button TODO: Fix
+    cy.button(/Edit/).trigger("click");
+
     cy.findByPlaceholderText("Sample Database")
       .clear()
       .type("My definitely profitable business");

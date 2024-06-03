@@ -7,6 +7,7 @@
   Adding Recent Items:
      `(recent-views/update-users-recent-views! <user-id> <model> <model-id>)`
        see: [[update-users-recent-views!]]
+      This is almost always called from a published event handler.
   Fetching Recent Items:
      `(recent-view/get-list <user-id>)`
        returns a sequence of [[Item]]
@@ -218,9 +219,9 @@
                 :where [:in :card.id card-ids]
                 :left-join [[:moderation_review :mr]
                             [:and
+                             [:= :mr.moderated_item_id :card.id]
                              [:= :mr.moderated_item_type "card"]
-                             [:= :mr.most_recent true]
-                             [:in :mr.moderated_item_id card-ids]]
+                             [:= :mr.most_recent true]]
                             [:collection]
                             [:and
                              [:= :collection.id :card.collection_id]
@@ -413,7 +414,7 @@
 (defn ^:private do-query [user-id]
   (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
                                  :from [[:recent_views :rv]]
-                                 :where [:and [:= :rv.user_id user-id]]
+                                 :where [:= :rv.user_id user-id]
                                  :left-join [[:report_card :rc]
                                              [:and
                                               ;; only want to join on card_type if it's a card
@@ -472,7 +473,7 @@
     (let [entity->id->data (get-entity->id->data views)]
       (into []
             (comp
-             (map (partial post-process entity->id->data))
+             (keep (partial post-process entity->id->data))
              (keep error-avoider))
             views))
     []))

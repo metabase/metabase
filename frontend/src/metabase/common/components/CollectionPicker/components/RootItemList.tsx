@@ -6,7 +6,7 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 

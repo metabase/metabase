@@ -2,7 +2,7 @@ import type { EmbeddingParameters } from "metabase/public/lib/types";
 
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId, DashCardId } from "./dashboard";
-import type { DatabaseId } from "./database";
+import type { DatabaseId, Database } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type {
@@ -11,6 +11,7 @@ import type {
   FieldReference,
   PublicDatasetQuery,
 } from "./query";
+import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { SmartScalarComparison } from "./visualization-settings";
 
@@ -60,6 +61,15 @@ export interface PublicCard {
   visualization_settings: VisualizationSettings;
   parameters?: Parameter[];
   dataset_query: PublicDatasetQuery;
+}
+
+export interface XrayCard {
+  id: string;
+  name: string;
+  description: string | null;
+  display: CardDisplayType;
+  visualization_settings: VisualizationSettings;
+  dataset_query: DatasetQuery;
 }
 
 export type CardDisplayType = string;
@@ -126,6 +136,7 @@ export type TableColumnOrderSetting = {
 };
 
 export type StackType = "stacked" | "normalized" | null;
+export type StackValuesDisplay = "total" | "all" | "series";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = typeof numericScale[number];
@@ -137,6 +148,7 @@ export type YAxisScale = NumericScale;
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
+  "graph.show_stack_values"?: StackValuesDisplay;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -220,6 +232,12 @@ export type CardFilterOption =
   | "popular"
   | "using_model"
   | "archived";
+
+export type CardQueryMetadata = {
+  databases: Database[];
+  tables: Table[];
+  fields: Field[];
+};
 
 export interface ListCardsRequest {
   f?: CardFilterOption;

@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
-} from "metabase/entities/collections";
+} from "metabase/entities/collections/constants";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";

@@ -69,7 +69,7 @@ function ChartSettingsListColumns({
   );
 
   const onColumnSettingsClick = useCallback(
-    (fieldIdOrFieldRef, targetElement: Element) => {
+    (fieldIdOrFieldRef: FieldIdOrFieldRef, targetElement: Element) => {
       const column = columns.find(
         column =>
           column.id === fieldIdOrFieldRef ||

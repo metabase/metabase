@@ -20,6 +20,7 @@ import {
   getDefaultMetricFilter,
   getDefaultMetrics,
   getDefaultShowDataLabels,
+  getDefaultShowStackValues,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
@@ -32,6 +33,7 @@ import {
   isStackingValueValid,
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
+  isShowStackValuesValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -191,6 +193,13 @@ export const computeStaticComboChartSettings = (
     "stackable.stack_type",
     getDefaultStackingValue(settings, mainCard),
     isStackingValueValid(mainCard.display, settings, seriesDisplays),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.show_stack_values",
+    getDefaultShowStackValues(settings),
+    isShowStackValuesValid(seriesDisplays, settings),
   );
 
   fillWithDefaultValue(

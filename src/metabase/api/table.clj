@@ -16,6 +16,7 @@
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.related :as related]
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
@@ -325,7 +326,7 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defn fetch-query-metadata
+(defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
@@ -345,25 +346,32 @@
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
+(defenterprise fetch-table-query-metadata
+  "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
+  metabase-enterprise.sandbox.api.table
+  [id opts]
+  (fetch-query-metadata* (t2/select-one Table :id id) opts))
+
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
-  Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
+   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
-  Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
+   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
-  These options are provided for use in the Admin Edit Metadata page."
+   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
   {id                          ms/PositiveInt
    include_sensitive_fields    [:maybe ms/BooleanValue]
    include_hidden_fields       [:maybe ms/BooleanValue]
    include_editable_data_model [:maybe ms/BooleanValue]}
-  (fetch-query-metadata (t2/select-one Table :id id) {:include-sensitive-fields?    include_sensitive_fields
-                                                      :include-hidden-fields?       include_hidden_fields
-                                                      :include-editable-data-model? include_editable_data_model}))
+  (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
+                                  :include-hidden-fields?       include_hidden_fields
+                                  :include-editable-data-model? include_editable_data_model}))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
@@ -435,13 +443,12 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(api/defendpoint GET "/card__:id/query_metadata"
+(defn fetch-card-query-metadata
   "Return metadata for the 'virtual' table for a Card."
   [id]
-  {id ms/PositiveInt}
   (let [{:keys [database_id] :as card} (api/check-404
                                         (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id :type :dataset_query]
+                                                        :collection_id :database_id :type]
                                                        :id id))
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
@@ -451,18 +458,23 @@
                                                                         [:= :most_recent true]]
                                                              :order-by [[:id :desc]]
                                                              :limit    1}
-                                             :id id)
+                                                            :id id)
                                            first :status)
         db (t2/select-one Database :id database_id)
         ;; a native model can have columns with keys as semantic types only if a user configured them
         trust-semantic-keys? (and (= (:type card) :model)
-                                     (= (-> card :dataset_query :type) :native))]
+                                  (= (-> card :dataset_query :type) :native))]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options db)
         (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
 
+(api/defendpoint GET "/card__:id/query_metadata"
+  "Return metadata for the 'virtual' table for a Card."
+  [id]
+  {id ms/PositiveInt}
+  (fetch-card-query-metadata id))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

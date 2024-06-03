@@ -1,4 +1,5 @@
 import type { MetabaseFontFamily } from "../fonts";
+import type { DeepPartial } from "../utils";
 
 /**
  * Theme configuration for embedded Metabase components.
@@ -20,7 +21,7 @@ export interface MetabaseTheme {
   colors?: MetabaseColors;
 
   /** Component theme options */
-  components?: MetabaseComponentTheme;
+  components?: DeepPartial<MetabaseComponentTheme>;
 }
 
 export interface MetabaseColors {
@@ -69,24 +70,36 @@ export type MetabaseColor = keyof MetabaseColors;
 /**
  * Theme options for customizing specific Metabase
  * components and visualizations.
+ *
+ * Every non-optional properties here must have a default value defined
+ * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
 export interface MetabaseComponentTheme {
   /** Data tables **/
-  table?: {
-    cell?: {
-      /** Text color of cells, defaults to `text-dark`. */
-      textColor?: string;
+  table: {
+    cell: {
+      /** Text color of cells, defaults to `text-primary`. */
+      textColor: string;
 
-      /** Default background color of cells, defaults to `bg-white` */
+      /** Default background color of cells, defaults to `background` */
       backgroundColor?: string;
     };
 
     idColumn?: {
       /** Text color of ID column, defaults to `brand`. */
-      textColor?: string;
+      textColor: string;
 
       /** Background color of ID column, defaults to `lighten(brand)`  */
       backgroundColor?: string;
+    };
+  };
+
+  /** Pivot table **/
+  pivotTable: {
+    /** Button to toggle pivot table rows */
+    rowToggle: {
+      textColor: string;
+      backgroundColor: string;
     };
   };
 

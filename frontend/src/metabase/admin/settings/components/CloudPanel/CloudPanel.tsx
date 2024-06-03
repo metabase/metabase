@@ -88,7 +88,7 @@ export const CloudPanel = ({
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      <Box maw="30rem">
+      <Box maw="36rem">
         <Text fw="bold" size="1.5rem" mb="2rem">{t`Migrate to Cloud`}</Text>
 
         {getStartedVisibleStates.has(migrationState) && (
