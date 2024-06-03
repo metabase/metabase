@@ -22,6 +22,7 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import type { IconName } from "metabase/ui";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -126,7 +127,7 @@ export const useCommandPalette = ({
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
           keywords: debouncedSearchText,
-          icon: "link" as const,
+          icon: "link" as IconName,
           perform: () => {
             dispatch(push(searchLocation));
           },
