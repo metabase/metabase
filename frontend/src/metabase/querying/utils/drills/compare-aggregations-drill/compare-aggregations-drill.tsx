@@ -17,6 +17,8 @@ export const compareAggregationsDrill: Drill<
     return [];
   }
 
+  // TODO: pass aggregation to CompareAggregations
+
   const aggregation = Lib.aggregations(query, stageIndex)[
     clicked.column.aggregation_index
   ];
