@@ -27,6 +27,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-bg-dark: ${color("bg-dark")};
       --mb-color-bg-light: ${color("bg-light")};
       --mb-color-bg-medium: ${color("bg-medium")};
+      --mb-color-bg-night: ${color("bg-night")};
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}
