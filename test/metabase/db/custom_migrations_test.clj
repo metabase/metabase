@@ -1635,12 +1635,20 @@
               (is (= (:created_at session)
                      (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
 
+(def ^:private deep-nested-map
+  "A 35 level nested map to test for mariadb"
+  (reduce (fn [m _]
+            (hash-map "a" m))
+          {:a 1}
+          (range 35)))
+
 (deftest card-revision-add-type-test
   (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
     (let [user-id          (:id (new-instance-with-default :core_user))
           db-id            (:id (new-instance-with-default :metabase_database))
           card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
+          card-2           (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           card-revision-id (:id (new-instance-with-default :revision
                                                            {:object    (json/generate-string (dissoc card :type))
                                                             :model     "Card"
@@ -1650,7 +1658,13 @@
                                                             {:object    (json/generate-string (dissoc model :type))
                                                              :model     "Card"
                                                              :model_id  (:id card)
-                                                             :user_id   user-id}))]
+                                                             :user_id   user-id}))
+          ;; this is only here to test that the migration doesn't break when there's a deep nested map on mariadb see #41924
+          _                (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string deep-nested-map)
+                                                            :model     "Card"
+                                                            :model_id  (:id card-2)
+                                                            :user_id   user-id}))]
       (testing "sanity check revision object"
         (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
           (testing "doesn't have type"
