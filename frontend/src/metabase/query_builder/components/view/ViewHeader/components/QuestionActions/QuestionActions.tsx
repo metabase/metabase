@@ -30,7 +30,6 @@ import {
 } from "metabase-lib/v1/metadata/utils/models";
 import { UploadMode } from "metabase-types/store/upload";
 
-import { canUploadToQuestion } from "../../../../../selectors";
 import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
 
 import {
@@ -75,7 +74,6 @@ export const QuestionActions = ({
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
   const isMetabotEnabled = useSetting("is-metabot-enabled");
-  const canUpload = useSelector(canUploadToQuestion(question));
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
@@ -94,7 +92,7 @@ export const QuestionActions = ({
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
-  const canAppend = canUpload && canWrite && !!question._card.based_on_upload;
+  const canAppend = canWrite && !!question._card.based_on_upload;
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&

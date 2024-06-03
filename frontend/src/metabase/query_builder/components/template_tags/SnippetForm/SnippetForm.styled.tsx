@@ -1,12 +1,11 @@
 import styled from "@emotion/styled";
 
 import FormTextArea from "metabase/core/components/FormTextArea";
-import { color } from "metabase/lib/colors";
 
 export const FormSnippetTextArea = styled(FormTextArea)`
   ${FormTextArea.Root} {
     width: 100%;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
 
     font-family: Monaco, monospace;
     font-size: 0.875em;

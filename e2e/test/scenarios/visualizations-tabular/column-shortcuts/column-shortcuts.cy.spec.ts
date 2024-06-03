@@ -15,9 +15,10 @@ import {
   expectGoodSnowplowEvent,
   resetSnowplow,
   expectNoBadSnowplowEvents,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const DATE_CASES = [
   {
@@ -254,15 +255,65 @@ describeWithSnowplow("extract shortcut", () => {
 
     cy.get("#main-data-grid").scrollTo("left", { duration: 2000 / 60 });
 
-    cy.findAllByRole("columnheader", { name: "ID" })
-      .should("be.visible")
-      .click();
+    tableHeaderClick("ID");
 
     // Change sort direction
     popover().findAllByRole("button").first().click();
 
     // ID should still be visible (ie. no scrolling to the end should have happened)
     cy.findAllByRole("columnheader", { name: "ID" }).should("be.visible");
+  });
+
+  it("should be possible to extract columns from a summarized table", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 1,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+    extractColumnAndCheck({
+      column: "Created At: Month",
+      option: "Month of year",
+    });
+
+    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
+      "be.visible",
+    );
+  });
+
+  it("should be possible to extract columns from table with breakouts", () => {
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    extractColumnAndCheck({
+      column: "Created At: Month",
+      option: "Month of year",
+    });
+
+    cy.findAllByRole("columnheader", { name: "Month of year" }).should(
+      "be.visible",
+    );
   });
 });
 

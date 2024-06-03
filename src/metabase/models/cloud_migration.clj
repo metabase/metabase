@@ -33,29 +33,42 @@
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
 
-(defsetting migration-store-url
-  (deferred-tru "Store URL for migrations. Internal test use only.")
+(defsetting store-use-staging
+  (deferred-tru "If staging store should be used instead of prod. True on dev.")
+  :type       :boolean
   :visibility :internal
-  :default    (if config/is-dev?
-               "https://store-api.staging.metabase.com/api/v2/migration"
-               "https://store-api.metabase.com/api/v2/migration")
+  :default    config/is-dev?
+  :doc        false
+  :export?    false)
+
+(defsetting store-url
+  (deferred-tru "Store URL.")
+  :visibility :admin ;; should be :internal, but FE doesn't get internal settings
+  :default    (str "https://store" (when (store-use-staging) ".staging") ".metabase.com")
+  :doc        false
+  :export?    false)
+
+(defsetting store-api-url
+  (deferred-tru "Store API URL.")
+  :visibility :internal
+  :default    (str "https://store-api" (when (store-use-staging) ".staging") ".metabase.com")
   :doc        false
   :export?    false)
 
 (defsetting migration-dump-file
-  (deferred-tru "Dump file for migrations. Internal test use only.")
+  (deferred-tru "Dump file for migrations.")
   :visibility :internal
   :default    nil
   :doc        false
   :export?    false)
 
 (defsetting migration-dump-version
-  (deferred-tru "Custom dump version for migrations. Internal test use only.")
+  (deferred-tru "Custom dump version for migrations.")
   :visibility :internal
-  ;; Use a known and already released version override when in dev.
+  ;; Use a known version on staging when there's no real version.
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
   ;; a dump from that version, but it lets you test everything else up to that point works.
-  :default    (when config/is-dev? "v0.49.7")
+  :default    (when (= (config/mb-version-info :tag) "vLOCAL_DEV") "v0.50.0-RC1")
   :doc        false
   :export?    false)
 
@@ -85,11 +98,6 @@
        (map t2/table-name)
        (into #{})))
 
-(def ^:private ^:dynamic
-  *ignore-read-only-mode*
-  "Used during dump-to-h2, since rotate-encryption-key! over the dump will hit read-only-mode."
-  nil)
-
 ;; Block write calls to most tables in read-only mode.
 (methodical/defmethod t2.pipeline/build :before [#_query-type     :toucan.statement-type/DML
                                                  #_model          :default
@@ -98,8 +106,7 @@
   (let [table-name (t2/table-name model)]
     (when (and (read-only-mode)
                (read-only-mode-inclusions table-name)
-               (not (read-only-mode-exceptions table-name))
-               (not *ignore-read-only-mode*))
+               (not (read-only-mode-exceptions table-name)))
       (throw (ex-info (tru "Metabase is in read-only-mode mode!")
                       {:status-code 403}))))
   resolved-query)
@@ -107,8 +114,12 @@
 
 ;; Helpers
 
-(defn- migration-action-url [external-id path]
-  (str (migration-store-url) "/" external-id path))
+(defn migration-url
+  "Store API URL for migrations."
+  ([]
+   (str (store-api-url) "/api/v2/migration"))
+  ([external-id path]
+   (str (migration-url) "/" external-id path)))
 
 (def terminal-states
   "Cloud migration states that are terminal."
@@ -204,7 +215,7 @@
                                (conj file-length)))
 
             {:keys [multipart-upload-id multipart-urls]}
-            (-> (http/put (migration-action-url external_id "/multipart")
+            (-> (http/put (migration-url external_id "/multipart")
                           {:form-params  {:part_count (count parts)}
                            :content-type :json})
                 :body
@@ -217,7 +228,7 @@
                                  [:headers "ETag"])])
                       parts multipart-urls)
                  (into {}))]
-        (http/put (migration-action-url external_id "/multipart/complete")
+        (http/put (migration-url external_id "/multipart/complete")
                   {:form-params  {:multipart_upload_id multipart-upload-id
                                   :multipart_etags     etags}
                    :content-type :json})))))
@@ -228,8 +239,10 @@
   Should run in a separate thread since it can take a long time to complete."
   [{:keys [id external_id] :as migration} & {:keys [retry?]}]
   ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
-  ;; in the same process.
-  (let [dump-file (io/file (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
+  ;; in the same process, so use a random name.
+  ;; The docker image process runs in non-root, so write to a dir it can access.
+  (let [dump-file (io/file (System/getProperty "java.io.tmpdir")
+                           (str "cloud_migration_dump_" (random-uuid) ".mv.db"))]
     (try
       (when retry?
         (t2/update! :model/CloudMigration :id id {:state :init}))
@@ -243,8 +256,7 @@
 
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
-      (binding [*ignore-read-only-mode* true]
-        (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true}))
+      (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
       (when-not (read-only-mode)
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
@@ -255,7 +267,7 @@
       (upload migration dump-file)
 
       (log/info "Notifying store that upload is done")
-      (http/put (migration-action-url external_id "/uploaded"))
+      (http/put (migration-url external_id "/uploaded"))
 
       (log/info "Migration finished")
       (set-progress id :done 100)
@@ -274,7 +286,7 @@
 (defn get-store-migration
   "Calls Store and returns {:external_id ,,, :upload_url ,,,}."
   []
-  (-> (migration-store-url)
+  (-> (migration-url)
       (http/post {:form-params  {:local_mb_version (or (migration-dump-version)
                                                        (config/mb-version-info :tag))}
                   :content-type :json})
@@ -289,7 +301,7 @@
 
   ;; test settings you might want to change manually
   ;; force prod if even in dev
-  #_(migration-store-url! "https://store-api.metabase.com/api/v2/migration")
+  #_(migration-use-staging! false)
   ;; make sure to use a version that store supports, and a dump for that version.
   #_(migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:

@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import {
   useBookmarkListQuery,
   useCollectionListQuery,
@@ -40,14 +42,12 @@ export function CollectionContent({
     id: collectionId,
   });
 
-  const uploadDbId = useSelector(state =>
-    getSetting(state, "uploads-database-id"),
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
   );
-  const uploadsEnabled = useSelector(state =>
-    getSetting(state, "uploads-enabled"),
-  );
+  const uploadsEnabled = !!uploadDbId;
 
-  const canUploadToDb = useSelector(
+  const canCreateUploadInDb = useSelector(
     state =>
       uploadDbId &&
       Databases.selectors
@@ -66,16 +66,13 @@ export function CollectionContent({
   const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
     dispatch(Bookmark.actions.delete({ id, type }));
 
-  const uploadFile = ({
-    file,
-    modelId,
-    collectionId,
-    tableId,
-    uploadMode,
-  }: UploadFileProps) =>
-    dispatch(
-      uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
-    );
+  const uploadFile = useCallback(
+    ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
+      dispatch(
+        uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
+      ),
+    [dispatch],
+  );
 
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;
@@ -100,7 +97,7 @@ export function CollectionContent({
       isAdmin={isAdmin}
       uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
-      canUploadToDb={canUploadToDb}
+      canCreateUploadInDb={canCreateUploadInDb}
     />
   );
 }

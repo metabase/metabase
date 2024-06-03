@@ -5,6 +5,7 @@ import {
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
 import type {
   Card,
@@ -40,7 +41,6 @@ import {
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
-import { loadMetadataForDashboard } from "./metadata";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -158,7 +158,7 @@ export const addCardToDashboard =
     );
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForDashboard([dashcard]));
+    await dispatch(loadMetadataForCard(card));
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
   };
 
@@ -233,7 +233,7 @@ export const replaceCard =
     const dashcard = getDashCardById(getState(), dashcardId);
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
-    await dispatch(loadMetadataForDashboard([dashcard]));
+    await dispatch(loadMetadataForCard(card));
     dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);

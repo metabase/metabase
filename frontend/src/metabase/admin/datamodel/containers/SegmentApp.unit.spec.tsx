@@ -8,6 +8,7 @@ import {
   setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -84,9 +85,10 @@ describe("SegmentApp", () => {
   it("does not show custom warning modal when leaving with no changes via SPA navigation", () => {
     const { history } = setup({ initialRoute: "/" });
 
-    history.push(FORM_URL);
-
-    history.goBack();
+    act(() => {
+      history.push(FORM_URL);
+      history.goBack();
+    });
 
     expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
@@ -94,13 +96,20 @@ describe("SegmentApp", () => {
   it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
     const { history } = setup({ initialRoute: "/" });
 
-    history.push(FORM_URL);
+    act(() => {
+      history.push(FORM_URL);
+    });
 
-    await userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    await userEvent.type(
+      await screen.findByLabelText("Name Your Segment"),
+      "Name",
+    );
 
-    history.goBack();
+    act(() => {
+      history.goBack();
+    });
 
-    expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    expect(await screen.findByTestId("leave-confirmation")).toBeInTheDocument();
   });
 
   it("does not show custom warning modal when saving changes", async () => {
@@ -110,7 +119,7 @@ describe("SegmentApp", () => {
 
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(screen.getByText("Orders"));
+    await userEvent.click(await screen.findByText("Orders"));
 
     await waitForLoaderToBeRemoved();
 

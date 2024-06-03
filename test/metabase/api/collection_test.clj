@@ -655,7 +655,7 @@
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
-(deftest collection-items-based-on-upload-test
+(deftest ^:mb/once collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
       (api.card-test/run-based-on-upload-test!
@@ -785,8 +785,8 @@
 
 (deftest collections-are-moved-to-trash-when-archived
   (let [set-of-item-names (fn [user coll] (->> (get-items user coll)
-                                          (map :name)
-                                          set))]
+                                           (map :name)
+                                           set))]
     (testing "I can trash something by marking it as archived"
       (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}
                                Collection _ {:name "Baby Collection"

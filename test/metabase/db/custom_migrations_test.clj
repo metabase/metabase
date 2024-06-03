@@ -1581,12 +1581,20 @@
               (is (= (:created_at session)
                      (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
 
+(def ^:private deep-nested-map
+  "A 35 level nested map to test for mariadb"
+  (reduce (fn [m _]
+            (hash-map "a" m))
+          {:a 1}
+          (range 35)))
+
 (deftest card-revision-add-type-test
   (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
     (let [user-id          (:id (new-instance-with-default :core_user))
           db-id            (:id (new-instance-with-default :metabase_database))
           card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
+          card-2           (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           card-revision-id (:id (new-instance-with-default :revision
                                                            {:object    (json/generate-string (dissoc card :type))
                                                             :model     "Card"
@@ -1596,7 +1604,13 @@
                                                             {:object    (json/generate-string (dissoc model :type))
                                                              :model     "Card"
                                                              :model_id  (:id card)
-                                                             :user_id   user-id}))]
+                                                             :user_id   user-id}))
+          ;; this is only here to test that the migration doesn't break when there's a deep nested map on mariadb see #41924
+          _                (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string deep-nested-map)
+                                                            :model     "Card"
+                                                            :model_id  (:id card-2)
+                                                            :user_id   user-id}))]
       (testing "sanity check revision object"
         (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
           (testing "doesn't have type"
@@ -1867,3 +1881,117 @@
                            (dissoc :name))
                        (-> card
                            (dissoc :name))))))))))))
+
+(def ^:private migrate-uploads-default-db
+  {:name       "DB"
+   :engine     "h2"
+   :created_at :%now
+   :updated_at :%now
+   :details    "{}"})
+
+(deftest migrate-uploads-settings-test-1
+  (testing "MigrateUploadsSettings with valid settings state works as expected."
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
+        (let [uploads-db-id     (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 1"))
+              not-uploads-db-id (t2/insert-returning-pk! :metabase_database (assoc migrate-uploads-default-db :name "DB 2"))]
+          (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str uploads-db-id))}
+                          {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
+                          {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}
+                          {:key "uploads-schema-name",  :value (encryption/maybe-encrypt "uploads")}]
+                _ (t2/insert! :setting settings)
+                get-settings #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})
+                settings-before (get-settings)]
+            (testing "make sure the settings are encrypted before the migrations"
+              (is (not-empty settings-before))
+              (is (every? encryption/possibly-encrypted-string?
+                          (map :value settings-before))))
+            (migrate!)
+            (testing "make sure the settings are removed after the migrations"
+              (is (empty? (get-settings))))
+            (is (=? {uploads-db-id     {:uploads_enabled true,  :uploads_schema_name "uploads", :uploads_table_prefix "uploads_"}
+                     not-uploads-db-id {:uploads_enabled false, :uploads_schema_name  nil,      :uploads_table_prefix nil}}
+                    (m/index-by :id (t2/select :metabase_database))))
+            (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+              (migrate! :down 49)
+              (testing "make sure the settings contain the same decrypted values after the migrations"
+                (let [settings-after (get-settings)]
+                  (is (not-empty settings-after))
+                  (is (every? encryption/possibly-encrypted-string?
+                              (map :value settings-after)))
+                  (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
+                         (set (map #(update % :value encryption/maybe-decrypt) settings-after)))))))))))))
+
+(deftest migrate-uploads-settings-test-2
+  (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
+        (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
+              settings      [;; no uploads-database-id and uploads-schema-name
+                             {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
+                             {:key "uploads-table-prefix", :value (encryption/maybe-encrypt "uploads_")}]
+              _             (t2/insert! :setting settings)
+              get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
+          (migrate!)
+          (testing "make sure the settings are removed after the migrations"
+            (is (empty? (get-settings))))
+          (is (=? {uploads-db-id {:uploads_enabled      false
+                                  :uploads_schema_name  nil
+                                  :uploads_table_prefix nil}}
+                  (m/index-by :id (t2/select :metabase_database)))))))))
+
+(deftest migrate-uploads-settings-test-3
+  (testing "MigrateUploadsSettings with invalid settings state (missing uploads-enabled) doesn't set uploads_enabled on the database."
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
+        (let [uploads-db-id (t2/insert-returning-pk! :metabase_database migrate-uploads-default-db)
+              settings      [;; no uploads-enabled
+                             {:key "uploads-database-id", :value (encryption/maybe-encrypt "uploads_")}]
+              _             (t2/insert! :setting settings)
+              get-settings  #(t2/query {:select [:key :value], :from :setting, :where [:in :key (map :key settings)]})]
+          (migrate!)
+          (testing "make sure the settings are removed after the migrations"
+            (is (empty? (get-settings))))
+          (is (=? {uploads-db-id {:uploads_enabled      false
+                                  :uploads_schema_name  nil
+                                  :uploads_table_prefix nil}}
+                  (m/index-by :id (t2/select :metabase_database)))))))))
+
+(deftest create-sample-content-test
+  (testing "The sample content is created iff *create-sample-content*=true"
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
+        (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
+          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+            (binding [custom-migrations/*create-sample-content* create?]
+              (is (false? (sample-content-created?)))
+              (migrate!)
+              (is ((if create? true? false?) (sample-content-created?)))))))))
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                      :engine     "h2"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details    "{}"})
+        (t2/query {:delete-from :metabase_database})
+        (migrate!)
+        (is (false? (sample-content-created?)))
+        (is (empty? (t2/query "SELECT * FROM metabase_database"))
+            "No database should have been created"))))
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v50.2024-05-27T15:55:22" [migrate!]
+      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
+        (is (false? (sample-content-created?)))
+        (t2/insert-returning-pks!
+         :core_user
+         {:first_name    "Rasta"
+          :last_name     "Toucan"
+          :email         "rasta@metabase.com"
+          :password      "password"
+          :password_salt "and pepper"
+          :date_joined   :%now})
+        (migrate!)
+        (is (false? (sample-content-created?)))))))

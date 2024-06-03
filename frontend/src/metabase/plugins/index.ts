@@ -364,6 +364,8 @@ export const PLUGIN_CACHING = {
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
+  ModelPersistenceTab: PluginPlaceholder as any,
+  ModelPersistenceConfiguration: PluginPlaceholder as any,
 };
 
 export const PLUGIN_REDUCERS: {

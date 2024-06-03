@@ -456,6 +456,8 @@ const Y_AXIS_CROSSING_ERROR = Error(
   t`Y-axis must not cross 0 when using log scale.`,
 );
 
+export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
+
 export function replaceZeroesForLogScale(
   dataset: ChartDataset,
   seriesDataKeys: DataKey[],
@@ -622,6 +624,9 @@ export const applyVisualizationSettingsDataTransformations = (
     xAxisModel.isHistogram
   ) {
     dataset = filterNullDimensionValues(dataset, showWarning);
+    if (dataset.length === 0) {
+      throw new Error(NO_X_AXIS_VALUES_ERROR_MESSAGE);
+    }
   }
 
   if (settings["graph.y_axis.scale"] === "log") {

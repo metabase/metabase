@@ -171,7 +171,6 @@
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
-                      {:type :card,     :id 1}
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       lib.tu/query-with-source-card
@@ -180,7 +179,6 @@
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id "card__1"}
-                      {:type :card,     :id 1}
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       lib.tu/query-with-source-card-with-result-metadata
@@ -190,7 +188,6 @@
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
-                        {:type :card,     :id 1}
                         {:type :table,    :id (meta/id :users)}]
                        (lib/dependent-metadata query nil :question))
         query
@@ -200,7 +197,6 @@
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
                         {:type :table,    :id "card__1"}
-                        {:type :card,     :id 1}
                         {:type :table,    :id (meta/id :users)}
                         {:type :table,    :id (meta/id :checkins)}
                         {:type :table,    :id (meta/id :venues)}]
@@ -217,8 +213,7 @@
                         {:type :table,    :id (meta/id :checkins)}
                         {:type :table,    :id (meta/id :users)}
                         {:type :table,    :id (meta/id :venues)}
-                        {:type :table,    :id "card__1"}
-                        {:type :card,     :id 1}]
+                        {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :model))
         query
         (lib/append-stage query))))
@@ -232,8 +227,7 @@
                         {:type :table,    :id (meta/id :checkins)}
                         {:type :table,    :id (meta/id :users)}
                         {:type :table,    :id (meta/id :venues)}
-                        {:type :table,    :id "card__1"}
-                        {:type :card,     :id 1}]
+                        {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :metric))
         query
         (lib/append-stage query)))))
@@ -243,8 +237,7 @@
     (is (= [{:type :table, :id (meta/id :checkins)}]
            (lib/table-or-card-dependent-metadata meta/metadata-provider (meta/id :checkins)))))
   (testing "start from card"
-    (is (= [{:type :table, :id "card__1"}
-            {:type :card,  :id 1}]
+    (is (= [{:type :table, :id "card__1"}]
            (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
 
 (deftest ^:parallel maybe-expand-temporal-expression-test

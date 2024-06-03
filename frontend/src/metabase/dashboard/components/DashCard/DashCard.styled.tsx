@@ -26,7 +26,7 @@ const rootTransparentBackgroundStyle = css`
 `;
 
 const hiddenBackgroundStyle = css`
-  background: ${color("bg-light")};
+  background: var(--mb-color-bg-light);
   box-shadow: none !important;
 `;
 

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import { type MouseEvent, useState, Fragment } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
@@ -34,6 +34,7 @@ import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/Tex
 import type { SectionLayout } from "metabase/dashboard/sections";
 import { layoutOptions } from "metabase/dashboard/sections";
 import {
+  getHasModelActionsEnabled,
   getIsShowDashboardInfoSidebar,
   getMissingRequiredParameters,
 } from "metabase/dashboard/selectors";
@@ -43,7 +44,6 @@ import type {
   EmbedThemeControls,
   FetchDashboardResult,
 } from "metabase/dashboard/types";
-import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
@@ -51,7 +51,6 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
@@ -61,8 +60,6 @@ import type {
   DashboardId,
   DashboardTabId,
   Dashboard,
-  DatabaseId,
-  Database,
   CardId,
   ParameterMappingOptions,
 } from "metabase-types/api";
@@ -72,7 +69,6 @@ import type {
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
-import { DashboardParameterList } from "../DashboardParameterList";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -107,7 +103,7 @@ type DashboardHeaderProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
@@ -171,10 +167,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
   const formInput = useSelector(getPulseFormInput);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
-  const databases = useSelector(getMetadata).databases as Record<
-    DatabaseId,
-    Database
-  >;
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
   );
@@ -195,6 +187,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     dashboardId: dashboard.id,
     bookmarks,
   });
+
+  const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
   const handleEdit = (dashboard: Dashboard) => {
     onEditingChange(dashboard);
@@ -354,16 +348,8 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     const canEdit = dashboard.can_write && !dashboard.archived;
     const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
-    const hasModelActionsEnabled = Object.values(databases).some(
-      hasDatabaseActionsEnabled,
-    );
-
     const buttons = [];
     const extraButtons = [];
-
-    if (isFullscreen) {
-      buttons.push(<DashboardParameterList isFullscreen={isFullscreen} />);
-    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;

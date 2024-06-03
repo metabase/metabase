@@ -139,7 +139,7 @@ export function computeTimeseriesDataInverval(
 /// The number of milliseconds between each tick for an entry in TIMESERIES_INTERVALS.
 /// For example a "5 seconds" interval would have a tick "distance" of 5000 milliseconds.
 export function getTimeSeriesIntervalDuration(interval: TimeSeriesInterval) {
-  // add COUNT nuumber of INTERVALS to the UNIX timestamp 0. e.g. add '5 hours' to 0. Then get the new timestamp
+  // add COUNT number of INTERVALS to the UNIX timestamp 0. e.g. add '5 hours' to 0. Then get the new timestamp
   // (in milliseconds). Since we added to 0 this will be the interval between each tick
   return dayjs(0).add(interval.count, interval.unit).valueOf();
 }
@@ -168,7 +168,7 @@ function timeseriesTicksInterval(
   let initialIndex = _.findIndex(TIMESERIES_INTERVALS, ({ unit, count }) => {
     return unit === xInterval.unit && count === xInterval.count;
   });
-  // if we weren't able to find soemthing matching then we'll start from the beginning and try everything
+  // if we weren't able to find something matching then we'll start from the beginning and try everything
   if (initialIndex === -1) {
     initialIndex = 0;
   }
@@ -206,7 +206,7 @@ function maxTicksForChartWidth(
   chartWidth: number,
   tickFormat: (value: RowValue) => string,
 ) {
-  const PIXELS_PER_CHARACTER = 7;
+  const PIXELS_PER_CHARACTER = 5.5;
   // if there isn't enough buffer, the labels are hidden by ECharts
   const TICK_BUFFER_PIXELS = 10;
 
@@ -219,7 +219,7 @@ function maxTicksForChartWidth(
 }
 
 /// return the range, in milliseconds, of the xDomain. ("Range" in this sense refers to the total "width"" of the
-/// chart in millisecodns.)
+/// chart in milliseconds.)
 function timeRangeMilliseconds(xDomain: ContinuousDomain) {
   const startTime = xDomain[0]; // these are UNIX timestamps in milliseconds
   const endTime = xDomain[1];

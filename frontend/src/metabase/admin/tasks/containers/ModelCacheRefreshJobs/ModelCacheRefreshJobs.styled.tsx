@@ -7,7 +7,7 @@ export const ErrorBox = styled.div`
   border-radius: 4px;
 
   color: ${color("text-dark")};
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   font-family: Monaco, monospace;
   font-weight: 400;

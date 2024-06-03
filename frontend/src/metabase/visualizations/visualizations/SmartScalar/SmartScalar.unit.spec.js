@@ -1,60 +1,21 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
-import { COMPARISON_TYPES } from "./constants";
+import {
+  mockSeries as series,
+  PREVIOUS_VALUE_COMPARISON,
+  getPeriodsAgoComparison,
+} from "./test-mocks";
 
 registerVisualizations();
 
 const setup = (series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
-
-const PREVIOUS_PERIOD_COMPARISON = {
-  id: "1",
-  type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-};
-
-const PREVIOUS_VALUE_COMPARISON = {
-  id: "1",
-  type: COMPARISON_TYPES.PREVIOUS_VALUE,
-};
-
-const getPeriodsAgoComparison = value => ({
-  id: "1",
-  type: COMPARISON_TYPES.PERIODS_AGO,
-  value,
-});
-
-const series = ({
-  rows,
-  insights,
-  field,
-  comparisonType = PREVIOUS_PERIOD_COMPARISON,
-} = {}) => {
-  const cols = [
-    DateTimeColumn({ name: "Month" }),
-    NumberColumn({ name: "Count" }),
-    NumberColumn({ name: "Sum" }),
-  ];
-  return [
-    {
-      card: {
-        display: "smartscalar",
-        visualization_settings: {
-          "scalar.field": field,
-          "scalar.comparisons": [comparisonType],
-        },
-        dataset_query: createMockStructuredDatasetQuery(),
-      },
-      data: { cols, rows, insights },
-    },
-  ];
-};
 
 describe("SmartScalar", () => {
   describe("current metric display", () => {
@@ -347,5 +308,53 @@ describe("SmartScalar", () => {
         expect(screen.getByText("vs. Sep")).toBeInTheDocument();
       });
     });
+  });
+
+  describe("should handle errors gracefully", () => {
+    it("should show error display if error is thrown", async () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = [{ unit: "month", col: "Count" }];
+
+      setup(
+        series({
+          rows,
+          insights,
+          comparisonType: getPeriodsAgoComparison("hi"),
+        }),
+      );
+
+      expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No integer value supplied for periods ago comparison.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("should not error when latest value is null (metabase#42948)", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 100],
+      ["2019-11-01T00:00:00", 100],
+      ["2019-12-01T00:00:00", null],
+    ];
+    const insights = [{ unit: "month", col: "Count" }];
+
+    setup(
+      series({
+        rows,
+        insights,
+        comparisonType: getPeriodsAgoComparison(1),
+      }),
+    );
+
+    expect(screen.queryByLabelText("warning icon")).not.toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+    expect(screen.getByText("No change")).toBeInTheDocument();
+    expect(screen.getByText("vs. previous month")).toBeInTheDocument();
   });
 });
