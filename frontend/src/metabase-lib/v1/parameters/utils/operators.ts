@@ -91,8 +91,8 @@ export function buildTypedOperatorOptions(
 export function buildTemporalUnitOption(): ParameterMappingOptions {
   return {
     name: t`Unit of Time`,
-    type: "temporal_unit",
-    sectionId: "temporal_unit",
+    type: "temporal-unit",
+    sectionId: "temporal-unit",
   };
 }
 

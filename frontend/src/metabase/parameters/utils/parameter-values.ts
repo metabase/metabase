@@ -99,7 +99,7 @@ function normalizeParameterValueForWidget(
   const fieldType = getParameterType(parameter);
   if (
     fieldType !== "date" &&
-    fieldType !== "temporal_unit" &&
+    fieldType !== "temporal-unit" &&
     !Array.isArray(value)
   ) {
     return [value];

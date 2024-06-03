@@ -48,7 +48,7 @@ export function isFilterParameter(parameter: Parameter) {
 
 export function isTemporalUnitParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
-  return type === "temporal_unit";
+  return type === "temporal-unit";
 }
 
 // TODO this must be wrong because it returns true

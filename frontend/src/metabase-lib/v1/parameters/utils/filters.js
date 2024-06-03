@@ -42,7 +42,7 @@ export function columnFilterForParameter(query, stageIndex, parameter) {
     case "string":
       return column =>
         Lib.isStringOrStringLike(column) && !Lib.isLocation(column);
-    case "temporal_unit":
+    case "temporal-unit":
       return column => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
         return (
