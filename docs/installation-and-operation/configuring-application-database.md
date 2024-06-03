@@ -12,16 +12,15 @@ data needed to run the application. The default settings use an embedded H2 data
 ## Notes
 
 - Using Metabase with an H2 application database is not recommended for production deployments. For production
-  deployments, we highly recommend using Postgres, MySQL, or MariaDB instead. If you decide to continue to use H2,
-  please be sure to back up the database file regularly.
+  deployments, we highly recommend using PostgreSQL. If you decide to continue to use H2, please be sure to back up the database file regularly.
 - You cannot change the application database while the application is running. Connection configuration information is
   read only once when the application starts up and will remain constant throughout the running of the application.
-- Metabase provides limited support for migrating from H2 to Postgres or MySQL if you decide to upgrade to a more
-  production-ready database. See [Migrating from H2 to MySQL or Postgres](migrating-from-h2.md) for more details.
+- Metabase provides limited support for migrating from H2 to Postgres if you decide to upgrade to a more
+  production-ready database. See [Migrating from H2 to PostgreSQL](migrating-from-h2.md) for more details.
 
 ## [H2](https://www.h2database.com/) (default)
 
-**For production installations of Metabase we recommend that users [replace the H2 database with a more robust option](./migrating-from-h2.md) such as Postgres.** This offers a greater degree of performance and reliability when Metabase is running with many users.
+> **For production installations of Metabase we recommend that people [replace the H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability when Metabase is running with many users.
 
 To use the H2 database for your Metabase instance you don't need to do anything at all. When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
 
@@ -118,7 +117,7 @@ see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/docume
 
 ## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
 
-If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 8.0.17 or MariaDB
+We recommend PostgreSQL, but you can also use MySQL or MariaDB. The minimum recommended version is MySQL 8.0.17 or MariaDB
 10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using
 environment variables like this:
 

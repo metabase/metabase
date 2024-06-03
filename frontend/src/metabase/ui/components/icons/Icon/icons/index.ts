@@ -87,6 +87,8 @@ import close_component from "./close.svg?component";
 import close_source from "./close.svg?source";
 import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
+import cloud_filled_component from "./cloud_filled.svg?component";
+import cloud_filled_source from "./cloud_filled.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import compare_component from "./compare.svg?component";
@@ -143,6 +145,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_filled_component from "./folder_filled.svg?component";
+import folder_filled_source from "./folder_filled.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -551,6 +555,10 @@ export const Icons = {
     component: cloud_component,
     source: cloud_source,
   },
+  cloud_filled: {
+    component: cloud_filled_component,
+    source: cloud_filled_source,
+  },
   compare: {
     component: compare_component,
     source: compare_source,
@@ -678,6 +686,10 @@ export const Icons = {
   folder: {
     component: folder_component,
     source: folder_source,
+  },
+  folder_filled: {
+    component: folder_filled_component,
+    source: folder_filled_source,
   },
   gauge: {
     component: gauge_component,
@@ -1064,10 +1076,12 @@ export const Icons = {
     source: tab_source,
   },
   table: {
+    // for database tables
     component: table_component,
     source: table_source,
   },
   table2: {
+    // for questions with table visualizations
     component: table2_component,
     source: table2_source,
   },

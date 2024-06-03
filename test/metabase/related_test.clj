@@ -108,19 +108,6 @@
         (m/update-existing :collections (partial filter (partial = (:collection-id *world*))))
         (m/update-existing :tables set))))
 
-(deftest related-cards-test
-  (with-world
-    (is (= {:table             (mt/id :venues)
-            :metrics           (sort [metric-id-a metric-id-b])
-            :segments          (sort [segment-id-a segment-id-b])
-            :dashboard-mates   []
-            :similar-questions [card-id-b]
-            :canonical-metric  metric-id-a
-            :collections       [collection-id]
-            :dashboards        []}
-           (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-a))
-                result-mask)))))
-
 (deftest related-segments-test
   (with-world
     (is (= {:table       (mt/id :venues)
@@ -163,29 +150,6 @@
       (testing "after"
         (is (= 0
                (count-related-fields)))))))
-
-(deftest transitive-similarity-test
-  (testing "Test transitive similarity"
-    ;; (A is similar to B and B is similar to C, but A is not similar to C). Test if
-    ;; this property holds and `:similar-questions` for A returns B, for B A and C,
-    ;; and for C B. Note that C is less similar to B than A is, as C has an additional
-    ;; breakout dimension.
-    (with-world
-      (is (= [card-id-b]
-             (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-a))
-                  result-mask
-                  :similar-questions)))
-
-      (testing "Ordering matters as C is less similar to B than A."
-        (is (= [card-id-a card-id-c]
-               (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-b))
-                    result-mask
-                    :similar-questions)))
-
-        (is (= [card-id-b]
-               (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-c))
-                    result-mask
-                    :similar-questions)))))))
 
 (deftest recommended-dashboards-test
   (t2.with-temp/with-temp [Card          card-1        {}

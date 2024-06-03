@@ -1,19 +1,19 @@
 import userEvent from "@testing-library/user-event";
+import type { JSX } from "react";
 import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { AppErrorDescriptor } from "metabase-types/store";
 import { createMockAppState } from "metabase-types/store/mocks";
-
-import EmbedFrame from "../../components/EmbedFrame";
 
 import PublicApp from "./PublicApp";
 
 type SetupOpts = {
   name?: string;
   description?: string;
-  actionButtons?: JSX.Element[];
+  actionButtons?: JSX.Element | null;
   error?: AppErrorDescriptor;
   hasEmbedBranding?: boolean;
   hash?: string;
@@ -33,9 +33,9 @@ function setup({
       path="/public/dashboard/:id"
       component={props => (
         <PublicApp {...props}>
-          <EmbedFrame {...embedFrameProps}>
+          <SyncedEmbedFrame {...embedFrameProps}>
             <h1 data-testid="test-content">Test</h1>
-          </EmbedFrame>
+          </SyncedEmbedFrame>
         </PublicApp>
       )}
     />,
@@ -67,7 +67,9 @@ describe("PublicApp", () => {
   });
 
   it("renders action buttons", () => {
-    setup({ actionButtons: [<button key="test">Click Me</button>] });
+    setup({
+      actionButtons: <button key="test">Click Me</button>,
+    });
     expect(
       screen.getByRole("button", { name: "Click Me" }),
     ).toBeInTheDocument();

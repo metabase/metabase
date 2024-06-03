@@ -4,12 +4,14 @@ import { within } from "@testing-library/react";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -22,6 +24,7 @@ import {
 } from "metabase/query_builder/actions";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -63,6 +66,12 @@ const setup = ({
   const TEST_CARD = createMockCard();
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
+    setupCardQueryMetadataEndpoint(
+      TEST_CARD,
+      createMockCardQueryMetadata({
+        databases: [TEST_DB],
+      }),
+    );
   } else {
     setupUnauthorizedCardEndpoints(TEST_CARD);
   }
@@ -113,12 +122,12 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(
-      within(screen.getByTestId("TableInteractive-root")).getByText(
+      await within(screen.getByTestId("TableInteractive-root")).findByText(
         TEST_COLUMN.display_name,
       ),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("gridcell")).getByText("Test Row"),
+      await within(screen.getByRole("gridcell")).findByText("Test Row"),
     ).toBeInTheDocument();
 
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
@@ -128,8 +137,10 @@ describe("InteractiveQuestion", () => {
       void,
       AnyAction
     >;
-    storeDispatch(clearQueryResult());
-    storeDispatch(runQuestionQuery());
+    act(() => {
+      storeDispatch(clearQueryResult());
+      storeDispatch(runQuestionQuery());
+    });
 
     expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();

@@ -487,8 +487,8 @@ describe("scenarios > filters > filter types", () => {
             values.forEach(value => {
               cy.findByLabelText("Filter value")
                 .focus()
-                .type(value)
-                .realPress("Tab");
+                .type(`${value},`, { delay: 50 })
+                .blur();
             });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
@@ -522,7 +522,10 @@ describe("scenarios > filters > filter types", () => {
             .first()
             .within(() => {
               values.forEach(value => {
-                cy.findByLabelText("Filter value").focus().type(value).blur();
+                cy.findByLabelText("Filter value")
+                  .focus()
+                  .type(`${value},`, { delay: 50 })
+                  .blur();
               });
               cy.button("Add filter").click();
             });

@@ -1,7 +1,13 @@
 import _ from "underscore";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
+import {
+  openNotebook,
+  popover,
+  restore,
+  tableHeaderClick,
+  visualize,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -350,9 +356,7 @@ describe("scenarios > visualizations > table column settings", () => {
     it("should be able to rename table columns via popover", () => {
       cy.createQuestion(tableQuestion, { visitQuestion: true });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
-        cy.findByText("Product ID").click();
-      });
+      tableHeaderClick("Product ID");
 
       popover().within(() => {
         cy.icon("gear").click();

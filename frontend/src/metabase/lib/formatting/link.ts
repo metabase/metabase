@@ -1,3 +1,4 @@
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import {
   formatValue,
   getUrlProtocol,
@@ -46,6 +47,9 @@ export function renderLinkTextForClick(
 }
 
 function isSafeUrl(urlString: string): boolean {
+  if (isSameOrSiteUrlOrigin(urlString)) {
+    return true;
+  }
   const protocol = getUrlProtocol(urlString);
   return protocol != null && isDefaultLinkProtocol(protocol);
 }

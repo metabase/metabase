@@ -5,7 +5,12 @@
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
     "paths": {
-      "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
+      "*": [
+        "./frontend/src/*",
+        "./frontend/test/*",
+        "./enterprise/frontend/src/*",
+        "./enterprise/frontend/test/*"
+      ],
       "cljs/*": ["./target/cljs_release/*"]
     }
   },

@@ -173,7 +173,7 @@ export function selectSavedQuestionsToJoin(
   firstQuestionName: string,
   secondQuestionName: string,
 ) {
-  cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
+  cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
   entityPickerModal().within(() => {
     entityPickerModalTab("Models").should("exist");
     entityPickerModalTab("Tables").should("exist");
@@ -181,7 +181,7 @@ export function selectSavedQuestionsToJoin(
     cy.findByText(firstQuestionName).click();
   });
 
-  cy.wait("@loadSchemas");
+  cy.wait("@joinedTableMetadata");
 
   // join to question b
   cy.icon("join_left_outer").click();

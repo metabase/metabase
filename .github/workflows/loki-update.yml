@@ -12,6 +12,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ github.head_ref }}
 
       - name: Prepare frontend environment
@@ -44,25 +45,19 @@ jobs:
       - name: Update Loki Snapshots
         run: yarn test-visual:loki-update
 
-      - uses: tibdex/github-app-token@v2.1.0
-        id: generate-token
-        with:
-          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
       - name: Commit and Push Changes
         run: |
-          git config --global user.name "Metabase bot"
-          git config --global user.email "metabase-bot@metabase.com"
+          git config --global user.name "Metabase Automation"
+          git config --global user.email "github-automation@metabase.com"
           git add .loki/**
           git commit -m "Update Loki Snapshots"
           git push
         env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Remove 'loki-update' label
         uses: actions/github-script@v3
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{secrets.METABASE_AUTOMATION_USER_TOKEN}}
           script: |
             github.issues.removeLabel({
               issue_number: context.issue.number,

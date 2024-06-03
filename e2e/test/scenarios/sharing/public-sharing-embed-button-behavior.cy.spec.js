@@ -852,7 +852,7 @@ function assertValidPublicLink({ resource, shouldHaveRemoveLink }) {
     cy.findByTestId("public-link-input")
       .should("be.visible")
       .invoke("val")
-      .then(value => {
+      .should(value => {
         expect(value).to.match(regex);
       });
 

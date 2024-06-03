@@ -7,6 +7,7 @@
   Adding Recent Items:
      `(recent-views/update-users-recent-views! <user-id> <model> <model-id>)`
        see: [[update-users-recent-views!]]
+      This is almost always called from a published event handler.
   Fetching Recent Items:
      `(recent-view/get-list <user-id>)`
        returns a sequence of [[Item]]
@@ -25,7 +26,6 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -192,7 +192,7 @@
 
 (defn- root-coll []
   (select-keys
-   (into {} (root/root-collection-with-ui-details {}))
+   (root/root-collection-with-ui-details {})
    [:id :name :authority_level]))
 
 ;; ================== Recent Cards ==================
@@ -218,9 +218,9 @@
                 :where [:in :card.id card-ids]
                 :left-join [[:moderation_review :mr]
                             [:and
+                             [:= :mr.moderated_item_id :card.id]
                              [:= :mr.moderated_item_type "card"]
-                             [:= :mr.most_recent true]
-                             [:in :mr.moderated_item_id card-ids]]
+                             [:= :mr.most_recent true]]
                             [:collection]
                             [:and
                              [:= :collection.id :card.collection_id]
@@ -236,7 +236,7 @@
 (defn- parent-collection-valid?
   "Returns true when a parent collection actually exists for this item.
 
-  Careful: the root collection will have a nil `colelction_id` and a nil `collection_name`. We return false when the
+  Careful: the root collection will have a nil `collection_id` and a nil `collection_name`. We return false when the
   collection has a `collection_id`, and a nil `collection_name`."
   [{:keys [collection_id entity-coll-id]}]
   (not (and entity-coll-id (nil? collection_id))))
@@ -341,22 +341,10 @@
                                            :archived :location :trashed_from_location]
                                   :where [:and
                                           [:in :id collection-ids]
-                                          [:= :archived false]]})
-          coll->parent-id (fn [c]
-                            (some-> c collection/effective-location-path collection/location-path->ids last))
-          parent-ids (into #{} (keep coll->parent-id) collections)
-          id->parent-coll (merge {nil (root-coll)}
-                                 (when (seq parent-ids)
-                                   (t2/select-pk->fn identity :model/Collection
-                                                     {:select [:id :name :authority_level]
-                                                      :where [:in :id parent-ids]})))]
-      ;; replace the collection ids with their collection data:
-      (map
-       (fn effective-collection-assocer [c]
-         (assoc c
-                :effective_parent (->> (coll->parent-id c) id->parent-coll)
-                :effective_location (collection/effective-location-path c)))
-       collections))))
+                                          [:= :archived false]]})]
+      (->> (t2/hydrate collections :effective_parent)
+
+           (map #(m/dissoc-in % [:effective_parent :type]))))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and
@@ -413,7 +401,7 @@
 (defn ^:private do-query [user-id]
   (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
                                  :from [[:recent_views :rv]]
-                                 :where [:and [:= :rv.user_id user-id]]
+                                 :where [:= :rv.user_id user-id]
                                  :left-join [[:report_card :rc]
                                              [:and
                                               ;; only want to join on card_type if it's a card
@@ -472,7 +460,7 @@
     (let [entity->id->data (get-entity->id->data views)]
       (into []
             (comp
-             (map (partial post-process entity->id->data))
+             (keep (partial post-process entity->id->data))
              (keep error-avoider))
             views))
     []))

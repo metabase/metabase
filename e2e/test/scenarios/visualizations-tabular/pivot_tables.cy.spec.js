@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
@@ -15,6 +15,7 @@ import {
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
   modal,
+  createQuestion,
 } from "e2e/support/helpers";
 
 const {
@@ -71,12 +72,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     createTestQuestion();
 
     // Switch to "ordinary" table
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-    cy.icon("table").should("be.visible").click();
+    cy.findByTestId("view-footer").findByText("Visualization").click();
+    sidebar().icon("table2").should("be.visible").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(`Started from ${QUESTION_NAME}`);
+    cy.findByTestId("app-bar").within(() => {
+      cy.findByText("Started from");
+      cy.findByText(QUESTION_NAME);
+    });
 
     cy.log("Assertions on a table itself");
     cy.findByTestId("query-visualization-root").within(() => {
@@ -1031,10 +1033,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       dragColumnHeader(totalHeaderColHandle, 100);
 
       cy.findByTestId("pivot-table").within(() => {
-        cy.findByText("User → Source").then($headerTextEl => {
+        cy.findByText("User → Source").should($headerTextEl => {
           expect(getCellWidth($headerTextEl)).equal(80); // min width is 80
         });
-        cy.findByText("Row totals").then($headerTextEl => {
+        cy.findByText("Row totals").should($headerTextEl => {
           expect(getCellWidth($headerTextEl)).equal(200);
         });
       });
@@ -1129,6 +1131,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByTestId("qb-header-action-panel").findByText("Save").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
       cy.wait("@createCard");
+      cy.url().should("include", "/question/");
       cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
       cy.reload();
       cy.wait("@cardPivotQuery");
@@ -1139,6 +1142,74 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       );
     },
   );
+
+  describe("issue 37380", () => {
+    beforeEach(() => {
+      const categoryField = [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text" },
+      ];
+
+      const createdAtField = [
+        "field",
+        PRODUCTS.CREATED_AT,
+        {
+          "base-type": "type/DateTime",
+          "temporal-unit": "month",
+        },
+      ];
+
+      // to reproduce metabase#37380 it's important that user has access to the database, but not to the table
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.DATA_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "create-queries": {
+              PUBLIC: {
+                [PRODUCTS_ID]: "no",
+              },
+            },
+          },
+        },
+      });
+
+      createQuestion(
+        {
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: ["count"],
+            breakout: [categoryField, createdAtField],
+          },
+          display: "pivot",
+          visualization_settings: {
+            "pivot_table.column_split": {
+              rows: [createdAtField],
+              columns: [categoryField],
+              values: [["aggregation", 0]],
+            },
+            "pivot_table.column_widths": {
+              leftHeaderWidths: [141],
+              totalLeftHeaderWidths: 141,
+              valueHeaderWidths: {},
+            },
+          },
+        },
+        {
+          wrapId: true,
+          idAlias: "questionId",
+        },
+      );
+    });
+
+    it("does not allow users with no table access to update pivot questions (metabase#37380)", () => {
+      cy.signInAsNormalUser();
+      visitQuestion("@questionId");
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByLabelText("Show row totals").click();
+
+      cy.button("Save").should("have.attr", "disabled");
+    });
+  });
 });
 
 const testQuery = {

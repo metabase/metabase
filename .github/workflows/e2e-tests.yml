@@ -144,7 +144,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
           --browser 'replay-chromium'
 
       - name: Run slow and resource-intensive Cypress tests
@@ -152,7 +152,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
           --browser 'replay-chromium'
 
       - name: Run Flaky Cypress tests
@@ -160,7 +160,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
           --browser 'replay-chromium'
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
@@ -176,7 +176,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
           --browser 'replay-chromium'
         env:
           CYPRESS_QA_DB_MONGO: true

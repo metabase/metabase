@@ -22,7 +22,6 @@
    [metabase.api.geojson :as api.geojson]
    [metabase.api.google :as api.google]
    [metabase.api.ldap :as api.ldap]
-   [metabase.api.legacy-metric :as api.legacy-metric]
    [metabase.api.login-history :as api.login-history]
    [metabase.api.metabot :as api.metabot]
    [metabase.api.model-index :as api.model-index]
@@ -119,7 +118,6 @@
   (context "/geojson"              [] api.geojson/routes)
   (context "/google"               [] (+auth api.google/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
-  (context "/legacy-metric"        [] (+auth api.legacy-metric/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))

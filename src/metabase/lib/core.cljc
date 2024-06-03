@@ -288,6 +288,7 @@
   can-preview
   can-run
   can-save
+  preview-query
   query
   stage-count
   uses-metric?

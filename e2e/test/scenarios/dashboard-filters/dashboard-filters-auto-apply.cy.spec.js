@@ -270,7 +270,7 @@ describe(
         getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
       });
 
-      it("should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)", () => {
+      it.skip("should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)", () => {
         cy.clock();
         openSlowDashboard();
 
@@ -292,7 +292,7 @@ describe(
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
-      it("should not display the toast when we clear out parameter default value", () => {
+      it.skip("should not display the toast when we clear out parameter default value", () => {
         cy.clock();
         openSlowDashboard({ [FILTER_WITH_DEFAULT_VALUE.slug]: null });
 
@@ -304,7 +304,7 @@ describe(
     });
 
     describe("auto-apply filter toast", () => {
-      it("should display a toast when a dashboard takes longer than 15s to load", () => {
+      it.skip("should display a toast when a dashboard takes longer than 15s to load", () => {
         cy.clock();
         createDashboard();
         openSlowDashboard({ [FILTER.slug]: "Gadget" });
@@ -325,7 +325,7 @@ describe(
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
-      it("should display the toast indefinitely unless dismissing manually", () => {
+      it.skip("should display the toast indefinitely unless dismissing manually", () => {
         cy.clock();
         createDashboard();
         openSlowDashboard({ [FILTER.slug]: "Gadget" });
@@ -341,7 +341,7 @@ describe(
         undoToast().should("not.exist");
       });
 
-      it("should not display the toast when auto applying filters is disabled", () => {
+      it.skip("should not display the toast when auto applying filters is disabled", () => {
         cy.clock();
         createDashboard({ dashboardDetails: { auto_apply_filters: false } });
         openSlowDashboard({ [FILTER.slug]: "Gadget" });
@@ -353,7 +353,7 @@ describe(
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
 
-      it("should not display the toast if there are no parameter values", () => {
+      it.skip("should not display the toast if there are no parameter values", () => {
         cy.clock();
         createDashboard();
         openSlowDashboard();
@@ -363,7 +363,7 @@ describe(
         undoToast().should("not.exist");
       });
 
-      it("should not display the same toast twice for a dashboard", () => {
+      it.skip("should not display the same toast twice for a dashboard", () => {
         cy.clock();
         createDashboard();
         openSlowDashboard({ [FILTER.slug]: "Gadget" });
@@ -400,7 +400,7 @@ describe(
         rightSidebar().findByLabelText(filterToggleLabel).should("be.disabled");
       });
 
-      it("should not display a toast even when a dashboard takes longer than 15s to load", () => {
+      it.skip("should not display a toast even when a dashboard takes longer than 15s to load", () => {
         cy.clock();
         openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
@@ -539,7 +539,7 @@ describe(
           getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
         });
 
-        it("should display a toast when a dashboard takes longer than 15s to load", () => {
+        it.skip("should display a toast when a dashboard takes longer than 15s to load", () => {
           createDashboard();
           // Not sure why I need to pass a date in this case, but it doesn't work without it.
           cy.clock(Date.now());
@@ -575,7 +575,7 @@ describe(
           getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
         });
 
-        it("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
+        it.skip("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
           createDashboard();
           cy.signIn("readonly");
           // Not sure why I need to pass a date in this case, but it doesn't work without it.

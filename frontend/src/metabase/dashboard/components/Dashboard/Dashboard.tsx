@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Location, Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Route } from "react-router";
@@ -92,7 +92,6 @@ export type DashboardProps = {
   editingOnLoad?: string | string[];
 
   initialize: (opts?: { clearCache?: boolean }) => void;
-  fetchDashboardCardMetadata: () => Promise<void>;
   cancelFetchDashboardCardData: () => void;
   addCardToDashboard: (opts: {
     dashId: DashboardId;
@@ -153,7 +152,7 @@ export type DashboardProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Record<string, unknown>;
+    queryParams?: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
@@ -179,7 +178,6 @@ function DashboardInner(props: DashboardProps) {
     editingOnLoad,
     fetchDashboard,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     initialize,
     isEditing,
     isFullscreen,
@@ -194,7 +192,7 @@ function DashboardInner(props: DashboardProps) {
     setErrorPage,
     setSharing,
     toggleSidebar,
-    queryParams,
+    parameterQueryParams,
     location,
   } = props;
 
@@ -263,7 +261,7 @@ function DashboardInner(props: DashboardProps) {
 
       const result = await fetchDashboard({
         dashId: dashboardId,
-        queryParams,
+        queryParams: parameterQueryParams,
         options: {
           clearCache: !isNavigatingBackToDashboard,
           preserveParameters: isNavigatingBackToDashboard,
@@ -304,37 +302,38 @@ function DashboardInner(props: DashboardProps) {
       handleSetEditing,
       initialize,
       isNavigatingBackToDashboard,
-      queryParams,
+      parameterQueryParams,
       setErrorPage,
     ],
   );
 
   useEffect(() => {
-    if (previousDashboardId !== dashboardId) {
-      handleLoadDashboard(dashboardId).then(() => {
-        setIsInitialized(true);
-      });
+    const hasDashboardChanged = dashboardId !== previousDashboardId;
+    if (hasDashboardChanged) {
+      handleLoadDashboard(dashboardId).then(() => setIsInitialized(true));
       return;
     }
 
-    if (previousTabId !== selectedTabId && dashboard) {
-      fetchDashboardCardData();
-      fetchDashboardCardMetadata();
+    if (!dashboard) {
       return;
     }
-    const didDashboardLoad = !previousDashboard && dashboard;
-    const didParameterValuesChange = !_.isEqual(
-      previousParameterValues,
+
+    const hasDashboardLoaded = !previousDashboard;
+    const hasTabChanged = selectedTabId !== previousTabId;
+    const hasParameterValueChanged = !_.isEqual(
       parameterValues,
+      previousParameterValues,
     );
-    if (didDashboardLoad || didParameterValuesChange) {
+
+    if (hasDashboardLoaded) {
       fetchDashboardCardData({ reload: false, clearCache: true });
+    } else if (hasTabChanged || hasParameterValueChanged) {
+      fetchDashboardCardData();
     }
   }, [
     dashboard,
     dashboardId,
     fetchDashboardCardData,
-    fetchDashboardCardMetadata,
     handleLoadDashboard,
     isInitialized,
     parameterValues,
