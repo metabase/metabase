@@ -1,3 +1,4 @@
+import type { SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type {
@@ -134,13 +135,21 @@ export interface CollectionListQuery {
   tree?: boolean;
 }
 
+export type SortColumn =
+  | "name"
+  | "last_edited_at"
+  | "last_edited_by"
+  | "model"
+  | "collection"
+  | "description";
+
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
-  sort_column?: "name" | "last_edited_at" | "last_edited_by" | "model";
-  sort_direction?: "asc" | "desc";
+  sort_column?: SortColumn;
+  sort_direction?: SortDirection;
   namespace?: "snippets";
 } & PaginationRequest;
 

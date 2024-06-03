@@ -1,40 +1,56 @@
 /* eslint-disable react/prop-types */
-import {useCallback, useEffect, useState} from "react";
-import {useDropzone} from "react-dropzone";
-import {usePrevious} from "react-use";
-import {t} from "ttag";
+import { useCallback, useEffect, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { usePrevious } from "react-use";
+import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {deletePermanently} from "metabase/archive/actions";
-import {ArchivedEntityBanner} from "metabase/archive/components/ArchivedEntityBanner";
+import { deletePermanently } from "metabase/archive/actions";
+import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { CollectionUnpinnedItems } from "metabase/collections/components/CollectionContent/CollectionUnpinnedItems";
+import { PAGE_SIZE } from "metabase/collections/components/CollectionContent/constants";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
-import type {CreateBookmark, DeleteBookmark, OnFileUpload, UploadFile,} from "metabase/collections/types";
-import {isPersonalCollectionChild, isRootTrashCollection, isTrashedCollection,} from "metabase/collections/utils";
-import type {SortingOptions} from "metabase/components/ItemsTable/BaseItemsTable";
-import {SortDirection} from "metabase/components/ItemsTable/Columns";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+  OnFileUpload,
+  UploadFile,
+} from "metabase/collections/types";
+import {
+  isPersonalCollectionChild,
+  isRootTrashCollection,
+  isTrashedCollection,
+} from "metabase/collections/utils";
+import type { SortingOptions } from "metabase/components/ItemsTable/BaseItemsTable";
+import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
-import {useListSelect} from "metabase/hooks/use-list-select";
-import {usePagination} from "metabase/hooks/use-pagination";
-import {useToggle} from "metabase/hooks/use-toggle";
-import {useDispatch} from "metabase/lib/redux";
-import {addUndo} from "metabase/redux/undo";
+import { useListSelect } from "metabase/hooks/use-list-select";
+import { usePagination } from "metabase/hooks/use-pagination";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {Bookmark, Collection, CollectionId, CollectionItem, SearchModel, SearchRequest,} from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+  CollectionItemModel,
+  ListCollectionItemsRequest,
+} from "metabase-types/api";
 
-import type {CollectionOrTableIdProps} from "../ModelUploadModal";
-import {ModelUploadModal} from "../ModelUploadModal";
+import type { CollectionOrTableIdProps } from "../ModelUploadModal";
+import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
 
-import {CollectionMain, CollectionRoot,} from "./CollectionContent.styled";
-import {getComposedDragProps} from "./utils";
-import {CollectionUnpinnedItems} from "metabase/collections/components/CollectionContent/CollectionUnpinnedItems";
-import {PAGE_SIZE} from "metabase/collections/components/CollectionContent/constants";
+import { CollectionMain, CollectionRoot } from "./CollectionContent.styled";
+import { getComposedDragProps } from "./utils";
 
 // TODO: do we remove pulses?
-const ALL_MODELS: SearchModel[] = [
+const ALL_MODELS: CollectionItemModel[] = [
   "dashboard",
   "dataset",
   "card",
@@ -185,10 +201,10 @@ export const CollectionContentView = ({
     ? getComposedDragProps(getRootProps())
     : {};
 
-  const unpinnedQuery: SearchRequest = {
-    collection: collectionId,
+  const unpinnedQuery: ListCollectionItemsRequest = {
+    id: collectionId,
     // TODO: do we need snippets and pulses?
-    models: ALL_MODELS as SearchModel[],
+    models: ALL_MODELS as CollectionItemModel[],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
     ...(isRootTrashCollection(collection)

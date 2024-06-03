@@ -5,6 +5,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
+import { getIcon } from "metabase/browse/utils";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import type {
   CreateBookmark,
@@ -14,11 +15,14 @@ import type {
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
 import { isTrashedCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
-import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  SortColumn,
+} from "metabase-types/api";
 
 import {
   ColumnHeader,
@@ -31,12 +35,12 @@ import { Columns, SortDirection } from "./Columns";
 import type { ResponsiveProps } from "./utils";
 
 export type SortingOptions = {
-  sort_column: string;
+  sort_column: SortColumn;
   sort_direction: SortDirection;
 };
 
 export type SortableColumnHeaderProps = {
-  name?: string;
+  name?: SortColumn;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
   columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
@@ -124,6 +128,7 @@ export type BaseItemsTableProps = {
   isInDragLayer?: boolean;
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
+  includeActions?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy">>;
 
 export const BaseItemsTable = ({
@@ -149,6 +154,7 @@ export const BaseItemsTable = ({
   isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
+  includeActions = true,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = !!collection?.can_write;
@@ -158,13 +164,17 @@ export const BaseItemsTable = ({
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
         <colgroup>
-          {canSelect && <Columns.Select.Col />}
+          {includeActions && canSelect && <Columns.Select.Col />}
           <Columns.Type.Col />
           <Columns.Name.Col isInDragLayer={isInDragLayer} />
           <Columns.LastEditedBy.Col />
           <Columns.LastEditedAt.Col />
-          <Columns.ActionMenu.Col />
-          <Columns.RightEdge.Col />
+          {includeActions && (
+            <>
+              <Columns.ActionMenu.Col />
+              <Columns.RightEdge.Col />
+            </>
+          )}
         </colgroup>
       )}
       {!headless && (
@@ -174,7 +184,7 @@ export const BaseItemsTable = ({
           }
         >
           <tr>
-            {canSelect && (
+            {includeActions && canSelect && (
               <Columns.Select.Header
                 selectedItems={selectedItems}
                 hasUnselected={hasUnselected}
@@ -200,14 +210,13 @@ export const BaseItemsTable = ({
               onSortingOptionsChange={onSortingOptionsChange}
               isTrashed={isTrashed}
             />
-            <Columns.ActionMenu.Header />
-            <Columns.RightEdge.Header />
+            {includeActions && <Columns.ActionMenu.Header />}
+            {includeActions && <Columns.RightEdge.Header />}
           </tr>
         </thead>
       )}
       <TBody>
         {items.map((item: CollectionItem) => {
-          console.log(item);
           const isSelected = getIsSelected(item);
 
           const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
@@ -229,32 +238,6 @@ export const BaseItemsTable = ({
                 onToggleSelected={onToggleSelected}
               />
             </tr>
-
-            // <ItemDragSource
-            //   item={item}
-            //   collection={collection}
-            //   isSelected={isSelected}
-            //   selected={selectedItems}
-            //   onDrop={onDrop}
-            //   key={`item-drag-source-${key}`}
-            // >
-            //   <tr data-testid={testIdPrefix} style={{ height: 48 }}>
-            //     <ItemComponent
-            //       testIdPrefix={testIdPrefix}
-            //       item={item}
-            //       isSelected={isSelected}
-            //       databases={databases}
-            //       bookmarks={bookmarks}
-            //       createBookmark={createBookmark}
-            //       deleteBookmark={deleteBookmark}
-            //       collection={collection}
-            //       isPinned={isPinned}
-            //       onCopy={onCopy}
-            //       onMove={onMove}
-            //       onToggleSelected={onToggleSelected}
-            //     />
-            //   </tr>
-            // </ItemDragSource>
           );
         })}
       </TBody>
@@ -274,6 +257,38 @@ export type ItemRendererProps = {
   bookmarks?: Bookmark[];
 } & ActionMenuProps;
 
+export const SdkItemRenderer = ({
+  item,
+  isPinned,
+  testIdPrefix = "item",
+  onClickItem,
+}: Pick<ItemRendererProps, "item" | "isPinned" | "testIdPrefix"> & {
+  onClickItem: (item: CollectionItem) => void;
+}) => {
+  const icon = getIcon(item);
+  if (item.model === "card" || item.archived) {
+    icon.color = color("text-light");
+  }
+
+  return (
+    <>
+      <Columns.Type.Cell
+        testIdPrefix={testIdPrefix}
+        icon={icon}
+        isPinned={isPinned}
+      />
+      <Columns.Name.Cell
+        onClick={() => onClickItem(item)}
+        item={item}
+        testIdPrefix={testIdPrefix}
+      />
+      <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.RightEdge.Cell />
+    </>
+  );
+};
+
 const DefaultItemRenderer = ({
   item,
   isSelected,
@@ -288,11 +303,10 @@ const DefaultItemRenderer = ({
   bookmarks,
   testIdPrefix = "item",
 }: ItemRendererProps) => {
-  console.log("Rendering DefaultItemRenderer");
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
 
-  const icon = item.getIcon();
+  const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
     icon.color = color("text-light");
   }

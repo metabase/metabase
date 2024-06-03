@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import { getItemUrl } from "metabase/browse/utils";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import DateTime from "metabase/components/DateTime";
@@ -21,6 +22,7 @@ import {
   ColumnHeader,
   DescriptionIcon,
   EntityIconCheckBox,
+  ItemButton,
   ItemCell,
   ItemLink,
   ItemNameCell,
@@ -135,28 +137,31 @@ export const Columns = {
       testIdPrefix?: string;
       includeDescription?: boolean;
       onClick?: () => void;
-    }) => (
-      <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-        <ItemLink to={item.getUrl()} onClick={onClick}>
-          <EntityItem.Name name={item.name} variant="list" />
-          <PLUGIN_MODERATION.ModerationStatusIcon
-            size={16}
-            status={item.moderated_status}
-          />
-          {item.description && includeDescription && (
-            <DescriptionIcon
-              name="info"
+    }) => {
+      const LinkItem = onClick ? ItemButton : ItemLink;
+      return (
+        <ItemNameCell data-testid={`${testIdPrefix}-name`}>
+          <LinkItem to={getItemUrl(item)} onClick={onClick}>
+            <EntityItem.Name name={item.name} variant="list" />
+            <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
-              tooltip={
-                <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                  {item.description}
-                </Markdown>
-              }
+              status={item.moderated_status}
             />
-          )}
-        </ItemLink>
-      </ItemNameCell>
-    ),
+            {item.description && includeDescription && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                    {item.description}
+                  </Markdown>
+                }
+              />
+            )}
+          </LinkItem>
+        </ItemNameCell>
+      );
+    },
   },
   LastEditedBy: {
     Col: () => (

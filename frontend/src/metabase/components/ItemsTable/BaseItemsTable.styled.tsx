@@ -79,6 +79,16 @@ export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
   height: 3em;
 `;
 
+export const ItemButton = styled.button`
+  display: flex;
+  grid-gap: 0.5rem;
+  align-items: center;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
 export const ItemLink = styled(Link)`
   display: flex;
   grid-gap: 0.5rem;
