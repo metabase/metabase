@@ -98,7 +98,7 @@ const DashCardMenu = ({
 
   const menuItems = useMemo(
     () => [
-      question.canWriteQuery() && {
+      question.canRunAdhocQuery() && {
         title: `Edit question`,
         icon: "pencil",
         action: () => onEditQuestion(question),
@@ -169,7 +169,7 @@ DashCardMenu.shouldRender = ({
     !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
-    (question.canWriteQuery() || canDownloadResults(result))
+    (question.canRunAdhocQuery() || canDownloadResults(result))
   );
 };
 

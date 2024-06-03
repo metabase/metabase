@@ -54,7 +54,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         previousCard,
       );
 
-      const nextQuestion = previousQuestion.canWriteQuery()
+      const nextQuestion = previousQuestion.canRunAdhocQuery()
         ? new Question(nextCardAfterClick, metadata)
             .setDisplay(nextCardAfterClick.display || previousCard.display)
             .setSettings(dashcard.card.visualization_settings)

@@ -366,9 +366,9 @@ class Question {
     return this._card && this._card.can_write;
   }
 
-  canWriteQuery(): boolean {
+  canRunAdhocQuery(): boolean {
     if (this.isSaved()) {
-      return this._card.can_write_query;
+      return this._card.can_run_adhoc_query;
     }
 
     const query = this.query();

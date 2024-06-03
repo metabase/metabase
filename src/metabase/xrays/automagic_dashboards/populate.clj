@@ -325,10 +325,10 @@
          dashboard (update dashboard :dashcards (fn [dashcards]
                                                   (let [cards (map :card dashcards)]
                                                     (mapv
-                                                      (fn [dashcard card]
-                                                        (m/assoc-some dashcard :card card))
-                                                      dashcards
-                                                      (card/with-can-write-query cards)))))]
+                                                     (fn [dashcard card]
+                                                       (m/assoc-some dashcard :card card))
+                                                     dashcards
+                                                     (card/with-can-run-adhoc-query cards)))))]
 
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)

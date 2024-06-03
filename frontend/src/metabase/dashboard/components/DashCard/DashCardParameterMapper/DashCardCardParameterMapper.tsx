@@ -190,7 +190,7 @@ export function DashCardCardParameterMapper({
       return false;
     }
 
-    return question.canWriteQuery();
+    return question.canRunAdhocQuery();
   }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =

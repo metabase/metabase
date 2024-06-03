@@ -32,6 +32,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.models.query-field :as query-field]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -145,11 +146,11 @@
    :id
    {:default 0}))
 
-(defn with-can-write-query
-  "Adds can_write_query to each card."
+(defn with-can-run-adhoc-query
+  "Adds can_run_adhoc_query to each card."
   [cards]
   (mi/instances-with-hydrated-data
-   cards :can_write_query
+   cards :can_run_adhoc_query
    (fn []
      (mu/disable-enforcement
        (let [db->mp (into {}
@@ -162,20 +163,19 @@
                (comp
                 (filter (comp seq :dataset_query))
                 (map
-                 (fn [{card-id :id :keys [database_id dataset_query] :as card}]
-                   (let [query (lib/query (get db->mp database_id) dataset_query)]
-                     [card-id
-                      (:is-editable (and (mi/can-write? card)
-                                         (lib/display-info query query)))]))))
+                 (fn [{card-id :id :keys [database_id dataset_query]}]
+                   [card-id (and (query-perms/can-run-query? dataset_query)
+                                 (let [query (lib/query (get db->mp database_id) dataset_query)]
+                                   (:is-editable (lib/display-info query query))))])))
                cards))))
    :id
    {:default false}))
 
-(mi/define-batched-hydration-method add-can-write-query
-  :can_write_query
-  "Hydrate can_write_query onto cards"
+(mi/define-batched-hydration-method add-can-run-adhoc-query
+  :can_run_adhoc_query
+  "Hydrate can_run_adhoc_query onto cards"
   [cards]
-  (with-can-write-query cards))
+  (with-can-run-adhoc-query cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
