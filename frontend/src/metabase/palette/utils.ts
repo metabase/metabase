@@ -4,6 +4,8 @@ import _ from "underscore";
 import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "./types";
+import { color } from "metabase/lib/colors";
+import type { IconName } from "metabase/ui";
 
 export const processResults = (
   results: (string | PaletteActionImpl)[],
@@ -55,3 +57,23 @@ export const findClosestActionIndex = (
 
 export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = items =>
   items.filter(item => item.model !== "collection").slice(0, 5);
+
+
+export const getCommandPaletteIcon = (item: PaletteActionImpl, isActive: boolean): {name: IconName, color: string} => {
+
+  const icon = {
+    name: item.icon as IconName,
+    color: item.extra?.iconColor ? color(item.extra.iconColor) : color("brand")
+  };
+
+  if(isActive && !item.extra?.iconColor){
+    icon.color = color("white")
+  }
+
+  if(isActive && (item.icon === "folder" || item.icon === "collection")){
+    icon.name = "folder_filled";
+  }
+
+  return icon;
+
+}
