@@ -21,7 +21,6 @@ const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
   description: PropTypes.string,
-  href: PropTypes.string,
   icon: PropTypes.object,
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
@@ -37,7 +36,6 @@ const LegendCaption = ({
   className,
   title,
   description,
-  href,
   icon,
   actionButtons,
   onSelectTitle,
@@ -52,7 +50,6 @@ const LegendCaption = ({
           DashboardS.fullscreenNightText,
           EmbedFrameS.fullscreenNightText,
         )}
-        href={href}
         onClick={onSelectTitle}
       >
         <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
