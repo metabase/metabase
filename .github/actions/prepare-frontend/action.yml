@@ -23,6 +23,6 @@ runs:
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash

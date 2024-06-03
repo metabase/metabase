@@ -1,6 +1,5 @@
 import { denormalize, normalize, schema } from "normalizr";
 
-import { loadMetadataForDashcards } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
@@ -17,7 +16,7 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
-import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
+import type { DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -92,14 +91,18 @@ export const fetchDashboard = createAsyncThunk(
         };
       } else if (dashboardType === "transient") {
         const subPath = String(dashId).split("/").slice(3).join("/");
-        result = await AutoApi.dashboard(
-          { subPath },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const [entity, entityId] = subPath.split(/[/?]/);
+        const [response] = await Promise.all([
+          AutoApi.dashboard(
+            { subPath },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          dispatch(Dashboards.actions.fetchXrayMetadata({ entity, entityId })),
+        ]);
         result = {
-          ...result,
+          ...response,
           id: dashId,
-          dashcards: result.dashcards.map((dc: DashboardCard) => ({
+          dashcards: response.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,
           })),
@@ -114,15 +117,17 @@ export const fetchDashboard = createAsyncThunk(
         result = expandInlineDashboard(dashId);
         dashId = result.id = String(dashId);
       } else {
-        result = await DashboardApi.get(
-          { dashId: dashId },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const [response] = await Promise.all([
+          DashboardApi.get(
+            { dashId: dashId },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          dispatch(Dashboards.actions.fetchMetadata({ id: dashId })),
+        ]);
+        result = response;
       }
 
       fetchDashboardCancellation = null;
-
-      await dispatch(fetchDashboardCardMetadata(result));
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
@@ -168,19 +173,6 @@ export const fetchDashboard = createAsyncThunk(
         console.error(error);
       }
       return rejectWithValue(error);
-    }
-  },
-);
-
-export const fetchDashboardCardMetadata = createAsyncThunk(
-  "metabase/dashboard/FETCH_DASHBOARD_METADATA",
-  async (dashboard: Dashboard, { dispatch }) => {
-    const dashboardType = getDashboardType(dashboard.id);
-    if (dashboardType === "normal") {
-      await dispatch(Dashboards.actions.fetchMetadata({ id: dashboard.id }));
-    }
-    if (dashboardType === "transient") {
-      await dispatch(loadMetadataForDashcards(dashboard.dashcards));
     }
   },
 );
