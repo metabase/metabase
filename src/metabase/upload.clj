@@ -227,7 +227,7 @@
   "Returns true if there should be an auto-incrementing primary key column in any table created or updated from an
    upload."
   [driver db]
-  (driver/database-supports? driver :upload-with-auto-pk db))
+  (driver.u/supports? driver :upload-with-auto-pk db))
 
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
@@ -297,7 +297,7 @@
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
-      (not (driver/database-supports? driver :uploads db))
+      (not (driver.u/supports? driver :uploads db))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422}))))
 
@@ -309,7 +309,7 @@
         (ex-info (tru "Uploads are not enabled.")
                  {:status-code 422})
         (and (str/blank? schema-name)
-             (driver/database-supports? (driver.u/database->driver db) :schemas db))
+             (driver.u/supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
         (not

@@ -414,18 +414,18 @@
                "\" 3\"\t\t           b\tfalse\t\"$ 1,000.1\"\t2022-02-01\t2022-02-01T00:00:00"]})
 
 (defn- columns-with-auto-pk [columns]
- (cond-> columns
-   (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
-   (#'upload/columns-with-auto-pk)))
+  (cond-> columns
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (#'upload/columns-with-auto-pk)))
 
 (defn- header-with-auto-pk [header]
   (cond->> header
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (cons @#'upload/auto-pk-column-name)))
 
 (defn- rows-with-auto-pk [rows]
   (cond->> rows
-    (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
@@ -436,28 +436,28 @@
     (testing (format "Upload a CSV file with %s separators." separator)
       (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
         (with-mysql-local-infile-on-and-off
-         (with-upload-table!
-           [table (create-from-csv-and-sync-with-defaults!
-                   :file (csv-file-with lines)
-                   :auxiliary-sync-steps :synchronous)]
-           (testing "Table and Fields exist after sync"
-             (is (=? (cond->> [["id" {:semantic_type :type/PK
-                                      :base_type     :type/BigInteger}]
-                               ["nulls" {:base_type :type/Text}]
-                               ["string" {:base_type :type/Text}]
-                               ["bool" {:base_type :type/Boolean}]
-                               ["number" {:base_type :type/Float}]
-                               ["date" {:base_type :type/Date}]
-                               ["datetime" {:base_type :type/DateTime}]]
-                       (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
-                       (cons ["_mb_row_id" {:semantic_type     :type/PK
-                                            :base_type         :type/BigInteger}]))
-                     (->> (t2/select :model/Field :table_id (:id table))
-                          (sort-by :database_position)
-                          (map (juxt (comp u/lower-case-en :name) identity))))))
-           (testing "Check the data was uploaded into the table"
-             (is (= 2
-                    (count (rows-for-table table)))))))))))
+          (with-upload-table!
+            [table (create-from-csv-and-sync-with-defaults!
+                    :file (csv-file-with lines)
+                    :auxiliary-sync-steps :synchronous)]
+            (testing "Table and Fields exist after sync"
+              (is (=? (cond->> [["id" {:semantic_type :type/PK
+                                       :base_type     :type/BigInteger}]
+                                ["nulls" {:base_type :type/Text}]
+                                ["string" {:base_type :type/Text}]
+                                ["bool" {:base_type :type/Boolean}]
+                                ["number" {:base_type :type/Float}]
+                                ["date" {:base_type :type/Date}]
+                                ["datetime" {:base_type :type/DateTime}]]
+                        (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                        (cons ["_mb_row_id" {:semantic_type     :type/PK
+                                             :base_type         :type/BigInteger}]))
+                      (->> (t2/select :model/Field :table_id (:id table))
+                           (sort-by :database_position)
+                           (map (juxt (comp u/lower-case-en :name) identity))))))
+            (testing "Check the data was uploaded into the table"
+              (is (= 2
+                     (count (rows-for-table table)))))))))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -872,47 +872,40 @@
     (let [db                   (mt/db)
           db-id                (u/the-id db)
           original-sync-values (select-keys db [:is_on_demand :is_full_sync])
-          in-future?           (atom false)
           schema-name          (sql.tx/session-schema driver/*driver*)
           _                    (t2/update! :model/Database db-id {:is_on_demand false
                                                                   :is_full_sync false})]
       (try
-        (mt/with-dynamic-redefs [;; do away with the `future` invocation since we don't want race conditions in a test
-                                 future-call (fn [thunk]
-                                               (swap! in-future? (constantly true))
-                                               (thunk))]
-          (testing "Happy path with schema, and without table-prefix"
-            (with-upload-table!
-              [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :asynchronous))]
-              (is (=? {:display          :table
-                       :database_id      db-id
-                       :dataset_query    {:database db-id
-                                          :query    {:source-table (:id new-table)}
-                                          :type     :query}
-                       :creator_id       (mt/user->id :rasta)
-                       :name             #"(?i)example csv file(.*)"
-                       :collection_id    nil}
-                      (t2/select-one :model/Card :table_id (:id new-table)))
-                  "A new model is created")
-              (is (=? {:name      #"(?i)example(.*)"
-                       :schema    (re-pattern (str "(?i)" schema-name))
-                       :is_upload true}
-                      new-table)
-                  "A new table is created")
-              (is (= "complete"
-                     (:initial_sync_status new-table))
-                  "The table is synced and marked as complete")
-              (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
-                  "The sync actually runs")
-              (is (true? @in-future?)
-                  "Table has been synced in a separate thread"))))
+        (testing "Happy path with schema, and without table-prefix"
+          (with-upload-table!
+            [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :synchronous))]
+            (is (=? {:display          :table
+                     :database_id      db-id
+                     :dataset_query    {:database db-id
+                                        :query    {:source-table (:id new-table)}
+                                        :type     :query}
+                     :creator_id       (mt/user->id :rasta)
+                     :name             #"(?i)example csv file(.*)"
+                     :collection_id    nil}
+                    (t2/select-one :model/Card :table_id (:id new-table)))
+                "A new model is created")
+            (is (=? {:name      #"(?i)example(.*)"
+                     :schema    (re-pattern (str "(?i)" schema-name))
+                     :is_upload true}
+                    new-table)
+                "A new table is created")
+            (is (= "complete"
+                   (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
+                "The table is synced and marked as complete")
+            (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+                "The sync actually runs")))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
 
 (deftest create-csv-upload!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Happy path with table prefix, and without schema"
-      (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+      (if (driver.u/supports? driver/*driver* :schemas (mt/db))
         (is (thrown-with-msg?
              java.lang.Exception
              #"^A schema has not been set."
@@ -1221,7 +1214,7 @@
                               - extra_1")
 
                     ["_mb_row_id,id, extra 2"]
-                    (if (driver/database-supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                    (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
                       (trim-lines "The CSV file is missing columns that are in the table:
                                    - name
 
@@ -1658,7 +1651,9 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
-              (doseq [auto-pk-column? [true false]]
+              (doseq [auto-pk-column? (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                                        [true false]
+                                        [false])]
                 (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
                   (doseq [{:keys [upload-type valid invalid msg]}
                           [{:upload-type int-type

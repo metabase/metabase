@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -280,7 +279,7 @@
   (dimension-index-for-type :type/Coordinate #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [db]
-  (and db (driver/database-supports? (:engine db) :binning db)))
+  (and db (driver.u/supports? (:engine db) :binning db)))
 
 ;; TODO: Remove all this when the FE is fully ported to [[metabase.lib.binning/available-binning-strategies]].
 (defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
