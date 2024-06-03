@@ -39,8 +39,40 @@ jobs:
         id: e2e-matrix
         uses: ./.github/actions/build-e2e-matrix
 
+  # if this is a test on a release branch, we need to check the build requirements
+  get-build-requirements:
+    if: |
+      !cancelled() &&
+      contains(github.ref, 'release-x')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+      build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get build dependencies
+      uses: actions/github-script@v7
+      id: dependencies
+      with:
+        script: | # js
+          const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = getVersionFromReleaseBranch('${{ github.ref }}');
+          const requirements = getBuildRequirements(version);
+
+          return {
+            java_version: requirements.java,
+            node_version: requirements.node,
+          };
+
   build:
-    needs: [files-changed, e2e-matrix-builder]
+    needs: [files-changed, e2e-matrix-builder, get-build-requirements]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
@@ -58,10 +90,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: '${{ needs.get-build-requirements.outputs.node_version }}'
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: e2e-tests
+          java-version: '${{ needs.get-build-requirements.outputs.java_version || 11 }}'
 
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh

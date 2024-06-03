@@ -1,10 +1,14 @@
 name: Prepare front-end environment
+inputs:
+  node-version:
+    required: false
 runs:
   using: "composite"
   steps:
     - name: Prepare Node.js
       uses: actions/setup-node@v4
       with:
+        node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
