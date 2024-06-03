@@ -12,6 +12,7 @@ import type {
   Datum,
   WaterfallXAxisModel,
   NumericAxisScaleTransforms,
+  SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   WATERFALL_DATA_KEYS,
@@ -29,24 +30,30 @@ import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
 export const getWaterfallDataset = (
   dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  originalSeriesKey: DataKey,
+  seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   xAxisModel: WaterfallXAxisModel,
 ): ChartDataset => {
   let transformedDataset: ChartDataset = [];
 
+  const { scale: seriesScale } = settings.column?.(seriesModel.column) ?? {};
+  const scale = Number.isFinite(seriesScale) ? (seriesScale as number) : 1;
+
+  const key = seriesModel.dataKey;
   dataset.forEach((datum, index) => {
     const prevDatum = index === 0 ? null : transformedDataset[index - 1];
-    const value = datum[originalSeriesKey];
+    const scaledValue = Number.isFinite(datum[key])
+      ? (datum[key] as number) * scale
+      : null;
 
     let start;
     let end;
     if (prevDatum == null) {
       start = 0;
-      end = value;
+      end = scaledValue;
     } else {
       start = getNumberOr(prevDatum.end, 0);
-      end = start + getNumberOr(value, 0);
+      end = start + getNumberOr(scaledValue, 0);
     }
 
     if (
@@ -58,7 +65,7 @@ export const getWaterfallDataset = (
 
     const waterfallDatum: Datum = {
       [X_AXIS_DATA_KEY]: datum[X_AXIS_DATA_KEY] ?? NULL_DISPLAY_VALUE,
-      [WATERFALL_VALUE_KEY]: value,
+      [WATERFALL_VALUE_KEY]: scaledValue,
       [WATERFALL_START_KEY]: start,
       [WATERFALL_END_KEY]: end,
     };
