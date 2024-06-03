@@ -1655,6 +1655,34 @@
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
                                           :filter_items_in_personal_collection "exclude"))))))))
 
+(deftest collection-effective-parent-test
+  (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
+                 :model/Collection coll-2  {:name "Collection 2", :location (collection/location-path coll-1)}
+                 :model/Collection _coll-3 {:name "Collection 3", :location (collection/location-path coll-1 coll-2)}]
+    (testing "Collection search results are properly hydrated with their effective parent in the :collection field"
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              (u/the-id coll-2)
+                :name            "Collection 2"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection))))
+
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-2)
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              (u/the-id coll-1)
+                :name            "Collection 1"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection))))
+
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-1)
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              "root"
+                :name            "Our analytics"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection)))))))
+
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. #33602"
     (mt/with-temp [Collection  {collection-id :id} (archived {:name "collection test collection"})
