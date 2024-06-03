@@ -49,7 +49,7 @@
   :visibility :internal
   :setter     :none
   :default    true
-  :doc "This variable controls the geocoding service that Metabase uses to know the location from where your users logged in.
+  :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
         Setting this variable to false also disables this reverse geocoding functionality.")
 
 (def LoginHistory
