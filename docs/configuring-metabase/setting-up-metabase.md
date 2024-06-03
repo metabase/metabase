@@ -60,7 +60,7 @@ For more on connecting to databases, see [Adding and managing databases](../data
 
 If you're self-hosting Metabase on the [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan, Metabase will prompt you for your license. This step is just a convenience. You don't need to enter your license here; you can [activate your license](../paid-features/activating-the-enterprise-edition.md) at any time. Just know that all of your paid features won't work until you've activated your license.
 
-If you're running Pro on [Metabase Cloud](https://www.metabase.com/cloud/), we'll handle this step for you. Your Pro features should already be available.
+If you're running Pro on [Metabase Cloud](https://www.metabase.com/cloud), we'll handle this step for you. Your Pro features should already be available.
 
 ## Usage data preferences
 
