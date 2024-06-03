@@ -1,11 +1,3 @@
-.item[data-selected] {
-  background-color: transparent !important;
-}
-
-.item[data-hovered] {
-  background-color: var(--mb-color-brand-lighter) !important;
-}
-
 .itemContent {
   flex: 1;
 }

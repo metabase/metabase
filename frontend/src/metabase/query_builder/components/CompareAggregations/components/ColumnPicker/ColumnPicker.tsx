@@ -56,14 +56,27 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
   return (
     <MultiSelect
       label={t`Columns to create`}
-      classNames={{
-        item: S.item,
-      }}
       data={options}
       disableSelectedItemFiltering
       itemComponent={Item}
       placeholder={t`Columns to create`}
       rightSection={null}
+      styles={{
+        item: {
+          "&[data-selected]": {
+            backgroundColor: "transparent",
+          },
+          "&[data-selected]:hover": {
+            backgroundColor: "var(--mb-color-brand-lighter)",
+          },
+          "&[data-selected][data-hovered]": {
+            backgroundColor: "var(--mb-color-brand-lighter)",
+          },
+          "&[data-hovered]": {
+            backgroundColor: "var(--mb-color-brand-lighter)",
+          },
+        },
+      }}
       value={value}
       onChange={handleChange}
     />
