@@ -469,7 +469,7 @@ export function FieldValuesWidgetInner({
             checkedColor={checkedColor}
           />
         ) : (
-          <MultiAutocomplete
+          <MultiAutocomplete<string>
             onSearchChange={onInputChange}
             onChange={onChange}
             value={value.filter(v => v !== null && v !== undefined)}
@@ -480,6 +480,8 @@ export function FieldValuesWidgetInner({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             prefix={prefix}
+            // @ts-expect-error: we are actually using (string | number)[] here
+            // but the type of the FieldValuesWidget props is string[]
             parseValue={parseFreeformValue}
             maxSelectedValues={multi ? undefined : 1}
           />
