@@ -4,14 +4,14 @@ import _ from "underscore";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 import { Z_INDEXES } from "../constants/style";
-import type { CartesianChartModel } from "../model/types";
+import type { BaseCartesianChartModel } from "../model/types";
 
 import { getSeriesYAxisIndex } from "./utils";
 
 export const TREND_LINE_DASH = [5, 5];
 
 export function getTrendLinesOption(
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
 ): LineSeriesOption[] {
   return (
     chartModel.trendLinesModel?.seriesModels.map(trendSeries => ({
