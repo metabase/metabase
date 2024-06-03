@@ -1,5 +1,9 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ * NOTE: KEEP SYNCRONIZED WITH:
+ * frontend/src/metabase/ui/utils/colors.ts
+ * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
+ * enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+ * .storybook/preview-head.html
  */
 :root {
   --color-white: #fff;
