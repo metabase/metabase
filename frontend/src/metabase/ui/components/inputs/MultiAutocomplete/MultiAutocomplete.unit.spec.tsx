@@ -27,13 +27,13 @@ function setup(opts: SetupOpts) {
 }
 
 type TestInputProps = MultiAutocompleteProps & {
-  initialValue?: string[];
+  initialValue?: (string | number)[];
 };
 
 function TestInput(props: TestInputProps) {
   const [value, setValue] = useState(props.initialValue ?? []);
 
-  function handleChange(value: string[]) {
+  function handleChange(value: (string | number)[]) {
     setValue(value);
     props.onChange?.(value);
   }
@@ -64,7 +64,7 @@ describe("MultiAutocomplete", () => {
   it("should not accept values when blurring if they are not accepted by shouldCreate", async () => {
     const { input, onChange } = setup({
       data: EXAMPLE_DATA,
-      shouldCreate(value: string) {
+      shouldCreate(value: string | number) {
         return value === "foo";
       },
     });
@@ -172,7 +172,7 @@ describe("MultiAutocomplete", () => {
   it("should not accept values when entering a comma if they are not accepted by shouldCreate", async () => {
     const { input, onChange } = setup({
       data: EXAMPLE_DATA,
-      shouldCreate(value: string) {
+      shouldCreate(value: string | number) {
         return value === "foo";
       },
     });
@@ -217,7 +217,7 @@ describe("MultiAutocomplete", () => {
   it("should accept comma-separated values, but omit values not accepted by shouldCreate", async () => {
     const { input, onChange } = setup({
       data: EXAMPLE_DATA,
-      shouldCreate(value: string) {
+      shouldCreate(value: string | number) {
         return value === "foo" || value === "bar";
       },
     });

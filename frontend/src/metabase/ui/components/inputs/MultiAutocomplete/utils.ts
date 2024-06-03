@@ -25,6 +25,6 @@ function defaultParser(str: string): string | number | null {
   return str;
 }
 
-export function unique(values: (string | number)[]): string[] {
+export function unique(values: (string | number)[]): (string | number)[] {
   return Array.from(new Set(values));
 }
