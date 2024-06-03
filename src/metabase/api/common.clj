@@ -658,15 +658,15 @@
     [(parse-fn xs)]))
 
 
-;;; ---------------------------------------- MOVING TO TRASH ON ARCHIVE --------------------------------
+;;; ---------------------------------------- SET `trashed_directly` ---------------------------------
 
-(defn move-on-archive-or-unarchive
-  "Given a current instance and a set of updates to that instance, return a possibly modified version of the updates
-  with `trashed_directly` set appropriately."
+(defn updates-with-trashed-directly
+  "Sets `trashed_directly` to `true` iff `:archived` is being set to `true`."
   [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)
     (assoc :trashed_directly (boolean (:archived obj-updates)))))
+
 
 ;; ----------------------------------------- PER-REQUEST MEMOIZATION ---------------------------------------------------
 (def ^:dynamic *memoize-per-request-middleware*
