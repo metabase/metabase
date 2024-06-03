@@ -94,7 +94,6 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/model/new",
       });
       setupCardCreateEndpoint();
-      setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
       setupCardQueryMetadataEndpoint(
         TEST_NATIVE_CARD,
         createMockCardQueryMetadata({
