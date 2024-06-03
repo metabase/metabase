@@ -30,6 +30,7 @@ import type Question from "metabase-lib/v1/Question";
 import {
   getParameterSubType,
   isDateParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
@@ -134,6 +135,8 @@ export function DashCardCardParameterMapper({
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
+  const isTemporalUnit =
+    editingParameter != null && isTemporalUnitParameter(editingParameter);
 
   useEffect(() => {
     if (!prevParameter || !editingParameter) {
@@ -264,14 +267,16 @@ export function DashCardCardParameterMapper({
       : dashcard.size_y;
 
     if (layoutHeight > 2) {
+      if (isTemporalUnit) {
+        return t`Connect to`;
+      }
       if (!isVirtual && !(isNative && isDisabled)) {
         return t`Column to filter on`;
-      } else {
-        return t`Variable to map to`;
       }
+      return t`Variable to map to`;
     }
     return null;
-  }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
+  }, [dashcard, isVirtual, isNative, isDisabled, isMobile, isTemporalUnit]);
 
   const mappingInfoText =
     (virtualCardType &&

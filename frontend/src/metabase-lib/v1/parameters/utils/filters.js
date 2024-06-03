@@ -43,7 +43,13 @@ export function columnFilterForParameter(query, stageIndex, parameter) {
       return column =>
         Lib.isStringOrStringLike(column) && !Lib.isLocation(column);
     case "temporal_unit":
-      return column => Lib.isTemporalBucketable(query, stageIndex, column);
+      return column => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        return (
+          columnInfo.isBreakout &&
+          Lib.isTemporalBucketable(query, stageIndex, column)
+        );
+      };
   }
 
   return () => false;
