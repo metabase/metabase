@@ -37,7 +37,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (doto :model/RecentViews (derive :metabase/model))
@@ -58,7 +57,8 @@
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
   [user-id context]
-  (->> (t2/select :model/RecentViews :user_id user-id
+  (->> (t2/select :model/RecentViews
+                  :user_id user-id
                   :context (name context)
                   {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
@@ -121,24 +121,19 @@
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id  :- [:maybe ms/PositiveInt]
-   model    :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
+  [user-id :- [:maybe ms/PositiveInt]
+   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
    model-id :- ms/PositiveInt
-   context :- [:maybe [:enum :view :selection]]]
+   context :- [:enum :view :selection]]
   (when user-id
-    (span/with-span!
-      {:name       "update-users-recent-views!"
-       :attributes {:model/id   model-id
-                    :user/id    user-id
-                    :model/name (u/lower-case-en model)}}
-      (t2/with-transaction [_conn]
-        (t2/insert! :model/RecentViews {:user_id  user-id
-                                        :model    (u/lower-case-en (name model))
-                                        :model_id model-id
-                                        :context (some-> context name)})
-        (let [prune-ids (ids-to-prune user-id context)]
-          (when (seq prune-ids)
-            (t2/delete! :model/RecentViews :id [:in prune-ids])))))))
+    (t2/with-transaction [_conn]
+      (t2/insert! :model/RecentViews {:user_id user-id
+                                      :model (u/lower-case-en (name model))
+                                      :model_id model-id
+                                      :context (name context)})
+      (let [prune-ids (ids-to-prune user-id context)]
+        (when (seq prune-ids)
+          (t2/delete! :model/RecentViews :id [:in prune-ids]))))))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."

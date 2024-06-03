@@ -19,8 +19,7 @@
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher
     :as u.methodical.unsorted-dispatcher]
-   [methodical.core :as methodical]
-   [steffan-westcott.clj-otel.api.trace.span :as span]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -115,28 +114,22 @@
       (initialize-events!)
       (publish-event! topic event))
     (do
-      (span/with-span!
-        {:name       "publish-event!.logging"
-         :attributes {}}
-        (let [{:keys [object]} event]
-          (log/debugf "Publishing %s event (name and id):\n\n%s"
-                      (u/colorize :yellow (pr-str topic))
-                      (u/pprint-to-str (let [model (mi/model object)]
-                                         (cond-> (select-keys object [:name :id])
-                                           model
-                                           (assoc :model model))))))
-        (assert (and (qualified-keyword? topic)
-                     (isa? topic :metabase/event))
-                (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-        (assert (map? event)
-                (format "Invalid event %s: event must be a map." (pr-str event))))
+      (let [{:keys [object]} event]
+        (log/debugf "Publishing %s event (name and id):\n\n%s"
+                    (u/colorize :yellow (pr-str topic))
+                    (u/pprint-to-str (let [model (mi/model object)]
+                                       (cond-> (select-keys object [:name :id])
+                                         model
+                                         (assoc :model model))))))
+      (assert (and (qualified-keyword? topic)
+                   (isa? topic :metabase/event))
+              (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+      (assert (map? event)
+              (format "Invalid event %s: event must be a map." (pr-str event)))
       (try
         (when-let [schema (events.schema/topic->schema topic)]
           (mu/validate-throw schema event))
-        (span/with-span!
-          {:name       "publish-event!.next-method"
-           :attributes {}}
-          (next-method topic event))
+        (next-method topic event)
         (catch Throwable e
           (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
                           {:topic topic, :event event}

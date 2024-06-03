@@ -135,11 +135,11 @@
   {model (into [:enum] recent-views/models-of-interest)
    model_id ms/PositiveInt
    context [:enum :selection]}
-  (let [moi model
+  (let [moi model ;;moi is model-of-interest
         model-id model_id]
     (when-not (t2/exists? (recent-views/moi->model moi) :id model-id)
       (throw (ex-info "Model not found" {:model moi :model_id model-id})))
-    (api/read-check (t2/select-one (recent-views/moi->model model) :id model-id))
+    (api/read-check (t2/select-one (recent-views/moi->model moi) :id model-id))
     (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context)))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
