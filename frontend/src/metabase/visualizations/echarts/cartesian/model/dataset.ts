@@ -628,14 +628,10 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
-export const getNonStackedValueTransform = (
+const getColumnValueScalingTransform = (
   seriesModels: SeriesModel[],
-  yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ): TransformFn => {
-  const valueTransform = (value: number | null) =>
-    yAxisScaleTransforms.toEChartsAxisValue(value);
-
   return datum => {
     const transformedRecord = { ...datum };
     for (const seriesModel of seriesModels) {
@@ -648,7 +644,7 @@ export const getNonStackedValueTransform = (
         const scaledValue = Number.isFinite(datum[key])
           ? (datum[key] as number) * scale
           : null;
-        transformedRecord[key] = valueTransform(scaledValue);
+        transformedRecord[key] = scaledValue;
       }
     }
     return transformedRecord;
@@ -664,14 +660,13 @@ const getYAxisScaleTransforms = (
   const stackedSeriesKeys = new Set(
     stackModels.flatMap(stackModel => stackModel.seriesKeys),
   );
-  const nonStackedSeriesModels = seriesModels.filter(
-    seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey),
-  );
+  const nonStackedSeriesKeys = seriesModels
+    .filter(seriesModel => !stackedSeriesKeys.has(seriesModel.dataKey))
+    .map(seriesModel => seriesModel.dataKey);
 
-  const nonStackedTransform = getNonStackedValueTransform(
-    nonStackedSeriesModels,
-    yAxisScaleTransforms,
-    settings,
+  const nonStackedTransform = getKeyBasedDatasetTransform(
+    nonStackedSeriesKeys,
+    value => yAxisScaleTransforms.toEChartsAxisValue(value),
   );
   const stackedTransforms = getStackedValueTransform(
     settings,
@@ -733,6 +728,7 @@ export const applyVisualizationSettingsDataTransformations = (
   }
 
   return transformDataset(dataset, [
+    getColumnValueScalingTransform(seriesModels, settings),
     getNullReplacerTransform(settings, seriesModels),
     {
       condition: settings["stackable.stack_type"] === "normalized",
