@@ -76,7 +76,7 @@ export const EditorContainer = styled.div<{
     position: absolute;
     border-bottom: 2px solid ${color("error")};
     border-radius: 0px;
-    background-color: ${color("bg-error")};
+    background-color: var(--mb-color-bg-error);
   }
 `;
 
