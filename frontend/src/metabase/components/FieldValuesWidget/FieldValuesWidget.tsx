@@ -472,7 +472,7 @@ export function FieldValuesWidgetInner({
           <MultiAutocomplete
             onSearchChange={onInputChange}
             onChange={onChange}
-            value={value.filter(v => v !== null)}
+            value={value.filter(v => v !== null && v !== undefined)}
             data={options
               .flat()
               .filter((item): item is string => Boolean(item))}
