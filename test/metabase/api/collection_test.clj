@@ -75,8 +75,9 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
-                 :id                  "root"}
-                (assoc (into {:is_personal false} collection) :can_write true)]
+                 :id                  "root"
+                 :can_delete          false}
+                (assoc (into {:is_personal false} collection) :can_write true :can_delete false)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -638,6 +639,7 @@
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
                   :can_write           true
+                  :can_delete          true
                   :id                  card-id
                   :archived            false
                   :location            nil
@@ -1202,6 +1204,7 @@
   (merge
    (mt/object-defaults Collection)
    {:slug                "lucky_pigeon_s_personal_collection"
+    :can_delete          false
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
@@ -1424,7 +1427,8 @@
               :effective_ancestors []
               :authority_level     nil
               :parent_id           nil
-              :is_personal         false}
+              :is_personal         false
+              :can_delete          false}
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 

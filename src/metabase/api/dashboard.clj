@@ -98,6 +98,7 @@
                            :dashcard/action
                            :dashcard/linkcard-info]
                 :can_restore
+                :can_delete
                 :last_used_param_values
                 :tabs
                 :collection_authority_level

@@ -1619,3 +1619,18 @@
                                                     (perms/set-has-full-permissions-for-set?
                                                      @api/*current-user-permissions-set*
                                                      (perms-for-archiving coll)))))))))
+
+(mi/define-batched-hydration-method can-delete
+  :can_delete
+  "Efficiently hydrate the `:can_delete` of a sequence of items"
+  [items]
+  (when (seq items)
+    (for [item items]
+      (assoc item :can_delete (mi/can-write? item)))))
+
+(mi/define-batched-hydration-method collection-can-delete
+  :collection/can_delete
+  "Right now, you can never permanently delete collections. This is a placeholder in case that changes."
+  [items]
+  (for [item items]
+    (assoc item :can_delete false)))
