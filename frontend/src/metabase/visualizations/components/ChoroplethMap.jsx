@@ -113,7 +113,7 @@ const connector = connect(mapStateToProps, null);
 
 function getMapUrl(details, { isSdk, sdkMetabaseInstanceUrl, settings }) {
   if (details.builtin) {
-    if (isSdk) {
+    if (isSdk && sdkMetabaseInstanceUrl) {
       return new URL(details.url, sdkMetabaseInstanceUrl).href;
     }
     return details.url;
