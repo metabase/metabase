@@ -237,6 +237,8 @@ const getNumberOrZero = (value: RowValue): number =>
 export const computeTotal = (datum: Datum, keys: DataKey[]): number =>
   keys.reduce((total, key) => total + getNumberOrZero(datum[key]), 0);
 
+export const getNonNormalizedKey = (key: DataKey) => `${key}:non-normalized`;
+
 export const getNormalizedDatasetTransform = (
   stackModels: StackModel[],
 ): TransformFn => {
@@ -250,6 +252,9 @@ export const getNormalizedDatasetTransform = (
 
       // Compute normalized values for metrics
       return stackModel.seriesKeys.reduce((acc, key) => {
+        const nonNormalizedKey = getNonNormalizedKey(key);
+        acc[nonNormalizedKey] = acc[key];
+
         const numericValue = getNumberOrZero(datum[key]);
         acc[key] = numericValue / total;
         return acc;

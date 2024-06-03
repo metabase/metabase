@@ -56,5 +56,8 @@ export const formatValueForTooltip = ({
     weekday_enabled: true,
     type: "tooltip",
     majorWidth: 0,
+    // since we already transformed the dataset values, we do not need to
+    // consider scaling anymore
+    scale: undefined,
   });
 };

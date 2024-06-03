@@ -12,6 +12,7 @@ import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getNonNormalizedKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   isBreakoutSeries,
   isQuarterInterval,
@@ -293,11 +294,15 @@ const getStackedTooltipModel = (
         seriesStack?.seriesKeys.includes(seriesModel.dataKey),
       )
       .map(seriesModel => {
+        const tooltipValueKey =
+          settings["stackable.stack_type"] === "normalized"
+            ? getNonNormalizedKey(seriesModel.dataKey)
+            : seriesModel.dataKey;
         return {
           dataKey: seriesModel.dataKey,
           name: seriesModel.name,
           color: seriesModel.color,
-          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
+          value: chartModel.transformedDataset[dataIndex][tooltipValueKey],
           formatter,
         };
       });
