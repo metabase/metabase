@@ -96,8 +96,6 @@
   [_original-model _k]
   :model/Collection)
 
-(methodical/defmethod t2/model-for-automagic-hydration [:default :trashed_from_collection] [_original-model _k] :model/Collection)
-
 (t2/deftransforms :model/Collection
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})

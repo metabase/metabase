@@ -7674,187 +7674,6 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-05-14T12:13:22
-      author: johnswanson
-      comment: Add `collection.trashed_from_location`
-      changes:
-        - addColumn:
-            tableName: collection
-            columns:
-              - column:
-                  name: trashed_from_location
-                  type: ${text.type}
-                  remarks: "The previous location this collection was trashed from"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-14T12:13:33
-      author: johnswanson
-      comment: Add `report_card.trashed_from_collection_id`
-      changes:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this card was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-14T12:13:39
-      author: johnswanson
-      comment: Add `report_dashboard.trashed_from_collection_id`
-      changes:
-        - addColumn:
-            tableName: report_dashboard
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this dashboard was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:16
-      author: johnswanson
-      comment: Drop foreign key constraint fk_snippet_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_snippet_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            constraintName: fk_snippet_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:27
-      author: johnswanson
-      comment: Add foreign key constraint fk_snippet_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            constraintName: fk_snippet_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: native_query_snippet
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_snippet_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:29
-      author: johnswanson
-      comment: Drop foreign key constraint fk_pulse_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: pulse
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_pulse_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: pulse
-            constraintName: fk_pulse_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:32
-      author: johnswanson
-      comment: Add foreign key constraint fk_pulse_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: pulse
-            constraintName: fk_pulse_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: pulse
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_pulse_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:33
-      author: johnswanson
-      comment: Drop foreign key constraint fk_card_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_card_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_card_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:36
-      author: johnswanson
-      comment: Add foreign key constraint fk_card_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_card
-            constraintName: fk_card_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_card_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:37
-      author: johnswanson
-      comment: Drop foreign key constraint fk_dashboard_collection_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboard
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_dashboard_collection_id
-            onDelete: SET NULL
-      changes:
-        - dropForeignKeyConstraint:
-            baseTableName: report_dashboard
-            constraintName: fk_dashboard_collection_id
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:40
-      author: johnswanson
-      comment: Add foreign key constraint fk_dashboard_collection_id with CASCADE delete
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: report_dashboard
-            constraintName: fk_dashboard_collection_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: report_dashboard
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_dashboard_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v50.2024-05-14T12:42:42
       author: johnswanson
       comment: Create the Trash collection
@@ -7877,100 +7696,6 @@ databaseChangeLog:
                 SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
               );
               DELETE FROM collection WHERE type = 'trash';
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:44
-      author: johnswanson
-      comment: Move existing archived collections to the Trash - (Postgres)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql
-      changes:
-        - sql:
-            sql: >-
-              UPDATE collection AS c1
-              SET trashed_from_location = c1.location,
-                  location = CONCAT('/', c2.id, '/')
-              FROM (SELECT id FROM collection WHERE type = 'trash') AS c2
-              WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE collection
-              SET location = trashed_from_location
-              WHERE collection.archived = true and collection.namespace IS NULL AND trashed_from_location IS NOT NULL;
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:46
-      author: johnswanson
-      comment: Move existing archived collections to the Trash - (H2)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: h2
-      changes:
-        - sql:
-            sql: >-
-              UPDATE collection AS c1
-              SET trashed_from_location = c1.location,
-                  location = CONCAT('/', (SELECT id FROM collection WHERE type = 'trash'), '/')
-              WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE collection
-              SET location = trashed_from_location
-              WHERE collection.archived = true and collection.namespace IS NULL AND trashed_from_location IS NOT NULL;
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:48
-      author: johnswanson
-      comment: Move existing archived collections to the Trash - (MySQL/MariaDB)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-      changes:
-        - sql:
-            sql: >-
-              UPDATE collection AS c1
-              JOIN (
-                  SELECT id FROM collection WHERE type = 'trash'
-              ) AS c2
-              SET c1.trashed_from_location = c1.location,
-                  c1.location = CONCAT('/', c2.id, '/')
-              WHERE c1.archived = true AND c1.namespace IS NULL;
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE collection
-              SET location = trashed_from_location
-              WHERE collection.archived = true and collection.namespace IS NULL AND trashed_from_location IS NOT NULL;
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:50
-      author: johnswanson
-      comment: Move existing archived dashboards to the Trash
-      changes:
-        - sql:
-            sql: >-
-              UPDATE report_dashboard
-              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
-              WHERE archived = true;
-      rollback: # Not needed
-
-  - changeSet:
-      id: v50.2024-05-14T12:42:52
-      author: johnswanson
-      comment: Move existing archived cards to the Trash
-      changes:
-        - sql:
-            sql: >-
-              UPDATE report_card
-              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
-              WHERE archived = true;
-      rollback: # Not needed
 
   - changeSet:
       id: v50.2024-05-15T13:13:13
@@ -8106,120 +7831,46 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:05:03
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id`
+      comment: Populate `trashed_directly` and `trash_operation_id` (Postgres)
       changes:
         - sqlFile:
             dbms: postgresql
             path: trash/postgres.sql
             relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: postgresql
-            path: trash/postgres-rollback.sql
-            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
 
   - changeSet:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id`
+      comment: Populate `trashed_directly` and `trash_operation_id` (H2)
       changes:
         - sqlFile:
             dbms: h2
             path: trash/h2.sql
             relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: h2
-            path: trash/h2-rollback.sql
-            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
 
   - changeSet:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id`
+      comment: Populate `trashed_directly` and `trash_operation_id` (MySQL)
       changes:
         - sqlFile:
             dbms: mysql
             path: trash/mysql.sql
             relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: mysql
-            path: trash/mysql-rollback.sql
-            relativeToChangelogFile: true
+      rollback: # not needed, columns will be deleted
 
   - changeSet:
       id: v50.2024-05-29T18:42:15
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id`
+      comment: Populate `trashed_directly` and `trash_operation_id` (MariaDB)
       changes:
         - sqlFile:
             dbms: mariadb
             path: trash/mariadb.sql
             relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: mariadb
-            # we can reuse the mysql rollback here, not a typo
-            path: trash/mysql-rollback.sql
-            relativeToChangelogFile: true
-
-  - changeSet:
-      id: v50.2024-05-29T18:42:18
-      author: johnswanson
-      comment: remove `report_card.trashed_from_collection_id`
-      changes:
-        - dropColumn:
-            tableName: report_card
-            columnName: trashed_from_collection_id
-      rollback:
-        - addColumn:
-            tableName: report_card
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this card was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-29T18:42:21
-      author: johnswanson
-      comment: remove `report_dashboard.trashed_from_collection_id`
-      changes:
-        - dropColumn:
-            tableName: report_dashboard
-            columnName: trashed_from_collection_id
-      rollback:
-        - addColumn:
-            tableName: report_dashboard
-            columns:
-              - column:
-                  name: trashed_from_collection_id
-                  type: int
-                  remarks: "The previous parent collection this dashboard was trashed *from*"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v50.2024-05-29T18:42:25
-      author: johnswanson
-      comment: remove `collection.trashed_from_location`
-      changes:
-        - dropColumn:
-            tableName: collection
-            columnName: trashed_from_location
-      rollback:
-        - addColumn:
-            tableName: collection
-            columns:
-              - column:
-                  name: trashed_from_location
-                  type: ${text.type}
-                  remarks: "The previous location this collection was trashed from"
-                  constraints:
-                    nullable: true
+      rollback: # not needed, columns will be deleted
 
   - changeSet:
       id: v51.2024-05-13T15:30:57

@@ -1,57 +1,25 @@
 -- DASHBOARDS
--- First: remove any dashboards whose *old parent collection* was deleted.
-DELETE FROM report_dashboard
-  WHERE trashed_from_collection_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM collection WHERE id = trashed_from_collection_id
-);
-
--- Next: set `trashed_directly`.
+-- Set `trashed_directly`.
 UPDATE report_dashboard
 SET trashed_directly = COALESCE(
-  -- If the dashboard's current `collection_id` is the trash collection, then it was trashed directly
-  collection_id = (SELECT id FROM collection WHERE type = 'trash'),
+  -- If the collection is archived then it was *not* trashed directly
+  (SELECT NOT collection.archived FROM collection WHERE collection.id = report_dashboard.collection_id),
   false
   )
-WHERE archived = true;
-
--- Set `collection_id` and `trashed_from_collection_id`
-UPDATE report_dashboard
-SET collection_id = trashed_from_collection_id, trashed_from_collection_id = NULL
 WHERE archived = true;
 
 -- CARDS
--- Exactly as above, but for `report_card` instead of `report_dashboard`
-
-DELETE FROM report_card
-  WHERE trashed_from_collection_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM collection WHERE id = trashed_from_collection_id
-);
-
--- Next: set `trashed_directly`.
+-- Set `trashed_directly`.
 UPDATE report_card
 SET trashed_directly = COALESCE(
-  -- If the dashboard's current `collection_id` is the trash collection, then it was trashed directly
-  collection_id = (SELECT id FROM collection WHERE type = 'trash'),
+  -- If the collection is archived then it was *not* trashed directly
+  (SELECT NOT collection.archived FROM collection WHERE collection.id = report_card.collection_id),
   false
   )
 WHERE archived = true;
 
--- Set `collection_id` and `trashed_from_collection_id`
-UPDATE report_card
-SET collection_id = trashed_from_collection_id, trashed_from_collection_id = NULL
-WHERE archived = true;
-
 -- COLLECTIONS
--- First: move all archived collections back to their original locations.
-
-UPDATE collection
-SET
-  location = trashed_from_location,
-  trashed_from_location = NULL
-WHERE archived = true;
-
--- Next: set `collection.trashed_directly`.
-
+-- Set `collection.trashed_directly`.
 WITH CollectionWithParentID AS (
   SELECT
   id,
