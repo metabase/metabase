@@ -12,9 +12,9 @@ import revisions from "metabase/redux/revisions";
 import reference from "metabase/reference/reference";
 import { reducer as setup } from "metabase/setup/reducers";
 
-import commonReducers from "./reducers-common";
+import { commonReducers } from "./reducers-common";
 
-export default {
+export const mainReducers = {
   ...commonReducers,
 
   // main app reducers

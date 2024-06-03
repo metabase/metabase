@@ -1,7 +1,7 @@
 // Reducers needed for public questions and dashboards
 
-import commonReducers from "./reducers-common";
+import { commonReducers } from "./reducers-common";
 
-export default {
+export const publicReducers = {
   ...commonReducers,
 };

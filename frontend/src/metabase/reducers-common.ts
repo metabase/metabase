@@ -16,7 +16,7 @@ import undo from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 
-export default {
+export const commonReducers = {
   // global reducers
   app,
   embed,
