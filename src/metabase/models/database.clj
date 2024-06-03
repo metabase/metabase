@@ -282,7 +282,7 @@
       (u/prog1 (cond-> database
                  ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
                  (and (some? (:details changes))
-                      (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                      (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
                  (update :details dissoc :json_unfolding)
 
                  (or
@@ -302,7 +302,7 @@
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
-                   (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine

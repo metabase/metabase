@@ -14,6 +14,7 @@
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -60,7 +61,7 @@
                :let   [driver (tx/the-driver-with-test-extensions driver)]
                :when  (driver/with-driver driver
                         (let [db (data/db)]
-                          (every? #(driver/database-supports? driver % db) features)))]
+                          (every? #(driver.u/supports? driver % db) features)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/features))))
@@ -353,7 +354,7 @@
 (defn supports-report-timezone?
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
-  (driver/database-supports? driver :set-timezone (data/db)))
+  (driver.u/supports? driver :set-timezone (data/db)))
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
