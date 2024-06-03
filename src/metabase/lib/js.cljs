@@ -599,7 +599,6 @@
   []
   (to-array (map clj->js (lib.core/available-temporal-units))))
 
-
 ;; # Manipulating Clauses
 ;;
 ;; These three functions work on any kind of clause - aggregations, filters, breakouts, custom expressions, order-by.
