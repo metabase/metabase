@@ -93,8 +93,7 @@
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
-
-  There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"placeholder\"."
+There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"placeholder\"."
   [dashcard ttype]
   (when (= ttype (get-in dashcard [:visualization_settings :virtual_card :display]))
     dashcard))
@@ -305,7 +304,7 @@
   [pulse dashboard]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
-                                :text (subject pulse)
+                                :text #p (subject pulse)
                                 :emoji true}}
         creator-section {:type   "section"
                          :fields [{:type "mrkdwn"
@@ -594,4 +593,3 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
-#_(send-pulse! (t2/select-one :model/Pulse 15))

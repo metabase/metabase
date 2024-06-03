@@ -56,10 +56,10 @@
     [:collection {:optional true} ::common/non-blank-string]
     ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
     ;; `:native` key), but their definition lives under this key.
-    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]]
     ;;
     ;; TODO -- parameters??
-    ]
+
    [:fn
     {:error/message ":source-table is not allowed in a native query stage."}
     #(not (contains? % :source-table))]

@@ -2,10 +2,14 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.interface :as channel.interface]
+   ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
@@ -41,11 +45,11 @@
                  :text {:type "mrkdwn"
                         :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
 
-(defn- part->attachment-data
-  [part channel-id]
-  (case (:type part)
+(defn- payload->attachment-data
+  [payload channel-id]
+  (case (:type payload)
     :card
-    (let [{:keys [card dashcard result]}          part
+    (let [{:keys [card dashcard result]}         payload
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
@@ -56,10 +60,10 @@
        :fallback        card-name})
 
     :text
-    (text->markdown-block (:text part))
+    (text->markdown-block (:text payload))
 
     :tab-title
-    (text->markdown-block (format "# %s" (:text part)))))
+    (text->markdown-block (format "# %s" (:text payload)))))
 
 (def slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
@@ -87,14 +91,74 @@
             []
             attachments)))
 
+(defmethod channel.interface/deliver! [:slack :alert]
+  [_channel-details payload recipients _template]
+  (doseq [{channel-id :recipient} recipients]
+    (let [{:keys [card]} payload
+          channel-id     (str/replace channel-id "#" "")
+          attachments    [{:blocks [{:type "header"
+                                     :text {:type "plain_text"
+                                            :text (str "🔔 " (:name card))
+                                            :emoji true}}]}
+                          (payload->attachment-data (assoc payload :type :card) channel-id)]]
+      (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments)))))
 
-(defmethod channel.interface/send-notification! [:slack :alert]
-  [_channel _notificaiton-type recipients payload]
-  (doseq [channel-id recipients]
-    (let [attachments [{:blocks [{:type "header"
-                                  :text {:type "plain_text"
-                                         :text (str "🔔 " (-> payload :card :name))
-                                         :emoji true}}]}
-                       (part->attachment-data (assoc payload :type :card) channel-id)]
-          attachments (create-and-upload-slack-attachments! attachments)]
-      (slack/post-chat-message! channel-id nil attachments))))
+(def ^:private attachment-text-length-limit 2000)
+
+(defn- filter-text
+  [filter]
+  (truncate-mrkdwn
+   (format "*%s*\n%s" (:name filter) (pulse-params/value-string filter))
+   attachment-text-length-limit))
+
+(defn- slack-dashboard-header
+  "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
+  Slack dashboard subscription"
+  [pulse dashboard]
+  (let [header-section  {:type "header"
+                         :text {:type "plain_text"
+                                :text (:name dashboard)
+                                :emoji true}}
+        creator-section {:type   "section"
+                         :fields [{:type "mrkdwn"
+                                   :text (str "Sent by " (-> pulse :creator :common_name))}]}
+        filters         (pulse-params/parameters pulse dashboard)
+        filter-fields   (for [filter filters]
+                          {:type "mrkdwn"
+                           :text (filter-text filter)})
+        filter-section  (when (seq filter-fields)
+                          {:type   "section"
+                           :fields filter-fields})]
+    (if filter-section
+      {:blocks [header-section filter-section creator-section]}
+      {:blocks [header-section creator-section]})))
+
+(defn- slack-dashboard-footer
+  "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
+  [pulse dashboard]
+  {:blocks
+   [{:type "divider"}
+    {:type "context"
+     :elements [{:type "mrkdwn"
+                 :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "|"
+                            "*Sent from " (public-settings/site-name) "*>")}]}]})
+
+(defn- create-slack-attachment-data
+  "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
+  [parts]
+  (let [channel-id (slack/files-channel)]
+    (for [part  parts
+          :let  [attachment (payload->attachment-data part channel-id)]
+          :when attachment]
+      attachment)))
+
+(defmethod channel.interface/deliver! [:slack :dashboard-subscription]
+  [_channel-details payload recipients _template]
+  (def payload payload)
+  (def recipients recipients)
+  (doseq [{channel-id :recipient} recipients]
+    (let [dashboard (:dashboard payload)]
+      (slack/post-chat-message! channel-id nil (remove nil?
+                                                       (flatten [(slack-dashboard-header (:dashboard-subscription payload) dashboard)
+                                                                 (create-slack-attachment-data (:result payload))
+                                                                 (when dashboard (slack-dashboard-footer (:dashboard-subscription payload) dashboard))]))))))

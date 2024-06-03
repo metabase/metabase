@@ -1,9 +1,5 @@
 (ns metabase.channel.interface)
 
-(defmulti can-connect?
-  {:arglists '([channel])}
-  :kind)
-
-(defmulti send-notification!
-  (fn [channel notification-type _recipients _payload]
-    [(:kind channel) notification-type]))
+(defmulti deliver!
+  (fn [channel-details payload _recipients _template]
+    [(:channel_type channel-details) (:payload-type payload)]))

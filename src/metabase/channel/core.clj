@@ -5,4 +5,4 @@
 
 (p/import-vars
  [channel.interface
-  send-notification!])
+  deliver!])
