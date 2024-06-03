@@ -38,6 +38,6 @@ export const EmptyColumnPlaceholder = styled.div`
   width: 100%;
   padding: 0.75rem;
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   color: ${color("text-medium")};
 `;

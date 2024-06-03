@@ -22,10 +22,10 @@ export const TabIcon = styled(Icon)`
 
 export const CloseIcon = styled(Icon)`
   margin-left: ${space(2)};
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   cursor: pointer;
 
   :hover {
-    color: ${lighten(color("bg-dark"), 0.3)};
+    color: ${() => lighten(color("bg-dark"), 0.3)};
   }
 `;

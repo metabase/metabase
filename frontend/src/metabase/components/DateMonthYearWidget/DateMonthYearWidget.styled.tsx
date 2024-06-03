@@ -32,6 +32,7 @@ export const MonthRoot = styled.div<MonthRootProps>`
   background-color: ${props => props.isSelected && color("brand")};
 
   &:hover {
-    background-color: ${props => !props.isSelected && color("bg-light")};
+    background-color: ${props =>
+      !props.isSelected && "var(--mb-color-bg-light)"};
   }
 `;

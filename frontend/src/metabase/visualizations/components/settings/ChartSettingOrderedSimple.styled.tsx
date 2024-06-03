@@ -13,7 +13,7 @@ export const ChartSettingMessage = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  background: ${color("bg-light")};
+  background: var(--mb-color-bg-light);
   color: ${color("text-light")};
   font-weight: 700;
   border-radius: 0.5rem;
