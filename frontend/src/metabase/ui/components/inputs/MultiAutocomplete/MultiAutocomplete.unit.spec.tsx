@@ -303,19 +303,16 @@ describe("MultiAutocomplete", () => {
       });
 
       input.focus();
-      await userEvent.type(input, "55", {
+      await userEvent.type(input, "55,", {
         pointerEventsCheck: 0,
       });
-      expect(input).toHaveValue("55");
-      input.blur();
-
-      expect(onChange).toHaveBeenLastCalledWith([55]);
       expect(input).toHaveValue("");
 
-      await userEvent.type(input, "42,12.34", {
+      expect(onChange).toHaveBeenLastCalledWith([55]);
+
+      await userEvent.type(input, "42,12.34,", {
         pointerEventsCheck: 0,
       });
-      input.blur();
 
       expect(onChange).toHaveBeenLastCalledWith([55, 42, 12.34]);
       expect(input).toHaveValue("");
