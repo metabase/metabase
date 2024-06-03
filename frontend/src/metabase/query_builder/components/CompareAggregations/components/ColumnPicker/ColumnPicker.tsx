@@ -55,12 +55,11 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
 
   return (
     <MultiSelect
-      label={t`Columns to create`}
       data={options}
       disableSelectedItemFiltering
       itemComponent={Item}
+      label={t`Columns to create`}
       placeholder={t`Columns to create`}
-      rightSection={null}
       styles={{
         item: {
           "&[data-selected]": {
