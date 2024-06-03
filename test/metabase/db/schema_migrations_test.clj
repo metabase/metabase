@@ -11,7 +11,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -2025,43 +2024,6 @@
         (is (= 1 (t2/select-one-fn :view_count :metabase_table table-id)))
         (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
-
-(deftest move-to-trash-test
-  (testing "existing archived items should be moved to the Trash"
-    (impl/test-migrations ["v50.2024-05-14T12:42:44" "v50.2024-05-14T12:42:52"] [migrate!]
-      (let [user       (create-raw-user! (mt/random-email))
-            db         (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
-                                                                       (update :details json/generate-string)
-                                                                       (update :engine str)))
-            dash       (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
-                                                {:name       "A dashboard"
-                                                 :archived   true
-                                                 :creator_id (:id user)
-                                                 :created_at :%now
-                                                 :updated_at :%now
-                                                 :parameters ""})
-            card       (t2/insert-returning-pk! (t2/table-name Card)
-                                                {:name                   "Card"
-                                                 :archived               true
-                                                 :display                "table"
-                                                 :dataset_query          "{}"
-                                                 :visualization_settings "{}"
-                                                 :cache_ttl              30
-                                                 :creator_id             (:id user)
-                                                 :database_id            db
-                                                 :created_at             :%now
-                                                 :updated_at             :%now})
-            collection (t2/insert-returning-pk! (t2/table-name Collection)
-                                                {:name     "Silly Collection"
-                                                 :slug     "silly-collection"
-                                                 :archived true})]
-        (is (empty? (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
-        (is (empty? (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
-        (is (empty? (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))
-        (migrate!)
-        (is (set/subset? #{dash} (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
-        (is (set/subset? #{card} (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
-        (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
 
 (deftest trash-migrations-test
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
