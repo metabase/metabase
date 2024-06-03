@@ -1,4 +1,11 @@
+import { Group } from "@visx/group";
+import { init } from "echarts";
+
+import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
+import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
+import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 
 import type { StaticChartProps } from "../StaticVisualization";
 
@@ -8,6 +15,7 @@ export function PieChart({
   rawSeries,
   dashcardSettings,
   renderingContext,
+  isStorybook,
 }: StaticChartProps) {
   const computedVizSettings = computeStaticPieChartSettings(
     rawSeries,
@@ -18,18 +26,37 @@ export function PieChart({
     computedVizSettings,
     renderingContext,
   );
-  console.log("chartModel", chartModel);
+  const formatters = getPieChartFormatters(
+    chartModel,
+    computedVizSettings,
+    renderingContext,
+  );
+  const option = getPieChartOption(
+    chartModel,
+    formatters,
+    computedVizSettings,
+    renderingContext,
+  );
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width: DIMENSIONS.sideLen,
+    height: DIMENSIONS.sideLen,
+  });
+  chart.setOption(option);
+  const chartSvg = sanitizeSvgForBatik(
+    chart.renderToSVGString(),
+    isStorybook ?? false,
+  );
 
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={500} height={500}>
-      <text
-        id="outer-text"
-        fill="black"
-        dominantBaseline="central"
-        transform="translate(50 50)"
-      >
-        Placeholder
-      </text>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={DIMENSIONS.sideLen}
+      height={DIMENSIONS.sideLen + DIMENSIONS.paddingTop}
+    >
+      <Group dangerouslySetInnerHTML={{ __html: chartSvg }}></Group>
     </svg>
   );
 }
