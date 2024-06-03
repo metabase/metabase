@@ -1,7 +1,7 @@
 import type { QueryClickActionsMode } from "../../types";
 import { CombineColumnsAction } from "../actions/CombineColumnsAction";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
-import { ExtractColumnAction } from "../actions/ExtractColumn";
+import { ExtractColumnAction } from "../actions/ExtractColumnAction";
 import { HideColumnAction } from "../actions/HideColumnAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 
