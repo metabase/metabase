@@ -291,7 +291,7 @@ export function getStackTotalValue(
     const seriesValue = data[stackDataKey];
     if (
       typeof seriesValue === "number" &&
-      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
+      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue >= 0) ||
         (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
     ) {
       stackValue = (stackValue ?? 0) + seriesValue;
