@@ -366,6 +366,10 @@ class Question {
     return this._card && this._card.can_write;
   }
 
+  canWriteQuery(): boolean {
+    return this._card && this._card.can_write_query;
+  }
+
   canWriteActions(): boolean {
     const database = this.database();
 
@@ -701,11 +705,10 @@ class Question {
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,
-    clean = true,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
+    const query = this.query();
 
     const cardCopy = {
       name: this._card.name,

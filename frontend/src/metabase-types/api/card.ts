@@ -31,6 +31,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   enable_embedding: boolean;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
+  can_write_query: boolean;
   can_restore: boolean;
   initially_published_at: string | null;
 

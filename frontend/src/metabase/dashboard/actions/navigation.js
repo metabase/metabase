@@ -47,14 +47,14 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       const metadata = getMetadata(getState());
       const { dashboardId, dashboards, parameterValues } = getState().dashboard;
       const dashboard = dashboards[dashboardId];
+
       const cardAfterClick = getCardAfterVisualizationClick(
         nextCard,
         previousCard,
       );
 
       let question = new Question(cardAfterClick, metadata);
-      const { isEditable } = Lib.queryDisplayInfo(question.query());
-      if (isEditable) {
+      if (previousCard.can_write_query) {
         question = question
           .setDisplay(cardAfterClick.display || previousCard.display)
           .setSettings(dashcard.card.visualization_settings)
@@ -71,27 +71,11 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         dashcard,
       );
 
-      // When drilling from a native model, the drill can return a new question
-      // querying a table for which we don't have any metadata for
-      // When building a question URL, it'll usually clean the query and
-      // strip clauses referencing fields from tables without metadata
-      const previousQuestion = new Question(previousCard, metadata);
-      const { isNative: isPreviousNative } = Lib.queryDisplayInfo(
-        previousQuestion.query(),
-      );
-
-      const isFromModelOrMetric =
-        previousQuestion.type() === "model" ||
-        previousQuestion.type() === "metric";
-      const isDrillingFromNativeModelOrMetric =
-        isFromModelOrMetric && isPreviousNative;
-
       const url = ML_Urls.getUrlWithParameters(
         question,
         parametersMappedToCard,
         parameterValues,
         {
-          clean: !isDrillingFromNativeModelOrMetric,
           objectId,
         },
       );

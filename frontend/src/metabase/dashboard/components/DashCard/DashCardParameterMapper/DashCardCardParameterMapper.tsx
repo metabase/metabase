@@ -25,7 +25,6 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
   getParameterSubType,
@@ -191,8 +190,7 @@ export function DashCardCardParameterMapper({
       return false;
     }
 
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
-    return isEditable;
+    return question.canWriteQuery();
   }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =

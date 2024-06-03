@@ -14,7 +14,6 @@ import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
@@ -99,7 +98,7 @@ const DashCardMenu = ({
 
   const menuItems = useMemo(
     () => [
-      canEditQuestion(question) && {
+      question.canWriteQuery() && {
         title: `Edit question`,
         icon: "pencil",
         action: () => onEditQuestion(question),
@@ -140,11 +139,6 @@ interface QueryDownloadWidgetOpts {
   isEditing: boolean;
 }
 
-const canEditQuestion = (question: Question) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  return question.canWrite() && isEditable;
-};
-
 const canDownloadResults = (result?: Dataset) => {
   return (
     result != null &&
@@ -175,7 +169,7 @@ DashCardMenu.shouldRender = ({
     !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
-    (canEditQuestion(question) || canDownloadResults(result))
+    (question.canWriteQuery() || canDownloadResults(result))
   );
 };
 
