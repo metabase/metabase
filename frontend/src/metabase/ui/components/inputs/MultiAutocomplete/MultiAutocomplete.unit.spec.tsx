@@ -295,7 +295,7 @@ describe("MultiAutocomplete", () => {
     expect(input).toHaveValue("");
   });
 
-  describe("numberic values", () => {
+  describe("numeric values", () => {
     it("should work with number values", async () => {
       const { input, onChange } = setup({
         data: NUMERIC_DATA,
