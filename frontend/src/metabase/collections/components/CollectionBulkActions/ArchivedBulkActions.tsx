@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { BulkDeleteConfirmModal } from "metabase/archive/components/BulkDeleteConfirmModal";
 import {
-  canDeleteItem,
   canMoveItem,
   isRootTrashCollection,
 } from "metabase/collections/utils";
@@ -64,8 +63,8 @@ export const ArchivedBulkActions = ({
 
   // delete
   const canDelete = useMemo(() => {
-    return selected.every(item => canDeleteItem(item, collection));
-  }, [selected, collection]);
+    return selected.every(item => item.can_delete);
+  }, [selected]);
 
   const handleBulkDeletePermanentlyStart = async () => {
     setSelectedItems(selected);
