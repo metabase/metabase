@@ -43,7 +43,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   padding: ${space(1)};
   text-decoration: none;
   :hover {
-    background-color: ${color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
 
   ${props =>

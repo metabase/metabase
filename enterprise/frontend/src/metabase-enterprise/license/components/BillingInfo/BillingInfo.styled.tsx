@@ -18,7 +18,7 @@ export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
   align-items: center;
 
   &:not(:last-child) {
-    border-bottom: 1px solid ${color("bg-medium")};
+    border-bottom: 1px solid var(--mb-color-bg-medium);
   }
 `;
 

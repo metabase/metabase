@@ -14,7 +14,7 @@ export const StepRoot = styled.section<Props>`
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
   background-color: ${props =>
-    color(props.isCompleted ? "white" : "bg-medium")};
+    props.isCompleted ? color("white") : "var(--mb-color-bg-medium)"};
 `;
 
 export const StepTitle = styled.div<Props>`

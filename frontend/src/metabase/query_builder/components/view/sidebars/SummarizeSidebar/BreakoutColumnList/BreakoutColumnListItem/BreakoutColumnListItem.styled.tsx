@@ -106,7 +106,7 @@ const unselectedStyle = css`
     }
 
     ${AddButton}:hover {
-      background-color: ${color("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
 
     ${BucketPickerPopover.TriggerButton} {

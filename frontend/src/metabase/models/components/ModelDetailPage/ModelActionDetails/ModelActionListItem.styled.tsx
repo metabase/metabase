@@ -89,7 +89,7 @@ export const ImplicitActionCardContentRoot = styled.div`
   align-items: center;
 
   color: ${color("text-medium")};
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
 
   font-weight: 400;
 `;

@@ -29,7 +29,7 @@ export const OptionsRoot = styled.div`
 `;
 
 export const EducationalButton = styled(ExternalLink)`
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
   border-radius: 0.5rem;
   color: ${color("brand")};
   font-weight: bold;

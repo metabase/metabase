@@ -39,6 +39,6 @@ export const Label = styled(HoverParent)`
   min-height: 2.25rem;
 
   &:hover {
-    background: ${color("bg-medium")};
+    background: var(--mb-color-bg-medium);
   }
 `;

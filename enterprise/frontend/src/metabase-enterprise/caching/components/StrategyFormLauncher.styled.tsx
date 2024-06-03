@@ -58,7 +58,8 @@ export const StyledLauncher = styled(Flex)<
     `};
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
-  background-color: ${({ forRoot }) => color(forRoot ? "bg-medium" : "white")};
+  background-color: ${({ forRoot }) =>
+    forRoot ? "var(--mb-color-bg-medium)" : color("white")};
   ${({ forRoot }) => (forRoot ? "" : `border: 1px solid ${color("border")}`)};
   flex-direction: row;
   align-items: center;

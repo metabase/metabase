@@ -13,7 +13,7 @@ export interface AlertRootProps {
 
 const colorsByVariant = {
   border: {
-    info: color("bg-medium"),
+    info: "var(--mb-color-bg-medium)",
     error: color("error"),
     warning: color("warning"),
   },

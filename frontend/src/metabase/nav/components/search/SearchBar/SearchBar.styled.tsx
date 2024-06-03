@@ -33,7 +33,7 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: ${color("bg-medium")};
+        background-color: var(--mb-color-bg-medium);
       `;
     }
     return css`
