@@ -214,15 +214,28 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     );
 
     if (!isEditing || !_.isEqual(this.getVisibleCards(), cards)) {
-      this.setState({
-        initialCardSizes: this.getInitialCardSizes(cards),
-      });
+      const initialCardSizes = this.getInitialCardSizes(cards);
+
+      if (!_.isEqual(this.state.initialCardSizes, initialCardSizes)) {
+        this.setState({
+          initialCardSizes,
+        });
+      }
     }
 
-    this.setState({
+    const layouts = this.getLayouts(cards);
+    const hasLayoutsChanged = !_.isEqual(this.state.layouts, layouts);
+    const hasVisibleCardIdsChanged = !_.isEqual(
+      this.state.visibleCardIds,
       visibleCardIds,
-      layouts: this.getLayouts(cards),
-    });
+    );
+
+    if (hasVisibleCardIdsChanged || hasLayoutsChanged) {
+      this.setState({
+        visibleCardIds,
+        layouts,
+      });
+    }
   }
 
   getInitialCardSizes = (cards: BaseDashboardCard[]) => {
