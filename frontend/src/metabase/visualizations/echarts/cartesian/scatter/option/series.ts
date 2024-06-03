@@ -4,7 +4,7 @@ import type { ScatterSeriesOption } from "echarts/charts";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { CHART_STYLE } from "../../constants/style";
+import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
 import type { DataKey, Datum, Extent, SeriesModel } from "../../model/types";
 
 const MIN_BUBBLE_DIAMETER = 15;
@@ -65,6 +65,7 @@ export function buildEChartsScatterSeries(
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
+    z: Z_INDEXES.series,
     itemStyle: {
       color: seriesModel.color,
       opacity: CHART_STYLE.opacity.scatter,

@@ -12,6 +12,7 @@ import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
 import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import barCorrectWidthWhenTwoYAxes from "./bar-correct-width-when-two-y-axes.json";
+import barDataLabelsNegatives from "./bar-data-labels-negatives.json";
 import barFormattingFull from "./bar-formatting-full.json";
 import barFullyNullDimension37902 from "./bar-fully-null-dimension-37902.json";
 import barHistogramMultiSeriesBinned from "./bar-histogram-multi-series-binned.json";
@@ -28,6 +29,7 @@ import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotate
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
+import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
 import barStackedPowYAxisNegatives from "./bar-stacked-pow-y-axis-negatives.json";
@@ -49,6 +51,7 @@ import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normaliz
 import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
 import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column-scaling.json";
+import dataLabelsUnderTrendGoalLines41280 from "./data-labels-under-trend-goal-lines-41280.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
 import goalLineOutOfBounds37848 from "./goal-line-out-of-bounds-37848.json";
@@ -114,6 +117,7 @@ export const data = {
   lineFullyNullDimension37902,
   areaFullyNullDimension37902,
   barCorrectWidthWhenTwoYAxes,
+  barDataLabelsNegatives,
   barLinearXScale,
   barHistogramXScale,
   barHistogramMultiSeries,
@@ -159,6 +163,7 @@ export const data = {
   combinedBarTimeSeriesDifferentGranularityWithBreakout,
   longDimensionNameCutOff37420,
   compactXAxisDoesNotWork38917,
+  dataLabelsUnderTrendGoalLines41280,
   nativeAutoYSplit,
   numberOfInsightsError39608,
   numericXAxisIncludesZero37082,
@@ -204,4 +209,5 @@ export const data = {
   barStackedSeriesLabelsRotated,
   barStackedSeriesLabelsAndTotalsOrdinal,
   barStackedSeriesLabelsNormalizedAutoCompactness,
+  barStackedLabelsNullVsZero,
 };

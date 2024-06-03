@@ -45,7 +45,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { getColumnScaling } from "./util";
+import { getColumnScaling, getBarSeriesDataLabelKey } from "./util";
 
 /**
  * Sums two metric column values.
@@ -357,13 +357,15 @@ function getStackedValueTransformFunction(
       const rawBelowTotal = belowSeriesKeys
         .map(belowSeriesKey => datum[belowSeriesKey])
         .reduce((total: number, rowValue) => {
-          const value = getNumberOrZero(rowValue);
-
-          if (sign === "+" && value >= 0) {
-            return total + value;
+          if (typeof rowValue !== "number") {
+            return total;
           }
-          if (sign === "-" && value < 0) {
-            return total + value;
+
+          if (sign === "+" && rowValue >= 0) {
+            return total + rowValue;
+          }
+          if (sign === "-" && rowValue < 0) {
+            return total + rowValue;
           }
           return total;
         }, 0);
@@ -420,15 +422,56 @@ function getStackedDataLabelTransform(
       const transformedDatum = { ...datum };
 
       seriesDataKeys.forEach(seriesDataKey => {
-        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+        const value = datum[seriesDataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+
+        if (value >= 0) {
           transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
         }
-        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+        if (value < 0) {
           transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
         }
       });
 
       return transformedDatum;
+    },
+  };
+}
+
+function getBarSeriesDataLabelTransform(
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+): ConditionalTransform {
+  const barSeriesModels = seriesModels.filter(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return seriesSettings.display === "bar";
+  });
+
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        const value = datum[dataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+        if (value >= 0) {
+          transforedDatum[getBarSeriesDataLabelKey(dataKey, "+")] =
+            Number.MIN_VALUE;
+        }
+        if (value < 0) {
+          transforedDatum[getBarSeriesDataLabelKey(dataKey, "-")] =
+            -Number.MIN_VALUE;
+        }
+      });
+
+      return transforedDatum;
     },
   };
 }
@@ -697,6 +740,7 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     getStackedDataLabelTransform(settings, seriesDataKeys),
+    getBarSeriesDataLabelTransform(settings, seriesModels),
     {
       condition:
         settings["stackable.stack_type"] != null &&
