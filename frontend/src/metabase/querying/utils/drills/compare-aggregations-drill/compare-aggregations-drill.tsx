@@ -41,7 +41,12 @@ export const compareAggregationsDrill: Drill<
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
 
-          dispatch(setUIControls({ scrollToLastColumn: true }));
+          dispatch(
+            setUIControls({
+              scrollToLastColumn: true,
+              isShowingRawTable: false,
+            }),
+          );
           onChangeCardAndRun({ nextCard });
           onClose();
         }}
