@@ -17,8 +17,6 @@
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
