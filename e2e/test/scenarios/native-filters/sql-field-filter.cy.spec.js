@@ -6,6 +6,7 @@ import {
   filterWidget,
   popover,
   removeMultiAutocompleteValue,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -83,7 +84,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       filterWidget().click();
       popover().within(() => {
-        cy.get("input").type("10{enter}");
+        multiAutocompleteInput().type("10,");
         cy.findByText("Update filter").click();
       });
       filterWidget().icon("time_history").click();
