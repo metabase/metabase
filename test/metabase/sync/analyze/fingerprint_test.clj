@@ -38,6 +38,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
+             [:not= :base_type "type/*"]
              [:not (mdb.u/isa :base_type :type/Structured)]
              [:or
               [:and
@@ -54,6 +55,7 @@
             [:not (mdb.u/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
+           [:not= :base_type "type/*"]
            [:not (mdb.u/isa :base_type :type/Structured)]
            [:or
             [:and
@@ -76,6 +78,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
+             [:not= :base_type "type/*"]
              [:not (mdb.u/isa :base_type :type/Structured)]
              [:or
               [:and
@@ -99,6 +102,7 @@
               [:not (mdb.u/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
+             [:not= :base_type "type/*"]
              [:not (mdb.u/isa :base_type :type/Structured)]
              [:or
               [:and
@@ -127,6 +131,7 @@
                      [:not (mdb.u/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
+                    [:not= :base_type "type/*"]
                     [:not (mdb.u/isa :base_type :type/Structured)]]}
            (binding [fingerprint/*refingerprint?* true]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
