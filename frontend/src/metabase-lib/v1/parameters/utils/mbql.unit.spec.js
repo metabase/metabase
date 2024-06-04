@@ -243,14 +243,14 @@ describe("parameters/utils/mbql", () => {
     const query = Lib.withDifferentTable(createQuery(), PRODUCTS_ID);
     const stageIndex = -1;
 
-    it("should return null for parameter targets that are not field dimension targets", () => {
+    it("should not modify the query for parameter targets that are not field dimension targets", () => {
       expect(
         applyFilterParameter(query, stageIndex, {
           target: null,
           type: "category",
           value: ["foo"],
         }),
-      ).toBe(null);
+      ).toBe(query);
 
       expect(
         applyFilterParameter(query, stageIndex, {
@@ -258,7 +258,7 @@ describe("parameters/utils/mbql", () => {
           type: "category",
           value: ["foo"],
         }),
-      ).toBe(null);
+      ).toBe(query);
 
       expect(
         applyFilterParameter(query, stageIndex, {
@@ -266,7 +266,7 @@ describe("parameters/utils/mbql", () => {
           type: "category",
           value: ["foo"],
         }),
-      ).toBe(null);
+      ).toBe(query);
 
       expect(
         applyFilterParameter(query, stageIndex, {
@@ -274,75 +274,82 @@ describe("parameters/utils/mbql", () => {
           type: "category",
           value: ["foo"],
         }),
-      ).toBe(null);
+      ).toBe(query);
     });
 
-    it("should return mbql filter for date parameter", () => {
-      const filter = applyFilterParameter(query, stageIndex, {
+    it("should add a filter fora  date parameter", () => {
+      const newQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
         type: "date/single",
         value: "01-01-2020",
       });
+      const [filter] = Lib.filters(newQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
         displayName: "Created At is on 01-01-2020",
       });
     });
 
-    it("should return mbql filter for string parameter", () => {
-      const containsFilter = applyFilterParameter(query, stageIndex, {
+    it("should add a filter for a string parameter", () => {
+      const containsFilterQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "string/contains",
         value: "foo",
       });
+      const [containsFilter] = Lib.filters(containsFilterQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, containsFilter)).toMatchObject({
         displayName: "Category contains foo",
       });
 
-      const startsFilter = applyFilterParameter(query, stageIndex, {
+      const startsFilterQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "string/starts-with",
         value: ["foo"],
       });
+      const [startsFilter] = Lib.filters(startsFilterQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, startsFilter)).toMatchObject({
         displayName: "Category starts with foo",
       });
     });
 
-    it("should return mbql filter for category parameter", () => {
-      const filter = applyFilterParameter(query, stageIndex, {
+    it("should adda filter for a category parameter", () => {
+      const newQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         type: "category",
         value: ["foo", "bar"],
       });
+      const [filter] = Lib.filters(newQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
         displayName: "Category is 2 selections",
       });
     });
 
     it("should return mbql filter for number parameter", () => {
-      const valueFilter = applyFilterParameter(query, stageIndex, {
+      const valueFilterQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/=",
         value: 111,
       });
+      const [valueFilter] = Lib.filters(valueFilterQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, valueFilter)).toMatchObject({
         displayName: "Rating is equal to 111",
       });
 
-      const arrayFilter = applyFilterParameter(query, stageIndex, {
+      const arrayFilterQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/=",
         value: [111],
       });
+      const [arrayFilter] = Lib.filters(arrayFilterQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, arrayFilter)).toMatchObject({
         displayName: "Rating is equal to 111",
       });
 
-      const betweenFilter = applyFilterParameter(query, stageIndex, {
+      const betweenFilterQuery = applyFilterParameter(query, stageIndex, {
         target: ["dimension", ["field", PRODUCTS.RATING, null]],
         type: "number/between",
         value: [1, 100],
       });
+      const [betweenFilter] = Lib.filters(betweenFilterQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, betweenFilter)).toMatchObject({
         displayName: "Rating is between 1 and 100",
       });
