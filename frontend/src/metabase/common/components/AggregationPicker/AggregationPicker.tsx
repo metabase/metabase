@@ -245,14 +245,19 @@ export function AggregationPicker({
   );
 
   const handleCompareSubmit = useCallback(
-    (aggregations: Lib.Aggregable[]) => {
+    (aggregations: Lib.ExpressionClause[]) => {
       onAdd(aggregations);
 
-      trackColumnCompareViaShortcut(query, question.id());
+      trackColumnCompareViaShortcut(
+        query,
+        stageIndex,
+        aggregations,
+        question.id(),
+      );
 
       onClose?.();
     },
-    [query, question, onAdd, onClose],
+    [query, stageIndex, question, onAdd, onClose],
   );
 
   if (isComparing) {
