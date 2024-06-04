@@ -43,7 +43,7 @@ export const compareAggregationsDrill: Drill<
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
 
-          trackColumnCompareViaColumnHeader(nextQuery, nextQuestion);
+          trackColumnCompareViaColumnHeader(nextQuery, nextQuestion.id());
           dispatch(setUIControls({ scrollToLastColumn: true }));
           onChangeCardAndRun({ nextCard });
           onClose();

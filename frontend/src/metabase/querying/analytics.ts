@@ -34,36 +34,36 @@ export const trackColumnExtractViaHeader = (
 
 export const trackColumnCompareViaColumnHeader = (
   query: Lib.Query,
-  question?: Question,
+  questionId?: number,
 ) => {
   trackSchemaEvent("question", "1-0-4", {
     event: "column_compare_via_column_header",
     custom_expressions_used: ["offset"],
     database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
+    question_id: questionId ?? 0,
   });
 };
 
 export const trackColumnCompareViaPlusModal = (
   query: Lib.Query,
-  question?: Question,
+  questionId?: number,
 ) => {
   trackSchemaEvent("question", "1-0-6", {
     event: "column_compare_via_plus_modal",
     custom_expressions_used: ["offset"],
     database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
+    question_id: questionId ?? 0,
   });
 };
 
 export const trackColumnCompareViaShortcut = (
   query: Lib.Query,
-  question?: Question,
+  questionId?: number,
 ) => {
   trackSchemaEvent("question", "1-0-6", {
     event: "column_compare_via_shortcut",
     custom_expressions_used: ["offset"],
     database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
+    question_id: questionId ?? 0,
   });
 };

@@ -48,7 +48,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
       const nextQuestion = question.setQuery(nextQuery);
       const nextCard = nextQuestion.card();
 
-      trackColumnCompareViaPlusModal(nextQuery, nextQuestion);
+      trackColumnCompareViaPlusModal(nextQuery, nextQuestion.id());
 
       dispatch(setUIControls({ scrollToLastColumn: true }));
       onChangeCardAndRun({ nextCard });
