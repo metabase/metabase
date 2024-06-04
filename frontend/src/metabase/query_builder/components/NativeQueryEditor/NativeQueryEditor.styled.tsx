@@ -6,7 +6,7 @@ import { ResizableBox } from "react-resizable";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { color, darken } from "metabase/lib/colors";
 
-const aceEditorStyle = css`
+const getAceEditorStyles = () => css`
   .ace_editor {
     height: 100%;
     background-color: var(--mb-color-bg-light);
@@ -131,7 +131,7 @@ export const NativeQueryEditorRoot = styled.div`
   width: 100%;
   background-color: var(--mb-color-bg-light);
 
-  ${aceEditorStyle}
+  ${() => getAceEditorStyles()}
 
   .${QueryBuilderS.GuiBuilderData} {
     border-right: none;
