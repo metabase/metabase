@@ -213,6 +213,8 @@ const crossVersionTargetConfig = {
 
 const stressTestConfig = {
   ...defaultConfig,
+  viewportHeight: 800,
+  viewportWidth: 1280,
   retries: 0,
 };
 
