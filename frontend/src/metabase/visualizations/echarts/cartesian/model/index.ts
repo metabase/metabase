@@ -139,7 +139,7 @@ export const getCartesianChartModel = (
     getSeriesLabelsFormatters(
       seriesModels,
       stackModels,
-      transformedDataset,
+      dataset,
       settings,
       renderingContext,
     );
@@ -148,7 +148,7 @@ export const getCartesianChartModel = (
     getStackedLabelsFormatters(
       seriesModels,
       stackModels,
-      transformedDataset,
+      dataset,
       settings,
       renderingContext,
     );

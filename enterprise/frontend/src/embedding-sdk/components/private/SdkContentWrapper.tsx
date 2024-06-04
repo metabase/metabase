@@ -4,7 +4,7 @@ import type { HTMLAttributes } from "react";
 
 import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getFontFiles } from "metabase/styled-components/selectors";
@@ -37,6 +37,8 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-bg-light: ${({ theme }) => theme.fn.themeColor("bg-light")};
   --mb-color-bg-dark: ${({ theme }) => theme.fn.themeColor("bg-dark")};
   --mb-color-brand: ${({ theme }) => theme.fn.themeColor("brand")};
+  --mb-color-brand-lighter: ${({ theme }) =>
+    lighten(theme.fn.themeColor("brand"), 0.598)};
   --mb-color-brand-alpha-04: ${({ theme }) =>
     alpha(theme.fn.themeColor("brand"), 0.04)};
   --mb-color-brand-alpha-88: ${({ theme }) =>

@@ -332,6 +332,11 @@
                          :registered-settings
                          (sort (keys @registered-settings))})))))
 
+(defn registered?
+  "Returns true if a setting is registered with the given name."
+  [setting-keyword-or-name]
+  (contains? @registered-settings (keyword setting-keyword-or-name)))
+
 ;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
 ;; swapped out depending on which app DB we have in play
 ;;
