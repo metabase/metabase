@@ -98,7 +98,7 @@ const DashCardMenu = ({
 
   const menuItems = useMemo(
     () => [
-      question.canRunAdhocQuery() && {
+      canEditQuestion(question) && {
         title: `Edit question`,
         icon: "pencil",
         action: () => onEditQuestion(question),
@@ -139,6 +139,10 @@ interface QueryDownloadWidgetOpts {
   isEditing: boolean;
 }
 
+const canEditQuestion = (question: Question) => {
+  return question.canWrite() && question.canRunAdhocQuery();
+};
+
 const canDownloadResults = (result?: Dataset) => {
   return (
     result != null &&
@@ -169,7 +173,7 @@ DashCardMenu.shouldRender = ({
     !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
-    (question.canRunAdhocQuery() || canDownloadResults(result))
+    (canEditQuestion(question) || canDownloadResults(result))
   );
 };
 
