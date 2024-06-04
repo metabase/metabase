@@ -12,8 +12,9 @@ import { getCollectionIcon } from "metabase/entities/collections/utils";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import UploadCSV from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { Bookmark, Collection, Database, User } from "metabase-types/api";
 
 import {
   AddYourOwnDataLink,
@@ -43,6 +44,7 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
+  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -65,6 +67,7 @@ function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
+  databases,
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
@@ -92,6 +95,15 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
+  // upload CSVs
+  const databaseDWH = databases.find(
+    ({ name }) =>
+      name.includes("Cloud data warehouse") || name === "Sample Database",
+  );
+  const collectionRoot = collections.find(
+    ({ id, can_write }) => (id === null || id === "root") && can_write,
+  );
+
   return (
     <SidebarContentRoot>
       <div>
@@ -104,6 +116,10 @@ function MainNavbarView({
           >
             {t`Home`}
           </PaddedSidebarLink>
+
+          {databaseDWH && collectionRoot && (
+            <UploadCSV collection={collectionRoot} />
+          )}
         </SidebarSection>
         <SidebarSection>
           <CollapseSection
