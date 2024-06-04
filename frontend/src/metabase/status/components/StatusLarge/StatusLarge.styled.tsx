@@ -8,7 +8,7 @@ export const StatusRoot = styled.div`
   width: 16rem;
   border-radius: 6px;
   background-color: ${color("white")};
-  box-shadow: 0 1px 12px ${color("shadow")};
+  box-shadow: 0 1px 12px var(--mb-color-shadow);
   overflow: hidden;
   margin-top: 1rem;
 `;

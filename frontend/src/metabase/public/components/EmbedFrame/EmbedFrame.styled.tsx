@@ -35,7 +35,7 @@ export const Root = styled.div<{
     css`
       border: 1px solid ${color("border")};
       border-radius: 8px;
-      box-shadow: 0 2px 2px ${color("shadow")};
+      box-shadow: 0 2px 2px var(--mb-color-shadow);
     `}
 `;
 

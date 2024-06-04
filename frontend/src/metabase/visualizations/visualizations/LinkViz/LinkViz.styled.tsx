@@ -76,7 +76,7 @@ const searchResultsStyles = `
 
   border: 1px solid ${color("border")};
   border-radius: 6px;
-  box-shadow: 0 7px 20px ${color("shadow")};
+  box-shadow: 0 7px 20px var(--mb-color-shadow);
   pointer-events: all;
 `;
 
