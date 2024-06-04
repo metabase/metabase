@@ -340,6 +340,7 @@ export const computeBarWidth = (
 
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
+  settings: ComputedVisualizationSettings,
   formatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): SeriesLabelOption | undefined => {
@@ -361,8 +362,11 @@ export const buildEChartsStackLabelOptions = (
     ),
     formatter: (params: CallbackDataParams) => {
       const datum = params.data as Datum;
-      const nonNormalizedKey = getNonNormalizedKey(seriesModel.dataKey);
-      const value = datum[nonNormalizedKey];
+      const key =
+        settings["stackable.stack_type"] === "normalized"
+          ? getNonNormalizedKey(seriesModel.dataKey)
+          : seriesModel.dataKey;
+      const value = datum[key];
 
       if (typeof value !== "number") {
         return "";
@@ -428,7 +432,6 @@ function getDataLabelSeriesOption(
 
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
-  originalDataset: ChartDataset,
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   chartMeasurements: ChartMeasurements,
@@ -479,6 +482,7 @@ const buildEChartsBarSeries = (
     label: isStacked
       ? buildEChartsStackLabelOptions(
           seriesModel,
+          settings,
           labelFormatter,
           renderingContext,
         )
@@ -888,7 +892,6 @@ export const buildEChartsSeries = (
         case "bar":
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
-            chartModel.dataset,
             chartModel.xAxisModel,
             chartModel.yAxisScaleTransforms,
             chartMeasurements,
