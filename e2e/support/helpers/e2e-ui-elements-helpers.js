@@ -249,6 +249,7 @@ export function tableHeaderClick(headerString) {
     cy.findByTextEnsureVisible(headerString).trigger("mouseup");
   });
 }
+
 /**
  * selects the global new button
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
@@ -261,4 +262,12 @@ export function newButton(menuItem) {
   }
 
   return cy.findByTestId("app-bar").button("New");
+}
+
+export function multiSelectInput() {
+  return cy.findByRole("combobox").get("input").last();
+}
+
+export function multiAutocompleteInput() {
+  return cy.findByRole("combobox").get("input").last();
 }
