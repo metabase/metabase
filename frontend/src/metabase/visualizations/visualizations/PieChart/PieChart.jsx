@@ -11,6 +11,7 @@ import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatValue } from "metabase/lib/formatting";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -24,7 +25,6 @@ import {
   getFriendlyName,
   computeMaxDecimalsForValues,
 } from "metabase/visualizations/lib/utils";
-import { DEFAULT_PIE_SLICE_THRESHOLD } from "metabase/visualizations/shared/constants";
 import {
   getDefaultShowLegend,
   getDefaultPercentVisibility,
@@ -339,7 +339,7 @@ export default class PieChart extends Component {
     const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
-        : DEFAULT_PIE_SLICE_THRESHOLD;
+        : SLICE_THRESHOLD;
 
     const [slices, others] = _.chain(rows)
       .map((row, index) => ({
