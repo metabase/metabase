@@ -57,7 +57,7 @@ export const BlockSubtitleText = styled.div`
 export const ExampleCode = styled.div`
   padding: 0.5rem;
 
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-radius: 8px;
 
   font-size: 0.8125rem;

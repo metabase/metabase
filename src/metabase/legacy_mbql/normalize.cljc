@@ -389,9 +389,11 @@
    ;; we smuggle metadata for Models and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
    :info            {:metadata/model-metadata identity
+                     ;; the original query that runs through qp.pivot should be ignored here entirely
+                     :pivot/original-query    (fn [_] nil)
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
-                     :visualization-settings    identity
-                     :context                   maybe-normalize-token}
+                     :visualization-settings  identity
+                     :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)

@@ -986,14 +986,8 @@
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
-;;
-;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
-;; pass straight thru to the GA query processor.
-(def ^:private MetricID
-  [:ref ::lib.schema.id/legacy-metric])
-
 (defclause metric
-  metric-id [:or MetricID ::lib.schema.common/non-blank-string])
+  metric-id ::lib.schema.id/metric)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

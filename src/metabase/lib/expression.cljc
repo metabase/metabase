@@ -225,7 +225,8 @@
     expression-name :- ::lib.schema.common/non-blank-string
     expressionable
     options         :- [:maybe ::add-expression-options]]
-   (let [stage-number (or stage-number -1)]
+   (let [stage-number   (or stage-number -1)
+         expressionable (lib.common/->op-arg expressionable)]
      ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
      ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
      ;; the QP code, and it should be powered by MLv2 in due course.
@@ -235,8 +236,7 @@
      (lib.util/update-query-stage
        query stage-number
        add-expression-to-stage
-       (-> (lib.common/->op-arg expressionable)
-           (lib.util/top-level-expression-clause expression-name))
+       (lib.util/top-level-expression-clause expressionable expression-name)
        options))))
 
 (lib.common/defop + [x y & more])
@@ -450,12 +450,12 @@
   `expression-position` is provided, for cyclic references with other expressions.
 
   - `expr` is a pMBQL expression usually created from a legacy MBQL expression created
-    using the custom column editor in the FE. It is expected to have been normalized and
-    converted using [[metabase.lib.convert/->pMBQL]].
+  using the custom column editor in the FE. It is expected to have been normalized and
+  converted using [[metabase.lib.convert/->pMBQL]].
   - `expression-mode` specifies what type of thing `expr` is: an :expression (custom column),
-    an :aggregation expression, or a :filter condition.
+  an :aggregation expression, or a :filter condition.
   - `expression-position` is only defined when editing an existing custom column, and in that case
-    it is the index of that expression in (expressions query stage-number).
+  it is the index of that expression in (expressions query stage-number).
 
   The function returns nil, if the expression is valid, otherwise it returns a map with
   an i18n message describing the problem under the key :message."
@@ -468,17 +468,31 @@
                                 :expression [expression-validator expression-explainer]
                                 :aggregation [aggregation-validator aggregation-explainer]
                                 :filter [filter-validator filter-explainer])]
-    (if (not (validator expr))
-      (let [error (explainer expr)
-            humanized (str/join ", " (me/humanize error))]
-        {:message (i18n/tru "Type error: {0}" humanized)})
-      (when-let [path (and (= expression-mode :expression)
-                           expression-position
-                           (let [exprs (expressions query stage-number)
-                                 edited-expr (nth exprs expression-position)
-                                 edited-name (expression->name edited-expr)
-                                 deps (-> (m/index-by expression->name exprs)
-                                          (assoc edited-name expr)
-                                          (update-vals referred-expressions))]
-                             (cyclic-definition deps)))]
-        {:message (i18n/tru "Cycle detected: {0}" (str/join " → " path))}))))
+    (or (when-not (validator expr)
+          (let [error (explainer expr)
+                humanized (str/join ", " (me/humanize error))]
+            {:message (i18n/tru "Type error: {0}" humanized)}))
+        (when-let [path (and (= expression-mode :expression)
+                             expression-position
+                             (let [exprs (expressions query stage-number)
+                                   edited-expr (nth exprs expression-position)
+                                   edited-name (expression->name edited-expr)
+                                   deps (-> (m/index-by expression->name exprs)
+                                            (assoc edited-name expr)
+                                            (update-vals referred-expressions))]
+                               (cyclic-definition deps)))]
+          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " path))
+           :friendly true})
+        (when (and (= expression-mode :expression)
+                   (lib.util.match/match-one expr :offset))
+          {:message  (i18n/tru "OFFSET is not supported in custom expressions")
+           :friendly true})
+        (when (and (= expression-mode :expression)
+                   (lib.util.match/match-one expr :offset)
+                   (empty? (:order-by (lib.util/query-stage query stage-number))))
+          {:message  (i18n/tru "OFFSET in a custom expression requires a sort order")
+           :friendly true})
+        (when (and (= expression-mode :filter)
+                   (lib.util.match/match-one expr :offset))
+          {:message  (i18n/tru "OFFSET is not supported in custom filters")
+           :friendly true}))))

@@ -593,22 +593,56 @@
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more
   than once."
-  [x]
-  (cond
-    (sequential? x)
-    (into (empty x) (map fresh-uuids) x)
+  ([x]
+   (fresh-uuids x (constantly nil)))
+  ([x register-fn]
+   (cond
+     (sequential? x)
+     (into (empty x) (map #(fresh-uuids % register-fn)) x)
 
-    (map? x)
-    (into
-     (empty x)
-     (map (fn [[k v]]
-            [k (if (= k :lib/uuid)
-                 (str (random-uuid))
-                 (fresh-uuids v))]))
-     x)
+     (map? x)
+     (into
+      (empty x)
+      (map (fn [[k v]]
+             [k (if (= k :lib/uuid)
+                  (let [new-id (str (random-uuid))]
+                    (register-fn v new-id)
+                    new-id)
+                  (fresh-uuids v register-fn))]))
+      x)
 
-    :else
-    x))
+     :else
+     x)))
+
+(defn- replace-uuid-references
+  [x replacement-map]
+  (let [replacement (find replacement-map x)]
+    (cond
+      replacement
+      (val replacement)
+
+      (sequential? x)
+      (into (empty x) (map #(replace-uuid-references % replacement-map)) x)
+
+      (map? x)
+      (into
+       (empty x)
+       (map (fn [[k v]]
+              [k (cond-> v
+                   (not= k :lib/uuid) (replace-uuid-references replacement-map))]))
+       x)
+
+      :else
+      x)))
+
+(defn fresh-query-instance
+  "Create an copy of `query` with fresh :lib/uuid values making sure that internal
+  uuid references are kept."
+  [query]
+  (let [v-replacement (volatile! (transient {}))
+        almost-query (fresh-uuids query #(vswap! v-replacement assoc! %1 %2))
+        replacement (persistent! @v-replacement)]
+    (replace-uuid-references almost-query replacement)))
 
 (mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."

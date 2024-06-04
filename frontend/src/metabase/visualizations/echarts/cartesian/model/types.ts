@@ -93,11 +93,15 @@ export type Datum = Record<DataKey, RowValue> & {
 export type ChartDataset<D extends Datum = Datum> = D[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
-export type AxisFormatter = (value: RowValue) => string;
+export type RawValueFormatter = (value: RowValue) => string;
+export type LabelFormatter = RawValueFormatter;
+export type AxisFormatter = RawValueFormatter;
 export type TimeSeriesAxisFormatter = (
   value: RowValue,
   unit?: DateTimeAbsoluteUnit,
 ) => string;
+export type SeriesFormatters = Record<DataKey, LabelFormatter | undefined>;
+export type StackedSeriesFormatters = { [T in StackDisplay]?: LabelFormatter };
 
 export type DateRange = [Dayjs, Dayjs];
 
@@ -173,11 +177,40 @@ export type YAxisModel = {
   column: DatasetColumn;
   label?: string;
   formatter: AxisFormatter;
+  isNormalized?: boolean;
 };
 
 export type TrendLinesModel = {
   dataset: ChartDataset;
   seriesModels: TrendLineSeriesModel[];
+};
+
+export type StackDisplay = "bar" | "area";
+export type StackModel = {
+  axis: "left" | "right";
+  display: StackDisplay;
+  seriesKeys: DataKey[];
+};
+
+type BaseChartDataDensity = {
+  type: string;
+  averageLabelWidth: number;
+  totalNumberOfLabels: number;
+};
+
+export type ChartDataDensity =
+  | WaterFallChartDataDensity
+  | ComboChartDataDensity;
+
+export type WaterFallChartDataDensity = BaseChartDataDensity & {
+  type: "waterfall";
+};
+
+export type ComboChartDataDensity = BaseChartDataDensity & {
+  type: "combo";
+  seriesDataKeysWithLabels: DataKey[];
+  stackedDisplayWithLabels: StackDisplay[];
+  totalNumberOfDots: number;
 };
 
 export type BaseCartesianChartModel = {
@@ -186,6 +219,7 @@ export type BaseCartesianChartModel = {
   dataset: ChartDataset;
   transformedDataset: ChartDataset;
   yAxisScaleTransforms: NumericAxisScaleTransforms;
+  stackModels: StackModel[];
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
@@ -198,10 +232,27 @@ export type BaseCartesianChartModel = {
   seriesIdToDataKey?: Record<string, DataKey>;
 
   trendLinesModel?: TrendLinesModel;
+  seriesLabelsFormatters: SeriesFormatters;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {
+  stackedLabelsFormatters: StackedSeriesFormatters;
+  dataDensity: ComboChartDataDensity;
+};
+
+export type ScatterPlotModel = BaseCartesianChartModel & {
   bubbleSizeDomain: Extent | null;
 };
 
+export type WaterfallChartModel = BaseCartesianChartModel & {
+  waterfallLabelFormatter: LabelFormatter | undefined;
+  dataDensity: WaterFallChartDataDensity;
+};
+
 export type ShowWarning = (warning: string) => void;
+
+export type LegendItem = {
+  key: string;
+  name: string;
+  color: string;
+};

@@ -403,7 +403,7 @@
 
 (defn pulse->trigger-info
   [pulse-id schedule-map pc-ids]
-  {:key      (.getName (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
+  {:key      (.getName ^org.quartz.TriggerKey (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
    :schedule (u.cron/schedule-map->cron-string schedule-map)
    :priority 6
    :data     {"pulse-id"    pulse-id
@@ -422,19 +422,12 @@
    :schedule_frame nil})
 
 (defn send-pulse-triggers
-  [pulse-id]
+  [pulse-id & {:keys [additional-keys]}]
   (->> (task/job-info @#'task.send-pulses/send-pulse-job-key)
        :triggers
-       (map #(select-keys % [:key :schedule :data :priority]))
-       (map #(update % :data (fn [data] (into {} data))))
+       (map #(select-keys % (concat [:key :schedule :data :priority] additional-keys)))
        (filter #(or (nil? pulse-id) (= pulse-id (get-in % [:data "pulse-id"]))))
        set))
-
-(defn do-with-send-pulse-setup!
-  [thunk]
-  (mt/with-temp-scheduler
-    (task/init! ::task.send-pulses/SendPulses)
-    (thunk)))
 
 (defmacro with-send-pulse-setup!
   [& body]

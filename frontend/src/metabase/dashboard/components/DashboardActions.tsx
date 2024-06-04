@@ -3,6 +3,11 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import type {
+  DashboardFullscreenControls,
+  DashboardRefreshPeriodControls,
+  EmbedThemeControls,
+} from "metabase/dashboard/types";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 import {
@@ -15,23 +20,17 @@ type GetDashboardActionsProps = {
   canManageSubscriptions?: boolean;
   dashboard: Dashboard | null;
   formInput?: any;
-  hasNightModeToggle: boolean;
   isAdmin?: boolean;
   isEditing?: boolean;
   isEmpty?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
   isPublic?: boolean;
-  onFullscreenChange: (
-    isFullscreen: boolean,
-    isBrowserFullscreen?: boolean,
-  ) => void;
-  onNightModeChange: (isNightMode: boolean) => void;
-  onRefreshPeriodChange: (period: number) => void;
   onSharingClick?: () => void;
-  refreshPeriod: number | null;
-  setRefreshElapsedHook?: (hook: (elapsed: number) => void) => void;
-};
+} & DashboardFullscreenControls &
+  DashboardRefreshPeriodControls &
+  Pick<
+    EmbedThemeControls,
+    "isNightMode" | "hasNightModeToggle" | "onNightModeChange"
+  >;
 
 export const getDashboardActions = ({
   canManageSubscriptions = false,
@@ -72,7 +71,7 @@ export const getDashboardActions = ({
   const shouldShowSubscriptionsButton =
     emailConfigured || slackConfigured || isAdmin;
 
-  if (!isEditing && !isEmpty && !isPublic) {
+  if (!isEditing && !isEmpty && !isPublic && !dashboard?.archived) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
     if (
       shouldShowSubscriptionsButton &&
@@ -101,7 +100,7 @@ export const getDashboardActions = ({
     }
   }
 
-  if (!isEditing && !isEmpty) {
+  if (!isEditing && !isEmpty && !dashboard?.archived) {
     buttons.push(
       <RefreshWidgetButton
         key="refresh"
@@ -112,7 +111,12 @@ export const getDashboardActions = ({
     );
   }
 
-  if (!isEditing && isFullscreen && hasNightModeToggle) {
+  if (
+    !isEditing &&
+    isFullscreen &&
+    !dashboard?.archived &&
+    hasNightModeToggle
+  ) {
     buttons.push(
       <Tooltip
         key="night"

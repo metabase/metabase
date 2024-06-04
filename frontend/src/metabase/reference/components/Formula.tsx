@@ -4,19 +4,14 @@ import { t } from "ttag";
 
 import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import { Icon } from "metabase/ui";
-import type { Metric, Segment } from "metabase-types/api";
+import type { Segment } from "metabase-types/api";
 
 import S from "./Formula.module.css";
 
-type FormulaEntityProps =
-  | {
-      type: "segment";
-      entity: Segment;
-    }
-  | {
-      type: "metric";
-      entity: Metric;
-    };
+type FormulaEntityProps = {
+  type: "segment";
+  entity: Segment;
+};
 
 type FormulaProps = FormulaEntityProps & {
   isExpanded: boolean;

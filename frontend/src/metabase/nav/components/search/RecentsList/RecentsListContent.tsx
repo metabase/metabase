@@ -89,7 +89,7 @@ export const RecentsListContent = ({
                     truncate
                     href={onClick ? undefined : getItemUrl(item)}
                   >
-                    {getName(item.model_object)}
+                    {getName(item)}
                   </ResultTitle>
                   <PLUGIN_MODERATION.ModerationStatusIcon
                     status={getModeratedStatus(item)}
@@ -114,17 +114,20 @@ export const RecentsListContent = ({
   );
 };
 
-const getItemKey = ({ model, model_id }: RecentItem) => {
-  return `${model}:${model_id}`;
+const getItemKey = ({ model, id }: RecentItem) => {
+  return `${model}:${id}`;
 };
 
-const getModeratedStatus = ({ model_object }: RecentItem) => {
-  return model_object.moderated_status;
+const getModeratedStatus = (item: RecentItem) => {
+  return item.model !== "table" && item.moderated_status;
 };
 
-const isItemLoading = ({ model, model_object }: RecentItem) => {
-  if (model !== "table") {
+const isItemLoading = (item: RecentItem) => {
+  if (item.model !== "table") {
     return false;
   }
-  return !isSyncCompleted(model_object);
+  if (!item.database) {
+    return false;
+  }
+  return !isSyncCompleted(item.database);
 };

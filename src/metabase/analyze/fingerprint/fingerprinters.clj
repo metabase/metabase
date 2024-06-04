@@ -196,7 +196,7 @@
   String   (->temporal [this] (->temporal (u.date/parse this)))
   Long     (->temporal [this] (->temporal (t/instant this)))
   Integer  (->temporal [this] (->temporal (t/instant this)))
-  ChronoLocalDateTime (->temporal [this] (.toInstant this (ZoneOffset/UTC)))
+  ChronoLocalDateTime (->temporal [this] (.toInstant this ZoneOffset/UTC))
   ChronoZonedDateTime (->temporal [this] (.toInstant this))
   Temporal (->temporal [this] this)
   java.util.Date (->temporal [this] (t/instant this)))

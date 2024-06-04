@@ -15,22 +15,23 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  ActionDashboardCard,
+  BaseDashboardCard,
+  CacheableDashboard,
   Card,
   CardId,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  QuestionDashboardCard,
+  DashCardDataMap,
   Database,
   Dataset,
-  Parameter,
-  ActionDashboardCard,
   EmbedDataset,
-  BaseDashboardCard,
-  DashCardDataMap,
+  Parameter,
+  QuestionDashboardCard,
   VirtualCard,
-  VirtualDashboardCard,
   VirtualCardDisplay,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -204,17 +205,17 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
 
 export function isDashcardLoading(
   dashcard: BaseDashboardCard,
-  dashcardsData: DashCardDataMap,
+  dashcardsData: Record<CardId, Dataset | null | undefined>,
 ) {
   if (isVirtualDashCard(dashcard)) {
     return false;
   }
 
-  if (dashcardsData[dashcard.id] == null) {
+  if (dashcardsData == null) {
     return true;
   }
 
-  const cardData = Object.values(dashcardsData[dashcard.id]);
+  const cardData = Object.values(dashcardsData);
   return cardData.length === 0 || cardData.some(data => data == null);
 }
 
@@ -363,3 +364,7 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
     archived: false,
   };
 }
+
+export const isDashboardCacheable = (
+  dashboard: Dashboard,
+): dashboard is CacheableDashboard => typeof dashboard.id !== "string";

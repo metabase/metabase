@@ -352,7 +352,13 @@
          (comp (disqualify)
                (remove (fn [[k _v]]
                          (= k :effective-type))))
-         m)))
+         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
+         ;; were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
+         (if (contains? m :metabase.lib.query/transformation-added-base-type)
+           (dissoc m
+                   :metabase.lib.query/transformation-added-base-type
+                   :base-type)
+           m))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}
@@ -611,11 +617,10 @@
   If you have only the inner query map (`{:source-table 2 ...}` or similar), call [[js-legacy-inner-query->pMBQL]]
   instead."
   [query-map]
-  (-> query-map
-      from-json
-      (u/assoc-default :type :query)
-      mbql.normalize/normalize
-      ->pMBQL))
+  (let [clj-map (from-json query-map)]
+    (if (= (:lib/type clj-map) "mbql/query")
+      (lib.normalize/normalize clj-map)
+      (-> clj-map (u/assoc-default :type :query) mbql.normalize/normalize ->pMBQL))))
 
 (defn js-legacy-inner-query->pMBQL
   "Given a JSON-formatted *inner* query, transform it to pMBQL.

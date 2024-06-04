@@ -1,27 +1,21 @@
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import {
-  FormProvider,
   Form,
-  FormTextInput,
   FormErrorMessage,
+  FormProvider,
+  FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { Box, Button, Flex } from "metabase/ui";
+
+import { LICENSE_TOKEN_SCHEMA } from "./constants";
 
 type LicenseTokenFormProps = {
   onSubmit: (token: string) => Promise<void>;
   onSkip: () => void;
   initialValue?: string;
 };
-
-const LICENSE_TOKEN_SCHEMA = Yup.object({
-  license_token: Yup.string()
-    .length(64, Errors.exactLength)
-    .required(Errors.required),
-});
 
 export const LicenseTokenForm = ({
   onSubmit,

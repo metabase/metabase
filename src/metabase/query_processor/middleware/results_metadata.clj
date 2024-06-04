@@ -3,8 +3,9 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [metabase.analyze.query-results :as qr]
+   [metabase.analyze :as analyze]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -31,7 +32,7 @@
     ;; if its DB doesn't support nested queries in the first place
     (when (and metadata
                driver/*driver*
-               (driver/database-supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+               (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
@@ -68,7 +69,7 @@
    rf            :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [(qr/insights-rf orig-metadata)]
+   [(analyze/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
      (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
        (record! metadata)

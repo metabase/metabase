@@ -267,41 +267,11 @@
 ;;; Metric
 ;;;
 
-(derive :metadata/legacy-metric :model/LegacyMetric)
+(derive :metadata/metric :model/Card)
 
-(methodical/defmethod t2.model/resolve-model :metadata/legacy-metric
-  [model]
-  (classloader/require 'metabase.models.legacy-metric)
-  model)
-
-(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/legacy-metric
-                                             #_resolved-query clojure.lang.IPersistentMap
-                                             #_k              :default]
-  [model honeysql k v]
-  (let [k (if (not (qualified-key? k))
-            (keyword "metric" (name k))
-            k)]
-    (next-method model honeysql k v)))
-
-(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
-                                         #_model          :metadata/legacy-metric
-                                         #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-args honeysql]
-  (merge
-   (next-method query-type model parsed-args honeysql)
-   {:select    [:metric/id
-                :metric/table_id
-                :metric/name
-                :metric/description
-                :metric/archived
-                :metric/definition]
-    :from      [[(t2/table-name :model/LegacyMetric) :metric]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :metric/table_id :table/id]]}))
-
-(t2/define-after-select :metadata/legacy-metric
+(t2/define-after-select :metadata/metric
   [metric]
-  (instance->metadata metric :metadata/legacy-metric))
+  (instance->metadata metric :metadata/metric))
 
 ;;;
 ;;; Segment
@@ -380,8 +350,9 @@
                :active          true
                :visibility_type [:not-in #{"sensitive" "retired"}])
 
-    :metadata/legacy-metric
-    (t2/select :metadata/legacy-metric :table_id table-id, :archived false)
+
+    :metadata/metric
+    (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)
 
     :metadata/segment
     (t2/select :metadata/segment :table_id table-id, :archived false)))
@@ -397,16 +368,16 @@
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-type table-id))
   (setting [_this setting-name]
-    (setting/get setting-name))
+           (setting/get setting-name))
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id))
+          (list `->UncachedApplicationDatabaseMetadataProvider database-id))
 
   Object
   (equals [_this another]
-    (and (instance? UncachedApplicationDatabaseMetadataProvider another)
-         (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
+          (and (instance? UncachedApplicationDatabaseMetadataProvider another)
+               (= database-id (.database-id ^UncachedApplicationDatabaseMetadataProvider another)))))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

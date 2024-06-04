@@ -12,7 +12,7 @@ Metabase lets you add and edit metadata to your tables and columns so that you c
 - [Hide outdated data](#table-visibility).
 - [Cast a text or number column to a date column](#casting-to-a-specific-data-type).
 - [Change the style of a filter widget](#changing-the-filter-widget).
-- [Link column values to URLs](#linking-a-column-to-a-url).
+- [Display a column as a link](#displaying-a-column-as-a-link).
 
 > The **Table Metadata** admin settings only affect the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
 
@@ -20,13 +20,15 @@ Metabase lets you add and edit metadata to your tables and columns so that you c
 
 Click on a table name in the left sidebar to view the table's settings in Metabase.
 
+If you've got more than one database connected to Metabase, click on the database name (for example, "Sample Database") and select another database from the dropdown menu. Once you select a database, the tables in that database will appear in the sidebar.
+
+![Table metadata](./images/table-metadata.png)
+
 - [Change the display name](#table-display-name).
 - [Add or edit the description](#table-description).
 - [Show or hide the table across Metabase](#table-visibility).
 - [View the original schema](#original-schema).
 - [Edit column (field) settings](#column-field-settings).
-
-If you've got more than one database connected to Metabase, click on the database name (for example, "Sample Database") and select another database from the dropdown menu. Once you select a database, the tables in that database will appear in the sidebar.
 
 ### Table display name
 
@@ -48,6 +50,8 @@ Tip: To hide all of the tables in a database (say, if you've migrated to a new d
 
 To remind yourself of column names and data types as they're stored in your database, click **Original schema** (below **Visibility**).
 
+![Original schema](./images/original-schema.png)
+
 ## Column (field) settings
 
 Select a database and click on a table's name in the sidebar to bring up basic column display settings:
@@ -60,10 +64,12 @@ Select a database and click on a table's name in the sidebar to bring up basic c
 
 For extra column settings, click on the **gear** icon at the right of a column's settings box:
 
+![Column settings](./images/column-settings.png)
+
 - [Cast text or numbers to dates](#casting-to-a-specific-data-type)
 - [Change the filter widget](#changing-the-filter-widget) (for example, to a dropdown menu)
 - [Remap column values](#remapping-column-values) (for example, from "5" to "Great")
-- [Link a column to a URL](#linking-a-column-to-a-url)
+- [Display the column as a link](#displaying-a-column-as-a-link)
 
 ### Column name
 
@@ -184,7 +190,7 @@ Say you have a column with the values 1, 2, and 3, and you want to map each numb
 5. Select "Use foreign key" from the dropdown menu.
 6. Select a column name from the second dropdown menu.
 
-### Linking a column to a URL
+### Displaying a column as a link
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
@@ -194,6 +200,8 @@ Say you have a column with the values 1, 2, and 3, and you want to map each numb
 6. Optional: set display text under **Link text**.
 7. Enter the URL in the **Link URL** field.
 8. Optional: create a dynamic URL by adding the column name as a `{% raw %}{{parameter}}{% endraw %}`.
+
+![Format as URL](./images/format-as-url.png)
 
 For example, if you set the **Link URL** for an "Adjective" column to:
 

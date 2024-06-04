@@ -13,6 +13,7 @@ import type {
   ListDatabaseSchemaTablesRequest,
   ListDatabaseSchemasRequest,
   ListVirtualDatabaseTablesRequest,
+  SchemaName,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -54,7 +55,10 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: database => (database ? provideDatabaseTags(database) : []),
     }),
-    listDatabaseSchemas: builder.query<string[], ListDatabaseSchemasRequest>({
+    listDatabaseSchemas: builder.query<
+      SchemaName[],
+      ListDatabaseSchemasRequest
+    >({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/database/${id}/schemas`,
@@ -65,7 +69,7 @@ export const databaseApi = Api.injectEndpoints({
         ...schemas.map(schema => idTag("schema", schema)),
       ],
     }),
-    listSyncableDatabaseSchemas: builder.query<string[], DatabaseId>({
+    listSyncableDatabaseSchemas: builder.query<SchemaName[], DatabaseId>({
       query: id => ({
         method: "GET",
         url: `/api/database/${id}/syncable_schemas`,

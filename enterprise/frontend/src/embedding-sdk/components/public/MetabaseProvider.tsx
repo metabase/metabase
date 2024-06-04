@@ -1,21 +1,21 @@
-import { type ReactNode, type JSX, useEffect, useMemo } from "react";
+import { type ReactNode, type JSX, useEffect } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
-import {} from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme/get-embedding-theme";
 import { store } from "embedding-sdk/store";
 import {
   setErrorComponent,
   setLoaderComponent,
+  setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
@@ -33,9 +33,15 @@ const MetabaseProviderInternal = ({
   pluginsConfig,
   theme,
 }: MetabaseProviderProps): JSX.Element => {
-  const themeOverride = useMemo(() => {
-    return theme && getEmbeddingThemeOverride(theme);
-  }, [theme]);
+  useEffect(() => {
+    if (theme?.fontFamily) {
+      store.dispatch(
+        setOptions({
+          font: theme.fontFamily,
+        }),
+      );
+    }
+  }, [theme?.fontFamily]);
 
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
@@ -49,14 +55,18 @@ const MetabaseProviderInternal = ({
     store.dispatch(setErrorComponent(config.errorComponent ?? null));
   }, [config.errorComponent]);
 
+  useEffect(() => {
+    store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
+  }, [config.metabaseInstanceUrl]);
+
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider theme={themeOverride}>
+        <SdkThemeProvider theme={theme}>
           <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
-        </ThemeProvider>
+        </SdkThemeProvider>
       </EmotionCacheProvider>
     </Provider>
   );

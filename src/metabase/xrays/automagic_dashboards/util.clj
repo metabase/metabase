@@ -4,7 +4,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analyze.classifiers.core :as classifiers]
+   [metabase.analyze :as analyze]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -40,8 +40,7 @@
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
 (def ^{:arglists '([metric]) :doc "Is metric a saved metric?"} saved-metric?
-  (every-pred (partial mbql.u/is-clause? :metric)
-              (complement mbql.u/ga-metric-or-segment?)))
+  (partial mbql.u/is-clause? :metric))
 
 (def ^{:arglists '([metric]) :doc "Is this a custom expression?"} custom-expression?
   (partial mbql.u/is-clause? :aggregation-options))
@@ -52,11 +51,6 @@
 (def ^{:arglists '([x]) :doc "Base64 encode"} encode-base64-json
   "Encode given object as base-64 encoded JSON."
   (comp codec/base64-encode codecs/str->bytes json/encode))
-
-(defn ga-table?
-  "Is this a google analytics (ga) table?"
-  [table]
-  (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
 
 (mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
   "Extract field ID from a given field reference form."
@@ -89,6 +83,6 @@
            (update field :base_type keyword)
            (update field :semantic_type keyword)
            (mi/instance Field field)
-           (classifiers/run-classifiers field {}))))
+           (analyze/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))

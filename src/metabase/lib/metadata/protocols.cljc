@@ -49,9 +49,8 @@
   internals can be tucked away here in MLv2.")
 
   (metadatas-for-table [metadata-provider metadata-type table-id]
-    "Return active (non-archived) metadatas associated with a particular Table, either Fields, LegacyMetrics, or
-  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/legacy-metric`, or
-  `:metadata/segment`.")
+    "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
+  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, or `:metadata/segment`.")
 
   (setting [metadata-provider setting-key]
     "Return the value of the given Metabase setting with keyword `setting-name`."))
@@ -83,7 +82,7 @@
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
   other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/legacy-metric :metadata/segment])
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment])
 
 (mr/def ::metadata
   [:map
@@ -118,13 +117,6 @@
    card-id           :- ::lib.schema.id/card]
   (metadata metadata-provider :metadata/card card-id))
 
-(mu/defn legacy-metric :- [:maybe ::lib.schema.metadata/legacy-metric]
-  "Return metadata for a particular capital-M Metric, i.e. something from the `metric` table in the application
-  database. Metadata should match `:metabase.lib.schema.metadata/legacy-metric`."
-  [metadata-provider :- ::metadata-provider
-   legacy-metric-id  :- ::lib.schema.id/legacy-metric]
-  (metadata metadata-provider :metadata/legacy-metric legacy-metric-id))
-
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Return metadata for a particular captial-S Segment, i.e. something from the `segment` table in the application
   database. Metadata should match `:metabase.lib.schema.metadata/segment`."
@@ -138,13 +130,6 @@
   [metadata-provider :- ::metadata-provider
    table-id          :- ::lib.schema.id/table]
   (metadatas-for-table metadata-provider :metadata/column table-id))
-
-(mu/defn legacy-metrics :- [:maybe [:sequential ::lib.schema.metadata/legacy-metric]]
-  "Return a sequence of legacy Metrics associated with a Table with the given `table-id`. Metrics should satisfy
-  the `:metabase.lib.schema.metadata/legacy-metric` schema. If no such Table exists, this should error."
-  [metadata-provider :- ::metadata-provider
-   table-id          :- ::lib.schema.id/table]
-  (metadatas-for-table metadata-provider :metadata/legacy-metric table-id))
 
 (mu/defn segments :- [:maybe [:sequential ::lib.schema.metadata/segment]]
   "Return a sequence of legacy Segments associated with a Table with the given `table-id`. Segments should satisfy

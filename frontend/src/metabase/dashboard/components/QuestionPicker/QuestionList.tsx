@@ -73,7 +73,7 @@ export function QuestionList({
 
     return {
       ...baseQuery,
-      models: ["card", "dataset"],
+      models: ["card", "dataset", "metric"],
       offset: queryOffset,
       limit: DEFAULT_SEARCH_LIMIT,
     };

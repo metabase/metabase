@@ -29,13 +29,13 @@ Paid plans include more ways to authenticate people and manage groups.
 Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
 - [Data sandboxes](../permissions/data-sandboxes.md)
-- [Block permissions](../permissions/data.md#block-access)
+- [Blocked view data permissions](../permissions/data.md#blocked-view-data-permission)
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
-- [Download permissions](../permissions/data.md#download-results)
-- [Connection impersonation](../permissions/data.md#impersonation-access)
-- [Database management permissions](../permissions/data.md#manage-database)
-- [Table metadata management permissions](../permissions/data.md#manage-table-metadata)
+- [Download permissions](../permissions/data.md#download-results-permissions)
+- [Connection impersonation](../permissions/data.md#impersonated-view-data-permission)
+- [Database management permissions](../permissions/data.md#manage-database-permissions)
+- [Table metadata management permissions](../permissions/data.md#manage-table-metadata-permissions)
 
 ## People and group management
 
@@ -94,6 +94,7 @@ See how people are using your Metabase.
 See which queries are failing to help keep your Metabase tidy.
 
 - [Tracking query errors](../usage-and-performance-tools/tools.md)
+- [Deleting uploaded tables](../databases/uploads.md#deleting-tables-created-by-uploads)
 
 ## Serialization
 

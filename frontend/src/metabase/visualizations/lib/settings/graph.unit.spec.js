@@ -9,6 +9,7 @@ import {
 import {
   STACKABLE_SETTINGS,
   GRAPH_AXIS_SETTINGS,
+  GRAPH_DISPLAY_VALUES_SETTINGS,
   getDefaultDimensionLabel,
 } from "./graph";
 
@@ -192,5 +193,199 @@ describe("GRAPH_AXIS_SETTINGS", () => {
         expect(isEnabled).toBe(expectedDefault);
       },
     );
+  });
+});
+
+describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
+  describe("graph.show_values", () => {
+    const getHidden =
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_values"].getHidden;
+    it("should be hidden on normalized area charts", () => {
+      const isHidden = getHidden(
+        [{ card: { display: "area" } }, { card: { display: "area" } }],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should not be hidden on normalized charts with line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "line" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(false);
+    });
+  });
+
+  describe("graph.label_value_frequency", () => {
+    const getHidden =
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_frequency"].getHidden;
+
+    it("should be hidden when data values are hidden", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "line" } },
+          { card: { display: "area" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "graph.show_values": false,
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+    it("should be hidden on normalized charts without line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden on normalized area charts", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden on normalized bar charts", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "bar" } },
+          { card: { display: "bar" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should not be hidden on normalized charts with line series", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "line" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+          "graph.show_values": true,
+        },
+      );
+
+      expect(isHidden).toBe(false);
+    });
+  });
+
+  describe("graph.show_stack_values", () => {
+    const getHidden =
+      GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_stack_values"].getHidden;
+
+    it("should be hidden on non-stacked charts", () => {
+      const isHidden = getHidden(
+        [{ card: { display: "bar" } }, { card: { display: "bar" } }],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": null,
+          "graph.show_values": true,
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden on stacked area charts", () => {
+      const isHidden = getHidden(
+        [{ card: { display: "area" } }, { card: { display: "area" } }],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should not be hidden on mixed stacked area and bar charts", () => {
+      const isHidden = getHidden(
+        [
+          { card: { display: "area" } },
+          { card: { display: "area" } },
+          { card: { display: "bar" } },
+          { card: { display: "bar" } },
+        ],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": true,
+        },
+      );
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be hidden on normalized charts bar charts", () => {
+      const isHidden = getHidden(
+        [{ card: { display: "bar" } }, { card: { display: "bar" } }],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "normalized",
+          "graph.show_values": true,
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be hidden on stacked bar charts when show values setting is false", () => {
+      const isHidden = getHidden(
+        [{ card: { display: "bar" } }, { card: { display: "bar" } }],
+        {
+          series: series => ({ display: series.card.display }),
+          "stackable.stack_type": "stacked",
+          "graph.show_values": false,
+        },
+      );
+
+      expect(isHidden).toBe(true);
+    });
   });
 });

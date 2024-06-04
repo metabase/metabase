@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import type { CollectionPickerModel } from "../../CollectionPicker";
 import type { EntityTab } from "../../EntityPicker";
@@ -32,6 +32,7 @@ interface DashboardPickerModalProps {
   options?: DashboardPickerOptions;
   value?: DashboardPickerInitialValueItem;
   searchFilter?: (searchResults: SearchResult[]) => SearchResult[];
+  recentFilter?: (recents: RecentItem[]) => RecentItem[];
   shouldDisableItem?: (
     item: DashboardPickerItem,
     isReadOnlyCollection?: boolean,
@@ -57,6 +58,7 @@ export const DashboardPickerModal = ({
   options = defaultOptions,
   shouldDisableItem,
   searchFilter,
+  recentFilter,
 }: DashboardPickerModalProps) => {
   options = { ...defaultOptions, ...options };
 
@@ -139,6 +141,7 @@ export const DashboardPickerModal = ({
         tabs={tabs}
         options={options}
         searchResultFilter={searchFilter}
+        recentFilter={recentFilter}
         actionButtons={modalActions}
         searchParams={
           options.showRootCollection === false

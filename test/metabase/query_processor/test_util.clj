@@ -14,6 +14,7 @@
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -40,7 +41,7 @@
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
 (def abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :druid-jdbc :googleanalytics})
+  #{:druid :druid-jdbc})
 
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
@@ -60,21 +61,20 @@
                :let   [driver (tx/the-driver-with-test-extensions driver)]
                :when  (driver/with-driver driver
                         (let [db (data/db)]
-                          (every? #(driver/database-supports? driver % db) features)))]
+                          (every? #(driver.u/supports? driver % db) features)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-without-feature
-  "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
-  `feature`."
+  "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
 
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-except
-  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+  "Return the set of all drivers except Druid and those in `excluded-drivers`."
   [excluded-drivers]
   (set/difference (normal-drivers) (set excluded-drivers)))
 
@@ -354,7 +354,7 @@
 (defn supports-report-timezone?
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
-  (driver/database-supports? driver :set-timezone (data/db)))
+  (driver.u/supports? driver :set-timezone (data/db)))
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."

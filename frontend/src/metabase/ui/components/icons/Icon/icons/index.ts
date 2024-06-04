@@ -87,6 +87,8 @@ import close_component from "./close.svg?component";
 import close_source from "./close.svg?source";
 import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
+import cloud_filled_component from "./cloud_filled.svg?component";
+import cloud_filled_source from "./cloud_filled.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
 import compare_component from "./compare.svg?component";
@@ -143,6 +145,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_filled_component from "./folder_filled.svg?component";
+import folder_filled_source from "./folder_filled.svg?source";
 import formula_component from "./formula.svg?component";
 import formula_source from "./formula.svg?source";
 import function_component from "./function.svg?component";
@@ -155,6 +159,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gem_component from "./gem.svg?component";
+import gem_source from "./gem.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -203,8 +209,16 @@ import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
 import line_source from "./line.svg?source";
+import line_style_dashed_component from "./line_style-dashed.svg?component";
+import line_style_dashed_source from "./line_style-dashed.svg?source";
+import line_style_dotted_component from "./line_style-dotted.svg?component";
+import line_style_dotted_source from "./line_style-dotted.svg?source";
+import line_style_solid_component from "./line_style-solid.svg?component";
+import line_style_solid_source from "./line_style-solid.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
+import lines_component from "./lines.svg?component";
+import lines_source from "./lines.svg?source";
 import link_component from "./link.svg?component";
 import link_source from "./link.svg?source";
 import list_component from "./list.svg?component";
@@ -343,6 +357,8 @@ import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
+import trash_filled_component from "./trash_filled.svg?component";
+import trash_filled_source from "./trash_filled.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -541,6 +557,10 @@ export const Icons = {
     component: cloud_component,
     source: cloud_source,
   },
+  cloud_filled: {
+    component: cloud_filled_component,
+    source: cloud_filled_source,
+  },
   compare: {
     component: compare_component,
     source: compare_source,
@@ -669,6 +689,10 @@ export const Icons = {
     component: folder_component,
     source: folder_source,
   },
+  folder_filled: {
+    component: folder_filled_component,
+    source: folder_filled_source,
+  },
   gauge: {
     component: gauge_component,
     source: gauge_source,
@@ -676,6 +700,10 @@ export const Icons = {
   gear: {
     component: gear_component,
     source: gear_source,
+  },
+  gem: {
+    component: gem_component,
+    source: gem_source,
   },
   grabber: {
     component: grabber_component,
@@ -777,9 +805,25 @@ export const Icons = {
     component: line_component,
     source: line_source,
   },
+  lines: {
+    component: lines_component,
+    source: lines_source,
+  },
   lineandbar: {
     component: lineandbar_component,
     source: lineandbar_source,
+  },
+  line_style_dashed: {
+    component: line_style_dashed_component,
+    source: line_style_dashed_source,
+  },
+  line_style_dotted: {
+    component: line_style_dotted_component,
+    source: line_style_dotted_source,
+  },
+  line_style_solid: {
+    component: line_style_solid_component,
+    source: line_style_solid_source,
   },
   list: {
     component: list_component,
@@ -1038,10 +1082,12 @@ export const Icons = {
     source: tab_source,
   },
   table: {
+    // for database tables
     component: table_component,
     source: table_source,
   },
   table2: {
+    // for questions with table visualizations
     component: table2_component,
     source: table2_source,
   },
@@ -1052,6 +1098,10 @@ export const Icons = {
   trash: {
     component: trash_component,
     source: trash_source,
+  },
+  trash_filled: {
+    component: trash_filled_component,
+    source: trash_filled_source,
   },
   triangle_left: {
     component: triangle_left_component,

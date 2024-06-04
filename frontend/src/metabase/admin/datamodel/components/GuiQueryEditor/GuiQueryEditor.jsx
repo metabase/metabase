@@ -14,7 +14,6 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { AggregationWidget } from "../AggregationWidget";
 import { FilterPopover } from "../FilterPopover";
 import { FilterWidgetList } from "../FilterWidgetList";
 
@@ -39,18 +38,15 @@ export class GuiQueryEditor extends Component {
     isShowingDataReference: PropTypes.bool.isRequired,
     setDatasetQuery: PropTypes.func.isRequired,
     features: PropTypes.object,
-    supportMultipleAggregations: PropTypes.bool,
   };
 
   static defaultProps = {
     features: {
       filter: true,
-      aggregation: true,
       breakout: true,
       sort: true,
       limit: true,
     },
-    supportMultipleAggregations: true,
   };
 
   renderAdd(text, onClick, targetRefName) {
@@ -165,76 +161,6 @@ export class GuiQueryEditor extends Component {
     );
   }
 
-  renderAggregation() {
-    const {
-      query,
-      legacyQuery,
-      features,
-      setDatasetQuery,
-      supportMultipleAggregations,
-    } = this.props;
-    const { isEditable } = Lib.queryDisplayInfo(query);
-
-    if (!features.aggregation) {
-      return;
-    }
-    // aggregation clause.  must have table details available
-    if (isEditable) {
-      const aggregations = [...legacyQuery.aggregations()];
-
-      if (aggregations.length === 0) {
-        // add implicit rows aggregation
-        aggregations.push(["rows"]);
-      }
-
-      // Placeholder aggregation for showing the add button
-      if (supportMultipleAggregations && !legacyQuery.isBareRows()) {
-        aggregations.push(null);
-      }
-
-      const aggregationList = [];
-      for (const [index, aggregation] of aggregations.entries()) {
-        aggregationList.push(
-          <AggregationWidget
-            className={cx("QueryOption", CS.p1)}
-            key={"agg" + index}
-            aggregation={aggregation}
-            query={legacyQuery}
-            onChangeAggregation={aggregation =>
-              aggregation
-                ? setDatasetQuery(
-                    legacyQuery.updateAggregation(index, aggregation),
-                  )
-                : setDatasetQuery(legacyQuery.removeAggregation(index))
-            }
-            showMetrics={false}
-            showRawData
-          >
-            {this.renderAdd(null)}
-          </AggregationWidget>,
-        );
-        if (
-          aggregations[index + 1] != null &&
-          aggregations[index + 1].length > 0
-        ) {
-          aggregationList.push(
-            <span key={"and" + index} className={CS.textBold}>{t`and`}</span>,
-          );
-        }
-      }
-      return aggregationList;
-    } else {
-      // TODO: move this into AggregationWidget?
-      return (
-        <div className={cx(QueryBuilderS.QuerySection, CS.disabled)}>
-          <a
-            className={cx("QueryOption", CS.p1, CS.flex, CS.alignCenter)}
-          >{t`Raw data`}</a>
-        </div>
-      );
-    }
-  }
-
   renderDataSection() {
     const { legacyQuery, query, setDatasetQuery } = this.props;
 
@@ -301,35 +227,6 @@ export class GuiQueryEditor extends Component {
     );
   }
 
-  renderViewSection() {
-    const { features } = this.props;
-    if (!features.aggregation && !features.breakout) {
-      return;
-    }
-
-    return (
-      <div
-        className={cx(
-          QueryBuilderS.GuiBuilderView,
-          QueryBuilderS.GuiBuilderSection,
-          CS.flex,
-          CS.alignCenter,
-          CS.px1,
-          CS.pr2,
-        )}
-        ref="viewSection"
-      >
-        <span
-          className={cx(
-            QueryBuilderS.GuiBuilderSectionLabel,
-            QueryBuilderS.QueryLabel,
-          )}
-        >{t`View`}</span>
-        {this.renderAggregation()}
-      </div>
-    );
-  }
-
   componentDidUpdate() {
     const guiBuilder = this.guiBuilder.current;
     if (!guiBuilder) {
@@ -367,7 +264,6 @@ export class GuiQueryEditor extends Component {
           {this.renderFilterSection()}
         </div>
         <div className={cx(QueryBuilderS.GuiBuilderRow, CS.flex, CS.flexFull)}>
-          {this.renderViewSection()}
           <div className={CS.flexFull} />
           {this.props.children}
         </div>

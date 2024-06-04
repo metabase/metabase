@@ -27,6 +27,7 @@
                  :percentile-aggregations
                  :regex
                  :standard-deviation-aggregations
+                 :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))

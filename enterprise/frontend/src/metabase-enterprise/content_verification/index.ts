@@ -3,20 +3,13 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ModelFilterControls } from "./ModelFilterControls";
 import { VerifiedFilter } from "./VerifiedFilter";
-import {
-  availableModelFilters,
-  sortCollectionsByVerification,
-  sortModelsByVerification,
-  useModelFilterSettings,
-} from "./utils";
+import { availableModelFilters, useModelFilterSettings } from "./utils";
 
 if (hasPremiumFeature("content_verification")) {
   Object.assign(PLUGIN_CONTENT_VERIFICATION, {
     VerifiedFilter,
     ModelFilterControls,
     availableModelFilters,
-    sortModelsByVerification,
-    sortCollectionsByVerification,
     useModelFilterSettings,
   });
 }

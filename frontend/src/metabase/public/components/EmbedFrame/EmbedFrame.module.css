@@ -8,20 +8,20 @@ body {
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   background-color: white;
 }
 
 .ThemeNight.EmbedFrame {
-  background-color: var(--color-bg-black);
-  border-color: var(--color-bg-dark);
+  background-color: var(--mb-color-bg-black);
+  border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
   color: color-mod(var(--color-text-white) alpha(-14%));
-  background-color: var(--color-bg-black);
-  border-color: var(--color-bg-dark);
+  background-color: var(--mb-color-bg-black);
+  border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .fullscreenNightText {
@@ -35,8 +35,8 @@ body {
 }
 
 .ThemeNight.EmbedFrame .DashCard .Card {
-  background-color: var(--color-bg-black);
-  border: 1px solid var(--color-bg-dark);
+  background-color: var(--mb-color-bg-black);
+  border: 1px solid var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),

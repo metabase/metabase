@@ -14,6 +14,7 @@ import {
   cartesianChartCircleWithColor,
   cartesianChartCircle,
   trendLine,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -608,7 +609,7 @@ describe("scenarios > visualizations > line chart", () => {
       series.forEach(serie => {
         const [old_name, new_name] = serie;
 
-        cy.findByDisplayValue(old_name).clear().type(new_name);
+        cy.findByDisplayValue(old_name).clear().type(new_name).blur();
       });
 
       modal()
@@ -695,6 +696,11 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
+    queryBuilderMain().within(() => {
+      echartsContainer().findByText("Quantity").should("exist");
+    });
+    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+
     cy.findByTestId("query-visualization-root")
       .trigger("mousedown", 180, 200)
       .trigger("mousemove", 180, 200)
@@ -713,10 +719,6 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 });
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}
 
 function showTooltipForFirstCircleInSeries(seriesColor) {
   cartesianChartCircleWithColor(seriesColor).eq(0).trigger("mousemove");

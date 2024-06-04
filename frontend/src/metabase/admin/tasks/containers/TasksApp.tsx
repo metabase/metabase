@@ -96,6 +96,7 @@ export const TasksApp = ({ children }: TasksAppProps) => {
             <th>{t`Started at`}</th>
             <th>{t`Ended at`}</th>
             <th>{t`Duration (ms)`}</th>
+            <th>{t`Status`}</th>
             <th>{t`Details`}</th>
           </tr>
         </thead>
@@ -113,6 +114,7 @@ export const TasksApp = ({ children }: TasksAppProps) => {
                 <td>{task.started_at}</td>
                 <td>{task.ended_at}</td>
                 <td>{task.duration}</td>
+                <td>{task.status}</td>
                 <td>
                   <Link
                     className={cx(CS.link, CS.textBold)}

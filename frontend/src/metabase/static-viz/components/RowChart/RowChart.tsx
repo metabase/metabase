@@ -92,6 +92,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
 
   const legend = calculateLegendRows({
     items: series.map(series => ({
+      key: series.seriesKey,
       name: series.seriesName,
       color: seriesColors[series.seriesKey],
     })),

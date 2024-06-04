@@ -424,7 +424,7 @@
 
 (defmethod lib-type :metric
   [_object-type]
-  :metadata/legacy-metric)
+  :metadata/metric)
 
 (defmethod excluded-keys :metric
   [_object-type]
@@ -464,13 +464,28 @@
         (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
+(defn- metric-cards
+  [delayed-cards]
+  (when-let [cards @delayed-cards]
+    (into {}
+          (keep (fn [[id card]]
+                  (when (and card (= (:type @card) :metric) (not (:archived @card)))
+                    (let [card @card]
+                      [id (-> card
+                              (select-keys [:id :table-id :name :description :archived
+                                            :dataset-query])
+                              (assoc :lib/type :metadata/metric)
+                              delay)]))))
+          cards)))
+
 (defn- parse-metadata [metadata]
-  {:databases (parse-objects-delay :database metadata)
-   :tables    (parse-objects-delay :table    metadata)
-   :fields    (parse-objects-delay :field    metadata)
-   :cards     (parse-objects-delay :card     metadata)
-   :metrics   (parse-objects-delay :metric   metadata)
-   :segments  (parse-objects-delay :segment  metadata)})
+  (let [delayed-cards (parse-objects-delay :card metadata)]
+    {:databases (parse-objects-delay :database metadata)
+     :tables    (parse-objects-delay :table    metadata)
+     :fields    (parse-objects-delay :field    metadata)
+     :cards     delayed-cards
+     :metrics   (delay (metric-cards delayed-cards))
+     :segments  (parse-objects-delay :segment  metadata)}))
 
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
@@ -480,7 +495,6 @@
                      :metadata/table         :tables
                      :metadata/column        :fields
                      :metadata/card          :cards
-                     :metadata/legacy-metric :metrics
                      :metadata/segment       :segments)
         metadatas* (some-> metadata k deref)]
     (into []
@@ -500,7 +514,7 @@
   [metadata metadata-type table-id]
   (let [k (case metadata-type
             :metadata/column        :fields
-            :metadata/legacy-metric :metrics
+            :metadata/metric        :metrics
             :metadata/segment       :segments)]
     (into []
           (keep (fn [[_id dlay]]

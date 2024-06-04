@@ -6,6 +6,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import type { SettingElement } from "metabase/admin/settings/types";
+import { UpsellHosting } from "metabase/admin/upsells";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
@@ -19,9 +20,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
-import { Group, Radio, Stack, Button, Text, Flex } from "metabase/ui";
+import { Group, Radio, Stack, Button, Text, Flex, Box } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
 
 import {
@@ -29,7 +29,6 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../../settings";
-import MarginHostingCTA from "../widgets/MarginHostingCTA";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
@@ -74,7 +73,6 @@ export const SMTPConnectionForm = ({
   const [testEmailError, setTestEmailError] = useState<string | null>(null);
 
   const isHosted = useSelector(getIsHosted);
-  const isPaidPlan = useSelector(getIsPaidPlan);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
   const dispatch = useDispatch();
 
@@ -96,7 +94,7 @@ export const SMTPConnectionForm = ({
   }, [dispatch]);
 
   const handleUpdateEmailSettings = useCallback(
-    async formData => {
+    async (formData: object) => {
       await dispatch(updateEmailSettings(formData));
 
       if (!isEmailConfigured) {
@@ -197,10 +195,10 @@ export const SMTPConnectionForm = ({
                 <Group>
                   {Object.entries(
                     elementMap["email-smtp-security"].options || {},
-                  ).map(([value, name]) => (
+                  ).map(([value, setting]) => (
                     <Radio
                       value={value}
-                      label={name}
+                      label={setting.name}
                       key={value}
                       styles={{
                         inner: { display: "none" },
@@ -266,9 +264,9 @@ export const SMTPConnectionForm = ({
           )}
         </FormProvider>
       </Stack>
-      {!isPaidPlan && (
-        <MarginHostingCTA tagline={t`Have your email configured for you.`} />
-      )}
+      <Box>
+        <UpsellHosting source="settings-email-migrate_to_cloud" />
+      </Box>
     </Flex>
   );
 };

@@ -1,4 +1,3 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { restore } from "e2e/support/helpers";
 
@@ -17,10 +16,8 @@ describe("issue 21135", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
     cy.createQuestion(questionDetails, { visitQuestion: true });
-
-    switchToNotebookView();
+    cy.icon("notebook").click();
   });
 
   it("should handle cc with the same name as the table column (metabase#21135)", () => {
@@ -41,15 +38,6 @@ describe("issue 21135", () => {
     });
   });
 });
-
-function switchToNotebookView() {
-  cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-    "publicSchema",
-  );
-
-  cy.icon("notebook").click();
-  cy.wait("@publicSchema");
-}
 
 function previewCustomColumnNotebookStep() {
   cy.intercept("POST", "/api/dataset").as("dataset");

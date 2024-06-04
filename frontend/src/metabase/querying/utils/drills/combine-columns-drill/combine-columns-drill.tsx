@@ -1,5 +1,8 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
+import { hasCombinations } from "metabase/query_builder/components/expressions/CombineColumns";
 import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
@@ -11,11 +14,16 @@ import { CombineColumnsDrill } from "./components";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,
-  query,
-  stageIndex,
+  query: originalQuery,
+  stageIndex: originalStageIndex,
   clicked,
 }) => {
-  if (!clicked.column) {
+  const { query, stageIndex } = Lib.asReturned(
+    originalQuery,
+    originalStageIndex,
+  );
+
+  if (!clicked.column || !hasCombinations(query, stageIndex)) {
     return [];
   }
 
@@ -24,21 +32,25 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   const DrillPopover = ({
     onChangeCardAndRun,
     onClose,
-  }: ClickActionPopoverProps) => (
-    <CombineColumnsDrill
-      column={column}
-      query={query}
-      stageIndex={stageIndex}
-      onSubmit={newQuery => {
-        const nextQuestion = question.setQuery(newQuery);
-        const nextCard = nextQuestion.card();
+  }: ClickActionPopoverProps) => {
+    const dispatch = useDispatch();
+    return (
+      <CombineColumnsDrill
+        column={column}
+        query={query}
+        stageIndex={stageIndex}
+        onSubmit={newQuery => {
+          const nextQuestion = question.setQuery(newQuery);
+          const nextCard = nextQuestion.card();
 
-        trackColumnCombineViaColumnHeader(newQuery, nextQuestion);
-        onChangeCardAndRun({ nextCard });
-        onClose();
-      }}
-    />
-  );
+          trackColumnCombineViaColumnHeader(newQuery, nextQuestion);
+          dispatch(setUIControls({ scrollToLastColumn: true }));
+          onChangeCardAndRun({ nextCard });
+          onClose();
+        }}
+      />
+    );
+  };
 
   return [
     {

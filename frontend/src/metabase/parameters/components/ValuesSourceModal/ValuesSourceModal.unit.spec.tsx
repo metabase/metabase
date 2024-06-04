@@ -12,6 +12,8 @@ import {
   setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
+  setupRecentViewsEndpoints,
+  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -65,7 +67,7 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(
-        screen.getByText(/We don’t have any cached values/),
+        await screen.findByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
     });
 
@@ -79,7 +81,7 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(await screen.findByRole("textbox")).toHaveValue("A\nB\nC");
     });
 
     it("should not show the connected fields option if parameter is not wired to any fields", async () => {
@@ -129,7 +131,7 @@ describe("ValuesSourceModal", () => {
           values: [["C"], ["D"]],
         }),
       });
-      expect(screen.getByRole("textbox")).toHaveValue("C\nD");
+      expect(await screen.findByRole("textbox")).toHaveValue("C\nD");
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
@@ -149,7 +151,7 @@ describe("ValuesSourceModal", () => {
         }),
       });
       expect(
-        screen.getByText(/We don’t have any cached values/),
+        await screen.findByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
@@ -434,10 +436,19 @@ const setup = async ({
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
+  setupRecentViewsEndpoints([]);
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });
     setupCardsEndpoints(cards);
+    cards.forEach(card =>
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: `card__${card.id}`,
+          fields: card.result_metadata,
+        }),
+      ),
+    );
   } else {
     setupUnauthorizedCollectionsEndpoints(collections);
     setupUnauthorizedCardsEndpoints(cards);

@@ -19,6 +19,13 @@ export function model(
   return question(card, opts);
 }
 
+export function metric(
+  card: CardOrSearchResult,
+  opts?: QuestionUrlBuilderParams,
+) {
+  return question(card, opts);
+}
+
 export function modelDetail(card: CardOrSearchResult, tab = "") {
   const baseUrl = `${model({ ...card, type: "model" })}/detail`;
   return tab ? `${baseUrl}/${tab}` : baseUrl;

@@ -5827,6 +5827,56 @@ databaseChangeLog:
       rollback: # nothing
 
   - changeSet:
+      id: v49.2024-05-20T19:10:34
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.collection_preview to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: collection_preview
+            newDataType: boolean
+            defaultValueBoolean: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-05-20T20:37:55
+      author: johnswanson
+      comment: Add NOT NULL constraint to report_card.collection_preview
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${boolean.type}
+            tableName: report_card
+            columnName: collection_preview
+            defaultNullValue: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+  - changeSet:
+      id: v49.2024-05-20T20:38:34
+      author: johnswanson
+      comment: Add default value to report_card.collection_preview
+      changes:
+        - addDefaultValue:
+            defaultValueBoolean: true
+            tableName: report_card
+            columnName: collection_preview
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -6562,14 +6612,6 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v50.2024-04-09T15:55:22
-      author: calherries
-      comment: Create sample content
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.CreateSampleContent"
-
-  - changeSet:
       id: v50.2024-04-12T12:33:09
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
@@ -6614,12 +6656,28 @@ databaseChangeLog:
               DELETE FROM data_permissions where perm_type = 'perms/data-access' OR perm_type = 'perms/native-query-editing';
 
   - changeSet:
-      id: v50.2024-04-25T01:04:04
+      id: v50.2024-04-25T01:04:05
       author: qnkhuat
       comment: Delete the old SendPulses job and trigger
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.DeleteSendPulsesTask"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:06
+      author: qnkhuat
+      comment: Delete SendPulse Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteSendPulseTaskOnDowngrade"
+
+  - changeSet:
+      id: v50.2024-04-25T01:04:07
+      author: qnkhuat
+      comment: Delete InitSendPulseTriggers Job on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteInitSendPulseTriggersOnDowngrade"
 
   - changeSet:
       id: v50.2024-04-25T03:15:01
@@ -6832,6 +6890,553 @@ databaseChangeLog:
             columns:
               column:
                 name: user_id
+
+  - changeSet:
+      id: v50.2024-04-30T23:57:23
+      author: noahmoss
+      comment: Add `scope` column to api_key to support SCIM authentication
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: scope
+                  type: varchar(64)
+                  remarks: The scope of the API key, if applicable
+                  constraints:
+                    nullable: true
+            tableName: api_key
+
+  - changeSet:
+      id: v50.2024-04-30T23:58:24
+      author: noahmoss
+      comment: Drop NOT NULL constraint on api_key.user_id to support SCIM-scoped API keys
+      changes:
+        - dropNotNullConstraint:
+            tableName: api_key
+            columnName: user_id
+            columnDataType: integer
+      rollback: # we can't reliably add back the constraint while downgrading
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:00
+      author: qnkhuat
+      comment: Add task_history.status
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: status
+                  type: varchar(21)
+                  remarks: "the status of task history, could be started, failed, success, unknown"
+                  constraints:
+                    nullable: false
+                  defaultValue: "unknown"
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:01
+      author: qnkhuat
+      comment: Drop default value task_history.status
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:02
+      author: qnkhuat
+      comment: Add "started" as default value for task_history.status, now that backfill is done.
+      changes:
+        - addDefaultValue:
+            defaultValue: "started"
+            tableName: task_history
+            columnName: status
+      # the column will be dropped
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:03
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.ended_at
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: ${timestamp_type}
+            columnName: ended_at
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:04
+      author: qnkhuat
+      comment: Drop not null constraint for task_history.duration
+      changes:
+        - dropNotNullConstraint:
+            tableName: task_history
+            columnDataType: int
+            columnName: duration
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:05
+      author: qnkhuat
+      comment: Drop default value task_history.ended_at
+      changes:
+        - dropDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+      rollback:
+        - addDefaultValue:
+            tableName: task_history
+            columnName: ended_at
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v50.2024-05-08T09:00:06
+      author: qnkhuat
+      comment: Add null as default value for task_history.ended_at
+      changes:
+        - addDefaultValue:
+            defaultValue: "null"
+            tableName: task_history
+            columnName: ended_at
+      # the migration above will add one
+      rollback:
+
+  - changeSet:
+      id: v50.2024-05-13T16:00:00
+      author: filipesilva
+      comment: Create cloud migration
+      changes:
+        - createTable:
+            tableName: cloud_migration
+            remarks: Migrate to cloud directly from Metabase
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: external_id
+                  remarks: Matching ID in Cloud for this migration
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: upload_url
+                  remarks: URL where the backup will be uploaded to
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  remarks: 'Current state of the migration: init, setup, dump, upload, done, error, cancelled'
+                  type: varchar(32)
+                  defaultValue: init
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  remarks: Number between 0 to 100 representing progress as a percentage
+                  type: int
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the config was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the config was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-14T12:13:22
+      author: johnswanson
+      comment: Add `collection.trashed_from_location`
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: trashed_from_location
+                  type: ${text.type}
+                  remarks: "The previous location this collection was trashed from"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-14T12:13:33
+      author: johnswanson
+      comment: Add `report_card.trashed_from_collection_id`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this card was trashed *from*"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-14T12:13:39
+      author: johnswanson
+      comment: Add `report_dashboard.trashed_from_collection_id`
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: trashed_from_collection_id
+                  type: int
+                  remarks: "The previous parent collection this dashboard was trashed *from*"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:16
+      author: johnswanson
+      comment: Drop foreign key constraint fk_snippet_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:27
+      author: johnswanson
+      comment: Add foreign key constraint fk_snippet_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:29
+      author: johnswanson
+      comment: Drop foreign key constraint fk_pulse_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_collection_id
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:32
+      author: johnswanson
+      comment: Add foreign key constraint fk_pulse_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:33
+      author: johnswanson
+      comment: Drop foreign key constraint fk_card_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_collection_id
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:36
+      author: johnswanson
+      comment: Add foreign key constraint fk_card_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:37
+      author: johnswanson
+      comment: Drop foreign key constraint fk_dashboard_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: SET NULL
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_collection_id
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:40
+      author: johnswanson
+      comment: Add foreign key constraint fk_dashboard_collection_id with CASCADE delete
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:42
+      author: johnswanson
+      comment: Create the Trash collection
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('Trash', 'trash', 'trashtrashtrashtrasht', 'trash');
+              INSERT INTO permissions (object, group_id)
+              SELECT CONCAT('/collection/', c.id, '/'), pg.id
+              FROM collection c
+              CROSS JOIN permissions_group pg
+              WHERE c.type = 'trash' AND pg.name != 'Administrators';
+
+      rollback:
+        - sql:
+            sql: >-
+              DELETE
+              FROM permissions
+              WHERE permissions.object IN (
+                SELECT CONCAT('/collection/', collection.id, '/') FROM collection WHERE collection.type = 'trash'
+              );
+              UPDATE collection
+              SET
+                entity_id = NULL,
+                archived = true,
+                name = 'Trash (Auto-Generated)',
+                type = NULL
+              WHERE type = 'trash';
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:44
+      author: johnswanson
+      comment: Move existing archived collections to the Trash - (Postgres)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection AS c1
+              SET trashed_from_location = c1.location,
+                  location = CONCAT('/', c2.id, '/')
+              FROM (SELECT id FROM collection WHERE type = 'trash') AS c2
+              WHERE c1.archived = true AND c1.namespace IS NULL;
+      rollback: # not needed. See above: `Trash` becomes a normal collection
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:46
+      author: johnswanson
+      comment: Move existing archived collections to the Trash - (H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection AS c1
+              SET trashed_from_location = c1.location,
+                  location = CONCAT('/', (SELECT id FROM collection WHERE type = 'trash'), '/')
+              WHERE c1.archived = true AND c1.namespace IS NULL;
+      rollback: # Not needed.
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:48
+      author: johnswanson
+      comment: Move existing archived collections to the Trash - (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection AS c1
+              JOIN (
+                  SELECT id FROM collection WHERE type = 'trash'
+              ) AS c2
+              SET c1.trashed_from_location = c1.location,
+                  c1.location = CONCAT('/', c2.id, '/')
+              WHERE c1.archived = true AND c1.namespace IS NULL;
+      rollback: # Not needed
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:50
+      author: johnswanson
+      comment: Move existing archived dashboards to the Trash
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_dashboard
+              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              WHERE archived = true;
+      rollback: # Not needed
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:52
+      author: johnswanson
+      comment: Move existing archived cards to the Trash
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET trashed_from_collection_id = collection_id, collection_id = (SELECT id FROM collection WHERE type = 'trash')
+              WHERE archived = true;
+      rollback: # Not needed
+
+  - changeSet:
+      id: v50.2024-05-15T13:13:13
+      author: adam-james
+      comment: Fix visualization settings for stacked area/bar/combo displays
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateStackedAreaBarComboDisplaySettings"
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:23
+      author: calherries
+      comment: Add metabase_database.uploads_enabled column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether uploads are enabled for this database
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:24
+      author: calherries
+      comment: Add metabase_database.uploads_schema_name column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_schema_name
+                  type: ${text.type}
+                  remarks: The schema name for uploads
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:25
+      author: calherries
+      comment: Add metabase_database.uploads_table_prefix column
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: uploads_table_prefix
+                  type: ${text.type}
+                  remarks: The prefix for upload table names
+
+  - changeSet:
+      id: v50.2024-05-17T19:54:26
+      author: calherries
+      comment: Update metabase_database.uploads_enabled value
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateUploadsSettings"
+
+  # This migration should be moved whenever the sample content is updated, so that it
+  # matches when the version that the sample content was updated from. See metabase#43200
+  # for an example where the content was updated.
+  - changeSet:
+      id: v50.2024-05-27T15:55:22
+      author: calherries
+      comment: Create sample content
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSampleContent"
+
+  - changeSet:
+      id: v51.2024-05-13T15:30:57
+      author: metamben
+      comment: Backup of dataset_query rewritten by the metrics v2 migration
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dataset_query_metrics_v2_migration_backup
+                  remarks: The copy of dataset_query before the metrics v2 migration
+                  type: ${text.type}
+
+  - changeSet:
+      id: v51.2024-05-13T16:00:00
+      author: metamben
+      comment: Migrate v1 metrics to v2 metrics
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateMetricsToV2"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

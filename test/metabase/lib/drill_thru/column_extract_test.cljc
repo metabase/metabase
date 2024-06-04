@@ -30,8 +30,9 @@
   (testing "column-extract is available for column clicks on temporal, URL and Email columns"
     (canned/canned-test
       :drill-thru/column-extract
-      (fn [_test-case {:keys [column] :as _context} {:keys [click column-type]}]
+      (fn [test-case {:keys [column] :as _context} {:keys [click column-type]}]
         (and (= click :header)
+             (not (:native? test-case))
              (or (= column-type :datetime)
                  (#{:type/URL :type/Email} (:semantic-type column))))))))
 

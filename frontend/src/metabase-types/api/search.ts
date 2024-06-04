@@ -12,18 +12,15 @@ const ENABLED_SEARCH_MODELS = [
   "collection",
   "dashboard",
   "card",
+  "dataset",
+  "metric",
   "database",
   "table",
-  "dataset",
   "action",
   "indexed-entity",
 ] as const;
 
-export const SEARCH_MODELS = [
-  ...ENABLED_SEARCH_MODELS,
-  "segment",
-  "metric",
-] as const;
+export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
 export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
 
@@ -126,7 +123,7 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: "search-bar" | "search-app";
+  context?: "search-bar" | "search-app" | "command-palette";
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;

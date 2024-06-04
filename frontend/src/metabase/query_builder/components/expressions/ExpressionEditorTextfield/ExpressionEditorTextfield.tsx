@@ -78,19 +78,19 @@ export function suggestWithExtras(
     res.suggestions ?? [];
 
   if (args.showMetabaseLinks && args.source === "") {
-    suggestions.unshift(...(args.shortcuts ?? []));
+    suggestions.push(...(args.shortcuts ?? []));
 
     if (args.startRule === "aggregation") {
       suggestions.push({
         footer: true,
-        name: t`View all aggregations`,
+        name: t`Documentation`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
       });
     } else {
       suggestions.push({
         footer: true,
-        name: t`View all functions`,
+        name: t`Documentation`,
         icon: "external",
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
       });
@@ -417,6 +417,12 @@ class ExpressionEditorTextfield extends React.Component<
     }
   };
 
+  handleHighlightSuggestion = (index: number) => {
+    this.setState({
+      highlightedSuggestionIndex: index,
+    });
+  };
+
   chooseSuggestion = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
@@ -713,6 +719,7 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={highlightedSuggestionIndex}
+          onHighlightSuggestion={this.handleHighlightSuggestion}
           open={isFocused}
         >
           <EditorContainer

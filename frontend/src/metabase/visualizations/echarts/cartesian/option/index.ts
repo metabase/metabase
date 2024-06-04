@@ -7,8 +7,8 @@ import {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
-  CartesianChartModel,
   DataKey,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
@@ -21,6 +21,7 @@ import type {
 import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
@@ -61,7 +62,6 @@ export const getCartesianChartOption = (
       )
     : null;
 
-  // series option
   const dataSeriesOptions = buildEChartsSeries(
     chartModel,
     settings,
@@ -88,14 +88,14 @@ export const getCartesianChartOption = (
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
-    ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
-  ];
-
-  if (settings["stackable.stack_type"] != null) {
-    dimensions.push(
-      ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
-    );
-  }
+    POSITIVE_STACK_TOTAL_DATA_KEY,
+    NEGATIVE_STACK_TOTAL_DATA_KEY,
+    ...chartModel.seriesModels.map(seriesModel => [
+      seriesModel.dataKey,
+      getBarSeriesDataLabelKey(seriesModel.dataKey, "+"),
+      getBarSeriesDataLabelKey(seriesModel.dataKey, "-"),
+    ]),
+  ].flatMap(dimension => dimension);
 
   const echartsDataset = [
     {

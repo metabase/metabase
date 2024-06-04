@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -300,9 +301,10 @@
         metric-id 101
 
         metric-definition
-        {:source-table (meta/id :venues)
-         :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-         :filter       [:= [:field (meta/id :venues :price) nil] 4]}
+        (-> lib.tu/venues-query
+            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+            (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+            lib.convert/->legacy-MBQL)
 
         metadata-provider
         (lib.tu/mock-metadata-provider
@@ -312,13 +314,16 @@
                       :table-id    (meta/id :venues)
                       :definition  segment-definition
                       :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
-          :metrics [{:id          metric-id
-                     :name        "Sum of Cans"
-                     :table-id    (meta/id :venues)
-                     :definition  metric-definition
-                     :description "Number of toucans plus number of pelicans"}]})
+          :cards [{:id            metric-id
+                   :name          "Sum of Cans"
+                   :database-id   (meta/id)
+                   :dataset-query metric-definition
+                   :description   "Number of toucans plus number of pelicans"
+                   :type          :metric}]})
 
         query (lib/query metadata-provider (meta/table-metadata :venues))
+
+        metric-query (lib/query metadata-provider (lib.metadata/card metadata-provider metric-id))
 
         array-checker #(when (array? %) (js->clj %))
         to-legacy-refs (comp array-checker #(lib.js/legacy-ref query -1 %))]
@@ -335,7 +340,7 @@
              (->> query lib/available-segments (map to-legacy-refs)))))
     (testing "metric refs come without options"
       (is (= [["metric" metric-id]]
-             (->> query lib/available-legacy-metrics (map to-legacy-refs)))))
+             (->> metric-query lib/available-metrics (map to-legacy-refs)))))
     (testing "aggregation references (#37698)"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
@@ -357,7 +362,7 @@
         (let [segment-expr (lib.js/expression-clause-for-legacy-expression query -1 (first legacy-refs))]
           (is (=? [:segment {} segment-id] segment-expr))
           (is (= ["segment" segment-id] (js->clj (lib.js/legacy-expression-for-expression-clause query -1 segment-expr)))))))
-    (let [legacy-refs (->> query lib/available-legacy-metrics (map #(lib.js/legacy-ref query -1 %)))]
+    (let [legacy-refs (->> metric-query lib/available-metrics (map #(lib.js/legacy-ref query -1 %)))]
       (testing "metric refs come without options"
         (is (= [["metric" metric-id]] (map array-checker legacy-refs))))
       (testing "metric legacy ref can be converted to an expression and back (#37173)"
@@ -606,7 +611,7 @@
                             (lib/filter (lib/> (m/find-first #(= (:name "count") %) base-cols)
                                                100)))
           two-stage-agg (lib/aggregate two-stage (lib/count))]
-      (testing "does not change a query with no aggregations"
+      (testing "does not change a query with no aggregations or breakouts"
         (doseq [stage [0 -1]]
           (let [obj (lib.js/as-returned simple-query stage)]
             (is (=? simple-query (.-query obj)))
@@ -630,4 +635,36 @@
         (let [obj (lib.js/as-returned two-stage-agg 1)]
           (is (=? (lib/append-stage two-stage-agg)
                   (.-query obj)))
-          (is (=? -1 (.-stageIndex obj))))))))
+          (is (=? -1 (.-stageIndex obj)))))
+
+      (testing "only breakouts"
+        (let [brk-only  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
+              two-stage (-> brk-only
+                            lib/append-stage
+                            (lib/filter (lib/> (first (lib/returned-columns brk-only)) 100)))]
+          (testing "uses an existing later stage if it exists"
+            (let [obj (lib.js/as-returned two-stage 0)]
+              (is (=? two-stage (.-query obj)))
+              (is (=? 1         (.-stageIndex obj)))))
+          (testing "appends a new stage if necessary"
+            (let [obj (lib.js/as-returned brk-only 0)]
+              (is (=? (lib/append-stage brk-only)
+                      (.-query obj)))
+              (is (=? -1 (.-stageIndex obj)))))))
+
+      (testing "only aggregations"
+        (let [agg-only  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count)))
+              two-stage (-> agg-only
+                            lib/append-stage
+                            (lib/filter (lib/> (first (lib/returned-columns agg-only)) 100)))]
+          (testing "uses an existing later stage if it exists"
+            (let [obj (lib.js/as-returned two-stage 0)]
+              (is (=? two-stage (.-query obj)))
+              (is (=? 1         (.-stageIndex obj)))))
+          (testing "appends a new stage if necessary"
+            (let [obj (lib.js/as-returned agg-only 0)]
+              (is (=? (lib/append-stage agg-only)
+                      (.-query obj)))
+              (is (=? -1 (.-stageIndex obj))))))))))

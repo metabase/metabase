@@ -127,3 +127,6 @@ export function getNoObjectIllustration(state: EnterpriseState): string | null {
       return getSetting(state, "no-object-illustration-custom") as string;
   }
 }
+
+export const getApplicationColors = (settingValues: EnterpriseSettings) =>
+  settingValues["application-colors"];

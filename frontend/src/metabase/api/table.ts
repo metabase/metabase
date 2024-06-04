@@ -1,9 +1,10 @@
 import type {
   Field,
-  GetTableMetadataRequest,
+  GetTableQueryMetadataRequest,
   GetTableRequest,
   Table,
   TableId,
+  TableListQuery,
   UpdateTableFieldsOrderRequest,
   UpdateTableListRequest,
   UpdateTableRequest,
@@ -21,10 +22,11 @@ import {
 
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listTables: builder.query<Table[], void>({
-      query: () => ({
+    listTables: builder.query<Table[], TableListQuery | void>({
+      query: body => ({
         method: "GET",
         url: "/api/table",
+        body,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
     }),
@@ -35,7 +37,7 @@ export const tableApi = Api.injectEndpoints({
       }),
       providesTags: table => (table ? provideTableTags(table) : []),
     }),
-    getTableMetadata: builder.query<Table, GetTableMetadataRequest>({
+    getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...body }) => ({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,
@@ -111,7 +113,7 @@ export const tableApi = Api.injectEndpoints({
 export const {
   useListTablesQuery,
   useGetTableQuery,
-  useGetTableMetadataQuery,
+  useGetTableQueryMetadataQuery,
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,

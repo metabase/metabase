@@ -1,5 +1,7 @@
 (ns metabase.lib.card
   (:require
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
@@ -20,6 +22,13 @@
   [_query _stage-number {card-name :name, :keys [display-name], :as card-metadata}]
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
+
+(defmethod lib.metadata.calculation/display-info-method :metadata/card
+  [query stage-number card-metadata]
+  (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata)
+    (= (:type card-metadata) :question) (assoc :question? true)
+    (= (:type card-metadata) :model) (assoc :model? true)
+    (= (:type card-metadata) :metric) (assoc :metric? true)))
 
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query
@@ -144,8 +153,16 @@
     (card-metadata-columns metadata-providerable card)))
 
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
-  [query _stage-number card {:keys [unique-name-fn], :as _options}]
+  [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
           (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
             (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
-        (card-metadata-columns query card)))
+        (if (= (:type card) :metric)
+          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+                                 (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
+            (not-empty (lib.metadata.calculation/returned-columns
+                        (assoc metric-query :lib/metadata (:lib/metadata query))
+                        -1
+                        (lib.util/query-stage metric-query -1)
+                        options)))
+          (card-metadata-columns query card))))

@@ -79,7 +79,8 @@
   []
   (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
     (fn unique-alias-fn [position original-alias]
-      {:pre (string? original-alias)}
+      (assert (string? original-alias)
+              (format "unique-alias-fn expected string, got: %s" (pr-str original-alias)))
       (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
@@ -405,6 +406,29 @@
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
               ::position      position}))))
 
+(defmulti ^:private aggregation-name
+  {:arglists '([mbql-clause])}
+  (fn [x]
+    (when (mbql.u/mbql-clause? x)
+      (first x))))
+
+;;; make sure we have an `:aggregation-options` or other fully-preprocessed aggregation clause (i.e., `:offset`) like we
+;;; expect. This is mostly a precondition check since we should never be running this code on not-preprocessed queries,
+;;; so it's not i18n'ed
+(defmethod aggregation-name :default
+  [ag-clause]
+  (throw (ex-info (format "Expected :aggregation-options or other fully-preprocessed aggregation, got %s."
+                          (pr-str ag-clause))
+                  {:clause ag-clause})))
+
+(mu/defmethod aggregation-name :aggregation-options :- :string
+  [[_aggregation-options _wrapped-ag opts]]
+  (:name opts))
+
+(mu/defmethod aggregation-name :offset :- :string
+  [[_offset opts _expr _n]]
+  (:name opts))
+
 (defmethod clause-alias-info :aggregation
   [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index _opts :as ag-ref-clause]]
   (let [position (clause->position inner-query ag-ref-clause)]
@@ -415,13 +439,7 @@
                       {:type   qp.error-type/invalid-query
                        :clause ag-ref-clause
                        :query  inner-query})))
-    (let [[_ _ {ag-name :name} :as matching-ag] (nth aggregations index)]
-      ;; make sure we have an `:aggregation-options` clause like we expect. This is mostly a precondition check
-      ;; since we should never be running this code on not-preprocessed queries, so it's not i18n'ed
-      (when-not (mbql.u/is-clause? :aggregation-options matching-ag)
-        (throw (ex-info (format "Expected :aggregation-options, got %s. (Query must be fully preprocessed.)"
-                                (pr-str matching-ag))
-                        {:clause ag-ref-clause, :query inner-query})))
+    (let [ag-name (aggregation-name (nth aggregations index))]
       {::desired-alias (unique-alias-fn position ag-name)
        ::position      position})))
 

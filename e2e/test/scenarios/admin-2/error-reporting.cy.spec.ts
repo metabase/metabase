@@ -4,6 +4,7 @@ import {
   modal,
   restore,
   visitDashboard,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
 const downloadsFolder = Cypress.config("downloadsFolder");
@@ -20,7 +21,7 @@ describe("error reporting modal", () => {
     cy.visit("/");
 
     cy.findByTestId("home-page")
-      .findByText(/see what metabase can do/i)
+      .findByText(/pick up where you left off/i)
       .realClick();
     cy.wait(500);
 
@@ -39,6 +40,26 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("logs");
       expect(fileContent).to.have.property("bugReportDetails");
     });
+  });
+
+  it("should not show error reporting modal in embedding", () => {
+    restore();
+    cy.signInAsAdmin();
+    visitFullAppEmbeddingUrl({
+      url: "/",
+      qs: {
+        top_nav: true,
+      },
+      onBeforeLoad: undefined,
+    });
+
+    cy.findByTestId("home-page")
+      .findByText(/pick up where you left off/i)
+      .realClick();
+
+    cy.realPress(["Control", "F1"]);
+
+    modal().should("not.exist");
   });
 
   it("should include question-specific data when triggered on the question page", () => {

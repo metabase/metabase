@@ -52,7 +52,7 @@ Another common case where direct connections are impossible is when connecting t
 - Answer yes to the "Use an SSH-tunnel for database connections" parameter.
 - Enter `localhost` in the `Host` parameter. This is the name the server.
 - Enter the same value in the `Port` parameter that you would use if you where sitting directly at the data warehouse host system.
-- Enter the extenal name of the data warehouse, as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
+- Enter the external name of the data warehouse, as seen from the outside of the network (or wherever you are) into the `SSH tunnel host` parameter.
 - Enter the SSH port as seen from outside the network into the `SSH tunnel port` parameter. This is usually 22, regardless of which data warehouse you are connecting to.
 - Choose your authentication method as described above (username and password or SSH key).
 

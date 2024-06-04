@@ -27,6 +27,7 @@ export type LastEditedByProps = UserId[];
 export type LastEditedAtFilterProps = string | null;
 export type VerifiedFilterProps = true | null;
 export type NativeQueryFilterProps = true | null;
+export type SearchTrashedItemsFilterProps = true | undefined;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
@@ -36,6 +37,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.LastEditedBy]: LastEditedByProps;
   [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
+  [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;

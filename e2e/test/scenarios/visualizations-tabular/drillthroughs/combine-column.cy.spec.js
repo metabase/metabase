@@ -8,6 +8,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -40,7 +41,7 @@ describeWithSnowplow(
         { visitQuestion: true },
       );
 
-      cy.findAllByTestId("header-cell").contains("Email").click();
+      tableHeaderClick("Email");
       popover().findByText("Combine columns").click();
 
       popover().within(() => {
@@ -109,12 +110,12 @@ describeWithSnowplow(
       );
 
       // first combine (email + ID)
-      cy.findAllByTestId("header-cell").contains("Email").click();
+      tableHeaderClick("Email");
       popover().findByText("Combine columns").click();
       popover().findByText("Done").click();
 
       // second combine (email + ID)
-      cy.findAllByTestId("header-cell").contains("Email").click();
+      tableHeaderClick("Email");
       popover().findByText("Combine columns").click();
       popover().findByText("Done").click();
 

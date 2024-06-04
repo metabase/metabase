@@ -1,10 +1,12 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import type {
   OnArchive,
+  OnRestore,
+  OnDeletePermanently,
   OnCopy,
   OnMove,
   OnPin,
@@ -94,12 +96,20 @@ const EntityIconCheckBox = ({
   );
 };
 
-function EntityItemName({ name, variant }: { name: string; variant?: string }) {
+function EntityItemName({
+  name,
+  variant,
+  ...props
+}: {
+  name: string;
+  variant?: string;
+} & React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
       className={cx(CS.overflowHidden, {
         [CS.textList]: variant === "list",
       })}
+      {...props}
     >
       <Ellipsified>{name}</Ellipsified>
     </h3>
@@ -115,6 +125,8 @@ function EntityItemMenu({
   onMove,
   onCopy,
   onArchive,
+  onRestore,
+  onDeletePermanently,
   onToggleBookmark,
   onTogglePreview,
   className,
@@ -127,6 +139,8 @@ function EntityItemMenu({
   onMove?: OnMove;
   onCopy?: OnCopy;
   onArchive?: OnArchive;
+  onRestore?: OnRestore;
+  onDeletePermanently?: OnDeletePermanently;
   onToggleBookmark?: OnToggleBookmark;
   onTogglePreview?: OnTogglePreview;
   className?: string;
@@ -141,36 +155,20 @@ function EntityItemMenu({
   const actions = useMemo(() => {
     const result = [];
 
-    const bookmarkAction = onToggleBookmark
-      ? {
-          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
-          icon: "bookmark",
-          action: onToggleBookmark,
-        }
-      : null;
+    if (onPin) {
+      result.push({
+        title: isPinned ? t`Unpin` : t`Pin this`,
+        icon: isPinned ? "unpin" : "pin",
+        action: onPin,
+      });
+    }
 
-    if (isPinned) {
-      if (onPin) {
-        result.push({
-          title: t`Unpin`,
-          icon: "unpin",
-          action: onPin,
-        });
-      }
-      if (bookmarkAction) {
-        result.push(bookmarkAction);
-      }
-    } else {
-      if (bookmarkAction) {
-        result.push(bookmarkAction);
-      }
-      if (onPin) {
-        result.push({
-          title: t`Pin this`,
-          icon: "pin",
-          action: onPin,
-        });
-      }
+    if (onToggleBookmark) {
+      result.push({
+        title: isBookmarked ? t`Remove from bookmarks` : c("Verb").t`Bookmark`,
+        icon: "bookmark",
+        action: onToggleBookmark,
+      });
     }
 
     if (isMetabotShown) {
@@ -203,6 +201,14 @@ function EntityItemMenu({
       });
     }
 
+    if (onCopy) {
+      result.push({
+        title: c("Verb").t`Duplicate`,
+        icon: "clone",
+        action: onCopy,
+      });
+    }
+
     if (onMove) {
       result.push({
         title: t`Move`,
@@ -211,19 +217,30 @@ function EntityItemMenu({
       });
     }
 
-    if (onCopy) {
+    if (onArchive) {
       result.push({
-        title: t`Duplicate`,
-        icon: "clone",
-        action: onCopy,
+        title: t`Move to trash`,
+        icon: "trash",
+        action: onArchive,
       });
     }
 
-    if (onArchive) {
+    if (onRestore) {
       result.push({
-        title: t`Archive`,
-        icon: "archive",
-        action: onArchive,
+        title: t`Restore`,
+        icon: "revert",
+        action: onRestore,
+      });
+    }
+
+    if (onDeletePermanently) {
+      result.push({
+        title: t`Delete permanently`,
+        icon: "trash",
+        action: onDeletePermanently,
+        color: "danger",
+        hoverColor: "danger",
+        hoverBgColor: "bg-error",
       });
     }
 
@@ -242,6 +259,8 @@ function EntityItemMenu({
     onArchive,
     onTogglePreview,
     onToggleBookmark,
+    onDeletePermanently,
+    onRestore,
   ]);
   if (actions.length === 0) {
     return null;

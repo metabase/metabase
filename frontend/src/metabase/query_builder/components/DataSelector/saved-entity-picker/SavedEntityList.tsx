@@ -2,11 +2,11 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { CardType, Collection, CollectionItem } from "metabase-types/api";
 
 import {
   LoadingWrapper,
@@ -14,16 +14,17 @@ import {
   SavedEntityListItem,
   SavedEntityListRoot,
 } from "./SavedEntityList.styled";
+import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
-  isDatasets: boolean;
+  type: CardType;
   selectedId: string;
   collection?: Collection;
   onSelect: (tableOrModelId: string) => void;
 }
 
 const SavedEntityList = ({
-  isDatasets,
+  type,
   selectedId,
   collection,
   onSelect,
@@ -43,7 +44,7 @@ const SavedEntityList = ({
           <Search.ListLoader
             query={{
               collection: collection.id,
-              models: [isDatasets ? "dataset" : "card"],
+              models: [CARD_INFO[type].model],
               sort_column: "name",
               sort_direction: "asc",
             }}
@@ -63,7 +64,7 @@ const SavedEntityList = ({
                         size="small"
                         name={name}
                         icon={{
-                          name: isDatasets ? "model" : "table2",
+                          name: CARD_INFO[type].icon,
                           size: 16,
                         }}
                         onSelect={() => onSelect(virtualTableId)}

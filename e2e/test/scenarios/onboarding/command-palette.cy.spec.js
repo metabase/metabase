@@ -7,13 +7,14 @@ import {
   restore,
   openCommandPalette,
   commandPalette,
-  commandPaletteSearch,
+  commandPaletteInput,
   closeCommandPalette,
   visitFullAppEmbeddingUrl,
   pressPageDown,
   pressPageUp,
   pressHome,
   pressEnd,
+  commandPaletteButton,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -25,7 +26,7 @@ describe("command palette", () => {
   });
 
   it("should render a searchable command palette", () => {
-    //Add a description for a check
+    // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
     });
@@ -34,19 +35,13 @@ describe("command palette", () => {
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.visit("/");
 
-    cy.findByPlaceholderText("Search…").click();
-
-    //Not sure if this is the best way to target this button
-    cy.findByRole("button", { name: / \+ K/ }).should("exist").click();
-
-    cy.findByTestId("search-results-floating-container").should("not.exist");
-    commandPalette().should("exist");
+    cy.findByRole("button", { name: /Search/ }).click();
     closeCommandPalette();
 
     cy.log("open the command palette with keybinding");
     openCommandPalette();
     commandPalette().within(() => {
-      commandPaletteSearch().should("exist");
+      commandPaletteInput().should("exist");
 
       cy.log("limit to 5 basic actions");
       cy.findByText("New question");
@@ -62,7 +57,7 @@ describe("command palette", () => {
       );
 
       cy.log("Should search entities and docs");
-      commandPaletteSearch().type("Orders, Count");
+      commandPaletteInput().type("Orders, Count");
 
       cy.findByRole("option", { name: "Orders, Count" })
         .should("contain.text", "Our analytics")
@@ -72,15 +67,15 @@ describe("command palette", () => {
 
       // Since the command palette list is virtualized, we will search for a few
       // to ensure they're reachable
-      commandPaletteSearch().clear().type("People");
+      commandPaletteInput().clear().type("People");
       cy.findByRole("option", { name: "People" }).should("exist");
 
-      commandPaletteSearch().clear().type("Uploads");
+      commandPaletteInput().clear().type("Uploads");
       cy.findByRole("option", { name: "Settings - Uploads" }).should("exist");
 
       // When entering a query, if there are results that come before search results, highlight
       // the first action, otherwise, highlight the first search result
-      commandPaletteSearch().clear().type("Or");
+      commandPaletteInput().clear().type("Or");
       cy.findByRole("option", { name: "Performance" }).should(
         "have.attr",
         "aria-selected",
@@ -89,7 +84,7 @@ describe("command palette", () => {
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
 
       // Check that we are not filtering search results by action name
-      commandPaletteSearch().clear().type("Company");
+      commandPaletteInput().clear().type("Company");
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
       cy.findByRole("option", { name: "PEOPLE" }).should(
         "have.attr",
@@ -98,7 +93,7 @@ describe("command palette", () => {
       );
       cy.findByRole("option", { name: "REVIEWS" }).should("exist");
       cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
-      commandPaletteSearch().clear();
+      commandPaletteInput().clear();
     });
 
     cy.log("We can close the command palette using escape");
@@ -106,17 +101,25 @@ describe("command palette", () => {
     commandPalette().should("not.exist");
 
     openCommandPalette();
-    //wait for things to render
+
     commandPalette()
-      .findByRole("option", { name: "New question" })
-      .should("exist");
+      .findByRole("option", { name: "Orders in a dashboard" })
+      .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
+
+    commandPalette()
+      .findByRole("option", { name: "Orders" })
+      .should("have.attr", "aria-selected", "true");
+
+    pressPageDown();
+
     commandPalette()
       .findByRole("option", { name: "New dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressPageDown();
+
     commandPalette()
       .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
@@ -124,11 +127,6 @@ describe("command palette", () => {
     pressPageUp();
     commandPalette()
       .findByRole("option", { name: "New question" })
-      .should("have.attr", "aria-selected", "true");
-
-    pressPageUp();
-    commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
     pressEnd();
@@ -149,7 +147,7 @@ describe("command palette", () => {
     openCommandPalette();
 
     commandPalette().within(() => {
-      commandPaletteSearch().type("Nested");
+      commandPaletteInput().type("Nested");
       cy.findByRole("option", { name: "Enable Nested Queries" }).click();
     });
 
@@ -161,7 +159,7 @@ describe("command palette", () => {
     openCommandPalette();
 
     commandPalette().within(() => {
-      commandPaletteSearch().clear().type("Week");
+      commandPaletteInput().clear().type("Week");
       cy.findByRole("option", { name: "First day of the week" }).click();
     });
 
@@ -202,12 +200,18 @@ describe("command palette", () => {
     cy.get("@database").should("be.null");
     cy.get("@search").should("be.null");
 
-    cy.findByLabelText("Email address").type(admin.email);
+    cy.findByLabelText(/Email address/).type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message");
 
     openCommandPalette();
     commandPalette().should("exist");
+  });
+
+  it("The Search button should resize when on mobile", () => {
+    cy.viewport("iphone-x");
+    cy.visit("/");
+    commandPaletteButton().should("not.contain.text", "search");
   });
 });

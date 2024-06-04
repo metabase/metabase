@@ -17,6 +17,8 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
+  setupRecentViewsEndpoints,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -33,6 +35,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockColumn,
   createMockDataset,
@@ -56,7 +59,7 @@ import type { RequestState, State } from "metabase-types/store";
 
 import QueryBuilder from "./QueryBuilder";
 
-const TEST_DB = createSampleDatabase();
+export const TEST_DB = createSampleDatabase();
 
 export const TEST_CARD = createMockCard({
   id: 1,
@@ -241,9 +244,14 @@ export const setup = async ({
   setupFieldValuesEndpoints(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
+  setupRecentViewsEndpoints([]);
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
+    setupCardQueryMetadataEndpoint(
+      card,
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
@@ -319,11 +327,9 @@ export const startNewNotebookModel = async () => {
   await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  await userEvent.click(screen.getByText("Pick your starting data"));
-  const popover = screen.getByTestId("popover");
-  await userEvent.click(within(popover).getByText("Sample Database"));
+  const modal = await screen.findByTestId("entity-picker-modal");
   await waitForLoaderToBeRemoved();
-  await userEvent.click(within(popover).getByText("Orders"));
+  await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
@@ -365,7 +371,7 @@ export const triggerVisualizationQueryChange = async () => {
 };
 
 export const triggerNotebookQueryChange = async () => {
-  await userEvent.click(screen.getByText("Row limit"));
+  await userEvent.click(await screen.findByText("Row limit"));
 
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),

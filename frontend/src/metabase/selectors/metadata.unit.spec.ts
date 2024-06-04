@@ -4,7 +4,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   createMockDatabase,
-  createMockMetric,
   createMockSegment,
   createMockSettings,
 } from "metabase-types/api/mocks";
@@ -27,12 +26,6 @@ function setup() {
     createMockDatabase({ id: 2, name: "DB 2" }),
   ];
 
-  const metrics = [
-    createMockMetric({ id: 1, name: "Metric 1" }),
-    createMockMetric({ id: 2, name: "Metric 2" }),
-    createMockMetric({ id: 3, name: "Metric 3" }),
-  ];
-
   const segments = [
     createMockSegment({ id: 1, name: "Segment 1" }),
     createMockSegment({ id: 2, name: "Segment 2" }),
@@ -43,7 +36,6 @@ function setup() {
   const state = createMockState({
     entities: createMockEntitiesState({
       databases,
-      metrics,
       segments,
     }),
     settings: createMockSettingsState(settings),
@@ -51,12 +43,12 @@ function setup() {
 
   const metadata = getMetadata(state);
 
-  return { metadata, sampleDatabase, metrics, segments, settings };
+  return { metadata, sampleDatabase, segments, settings };
 }
 
 describe("getMetadata", () => {
   it("should properly transfer metadata", () => {
-    const { metadata, sampleDatabase, metrics, segments, settings } = setup();
+    const { metadata, sampleDatabase, segments, settings } = setup();
     const sampleDatabaseTables = checkNotNull(sampleDatabase.tables);
 
     expect(metadata).toBeInstanceOf(Metadata);
@@ -70,7 +62,6 @@ describe("getMetadata", () => {
         0,
       ),
     );
-    expect(Object.keys(metadata.metrics).length).toEqual(metrics.length);
     expect(Object.keys(metadata.segments).length).toEqual(segments.length);
     expect(metadata.settings).toEqual(settings);
     expect(metadata.setting("site-url")).toEqual(settings["site-url"]);

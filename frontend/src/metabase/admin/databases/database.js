@@ -156,7 +156,8 @@ export const createDatabase = function (database) {
   return async function (dispatch, getState) {
     try {
       dispatch({ type: CREATE_DATABASE_STARTED });
-      await dispatch(Databases.actions.create(database));
+      const action = await dispatch(Databases.actions.create(database));
+      const savedDatabase = Databases.HACK_getObjectFromAction(action);
       MetabaseAnalytics.trackStructEvent(
         "Databases",
         "Create",
@@ -164,6 +165,8 @@ export const createDatabase = function (database) {
       );
 
       dispatch({ type: CREATE_DATABASE });
+
+      return savedDatabase;
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
@@ -189,6 +192,7 @@ export const updateDatabase = function (database) {
       );
 
       dispatch({ type: UPDATE_DATABASE, payload: { database: savedDatabase } });
+      return savedDatabase;
     } catch (error) {
       MetabaseAnalytics.trackStructEvent(
         "Databases",
@@ -207,9 +211,9 @@ export const saveDatabase = function (database) {
   return async function (dispatch, getState) {
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
-      await dispatch(createDatabase(database));
+      return await dispatch(createDatabase(database));
     } else {
-      await dispatch(updateDatabase(database));
+      return await dispatch(updateDatabase(database));
     }
   };
 };

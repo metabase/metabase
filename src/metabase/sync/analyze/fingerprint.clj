@@ -4,8 +4,7 @@
   (:require
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
+   [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -28,7 +27,7 @@
 
 (mu/defn ^:private save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+   fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
@@ -64,7 +63,7 @@
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
               (redux/post-complete
-               (fingerprinters/fingerprint-fields fields)
+               (analyze/fingerprint-fields fields)
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
@@ -161,6 +160,7 @@
     [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
+   [:not= :base_type (u/qualified-name :type/*)]
    [:not (mdb.query/isa :base_type :type/Structured)]])
 
 (def ^:dynamic *refingerprint?*
@@ -234,7 +234,7 @@
   [database        :- i/DatabaseInstance
    tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
-  (if (driver/database-supports? (:engine database) :fingerprint database)
+  (if (driver.u/supports? (:engine database) :fingerprint database)
     (fingerprint-fields-for-db!* database tables log-progress-fn)
     (empty-stats-map 0)))
 

@@ -3,8 +3,8 @@
   composes: py2 from "style";
   width: 30%;
   max-width: 500px;
-  background-color: var(--color-bg-light);
-  color: var(--color-text-medium);
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
 }
 
 .sidebar a {
@@ -16,7 +16,7 @@
   align-items: center;
   display: flex;
   font-size: 1em;
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .item .icon {
@@ -39,7 +39,7 @@
 
 .name {
   composes: ml2 textBold from "style";
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow-x: hidden;

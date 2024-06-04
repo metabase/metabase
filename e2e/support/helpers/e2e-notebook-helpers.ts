@@ -1,6 +1,10 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
-import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  popover,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
 /**
@@ -143,7 +147,11 @@ export function joinTable(
   lhsColumnName?: string,
   rhsColumnName?: string,
 ) {
-  popover().findByText(tableName).click();
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Tables").click();
+    cy.findByText(tableName).click();
+  });
+
   if (lhsColumnName && rhsColumnName) {
     popover().findByText(lhsColumnName).click();
     popover().findByText(rhsColumnName).click();
@@ -165,26 +173,23 @@ export function selectSavedQuestionsToJoin(
   firstQuestionName: string,
   secondQuestionName: string,
 ) {
-  cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
-  cy.findAllByTestId("data-bucket-list-item")
-    .contains("Saved Questions")
-    .click();
+  cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Models").should("exist");
+    entityPickerModalTab("Tables").should("exist");
+    entityPickerModalTab("Saved questions").click();
+    cy.findByText(firstQuestionName).click();
+  });
 
-  cy.findByTestId("select-list")
-    .findAllByRole("menuitem")
-    .contains(firstQuestionName)
-    .click();
-  cy.wait("@loadSchemas");
+  cy.wait("@joinedTableMetadata");
 
   // join to question b
   cy.icon("join_left_outer").click();
 
-  popover().within(() => {
-    cy.findByText("Sample Database").should("be.visible").click();
-    cy.findByText("Raw Data").should("be.visible").click();
-    cy.findAllByTestId("data-bucket-list-item")
-      .contains("Saved Questions")
-      .click();
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Models").should("exist");
+    entityPickerModalTab("Tables").should("exist");
+    entityPickerModalTab("Saved questions").click();
     cy.findByText(secondQuestionName).click();
   });
 }

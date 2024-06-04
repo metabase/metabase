@@ -9,7 +9,7 @@ export const PaletteInput = styled(KBarSearch)`
   width: 100%;
   border-radius: 0.5rem;
   border: 1px solid ${color("border")};
-  background: ${color("bg-light")};
+  background: var(--mb-color-bg-light);
   color: ${color("text-dark")};
   line-height: 1rem;
 

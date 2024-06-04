@@ -7,10 +7,8 @@ import CollapseSection from "metabase/components/CollapseSection";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import CS from "metabase/css/core/index.css";
-import {
-  getCollectionIcon,
-  PERSONAL_COLLECTIONS,
-} from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
@@ -60,7 +58,6 @@ type Props = {
 const BROWSE_MODELS_URL = "/browse/models";
 const BROWSE_DATA_URL = "/browse/databases";
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ARCHIVE_URL = "/archive";
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
@@ -135,9 +132,9 @@ function MainNavbarView({
                 url={BROWSE_DATA_URL}
                 isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
                 onClick={onItemSelect}
-                aria-label={t`Browse data`}
+                aria-label={t`Browse databases`}
               >
-                {t`Data`}
+                {t`Databases`}
               </PaddedSidebarLink>
             )}
           </CollapseSection>
@@ -200,7 +197,7 @@ function CollectionSectionHeading({
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ closePopover }) => (
+    ({ closePopover }: { closePopover: () => void }) => (
       <CollectionMenuList>
         <SidebarLink
           icon="add"
@@ -224,13 +221,6 @@ function CollectionSectionHeading({
             {t`Other users' personal collections`}
           </SidebarLink>
         )}
-        <SidebarLink
-          icon="view_archive"
-          url={ARCHIVE_URL}
-          onClick={closePopover}
-        >
-          {t`View archive`}
-        </SidebarLink>
       </CollectionMenuList>
     ),
     [currentUser, handleCreateNewCollection],

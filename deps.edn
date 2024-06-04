@@ -49,7 +49,7 @@
   com.snowplowanalytics/snowplow-java-tracker
                                             {:mvn/version "1.0.1"               ; Snowplow analytics
                                              :exclusions [com.fasterxml.jackson.core/jackson-databind]}
-  com.taoensso/nippy                        {:mvn/version "3.3.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
                                             {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
@@ -76,7 +76,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.29"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.1.44"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -87,7 +87,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.7.171"
+  metabase/saml20-clj                       {:mvn/version "2.2.7.172"
                                              :exclusions [                      ; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -237,7 +237,7 @@
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:git/url "https://github.com/metabase/hawk"
-                                  :git/sha "490c9b04fbf5861dbd47c0c5281dad2d113bd285"}
+                                  :git/sha "ac3c663b22114d99303b8da88d982248da391780"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -254,7 +254,7 @@
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
 
-   :extra-paths ["dev/src" "local/src" "test" "test_resources"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -385,7 +385,6 @@
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
-    "modules/drivers/googleanalytics/test"
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
@@ -412,7 +411,6 @@
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
-                "modules/drivers/googleanalytics/src"
                 "modules/drivers/mongo/src"
                 "modules/drivers/oracle/src"
                 "modules/drivers/presto-jdbc/src"
@@ -435,7 +433,6 @@
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
-                                 "modules/drivers/googleanalytics/src"
                                  "modules/drivers/mongo/src"
                                  "modules/drivers/oracle/src"
                                  "modules/drivers/presto-jdbc/src"
@@ -622,13 +619,12 @@
    :extra-deps
    {org.clojure/data.json {:mvn/version "2.5.0"}}}
 
-  ;;; Run tests for the build scripts:
-  ;;;
-  ;;; clj -X:dev:drivers:build:build-dev:build-test
+  ;; Run tests for the build scripts:
+  ;;
+  ;; clj -X:dev:drivers:build:build-dev:build-test
   :build-test
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
-
 
 ;;; Other misc convenience aliases
 
@@ -699,6 +695,19 @@
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; test search-related stuff.
+  ;;
+  ;;    clj -X:dev:ee:ee-dev:test:test/search
+  :test/search
+  {:exec-args {:only [metabase.api.search-test
+                      "test/metabase/search"]}}
+
+  ;; test custom clj-kondo linters and hooks.
+  ;;
+  ;;    clj -X:dev:test:test/kondo
+  :test/kondo
+  {:exec-args {:only [".clj-kondo/test"]}}
 
   ;; watch and reload clojure namespaces
   :watch {:extra-deps

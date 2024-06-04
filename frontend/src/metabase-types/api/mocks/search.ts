@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import type {
-  ModelResult,
   SearchResponse,
   SearchResult,
   SearchScore,
@@ -81,8 +80,3 @@ export const createMockSearchResults = ({
     ...options,
   };
 };
-
-export const createMockModelResult = (
-  model: Partial<ModelResult>,
-): ModelResult =>
-  createMockSearchResult({ ...model, model: "dataset" }) as ModelResult;

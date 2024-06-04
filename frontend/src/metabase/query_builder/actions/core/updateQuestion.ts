@@ -1,12 +1,16 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
+import { getTrashUndoMessage } from "metabase/archive/utils";
+import Questions from "metabase/entities/questions";
+import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { Series } from "metabase-types/api";
+import type { Card, Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -23,7 +27,7 @@ import {
 import { setIsShowingTemplateTagsEditor } from "../native";
 import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
-import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
+import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
@@ -126,7 +130,7 @@ export const updateQuestion = (
 
       // When the dataset query changes, we should change the question type,
       // to start building a new ad-hoc question based on a dataset
-      if (newQuestion.type() === "model") {
+      if (newQuestion.type() === "model" || newQuestion.type() === "metric") {
         newQuestion = newQuestion.setType("question");
         dispatch(onCloseQuestionInfo());
       }
@@ -215,16 +219,19 @@ export const updateQuestion = (
     }
 
     const currentDependencies = currentQuestion
-      ? Lib.dependentMetadata(currentQuestion.query())
+      ? Lib.dependentMetadata(
+          currentQuestion.query(),
+          currentQuestion.id(),
+          currentQuestion.type(),
+        )
       : [];
-    const nextDependencies = Lib.dependentMetadata(newQuestion.query());
-    try {
-      if (!_.isEqual(currentDependencies, nextDependencies)) {
-        await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
-    } catch (e) {
-      // this will fail if user doesn't have data permissions but thats ok
-      console.warn("Couldn't load metadata", e);
+    const nextDependencies = Lib.dependentMetadata(
+      newQuestion.query(),
+      newQuestion.id(),
+      newQuestion.type(),
+    );
+    if (!_.isEqual(currentDependencies, nextDependencies)) {
+      await dispatch(loadMetadataForCard(newQuestion.card()));
     }
 
     if (run) {
@@ -232,3 +239,41 @@ export const updateQuestion = (
     }
   };
 };
+
+// just using the entity action doesn't cause the question/model to live update
+// also calling updateQuestion ensures the view matches the server state
+export const SET_ARCHIVED_QUESTION = "metabase/question/SET_ARCHIVED_QUESTION";
+export const setArchivedQuestion = createThunkAction(
+  SET_ARCHIVED_QUESTION,
+  function (question, archived = true, undoing = false) {
+    return async function (dispatch) {
+      const result = (await dispatch(
+        Questions.actions.update({ id: question.card().id }, { archived }),
+      )) as { payload: { object: Card } };
+
+      await dispatch(
+        updateQuestion(question.setCard(result.payload.object), {
+          shouldUpdateUrl: false,
+          shouldStartAdHocQuestion: false,
+          // results can change after entering/leaving the trash
+          // due to references to questions in the trash or, so rerun after change
+          run: true,
+        }),
+      );
+
+      if (archived) {
+        dispatch(setUIControls({ isNativeEditorOpen: false }));
+      }
+
+      if (!undoing) {
+        dispatch(
+          addUndo({
+            message: getTrashUndoMessage(question.card().name, archived),
+            action: () =>
+              dispatch(setArchivedQuestion(question, !archived, true)),
+          }),
+        );
+      }
+    };
+  },
+);

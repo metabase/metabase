@@ -538,16 +538,20 @@
 ;; This conditional is here to cover the case of trend charts in Alerts (not subscriptions). Alerts
 ;; exist on Questions and thus have no associated dashcard, which causes `pu/execute-multi-card` to fail.
 (mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
-  [_chart-type render-type _timezone-id card dashcard _data]
+  [_chart-type render-type _timezone-id card dashcard data]
   (let [combined-cards-results (if dashcard
                                  (pu/execute-multi-card card dashcard)
                                  [(pu/execute-card {:creator_id (:creator_id card)} (:id card))])
-        cards-with-data        (map
-                                (comp
-                                 add-dashcard-timeline-events
-                                 (fn [c d] {:card c :data d}))
-                                (map :card combined-cards-results)
-                                (map #(get-in % [:result :data]) combined-cards-results))
+        cards-with-data        (m/distinct-by
+                                #(get-in % [:card :id])
+                                (map
+                                 (comp
+                                  add-dashcard-timeline-events
+                                  (fn [c d] {:card c :data d}))
+                                 (cond-> (map :card combined-cards-results)
+                                   dashcard (conj card))
+                                 (cond-> (map #(get-in % [:result :data]) combined-cards-results)
+                                   dashcard (conj data))))
         dashcard-viz-settings  (get dashcard :visualization_settings)
         {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
     (case rendered-type

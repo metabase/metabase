@@ -1,9 +1,6 @@
 import cx from "classnames";
-import type { Location } from "history";
-import type { ReactNode } from "react";
+import type { ReactNode, JSX } from "react";
 import { useEffect, useState } from "react";
-import { connect } from "react-redux";
-import { withRouter } from "react-router";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -13,17 +10,15 @@ import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
-import { parseHashOptions } from "metabase/lib/browser";
-import {
-  initializeIframeResizer,
-  isSmallScreen,
-  isWithinIframe,
-} from "metabase/lib/dom";
-import { useDispatch } from "metabase/lib/redux";
+import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
-import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import {
+  ParametersList,
+  SyncedParametersList,
+} from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { setOptions } from "metabase/redux/embed";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -31,10 +26,10 @@ import type {
   Dashboard,
   Parameter,
   ParameterId,
-  ParameterValueOrArray,
+  ParameterValuesMap,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
+import type { DashboardUrlHashOptions } from "../../../dashboard/types";
 import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
@@ -51,53 +46,29 @@ import {
   Separator,
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
-import LogoBadge from "./LogoBadge";
+import { LogoBadge } from "./LogoBadge";
 
-type ParameterValues = Record<ParameterId, ParameterValueOrArray>;
-
-interface OwnProps {
-  className?: string;
-  name?: string;
-  description?: string;
-  question?: Question;
-  dashboard?: Dashboard;
-  actionButtons?: JSX.Element[];
-  footerVariant?: FooterVariant;
-  parameters?: Parameter[];
-  parameterValues?: ParameterValues;
-  draftParameterValues?: ParameterValues;
-  hiddenParameterSlugs?: string;
-  enableParameterRequiredBehavior?: boolean;
-  setParameterValue?: (parameterId: ParameterId, value: any) => void;
+export type EmbedFrameBaseProps = Partial<{
+  className: string;
+  name: string | null;
+  description: string | null;
+  question: Question;
+  dashboard: Dashboard | null;
+  actionButtons: JSX.Element | null;
+  footerVariant: FooterVariant;
+  parameters: Parameter[];
+  parameterValues: ParameterValuesMap;
+  draftParameterValues: ParameterValuesMap;
+  hiddenParameterSlugs: string;
+  enableParameterRequiredBehavior: boolean;
+  setParameterValue: (parameterId: ParameterId, value: any) => void;
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
-  dashboardTabs?: ReactNode;
-}
+  dashboardTabs: ReactNode;
+}>;
 
-interface StateProps {
-  hasEmbedBranding: boolean;
-}
-
-type Props = OwnProps &
-  StateProps & {
-    location: Location;
-  };
-
-interface HashOptions {
-  bordered?: boolean;
-  titled?: boolean;
-  theme?: "night" | "transparent";
-  hide_parameters?: string;
-  hide_download_button?: boolean;
-}
-
-function mapStateToProps(state: State) {
-  return {
-    hasEmbedBranding: !getSetting(state, "hide-embed-branding?"),
-  };
-}
-
-const EMBED_THEME_CLASSES = (theme: HashOptions["theme"]) => {
+export type EmbedFrameProps = EmbedFrameBaseProps & DashboardUrlHashOptions;
+const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
   if (!theme) {
     return null;
   }
@@ -111,7 +82,7 @@ const EMBED_THEME_CLASSES = (theme: HashOptions["theme"]) => {
   }
 };
 
-function EmbedFrame({
+export const EmbedFrame = ({
   className,
   children,
   name,
@@ -121,8 +92,6 @@ function EmbedFrame({
   actionButtons,
   dashboardTabs = null,
   footerVariant = "default",
-  location,
-  hasEmbedBranding,
   parameters,
   parameterValues,
   draftParameterValues,
@@ -130,8 +99,23 @@ function EmbedFrame({
   setParameterValue,
   setParameterValueToDefault,
   enableParameterRequiredBehavior,
-}: Props) {
-  const [hasFrameScroll, setHasFrameScroll] = useState(true);
+  bordered,
+  titled,
+  theme,
+  hide_parameters,
+  hide_download_button,
+}: EmbedFrameProps) => {
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const hasEmbedBranding = useSelector(
+    state => !getSetting(state, "hide-embed-branding?"),
+  );
+
+  const ParametersListComponent = isEmbeddingSdk
+    ? ParametersList
+    : SyncedParametersList;
+
+  const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
+
   const [hasInnerScroll, setHasInnerScroll] = useState(
     document.documentElement.scrollTop > 0,
   );
@@ -152,19 +136,6 @@ function EmbedFrame({
 
     return () => document.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(setOptions(location));
-  }, [dispatch, location]);
-
-  const {
-    bordered = isWithinIframe(),
-    titled = true,
-    theme,
-    hide_parameters,
-    hide_download_button,
-  } = parseHashOptions(location.hash) as HashOptions;
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
@@ -243,7 +214,7 @@ function EmbedFrame({
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
             >
-              <SyncedParametersList
+              <ParametersListComponent
                 question={question}
                 dashboard={dashboard}
                 parameters={getValuePopulatedParameters({
@@ -280,7 +251,7 @@ function EmbedFrame({
       )}
     </Root>
   );
-}
+};
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {
@@ -291,6 +262,3 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   // takes too much space on small screens
   return parameterCount <= 5;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);

@@ -25,6 +25,7 @@ const dashboardItem1: CollectionItem = {
   getUrl: () => "/dashboard/1",
   setArchived: jest.fn(),
   setPinned: jest.fn(),
+  archived: false,
 };
 
 const dashboardItem2: CollectionItem = {
@@ -38,6 +39,7 @@ const dashboardItem2: CollectionItem = {
   getUrl: () => "/dashboard/2",
   setArchived: jest.fn(),
   setPinned: jest.fn(),
+  archived: false,
 };
 
 function setup({

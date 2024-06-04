@@ -4,12 +4,12 @@ redirect_from:
   - /docs/latest/users-guide/12-data-model-reference
   - /docs/latest/questions/native-editor/data-model-reference
 ---
- 
+
 # Data reference
 
 You can open the data reference from:
 
-- The Metabase sidebar > **Browse data** > **Learn about our data**.
+- The Metabase sidebar > **Browse** > **Databases** > **Learn about our data**.
 - Hovering over a table in the data browser and clicking on the book icon that appears.
 - The native/SQL > **Book** icon.
 

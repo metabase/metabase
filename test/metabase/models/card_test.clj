@@ -3,7 +3,8 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -72,15 +73,6 @@
                                :model/Dashboard _                      {:parameters [(card-params card-id)]}
                                :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
-
-(deftest remove-from-dashboards-when-archiving-test
-  (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
-    (t2.with-temp/with-temp [:model/Dashboard     dashboard {}
-                             :model/Card          card      {}
-                             :model/DashboardCard _         {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
-      (t2/update! :model/Card (u/the-id card) {:archived true})
-      (is (= 0
-             (t2/count :model/DashboardCard :dashboard_id (u/the-id dashboard)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
@@ -187,6 +179,16 @@
           ;; actions still exists
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
+
+(deftest replace-fields-and-tables!-test
+  (testing "fields and tables in a native card can be replaced"
+    ;; We need the user to be defined in order to population the new revision related to the card update
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+        (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
+                                               :tables {(mt/id :orders) (mt/id :people)}})
+        (is (= "SELECT NAME FROM PEOPLE"
+               (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
@@ -839,7 +841,13 @@
                          :table_id :database_id :query_type
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
-                         :made_public_by_id} col)
+                         :made_public_by_id
+                         ;; similarly, we don't need a description for `trashed_from_collection_id` because whenever
+                         ;; this field changes `archived` will also change and we have a description for that.
+                         :trashed_from_collection_id
+                         ;; we don't expect a description for this column because it should never change
+                         ;; once created by the migration
+                         :dataset_query_metrics_v2_migration_backup} col)
               (testing (format "we should have a revision description for %s" col)
                 (is (some? (u/build-sentence
                             (revision/diff-strings
@@ -990,3 +998,15 @@
                      :table_id      (mt/id :orders)
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
+
+(deftest can-run-adhoc-query-test
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-temp [:model/Card card {:dataset_query query}
+                     :model/Card no-query {}]
+        (is (=? {:can_run_adhoc_query true}
+                (t2/hydrate card :can_run_adhoc_query)))
+        (is (=? {:can_run_adhoc_query false}
+                (t2/hydrate no-query :can_run_adhoc_query)))))))

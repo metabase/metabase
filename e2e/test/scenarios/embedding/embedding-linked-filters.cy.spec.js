@@ -6,6 +6,7 @@ import {
   getDashboardCard,
   chartPathWithFillColor,
   echartsContainer,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 import {
@@ -496,10 +497,6 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
 function openFilterOptions(name) {
   filterWidget().contains(name).click();
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {

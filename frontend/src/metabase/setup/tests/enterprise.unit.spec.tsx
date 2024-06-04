@@ -34,6 +34,7 @@ const setupEnterprise = (opts?: SetupOpts) => {
 };
 
 const sampleToken = "a".repeat(64);
+const airgapToken = "airgap_toucan";
 
 describe("setup (EE, no token)", () => {
   beforeEach(() => {
@@ -79,7 +80,7 @@ describe("setup (EE, no token)", () => {
       expect(await errMsg()).toBeInTheDocument();
     });
 
-    it("should have the Activate button disabled when the token is not 64 characters long", async () => {
+    it("should have the Activate button disabled when the token is not 64 characters long (unless the token begins with 'airgap_')", async () => {
       await setupForLicenseStep();
 
       await inputToken("a".repeat(63));
@@ -90,6 +91,10 @@ describe("setup (EE, no token)", () => {
 
       await userEvent.type(input(), "a"); //65 characters
       expect(await submitBtn()).toBeDisabled();
+
+      await userEvent.clear(input());
+      await userEvent.type(input(), "airgap_");
+      expect(await submitBtn()).toBeEnabled();
     });
 
     it("should ignore whitespace around the token", async () => {
@@ -106,12 +111,28 @@ describe("setup (EE, no token)", () => {
       });
     });
 
-    it("should go to the next step when activating a valid token", async () => {
+    it("should go to the next step when activating a typical, valid token", async () => {
       await setupForLicenseStep();
 
       setupForTokenCheckEndpoint({ valid: true });
 
       await inputToken(sampleToken);
+      await submit();
+
+      expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);
+
+      expect(getSection("Usage data preferences")).toHaveAttribute(
+        "aria-current",
+        "step",
+      );
+    });
+
+    it("should go to the next step when activating an airgap-specific token", async () => {
+      await setupForLicenseStep();
+
+      setupForTokenCheckEndpoint({ valid: true });
+
+      await inputToken(airgapToken);
       await submit();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(true);

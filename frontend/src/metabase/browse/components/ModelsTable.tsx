@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -8,7 +8,6 @@ import {
   type SortingOptions,
 } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
-  ItemCell,
   ItemLink,
   ItemNameCell,
   Table,
@@ -17,33 +16,43 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
-import { Icon, type IconProps } from "metabase/ui";
+import { Icon, Flex, type IconProps } from "metabase/ui";
 import type { ModelResult } from "metabase-types/api";
 
 import { trackModelClick } from "../analytics";
 import { getCollectionName, getIcon } from "../utils";
 
-import { CollectionBreadcrumbsWithTooltip } from "./CollectionBreadcrumbsWithTooltip";
-import { EllipsifiedWithMarkdown } from "./EllipsifiedWithMarkdown";
-import { ModelTableRow } from "./ModelsTable.styled";
+import {
+  CollectionBreadcrumbsWithTooltip,
+  SimpleCollectionDisplay,
+} from "./CollectionBreadcrumbsWithTooltip";
+import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
+import {
+  ModelCell,
+  ModelNameColumn,
+  ModelTableRow,
+} from "./ModelsTable.styled";
 import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
   models: ModelResult[];
 }
 
+export const itemsTableContainerName = "ItemsTableContainer";
+
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
-  containerName: "ItemsTableContainer",
+  containerName: itemsTableContainerName,
 };
 
 const collectionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "xs",
-  containerName: "ItemsTableContainer",
+  containerName: itemsTableContainerName,
 };
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions = {
@@ -51,9 +60,16 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
   sort_direction: SortDirection.Asc,
 };
 
+const LARGE_DATASET_THRESHOLD = 500;
+
 export const ModelsTable = ({ models }: ModelsTableProps) => {
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
+
+  // for large datasets, we need to simplify the display to avoid performance issues
+  const isLargeDataset = models.length > LARGE_DATASET_THRESHOLD;
+
+  const [showLoading, setShowLoading] = useState(isLargeDataset);
 
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
@@ -61,50 +77,103 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
 
   const sortedModels = sortModels(models, sortingOptions, localeCode);
 
+  /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
+  const collectionWidth = 38.5;
+  const descriptionWidth = 100 - collectionWidth;
+
+  const handleUpdateSortOptions = (newSortingOptions: SortingOptions) => {
+    if (isLargeDataset) {
+      setShowLoading(true);
+    }
+    setSortingOptions(newSortingOptions);
+  };
+
+  useEffect(() => {
+    // we need a better virtualized table solution for large datasets
+    // for now, we show loading text to make this component feel more responsive
+    if (isLargeDataset && showLoading) {
+      setTimeout(() => setShowLoading(false), 10);
+    }
+  }, [isLargeDataset, showLoading, sortedModels]);
+
   return (
     <Table>
       <colgroup>
         {/* <col> for Name column */}
-        <TableColumn style={{ width: "200px" }} />
-
-        {/* <col> for Description column */}
-        <TableColumn {...descriptionProps} />
+        <ModelNameColumn containerName={itemsTableContainerName} />
 
         {/* <col> for Collection column */}
-        <TableColumn {...collectionProps} />
+        <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
+
+        {/* <col> for Description column */}
+        <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
 
         <Columns.RightEdge.Col />
       </colgroup>
       <thead>
         <tr>
-          <Columns.Name.Header
+          <SortableColumnHeader
+            name="name"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={setSortingOptions}
-          />
-          <SortableColumnHeader name="description" {...descriptionProps}>
-            {t`Description`}
+            onSortingOptionsChange={handleUpdateSortOptions}
+            style={{ paddingInlineStart: ".625rem" }}
+            columnHeaderProps={{
+              style: { paddingInlineEnd: ".5rem" },
+            }}
+          >
+            {t`Name`}
           </SortableColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={setSortingOptions}
+            onSortingOptionsChange={handleUpdateSortOptions}
             {...collectionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
           >
-            {t`Collection`}
+            <Ellipsified>{t`Collection`}</Ellipsified>
+          </SortableColumnHeader>
+          <SortableColumnHeader
+            name="description"
+            {...descriptionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
+          >
+            {t`Description`}
           </SortableColumnHeader>
           <Columns.RightEdge.Header />
         </tr>
       </thead>
       <TBody>
-        {sortedModels.map((model: ModelResult) => (
-          <TBodyRow model={model} key={`${model.model}-${model.id}`} />
-        ))}
+        {showLoading ? (
+          <TableLoader />
+        ) : (
+          sortedModels.map((model: ModelResult) => (
+            <TBodyRow
+              model={model}
+              key={`${model.model}-${model.id}`}
+              simpleDisplay={isLargeDataset}
+            />
+          ))
+        )}
       </TBody>
     </Table>
   );
 };
 
-const TBodyRow = ({ model }: { model: ModelResult }) => {
+const TBodyRow = ({
+  model,
+  simpleDisplay,
+}: {
+  model: ModelResult;
+  simpleDisplay: boolean;
+}) => {
   const icon = getIcon(model);
   const containerName = `collections-path-for-${model.id}`;
   const dispatch = useDispatch();
@@ -132,15 +201,8 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
         }}
       />
 
-      {/* Description */}
-      <ItemCell {...descriptionProps}>
-        <EllipsifiedWithMarkdown>
-          {getModelDescription(model) || ""}
-        </EllipsifiedWithMarkdown>
-      </ItemCell>
-
       {/* Collection */}
-      <ItemCell
+      <ModelCell
         data-testid={`path-for-collection: ${
           model.collection
             ? getCollectionName(model.collection)
@@ -148,13 +210,22 @@ const TBodyRow = ({ model }: { model: ModelResult }) => {
         }`}
         {...collectionProps}
       >
-        {model.collection && (
+        {simpleDisplay ? (
+          <SimpleCollectionDisplay collection={model.collection} />
+        ) : (
           <CollectionBreadcrumbsWithTooltip
             containerName={containerName}
             collection={model.collection}
           />
         )}
-      </ItemCell>
+      </ModelCell>
+
+      {/* Description */}
+      <ModelCell {...descriptionProps}>
+        <EllipsifiedWithMarkdownTooltip>
+          {getModelDescription(model) || ""}
+        </EllipsifiedWithMarkdownTooltip>
+      </ModelCell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
@@ -174,17 +245,39 @@ const NameCell = ({
   icon: IconProps;
 }) => {
   const { id, name } = model;
+  const headingId = `model-${id}-heading`;
   return (
-    <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-      <ItemLink to={Urls.model({ id, name })} onClick={onClick}>
+    <ItemNameCell
+      data-testid={`${testIdPrefix}-name`}
+      aria-labelledby={headingId}
+    >
+      <ItemLink
+        to={Urls.model({ id, name })}
+        onClick={onClick}
+        style={{
+          // To align the icons with "Name" in the <th>
+          paddingInlineStart: "1.4rem",
+          paddingInlineEnd: ".5rem",
+        }}
+      >
         <Icon
           size={16}
           {...icon}
           color={color("brand")}
           style={{ flexShrink: 0 }}
         />
-        <EntityItem.Name name={model.name} variant="list" />
+        <EntityItem.Name name={model.name} variant="list" id={headingId} />
       </ItemLink>
     </ItemNameCell>
   );
 };
+
+const TableLoader = () => (
+  <tr>
+    <td colSpan={4}>
+      <Flex justify="center" color="text-light">
+        {t`Loading...`}
+      </Flex>
+    </td>
+  </tr>
+);

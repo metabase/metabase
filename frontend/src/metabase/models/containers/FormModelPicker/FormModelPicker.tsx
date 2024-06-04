@@ -4,7 +4,10 @@ import { useState, useRef } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Button, Icon } from "metabase/ui";
@@ -65,14 +68,7 @@ export function FormModelPicker({
         <QuestionPickerModal
           models={["dataset"]}
           title={t`Select a model`}
-          value={
-            model?.id
-              ? {
-                  id: model.id,
-                  model: model.type === "model" ? "dataset" : "card",
-                }
-              : undefined
-          }
+          value={model?.id ? getQuestionPickerValue(model) : undefined}
           onChange={newModel => {
             setValue(newModel.id);
             setIsPickerOpen(false);

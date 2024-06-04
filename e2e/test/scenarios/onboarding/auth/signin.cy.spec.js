@@ -1,5 +1,5 @@
 import { USERS } from "e2e/support/cypress_data";
-import { browseData, restore } from "e2e/support/helpers";
+import { browseDatabases, restore } from "e2e/support/helpers";
 
 const sizes = [
   [1280, 800],
@@ -75,7 +75,7 @@ describe("scenarios > auth > signin", () => {
   it("should redirect to an unsaved question after login", () => {
     cy.signInAsAdmin();
     cy.visit("/");
-    browseData().click();
+    browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Orders" }).click();
     cy.wait("@dataset");

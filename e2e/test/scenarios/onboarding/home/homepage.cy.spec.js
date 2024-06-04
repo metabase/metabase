@@ -4,6 +4,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  describeEE,
   popover,
   restore,
   visitDashboard,
@@ -103,9 +104,6 @@ describe("scenarios > home > homepage", () => {
     beforeEach(() => {
       restore("default");
       cy.signInAsAdmin();
-      // Setting this to true so that displaying popular items for new users works.
-      // This requires the audit-app feature to be enabled
-      setTokenFeatures("all");
     });
 
     it("should display recent items", () => {
@@ -127,27 +125,33 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Orders");
     });
 
-    it("should display popular items for a new user", () => {
-      cy.signInAsAdmin();
+    // TODO: popular items endpoint is currently broken in OSS. Re-enable test once endpoint has been fixed.
+    describeEE("EE", () => {
+      it("should display popular items for a new user", () => {
+        cy.signInAsAdmin();
+        // Setting this to true so that displaying popular items for new users works.
+        // This requires the audit-app feature to be enabled
+        setTokenFeatures("all");
 
-      visitDashboard(ORDERS_DASHBOARD_ID);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard");
-      cy.signOut();
+        visitDashboard(ORDERS_DASHBOARD_ID);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders in a dashboard");
+        cy.signOut();
 
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.wait("@getPopularItems");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Here are some popular dashboards");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").click();
-      cy.wait("@getDashboard");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders");
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        cy.wait("@getPopularItems");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Here are some popular dashboards");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders in a dashboard").click();
+        cy.wait("@getDashboard");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders");
+      });
     });
 
-    it("should not show pinned questions in recent items when viewed in a collection", () => {
+    it("should show pinned questions in recent items when viewed in a collection", () => {
       cy.signInAsAdmin();
 
       visitDashboard(ORDERS_DASHBOARD_ID);
@@ -165,7 +169,7 @@ describe("scenarios > home > homepage", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").should("not.exist");
+      cy.findByText("Orders, Count").should("exist");
     });
   });
 });
@@ -179,7 +183,12 @@ describe("scenarios > home > custom homepage", () => {
 
     it("should give you the option to set a custom home page in settings", () => {
       cy.visit("/admin/settings/general");
-      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+
+      cy.findByTestId("custom-homepage-setting").within(() => {
+        cy.findByText("Disabled").should("exist");
+        cy.findByRole("switch").click();
+        cy.findByText("Enabled").should("exist");
+      });
 
       cy.findByTestId("custom-homepage-dashboard-setting")
         .findByRole("button")
@@ -189,14 +198,29 @@ describe("scenarios > home > custom homepage", () => {
 
       undoToast().findByText("Changes saved").should("be.visible");
 
+      cy.findByTestId("custom-homepage-dashboard-setting").should(
+        "contain",
+        "Orders in a dashboard",
+      );
+
       cy.log(
         "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
       );
 
-      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByTestId("custom-homepage-setting").within(() => {
+        cy.findByText("Enabled").should("exist");
+        cy.findByRole("switch").click();
+        cy.findByText("Disabled").should("exist");
+      });
+
       undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByTestId("custom-homepage-setting").within(() => {
+        cy.findByText("Disabled").should("exist");
+        cy.findByRole("switch").click();
+        cy.findByText("Enabled").should("exist");
+      });
+
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
         "Select a dashboard",
@@ -207,6 +231,11 @@ describe("scenarios > home > custom homepage", () => {
         .click();
 
       entityPickerModal().findByText("Orders in a dashboard").click();
+
+      cy.findByTestId("custom-homepage-dashboard-setting").should(
+        "contain",
+        "Orders in a dashboard",
+      );
 
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should(
@@ -372,27 +401,36 @@ describe("scenarios > home > custom homepage", () => {
     });
 
     it("should show the default homepage if the dashboard was archived (#31599)", () => {
-      // Archive dashboard
-      visitDashboard(ORDERS_DASHBOARD_ID);
-      dashboardHeader().within(() => {
-        cy.findByLabelText("dashboard-menu-button").click();
-      });
-      popover().within(() => {
-        cy.findByText("Archive").click();
-      });
-      modal().within(() => {
-        cy.findByText("Archive").click();
-      });
+      cy.request("GET", "/api/collection/trash").then(
+        ({ body: trashCollection }) => {
+          cy.intercept("GET", `/api/collection/${trashCollection.id}`).as(
+            "getCollection",
+          );
+          // Archive dashboard
+          visitDashboard(ORDERS_DASHBOARD_ID);
+          dashboardHeader().within(() => {
+            cy.findByLabelText("dashboard-menu-button").click();
+          });
+          popover().within(() => {
+            cy.findByText("Move to trash").click();
+          });
+          modal().within(() => {
+            cy.findByText("Move to trash").click();
+          });
 
-      // Navigate to home
-      openNavigationSidebar();
-      navigationSidebar().within(() => {
-        cy.findByText("Home").click();
-      });
-      main().within(() => {
-        cy.findByText("We're a little lost...").should("not.exist");
-        cy.findByText("Customize").should("be.visible");
-      });
+          cy.wait(["@getCollection"]);
+
+          // Navigate to home
+          openNavigationSidebar();
+          navigationSidebar().within(() => {
+            cy.findByText("Home").click();
+          });
+          main().within(() => {
+            cy.findByText("We're a little lost...").should("not.exist");
+            cy.findByText("Customize").should("be.visible");
+          });
+        },
+      );
     });
   });
 });

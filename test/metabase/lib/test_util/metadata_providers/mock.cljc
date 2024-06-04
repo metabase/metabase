@@ -24,7 +24,6 @@
    [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table         :metadata/table)]]]
    [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column        :metadata/column)]]]
    [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card          :metadata/card)]]]
-   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/legacy-metric :metadata/legacy-metric)]]]
    [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment       :metadata/segment)]]]
    [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
 
@@ -38,7 +37,6 @@
               :metadata/table         :tables
               :metadata/column        :fields
               :metadata/card          :cards
-              :metadata/legacy-metric :metrics
               :metadata/segment       :segments)
         ids (set ids)]
     (into []
@@ -56,11 +54,15 @@
 (defn- mock-metadatas-for-table [metadata metadata-type table-id]
   (let [k (case metadata-type
             :metadata/column        :fields
-            :metadata/legacy-metric :metrics
+            :metadata/metric        :cards
             :metadata/segment       :segments)]
     (into []
           (keep (fn [object]
-                  (when (= (:table-id object) table-id)
+                  (when (and (= (:table-id object) table-id)
+                             (if (= metadata-type :metadata/metric)
+                               (and (= (:type object) :metric)
+                                    (not (:archived object)))
+                               true))
                     (assoc object :lib/type metadata-type))))
           (get metadata k))))
 

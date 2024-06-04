@@ -24,7 +24,7 @@ export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
 
   &:hover,
   :focus-within {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 

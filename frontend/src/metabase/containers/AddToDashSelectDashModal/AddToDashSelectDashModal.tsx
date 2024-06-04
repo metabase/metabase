@@ -7,11 +7,19 @@ import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
-import { shouldDisableItem, filterWritableDashboards } from "./utils";
+import {
+  shouldDisableItem,
+  filterWritableDashboards,
+  filterWritableRecents,
+} from "./utils";
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
     return t`Add this model to a dashboard`;
+  }
+
+  if (type === "metric") {
+    return t`Add this metric to a dashboard`;
   }
 
   if (type === "question") {
@@ -89,6 +97,7 @@ export const AddToDashSelectDashModal = ({
       }}
       shouldDisableItem={shouldDisableItem}
       searchFilter={filterWritableDashboards}
+      recentFilter={filterWritableRecents}
     />
   );
 };

@@ -11,11 +11,11 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
@@ -30,6 +30,7 @@
             PermissionsGroup
             Table
             User]]
+   [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -120,18 +121,22 @@
                                                                        :created_at             #t "2021-10-20T02:09Z"
                                                                        :updated_at             #t "2022-10-20T02:09Z"})]
         (migrate!)
-        (testing "A personal Collection should get created_at set by to the date_joined from its owner"
-          (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
-                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id personal-collection-id)))))
-        (testing "A non-personal Collection should get created_at set to its oldest object"
-          (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                 (t/offset-date-time (t2/select-one-fn :created_at Collection :id impersonal-collection-id)))))
-        (testing "Empty Collection should not have been updated"
-          (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
-            (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
-                      empty-collection-created-at))
-            (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
-                      empty-collection-created-at))))))))
+        ;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
+        ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
+        ;; that so.
+        (with-redefs [collection/is-trash? (constantly false)]
+          (testing "A personal Collection should get created_at set by to the date_joined from its owner"
+            (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
+                   (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id personal-collection-id)))))
+          (testing "A non-personal Collection should get created_at set to its oldest object"
+            (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
+                   (t/offset-date-time (t2/select-one-fn :created_at [:model/Collection :created_at] :id impersonal-collection-id)))))
+          (testing "Empty Collection should not have been updated"
+            (let [empty-collection-created-at (t/offset-date-time (t2/select-one-fn :created_at Collection :id empty-collection-id))]
+              (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
+                        empty-collection-created-at))
+              (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
+                        empty-collection-created-at)))))))))
 
 (deftest deduplicate-dimensions-test
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
@@ -496,16 +501,23 @@
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
     (impl/test-migrations ["v48.00-019"] [migrate!]
-      (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
-                                                                                       :slug "amazing_collection"
-                                                                                       :color "#509EE3"}))]
+      (with-redefs [;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
+                    ;; migration, this `type` does not exist yet. Neither does the Trash collection though, so let's just ... make
+                    ;; that so.
+                    collection/is-trash? (constantly false)
+                    ;; Also avoid loading sample content, because this test breaks the assumption that only the trash
+                    ;; collection exists at the time of the migration
+                    config/load-sample-content? (constantly false)]
+        (let [collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
+                                                                                         :slug "amazing_collection"
+                                                                                         :color "#509EE3"}))]
 
-        (testing "Collection should exist and have the color set by the user prior to migration"
-          (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
+          (testing "Collection should exist and have the color set by the user prior to migration"
+            (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
 
-        (migrate!)
-        (testing "should drop the existing color column"
-          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
+          (migrate!)
+          (testing "should drop the existing color column"
+            (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))))))
 
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - end"
@@ -1480,45 +1492,6 @@
         (migrate! :down 49)
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
-(deftest create-sample-content-test
-  (testing "The sample content is created iff *create-sample-content*=true"
-    (doseq [create? [true false]]
-      (testing (str "*create-sample-content* = " create?)
-        (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
-          (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-            (binding [custom-migrations/*create-sample-content* create?]
-              (is (false? (sample-content-created?)))
-              (migrate!)
-              (is ((if create? true? false?) (sample-content-created?)))))))))
-  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
-    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
-      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-        (is (false? (sample-content-created?)))
-        (t2/insert-returning-pks! :metabase_database {:name       "db"
-                                                      :engine     "h2"
-                                                      :created_at :%now
-                                                      :updated_at :%now
-                                                      :details    "{}"})
-        (t2/query {:delete-from :metabase_database})
-        (migrate!)
-        (is (false? (sample-content-created?)))
-        (is (empty? (t2/query "SELECT * FROM metabase_database"))
-            "No database should have been created"))))
-  (testing "The sample content isn't created if a user existed already"
-    (impl/test-migrations "v50.2024-04-09T15:55:22" [migrate!]
-      (let [sample-content-created? #(boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce insights'")))]
-        (is (false? (sample-content-created?)))
-        (t2/insert-returning-pks!
-         :core_user
-         {:first_name       "Rasta"
-          :last_name        "Toucan"
-          :email            "rasta@metabase.com"
-          :password         "password"
-          :password_salt    "and pepper"
-          :date_joined      :%now})
-        (migrate!)
-        (is (false? (sample-content-created?)))))))
-
 (deftest cache-config-migration-test
   (testing "Caching config is correctly copied over"
     (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
@@ -2051,3 +2024,68 @@
         (is (= 1 (t2/select-one-fn :view_count :metabase_table table-id)))
         (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
+
+(deftest move-to-trash-test
+  (testing "existing archived items should be moved to the Trash"
+    (impl/test-migrations ["v50.2024-05-14T12:42:44" "v50.2024-05-14T12:42:52"] [migrate!]
+      (let [user       (create-raw-user! (mt/random-email))
+            db         (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
+                                                                       (update :details json/generate-string)
+                                                                       (update :engine str)))
+            dash       (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
+                                                {:name       "A dashboard"
+                                                 :archived   true
+                                                 :creator_id (:id user)
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :parameters ""})
+            card       (t2/insert-returning-pk! (t2/table-name Card)
+                                                {:name                   "Card"
+                                                 :archived               true
+                                                 :display                "table"
+                                                 :dataset_query          "{}"
+                                                 :visualization_settings "{}"
+                                                 :cache_ttl              30
+                                                 :creator_id             (:id user)
+                                                 :database_id            db
+                                                 :created_at             :%now
+                                                 :updated_at             :%now})
+            collection (t2/insert-returning-pk! (t2/table-name Collection)
+                                                {:name     "Silly Collection"
+                                                 :slug     "silly-collection"
+                                                 :archived true})]
+        (is (empty? (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
+        (is (empty? (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
+        (is (empty? (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))
+        (migrate!)
+        (is (set/subset? #{dash} (t2/select-fn-set :id :model/Dashboard :collection_id (collection/trash-collection-id))))
+        (is (set/subset? #{card} (t2/select-fn-set :id :model/Card :collection_id (collection/trash-collection-id))))
+        (is (set/subset? #{collection} (t2/select-fn-set :id :model/Collection :location (collection/children-location (collection/trash-collection)))))))))
+
+(deftest trash-migrations-test
+  (impl/test-migrations ["v50.2024-05-14T12:13:22" "v50.2024-05-14T12:42:52"] [migrate!]
+    (with-redefs [collection/is-trash? (constantly false)]
+      (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
+                                                      {:name "Silly Collection"
+                                                       :slug "silly-collection"})
+            subcollection-id (t2/insert-returning-pk! (t2/table-name :model/Collection)
+                                                      {:name     "Subcollection"
+                                                       :slug     "subcollection"
+                                                       :location (collection/children-location (t2/select-one :model/Collection :id collection-id))})]
+        (migrate!)
+        (mt/user-http-request :crowberto :put 200 (str "/collection/" subcollection-id) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "/collection/" collection-id) {:archived true})
+        (mt/user-http-request :crowberto :delete 200 (str "/collection/" collection-id))
+        (testing "sanity check: `collection` no longer exists"
+          (is (nil? (t2/select-one :model/Collection :id collection-id))))
+        (let [trash-collection-id (collection/trash-collection-id)]
+          (testing "After a down-migration, it stays in the trash"
+            (migrate! :down 49)
+            (is (= (str "/" trash-collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
+          (testing "but it's not really the trash anymore"
+            (is (nil? (:type (t2/select-one :model/Collection :id trash-collection-id)))))
+          (testing "we can migrate back up"
+            (migrate!)
+            (is (not= trash-collection-id (t2/select-one-pk :model/Collection :type "trash")))
+            (is (= (str "/" (t2/select-one-pk :model/Collection :type "trash") "/")
+                   (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))

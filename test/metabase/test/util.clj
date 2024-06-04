@@ -55,7 +55,7 @@
    (java.io File FileInputStream)
    (java.net ServerSocket)
    (java.util Locale)
-   (java.util.concurrent TimeoutException)
+   (java.util.concurrent CountDownLatch TimeoutException)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
@@ -259,6 +259,7 @@
        {:db_id      (data/id)
         :task       (u.random/random-name)
         :started_at started
+        :status     :success
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
 
@@ -605,17 +606,17 @@
         already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
       (thunk)
-      (binding [task/*quartz-scheduler* (atom temp-scheduler)]
-        (try
-          (assert (not (qs/started? temp-scheduler))
-                  "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-          (with-redefs [qs/initialize (constantly temp-scheduler)
-                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                        ;; after it's done, but we need the scheduler for testing
-                        qs/shutdown   (constantly nil)]
-            (thunk))
-          (finally
-            (qs/shutdown temp-scheduler)))))))
+      (try
+        (assert (not (qs/started? temp-scheduler))
+                "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
+        (with-redefs [task/*quartz-scheduler* (atom temp-scheduler)
+                      qs/initialize (constantly temp-scheduler)
+                      ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                      ;; after it's done, but we need the scheduler for testing
+                      qs/shutdown   (constantly nil)]
+          (thunk))
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defn do-with-temp-scheduler [thunk]
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
@@ -774,8 +775,8 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
-(defn do-with-verified-cards
-  "Impl for [[with-verified-cards]]."
+(defn do-with-verified-cards!
+  "Impl for [[with-verified-cards!]]."
   [card-or-ids thunk]
   (with-model-cleanup [:model/ModerationReview]
     (doseq [card-or-id card-or-ids]
@@ -788,15 +789,15 @@
           :status              status})))
     (thunk)))
 
-(defmacro with-verified-cards
+(defmacro with-verified-cards!
   "Execute the body with all `card-or-ids` verified."
   [card-or-ids & body]
-  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+  `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
 
 (deftest with-verified-cards-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {}]
-    (with-verified-cards [card-id]
+    (with-verified-cards! [card-id]
       (is (=? #{{:moderated_item_id   card-id
                  :moderated_item_type :card
                  :most_recent         true
@@ -1409,3 +1410,15 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                                 (when model-id [:= :model_id model-id])]})))
+
+(defn repeat-concurrently
+  "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."
+  [n f]
+  ;; Use a latch to ensure that the functions start as close to simultaneously as possible.
+  (let [latch   (CountDownLatch. n)
+        futures (atom [])]
+    (dotimes [_ n]
+      (swap! futures conj (future (.countDown latch)
+                                  (.await latch)
+                                  (f))))
+    (mapv deref @futures)))

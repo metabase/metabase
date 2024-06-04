@@ -3,14 +3,12 @@
 import { t } from "ttag";
 
 import type { AggregationOperator } from "metabase-lib/v1/deprecated-types";
-import type Metric from "metabase-lib/v1/metadata/Metric";
 import Filter from "metabase-lib/v1/queries/structured/Filter";
 import * as AGGREGATION from "metabase-lib/v1/queries/utils/aggregation";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   Aggregation as AggregationObject,
   FieldId,
-  MetricId,
 } from "metabase-types/api";
 
 import type Dimension from "../../Dimension";
@@ -69,12 +67,6 @@ export default class Aggregation extends MBQLClause {
 
     if (aggregation.isCustom()) {
       return aggregation._query.formatExpression(aggregation);
-    } else if (aggregation.isMetric()) {
-      const metric = aggregation.metric();
-
-      if (metric) {
-        return metric.displayName();
-      }
     } else if (aggregation.isStandard()) {
       const option = aggregation.option();
 
@@ -108,13 +100,6 @@ export default class Aggregation extends MBQLClause {
 
     if (aggregation.isCustom()) {
       return "expression";
-    } else if (aggregation.isMetric()) {
-      const metric = aggregation.metric();
-
-      if (metric) {
-        // delegate to the metric's definition
-        return metric.columnName();
-      }
     } else if (aggregation.isStandard()) {
       const short = this.short();
 
@@ -130,15 +115,7 @@ export default class Aggregation extends MBQLClause {
   short() {
     const aggregation = this.aggregation();
 
-    // FIXME: if metric, this should be the underlying metric's short name?
-    if (aggregation.isMetric()) {
-      const metric = aggregation.metric();
-
-      if (metric) {
-        // delegate to the metric's definition
-        return metric.aggregation().short();
-      }
-    } else if (aggregation.isStandard()) {
+    if (aggregation.isStandard()) {
       return aggregation[0];
     }
   }
@@ -171,13 +148,6 @@ export default class Aggregation extends MBQLClause {
    */
   isStandard() {
     return AGGREGATION.isStandard(this);
-  }
-
-  /**
-   * Returns true if this is a metric
-   */
-  isMetric() {
-    return AGGREGATION.isMetric(this);
   }
 
   /**
@@ -246,28 +216,6 @@ export default class Aggregation extends MBQLClause {
     }
   }
 
-  // METRIC AGGREGATION
-
-  /**
-   * Get metricId from a metric aggregation clause
-   * Returns `null` if the clause doesn't represent a metric
-   */
-  metricId(): MetricId | null {
-    if (this.isMetric()) {
-      return this[1];
-    }
-
-    return null;
-  }
-
-  metric(): Metric | null {
-    if (this.isMetric()) {
-      return this.metadata().metric(this.metricId());
-    }
-
-    return null;
-  }
-
   // OPTIONS
   hasOptions() {
     return this[0] === "aggregation-options";
@@ -298,11 +246,6 @@ export default class Aggregation extends MBQLClause {
       return filter ? [filter] : [];
     }
 
-    if (this.isMetric()) {
-      const filters = this.metricFilters();
-      return filters ?? [];
-    }
-
     return [];
   }
 
@@ -323,19 +266,6 @@ export default class Aggregation extends MBQLClause {
             this.legacyQuery({ useStructuredQuery: true }),
           );
       }
-    }
-
-    return null;
-  }
-
-  metricFilters(): Filter[] | null {
-    if (this.isMetric()) {
-      const metric = this.metric();
-      return metric
-        ?.filters()
-        .map(filter =>
-          filter.setQuery(this.legacyQuery({ useStructuredQuery: true })),
-        );
     }
 
     return null;

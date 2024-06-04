@@ -265,6 +265,14 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
+(def MaybeBooleanValue
+  "Same as above, but allows distinguishing between `nil` (the user did not specify a value)
+  and `false` (the user specified `false`)."
+  (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))}
+       "true" "false" true false nil]
+      (mu/with-api-error-message
+       (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
+
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter

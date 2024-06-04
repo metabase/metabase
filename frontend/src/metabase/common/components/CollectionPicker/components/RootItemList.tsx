@@ -6,7 +6,7 @@ import {
   useGetCollectionQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
@@ -36,6 +36,7 @@ export const RootItemList = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
@@ -135,6 +136,7 @@ export const RootItemList = ({
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

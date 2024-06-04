@@ -65,10 +65,7 @@
     #(not (contains? % :source-table))]
    [:fn
     {:error/message ":source-card is not allowed in a native query stage."}
-    #(not (contains? % :source-card))]
-   [:fn
-    {:error/message ":sources is not allowed in a native query stage."}
-    #(not (contains? % :sources))]])
+    #(not (contains? % :source-card))]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])
@@ -87,19 +84,8 @@
     {:error/message ":fields must be distinct"}
     #'lib.schema.util/distinct-refs?]])
 
-;;; this is just for enabling round-tripping filters with named segment references, i.e. Google Analytics segments.
-;;;
-;;; TODO -- we should just add this to the schema `:mbql.clause/segment`
-(mr/def ::named-segment-reference
-  [:tuple
-   #_tag  [:= :segment]
-   #_opts :map
-   #_name :string])
-
 (mr/def ::filterable
-  [:or
-   [:ref ::expression/boolean]
-   [:ref ::named-segment-reference]])
+  [:ref ::expression/boolean])
 
 (mr/def ::filters
   [:sequential {:min 1} ::filterable])
@@ -168,15 +154,6 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
-(mr/def ::source
-  [:map
-   {:decode/normalize common/normalize-map}
-   [:lib/type [:enum {:decode/normalize common/normalize-keyword} :source/metric]]
-   [:id [:ref ::id/card]]])
-
-(mr/def ::sources
-  [:sequential {:min 1} ::source])
-
 (mr/def ::stage.mbql
   [:and
    [:map
@@ -191,7 +168,6 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    [:sources      {:optional true} [:ref ::sources]]
     [:page         {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
@@ -200,8 +176,8 @@
     {:error/message ":native is not allowed in an MBQL stage."}
     #(not (contains? % :native))]
    [:fn
-    {:error/message "A query must have exactly one of :source-table, :source-card, or :sources"}
-    (complement (comp #(= (count %) 1) #{:source-table :source-card :sources}))]
+    {:error/message "A query must have exactly one of :source-table or :source-card"}
+    (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
@@ -236,8 +212,8 @@
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native :map]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "An initial MBQL stage of a query must have :source-table, :source-card, or :sources."}
-                        (some-fn :source-table :source-card :sources)]]])
+                        {:error/message "An initial MBQL stage of a query must have :source-table or :source-card"}
+                        (some-fn :source-table :source-card)]]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
@@ -246,8 +222,8 @@
                         {:error/message "Native stages are only allowed as the first stage of a query or join."}
                         (constantly false)]]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "Only the initial stage of a query can have a :source-table, :source-card, or :sources."}
-                        (complement (some-fn :source-table :source-card :sources))]]])
+                        {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
+                        (complement (some-fn :source-table :source-card))]]])
 
 (defn- visible-join-alias?-fn
   "Apparently you're allowed to use a join alias for a join that appeared in any previous stage or the current stage, or

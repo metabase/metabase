@@ -5,9 +5,9 @@ import { Flex } from "metabase/ui";
 
 import type {
   EntityPickerOptions,
+  IsFolder,
   ListProps,
   PickerState,
-  IsFolder,
   TypeWithModel,
 } from "../../types";
 import { isSelectedItem } from "../../utils";
@@ -30,6 +30,7 @@ export interface NestedItemPickerProps<
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
   shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -46,6 +47,7 @@ export function NestedItemPicker<
   isFolder,
   listResolver: ListResolver,
   shouldDisableItem,
+  shouldShowItem,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -84,6 +86,7 @@ export function NestedItemPicker<
                   onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={isCurrentLevel}
                   shouldDisableItem={shouldDisableItem}
+                  shouldShowItem={shouldShowItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

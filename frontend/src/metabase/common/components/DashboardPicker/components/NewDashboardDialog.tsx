@@ -17,7 +17,7 @@ import type { DashboardPickerItem } from "../types";
 interface NewDashboardDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  parentCollectionId: CollectionId;
+  parentCollectionId: CollectionId | null;
   onNewDashboard: (item: DashboardPickerItem) => void;
 }
 
@@ -29,7 +29,7 @@ export const NewDashboardDialog = ({
 }: NewDashboardDialogProps) => {
   const [createDashboard] = useCreateDashboardMutation();
 
-  const onCreateNewCollection = async ({ name }: { name: string }) => {
+  const onCreateNewDashboard = async ({ name }: { name: string }) => {
     const newDashboard = await createDashboard({
       name,
       collection_id: parentCollectionId === "root" ? null : parentCollectionId,
@@ -60,7 +60,7 @@ export const NewDashboardDialog = ({
     >
       <FormProvider
         initialValues={{ name: "" }}
-        onSubmit={onCreateNewCollection}
+        onSubmit={onCreateNewDashboard}
       >
         {({ dirty }: { dirty: boolean }) => (
           <Form>

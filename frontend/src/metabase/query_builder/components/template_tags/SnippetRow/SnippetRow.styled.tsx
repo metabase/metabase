@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 
 export const SnippetButton = styled(Button)`
   color: ${color("brand")};
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   margin-top: 0.5rem;
 
   &:hover {

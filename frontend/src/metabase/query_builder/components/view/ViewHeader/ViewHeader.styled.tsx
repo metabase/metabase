@@ -68,14 +68,14 @@ export const SaveButton = styled(Link)`
   background-color: ${color("bg-white")};
 
   :hover {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
 export const SavedQuestionHeaderButtonContainer = styled.div<{
-  isModel: boolean;
+  isModelOrMetric: boolean;
 }>`
-  right: ${props => (props.isModel ? "0px" : "0.38rem")};
+  right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
 export const HeaderButton = styled(Button)<{ active: boolean }>`

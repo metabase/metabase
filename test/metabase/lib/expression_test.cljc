@@ -11,7 +11,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
 
 (comment lib/keep-me)
 
@@ -301,6 +303,24 @@
     (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
 
+(deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
+  (testing "expressionable-columns should filter out expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/expressionable-columns query -1 2)))))))
+
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
     (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:orders lib.tu/mock-cards))
@@ -490,7 +510,25 @@
                              (assoc 3 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
-          (is (= {:message "Cycle detected: c → x → b → c"}
-                 (lib.expression/diagnose-expression query 0 :expression
-                                                     (get exprs "circular-c")
-                                                     c-pos))))))))
+          (is (=? {:message "Cycle detected: c → x → b → c"}
+                  (lib.expression/diagnose-expression query 0 :expression
+                                                      (get exprs "circular-c")
+                                                      c-pos))))))))
+
+(deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
+  (testing "adding/editing an expression using offset is not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:message "OFFSET is not supported in custom expressions"}
+              (lib.expression/diagnose-expression query 0 :expression
+                                                  (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                  nil))))))
+
+(deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
+  (testing "adding/editing a filter using offset is not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:message  "OFFSET is not supported in custom filters"
+               :friendly true}
+              (lib.expression/diagnose-expression query 0 :filter
+                                                  (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                         100)
+                                                  nil))))))

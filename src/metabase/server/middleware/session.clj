@@ -104,8 +104,9 @@
                                 {:possible-values possible-session-cookie-samesite-values
                                  :session-cookie-samesite normalized-value
                                  :http-status 400})))))
-  :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain). Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md). Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
-")
+  :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
@@ -340,7 +341,10 @@
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
 
-(defn- do-useless-hash []
+(defn do-useless-hash
+  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
+  attacks."
+  []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
 (defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
@@ -357,7 +361,7 @@
     (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                  (premium-features/enable-advanced-permissions?))
                                                 [(api-key/prefix api-key)]))
-                               (update :is-group-manager? boolean))]
+                            (update :is-group-manager? boolean))]
       (when (matching-api-key? user-data api-key)
         (dissoc user-data :api-key)))))
 

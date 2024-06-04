@@ -47,7 +47,8 @@ const ViewFooter = ({
   }
 
   const { isEditable } = Lib.queryDisplayInfo(question.query());
-  const hideChartSettings = result.error && !isEditable;
+  const hideChartSettings =
+    (result.error && !isEditable) || question.isArchived();
   const type = question.type();
 
   return (
@@ -145,6 +146,7 @@ const ViewFooter = ({
             />
           ),
           type === "question" &&
+            !question.isArchived() &&
             (question.isSaved() ? (
               <EmbedMenu
                 key="embed"

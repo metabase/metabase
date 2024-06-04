@@ -1,4 +1,5 @@
-type Model = "root" | "database" | "collection" | "dashboard" | "question";
+/** 'Model' as in 'type of object' */
+export type CacheableModel = "root" | "database" | "dashboard" | "question";
 
 export type StrategyType =
   | "nocache"
@@ -55,7 +56,7 @@ export type Strategy =
 /** Cache invalidation configuration */
 export interface Config {
   /** The type of cacheable object this configuration concerns */
-  model: Model;
+  model: CacheableModel;
   model_id: number;
   /** Cache invalidation strategy */
   strategy: Strategy;

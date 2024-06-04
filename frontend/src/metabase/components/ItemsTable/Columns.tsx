@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
@@ -166,7 +166,11 @@ export const Columns = {
         containerName="ItemsTableContainer"
       />
     ),
-    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+    Header: ({
+      sortingOptions,
+      onSortingOptionsChange,
+      isTrashed,
+    }: HeaderProps & { isTrashed: boolean }) => (
       <SortableColumnHeader
         name="last_edited_by"
         sortingOptions={sortingOptions}
@@ -174,7 +178,9 @@ export const Columns = {
         hideAtContainerBreakpoint="sm"
         containerName="ItemsTableContainer"
       >
-        {t`Last edited by`}
+        {isTrashed
+          ? c("Precedes the name of a user").t`Deleted by`
+          : t`Last edited by`}
       </SortableColumnHeader>
     ),
     Cell: ({
@@ -206,7 +212,11 @@ export const Columns = {
         containerName="ItemsTableContainer"
       />
     ),
-    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+    Header: ({
+      sortingOptions,
+      onSortingOptionsChange,
+      isTrashed,
+    }: HeaderProps & { isTrashed: boolean }) => (
       <SortableColumnHeader
         name="last_edited_at"
         sortingOptions={sortingOptions}
@@ -214,7 +224,9 @@ export const Columns = {
         hideAtContainerBreakpoint="md"
         containerName="ItemsTableContainer"
       >
-        {t`Last edited at`}
+        {isTrashed
+          ? c("Time which the item was deleted").t`Deleted at`
+          : t`Last edited at`}
       </SortableColumnHeader>
     ),
     Cell: ({
@@ -267,7 +279,9 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
-            {item.model === "dataset" && <ModelDetailLink model={item} />}
+            {item.model === "dataset" && !item.archived && (
+              <ModelDetailLink model={item} />
+            )}
           </RowActionsContainer>
         </ItemCell>
       );

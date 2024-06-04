@@ -6,7 +6,13 @@ redirect_from:
 
 # Managing people and groups
 
-To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
+To start managing people:
+
+Hit Cmd/Ctrl + K to bring up the command palette and search for "People". Click on the **People** settings result.
+
+Or
+
+Click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
@@ -43,7 +49,7 @@ You can also sync user attributes from your identity provider [via SSO](./start.
 
 User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
 
-You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonation-access).
+You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonated-view-data-permission).
 
 ## Deactivating an account
 

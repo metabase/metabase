@@ -189,7 +189,7 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().findByText("Archive").click();
+    popover().findByText("Move to trash").click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");

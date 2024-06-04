@@ -19,7 +19,7 @@ export type CollectionItemId = CollectionId | CardId | DashboardId;
 // so that we can use its components for picking all of them
 export type CollectionPickerModel = Extract<
   CollectionItemModel,
-  "collection" | "card" | "dataset" | "dashboard"
+  "collection" | "card" | "dataset" | "metric" | "dashboard"
 >;
 
 // we can enforce type safety at the boundary of a collection-only picker with this type
@@ -47,6 +47,7 @@ export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
 };
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";

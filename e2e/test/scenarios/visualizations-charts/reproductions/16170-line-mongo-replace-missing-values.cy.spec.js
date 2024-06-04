@@ -5,6 +5,7 @@ import {
   openSeriesSettings,
   cartesianChartCircle,
   echartsContainer,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const externalDatabaseId = 2;
@@ -67,8 +68,4 @@ function assertOnTheYAxis() {
   echartsContainer().get("text").contains("Count");
 
   echartsContainer().get("text").contains("6,000");
-}
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }

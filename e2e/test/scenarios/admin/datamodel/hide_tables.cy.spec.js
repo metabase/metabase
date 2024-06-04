@@ -1,6 +1,11 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, startNewQuestion } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  entityPickerModalTab,
+  restore,
+  startNewQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -31,12 +36,11 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
 
     // It shouldn't show in a new question data picker
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Raw Data").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Products");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").should("not.exist");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.contains("Products").should("exist");
+      cy.contains("Orders").should("not.exist");
+    });
   });
 });
 

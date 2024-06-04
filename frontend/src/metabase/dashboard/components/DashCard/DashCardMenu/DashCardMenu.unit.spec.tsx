@@ -48,6 +48,7 @@ const TEST_CARD_NO_DATA_ACCESS = createMockCard({
     database: SAMPLE_DB_ID,
     query: {},
   }),
+  can_run_adhoc_query: false,
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({

@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-dataset: false
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -125,7 +124,76 @@ dataset_query:
         - base-type: type/DateTimeWithLocalTZ
     source-table: -lNDM3tJmuL5ltGbX0oyT
   type: query
-result_metadata: null
+result_metadata:
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Timestamp
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - timestamp
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - timestamp
+  name: timestamp
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Topic
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_audit_log
+    - topic
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_audit_log
+  - topic
+  name: topic
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: People - User → Full Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_users
+    - full_name
+  - base-type: type/Text
+    join-alias: People - User
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - full_name
+  name: full_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings:
     ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
@@ -169,5 +237,6 @@ serdes/meta:
   label: recent_activity_on_dashboard
   model: Card
 initially_published_at: null
+last_used_at: null
 metabase_version: null
 type: question

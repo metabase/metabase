@@ -43,6 +43,7 @@
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"
+   "CloudMigration"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"

@@ -13,6 +13,7 @@ import type {
   OnMove,
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
+import { isTrashedCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -37,6 +38,7 @@ export type SortableColumnHeaderProps = {
   name?: string;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
+  columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
 } & PropsWithChildren<Partial<HTMLAttributes<HTMLDivElement>>>;
 
 export const SortableColumnHeader = ({
@@ -46,6 +48,7 @@ export const SortableColumnHeader = ({
   children,
   hideAtContainerBreakpoint,
   containerName,
+  columnHeaderProps,
   ...props
 }: SortableColumnHeaderProps & ResponsiveProps) => {
   const isSortable = !!onSortingOptionsChange && !!name;
@@ -76,6 +79,7 @@ export const SortableColumnHeader = ({
     <ColumnHeader
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
       containerName={containerName}
+      {...columnHeaderProps}
     >
       <SortingControlContainer
         {...props}
@@ -147,6 +151,8 @@ export const BaseItemsTable = ({
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = !!collection?.can_write;
+  const isTrashed = !!collection && isTrashedCollection(collection);
+
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
@@ -186,10 +192,12 @@ export const BaseItemsTable = ({
             <Columns.LastEditedBy.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
             />
             <Columns.LastEditedAt.Header
               sortingOptions={sortingOptions}
               onSortingOptionsChange={onSortingOptionsChange}
+              isTrashed={isTrashed}
             />
             <Columns.ActionMenu.Header />
             <Columns.RightEdge.Header />
@@ -265,7 +273,7 @@ const DefaultItemRenderer = ({
     collection?.can_write && typeof onToggleSelected === "function";
 
   const icon = item.getIcon();
-  if (item.model === "card") {
+  if (item.model === "card" || item.archived) {
     icon.color = color("text-light");
   }
 

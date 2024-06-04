@@ -31,7 +31,7 @@
                      [:metadata/table         ::lib.schema.metadata/table]
                      [:metadata/column        ::lib.schema.metadata/column]
                      [:metadata/card          ::lib.schema.metadata/card]
-                     [:metadata/legacy-metric ::lib.schema.metadata/legacy-metric]
+                     [:metadata/metric        ::lib.schema.metadata/metric]
                      [:metadata/segment       ::lib.schema.metadata/segment]]]
   (let [metadata (-> metadata
                      (update-keys u/->kebab-case-en)
@@ -80,7 +80,7 @@
 (defn- metadatas-for-table [metadata-provider cache metadata-type table-id]
   (let [k     (case metadata-type
                 :metadata/column        ::table-fields
-                :metadata/legacy-metric ::table-legacy-metrics
+                :metadata/metric        ::table-metrics
                 :metadata/segment       ::table-segments)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id)]

@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -17,7 +16,7 @@
    [metabase.models.persisted-info
     :as persisted-info
     :refer [PersistedInfo]]
-   [metabase.models.task-history :refer [TaskHistory]]
+   [metabase.models.task-history :as task-history]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -89,30 +88,39 @@
                                          :error error})
             (update :error inc))))))
 
+(defn- error-details
+  [results]
+  (some-> results :error-details seq))
+
+(defn- send-persist-refresh-email-if-error!
+  "Send an email to the admin if there are any errors in the persisted model refresh task."
+  [db-id task-details]
+  (try
+    (let [error-details       (error-details task-details)
+          error-details-by-id (m/index-by :persisted-info-id error-details)
+          persisted-infos     (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
+                                               [:card :collection] :database)
+                                   (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
+      (messages/send-persistent-model-error-email!
+       db-id
+       persisted-infos
+       (:trigger task-details)))
+    (catch Exception e
+      (log/error e "Error sending persist refresh email"))))
+
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
-  and :task_details will be the result of `f`."
-  [task-type db-id f]
-  (let [start-time   (t/zoned-date-time)
-        task-details (f)
-        end-time     (t/zoned-date-time)]
-    (when (= task-type "persist-refresh")
-      (when-let [error-details (seq (:error-details task-details))]
-        (let [error-details-by-id (m/index-by :persisted-info-id error-details)
-              persisted-infos (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
-                                            [:card :collection] :database)
-                                   (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
-          (messages/send-persistent-model-error-email!
-            db-id
-            persisted-infos
-            (:trigger task-details)))))
-    (t2/insert! TaskHistory {:task         task-type
-                             :db_id        db-id
-                             :started_at   start-time
-                             :ended_at     end-time
-                             :duration     (.toMillis (t/duration start-time end-time))
-                             :task_details task-details})
-    task-details))
+  and :task_details will be the result of `thunk`."
+  [task-type db-id thunk]
+  (task-history/with-task-history {:task            task-type
+                                   :db_id           db-id
+                                   :on-success-info (fn [task-details]
+                                                      (let [error (error-details task-details)]
+                                                        (when (and error (= "persist-refresh" task-type))
+                                                          (send-persist-refresh-email-if-error! db-id task-details))
+                                                        {:task_details task-details
+                                                         :status       (if error :failed :success)}))}
+    (thunk)))
 
 (defn- prune-deletables!
   "Seam for tests to pass in specific deletables to drop."
@@ -375,7 +383,7 @@
   (some->> refresh-job-key
            task/job-info
            :triggers
-           (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
+           (m/index-by (comp #(get % "db-id") :data))))
 
 (defn unschedule-persistence-for-database!
   "Stop refreshing tables for a given database. Should only be called when marking the database as not

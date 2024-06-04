@@ -25,7 +25,6 @@
       "visualization_settings": {
         "graph.show_values": true,
         "table.cell_column": "avg",
-        "stackable.stack_display": "bar",
         "graph.y_axis.scale": "pow",
         "graph.metrics": [
           "avg",

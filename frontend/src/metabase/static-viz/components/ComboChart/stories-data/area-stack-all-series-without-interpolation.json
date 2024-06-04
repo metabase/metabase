@@ -178,7 +178,6 @@
           }
         },
         "stackable.stack_type": "stacked",
-        "stackable.stack_display": "area",
         "graph.dimensions": ["CREATED_AT", "CATEGORY"],
         "graph.metrics": ["count"]
       },

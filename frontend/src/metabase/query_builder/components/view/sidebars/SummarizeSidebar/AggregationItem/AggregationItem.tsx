@@ -12,6 +12,8 @@ const STAGE_INDEX = -1;
 interface AggregationItemProps {
   query: Lib.Query;
   aggregation: Lib.AggregationClause;
+  aggregationIndex: number;
+  onAdd: (aggregations: Lib.Aggregable[]) => void;
   onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
 }
@@ -19,6 +21,8 @@ interface AggregationItemProps {
 export function AggregationItem({
   query,
   aggregation,
+  aggregationIndex,
+  onAdd,
   onUpdate,
   onRemove,
 }: AggregationItemProps) {
@@ -47,8 +51,10 @@ export function AggregationItem({
           query={query}
           stageIndex={STAGE_INDEX}
           clause={aggregation}
+          clauseIndex={aggregationIndex}
           operators={operators}
           hasExpressionInput={false}
+          onAdd={onAdd}
           onSelect={nextAggregation => {
             onUpdate(nextAggregation);
             setIsOpened(false);

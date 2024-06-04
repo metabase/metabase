@@ -84,13 +84,13 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
    [metabase.server.middleware.json]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -109,7 +109,6 @@
 ;;; other things we need for `:json` settings
 (comment metabase.server.middleware.json/keep-me)
 
-;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
@@ -117,9 +116,7 @@
 
   This is normally bound automatically in Query Processor context
   by [[metabase.query-processor.setup/do-with-database-local-settings]]. You may need to manually bind it in other
-  places where you want to use Database-local values.
-
-  TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
+  places where you want to use Database-local values."
   nil)
 
 (def ^:dynamic *user-local-values*
@@ -162,9 +159,6 @@
   (derive :metabase/model))
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
-
-(t2/deftransforms :model/Setting
-  {:value mi/transform-encrypted-text})
 
 (defmethod serdes/hash-fields :model/Setting
   [_setting]
@@ -277,6 +271,10 @@
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
 
+   ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set).
+   ;; Defaults to `:maybe`
+   [:encryption [:enum :never :maybe]]
+
    ;; should this setting be serialized?
    [:export? :boolean]
 
@@ -330,8 +328,14 @@
   (resolve-setting [k]
     (or (@registered-settings k)
         (throw (ex-info (tru "Unknown setting: {0}" k)
-                        {:registered-settings
+                        {::unknown-setting-error true
+                         :registered-settings
                          (sort (keys @registered-settings))})))))
+
+(defn registered?
+  "Returns true if a setting is registered with the given name."
+  [setting-keyword-or-name]
+  (contains? @registered-settings (keyword setting-keyword-or-name)))
 
 ;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
 ;; swapped out depending on which app DB we have in play
@@ -383,6 +387,9 @@
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
+
+(defn- prohibits-encryption? [setting]
+  (#{:never} (:encryption (resolve-setting setting))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -972,6 +979,7 @@
                  :init           nil
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :encryption     :maybe
                  :export?        false
                  :sensitive?     false
                  :cache?         true
@@ -1307,9 +1315,7 @@
       (not (current-user-can-access-setting? setting))
       (throw (ex-info (tru "You do not have access to the setting {0}" k) setting))
 
-      ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
-      ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
-      ;; the UI.
+      ;; Settings set via an env var aren't returned for security purposes.
       (or value-is-default? value-is-from-env-var?)
       nil
 
@@ -1514,3 +1520,46 @@
                       (:parse-error invalid-setting)))
       (log/warn (:parse-error invalid-setting)
                 (format "Unable to parse setting %s" (:name invalid-setting))))))
+
+(defn migrate-encrypted-settings!
+  "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.
+  This function just goes through all of them, checks to see if a value exists in the database, and re-saves it if
+  so. Toucan will handle decryption on the way out (if necessary) and the new value won't be encrypted.
+
+  Note that we're completely working around the standard getters/setters here. This should be fine in this case
+  because:
+  - we're only doing anything when a value exists in the database, and
+  - we're setting the value to the exact same value that already exists - just a decrypted version."
+  []
+  (doseq [setting (filter prohibits-encryption? (vals @registered-settings))]
+    ;; use a raw query to use `:for :update`
+    (t2/with-transaction [_conn]
+      (when-let [v (t2/select-one-fn :value :setting :key (setting-name setting) {:for :update})]
+        (when (not= (encryption/maybe-decrypt v) v)
+          ;; similarly, use `:setting` vs `:model/Setting` here to ensure the update is actually run even though Toucan
+          ;; thinks nothing has changed
+          (t2/update! :setting :key (setting-name setting) {:value (encryption/maybe-decrypt v)}))))))
+
+(defn- maybe-encrypt [setting-model]
+  ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
+  ;; be resolved. Fall back to maybe-encrypting these.
+  (let [resolved (try (resolve-setting (:key setting-model))
+                      (catch clojure.lang.ExceptionInfo e
+                        (when (not (::unknown-setting-error (ex-data e)))
+                          (throw e))))]
+    (cond-> setting-model
+      (or (nil? resolved)
+          (not (prohibits-encryption? resolved)))
+      (update :value encryption/maybe-encrypt))))
+
+(t2/define-before-update :model/Setting
+  [setting]
+  (maybe-encrypt setting))
+
+(t2/define-before-insert :model/Setting
+  [setting]
+  (maybe-encrypt setting))
+
+(t2/define-after-select :model/Setting
+  [setting]
+  (update setting :value encryption/maybe-decrypt))

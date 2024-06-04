@@ -417,6 +417,10 @@
   "Should we enable advanced configuration for Google Sign-In authentication?"
   :sso-google)
 
+(define-premium-feature enable-scim?
+  "Should we enable user/group provisioning via SCIM?"
+  :scim)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []

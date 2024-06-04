@@ -1,63 +1,100 @@
+import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
   reload?: boolean;
 }
 
-export const loadMetadataForCard =
-  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
-    await dispatch(loadDependentMetadata(card, [], options));
-  };
-
-const loadDependentMetadata =
-  (
-    card: Card,
-    dependencies: Lib.DependentItem[],
-    options?: LoadMetadataOptions,
-  ) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const question = new Question(card, getMetadata(getState()));
-    const withAdhocMetadata = shouldLoadAdhocMetadata(question);
-    const nextDependencies = getDependencies(question, withAdhocMetadata);
-    const dependenciesDiff = getDependenciesDiff(
-      dependencies,
-      nextDependencies,
-    );
-    if (dependenciesDiff.length > 0) {
-      await dispatch(loadMetadataForDependentItems(dependenciesDiff, options));
-      const mergedDependencies = [...dependencies, ...dependenciesDiff];
-      await dispatch(loadDependentMetadata(card, mergedDependencies, options));
-    } else if (withAdhocMetadata) {
-      const adhocCard = question.composeQuestionAdhoc().card();
-      await dispatch(loadDependentMetadata(adhocCard, dependencies, options));
+export const loadMetadataForTable =
+  (tableId: TableId, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    try {
+      await dispatch(Tables.actions.fetchMetadata({ id: tableId }, options));
+    } catch (error) {
+      console.error("Error in loadMetadataForTable", error);
     }
   };
 
-function shouldLoadAdhocMetadata(question: Question) {
-  return question.isSaved() && question.type() !== "question";
-}
+export const loadMetadataForCard =
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    await dispatch(loadMetadataForCards([card], options));
+  };
 
-function getDependencies(question: Question, withAdhocMetadata: boolean) {
-  const dependencies = [...Lib.dependentMetadata(question.query())];
-  if (withAdhocMetadata) {
-    const tableId = getQuestionVirtualTableId(question.id());
-    dependencies.push({ id: tableId, type: "table" });
-  }
+export const loadMetadataForCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const savedCards = cards.filter(card => isSavedCard(card));
+    const adhocCards = cards.filter(card => !isSavedCard(card));
+    await Promise.all([
+      dispatch(loadMetadataForSavedCards(savedCards, options)),
+      dispatch(loadMetadataForAdhocCards(adhocCards, options)),
+    ]);
+  };
 
-  return dependencies;
-}
+const loadMetadataForSavedCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const actions = cards.map(card =>
+      Questions.actions.fetchMetadata({ id: card.id }, options),
+    );
+    return Promise.all(actions.map(dispatch)).catch(error => {
+      console.error("Error in loadMetadataForSavedCards", error);
+    });
+  };
+
+const loadMetadataForAdhocCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const getDependencies = () => {
+      // it's important to create it once here for performance reasons
+      // MBQL lib attaches parsed metadata to the object
+      const metadata = getMetadata(getState());
+      return cards
+        .map(card => new Question(card, metadata))
+        .flatMap(question =>
+          Lib.dependentMetadata(
+            question.query(),
+            question.id(),
+            question.type(),
+          ),
+        );
+    };
+    await dispatch(loadMetadata(getDependencies, [], options));
+  };
+
+const loadMetadata =
+  (
+    getDependencies: () => Lib.DependentItem[],
+    prevDependencies: Lib.DependentItem[],
+    options?: LoadMetadataOptions,
+  ) =>
+  async (dispatch: Dispatch) => {
+    const nextDependencies = getDependencies();
+    const newDependencies = getNewDependencies(
+      prevDependencies,
+      nextDependencies,
+    );
+    if (newDependencies.length > 0) {
+      const mergedDependencies = [...prevDependencies, ...newDependencies];
+      await dispatch(loadMetadataForDependentItems(newDependencies, options));
+      await dispatch(
+        loadMetadata(getDependencies, mergedDependencies, options),
+      );
+    }
+  };
 
 function getDependencyKey(dependency: Lib.DependentItem) {
   return `${dependency.type}/${dependency.id}`;
 }
 
-function getDependenciesDiff(
+function getNewDependencies(
   prevDependencies: Lib.DependentItem[],
   nextDependencies: Lib.DependentItem[],
 ) {

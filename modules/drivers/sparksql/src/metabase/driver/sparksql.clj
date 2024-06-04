@@ -209,6 +209,7 @@
                               :native-parameters               true
                               :nested-queries                  true
                               :standard-deviation-aggregations true
+                              :metadata/key-constraints        false
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
                               :window-functions/cumulative     false}]

@@ -10,7 +10,7 @@ import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTableColumnDraftPicker } from "../JoinTableColumnDraftPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
-import { JoinConditionCell, JoinCell } from "./JoinDraft.styled";
+import { JoinCell, JoinConditionCell } from "./JoinDraft.styled";
 import { getDefaultJoinStrategy, getJoinFields } from "./utils";
 
 interface JoinDraftProps {
@@ -20,7 +20,6 @@ interface JoinDraftProps {
   initialStrategy?: Lib.JoinStrategy;
   initialRhsTable?: Lib.Joinable;
   isReadOnly: boolean;
-  isModelDataSource: boolean;
   onJoinChange: (join: Lib.Join) => void;
 }
 
@@ -31,7 +30,6 @@ export function JoinDraft({
   initialStrategy,
   initialRhsTable,
   isReadOnly,
-  isModelDataSource,
   onJoinChange,
 }: JoinDraftProps) {
   const [strategy, setStrategy] = useState(
@@ -103,11 +101,10 @@ export function JoinDraft({
           />
           <JoinTablePicker
             query={query}
+            stageIndex={stageIndex}
             table={rhsTable}
-            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
-            isModelDataSource={isModelDataSource}
             columnPicker={
               <JoinTableColumnDraftPicker
                 query={query}

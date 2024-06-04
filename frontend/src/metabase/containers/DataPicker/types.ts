@@ -5,16 +5,20 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   CollectionId,
   DatabaseId,
-  SchemaId,
+  SchemaName,
   TableId,
 } from "metabase-types/api";
 
-export type DataPickerDataType = "models" | "raw-data" | "questions";
+export type DataPickerDataType =
+  | "models"
+  | "raw-data"
+  | "questions"
+  | "metrics";
 
 export type DataPickerValue = {
   type?: DataPickerDataType;
   databaseId?: DatabaseId;
-  schemaId?: SchemaId;
+  schemaId?: SchemaName;
   collectionId?: CollectionId;
   tableIds: TableId[];
 };

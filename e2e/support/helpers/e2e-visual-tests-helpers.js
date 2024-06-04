@@ -1,3 +1,4 @@
+import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/lib/colors";
 import { Icons } from "metabase/ui";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
@@ -41,10 +42,10 @@ export function getXYTransform(element) {
   return { x, y };
 }
 
-export function echartsIcon(name, color = undefined) {
+export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    color ?? getColor("text-light"),
+    getColor(isSelected ? "brand" : "text-light"),
   );
   const dataUri = svgToDataUri(iconSvg);
 
@@ -78,4 +79,29 @@ export function cartesianChartCircleWithColors(colors) {
 
 export function getValueLabels() {
   return echartsContainer().find("text[stroke-width='3']");
+}
+
+export function testPairedTooltipValues(val1, val2) {
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
+}
+
+export function testTooltipPairs(rowPairs = []) {
+  popover().within(() => {
+    rowPairs.forEach(([label, value]) => {
+      testPairedTooltipValues(label, value);
+    });
+  });
+}
+
+export function testStackedTooltipRows(rows = []) {
+  popover().within(() => {
+    rows.forEach(([label, value, percent]) => {
+      cy.findByText(label)
+        .parent()
+        .within(() => {
+          cy.findByTestId("row-value").should("have.text", value);
+          cy.findByTestId("row-percent").should("have.text", percent);
+        });
+    });
+  });
 }

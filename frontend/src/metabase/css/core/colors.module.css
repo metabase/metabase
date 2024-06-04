@@ -1,25 +1,30 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ * NOTE: KEEP SYNCRONIZED WITH:
+ * frontend/src/metabase/ui/utils/colors.ts
+ * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
+ * enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+ * .storybook/preview-head.html
  */
 :root {
   --color-white: #fff;
   --color-success: #84bb4c;
+  --mb-color-summarize: #88bf4d;
   --color-error: #ed6e6e;
-  --color-text-dark: #4c5773;
-  --color-text-medium: #696e7b;
-  --color-text-light: #949aab;
+  --mb-color-text-dark: #4c5773;
+  --mb-color-text-medium: #696e7b;
+  --mb-color-text-light: #949aab;
   --color-text-white: #fff;
-  --color-bg-black: #2e353b;
-  --color-bg-dark: #93a1ab;
+  --mb-color-bg-black: #2e353b;
+  --mb-color-bg-dark: #93a1ab;
   --color-bg-medium: #edf2f5;
-  --color-bg-light: #f9fbfc;
-  --color-bg-white: #fff;
-  --color-shadow: rgba(0, 0, 0, 0.13);
-  --color-border: #eeecec;
+  --mb-color-bg-light: #f9fbfc;
+  --mb-color-bg-white: #fff;
+  --mb-color-shadow: rgba(0, 0, 0, 0.13);
+  --mb-color-border: #eeecec;
 }
 
 .textDefault {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .textBrand {
@@ -42,34 +47,34 @@
 }
 
 .bgErrorInput {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 .textSlate {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .textSlateLight {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .textLight {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .textMedium,
 .textMediumHover:hover {
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .textDark,
 .textDarkHover:hover {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
 }
 
 .bgMedium {
@@ -83,15 +88,15 @@
 }
 
 .bgWhite {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 .bgLightBlue {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
 }
 
 .DashboardNight .bgLight {
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
 }
 
 .DashboardNight .bgMedium {
@@ -99,5 +104,5 @@
 }
 
 .DashboardNight .textDark {
-  color: var(--color-bg-light);
+  color: var(--mb-color-bg-light);
 }

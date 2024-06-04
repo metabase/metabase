@@ -73,7 +73,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -208,7 +210,8 @@
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
   where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2."
   [query-map]
-  (-> query-map lib.convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  (-> (lib.query/->legacy-MBQL query-map)
+      fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
   "Adds a new, blank *stage* to the provided `query`.
@@ -245,7 +248,9 @@
 
   > **Code health:** Healthy"
   [a-query stage-number]
-  (if (empty? (lib.core/aggregations a-query stage-number))
+  (if (and
+        (empty? (lib.core/aggregations a-query stage-number))
+        (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
     #js {:query      a-query
          :stageIndex stage-number}
@@ -639,6 +644,25 @@
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
+(defn- unwrap [a-query]
+  (let [a-query (mbql.js/unwrap a-query)]
+    (cond-> a-query
+      (map? a-query) (:dataset_query a-query))))
+
+(defn- normalize-to-clj
+  [a-query]
+  (let [normalize-fn (fn [q]
+                       (if (= (lib.util/normalized-query-type q) :mbql/query)
+                         (lib.normalize/normalize q)
+                         (mbql.normalize/normalize q)))]
+    (-> a-query (js->clj :keywordize-keys true) unwrap normalize-fn)))
+
+(defn ^:export normalize
+  "Normalize the MBQL or pMBQL query `a-query`.
+
+  Returns the JS form of the normalized query."
+  [a-query]
+  (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
 
 ;; # Comparing queries
 ;; There are a few places in the FE where we need to compare two queries, typically to check whether the current
@@ -647,9 +671,8 @@
 ;; **This currently only works for legacy queries in JSON form.** At some point MLv2 queries will become the source of
 ;; truth, and the format used on the wire. At that point, we'll want a similar comparison for MLv2 queries.
 
-(defn- prep-query-for-equals [a-query field-ids]
+(defn- prep-query-for-equals-legacy [a-query field-ids]
   (-> a-query
-      mbql.js/normalize-cljs
       ;; If `:native` exists, but it doesn't have `:template-tags`, add it.
       (m/update-existing :native #(merge {:template-tags {}} %))
       (m/update-existing :query (fn [inner-query]
@@ -660,32 +683,51 @@
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
 
-(defn- compare-legacy-field-refs
+(defn- prep-query-for-equals-pMBQL
+  [a-query field-ids]
+  (let [fields (or (some->> (lib.core/fields a-query)
+                            (map #(assoc % 1 {})))
+                   (mapv (fn [id] [:field {} id]) field-ids))]
+    (lib.util/update-query-stage a-query -1 assoc :fields (frequencies fields))))
+
+(defn- prep-query-for-equals [a-query field-ids]
+  (when-let [normalized-query (some-> a-query normalize-to-clj)]
+    (if (contains? normalized-query :lib/type)
+      (prep-query-for-equals-pMBQL normalized-query field-ids)
+      (prep-query-for-equals-legacy normalized-query field-ids))))
+
+(defn- compare-field-refs
   [[key1 id1 opts1]
    [key2 id2 opts2]]
   ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
   ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
   (letfn [(clean-opts [o1 o2]
             (not-empty
-              (cond-> o1
-                (not (:base-type o2))      (dissoc :base-type)
-                (not (:effective-type o2)) (dissoc :effective-type))))]
-    (= [key1 id1 (clean-opts opts1 opts2)]
-       [key2 id2 (clean-opts opts2 opts1)])))
+             (cond-> o1
+               (not (:base-type o2))      (dissoc :base-type)
+               (not (:effective-type o2)) (dissoc :effective-type))))]
+    (if (map? id1)
+      (= [key1 (clean-opts id1 id2) opts1]
+         [key2 (clean-opts id2 id1) opts2])
+      (= [key1 id1 (clean-opts opts1 opts2)]
+         [key2 id2 (clean-opts opts2 opts1)]))))
 
 (defn- query=* [x y]
   (cond
     (and (vector? x)
          (vector? y)
          (= (first x) (first y) :field))
-    (compare-legacy-field-refs x y)
+    (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/=.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't
+    ;; have to match.
     (and (map? x) (map? y))
-    (and (= (set (keys x)) (set (keys y)))
-         (every? (fn [[k v]]
-                   (query=* v (get y k)))
-                 x))
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
+      (and (= (set (keys x)) (set (keys y)))
+           (every? (fn [[k v]]
+                     (query=* v (get y k)))
+                   x)))
 
     (and (sequential? x) (sequential? y))
     (and (= (count x) (count y))
@@ -1664,30 +1706,21 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-;; # Legacy Metrics
-;; Legacy metrics are reusable query fragments, but are being completely overhauled by a major new effort on Metrics v2.
-;;
-;; These functions still work, but no new calls should be added. They will be removed when legacy Metrics are removed
-;; in 2024.
-(defn ^:export legacy-metric-metadata
-  "Return the opaque metadata value for the legacy Metric with `metric-id`, if it can be found.
-
-  `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
-  will be a query.
-
-  > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
-  when they are."
-  [metadata-providerable metric-id]
-  (lib.metadata/legacy-metric metadata-providerable metric-id))
-
-(defn ^:export available-legacy-metrics
-  "Returns a JS array of opaque metadata values for those legacy Metrics that could be used as aggregations on
+(defn ^:export available-metrics
+  "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.
 
-  > **Code health:** Legacy, Single use, Deprecated. No new calls; this is only for legacy Metrics and will be removed
-  when they are."
+  > **Code health:** Healthy."
   [a-query stage-number]
-  (to-array (lib.core/available-legacy-metrics a-query stage-number)))
+  (to-array (lib.core/available-metrics a-query stage-number)))
+
+(defn ^:export metric-based?
+  "Given `a-query`, returns true if it is based on metrics. That means the main data source is a metric and so are all
+  joins (if any).
+
+  > **Code health:** Healthy."
+  [a-query stage-number]
+  (lib.core/metric-based? a-query stage-number))
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
@@ -2162,18 +2195,30 @@
   (lib.types.isa/valid-filter-for? src-column dst-column))
 
 (defn ^:export dependent-metadata
-  "Return a JS array of entities which `a-query` requires to be loaded.
+  "Return a JS array of entities which `a-query` requires to be loaded. `card-id` is provided
+  when editing the card with that ID and in this case `a-query` is its definition (i.e., the
+  dataset-query). `card-type` specifies the type of the card being created or edited.
 
   Required entities are all tables and cards which are used as sources or joined in, etc.
 
   Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
 
   > **Code health:** Healthy"
-  [a-query]
-  (to-array (map clj->js (lib.core/dependent-metadata a-query))))
+  [a-query card-id card-type]
+  (to-array (map clj->js (lib.core/dependent-metadata a-query card-id (keyword card-type)))))
+
+(defn ^:export table-or-card-dependent-metadata
+  "Return a JS array of entities which are needed upfront to create a new query based on a table/card.
+
+  Each entity is returned as a JS map `{type: \"database\"|\"schema\"|\"table\"|\"field\", id: number}`.
+
+  > **Code health:** Healthy"
+  [metadata-providerable table-id]
+  (to-array (map clj->js (lib.core/table-or-card-dependent-metadata metadata-providerable table-id))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.
+  `card-type` is optional and defaults to \"question\".
 
   MBQL queries are always runnable. Native queries can run when:
 
@@ -2181,14 +2226,46 @@
   - The native query is non-empty.
 
   > **Code health:** Healthy"
-  [a-query]
-  (lib.cache/side-channel-cache
-    :can-run a-query
+  ([a-query]
+   (can-run a-query "question"))
+  ([a-query card-type]
+   (lib.cache/side-channel-cache
+    (keyword "can-run" card-type) a-query
     (fn [_]
-      (lib.core/can-run a-query))))
+      (lib.core/can-run a-query (keyword card-type))))))
+
+(defn ^:export preview-query
+  "*Truncates* a query for use in the Notebook editor's \"preview\" system.
+
+  Takes `a-query` and `stage-index` as usual.
+
+  - Stages later than `stage-index` are dropped.
+  - `clause-type` is an enum (see below); all clauses of *later* types are dropped.
+  - `clause-index` is optional: if not provided then all clauses are kept; if it's a number than clauses
+    `[0, clause-index]` are kept. (To keep no clauses, specify the earlier `clause-type`.)
+
+  The `clause-type` enum represents the steps of the notebook editor, in the order they appear in the notebook:
+
+  - `:data` - just the source data for the stage
+  - `:joins`
+  - `:expressions`
+  - `:filters`
+  - `:aggregation`
+  - `:breakout`
+  - `:order-by`
+  - `:limit`
+
+  If the resulting query fails [[can-preview]], returns nil.
+
+  > **Code health:** Healthy, Single use."
+  [a-query stage-number clause-type clause-index]
+  (let [truncated-query (lib.core/preview-query a-query stage-number (keyword clause-type) clause-index)]
+    (when (lib.core/can-preview truncated-query)
+      truncated-query)))
 
 (defn ^:export can-save
   "Returns true if the query can be saved.
+  `card-type` is optional and defaults to \"question\".
 
   A query can be saved when:
 
@@ -2196,8 +2273,10 @@
   - For a native query, all its template tags either have a value provided, or a default.
 
   > **Code health:** Healthy"
-  [a-query]
-  (lib.cache/side-channel-cache
-   :can-save a-query
-   (fn [_]
-     (lib.core/can-save a-query))))
+  ([a-query]
+   (can-save a-query "question"))
+  ([a-query card-type]
+   (lib.cache/side-channel-cache
+    (keyword "can-save" card-type) a-query
+    (fn [_]
+      (lib.core/can-save a-query (keyword card-type))))))

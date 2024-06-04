@@ -42,9 +42,6 @@ describe("DatabaseForm", () => {
     expect(
       screen.getByText("Choose when syncs and scans happen"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Default result cache duration"),
-    ).not.toBeInTheDocument();
   });
 });
 

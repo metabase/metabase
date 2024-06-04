@@ -68,7 +68,7 @@ export function parseMetric(
   metricName: string,
   { query, stageIndex }: { query: Lib.Query; stageIndex: number },
 ) {
-  const metrics = Lib.availableLegacyMetrics(query, stageIndex);
+  const metrics = Lib.availableMetrics(query, stageIndex);
 
   const metric = metrics.find(metric => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);

@@ -982,6 +982,9 @@
     #{:+ :- :* :/}
     (->honeysql driver &match)
 
+    [:offset (options :guard :name) _expr _n]
+    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
@@ -1630,9 +1633,10 @@
       add/add-alias-info
       nest-query/nest-expressions))
 
-(defn mbql->honeysql
+(mu/defn mbql->honeysql :- :map
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driver {inner-query :query}]
+  [driver               :- :keyword
+   {inner-query :query} :- :map]
   (binding [driver/*driver* driver]
     (let [inner-query (preprocess driver inner-query)]
       (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
@@ -1641,10 +1645,13 @@
 
 ;;;; MBQL -> Native
 
-(defn mbql->native
+(mu/defn mbql->native :- [:map
+                          [:query  :string]
+                          [:params [:maybe [:sequential :any]]]]
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
-  [driver outer-query]
+  [driver      :- :keyword
+   outer-query :- :map]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

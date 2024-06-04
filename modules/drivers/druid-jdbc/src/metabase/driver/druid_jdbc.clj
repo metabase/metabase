@@ -21,7 +21,7 @@
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet Types)
-   (java.time ZonedDateTime)))
+   (java.time LocalDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -113,13 +113,23 @@
               host)
           port))
 
+(defn- format-datetime [t] (t/format "yyyy-MM-dd HH:mm:ss.SSS" t))
+
 (defmethod sql-jdbc.execute/set-parameter [:druid-jdbc ZonedDateTime]
   [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  (sql-jdbc.execute/set-parameter driver ps i (format-datetime t)))
 
 (defmethod unprepare/unprepare-value [:druid-jdbc ZonedDateTime]
   [_driver t]
-  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  (format "'%s'" (format-datetime t)))
+
+(defmethod sql-jdbc.execute/set-parameter [:druid-jdbc LocalDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (format-datetime t)))
+
+(defmethod unprepare/unprepare-value [:druid-jdbc LocalDateTime]
+  [_driver t]
+  (format "'%s'" (format-datetime t)))
 
 (defmethod sql.qp/json-query :druid-jdbc
   [_driver unwrapped-identifier nfc-field]

@@ -32,6 +32,7 @@ export const defaultOptions: DashboardPickerOptions = {
   showRootCollection: true,
   allowCreateNew: true,
 };
+
 interface DashboardPickerProps {
   onItemSelect: (item: DashboardPickerItem) => void;
   initialValue?: Pick<DashboardPickerItem, "model" | "id">;

@@ -29,8 +29,8 @@ const ICON_CASES_LABELS = [
   { label: "bookmark icon", tooltipText: "Bookmark" },
   { label: "info icon", tooltipText: "More info" },
   {
-    label: "Move, archive, and more...",
-    tooltipText: "Move, archive, and more...",
+    label: "Move, trash, and more...",
+    tooltipText: "Move, trash, and more...",
   },
 ];
 

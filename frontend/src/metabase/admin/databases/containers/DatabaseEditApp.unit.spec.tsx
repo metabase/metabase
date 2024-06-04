@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { IndexRoute, Route } from "react-router";
 
-import { setupEnterpriseTest } from "__support__/enterprise";
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabaseEndpoints,
@@ -169,7 +168,9 @@ describe("DatabaseEditApp", () => {
 
       history.goBack();
 
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("leave-confirmation"),
+      ).toBeInTheDocument();
     });
 
     it("does not show custom warning modal after creating new database connection", async () => {
@@ -197,45 +198,12 @@ describe("DatabaseEditApp", () => {
         );
       });
 
-      expect(history.getCurrentLocation().search).toEqual("?created=true");
+      expect(history.getCurrentLocation().search).toContain("created=true");
+      expect(history.getCurrentLocation().search).toContain("createdDbId"); //Enpoint doesn't return an ID
 
       expect(
         screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Cache TTL field", () => {
-    describe("OSS", () => {
-      it("is invisible", async () => {
-        await setup({ cachingEnabled: true });
-
-        expect(
-          screen.queryByText("Default result cache duration"),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("EE", () => {
-      beforeEach(() => {
-        setupEnterpriseTest();
-      });
-
-      it("is visible", async () => {
-        await setup({ cachingEnabled: true });
-
-        expect(
-          screen.getByText("Default result cache duration"),
-        ).toBeInTheDocument();
-      });
-
-      it("is invisible when caching disabled", async () => {
-        await setup({ cachingEnabled: false });
-
-        expect(
-          screen.queryByText("Default result cache duration"),
-        ).not.toBeInTheDocument();
-      });
     });
   });
 });

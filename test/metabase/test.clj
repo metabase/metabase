@@ -243,6 +243,7 @@
   secret-value-equals?
   select-keys-sequentially
   throw-if-called!
+  repeat-concurrently
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
@@ -262,7 +263,7 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards]
+  with-verified-cards!]
 
  [tu.async
   wait-for-result

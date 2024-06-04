@@ -635,37 +635,78 @@
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  "number"
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  "number"
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
                 [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  :number
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
-                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  :number
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
+                                   "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}]))))))
+      (testing "Check that we can filter using string functions on a UUID Field"
+        (testing "= (uuid)"
+          (is (= [[5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:=
+                                      [:field %user_id {:base-type :type/UUID}]
+                                      "84ed434e-80b4-41cf-9c88-e334427104ae"]})))))
+        (testing "= (not a uuid)"
+          (is (= []
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:= [:field %user_id {:base-type :type/UUID}] "x"]})))))
+        (testing "!="
+          (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+                  [2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
+                  [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
+                  [4 #uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
+                  [5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:!= [:field %user_id {:base-type :type/UUID}] "x"]
+                             :order-by [[:asc $id]]})))))
+        (testing "contains"
+          (is (= [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
+                  [4 #uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:contains [:field %user_id {:base-type :type/UUID}] "46"]
+                             :order-by [[:asc $id]]})))))
+        (testing "does not contain"
+          (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
+                  [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
+                  [5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:does-not-contain [:field %user_id {:base-type :type/UUID}] "46"]
+                             :order-by [[:asc $id]]})))))
+        (testing "starts with"
+          (is (= [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:starts-with [:field %user_id {:base-type :type/UUID}] "46"]})))))
+        (testing "ends with"
+          (is (= [[3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
+                 (mt/rows (mt/run-mbql-query users
+                            {:filter [:ends-with [:field %user_id {:base-type :type/UUID}] "33"]})))))))))
 
 (mt/defdataset ip-addresses
   [["addresses"

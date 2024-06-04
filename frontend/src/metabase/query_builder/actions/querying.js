@@ -95,7 +95,6 @@ export const runQuestionQuery = ({
   ignoreCache = false,
   overrideWithQuestion = null,
   prevQueryResults = undefined,
-  settingsSyncOptions = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -111,11 +110,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      const isAdHocModel =
-        question.type() === "model" &&
+      const isAdHocModelOrMetric =
+        (question.type() === "model" || question.type() === "metric") &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
+      dispatch(
+        updateUrl(question, { dirty: !isAdHocModelOrMetric && cardIsDirty }),
+      );
     }
 
     const startTime = new Date();
@@ -140,7 +141,6 @@ export const runQuestionQuery = ({
         return dispatch(
           queryCompleted(question, queryResults, {
             prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
-            settingsSyncOptions,
           }),
         );
       })
@@ -180,7 +180,7 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (
   question,
   queryResults,
-  { prevQueryResults, settingsSyncOptions } = {},
+  { prevQueryResults } = {},
 ) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
@@ -193,7 +193,6 @@ export const queryCompleted = (
       question = question.syncColumnsAndSettings(
         queryResults[0],
         prevQueryResults?.[0],
-        settingsSyncOptions,
       );
 
       question = question.maybeResetDisplay(

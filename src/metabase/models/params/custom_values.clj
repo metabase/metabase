@@ -7,12 +7,10 @@
   "
   (:require
    [clojure.string :as str]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -20,6 +18,12 @@
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
+
+(mu/defn ^:private normalize-query :- :string
+  "Normalize a `query` to lower-case."
+  [query :- :string]
+  (u/lower-case-en (str/trim query)))
+
 (defn- query-matches
   "Filters for values that match `query`.
 
@@ -27,10 +31,10 @@
   - [[value1], [value2]]
   - [[value2, label2], [value2, label2]] - we search using label in this case"
   [query values]
-  (let [normalized-query (search.util/normalize query)]
-    (filter (fn [v] (str/includes? (search.util/normalize (if (= (count v) 1)
-                                                            (first v)
-                                                            (second v)))
+  (let [normalized-query (normalize-query query)]
+    (filter (fn [v] (str/includes? (normalize-query (if (= (count v) 1)
+                                                      (first v)
+                                                      (second v)))
                                    normalized-query)) values)))
 
 (defn- static-list-values
@@ -53,26 +57,32 @@
 (defn- values-from-card-query
   [card value-field-ref query]
   (let [value-base-type (:base_type (qp.util/field->field-info value-field-ref (:result_metadata card)))
-        value-field-ref (lib.util.match/replace value-field-ref
-                          [:expression expr-name opts]
-                          [:field expr-name (merge {:base-type value-base-type} opts)]
-
-                          [:expression expr-name]
-                          [:field expr-name {:base-type value-base-type}])]
+        new-filter      [:and
+                         [(if (isa? value-base-type :type/Text)
+                            :not-empty
+                            :not-null)
+                          value-field-ref]
+                         (when query
+                           (if-not (isa? value-base-type :type/Text)
+                             [:= value-field-ref query]
+                             [:contains [:lower value-field-ref] (u/lower-case-en query)]))]]
     {:database (:database_id card)
      :type     :query
-     :query    {:source-table (format "card__%d" (:id card))
-                :breakout     [value-field-ref]
-                :limit        *max-rows*
-                :filter       [:and
-                               [(if (isa? value-base-type :type/Text)
-                                  :not-empty
-                                  :not-null)
-                                value-field-ref]
-                               (when query
-                                 (if-not (isa? value-base-type :type/Text)
-                                   [:= value-field-ref query]
-                                   [:contains [:lower value-field-ref] (u/lower-case-en query)]))]}
+     :query    (if-let [inner-mbql (and (not= (:type card) :model)
+                                        (-> card :dataset_query :query))]
+                 ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
+                 (-> inner-mbql
+                     (dissoc :aggregation)
+                     (assoc :breakout [value-field-ref])
+                     (update :limit (fnil min *max-rows*) *max-rows*)
+                     (update :filter (fn [old]
+                                       (cond->> new-filter
+                                         old (conj [:and old])))))
+                 ;; Model or Native query - wrap it with a new MBQL stage.
+                 {:source-table (format "card__%d" (:id card))
+                  :breakout     [value-field-ref]
+                  :limit        *max-rows*
+                  :filter       new-filter})
      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card
@@ -99,9 +109,9 @@
          result       (qp/process-query mbql-query)
          values       (get-in result [:data :rows])]
      {:values         values
-      ;; if the row_count returned = the limit we specified, then it's probably has more than that
-      :has_more_values (= (:row_count result)
-                          (get-in mbql-query [:query :limit]))})))
+      ;; If the row_count returned = the limit we specified, then it's probably has more than that.
+      ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
+      :has_more_values (= (:row_count result) *max-rows*)})))
 
 (defn card-values
   "Given a param and query returns the values."

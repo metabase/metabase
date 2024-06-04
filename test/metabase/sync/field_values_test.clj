@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field-values :as field-values]
@@ -161,7 +162,7 @@
     (testing (str "if the number grows past the cardinality threshold & we sync again it should get unmarked as auto-list "
                   "and set back to `nil` (#3215)\n")
       ;; now insert enough bloobs to put us over the limit and re-sync.
-      (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/auto-list-cardinality-threshold)))
+      (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 analyze/auto-list-cardinality-threshold)))
       (testing "has_field_values should have been set to nil."
         (is (= nil
                (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))

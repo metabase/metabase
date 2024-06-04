@@ -90,7 +90,7 @@
 (deftest metric-xray-test
   (testing "GET /api/automagic-dashboards/metric/:id"
     (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:query {:aggregation ["count"]}}}]
+                                                           :definition {:query {:aggregation ["count"]}}}]
       (is (some? (api-call! "metric/%s" [metric-id]))))))
 
 (deftest segment-xray-test
@@ -266,6 +266,13 @@
                                        :card
                                        :dataset_query
                                        qp/process-query))))))))))))
+
+(deftest cards-have-can-run-adhoc-query-test
+  (api-call! "table/%s" [(mt/id :venues)]
+             (constantly true)
+             (fn [dashboard]
+               (is (every? #(get-in % [:card :can_run_adhoc_query])
+                           (filter :card (:dashcards dashboard)))))))
 
 ;;; ------------------- Index Entities Xrays -------------------
 
@@ -506,7 +513,7 @@
 (deftest metric-xray-show-param-test
   (testing "x-ray of a metric with show set reduces the number of returned cards"
     (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:query {:aggregation ["count"]}}}]
+                                                           :definition {:query {:aggregation ["count"]}}}]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check! show-limit "metric/%s" [metric-id])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
@@ -562,3 +569,14 @@
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
           (is (< show-count base-count)))))))
+
+(deftest query-metadata-test
+  (is (=?
+        {:tables (sort-by :id [{:id (mt/id :venues)}
+                               {:id (mt/id :categories)}])}
+        (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
+            ;; The output is so large, these help debugging
+            #_#_#_
+            (update :fields #(map (fn [x] (select-keys x [:id])) %))
+            (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+            (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))

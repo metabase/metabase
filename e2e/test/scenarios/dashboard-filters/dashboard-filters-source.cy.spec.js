@@ -309,7 +309,7 @@ const archiveQuestion = () => {
   openQuestionActions();
   cy.findByTestId("archive-button").click();
   cy.findByText(
-    "This question will be removed from any dashboards or pulses using it. It will also be removed from the filter that uses it to populate values.",
+    "This question will be removed from any dashboards or alerts using it. It will also be removed from the filter that uses it to populate values.",
   );
 };
 

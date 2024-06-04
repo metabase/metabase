@@ -77,11 +77,16 @@ function ExplicitSize<T extends BaseInnerProps>({
       }
 
       _getElement() {
-        let element = ReactDOM.findDOMNode(this);
-        if (selector && element instanceof Element) {
-          element = element.querySelector(selector) || element;
+        try {
+          let element = ReactDOM.findDOMNode(this);
+          if (selector && element instanceof Element) {
+            element = element.querySelector(selector) || element;
+          }
+          return element instanceof Element ? element : null;
+        } catch (e) {
+          console.error(e);
+          return null;
         }
-        return element instanceof Element ? element : null;
       }
 
       componentDidMount() {

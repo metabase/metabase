@@ -47,11 +47,23 @@ function setup({
   );
 }
 
-const collectionItem: ResultItemType = {
+const collectionItemWithInvalidParent: ResultItemType = {
+  id: 301,
   model: "collection",
   name: "Foo Collection",
   description: "",
-  collection: { name: "should not show this collection", id: 0 },
+  collection: { name: "should not show this collection", id: 301 },
+  collection_authority_level: null,
+  moderated_status: null,
+  display: null,
+};
+
+const collectionItemWithValidParent: ResultItemType = {
+  id: 302,
+  model: "collection",
+  name: "Foo Collection",
+  description: "",
+  collection: { name: "should show this collection", id: 303 },
   collection_authority_level: null,
   moderated_status: null,
   display: null,
@@ -101,18 +113,33 @@ const verifiedModelItem: ResultItemType = {
   display: null,
 };
 
+const tableItem: ResultItemType = {
+  model: "table",
+  name: "My Flat Table",
+  database_name: "My Database",
+};
+
 describe("EntityPicker > ResultItem", () => {
   beforeAll(() => {
     register();
   });
 
-  it("should render a collection item", () => {
+  it("should render a collection item ignoring an invalid parent", () => {
     setup({
-      item: collectionItem,
+      item: collectionItemWithInvalidParent,
     });
     expect(screen.getByText("Foo Collection")).toBeInTheDocument();
     expect(screen.queryByText(/should not show/i)).not.toBeInTheDocument();
     expect(getIcon("folder")).toBeInTheDocument();
+  });
+
+  it("should render a collection item with parent", () => {
+    setup({
+      item: collectionItemWithValidParent,
+    });
+    expect(screen.getByText("Foo Collection")).toBeInTheDocument();
+    expect(screen.getByText(/should show/i)).toBeInTheDocument();
+    expect(screen.getAllByLabelText("folder icon")).toHaveLength(2);
   });
 
   it("should render a bar chart item", () => {
@@ -175,5 +202,18 @@ describe("EntityPicker > ResultItem", () => {
 
     expect(getIcon("model_with_badge")).toBeInTheDocument();
     expect(screen.getByText("in My parent collection")).toBeInTheDocument();
+  });
+
+  it("should render a table model item", () => {
+    setup({
+      item: tableItem,
+    });
+    expect(screen.getByText(tableItem.name)).toBeInTheDocument();
+
+    expect(getIcon("table")).toBeInTheDocument();
+    expect(getIcon("database")).toBeInTheDocument();
+    expect(
+      screen.getByText(`in ${tableItem.database_name}`),
+    ).toBeInTheDocument();
   });
 });

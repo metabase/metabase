@@ -15,10 +15,18 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.config :as config]
+   [metabase.driver.util :as driver.u]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(comment nqa.replacement/keep-me)
+
+(p/import-vars
+ [nqa.replacement replace-names])
 
 (def ^:dynamic *parse-queries-in-test?*
   "Normally, a native card's query is parsed on every create/update. For most tests, this is an unnecessary
@@ -42,20 +50,44 @@
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :join [[:metabase_table :t] [:= :table_id :t.id]]})
 
+;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
+(def ^:private quotes "\"`")
+
+(defn- quote-stripper
+  "Construct a function which unquotes values which use the given character as their quote."
+  [quote-char]
+  (let [doubled (str quote-char quote-char)
+        single  (str quote-char)]
+    #(-> (subs % 1 (dec (count %)))
+         (str/replace doubled single))))
+
+(def ^:private quote->stripper
+  "Pre-constructed lambdas, to save some memory allocations."
+  (zipmap quotes (map quote-stripper quotes)))
+
 (defn- field-query
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
   [field value]
-  (if (= (first value) \")
-    [:= field (-> value (subs 1 (dec (count value))) (str/replace "\"\"" "\""))]
+  (if-let [f (quote->stripper (first value))]
+    [:= field (f value)]
+    ;; Technically speaking this is not correct for all databases.
+    ;;
+    ;; For example Oracle treats non-quoted identifiers as uppercase, but still expects a case-sensitive match.
+    ;; Similarly, Postgres treat all non-quoted identifiers as lowercase, and again expects an exact match.
+    ;; H2 on the other hand will choose whether to cast it to uppercase or lowercase based on a system variable... T_T
+    ;;
+    ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
+    ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
+    ;; unlikely to ever cause issues in practice.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
-  [t]
-  (if-not (:schema t)
-    (field-query :t.name (:table t))
+  [{:keys [schema table]}]
+  (if-not schema
+    (field-query :t.name table)
     [:and
-     (field-query :t.name (:table t))
-     (field-query :t.schema (:schema t))]))
+     (field-query :t.name table)
+     (field-query :t.schema schema)]))
 
 (defn- column-query
   "Generates the query for a column, incorporating its concrete table information (if known) or matching it against
@@ -75,39 +107,72 @@
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
     (t2/select-pks-set :model/Field (assoc field-and-table-fragment
-                                           :where
-                                           [:and
-                                            [:= :t.db_id db-id]
-                                            (into [:or]
-                                                  (map (partial column-query tables) columns))]))))
+                                           :where [:and
+                                                   [:= :t.db_id db-id]
+                                                   (into [:or] (map (partial column-query tables) columns))]))))
 
-(defn- indirect-field-ids-for-query
-  "Similar to direct-field-ids-for-query, but for wildcard selects"
-  [{table-wildcard-maps :table-wildcards
-    all-wildcard-maps   :has-wildcard?
-    table-maps          :tables}
-   db-id]
-  (let [table-wildcards           (map :component table-wildcard-maps)
-        has-wildcard?             (and (seq all-wildcard-maps)
-                                       (reduce #(and %1 %2) true (map :component all-wildcard-maps)))
-        tables                    (map :component table-maps)
-        active-fields-from-tables
-        (fn [tables]
-          (t2/select-pks-set :model/Field (merge field-and-table-fragment
-                                                 {:where [:and
-                                                          [:= :t.db_id db-id]
-                                                          [:= :f.active true]
-                                                          (into [:or] (map table-query tables))]})))]
+(defn- wildcard-tables
+  "Given a parsed query, return the list of tables we are selecting from using a wildcard."
+  [{table-wildcards :table-wildcards
+    all-wildcards   :has-wildcard?
+    tables          :tables}]
+  (let [has-wildcard? (and (seq all-wildcards) (every? :component all-wildcards))]
     (cond
       ;; select * from ...
       ;; so, get everything in all the tables
-      (and has-wildcard? (seq tables)) (active-fields-from-tables tables)
+      (and has-wildcard? (seq tables)) (map :component tables)
       ;; select foo.* from ...
       ;; limit to the named tables
-      (seq table-wildcards)            (active-fields-from-tables table-wildcards))))
+      (seq table-wildcards)            (map :component table-wildcards))))
+
+(defn- indirect-field-ids-for-query
+  "Similar to direct-field-ids-for-query, but for wildcard selects"
+  [parsed-query db-id]
+  (when-let [tables (wildcard-tables parsed-query)]
+    (t2/select-pks-set :model/Field (merge field-and-table-fragment
+                                           {:where [:and
+                                                    [:= :t.db_id db-id]
+                                                    [:= :f.active true]
+                                                    (into [:or] (map table-query tables))]}))))
+
+;; NOTE: In future we would want to replace [[considered-drivers]] and [[macaw-options]] with (a) driver method(s),
+;; but given that the interface with Macaw is still in a state of flux, and how simple the current configuration is,
+;; we defer extending the public interface and define the logic locally instead. Macaw itself is not battle tested
+;; outside this same narrow range of databases in any case.
+
+(def ^:private considered-drivers
+  "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to repeat"
+  #{:mysql :sqlserver :h2 :sqlite :postgres :redshift})
+
+(defn- macaw-options
+  "Generate the options expected by Macaw based on the nature of the given driver."
+  [driver]
+  ;; If this isn't a driver we've considered, fallback to Macaw's conservative defaults.
+  (when (contains? considered-drivers driver)
+    ;; According to the SQL-92 specification, non-quoted identifiers should be case-insensitive, and the majority of
+    ;; engines are implemented this way.
+    ;;
+    ;; In practice there are exceptions, notably MySQL and SQL Server, where case sensitivity is a property of the
+    ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
+    ;; reference is quoted.
+    ;;
+    ;; For MySQL the case sensitivity of databases and tables depends on both the underlying
+    ;; file system, and a system variable used to initialize the database. For SQL Server it depends on the collation
+    ;; settings of the collection where the corresponding schema element is defined.
+    ;;
+    ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
+    ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
+    ;;
+    ;; In future Macaw may support discriminating on the identifier type, in which case we could be more precise for
+    ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
+    ;; which is likely a step too far in complexity.
+    {:case-insensitive?     true
+     ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
+     ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive?`.
+     :quotes-preserve-case? (not (#{:mysql :sqlserver} driver))}))
 
 (defn field-ids-for-sql
-  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given cards's
+  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
   to return fields that are in the query.
 
@@ -118,22 +183,12 @@
              (:native query))
     (let [db-id        (:database query)
           sql-string   (:query (nqa.sub/replace-tags query))
-          parsed-query (macaw/query->components (macaw/parsed-query sql-string))
+          driver       (driver.u/database->driver db-id)
+          macaw-opts   (macaw-options driver)
+          parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
           direct-ids   (direct-field-ids-for-query parsed-query db-id)
           indirect-ids (set/difference
                         (indirect-field-ids-for-query parsed-query db-id)
                         direct-ids)]
       {:direct   direct-ids
        :indirect indirect-ids})))
-
-;; TODO: does not support template tags
-(defn replace-names
-  "Returns a modified query with the given table and column renames applied. `renames` is expected to be a map with
-  `:tables` and `:columns` keys, and values of the shape `old-name -> new-name`:
-
-  (replace-names \"SELECT o.id, o.total FROM orders o\" {:columns {\"id\" \"pk\"
-                                                                   \"total\" \"amount\"}
-                                                         :tables {\"orders\" \"purchases\"}})
- ;; => \"SELECT o.pk, o.amount FROM purchases o\""
-  [sql-query renames]
-  (macaw/replace-names sql-query renames))

@@ -1,11 +1,13 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
+  entityPickerModal,
   restore,
   startNewQuestion,
   enterCustomColumnDetails,
   visualize,
   popover,
   resetTestTable,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 ["postgres", "mysql"].forEach(dialect => {
@@ -22,10 +24,13 @@ import {
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
-      cy.findByPlaceholderText(/Search for some data/).type("colors");
-      popover()
-        .findByRole("heading", { name: /colors/i })
-        .click();
+
+      entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("colors");
+        cy.findByTestId("result-item")
+          .contains(/colors/i)
+          .click();
+      });
       cy.icon("add_data").click();
       enterCustomColumnDetails({
         formula: "case([ID] > 1, 25, 5)",
@@ -35,7 +40,7 @@ import {
 
       visualize();
 
-      cy.findAllByTestId("header-cell").contains("Numeric").click();
+      tableHeaderClick("Numeric");
       popover().findByText(/^Sum$/).click();
 
       cy.wait("@dataset");

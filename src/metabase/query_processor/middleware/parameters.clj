@@ -3,6 +3,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -79,7 +80,12 @@
   "Expand parameters in the `outer-query`, and if the query is using a native source query, expand params in that as
   well."
   [outer-query]
-  (-> outer-query move-top-level-params-to-inner-query expand-all))
+  (let [pivot-original-query (get-in outer-query [:info :pivot/original-query])]
+    (cond-> outer-query
+      pivot-original-query (m/dissoc-in [:info :pivot/original-query])
+      true                 move-top-level-params-to-inner-query
+      true                 expand-all
+      pivot-original-query (assoc-in [:info :pivot/original-query] pivot-original-query))))
 
 (mu/defn ^:private substitute-parameters* :- :map
   "If any parameters were supplied then substitute them into the query."

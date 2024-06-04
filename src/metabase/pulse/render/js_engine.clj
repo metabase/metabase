@@ -7,12 +7,21 @@
 
   Javadocs: https://www.graalvm.org/truffle/javadoc/overview-summary.html"
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [metabase.util.i18n :refer [trs]])
   (:import
    (org.graalvm.polyglot Context HostAccess Source Value)))
 
 (set! *warn-on-reflection* true)
+
+(defn threadlocal-fifo-memoizer
+  "Returns a memoizer that is unique to each thread."
+  [thunk threshold]
+  (memoize/fifo
+   (with-meta thunk {::memoize/args-fn (fn [_]
+                                        [(.getId (Thread/currentThread))])})
+   :fifo/threshold threshold))
 
 (defn context
   "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"

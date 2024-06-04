@@ -261,6 +261,10 @@ class Question {
     );
   }
 
+  setArchived(archived: boolean) {
+    return this.setCard(assoc(this.card(), "archived", archived));
+  }
+
   // locking the display prevents auto-selection
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);
@@ -353,11 +357,23 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
+    return isNative
+      ? this.legacyQuery().canRun()
+      : Lib.canRun(this.query(), this.type());
   }
 
   canWrite(): boolean {
     return this._card && this._card.can_write;
+  }
+
+  canRunAdhocQuery(): boolean {
+    if (this.isSaved()) {
+      return this._card.can_run_adhoc_query;
+    }
+
+    const query = this.query();
+    const { isEditable } = Lib.queryDisplayInfo(query);
+    return isEditable;
   }
 
   canWriteActions(): boolean {
@@ -492,11 +508,11 @@ class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
-  collectionId(): number | null | undefined {
+  collectionId(): CollectionId | null | undefined {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number | null | undefined) {
+  setCollectionId(collectionId: CollectionId | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
@@ -695,11 +711,10 @@ class Question {
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,
-    clean = true,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
+    const query = this.query();
 
     const cardCopy = {
       name: this._card.name,

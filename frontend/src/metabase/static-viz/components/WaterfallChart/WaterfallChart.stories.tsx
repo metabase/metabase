@@ -29,6 +29,27 @@ const renderingContext: RenderingContext = {
   fontFamily: "Lato",
 };
 
+export const YAxisCompactWithoutDataLabels = Template.bind({});
+YAxisCompactWithoutDataLabels.args = {
+  rawSeries: data.yAxisCompactWithoutDataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const YAxisAutoCompactWithDataLabels = Template.bind({});
+YAxisAutoCompactWithDataLabels.args = {
+  rawSeries: data.yAxisAutoCompactWithDataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const YAxisFullWithDataLabels = Template.bind({});
+YAxisFullWithDataLabels.args = {
+  rawSeries: data.yAxisFullWithDataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const TimeseriesXScale = Template.bind({});
 TimeseriesXScale.args = {
   rawSeries: data.timeseriesXScale as any,
@@ -270,6 +291,13 @@ LinearNullDimension.args = {
 export const OrdinalNullDimension = Template.bind({});
 OrdinalNullDimension.args = {
   rawSeries: data.ordinalNullDimension as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsWithTotal = Template.bind({});
+TwoBarsWithTotal.args = {
+  rawSeries: data.twoBarsWithTotal as any,
   dashcardSettings: {},
   renderingContext,
 };

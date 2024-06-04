@@ -45,6 +45,7 @@ export type ListProps<
   isCurrentLevel: boolean;
   options: Options;
   shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

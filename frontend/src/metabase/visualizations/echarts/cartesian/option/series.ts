@@ -3,21 +3,22 @@ import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 import _ from "underscore";
 
-import type { OptionsType } from "metabase/lib/formatting/types";
+import { getTextColorForBackground } from "metabase/lib/colors/palette";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   CHART_STYLE,
   LINE_SIZE,
+  Z_INDEXES,
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   SeriesModel,
-  CartesianChartModel,
   DataKey,
   StackTotalDataKey,
   ChartDataset,
@@ -26,23 +27,37 @@ import type {
   TimeSeriesXAxisModel,
   NumericXAxisModel,
   NumericAxisScaleTransforms,
+  LabelFormatter,
+  ChartDataDensity,
+  CartesianChartModel,
+  ComboChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue, SeriesSettings } from "metabase-types/api";
+import type { SeriesSettings } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../chart-measurements/types";
+import type {
+  ChartMeasurements,
+  TicksRotation,
+} from "../chart-measurements/types";
 import {
   isCategoryAxis,
   isNumericAxis,
   isTimeSeriesAxis,
 } from "../model/guards";
-import { buildEChartsScatterSeries } from "../scatter/series";
+import {
+  getDisplaySeriesSettingsByDataKey,
+  getStackTotalValue,
+} from "../model/series";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getSeriesYAxisIndex } from "./utils";
+
+const CARTESIAN_LABEL_DENSITY_SCALE_FACTOR = 1.2;
+const WATERFALL_LABEL_DENSITY_SCALE_FACTOR = 0.6;
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -80,95 +95,180 @@ export const getBarLabelLayout =
     };
   };
 
+export const getBarInsideLabelLayout =
+  (
+    dataset: ChartDataset,
+    settings: ComputedVisualizationSettings,
+    seriesDataKey: DataKey,
+    ticksRotation?: TicksRotation,
+  ): BarSeriesOption["labelLayout"] =>
+  params => {
+    const { dataIndex, rect, labelRect } = params;
+    if (dataIndex == null) {
+      return {};
+    }
+
+    // HACK: On the first render, labelRect values are provided as if the label has not been rotated.
+    // If we decide to rotate it here, labelRect will be computed for the already rotated label on the next render.
+    // Since we can't determine whether it's the initial render or if labelRect is computed for a rotated label,
+    // we need to figure out the actual text width of the label based on the known side of the rectangle, which is the text size.
+    const labelTextWidth =
+      labelRect.width === CHART_STYLE.seriesLabels.size
+        ? labelRect.height
+        : labelRect.width;
+    const paddedLabelTextWidth =
+      CHART_STYLE.seriesLabels.stackedPadding * 2 + labelTextWidth;
+    const paddedLabelTextHeight =
+      CHART_STYLE.seriesLabels.stackedPadding * 2 +
+      CHART_STYLE.seriesLabels.size;
+
+    let canFit = false;
+    if (ticksRotation === "horizontal") {
+      canFit =
+        rect.width > paddedLabelTextWidth &&
+        rect.height > paddedLabelTextHeight;
+    } else if (ticksRotation === "vertical") {
+      canFit =
+        rect.height > paddedLabelTextWidth &&
+        rect.width > paddedLabelTextHeight;
+    }
+
+    if (!canFit) {
+      return {
+        fontSize: 0,
+      };
+    }
+
+    const labelValue = dataset[dataIndex][seriesDataKey];
+    if (typeof labelValue !== "number") {
+      return {};
+    }
+
+    return {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+      rotate: ticksRotation === "vertical" ? 90 : 0,
+    };
+  };
+
 export function getDataLabelFormatter(
-  seriesModel: SeriesModel,
-  dataset: ChartDataset,
+  dataKey: DataKey,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  settings: ComputedVisualizationSettings,
-  labelDataKey: DataKey,
-  renderingContext: RenderingContext,
-  formattingOptions: OptionsType = {},
+  formatter: LabelFormatter,
+  chartWidth: number,
+  settings?: ComputedVisualizationSettings,
+  chartDataDensity?: ChartDataDensity,
 ) {
-  const isCompact = shouldRenderCompact({
-    dataset,
-    getValue: (datum: Datum) => datum[labelDataKey],
-    formattingOptions,
-    renderingContext,
-    seriesModel,
+  const getShowLabel = getShowLabelFn(
+    chartWidth,
+    dataKey,
+    chartDataDensity,
     settings,
-  });
-  const valueFormatter = (value: RowValue) =>
-    renderingContext.formatValue(value, {
-      ...(settings.column?.(seriesModel.column) ?? {}),
-      jsx: false,
-      compact: isCompact,
-      ...formattingOptions,
-    });
+  );
 
   return (params: CallbackDataParams) => {
-    const value = (params.data as Datum)[labelDataKey];
+    const value = (params.data as Datum)[dataKey];
+
+    if (!getShowLabel(params)) {
+      return "";
+    }
 
     if (typeof value !== "number") {
-      return " ";
+      return "";
     }
-    return valueFormatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
+
+    return formatter(yAxisScaleTransforms.fromEChartsAxisValue(value));
   };
 }
 
-function shouldRenderCompact({
-  dataset,
-  getValue,
-  formattingOptions = {},
-  renderingContext,
-  seriesModel,
-  settings,
-}: {
-  dataset: ChartDataset;
-  getValue: (datum: Datum) => RowValue;
-  formattingOptions?: OptionsType;
-  renderingContext: RenderingContext;
-  seriesModel: SeriesModel;
-  settings: ComputedVisualizationSettings;
-}) {
-  if (settings["graph.label_value_formatting"] === "compact") {
-    return true;
+function getShowLabelFn(
+  chartWidth: number,
+  dataKey: DataKey,
+  chartDataDensity?: ChartDataDensity,
+  settings?: ComputedVisualizationSettings,
+): (params: CallbackDataParams) => boolean {
+  if (!settings || !chartDataDensity) {
+    return () => true;
   }
-  if (settings["graph.label_value_formatting"] === "full") {
-    return false;
+  if (settings["graph.label_value_frequency"] === "all") {
+    return () => true;
   }
-  // for "auto" we use compact if it shortens avg label length by >3 chars
-  const getAvgLength = (compact: boolean) => {
-    const lengths = dataset.map(datum => {
-      const value = getValue(datum);
-      return renderingContext.formatValue(value, {
-        ...(settings.column?.(seriesModel.column) ?? {}),
-        jsx: false,
-        compact: compact,
-        ...formattingOptions,
-      }).length;
-    });
 
-    return (
-      lengths.reduce((sum: number, length: number) => sum + length, 0) /
-      lengths.length
-    );
+  const { averageLabelWidth, totalNumberOfLabels, type } = chartDataDensity;
+  if (totalNumberOfLabels === 0 || averageLabelWidth === 0) {
+    return () => true;
+  }
+
+  const scaleFactor =
+    type === "combo"
+      ? CARTESIAN_LABEL_DENSITY_SCALE_FACTOR
+      : WATERFALL_LABEL_DENSITY_SCALE_FACTOR;
+  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
+  if (totalNumberOfLabels <= maxNumberOfLabels) {
+    return () => true;
+  }
+
+  const { selectionFrequency, selectionOffset } = getSelectionFrequency(
+    chartDataDensity,
+    maxNumberOfLabels,
+    dataKey,
+  );
+
+  return (params: CallbackDataParams) => {
+    return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
   };
+}
 
-  return getAvgLength(true) + 3 < getAvgLength(false);
+function getSelectionFrequency(
+  chartDataDensity: ChartDataDensity,
+  maxNumberOfLabels: number,
+  dataKey: DataKey,
+) {
+  if (chartDataDensity.type === "waterfall") {
+    const { totalNumberOfLabels } = chartDataDensity;
+
+    const selectionFrequency = Math.ceil(
+      totalNumberOfLabels / maxNumberOfLabels,
+    );
+
+    return { selectionFrequency, selectionOffset: 0 };
+  }
+
+  const {
+    totalNumberOfLabels,
+    seriesDataKeysWithLabels,
+    stackedDisplayWithLabels,
+  } = chartDataDensity;
+
+  const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
+
+  const numOfDifferentSeriesWithLabels =
+    seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
+  const stepOffset = Math.floor(
+    selectionFrequency / numOfDifferentSeriesWithLabels,
+  );
+
+  const seriesIndex = _.findIndex(
+    seriesDataKeysWithLabels,
+    seriesDataKey => seriesDataKey === dataKey,
+  );
+  const selectionOffset = seriesIndex * stepOffset;
+
+  return { selectionFrequency, selectionOffset };
 }
 
 export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
-  dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-  show?: boolean,
+  chartWidth: number,
+  formatter?: LabelFormatter,
+  settings?: ComputedVisualizationSettings,
+  chartDataDensity?: ChartDataDensity,
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
   return {
+    show: !!formatter,
     silent: true,
-    show,
     position,
     opacity: 1,
     fontFamily: renderingContext.fontFamily,
@@ -177,14 +277,16 @@ export const buildEChartsLabelOptions = (
     color: renderingContext.getColor("text-dark"),
     textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,
-    formatter: getDataLabelFormatter(
-      seriesModel,
-      dataset,
-      yAxisScaleTransforms,
-      settings,
-      seriesModel.dataKey,
-      renderingContext,
-    ),
+    formatter:
+      formatter &&
+      getDataLabelFormatter(
+        seriesModel.dataKey,
+        yAxisScaleTransforms,
+        formatter,
+        chartWidth,
+        settings,
+        chartDataDensity,
+      ),
   };
 };
 
@@ -192,7 +294,6 @@ export const computeContinuousScaleBarWidth = (
   xAxisModel: TimeSeriesXAxisModel | NumericXAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   stackedOrSingleSeries: boolean,
 ) => {
   let barWidth =
@@ -203,8 +304,6 @@ export const computeContinuousScaleBarWidth = (
     barWidth /= barSeriesCount;
   }
 
-  barWidth /= yAxisWithBarSeriesCount;
-
   return barWidth;
 };
 
@@ -212,7 +311,6 @@ export const computeBarWidth = (
   xAxisModel: XAxisModel,
   boundaryWidth: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   isStacked: boolean,
 ) => {
   const stackedOrSingleSeries = isStacked || barSeriesCount === 1;
@@ -224,7 +322,6 @@ export const computeBarWidth = (
       xAxisModel,
       boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
       stackedOrSingleSeries,
     );
   }
@@ -241,23 +338,118 @@ export const computeBarWidth = (
   return barWidth;
 };
 
+export const buildEChartsStackLabelOptions = (
+  seriesModel: SeriesModel,
+  formatter: LabelFormatter | undefined,
+  originalDataset: ChartDataset,
+  renderingContext: RenderingContext,
+): SeriesLabelOption | undefined => {
+  if (!formatter) {
+    return;
+  }
+
+  return {
+    silent: true,
+    position: "inside",
+    opacity: 1,
+    show: true,
+    fontFamily: renderingContext.fontFamily,
+    fontWeight: CHART_STYLE.seriesLabels.weight,
+    fontSize: CHART_STYLE.seriesLabels.size,
+    color: getTextColorForBackground(
+      seriesModel.color,
+      renderingContext.getColor,
+    ),
+    formatter: (params: CallbackDataParams) => {
+      const transformedDatum = params.data as Datum;
+      const originalIndex =
+        transformedDatum[ORIGINAL_INDEX_DATA_KEY] ?? params.dataIndex;
+      const datum = originalDataset[originalIndex];
+      const value = datum[seriesModel.dataKey];
+
+      if (typeof value !== "number") {
+        return " ";
+      }
+      return formatter(value);
+    },
+  };
+};
+function getDataLabelSeriesOption(
+  dataKey: DataKey,
+  seriesOption: LineSeriesOption | BarSeriesOption,
+  settings: ComputedVisualizationSettings,
+  formatter: (params: CallbackDataParams) => string,
+  position: "top" | "bottom",
+  renderingContext: RenderingContext,
+  showInBlur = true,
+) {
+  const stackName = seriesOption.stack;
+
+  const dataLabelSeriesOption = {
+    yAxisIndex: seriesOption.yAxisIndex,
+    silent: true,
+    symbolSize: 0,
+    lineStyle: {
+      opacity: 0,
+    },
+    id: `${stackName}_${dataKey}`,
+    stack: stackName,
+    encode: {
+      y: dataKey,
+      x: X_AXIS_DATA_KEY,
+    },
+    label: {
+      ...seriesOption.label,
+      show: true,
+      position,
+      formatter,
+      fontFamily: renderingContext.fontFamily,
+      fontWeight: CHART_STYLE.seriesLabels.weight,
+      fontSize: CHART_STYLE.seriesLabels.size,
+      color: renderingContext.getColor("text-dark"),
+      textBorderColor: renderingContext.getColor("white"),
+      textBorderWidth: 3,
+    },
+    labelLayout: {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+    },
+    z: Z_INDEXES.dataLabels,
+    blur: {
+      label: {
+        opacity: 1,
+        show: showInBlur,
+      },
+    },
+  };
+
+  if (seriesOption.type === "bar") {
+    return { ...dataLabelSeriesOption, type: "bar" as const };
+  }
+
+  return { ...dataLabelSeriesOption, type: "line" as const };
+}
+
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
+  originalDataset: ChartDataset,
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   chartMeasurements: ChartMeasurements,
   seriesModel: SeriesModel,
+  stackName: string | undefined,
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   barSeriesCount: number,
-  yAxisWithBarSeriesCount: number,
   hasMultipleSeries: boolean,
+  chartDataDensity: ChartDataDensity,
+  chartWidth: number,
+  labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
-): BarSeriesOption => {
-  const stackName =
-    settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
+): BarSeriesOption | BarSeriesOption[] => {
+  const stack = stackName ?? `bar_${seriesModel.dataKey}`;
+  const isStacked = settings["stackable.stack_type"] != null;
 
-  return {
+  const seriesOption: BarSeriesOption = {
     id: seriesModel.dataKey,
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
@@ -272,86 +464,104 @@ const buildEChartsBarSeries = (
       },
     },
     type: "bar",
-    z: CHART_STYLE.series.zIndex,
+    z: Z_INDEXES.series,
     yAxisIndex,
     barGap: 0,
-    stack: stackName,
+    stack,
     barWidth: computeBarWidth(
       xAxisModel,
       chartMeasurements.boundaryWidth,
       barSeriesCount,
-      yAxisWithBarSeriesCount,
-      !!stackName,
+      isStacked,
     ),
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
-    label: buildEChartsLabelOptions(
-      seriesModel,
-      dataset,
-      yAxisScaleTransforms,
-      settings,
-      renderingContext,
-      settings["graph.show_values"] && settings["stackable.stack_type"] == null,
-    ),
-    labelLayout: getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+    label: isStacked
+      ? buildEChartsStackLabelOptions(
+          seriesModel,
+          labelFormatter,
+          originalDataset,
+          renderingContext,
+        )
+      : buildEChartsLabelOptions(
+          seriesModel,
+          yAxisScaleTransforms,
+          renderingContext,
+          chartWidth,
+          labelFormatter,
+          settings,
+          chartDataDensity,
+        ),
+    labelLayout: isStacked
+      ? getBarInsideLabelLayout(
+          dataset,
+          settings,
+          seriesModel.dataKey,
+          chartMeasurements.stackedBarTicksRotation,
+        )
+      : getBarLabelLayout(dataset, settings, seriesModel.dataKey),
     itemStyle: {
       color: seriesModel.color,
     },
   };
+
+  if (
+    !settings["graph.show_values"] ||
+    settings["stackable.stack_type"] != null ||
+    labelFormatter == null
+  ) {
+    return seriesOption;
+  }
+
+  const labelOptions = ["+" as const, "-" as const].map(sign => ({
+    ...getDataLabelSeriesOption(
+      getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
+      seriesOption,
+      settings,
+      getDataLabelFormatter(
+        seriesModel.dataKey,
+        yAxisScaleTransforms,
+        labelFormatter,
+        chartWidth,
+        settings,
+        chartDataDensity,
+      ),
+      sign === "+" ? "top" : "bottom",
+      renderingContext,
+      false,
+    ),
+    type: "bar", // ensure type is bar for typescript
+  })) as BarSeriesOption[];
+
+  if (seriesOption?.label != null) {
+    seriesOption.label.show = false;
+  }
+  if (seriesOption?.emphasis != null) {
+    seriesOption.emphasis.label = { show: true };
+  }
+
+  return [seriesOption, ...labelOptions];
 };
-
-function getShowSymbol(
-  seriesModel: SeriesModel,
-  seriesSettings: SeriesSettings,
-  dataset: ChartDataset,
-  chartWidth: number,
-) {
-  // "line.marker_enabled" corresponds to the "Show dots on lines" series setting
-  // and can be true, false, or undefined
-  // true = on
-  // false = off
-  // undefined = auto
-  const isAuto = seriesSettings["line.marker_enabled"] == null;
-  if (!isAuto) {
-    return seriesSettings["line.marker_enabled"];
-  }
-  if (chartWidth <= 0) {
-    return false;
-  }
-  const numDots =
-    seriesSettings["line.missing"] !== "none"
-      ? dataset.length
-      : dataset.filter(datum => datum[seriesModel.dataKey] != null).length;
-
-  // symbolSize is the dot's diameter
-  return chartWidth / numDots > CHART_STYLE.symbolSize;
-}
 
 const buildEChartsLineAreaSeries = (
   seriesModel: SeriesModel,
+  stackName: string | undefined,
   seriesSettings: SeriesSettings,
-  dataset: ChartDataset,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
+  chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
+  labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ): LineSeriesOption => {
-  const display = seriesSettings?.display ?? "line";
-
-  const stackName =
-    settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
-
-  const showSeriesValues = seriesSettings?.["show_series_values"];
-
   const isSymbolVisible = getShowSymbol(
-    seriesModel,
-    seriesSettings,
-    dataset,
+    chartDataDensity,
     chartWidth,
+    seriesSettings,
   );
 
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
@@ -373,7 +583,7 @@ const buildEChartsLineAreaSeries = (
       },
       areaStyle: { opacity: CHART_STYLE.opacity.area },
     },
-    z: CHART_STYLE.series.zIndexLineArea,
+    z: Z_INDEXES.lineAreaSeries,
     id: seriesModel.dataKey,
     type: "line",
     lineStyle: {
@@ -391,18 +601,21 @@ const buildEChartsLineAreaSeries = (
       seriesSettings["line.interpolate"] === "step-after" ? "end" : undefined,
     stack: stackName,
     areaStyle:
-      display === "area" ? { opacity: CHART_STYLE.opacity.area } : undefined,
+      seriesSettings.display === "area"
+        ? { opacity: CHART_STYLE.opacity.area }
+        : undefined,
     encode: {
       y: seriesModel.dataKey,
       x: X_AXIS_DATA_KEY,
     },
     label: buildEChartsLabelOptions(
       seriesModel,
-      dataset,
       yAxisScaleTransforms,
-      settings,
       renderingContext,
-      (settings["graph.show_values"] || showSeriesValues) && stackName == null,
+      chartWidth,
+      labelFormatter,
+      settings,
+      chartDataDensity,
       "top",
     ),
     labelLayout: {
@@ -415,85 +628,51 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
-const generateStackOption = (
-  seriesModel: SeriesModel,
-  dataset: ChartDataset,
-  yAxisScaleTransforms: NumericAxisScaleTransforms,
-  settings: ComputedVisualizationSettings,
-  signKey: StackTotalDataKey,
-  stackDataKeys: DataKey[],
-  seriesOptionFromStack: LineSeriesOption | BarSeriesOption,
-  renderingContext: RenderingContext,
-) => {
-  const stackName = seriesOptionFromStack.stack;
+function getShowSymbol(
+  chartDataDensity: ComboChartDataDensity,
+  chartWidth: number,
+  seriesSettings: SeriesSettings,
+): boolean {
+  const { totalNumberOfDots } = chartDataDensity;
+  const maxNumberOfDots = chartWidth / (2 * CHART_STYLE.symbolSize);
 
-  const seriesOption = {
-    yAxisIndex: seriesOptionFromStack.yAxisIndex,
-    silent: true,
-    symbolSize: 0,
-    lineStyle: {
-      opacity: 0,
-    },
-    id: `${stackName}_${signKey}`,
-    stack: stackName,
-    encode: {
-      y: signKey,
-      x: X_AXIS_DATA_KEY,
-    },
-    label: {
-      ...seriesOptionFromStack.label,
-      position:
-        signKey === POSITIVE_STACK_TOTAL_DATA_KEY
-          ? ("top" as const)
-          : ("bottom" as const),
-      show: true,
-      formatter: getStackedDataLabelFormatter(
-        dataset,
-        seriesModel,
-        yAxisScaleTransforms,
-        signKey,
-        stackDataKeys,
-        settings,
-        renderingContext,
-      ),
-    },
-    labelLayout: {
-      hideOverlap: settings["graph.label_value_frequency"] === "fit",
-    },
-    z: CHART_STYLE.seriesLabels.zIndex,
-    blur: {
-      label: {
-        opacity: 1,
-      },
-    },
-  };
-
-  if (seriesOptionFromStack.type === "bar") {
-    return { ...seriesOption, type: "bar" as const };
+  if (chartWidth <= 0) {
+    return false;
   }
 
-  return { ...seriesOption, type: "line" as const };
-};
+  if (seriesSettings["line.marker_enabled"] === false) {
+    return false;
+  }
+
+  if (seriesSettings["line.marker_enabled"] === true) {
+    return true;
+  }
+
+  return totalNumberOfDots <= maxNumberOfDots;
+}
 
 function getStackedDataLabelFormatter(
-  dataset: ChartDataset,
-  seriesModel: SeriesModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   signKey: StackTotalDataKey,
   stackDataKeys: DataKey[],
+  stackName: string | undefined,
+  formatter: LabelFormatter,
+  chartDataDensity: ComboChartDataDensity,
+  chartWidth: number,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ) {
-  const isCompact = shouldRenderCompact({
-    dataset,
-    getValue: (datum: Datum) =>
-      getStackTotalValue(datum, stackDataKeys, signKey),
-    renderingContext,
-    seriesModel,
+  const getShowStackedLabel = getShowStackedLabelFn(
+    chartWidth,
+    stackName,
+    chartDataDensity,
     settings,
-  });
+  );
 
   return (params: CallbackDataParams) => {
+    if (!getShowStackedLabel(params)) {
+      return "";
+    }
+
     const stackValue = getStackTotalValue(
       params.data as Datum,
       stackDataKeys,
@@ -501,52 +680,82 @@ function getStackedDataLabelFormatter(
     );
 
     if (stackValue === null) {
-      return " ";
+      return "";
     }
 
-    const valueFormatter = (value: RowValue) => {
-      if (typeof value !== "number") {
-        return " ";
-      }
-
-      return renderingContext.formatValue(
-        yAxisScaleTransforms.fromEChartsAxisValue(value),
-        {
-          ...(settings.column?.(seriesModel.column) ?? {}),
-          jsx: false,
-          compact: isCompact,
-        },
-      );
-    };
-
-    return valueFormatter(stackValue);
+    return formatter(yAxisScaleTransforms.fromEChartsAxisValue(stackValue));
   };
 }
 
-function getStackTotalValue(
-  data: Datum,
-  stackDataKeys: DataKey[],
-  signKey: StackTotalDataKey,
-): number | null {
-  let stackValue: number | null = null;
-  stackDataKeys.forEach(stackDataKey => {
-    const seriesValue = data[stackDataKey];
-    if (
-      typeof seriesValue === "number" &&
-      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
-        (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
-    ) {
-      stackValue = (stackValue ?? 0) + seriesValue;
-    }
-  });
+function getShowStackedLabelFn(
+  chartWidth: number,
+  stackName: string | undefined,
+  chartDataDensity: ComboChartDataDensity,
+  settings: ComputedVisualizationSettings,
+): (params: CallbackDataParams) => boolean {
+  if (!settings || !chartDataDensity) {
+    return () => true;
+  }
+  if (settings["graph.label_value_frequency"] === "all") {
+    return () => true;
+  }
 
-  return stackValue;
+  const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
+  if (totalNumberOfLabels === 0 || averageLabelWidth === 0) {
+    return () => true;
+  }
+
+  const scaleFactor = CARTESIAN_LABEL_DENSITY_SCALE_FACTOR;
+  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
+  if (totalNumberOfLabels <= maxNumberOfLabels) {
+    return () => true;
+  }
+
+  const { selectionFrequency, selectionOffset } = getStackedSelectionFrequency(
+    chartDataDensity,
+    maxNumberOfLabels,
+    stackName,
+  );
+
+  return (params: CallbackDataParams) => {
+    return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
+  };
+}
+
+function getStackedSelectionFrequency(
+  chartDataDensity: ComboChartDataDensity,
+  maxNumberOfLabels: number,
+  stackName: string | undefined,
+) {
+  const {
+    totalNumberOfLabels,
+    seriesDataKeysWithLabels,
+    stackedDisplayWithLabels,
+  } = chartDataDensity;
+
+  const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
+
+  const numOfDifferentSeriesWithLabels =
+    seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
+  const stepOffset = Math.floor(
+    selectionFrequency / numOfDifferentSeriesWithLabels,
+  );
+
+  const stackedIndex = _.findIndex(
+    stackedDisplayWithLabels,
+    stackDisplay => stackDisplay === stackName,
+  );
+  const selectionOffset =
+    (stackedIndex + seriesDataKeysWithLabels.length) * stepOffset;
+
+  return { selectionFrequency, selectionOffset };
 }
 
 export const getStackTotalsSeries = (
   chartModel: CartesianChartModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
+  chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
 ) => {
@@ -561,59 +770,55 @@ export const getStackTotalsSeries = (
       .filter(isNotNull) as string[];
     const firstSeriesInStack = seriesOptions[0];
 
-    const seriesModel = chartModel.seriesModels.find(
-      s => s.dataKey === stackDataKeys[0],
-    );
+    const labelFormatter = firstSeriesInStack.stack
+      ? chartModel.stackedLabelsFormatters?.[
+          firstSeriesInStack.stack as "bar" | "area"
+        ]
+      : undefined;
 
-    if (!seriesModel) {
+    if (!labelFormatter) {
       return [];
     }
 
     return [
-      generateStackOption(
-        seriesModel,
-        chartModel.transformedDataset,
-        yAxisScaleTransforms,
-        settings,
+      getDataLabelSeriesOption(
         POSITIVE_STACK_TOTAL_DATA_KEY,
-        stackDataKeys,
         firstSeriesInStack,
+        settings,
+        labelFormatter &&
+          getStackedDataLabelFormatter(
+            yAxisScaleTransforms,
+            POSITIVE_STACK_TOTAL_DATA_KEY,
+            stackDataKeys,
+            firstSeriesInStack.stack,
+            labelFormatter,
+            chartModel.dataDensity,
+            chartWidth,
+            settings,
+          ),
+        "top",
         renderingContext,
       ),
-      generateStackOption(
-        seriesModel,
-        chartModel.transformedDataset,
-        yAxisScaleTransforms,
-        settings,
+      getDataLabelSeriesOption(
         NEGATIVE_STACK_TOTAL_DATA_KEY,
-        stackDataKeys,
         firstSeriesInStack,
+        settings,
+        labelFormatter &&
+          getStackedDataLabelFormatter(
+            yAxisScaleTransforms,
+            NEGATIVE_STACK_TOTAL_DATA_KEY,
+            stackDataKeys,
+            firstSeriesInStack.stack,
+            labelFormatter,
+            chartModel.dataDensity,
+            chartWidth,
+            settings,
+          ),
+        "bottom",
         renderingContext,
       ),
     ];
   });
-};
-
-const getDisplaySeriesSettingsByDataKey = (
-  seriesModels: SeriesModel[],
-  settings: ComputedVisualizationSettings,
-) => {
-  const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
-    acc[seriesModel.dataKey] = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return acc;
-  }, {} as Record<DataKey, SeriesSettings>);
-
-  if (settings["stackable.stack_type"] === "stacked") {
-    const stackDisplay = settings["stackable.stack_display"];
-
-    Object.keys(seriesSettingsByKey).forEach(dataKey => {
-      seriesSettingsByKey[dataKey].display = stackDisplay;
-    });
-  }
-
-  return seriesSettingsByKey;
 };
 
 export const buildEChartsSeries = (
@@ -625,6 +830,7 @@ export const buildEChartsSeries = (
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     chartModel.seriesModels,
+    chartModel.stackModels,
     settings,
   );
 
@@ -639,25 +845,6 @@ export const buildEChartsSeries = (
     {} as Record<DataKey, number>,
   );
 
-  const barSeriesCountByYAxisIndex = chartModel.seriesModels.reduce(
-    (acc, seriesModel) => {
-      const isBar =
-        seriesSettingsByDataKey[seriesModel.dataKey].display === "bar";
-
-      if (isBar) {
-        const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
-        acc[yAxisIndex] = (acc[yAxisIndex] ?? 0) + 1;
-      }
-
-      return acc;
-    },
-    {} as Record<number, number>,
-  );
-
-  const yAxisWithBarSeriesCount = Object.keys(
-    barSeriesCountByYAxisIndex,
-  ).length;
-
   const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
@@ -668,40 +855,45 @@ export const buildEChartsSeries = (
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
+      const stackName =
+        chartModel.stackModels == null
+          ? undefined
+          : chartModel.stackModels.find(stackModel =>
+              stackModel.seriesKeys.includes(seriesModel.dataKey),
+            )?.display;
 
       switch (seriesSettings.display) {
         case "line":
         case "area":
           return buildEChartsLineAreaSeries(
             seriesModel,
+            stackName,
             seriesSettings,
-            chartModel.transformedDataset,
             chartModel.yAxisScaleTransforms,
             settings,
             yAxisIndex,
             hasMultipleSeries,
+            chartModel.dataDensity,
             chartWidth,
+            chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
         case "bar":
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
+            chartModel.dataset,
             chartModel.xAxisModel,
             chartModel.yAxisScaleTransforms,
             chartMeasurements,
             seriesModel,
+            stackName,
             settings,
             yAxisIndex,
             barSeriesCount,
-            yAxisWithBarSeriesCount,
             hasMultipleSeries,
-            renderingContext,
-          );
-        case "scatter":
-          return buildEChartsScatterSeries(
-            seriesModel,
-            chartModel.bubbleSizeDomain,
-            yAxisIndex,
+            chartModel.dataDensity,
+            chartWidth,
+            chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
           );
       }
@@ -709,20 +901,19 @@ export const buildEChartsSeries = (
     .flat()
     .filter(isNotNull);
 
-  if (
+  const hasStackedSeriesTotalLabels =
+    settings["graph.show_values"] &&
     settings["stackable.stack_type"] === "stacked" &&
-    settings["graph.show_values"]
-  ) {
+    (settings["graph.show_stack_values"] === "total" ||
+      settings["graph.show_stack_values"] === "all");
+  if (hasStackedSeriesTotalLabels) {
     series.push(
       ...getStackTotalsSeries(
         chartModel,
         chartModel.yAxisScaleTransforms,
         settings,
-        // It's guranteed that no series here will be scatter, since with
-        // scatter plots the `stackable.stack_type` is undefined. We can maybe
-        // remove this later after refactoring the scatter implementation to a
-        // separate codepath.
-        series as (LineSeriesOption | BarSeriesOption)[],
+        chartWidth,
+        series,
         renderingContext,
       ),
     );

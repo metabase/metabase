@@ -3,7 +3,7 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 import {
@@ -26,7 +26,7 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-export const setup = ({
+export const setupStrategyEditorForDatabases = ({
   hasEnterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
@@ -77,6 +77,8 @@ export const changeInput = async (
     name: new RegExp(label),
   })) as HTMLInputElement;
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
-  fireEvent.change(input, { target: { value } });
+  act(() => {
+    fireEvent.change(input, { target: { value } });
+  });
   expect(input).toHaveValue(value);
 };

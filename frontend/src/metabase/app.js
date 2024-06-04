@@ -1,11 +1,5 @@
 import "regenerator-runtime/runtime";
 
-// Use of classList.add and .remove in Background and FitViewPort Hocs requires
-// this polyfill so that those work in older browsers
-import "classlist-polyfill";
-
-import "number-to-locale-string";
-
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
 // Should be imported before any other metabase import
@@ -33,7 +27,7 @@ import "ee-plugins"; // eslint-disable-line import/no-duplicates
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -71,7 +65,9 @@ function _init(reducers, getRoutes, callback) {
 
   initializeEmbedding(store);
 
-  ReactDOM.render(
+  const root = createRoot(document.getElementById("root"));
+
+  root.render(
     <Provider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
@@ -82,7 +78,6 @@ function _init(reducers, getRoutes, callback) {
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </Provider>,
-    document.getElementById("root"),
   );
 
   registerVisualizations();

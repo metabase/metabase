@@ -59,6 +59,7 @@ export const ButtonBar = ({
               setError(null);
               await onConfirm();
             } catch (e: any) {
+              console.error(e);
               setError(e?.data?.message ?? t`An error occurred`);
             }
           }}

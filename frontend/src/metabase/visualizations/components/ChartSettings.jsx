@@ -209,8 +209,7 @@ class ChartSettings extends Component {
     ).some(widget => !widget.hidden);
   }
 
-  getStyleWidget = () => {
-    const widgets = this._getWidgets();
+  getStyleWidget = widgets => {
     const series = this._getTransformedSeries();
     const settings = this._getComputedSettings();
     const { currentWidget } = this.state;
@@ -258,8 +257,7 @@ class ChartSettings extends Component {
     return null;
   };
 
-  getFormattingWidget = () => {
-    const widgets = this._getWidgets();
+  getFormattingWidget = widgets => {
     const { currentWidget } = this.state;
     const widget =
       currentWidget && widgets.find(widget => widget.id === currentWidget.id);
@@ -418,9 +416,10 @@ class ChartSettings extends Component {
         )}
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
-          widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(
-            widget => !!widget,
-          )}
+          widgets={[
+            this.getFormattingWidget(widgets),
+            this.getStyleWidget(widgets),
+          ].filter(widget => !!widget)}
           handleEndShowWidget={this.handleEndShowWidget}
         />
       </ChartSettingsRoot>

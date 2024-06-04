@@ -1,3 +1,5 @@
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
 import { trackColumnExtractViaHeader } from "metabase/querying/analytics";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
@@ -13,10 +15,10 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
   question,
   drill,
   drillInfo,
-  clicked,
   applyDrill,
 }) => {
   const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
+    const dispatch = useDispatch();
     const extractions = Lib.extractionsForDrill(drill);
 
     const actions: RegularClickAction[] = drillInfo.extractions.map(
@@ -29,7 +31,6 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
         question: () => applyDrill(drill, extraction.tag),
         extra: () => ({
           extraction: extractions[index],
-          settingsSyncOptions: { column: clicked.column },
         }),
       }),
     );
@@ -40,6 +41,7 @@ export const columnExtractDrill: Drill<Lib.ColumnExtractDrillThruInfo> = ({
       };
 
       trackColumnExtractViaHeader(query, stageIndex, extraction, question);
+      dispatch(setUIControls({ scrollToLastColumn: true }));
       onClick(action);
     }
 

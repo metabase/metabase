@@ -34,6 +34,7 @@ export type DashboardPickerInitialValueItem = {
 export type DashboardPickerItem = CollectionPickerItem;
 
 export type DashboardPickerOptions = EntityPickerModalOptions & {
+  allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
 };

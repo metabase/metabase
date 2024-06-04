@@ -3,18 +3,11 @@
    [clojure.test :refer :all]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]))
 
-(deftest ^:parallel ga-dimension?-test
-  (are [x expected] (= expected
-                       (dashboard-templates/ga-dimension? x))
-    "ga:foo" true
-    "foo"    false))
-
 (deftest ^:parallel ->type-test
   (are [x expected] (= expected
                        (#'dashboard-templates/->type x))
-    :foo     :foo
-    "ga:foo" "ga:foo"
-    "Foo"    :type/Foo))
+    :foo  :foo
+    "Foo" :type/Foo))
 
 (deftest ^:parallel get-dashboard-templates-test
   (testing "This also tests that all the dashboard templates are valid (else there would be nils returned)"

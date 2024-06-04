@@ -14,7 +14,7 @@ You can create SQL templates by adding variables to your SQL queries in the [Nat
 
 Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`.
 
-Field Filter, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
+Field Filters, a special type of filter, have a [slightly different syntax](#field-filter-syntax).
 
 This example defines a **Text** variable called `category`:
 

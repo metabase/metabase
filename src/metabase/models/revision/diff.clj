@@ -2,6 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.data :as data]
+   [metabase.models.collection :as collection]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
@@ -42,24 +43,29 @@
 
     [:archived _ after]
     (if after
-      (deferred-tru "archived {0}" identifier)
-      (deferred-tru "unarchived {0}" identifier))
+      (deferred-tru "trashed {0}" identifier)
+      (deferred-tru "untrashed {0}" identifier))
 
     [:collection_position _ _]
     (deferred-tru "changed pin position")
 
     [:collection_id nil coll-id]
-    (deferred-tru "moved {0} to {1}" identifier (if coll-id
-                                                  (t2/select-one-fn :name 'Collection coll-id)
-                                                  (deferred-tru "Our analytics")))
+    ;; trash/untrash is handled by `archived`
+    (when-not (= coll-id (collection/trash-collection-id))
+      (deferred-tru "moved {0} to {1}" identifier (if coll-id
+                                                    (t2/select-one-fn :name 'Collection coll-id)
+                                                    (deferred-tru "Our analytics"))))
 
     [:collection_id (prev-coll-id :guard int?) coll-id]
-    (deferred-tru "moved {0} from {1} to {2}"
-      identifier
-      (t2/select-one-fn :name 'Collection prev-coll-id)
-      (if coll-id
-        (t2/select-one-fn :name 'Collection coll-id)
-        (deferred-tru "Our analytics")))
+    ;; trash/untrash is handled by `archived`
+    (when-not (or (= prev-coll-id (collection/trash-collection-id)) (= coll-id (collection/trash-collection-id)))
+      (deferred-tru "moved {0} from {1} to {2}"
+        identifier
+        (t2/select-one-fn :name 'Collection prev-coll-id)
+        (if coll-id
+          (t2/select-one-fn :name 'Collection coll-id)
+          (deferred-tru "Our analytics"))))
+
 
     [:visualization_settings _ _]
     (deferred-tru "changed the visualization settings")

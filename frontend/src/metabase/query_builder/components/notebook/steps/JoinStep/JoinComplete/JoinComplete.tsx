@@ -11,7 +11,7 @@ import { JoinStrategyPicker } from "../JoinStrategyPicker";
 import { JoinTableColumnPicker } from "../JoinTableColumnPicker";
 import { JoinTablePicker } from "../JoinTablePicker";
 
-import { JoinConditionCell, JoinCell } from "./JoinComplete.styled";
+import { JoinCell, JoinConditionCell } from "./JoinComplete.styled";
 
 interface JoinCompleteProps {
   query: Lib.Query;
@@ -20,7 +20,6 @@ interface JoinCompleteProps {
   joinPosition: number;
   color: string;
   isReadOnly: boolean;
-  isModelDataSource: boolean;
   onJoinChange: (newJoin: Lib.Join) => void;
   onQueryChange: (newQuery: Lib.Query) => void;
   onDraftRhsTableChange: (newTable: Lib.Joinable) => void;
@@ -33,7 +32,6 @@ export function JoinComplete({
   joinPosition,
   color,
   isReadOnly,
-  isModelDataSource,
   onJoinChange,
   onQueryChange,
   onDraftRhsTableChange,
@@ -113,11 +111,10 @@ export function JoinComplete({
           />
           <JoinTablePicker
             query={query}
+            stageIndex={stageIndex}
             table={rhsTable}
-            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
-            isModelDataSource={isModelDataSource}
             columnPicker={
               <JoinTableColumnPicker
                 query={query}

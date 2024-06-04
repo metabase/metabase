@@ -18,6 +18,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
@@ -203,7 +204,7 @@
                             dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
         card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
-                                                 :type :result_metadata :visualization_settings
+                                                 :type :result_metadata :visualization_settings :display
                                                  :cache_invalidated_at]
                                                 :id card-id))
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
@@ -220,10 +221,12 @@
                           :visualization-settings (:visualization_settings card)}
                    (and (= (:type card) :model) (seq (:result_metadata card)))
                    (assoc :metadata/model-metadata (:result_metadata card)))]
-    (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (run query info))))
+      (let [run (if (= :pivot (:display card))
+                  (process-query-for-card-default-run-fn qp.pivot/run-pivot-query export-format)
+                  run)]
+        (run query info)))))

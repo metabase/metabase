@@ -51,11 +51,9 @@ export const getYAxisRange = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
-  const isNormalized = settings["stackable.stack_type"] === "normalized";
   const isAutoRangeEnabled = settings["graph.y_axis.auto_range"];
-
   if (isAutoRangeEnabled) {
-    return isNormalized ? NORMALIZED_RANGE : {};
+    return axisModel.isNormalized ? NORMALIZED_RANGE : {};
   }
 
   const { customMin, customMax } = getScaledMinAndMax(

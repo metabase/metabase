@@ -151,12 +151,16 @@ export function formatChangeWithSign(
   change: number,
   { maximumFractionDigits = 2 } = {},
 ): string {
-  return change === Infinity
-    ? "∞%"
-    : formatNumber(change, {
-        number_style: "percent",
-        maximumFractionDigits,
-      });
+  if (change === Infinity) {
+    return "+∞%";
+  }
+
+  const formattedNumber = formatNumber(change, {
+    number_style: "percent",
+    maximumFractionDigits,
+  });
+
+  return change > 0 ? `+${formattedNumber}` : formattedNumber;
 }
 
 export function numberFormatterForOptions(options: FormatNumberOptionsType) {

@@ -1,3 +1,4 @@
+/* eslint-env node */
 /* eslint-disable import/no-commonjs */
 const glob = require("glob");
 
@@ -14,9 +15,7 @@ module.exports = {
       importFrom: CSS_SRC,
       features: {
         "custom-media-queries": true,
-        "custom-properties": {
-          preserve: false,
-        },
+        "custom-properties": true,
         "color-mod-function": true,
         "focus-visible-pseudo-class": false,
       },

@@ -8,6 +8,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   fireEvent,
@@ -37,6 +38,7 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
+  createMockCardQueryMetadata,
   createMockDatabase,
   createMockField,
   createMockImplicitCUDActions,
@@ -163,7 +165,7 @@ function createNativeModelCard(card?: Partial<Card>) {
   });
 }
 
-const TEST_QUERY = "UPDATE orders SET status = 'shipped";
+const TEST_QUERY = "UPDATE orders SET status = 'shipped'";
 
 function createMockQueryAction(
   opts?: Partial<WritebackQueryAction>,
@@ -223,6 +225,19 @@ async function setup({
   );
 
   setupCardsEndpoints([card]);
+  setupCardQueryMetadataEndpoint(
+    card,
+    createMockCardQueryMetadata({
+      databases,
+      tables: [
+        createMockTable({
+          id: `card__${card.id}`,
+          name: card.name,
+          fields: card.result_metadata,
+        }),
+      ],
+    }),
+  );
   setupModelActionsEndpoints(actions, model.id());
   setupCollectionsEndpoints({ collections });
 
@@ -341,16 +356,17 @@ describe("ModelDetailPage", () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(await screen.findByText("Archive"));
+        await userEvent.click(await screen.findByText("Move to trash"));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+        await userEvent.click(
+          screen.getByRole("button", { name: "Move to trash" }),
+        );
 
         await waitFor(() => {
           expect(modelUpdateSpy).toHaveBeenCalledWith(
             { id: model.id() },
             { archived: true },
-            expect.anything(),
           );
         });
       });

@@ -6,13 +6,14 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
+import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { useStore } from "metabase/lib/redux";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
@@ -31,7 +32,6 @@ interface OwnProps {
   dashcardId?: DashCardId;
   uuid?: string;
   token?: string;
-  params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
 }
 
@@ -59,12 +59,15 @@ const DashCardMenu = ({
   dashcardId,
   uuid,
   token,
-  params,
   onEditQuestion,
   onDownloadResults,
 }: DashCardMenuProps) => {
+  const store = useStore();
+
   const [{ loading }, handleDownload] = useAsyncFn(
     async (opts: { type: string; enableFormatting: boolean }) => {
+      const params = getParameterValuesBySlugMap(store.getState());
+
       await onDownloadResults({
         ...opts,
         question,
@@ -76,7 +79,7 @@ const DashCardMenu = ({
         params,
       });
     },
-    [question, result, dashboardId, dashcardId, uuid, token, params],
+    [store, question, result, dashboardId, dashcardId, uuid, token],
   );
 
   const handleMenuContent = useCallback(
@@ -131,13 +134,13 @@ interface QueryDownloadWidgetOpts {
   result?: Dataset;
   isXray?: boolean;
   isEmbed: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isEditing: boolean;
 }
 
 const canEditQuestion = (question: Question) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  return question.canWrite() && isEditable;
+  return question.canWrite() && question.canRunAdhocQuery();
 };
 
 const canDownloadResults = (result?: Dataset) => {
@@ -153,7 +156,7 @@ DashCardMenu.shouldRender = ({
   result,
   isXray,
   isEmbed,
-  isPublic,
+  isPublicOrEmbedded,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
@@ -167,7 +170,7 @@ DashCardMenu.shouldRender = ({
   }
   return (
     !isInternalQuery &&
-    !isPublic &&
+    !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))

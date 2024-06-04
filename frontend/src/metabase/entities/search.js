@@ -8,7 +8,6 @@ import Actions from "./actions";
 import Bookmarks from "./bookmarks";
 import Collections from "./collections";
 import Dashboards from "./dashboards";
-import Metrics from "./metrics";
 import Pulses from "./pulses";
 import Questions from "./questions";
 import Segments from "./segments";
@@ -166,7 +165,6 @@ export default createEntity({
       Bookmarks.actionShouldInvalidateLists(action) ||
       Collections.actionShouldInvalidateLists(action) ||
       Dashboards.actionShouldInvalidateLists(action) ||
-      Metrics.actionShouldInvalidateLists(action) ||
       Pulses.actionShouldInvalidateLists(action) ||
       Questions.actionShouldInvalidateLists(action) ||
       Segments.actionShouldInvalidateLists(action) ||

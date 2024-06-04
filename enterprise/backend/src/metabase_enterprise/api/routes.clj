@@ -15,6 +15,7 @@
     :as content-verification]
    [metabase-enterprise.llm.api :as llm.api]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
+   [metabase-enterprise.scim.routes :as scim]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.upload-management.api :as api.uploads]
    [metabase.api.common :refer [context defroutes]]
@@ -43,6 +44,9 @@
    (context
     "/logs" []
     (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
+   (context
+    "/scim" []
+    (ee.api.common/+require-premium-feature :scim (deferred-tru "SCIM configuration") scim/routes))
    (context
     "/serialization" []
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))

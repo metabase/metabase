@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Collection, CollectionItem, Database } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionItem,
+  CollectionItemModel,
+  Database,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -62,39 +67,45 @@ const setup = ({
 
 describe("ActionMenu", () => {
   describe("preview", () => {
-    it("should show an option to hide preview for a pinned question", async () => {
-      const item = createMockCollectionItem({
-        model: "card",
-        collection_position: 1,
-        collection_preview: true,
-        setCollectionPreview: jest.fn(),
-      });
+    it.each<CollectionItemModel>(["card", "metric"])(
+      "should show an option to hide preview for a pinned %s",
+      async model => {
+        const item = createMockCollectionItem({
+          model,
+          collection_position: 1,
+          collection_preview: true,
+          setCollectionPreview: jest.fn(),
+        });
 
-      setup({ item });
+        setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
-      await userEvent.click(
-        await screen.findByText("Don’t show visualization"),
-      );
+        await userEvent.click(getIcon("ellipsis"));
+        await userEvent.click(
+          await screen.findByText("Don’t show visualization"),
+        );
 
-      expect(item.setCollectionPreview).toHaveBeenCalledWith(false);
-    });
+        expect(item.setCollectionPreview).toHaveBeenCalledWith(false);
+      },
+    );
 
-    it("should show an option to show preview for a pinned question", async () => {
-      const item = createMockCollectionItem({
-        model: "card",
-        collection_position: 1,
-        collection_preview: false,
-        setCollectionPreview: jest.fn(),
-      });
+    it.each<CollectionItemModel>(["card", "metric"])(
+      "should show an option to show preview for a pinned %s",
+      async model => {
+        const item = createMockCollectionItem({
+          model,
+          collection_position: 1,
+          collection_preview: false,
+          setCollectionPreview: jest.fn(),
+        });
 
-      setup({ item });
+        setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
-      await userEvent.click(await screen.findByText("Show visualization"));
+        await userEvent.click(getIcon("ellipsis"));
+        await userEvent.click(await screen.findByText("Show visualization"));
 
-      expect(item.setCollectionPreview).toHaveBeenCalledWith(true);
-    });
+        expect(item.setCollectionPreview).toHaveBeenCalledWith(true);
+      },
+    );
 
     it("should not show an option to hide preview for a pinned model", async () => {
       setup({
@@ -130,7 +141,7 @@ describe("ActionMenu", () => {
       expect(onMove).toHaveBeenCalledWith([item]);
 
       await userEvent.click(getIcon("ellipsis"));
-      await userEvent.click(await screen.findByText("Archive"));
+      await userEvent.click(await screen.findByText("Move to trash"));
       expect(item.setArchived).toHaveBeenCalledWith(true);
     });
 
@@ -149,7 +160,7 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
 
     it("should not allow to move and archive read only collections", async () => {
@@ -166,7 +177,7 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+      expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
   });
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   GOAL_LINE_SERIES_ID,
   ORIGINAL_INDEX_DATA_KEY,
+  TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
@@ -29,7 +30,7 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { CardId } from "metabase-types/api";
 
-import { getHoveredEChartsSeriesIndex } from "./utils";
+import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
@@ -84,7 +85,7 @@ export const useChartEvents = (
             return;
           }
 
-          if (timelineEventsModel && event.name === "timeline-event") {
+          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             const eventData = getTimelineEventsHoverData(
               timelineEventsModel,
               event,
@@ -124,7 +125,7 @@ export const useChartEvents = (
         handler: (event: EChartsSeriesMouseEvent) => {
           const clickData = getSeriesClickData(chartModel, settings, event);
 
-          if (timelineEventsModel && event.name === "timeline-event") {
+          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             onOpenTimelines?.();
 
             const clickedTimelineEvents = getTimelineEventsForEvent(
@@ -205,11 +206,12 @@ export const useChartEvents = (
         return;
       }
 
-      const hoveredEChartsSeriesIndex = getHoveredEChartsSeriesIndex(
-        chartModel.seriesModels,
-        option,
-        hovered,
-      );
+      const { hoveredSeriesDataKey, hoveredEChartsSeriesIndex } =
+        getHoveredEChartsSeriesDataKeyAndIndex(
+          chartModel.seriesModels,
+          option,
+          hovered,
+        );
 
       if (hovered == null || hoveredEChartsSeriesIndex == null) {
         return;
@@ -219,7 +221,18 @@ export const useChartEvents = (
 
       let dataIndex: number | undefined;
 
-      if (originalDatumIndex != null) {
+      const seriesModel = chartModel.seriesModels.find(
+        seriesModel => seriesModel.dataKey === hoveredSeriesDataKey,
+      );
+      // If hovering a bar series, we highlight the entire series to ensure that
+      // all the data labels show
+      const isBarSeries =
+        seriesModel != null
+          ? settings.series(seriesModel.legacySeriesSettingsObjectKey)
+              .display === "bar"
+          : false;
+
+      if (originalDatumIndex != null && !isBarSeries) {
         // (issue #40215)
         // since some transformed datasets have indexes differing from
         // the original datasets indexes and ECharts uses the transformedDataset
@@ -246,6 +259,7 @@ export const useChartEvents = (
       };
     },
     [
+      settings,
       chartModel.seriesModels,
       chartModel.transformedDataset,
       chartRef,

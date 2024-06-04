@@ -1,7 +1,6 @@
 import Tooltip from "metabase/core/components/Tooltip";
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, Button } from "metabase/ui";
 import {
   type ClickAction,
   type CustomClickAction,
@@ -10,11 +9,11 @@ import {
 } from "metabase/visualizations/types";
 import { isRegularClickAction } from "metabase/visualizations/types";
 
+import styles from "./ClickActionControl.module.css";
 import {
   ClickActionButtonIcon,
   ClickActionButtonTextIcon,
   FormattingControl,
-  HorizontalClickActionButton,
   InfoControl,
   SortControl,
   TokenActionButton,
@@ -101,23 +100,31 @@ export const ClickActionControl = ({
 
     case "horizontal":
       return (
-        <HorizontalClickActionButton
-          small
-          icon={
+        <Button
+          classNames={{
+            root: styles.horizontalButton,
+            label: styles.label,
+            inner: styles.inner,
+          }}
+          leftIcon={
             action.iconText ? (
-              <ClickActionButtonTextIcon>
+              <ClickActionButtonTextIcon className={styles.nested}>
                 {action.iconText}
               </ClickActionButtonTextIcon>
             ) : action.icon ? (
-              <ClickActionButtonIcon name={action.icon} />
+              <ClickActionButtonIcon
+                name={action.icon}
+                className={styles.nested}
+              />
             ) : null
           }
-          iconColor={color("brand")}
           onClick={handleClick}
         >
           {action.title}
-          {action.subTitle && <Subtitle>{action.subTitle}</Subtitle>}
-        </HorizontalClickActionButton>
+          {action.subTitle && (
+            <Subtitle className={styles.nested}>{action.subTitle}</Subtitle>
+          )}
+        </Button>
       );
 
     case "info":

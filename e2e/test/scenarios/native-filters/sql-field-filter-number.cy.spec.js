@@ -51,7 +51,6 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
         FieldFilter.setWidgetType(subType);
 
-        FieldFilter.openEntryForm({ isFilterRequired: true });
         FieldFilter.addDefaultNumberFilter(value);
 
         SQLFilter.runQuery();

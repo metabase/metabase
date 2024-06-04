@@ -69,8 +69,8 @@ export const DragHandle = styled(Icon)`
 DragHandle.defaultProps = { size: DRAG_HANDLE_SIZE };
 
 export const PreviewContainer = styled(ContentContainer)`
-  background-color: ${color("bg-light")};
-  border-top: 1px solid ${darken("bg-light", 0.1)};
+  background-color: var(--mb-color-bg-light);
+  border-top: 1px solid ${() => darken("bg-light", 0.1)};
 
   padding: 1rem 1rem 2rem 1rem;
 

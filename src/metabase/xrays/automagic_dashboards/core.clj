@@ -33,8 +33,8 @@
 
   _Most_ tables and _all_ models (as of this writing) will bottom out at `:entity/GenericTable` and thus, use the
   `resources/automagic_dashboards/table/GenericTable.yaml` template. `:entity_type` for a given table type is made in
-  the `metabase.sync.analyze.classifiers.name/infer-entity-type` function, where the primary logic is table naming
-  based on the `prefix-or-postfix` var in that ns.
+  the [[metabase.analyze/infer-entity-type-by-name]] function, where the primary logic is table naming based on the
+  `prefix-or-postfix` var in that ns.
 
   ProTip: If you want to introduce a new template type, do the following:
 
@@ -149,7 +149,7 @@
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
-   [metabase.analyze.classifiers.core :as classifiers]
+   [metabase.analyze :as analyze]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
@@ -441,7 +441,7 @@
                                         (update field :base_type keyword)
                                         (update field :semantic_type keyword)
                                         (mi/instance Field field)
-                                        (classifiers/run-classifiers field {})
+                                        (analyze/run-classifiers field {})
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 
@@ -606,8 +606,7 @@
 
 (defn- drilldown-fields
   [root available-dimensions]
-  (when (and (->> root :source (mi/instance-of? Table))
-             (-> root :entity magic.util/ga-table? not))
+  (when (->> root :source (mi/instance-of? Table))
     (->> available-dimensions
          vals
          (mapcat :matches)

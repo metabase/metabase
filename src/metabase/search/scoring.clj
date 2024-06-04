@@ -111,10 +111,8 @@
 
   Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.util :as search.util]
@@ -300,39 +298,6 @@
     (/
      (max (- stale-time days-ago) 0)
      stale-time)))
-
-(defn serialize
-  "Massage the raw result from the DB and match data into something more useful for the client"
-  [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
-                      collection_authority_level collection_type collection_effective_ancestors]}]
-  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))]
-    (-> result
-        (assoc
-         :name           (if (and (contains? matching-columns :display_name) display_name)
-                           display_name
-                           name)
-         :context        (when (and match-context-thunk
-                                    (empty?
-                                     (remove matching-columns search.config/displayed-columns)))
-                           (match-context-thunk))
-         :collection     (merge {:id              collection_id
-                                 :name            collection_name
-                                 :authority_level collection_authority_level
-                                 :type            collection_type}
-                                (when collection_effective_ancestors
-                                  {:effective_ancestors collection_effective_ancestors}))
-         :scores          all-scores)
-        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
-        (dissoc
-         :all-scores
-         :relevant-scores
-         :collection_effective_ancestors
-         :collection_id
-         :collection_location
-         :collection_name
-         :collection_type
-         :display_name))))
 
 (defn weights-and-scores
   "Default weights and scores for a given result."

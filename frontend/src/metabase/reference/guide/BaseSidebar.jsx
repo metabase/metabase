@@ -21,12 +21,6 @@ const BaseSidebar = ({ style, className }) => (
     </div>
     <ol className={CS.mx3}>
       <SidebarItem
-        key="/reference/metrics"
-        href="/reference/metrics"
-        icon="ruler"
-        name={t`Metrics`}
-      />
-      <SidebarItem
         key="/reference/segments"
         href="/reference/segments"
         icon="segment"

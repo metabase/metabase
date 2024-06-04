@@ -105,9 +105,9 @@ export function seriesSetting({
       widget: "segmentedControl",
       props: {
         options: [
-          { name: t`Solid`, value: "solid" },
-          { name: t`Dashed`, value: "dashed" },
-          { name: t`Dotted`, value: "dotted" },
+          { icon: "line_style_solid", value: "solid" },
+          { icon: "line_style_dashed", value: "dashed" },
+          { icon: "line_style_dotted", value: "dotted" },
         ],
       },
       getDefault: (series, settings) => getSeriesDefaultLineStyle(settings),

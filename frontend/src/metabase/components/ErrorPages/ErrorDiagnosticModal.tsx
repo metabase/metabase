@@ -13,6 +13,7 @@ import {
 } from "metabase/forms";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
+import { getIsEmbedded } from "metabase/selectors/embed";
 import {
   Button,
   Box,
@@ -157,6 +158,10 @@ export const ErrorDiagnosticModal = ({
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);
 
+  if (getIsEmbedded()) {
+    return null;
+  }
+
   return (
     <ErrorBoundary>
       <Stack justify="center" my="lg">
@@ -284,6 +289,9 @@ export const KeyboardTriggeredErrorModal = () => {
   ] = useToggle(false);
 
   useEffect(() => {
+    if (getIsEmbedded()) {
+      return;
+    }
     const keyboardListener = (event: KeyboardEvent) => {
       if (
         event.key === "F1" &&

@@ -126,19 +126,13 @@ function formatLegacyDimension(
 }
 
 function formatMetric([, metricId]: FieldReference, options: Options) {
-  const { legacyQuery, query, stageIndex } = options;
+  const { query, stageIndex } = options;
 
   if (!query) {
-    // fallback to legacyQuery
-    if (legacyQuery) {
-      // StructuredQuery -> formatExpression
-      return formatLegacyMetric(metricId, options);
-    }
-
     throw new Error("`query` is a required parameter to format expressions");
   }
 
-  const metric = Lib.availableLegacyMetrics(query, stageIndex).find(metric => {
+  const metric = Lib.availableMetrics(query, stageIndex).find(metric => {
     const [_, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
 
     return availableMetricId === metricId;
@@ -151,22 +145,6 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
   const displayInfo = Lib.displayInfo(query, stageIndex, metric);
 
   return formatMetricName(displayInfo.displayName, options);
-}
-
-function formatLegacyMetric(
-  metricId: number | string,
-  options: { legacyQuery: StructuredQuery },
-) {
-  const { legacyQuery } = options;
-  const metric = _.findWhere(checkNotNull(legacyQuery.table()).metrics ?? [], {
-    id: metricId,
-  });
-
-  if (!metric) {
-    throw new Error(`metric with ID: "${metricId}" does not exist`);
-  }
-
-  return formatMetricName(metric.name, options);
 }
 
 function formatSegment([, segmentId]: FieldReference, options: Options) {

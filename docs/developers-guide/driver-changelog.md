@@ -66,6 +66,17 @@ title: Driver interface changelog
   of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
   `metabase.types` namespace for an example.
 
+- New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
+  key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
+  (Presto, Athena, etc.) support *querying* over foreign key relationships (`:foreign-keys`) but do not track or enforce
+  those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
+  first-party SparkSQL, Presto and Athena drivers.
+
+- New feature `:connection/multiple-databases` has been added to indicate whether a *connection* to this driver
+  corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
+  This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
+  Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
 ## Metabase 0.49.9
 
 - Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and

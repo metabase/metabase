@@ -352,19 +352,19 @@ export const getQuestion = createSelector(
     if (!question) {
       return;
     }
-    const isEditingModel = queryBuilderMode === "dataset";
-    if (isEditingModel) {
-      return question.lockDisplay();
-    }
 
-    const type = question.type();
-    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
+      return isModel ? question.lockDisplay() : question;
+    }
 
     // When opening a model or a metric, we construct a question
     // with a clean, ad-hoc, query.
     // This has to be skipped for users without data permissions.
     // See https://github.com/metabase/metabase/issues/20042
-    return type !== "question" && isEditable
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return (isModel || isMetric) && isEditable
       ? question.composeQuestion()
       : question;
   },
@@ -378,18 +378,18 @@ function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
   );
 }
 
-// Model questions may be composed via the `composeQuestion` method.
-// A composed model question should be treated as equivalent to its original form.
+// Models or metrics may be composed via the `composeQuestion` method.
+// A composed entity should be treated as the equivalent to its original form.
 // We need to handle scenarios where both the `lastRunQuestion` and the `currentQuestion` are
 // in either form.
-function areModelsEquivalent({
+function areComposedEntitiesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
 }) {
-  const isModel = originalQuestion?.type() === "model";
-  if (!lastRunQuestion || !currentQuestion || !isModel) {
+  const isQuestion = originalQuestion?.type() === "question";
+  if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
     return false;
   }
 
@@ -437,7 +437,7 @@ function areQueriesEquivalent({
       currentQuestion?.datasetQuery(),
       tableMetadata,
     ) ||
-    areModelsEquivalent({
+    areComposedEntitiesEquivalent({
       originalQuestion,
       lastRunQuestion,
       currentQuestion,
@@ -642,9 +642,9 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     originalQuestion,
     uiControls,
   ) => {
-    const isEditingModel = queryBuilderMode === "dataset";
+    const isEditingModelOrMetric = queryBuilderMode === "dataset";
 
-    if (isEditingModel) {
+    if (isEditingModelOrMetric) {
       return isDirty || isMetadataDirty;
     }
 
@@ -1003,22 +1003,6 @@ export const getIsEditingInDashboard = state => {
 
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
-};
-
-export const canUploadToQuestion = question => state => {
-  const uploadsEnabled = getSetting(state, "uploads-enabled");
-  if (!uploadsEnabled) {
-    return false;
-  }
-  const uploadsDbId = getSetting(state, "uploads-database-id");
-  const canUploadToDb =
-    uploadsDbId === question.databaseId() &&
-    Databases.selectors
-      .getObject(state, {
-        entityId: uploadsDbId,
-      })
-      ?.canUpload();
-  return canUploadToDb;
 };
 
 export const getTemplateTags = createSelector([getCard], card =>

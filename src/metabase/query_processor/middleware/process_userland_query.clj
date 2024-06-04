@@ -125,26 +125,32 @@
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys [executed-by query-hash context action-id card-id dashboard-id pulse-id]} :info
-    database-id                                                                      :database
-    query-type                                                                       :type
-    :as                                                                              query}]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+     :pivot/keys [original-query]} :info
+    database-id                    :database
+    query-type                     :type
+    :as                            query}]
   {:pre [(bytes? query-hash)]}
-  {:database_id       database-id
-   :executor_id       executed-by
-   :action_id         action-id
-   :card_id           card-id
-   :dashboard_id      dashboard-id
-   :pulse_id          pulse-id
-   :context           context
-   :hash              query-hash
-   :native            (= (keyword query-type) :native)
-   :json_query        (cond-> (dissoc query :info)
-                        (empty? (:parameters query)) (dissoc :parameters))
-   :started_at        (t/zoned-date-time)
-   :running_time      0
-   :result_rows       0
-   :start_time_millis (System/currentTimeMillis)})
+  (let [json-query (if original-query
+                     (-> original-query
+                         (dissoc :info)
+                         (assoc :was-pivot true))
+                     (cond-> (dissoc query :info)
+                       (empty? (:parameters query)) (dissoc :parameters)))]
+    {:database_id       database-id
+     :executor_id       executed-by
+     :action_id         action-id
+     :card_id           card-id
+     :dashboard_id      dashboard-id
+     :pulse_id          pulse-id
+     :context           context
+     :hash              query-hash
+     :native            (= (keyword query-type) :native)
+     :json_query        json-query
+     :started_at        (t/zoned-date-time)
+     :running_time      0
+     :result_rows       0
+     :start_time_millis (System/currentTimeMillis)}))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

@@ -1,9 +1,8 @@
 import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ModelResult } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockModelResult,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
+
+import { createMockModelResult } from "../test-utils";
 
 import { getCollectionPathString, sortModels } from "./utils";
 

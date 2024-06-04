@@ -49,7 +49,7 @@
   [field-metadata]
   (lib.ref/ref field-metadata))
 
-(defmethod ->op-arg :metadata/legacy-metric
+(defmethod ->op-arg :metadata/metric
   [metric-def]
   (lib.ref/ref metric-def))
 

@@ -15,6 +15,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  tableHeaderClick,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
@@ -132,15 +133,6 @@ describeWithSnowplow("extract action", () => {
           option: "Year",
           extraction: "Extract day, month…",
         });
-        const columnIndex = 7;
-        checkColumnIndex({
-          column: "Created At",
-          columnIndex,
-        });
-        checkColumnIndex({
-          column: "Year",
-          columnIndex: columnIndex + 1,
-        });
       });
 
       it("saved question without viz settings", () => {
@@ -149,15 +141,6 @@ describeWithSnowplow("extract action", () => {
           column: "Created At",
           option: "Year",
           extraction: "Extract day, month…",
-        });
-        const columnIndex = 7;
-        checkColumnIndex({
-          column: "Created At",
-          columnIndex,
-        });
-        checkColumnIndex({
-          column: "Year",
-          columnIndex: columnIndex + 1,
         });
       });
 
@@ -204,15 +187,6 @@ describeWithSnowplow("extract action", () => {
           column: "Created At",
           option: "Year",
           extraction: "Extract day, month…",
-        });
-        const columnIndex = 1;
-        checkColumnIndex({
-          column: "Created At",
-          columnIndex,
-        });
-        checkColumnIndex({
-          column: "Year",
-          columnIndex: columnIndex + 1,
         });
       });
     });
@@ -263,7 +237,7 @@ describeWithSnowplow("extract action", () => {
       });
       openNotebook();
       getNotebookStep("expression").findByText("Year").click();
-      enterCustomColumnDetails({ formula: "+ 2" });
+      enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
       popover().button("Update").click();
       visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
@@ -340,7 +314,8 @@ function extractColumnAndCheck({
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  cy.findByRole("columnheader", { name: column }).click();
+  tableHeaderClick(column);
+  // cy.findByRole("columnheader", { name: column }).click();
   popover().findByText(extraction).click();
   cy.wait(1);
 
@@ -351,14 +326,14 @@ function extractColumnAndCheck({
   popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
-  cy.findByRole("columnheader", { name: newColumn }).should("be.visible");
+  cy.findAllByRole("columnheader")
+    .last()
+    .should("have.text", newColumn)
+    .should("be.visible");
+
   if (value) {
     cy.findByRole("gridcell", { name: value }).should("be.visible");
   }
-}
-
-function checkColumnIndex({ column, columnIndex }) {
-  cy.findAllByRole("columnheader").eq(columnIndex).should("have.text", column);
 }
 
 describeWithSnowplow("extract action", () => {

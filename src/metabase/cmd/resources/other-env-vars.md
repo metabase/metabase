@@ -257,13 +257,6 @@ Default: `200000`
 
 Maximum idle time for a connection, in milliseconds.
 
-### `MB_JETTY_MAXQUEUED`
-
-Type: integer<br>
-Default: _"FIX ME"_
-
-Maximum number of requests to be queued when all threads are busy.
-
 ### `MB_JETTY_MAXTHREADS`
 
 Type: integer<br>

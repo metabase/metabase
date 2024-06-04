@@ -29,6 +29,7 @@
             TimelineEvent
             User]]
    [metabase.models.action :as action]
+   [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]
@@ -43,6 +44,8 @@
        (filter #(= model-name (:model %)))
        (map :id)
        set))
+
+(def ^:private trash-eid (delay (:entity_id (collection/trash-collection))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db
@@ -101,15 +104,15 @@
 
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
-          (is (= #{coll-eid child-eid}
+          (is (= #{coll-eid child-eid @trash-eid}
                  (by-model "Collection" (extract/extract nil)))))
 
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid}
+          (is (= #{coll-eid child-eid pc-eid @trash-eid}
                  (by-model "Collection" (extract/extract {:user-id mark-id})))))
 
         (testing "invalid user specified"
-          (is (= #{coll-eid child-eid}
+          (is (= #{coll-eid child-eid @trash-eid}
                  (by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 (deftest database-test
@@ -554,11 +557,12 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid mark-coll-eid}
+          ;; the trash is always included
+          (is (= #{coll-eid mark-coll-eid @trash-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid}
+          (is (= #{coll-eid dave-coll-eid @trash-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (by-model "Collection"))))))
@@ -1654,24 +1658,33 @@
                       (map serdes/path)
                       set)))))))))
 
-(deftest foreign-key-field-test
+(deftest field-references-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   {db-id         :id}        {:name "My Database"}
-                       Table      {no-schema-id  :id}        {:name "Schemaless Table" :db_id db-id}
-                       Field      {some-field-id :id}        {:name "Some Field" :table_id no-schema-id}
-                       Table      {schema-id     :id}        {:name        "Schema'd Table"
+    (ts/with-temp-dpc [Database   {db-id          :id}        {:name "My Database"}
+                       Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
+                       Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
+                       Table      {schema-id      :id}        {:name        "Schema'd Table"
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}
-                       Field      _                          {:name "Other Field" :table_id schema-id}
-                       Field      {fk-id         :id}        {:name     "Foreign Key"
+                       Field      {other-field-id :id}        {:name "Other Field" :table_id schema-id}
+                       Field      {fk-id          :id}        {:name     "Foreign Key"
                                                               :table_id schema-id
-                                                              :fk_target_field_id some-field-id}]
+                                                              :fk_target_field_id some-field-id}
+                       Field      {nested-id      :id}        {:name "Nested Field"
+                                                              :table_id schema-id
+                                                              :parent_id other-field-id}]
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
                (->> (t2/select-one Field :id fk-id)
                     (serdes/extract-one "Field" {})
-                    :fk_target_field_id)))))))
+                    :fk_target_field_id))))
+
+      (testing "Fields that reference parents are properly exported as Field references"
+        (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
+               (->> (t2/select-one Field :id nested-id)
+                    (serdes/extract-one "Field" {})
+                    :parent_id)))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db
@@ -1733,4 +1746,4 @@
         (is (some? (audit-db/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
-        (is (= #{} (by-model "Collection" ser)))))))
+        (is (= #{@trash-eid} (by-model "Collection" ser)))))))

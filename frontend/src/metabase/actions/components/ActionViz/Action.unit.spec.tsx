@@ -33,6 +33,7 @@ import {
   createMockStructuredDatasetQuery,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { ActionProps } from "./Action";
 import Action from "./Action";
@@ -155,6 +156,9 @@ async function setup({
       storeInitialState: {
         entities: createMockEntitiesState({
           databases: [database],
+        }),
+        dashboard: createMockDashboardState({
+          parameterValues,
         }),
       },
     },

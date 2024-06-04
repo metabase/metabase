@@ -21,4 +21,8 @@
       color: var(--color-white);
     }
   }
+
+  .label {
+    width: 100%;
+  }
 }

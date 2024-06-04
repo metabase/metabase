@@ -27,12 +27,9 @@ If a person has the wrong level of access to the data that's returned by a quest
 1. Ensure scripts are loading by disabling browser extensions and refreshing the browser.
 2. Go to **Admin** > **Permissions** and select the relevant group.
 3. Find the database that you want to grant SQL access to.
-4. Select **Unrestricted** from the **Data access** dropdown.
-5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
-
-**Explanation**
-
-To give a group access to the [native SQL editor][native-query-editing], you must grant that group **Unrestricted** access to the database.
+4. From the  **View data** dropdown.elect **Can view**.
+5. From the **Create queries** dropdown, select **Query builder and native**.
+6. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 For more information about the different types of database permissions, check out the [section on data access][data-access] in our permissions documentation.
 
@@ -48,7 +45,7 @@ For more information about the different types of database permissions, check ou
 
 If a person is a member of multiple [groups][groups], Metabase will grant the _most permissive_ level of access across all the groups in which they're a member.
 
-For example, if a person is a member of two groups — one which grants [Unrestricted][unrestricted] access to a database or table and another that grants [No self-service][no-self-service] access — that person will have full unrestricted access.
+For example, if a person is a member of two groups — one which grants [View data] access of "Can view" to a database or table and another that grants "Blocked" access to that database — that person will be able to view the data.
 
 Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All Users** group, and create new groups to selectively apply permissions to your data sources.
 
@@ -58,14 +55,14 @@ Remember that everyone is a member of the **All Users** group. We recommend you 
 
 1. Go to **Admin** > **Permissions** and select the user group.
 2. Select the database or table that you want to restrict.
-3. Choose **Block** from the dropdown and click **Save**.
+3. Set **View data** permissions to **Blocked** and click **Save**.
 4. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
 **Explanation**
 
-If you've granted a group **No self-service** access to a database or table, people can still view saved questions and dashboards that draw on that database, as long as those questions and dashboards are stored in a collection that they have access to.
+If you've granted a group View data access of "Can view" to a database or table, people can view saved questions and dashboards that draw on that database, as long as those questions and dashboards are stored in a collection that they have access to.
 
-The [**Block** data permission][block-data-permission] is available on [paid versions of Metabase][pricing]. If you block a group's access to a database, members of that group will not be able to see any data from this database, regardless of their collection permissions.
+The [**Blocked** data permission][block-data-permission] is available on [paid versions of Metabase][pricing]. If you block a group's access to a database, members of that group will not be able to see any data from this database, regardless of their collection permissions.
 
 ## Getting a "permission denied" error message
 
@@ -111,17 +108,17 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 [admin-permissions]: ../permissions/introduction.md
-[block-data-permission]: ../permissions/data.md#block-access
+[block-data-permission]: ../permissions/data.md#blocked-view-data-permission
 [cant-see-tables]: ./cant-see-tables.md
 [collection-permissions]: ../permissions/collections.md
-[data-access]: ../permissions/data.md#data-access
+[data-access]: ../permissions/data.md#data-permissions
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
 [groups]: ../people-and-groups/managing.md#groups
 [group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/permissions
-[native-query-editing]: ../permissions/data.md#native-query-editing
+[native-query-editing]: ../permissions/data.md#query-builder-and-native-create-queries-permission
 [no-self-service]: ../permissions/data.md#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
 [proxies]: ./proxies.md
@@ -130,5 +127,5 @@ If you can’t solve your problem using the troubleshooting guides:
 [table-schema-access]: ./data-permissions.md#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-sandboxing]: ./sandboxing.md
 [troubleshooting-permissions]: ./permissions.md
-[unrestricted]: ../permissions/data.md#unrestricted-access
+[unrestricted]: ../permissions/data.md#can-view-data-permission
 [view-edit]: ./cant-view-or-edit.md

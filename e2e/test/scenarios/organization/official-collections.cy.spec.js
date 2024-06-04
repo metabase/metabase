@@ -3,12 +3,12 @@ import {
   restore,
   describeEE,
   openNewCollectionItemFlowFor,
-  appBar,
   navigationSidebar,
   getCollectionActions,
   popover,
   openCollectionMenu,
   setTokenFeatures,
+  commandPaletteSearch,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -202,9 +202,9 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  appBar().findByPlaceholderText("Search…").as("searchBar").type(searchQuery);
+  commandPaletteSearch(searchQuery);
 
-  cy.findByTestId("search-results-list").within(() => {
+  cy.findByTestId("search-app").within(() => {
     assertSearchResultBadge(collection, {
       expectBadge,
       selector: "[data-testid='search-result-item-name']",

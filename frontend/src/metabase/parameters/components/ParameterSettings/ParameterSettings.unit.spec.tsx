@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
@@ -44,7 +44,9 @@ describe("ParameterSidebar", () => {
     await fillValue(labelInput, "");
     // expect there to be an error message with the text "Required"
     expect(screen.getByText(/required/i)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
@@ -53,7 +55,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with a non-blank value
     await fillValue(labelInput, "bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });
@@ -71,7 +75,9 @@ describe("ParameterSidebar", () => {
     await fillValue(labelInput, "tAb");
     // expect there to be an error message with the text "reserved"
     expect(screen.getByText(/reserved/i)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
@@ -80,7 +86,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with a non-blank value
     await fillValue(labelInput, "bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });
@@ -137,22 +145,54 @@ describe("ParameterSidebar", () => {
   });
 
   describe("string", () => {
-    beforeEach(() => {
-      setup({
-        parameter: createMockUiParameter({
-          type: "string/=",
-          sectionId: "string",
-        }),
+    describe("smoke test", () => {
+      beforeEach(() => {
+        setup({
+          parameter: createMockUiParameter({
+            type: "string/=",
+            sectionId: "string",
+          }),
+        });
+      });
+
+      it("should render type", () => {
+        expect(
+          screen.getByDisplayValue("Text or Category"),
+        ).toBeInTheDocument();
+      });
+
+      it("should render operator", () => {
+        expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
       });
     });
 
-    it("should render type", () => {
-      expect(screen.getByDisplayValue("Text or Category")).toBeInTheDocument();
-    });
+    it.each([
+      "string/=",
+      "string/!=",
+      "string/contains",
+      "string/does-not-contain",
+      "string/starts-with",
+      "string/ends-with",
+    ])(
+      "should be able to toggle multiple values settings for `%s` operator",
+      async type => {
+        const { onChangeIsMultiSelect } = setup({
+          parameter: createMockUiParameter({
+            type,
+            sectionId: "string",
+          }),
+        });
 
-    it("should render operator", () => {
-      expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
-    });
+        expect(screen.getByText("People can pick")).toBeInTheDocument();
+        expect(
+          screen.getByRole("radio", { name: "Multiple values" }),
+        ).toBeChecked();
+        await userEvent.click(
+          screen.getByRole("radio", { name: "A single value" }),
+        );
+        expect(onChangeIsMultiSelect).toHaveBeenCalledWith(false);
+      },
+    );
   });
 
   describe("date", () => {
@@ -197,6 +237,7 @@ describe("ParameterSidebar", () => {
 const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   const onChangeQueryType = jest.fn();
   const onChangeName = jest.fn();
+  const onChangeIsMultiSelect = jest.fn();
 
   renderWithProviders(
     <ParameterSettings
@@ -206,7 +247,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeName={onChangeName}
       onChangeType={jest.fn()}
       onChangeDefaultValue={jest.fn()}
-      onChangeIsMultiSelect={jest.fn()}
+      onChangeIsMultiSelect={onChangeIsMultiSelect}
       onChangeQueryType={onChangeQueryType}
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
@@ -215,5 +256,5 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
     />,
   );
 
-  return { onChangeQueryType, onChangeName };
+  return { onChangeQueryType, onChangeName, onChangeIsMultiSelect };
 };

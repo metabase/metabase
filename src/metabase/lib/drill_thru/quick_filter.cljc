@@ -65,8 +65,11 @@
       []
 
       (= value :null)
-      [{:name "=" :filter (operator :is-null  field-ref)}
-       {:name "≠" :filter (operator :not-null field-ref)}]
+      (for [[op label] (if (or (lib.types.isa/string? column) (lib.types.isa/string-like? column))
+                         [[:is-empty "="] [:not-empty "≠"]]
+                         [[:is-null "="] [:not-null "≠"]])]
+        {:name   label
+         :filter (operator op field-ref)})
 
       (or (lib.types.isa/numeric? column)
           (lib.types.isa/temporal? column))

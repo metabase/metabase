@@ -7,7 +7,8 @@ import type {
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
 import { useUserSetting } from "metabase/common/hooks";
-import { Button, Icon, Popover, Switch, Text } from "metabase/ui";
+import { color } from "metabase/lib/colors";
+import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 
 export const ModelFilterControls = ({
   actualModelFilters,
@@ -33,11 +34,16 @@ export const ModelFilterControls = ({
     [setActualModelFilters, setVerifiedFilterStatusDebounced],
   );
 
-  const checked = actualModelFilters.onlyShowVerifiedModels;
+  // There's only one filter for now
+  const filters = [actualModelFilters.onlyShowVerifiedModels];
+
+  const areAnyFiltersActive = filters.some(filter => filter);
+
   return (
     <Popover position="bottom-end">
       <Popover.Target>
-        <Button p="sm" lh={0} variant="subtle" color="text-dark">
+        <Button p="sm" lh={0} variant="subtle" color="text-dark" pos="relative">
+          {areAnyFiltersActive && <Dot />}
           <Icon name="filter" />
         </Button>
       </Popover.Target>
@@ -47,10 +53,10 @@ export const ModelFilterControls = ({
             <Text
               align="end"
               weight="bold"
-            >{t`Only show verified models`}</Text>
+            >{t`Show verified models only`}</Text>
           }
           role="switch"
-          checked={checked}
+          checked={actualModelFilters.onlyShowVerifiedModels}
           onChange={e => {
             handleModelFilterChange("onlyShowVerifiedModels", e.target.checked);
           }}
@@ -58,5 +64,19 @@ export const ModelFilterControls = ({
         />
       </Popover.Dropdown>
     </Popover>
+  );
+};
+
+const Dot = () => {
+  return (
+    <Paper
+      pos="absolute"
+      right="0px"
+      top="7px"
+      radius="50%"
+      bg={color("brand")}
+      w="sm"
+      h="sm"
+    />
   );
 };

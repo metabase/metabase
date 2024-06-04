@@ -106,8 +106,7 @@ function _CartesianChart(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
-        labels={legendItems.map(item => item.name)}
-        colors={legendItems.map(item => item.color)}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
@@ -117,8 +116,8 @@ function _CartesianChart(props: VisualizationProps) {
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
       >
+        {/**@ts-expect-error emotion does not properly provide prop types due */}
         <CartesianChartRenderer
-          // @ts-expect-error emotion does not properly provide prop types due
           // to it not working with the `WrappedComponent` class defined in
           // ExplicitSize
           option={option}
