@@ -124,7 +124,11 @@
        (spec/dbdef->spec driver :db dbdef)
        {:write? true}
        (fn [^java.sql.Connection conn]
-         (.setAutoCommit conn false)
+         ;; TODO: Is this ok?
+         (try
+           (.setAutoCommit conn false)
+           (catch java.sql.SQLException _e
+             (log/warn "Unable to set auto commit for a connection.")))
          (let [insert! (insert-middleware (make-insert! driver {:connection conn} dbdef tabledef))
                rows    (load-data-get-rows driver dbdef tabledef)]
            (log/tracef "Inserting rows like: %s" (first rows))
@@ -152,6 +156,12 @@
                     (make-load-data-fn load-data-add-ids)
                     (make-load-data-fn load-data-chunked))]
     (load-data! driver dbdef tabledef)))
+
+;; TODO: this is probably redundant now!
+(defn load-data-AND-add-ids!
+  "Implementation of `load-data!`. Insert all rows at once."
+  [driver dbdef tabledef]
+  ((make-load-data-fn load-data-add-ids) driver dbdef tabledef))
 
 (defn load-data-maybe-add-ids-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time;
