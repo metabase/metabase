@@ -59,14 +59,13 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
+  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
-   context                             [:maybe [:enum "search-bar" "search-app" "command-palette" "entity-picker"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -75,28 +74,27 @@
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let [
-        models-set           (if (seq models)
-                               (set models)
-                               search/all-models)
-        results              (search/search
-                              (search/search-context
-                               {:archived                            archived
-                                :created-at                          created_at
-                                :created-by                          (set created_by)
-                                :current-user-id                     api/*current-user-id*
-                                :current-user-perms                  @api/*current-user-permissions-set*
-                                :filter-items-in-personal-collection filter_items_in_personal_collection
-                                :last-edited-at                      last_edited_at
-                                :last-edited-by                      (set last_edited_by)
-                                :limit                               mw.offset-paging/*limit*
-                                :model-ancestors?                    model_ancestors
-                                :models                              models-set
-                                :offset                              mw.offset-paging/*offset*
-                                :search-native-query                 search_native_query
-                                :search-string                       q
-                                :table-db-id                         table_db_id
-                                :verified                            verified}))]
-    results))
+  (let  [models-set           (if (seq models)
+                                (set models)
+                                search/all-models)]
+    (search/search
+      (search/search-context
+        {:archived                            archived
+        :created-at                          created_at
+        :created-by                          (set created_by)
+        :current-user-id                     api/*current-user-id*
+        :current-user-perms                  @api/*current-user-permissions-set*
+        :filter-items-in-personal-collection filter_items_in_personal_collection
+        :last-edited-at                      last_edited_at
+        :last-edited-by                      (set last_edited_by)
+        :limit                               mw.offset-paging/*limit*
+        :model-ancestors?                    model_ancestors
+        :models                              models-set
+        :offset                              mw.offset-paging/*offset*
+        :search-native-query                 search_native_query
+        :search-string                       q
+        :table-db-id                         table_db_id
+        :verified                            verified}))))
+
 
 (api/define-routes)
