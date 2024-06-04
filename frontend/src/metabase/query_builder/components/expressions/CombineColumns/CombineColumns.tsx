@@ -1,5 +1,5 @@
 import type { FormEventHandler } from "react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
@@ -10,7 +10,6 @@ import { ColumnAndSeparatorRow } from "./ColumnAndSeparatorRow";
 import { Example } from "./Example";
 import type { ColumnAndSeparator } from "./util";
 import {
-  getExample,
   getDefaultSeparator,
   formatSeparator,
   getExpressionName,
@@ -158,11 +157,6 @@ export function CombineColumns({
     isNotNull(column),
   );
 
-  const example = useMemo(
-    () => getExample(state.columnsAndSeparators),
-    [state.columnsAndSeparators],
-  );
-
   return (
     <form onSubmit={handleSubmit}>
       <Box maw="100vw" w={width} p="lg" pt={0}>
@@ -218,7 +212,7 @@ export function CombineColumns({
             </Flex>
           </Stack>
 
-          <Example example={example} />
+          <Example columnsAndSeparators={columnsAndSeparators} />
 
           <Flex align="center" gap="md" justify="end">
             <Button type="submit" variant="filled" disabled={!isValid}>
