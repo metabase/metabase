@@ -93,7 +93,7 @@
      :attributes {:dashboard/id dashboard-id}}
     (t2/hydrate dashboard [:dashcards
                            [:card :can_write :can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                           :series
+                           [:series :can_write :can_run_adhoc_query]
                            :dashcard/action
                            :dashcard/linkcard-info]
                 :can_restore
