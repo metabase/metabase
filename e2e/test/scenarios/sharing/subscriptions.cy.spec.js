@@ -26,6 +26,7 @@ import {
   openEmbedModalFromMenu,
   getEmbedModalSharingPane,
   setFilter,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -561,7 +562,9 @@ describe("scenarios > dashboard > subscriptions", () => {
           .closest("li")
           .icon("close")
           .click();
-        popover().find("input").type("Sallie");
+        popover().within(() => {
+          multiAutocompleteInput().type("Sallie");
+        });
         popover().findByText("Sallie Flatley").click();
         popover().contains("Update filter").click();
         cy.button("Save").click();

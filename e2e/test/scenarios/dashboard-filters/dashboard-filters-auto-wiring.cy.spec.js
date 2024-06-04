@@ -22,6 +22,7 @@ import {
   dashboardParametersContainer,
   openQuestionActions,
   entityPickerModal,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -419,7 +420,7 @@ describe("dashboard filters auto-wiring", () => {
       dashboardParametersContainer().findByText("ID").click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("1{enter}");
+        multiAutocompleteInput().type("1,");
         cy.button("Add filter").click();
       });
 
@@ -469,7 +470,7 @@ describe("dashboard filters auto-wiring", () => {
       dashboardParametersContainer().findByText("ID").click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("1{enter}");
+        multiAutocompleteInput().type("1,");
         cy.button("Add filter").click();
       });
 

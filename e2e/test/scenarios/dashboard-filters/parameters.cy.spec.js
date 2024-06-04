@@ -18,6 +18,7 @@ import {
   updateDashboardCards,
   setFilter,
   spyRequestFinished,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -724,7 +725,7 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("Antwan Fisher");
+        multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -749,7 +750,7 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("Antwan Fisher");
+        multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 

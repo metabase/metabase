@@ -6,6 +6,7 @@ import {
   modal,
   filter,
   filterField,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -169,7 +170,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.contains(/Total\s+is less than/).click();
       popover().contains("Less than").click();
       popover().contains("Greater than").click();
-      popover().find("input").type("{SelectAll}10");
+      popover().within(() => {
+        multiAutocompleteInput().type("{backspace}10", { force: true });
+      });
       popover().contains("Update filter").click();
 
       // confirm that the preview updated
