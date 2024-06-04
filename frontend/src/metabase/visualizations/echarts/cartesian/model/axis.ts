@@ -60,6 +60,7 @@ import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getAxisTransforms } from "./transforms";
+import { getFormattingOptionsWithoutScaling } from "./util";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -408,14 +409,14 @@ const getYAxisFormatter = (
       return "";
     }
 
-    return renderingContext.formatValue(value, {
+    // since we already transformed the dataset values, we do not need to
+    // consider scaling anymore
+    const options = getFormattingOptionsWithoutScaling({
       column,
       ...(settings.column?.(column) ?? {}),
-      // since we already transformed the dataset values, we do not need to
-      // consider scaling anymore
-      scale: undefined,
       ...formattingOptions,
     });
+    return renderingContext.formatValue(value, options);
   };
 };
 

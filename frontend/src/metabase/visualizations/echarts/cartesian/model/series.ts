@@ -49,6 +49,8 @@ import { CHART_STYLE } from "../constants/style";
 import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
+import { getFormattingOptionsWithoutScaling } from "./util";
+
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
   hasMultipleCards: boolean,
@@ -637,15 +639,15 @@ const createSeriesLabelsFormatter = (
       return "";
     }
 
-    return renderingContext.formatValue(value, {
+    // since we already transformed the dataset values, we do not need to
+    // consider scaling anymore
+    const options = getFormattingOptionsWithoutScaling({
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: isCompact,
-      // since we already transformed the dataset values, we do not need to
-      // consider scaling anymore
-      scale: undefined,
       ...formattingOptions,
     });
+    return renderingContext.formatValue(value, options);
   });
 
 const getSeriesLabelsFormattingInfo = (

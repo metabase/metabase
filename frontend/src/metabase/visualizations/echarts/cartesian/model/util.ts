@@ -1,3 +1,5 @@
+import type { OptionsType } from "metabase/lib/formatting/types";
+
 import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,
   POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX,
@@ -10,4 +12,8 @@ export function getBarSeriesDataLabelKey(dataKey: DataKey, sign: "+" | "-") {
     return `${dataKey}_${POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX}`;
   }
   return `${dataKey}_${NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX}`;
+}
+
+export function getFormattingOptionsWithoutScaling(options: OptionsType) {
+  return { ...options, scale: undefined };
 }
