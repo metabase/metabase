@@ -163,10 +163,8 @@
                (comp
                 (filter (comp seq :dataset_query))
                 (map
-                 (fn [{card-id :id :keys [database_id dataset_query]}]
-                   [card-id (and (query-perms/can-run-query? dataset_query)
-                                 (let [query (lib/query (get db->mp database_id) dataset_query)]
-                                   (:is-editable (lib/display-info query query))))])))
+                 (fn [{card-id :id :keys [dataset_query]}]
+                   [card-id (query-perms/can-run-query? dataset_query)])))
                cards))))
    :id
    {:default false}))
