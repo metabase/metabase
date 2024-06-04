@@ -64,7 +64,7 @@ export function NumberInputWidget({
   }
 
   const filteredUnsavedArrayValue = useMemo(
-    () => unsavedArrayValue.filter(x => x !== undefined),
+    () => unsavedArrayValue.filter((x): x is number => x !== undefined),
     [unsavedArrayValue],
   );
 
