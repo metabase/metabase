@@ -7,10 +7,13 @@ import {
   hovercard,
   createNativeQuestion,
   tableHeaderClick,
+  openNotebook,
+  enterCustomColumnDetails,
+  visualize,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 29943", () => {
   function reorderTotalAndCustomColumns() {
@@ -288,4 +291,68 @@ describe("issue 23103", () => {
 
     hovercard().findByText("4 distinct values").should("exist");
   });
+});
+
+describe("issue 39150", () => {
+  const ccName = "CC Rating";
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "shows allows custom columns with the same name in nested models (metabase#39150)",
+    { viewportWidth: 1600 },
+    () => {
+      createQuestion({
+        name: "Source Model",
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            [ccName]: [
+              "ceil",
+              [
+                "field",
+                PRODUCTS.RATING,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+          },
+          limit: 2,
+        },
+      }).then(({ body: { id: sourceModelId } }) => {
+        createQuestion(
+          {
+            name: "Nested Model",
+            type: "model",
+            query: {
+              "source-table": `card__${sourceModelId}`,
+            },
+          },
+          { visitQuestion: true },
+        );
+      });
+
+      openNotebook();
+      cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+      enterCustomColumnDetails({
+        formula: "floor([Rating])",
+        name: ccName,
+        blur: true,
+      });
+
+      cy.button("Done").click();
+
+      visualize();
+
+      cy.findAllByTestId("header-cell")
+        .filter(`:contains('${ccName}')`)
+        .should("have.length", 2);
+    },
+  );
 });
