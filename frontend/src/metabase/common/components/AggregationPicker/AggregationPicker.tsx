@@ -254,8 +254,8 @@ export function AggregationPicker({
         aggregations={aggregations}
         query={query}
         stageIndex={stageIndex}
-        onSubmit={handleCompareSubmit}
         onClose={handleCompareClose}
+        onSubmit={handleCompareSubmit}
       />
     );
   }

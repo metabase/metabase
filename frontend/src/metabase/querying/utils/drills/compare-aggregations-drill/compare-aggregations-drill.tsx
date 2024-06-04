@@ -31,6 +31,7 @@ export const compareAggregationsDrill: Drill<
         aggregations={[aggregation]}
         query={query}
         stageIndex={stageIndex}
+        onClose={onClose}
         onSubmit={aggregations => {
           const nextQuery = aggregations.reduce(
             (query, aggregation) =>
@@ -45,7 +46,6 @@ export const compareAggregationsDrill: Drill<
           onChangeCardAndRun({ nextCard });
           onClose();
         }}
-        onClose={onClose}
       />
     );
   };
