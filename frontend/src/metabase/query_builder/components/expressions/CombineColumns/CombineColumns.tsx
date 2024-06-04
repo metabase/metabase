@@ -57,7 +57,7 @@ export function CombineColumns({
 
     const firstColumnAndSeparator = {
       column: column ?? (autoPickColumn ? expressionableColumns[0] : null),
-      separator: "",
+      separator: null,
     };
 
     const secondColumnAndSeparator = getNextColumnAndSeparator(
@@ -182,7 +182,7 @@ export function CombineColumns({
                         index={index}
                         columns={expressionableColumns}
                         column={item.column}
-                        separator={item.separator}
+                        separator={item.separator ?? ""}
                         showSeparator={!isUsingDefaultSeparator && index !== 0}
                         showRemove={columnsAndSeparators.length >= 3}
                         onChange={handleRowChange}

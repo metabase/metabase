@@ -4,7 +4,7 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 export type ColumnAndSeparator = {
-  separator: string;
+  separator: string | null;
   column: Lib.ColumnMetadata | null;
 };
 
@@ -98,7 +98,8 @@ export const flatten = (
     .flatMap(({ column, separator }) => [separator, column])
     .slice(1)
     .filter(
-      (element): element is string | Lib.ColumnMetadata => element !== "",
+      (element): element is string | Lib.ColumnMetadata =>
+        element !== null && element !== "",
     );
 };
 
