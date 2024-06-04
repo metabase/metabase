@@ -3,7 +3,8 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -190,11 +191,13 @@
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
-    (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
-      (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
-                                             :tables {(mt/id :orders) (mt/id :people)}})
-      (is (= "SELECT NAME FROM PEOPLE"
-             (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
+    ;; We need the user to be defined in order to population the new revision related to the card update
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+        (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
+                                               :tables {(mt/id :orders) (mt/id :people)}})
+        (is (= "SELECT NAME FROM PEOPLE"
+               (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
