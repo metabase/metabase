@@ -24,7 +24,7 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
 `;
 
 const selectedStyles = ({ theme }: { theme: Theme }) => css`
-  color: ${theme.fn.themeColor("brand")};
+  color: var(--mb-color-brand);
   background-color: ${theme.fn.themeColor("brand-lighter")};
   cursor: pointer;
   transition: all 0.2s ease-in-out;

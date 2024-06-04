@@ -18,7 +18,7 @@ export const ActionsList = styled.ul`
 export const ActionItem = styled.li<{ isSelected?: boolean }>`
   display: flex;
   font-weight: bold;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;
@@ -26,10 +26,10 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   cursor: pointer;
 
   ${({ isSelected }) =>
-    isSelected ? `background-color: ${alpha("brand", 0.2)};` : ""}
+    isSelected ? `background-color: ${() => alpha("brand", 0.2)};` : ""}
 
   &:hover {
-    background-color: ${alpha("brand", 0.35)};
+    background-color: ${() => alpha("brand", 0.35)};
   }
 `;
 

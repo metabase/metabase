@@ -19,7 +19,7 @@ export const QuestionPaneDetailLinkText = styled.span`
 export const QuestionPaneDetailLink = styled.a`
   display: flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const QuestionPaneDetailText = styled.span`

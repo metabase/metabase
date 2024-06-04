@@ -19,7 +19,7 @@ export const QuestionListContainer = styled.ul`
 
 export const LoadMoreButton = styled.button`
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   cursor: pointer;
   display: flex;
   font-family: var(--mb-default-font-family);

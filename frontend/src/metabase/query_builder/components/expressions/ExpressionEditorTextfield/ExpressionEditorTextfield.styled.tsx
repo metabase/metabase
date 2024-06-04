@@ -21,7 +21,7 @@ export const EditorContainer = styled.div<{
   ${({ isFocused }) =>
     isFocused &&
     css`
-      border-color: ${color("brand")};
+      border-color: var(--mb-color-brand);
     `}
 
   ${({ hasError }) =>
@@ -57,7 +57,7 @@ export const EditorContainer = styled.div<{
   }
 
   .ace-tm .ace_variable {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace-tm .ace_string {

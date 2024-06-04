@@ -16,7 +16,7 @@ export const SectionMessage = styled.p`
 `;
 
 export const SectionMessageLink = styled.span`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   cursor: pointer;
 `;
 
@@ -49,7 +49,7 @@ export const FieldListHeader = styled.div`
 `;
 
 export const FieldListTitle = styled.div`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: 50%;
   padding: 0.5rem 1rem 0;
 `;

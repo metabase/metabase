@@ -29,7 +29,7 @@ export const ToggleContent = styled.a<ToggleContentProps>`
   transition: all 0.2s linear;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

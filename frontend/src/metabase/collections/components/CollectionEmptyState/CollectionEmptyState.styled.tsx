@@ -19,10 +19,10 @@ export const EmptyStateTitle = styled.div`
 
 export const EmptyStateIconForeground = styled.path`
   fill: var(--mb-color-bg-light);
-  stroke: ${color("brand")};
+  stroke: var(--mb-color-brand);
 `;
 
 export const EmptyStateIconBackground = styled.path`
   fill: ${color("brand-light")};
-  stroke: ${color("brand")};
+  stroke: var(--mb-color-brand);
 `;

@@ -106,7 +106,7 @@ describe("Text", () => {
           screen.getByTestId("editing-dashboard-heading-preview"),
         ).toHaveTextContent("Heading");
         expect(screen.getByTestId("editing-dashboard-heading-container"))
-          .toHaveStyle(`border: 1px solid ${color("brand")};
+          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
                         color: ${color("text-light")};`);
       });
 

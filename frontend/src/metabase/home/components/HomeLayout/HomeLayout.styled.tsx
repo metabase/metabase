@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button/Button";
-import { color, hueRotate, lighten } from "metabase/lib/colors";
+import { hueRotate, lighten } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMinLarge,
@@ -65,7 +65,7 @@ export const LayoutEditButton = styled(Button)`
   right: 1rem;
 
   &:hover {
-    color: ${color("brand")};
-    background: ${lighten("brand", 0.6)};
+    color: var(--mb-color-brand);
+    background: ${() => lighten("brand", 0.6)};
   }
 `;

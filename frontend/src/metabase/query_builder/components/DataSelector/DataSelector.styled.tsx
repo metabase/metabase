@@ -37,7 +37,7 @@ const BackButtonLabel = styled.span`
   word-wrap: anywhere;
 
   :hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 interface DateInputContainerProps {
   isActive?: boolean;
 }
@@ -13,6 +11,6 @@ export const DateInputContainer = styled.div<DateInputContainerProps>`
   margin-bottom: 1rem;
 
   &:focus-within {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;

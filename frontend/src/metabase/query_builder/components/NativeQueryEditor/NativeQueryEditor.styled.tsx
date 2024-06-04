@@ -61,7 +61,7 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_templateTag {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .react-resizable {
@@ -114,7 +114,7 @@ export const aceEditorStyles = css`
   }
 
   .ace_completion-highlight {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace_editor.ace_autocomplete .ace_line {

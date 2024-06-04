@@ -36,12 +36,13 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   padding: 0.5rem;
   color: ${props => color(props.checked ? "white" : "text-dark")};
   border-radius: 0.25rem;
-  background-color: ${props => color(props.checked ? "brand" : "white")};
+  background-color: ${props =>
+    props.checked ? "var(--mb-color-brand)" : color("white")};
   font-weight: 700;
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus + & {

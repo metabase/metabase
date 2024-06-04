@@ -17,7 +17,7 @@ export const LegendLabel = styled.div`
   margin-top: 2px;
 
   &:hover {
-    color: ${({ onClick }) => (onClick ? color("brand") : "")};
+    color: ${({ onClick }) => (onClick ? "var(--mb-color-brand)" : "")};
   }
 `;
 

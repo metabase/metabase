@@ -40,8 +40,8 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   outline: ${props => (props.isActive ? `2px solid ${color("focus")}` : "")};
 
   &:hover {
-    border-color: ${color("brand")};
-    background-color: ${lighten("brand", 0.6)};
+    border-color: var(--mb-color-brand);
+    background-color: ${() => lighten("brand", 0.6)};
   }
 `;
 

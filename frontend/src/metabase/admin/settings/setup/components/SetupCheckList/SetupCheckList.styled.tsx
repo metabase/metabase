@@ -20,7 +20,7 @@ const linkStyles = css`
   text-decoration: none;
 
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;
 

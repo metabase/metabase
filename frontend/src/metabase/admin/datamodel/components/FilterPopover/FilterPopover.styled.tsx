@@ -9,14 +9,16 @@ type Props = {
 
 export const Button = styled(BaseButton)<Props>`
   color: white;
-  border-color: ${({ primaryColor = color("brand") }) => primaryColor};
-  background-color: ${({ primaryColor = color("brand") }) => primaryColor};
+  border-color: ${({ primaryColor = "var(--mb-color-brand)" }) => primaryColor};
+  background-color: ${({ primaryColor = "var(--mb-color-brand)" }) =>
+    primaryColor};
 
   &:hover,
   &:focus {
     color: white;
-    border-color: ${({ primaryColor = color("brand") }) => primaryColor};
-    background-color: ${({ primaryColor = color("brand") }) =>
+    border-color: ${({ primaryColor = "var(--mb-color-brand)" }) =>
+      primaryColor};
+    background-color: ${({ primaryColor = "var(--mb-color-brand)" }) =>
       alpha(primaryColor, 0.8)};
   }
 `;

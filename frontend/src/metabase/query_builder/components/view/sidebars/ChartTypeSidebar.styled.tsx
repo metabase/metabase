@@ -25,14 +25,14 @@ export const OptionRoot = styled.div<OptionRootProps>`
     `
     ${OptionIconContainer} {
       &, &:hover {
-      background-color: ${color("brand")};
+      background-color: var(--mb-color-brand);
       color: ${getOptionIconColor(props)};
       border: 1px solid transparent;
       }
     }
 
     ${OptionText} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   `}
 `;
@@ -73,8 +73,8 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   cursor: pointer;
   padding: 0.875rem;
   &:hover {
-    color: ${color("brand")};
-    background-color: ${alpha("brand", 0.15)};
+    color: var(--mb-color-brand);
+    background-color: ${() => alpha("brand", 0.15)};
     border: 1px solid transparent;
 
     ${SettingsButton} {
