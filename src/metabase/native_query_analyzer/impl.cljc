@@ -1,6 +1,6 @@
 (ns metabase.native-query-analyzer.impl)
 
-;; NOTE: In future we would want to replace [[considered-drivers]] and [[macaw-options]] with (a) driver method(s),
+;; NOTE: In the future we should replace [[considered-drivers]] and [[macaw-options]] with (a) driver method(s),
 ;; but given that the interface with Macaw is still in a state of flux, and how simple the current configuration is,
 ;; we defer extending the public interface and define the logic locally instead. Macaw itself is not battle tested
 ;; outside this same narrow range of databases in any case.
