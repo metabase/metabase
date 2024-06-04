@@ -143,8 +143,15 @@ export const updateQuestion = (
       run = false;
     }
 
-    const isPivot = newQuestion.display() === "pivot";
+    const vizSettings = newQuestion.settings();
+
     const wasPivot = currentQuestion?.display() === "pivot";
+    const isPivot = newQuestion.display() === "pivot";
+
+    const hasGraphSettings =
+      "graph.dimensions" in vizSettings || "graph.metrics" in vizSettings;
+    const wasWaterfall = currentQuestion?.display() === "waterfall";
+    const isWaterfall = newQuestion.display() === "waterfall";
 
     const isCurrentQuestionNative =
       currentQuestion && Lib.queryDisplayInfo(currentQuestion.query()).isNative;
@@ -179,6 +186,20 @@ export const updateQuestion = (
         currentQuestion,
         newQuestion,
       });
+    }
+
+    if (hasGraphSettings && !wasWaterfall && isWaterfall) {
+      const dimensions = vizSettings["graph.dimensions"] ?? [];
+      const metrics = vizSettings["graph.metrics"] ?? [];
+      const isMultiSeries = dimensions.length > 1 || metrics.length > 1;
+      if (isMultiSeries) {
+        const [firstDimension] = dimensions;
+        const [firstMetric] = metrics;
+        newQuestion = newQuestion.updateSettings({
+          "graph.dimensions": [firstDimension],
+          "graph.metrics": [firstMetric],
+        });
+      }
     }
 
     // Native query should never be in notebook mode (metabase#12651)
