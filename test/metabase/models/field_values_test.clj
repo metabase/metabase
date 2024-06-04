@@ -89,6 +89,12 @@
                                     {:base_type        :type/Time
                                      :has_field_values :list
                                      :visibility_type  :normal}
+                                    false}
+
+                                   "type/* fields should be excluded"
+                                   {{:has_field_values :list
+                                     :visibility_type  :normal
+                                     :base_type        :type/*}
                                     false}}
           [input expected] input->expected]
     (testing (str group "\n")
