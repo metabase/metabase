@@ -91,6 +91,10 @@ Visualizations created with SQL do not have [drill-through][drill-through] capab
 2. [Edit the column metadata](../../data-modeling/metadata-editing.md#column-field-settings) in the model's settings. Make sure to set the data types for all the columns.
 3. [Create a Query Builder question](../query-builder/introduction.md#creating-a-new-question-with-the-query-builder) based on the model. You should be able to use drill-through on this question, if you configured the metadata correctly.
 
+## Caching results
+
+See [Caching question policies](../../configuring-metabase/caching.md#question-caching-policy).
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)

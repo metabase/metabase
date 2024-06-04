@@ -52,7 +52,7 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
 
-  font-size: ${({ theme }) => theme.other.fontSize ?? "0.875em"};
+  font-size: ${({ theme }) => theme.other.fontSize};
 
   ${aceEditorStyles}
   ${saveDomImageStyles}
