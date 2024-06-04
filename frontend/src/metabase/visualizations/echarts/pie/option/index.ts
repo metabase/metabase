@@ -77,6 +77,7 @@ export function getPieChartOption(
   };
 
   return {
+    animation: false, // TODO when implementing the dynamic pie chart, use animations for opacity transitions, but disable initial animation
     textStyle: {
       fontFamily: renderingContext.fontFamily,
     },
