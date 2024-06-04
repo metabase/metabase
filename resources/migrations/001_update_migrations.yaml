@@ -5928,6 +5928,568 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.2024-06-05T09:01:01
+      author: johnswanson
+      comment: >-
+        Modify type of core_user.is_datasetnewb to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: is_datasetnewb
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: core_user
+            columnName: is_datasetnewb
+            newDataType: boolean
+            defaultValueBoolean: true
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:01:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to core_user.is_datasetnewb on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: core_user
+            columnName: is_datasetnewb
+            columnDataType: ${boolean.type}
+            defaultNullValue: true
+      rollback:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: is_datasetnewb
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:01:03
+      author: johnswanson
+      comment: >-
+        Add default value to core_user.is_datasetnewb on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: core_user
+            columnName: is_datasetnewb
+            defaultValueBoolean: true
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:02:01
+      author: johnswanson
+      comment: >-
+        Modify type of metabase_field.database_required to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_required
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_required
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:02:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to metabase_field.database_required on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_required
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: metabase_field
+            columnName: database_required
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:02:03
+      author: johnswanson
+      comment: >-
+        Add default value to metabase_field.database_required on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: database_required
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:03:01
+      author: johnswanson
+      comment: >-
+        Modify type of metabase_fieldvalues.has_more_values to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: has_more_values
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: has_more_values
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:03:03
+      author: johnswanson
+      comment: >-
+        Add default value to metabase_fieldvalues.has_more_values on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: metabase_fieldvalues
+            columnName: has_more_values
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:04:01
+      author: johnswanson
+      comment: >-
+        Modify type of permissions_group_membership.is_group_manager to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:04:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to permissions_group_membership.is_group_manager on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:04:03
+      author: johnswanson
+      comment: >-
+        Add default value to permissions_group_membership.is_group_manager on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: permissions_group_membership
+            columnName: is_group_manager
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:05:01
+      author: johnswanson
+      comment: >-
+        Modify type of persisted_info.active to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: persisted_info
+            columnName: active
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: persisted_info
+            columnName: active
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:05:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to persisted_info.active on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: persisted_info
+            columnName: active
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: active
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:05:03
+      author: johnswanson
+      comment: >-
+        Add default value to persisted_info.active on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: persisted_info
+            columnName: active
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:06:01
+      author: johnswanson
+      comment: >-
+        Modify type of report_card.dataset to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: dataset
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:06:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to report_card.dataset on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: report_card
+            columnName: dataset
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: report_card
+            columnName: dataset
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:06:03
+      author: johnswanson
+      comment: >-
+        Add default value to report_card.dataset on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: report_card
+            columnName: dataset
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:07:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline.archived to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline
+            columnName: archived
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline
+            columnName: archived
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:07:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline.archived on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline
+            columnName: archived
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline
+            columnName: archived
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:07:03
+      author: johnswanson
+      comment: >-
+        Add default value to timeline.archived on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: timeline
+            columnName: archived
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:08:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline.default to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline
+            columnName: default
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline
+            columnName: default
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:08:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline.default on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline
+            columnName: default
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline
+            columnName: default
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:08:03
+      author: johnswanson
+      comment: >-
+        Add default value to timeline.default on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: timeline
+            columnName: default
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:09:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline_event.archived to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: archived
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: archived
+            newDataType: boolean
+            defaultValueBoolean: false
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:09:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline_event.archived on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline_event
+            columnName: archived
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline_event
+            columnName: archived
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:09:03
+      author: johnswanson
+      comment: >-
+        Add default value to timeline_event.archived on mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: timeline_event
+            columnName: archived
+            defaultValueBoolean: false
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:10:01
+      author: johnswanson
+      comment: >-
+        Modify type of timeline_event.time_matters to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: time_matters
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: timeline_event
+            columnName: time_matters
+            newDataType: boolean
+            defaultValueBoolean: NULL
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.2024-06-05T09:10:02
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to timeline_event.time_matters on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - addNotNullConstraint:
+            tableName: timeline_event
+            columnName: time_matters
+            columnDataType: ${boolean.type}
+            defaultNullValue: false
+      rollback:
+        - dropNotNullConstraint:
+            tableName: timeline_event
+            columnName: time_matters
+            columnDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
