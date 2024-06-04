@@ -217,6 +217,8 @@ import line_style_solid_component from "./line_style-solid.svg?component";
 import line_style_solid_source from "./line_style-solid.svg?source";
 import lineandbar_component from "./lineandbar.svg?component";
 import lineandbar_source from "./lineandbar.svg?source";
+import lines_component from "./lines.svg?component";
+import lines_source from "./lines.svg?source";
 import link_component from "./link.svg?component";
 import link_source from "./link.svg?source";
 import list_component from "./list.svg?component";
@@ -802,6 +804,10 @@ export const Icons = {
   line: {
     component: line_component,
     source: line_source,
+  },
+  lines: {
+    component: lines_component,
+    source: lines_source,
   },
   lineandbar: {
     component: lineandbar_component,

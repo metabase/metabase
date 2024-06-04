@@ -29,7 +29,7 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 [app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
-[configuring-jetty]: https://www.eclipse.org/jetty/documentation/current/#configuring-connectors
+[configuring-jetty]: https://jetty.org/docs/jetty/12/operations-guide/protocols/index.html
 [discourse]: https://discourse.metabase.com/
 [ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html
 [elb-timeout]: https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/

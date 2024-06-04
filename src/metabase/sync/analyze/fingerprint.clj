@@ -160,6 +160,7 @@
     [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
+   [:not= :base_type (u/qualified-name :type/*)]
    [:not (mdb.query/isa :base_type :type/Structured)]])
 
 (def ^:dynamic *refingerprint?*
