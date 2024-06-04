@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -40,7 +40,7 @@ export function NumberInputWidget({
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] =
-    useState<number[]>(arrayValue);
+    useState<(number | undefined)[]>(arrayValue);
 
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
@@ -63,6 +63,11 @@ export function NumberInputWidget({
     return res !== null;
   }
 
+  const filteredUnsavedArrayValue = useMemo(
+    () => unsavedArrayValue.filter(x => x !== undefined),
+    [unsavedArrayValue],
+  );
+
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
@@ -70,7 +75,7 @@ export function NumberInputWidget({
         <TokenFieldWrapper>
           <MultiAutocomplete<number>
             onChange={setUnsavedArrayValue}
-            value={unsavedArrayValue}
+            value={filteredUnsavedArrayValue}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             parseValue={parseNumberValue}
@@ -89,9 +94,7 @@ export function NumberInputWidget({
               onChange={newValue => {
                 setUnsavedArrayValue(unsavedArrayValue => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  if (newValue) {
-                    newUnsavedValue[i] = newValue;
-                  }
+                  newUnsavedValue[i] = newValue;
                   return newUnsavedValue;
                 });
               }}
@@ -117,9 +120,9 @@ export function NumberInputWidget({
   );
 }
 
-function normalize(value: number[] | undefined): number[] {
+function normalize(value: number[] | undefined): (number | undefined)[] {
   if (Array.isArray(value)) {
-    return value.filter(x => x !== undefined);
+    return value;
   } else {
     return [];
   }
