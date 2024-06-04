@@ -11,15 +11,17 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.compatibility :as compatibility]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
+   [metabase.models :refer [Card CardBookmark Collection Database
+                            PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -192,18 +194,23 @@
         (cond->                                             ; card
           (card/model? card) (t2/hydrate :persisted)))))
 
+(defn get-card
+  "Get `Card` with ID."
+  [id]
+  (let [raw-card (t2/select-one Card :id id)]
+    (-> raw-card
+        api/read-check
+        hydrate-card-details
+        ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
+        (last-edit/with-last-edit-info :card)
+        collection.root/hydrate-root-collection)))
+
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
   {id ms/PositiveInt
    ignore_view [:maybe :boolean]}
-  (let [raw-card (t2/select-one Card :id id)
-        card (-> raw-card
-                 api/read-check
-                 hydrate-card-details
-                 ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
-                 (last-edit/with-last-edit-info :card)
-                 collection.root/hydrate-root-collection)]
+  (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
         (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
@@ -564,6 +571,11 @@
           (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
           (card/schedule-metadata-saving result-metadata-chan <>))))))
 
+(api/defendpoint GET "/:id/query_metadata"
+  "Get all of the required query metadata for a card."
+  [id]
+  {id ms/PositiveInt}
+  (api.query-metadata/card-metadata (get-card id)))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -767,13 +779,11 @@
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models database)
+      (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models-enabled database)
+      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))

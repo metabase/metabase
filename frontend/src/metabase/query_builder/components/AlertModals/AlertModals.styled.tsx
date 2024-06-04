@@ -14,7 +14,7 @@ export const AlertModalFooter = styled.div`
 export const DangerZone = styled.div`
   ${Button.Root} {
     opacity: 0.4;
-    background: ${color("bg-light")};
+    background: var(--mb-color-bg-light);
     border: 1px solid ${color("border")};
     color: ${color("text-dark")};
     transition: none;

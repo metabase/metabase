@@ -17,7 +17,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate: (query: string) => boolean;
+  shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }

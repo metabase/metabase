@@ -144,6 +144,73 @@
                    [{:model "dataset" :id (u/the-id dataset)}]
                    (reverse recent-views))))))))))
 
+;; Cal 2024-05-30: I'm commenting this out while Bryan and I work out the correct behaviour for recent views
+#_(deftest recent-CRU-views-test
+  (clear-recent-views-for-user :crowberto)
+  (mt/with-test-user :crowberto
+    (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
+      (mt/with-temp [:model/Database  {db-id :id} {}
+                     :model/Card      card1     {:name                   "rand-name"
+                                                 :creator_id             (mt/user->id :crowberto)
+                                                 :display                "table"
+                                                 :visualization_settings {}
+                                                 :database_id            db-id}
+                     :model/Card      archived  {:name                   "archived-card"
+                                                 :creator_id             (mt/user->id :crowberto)
+                                                 :display                "table"
+                                                 :archived               true
+                                                 :visualization_settings {}
+                                                 :database_id            db-id}
+                     :model/Dashboard dash {:name        "rand-name2"
+                                            :description "rand-name2"
+                                            :creator_id  (mt/user->id :crowberto)}
+                     :model/Table     table1 {:name "rand-name"}
+                     :model/Table     hidden-table {:name            "hidden table"
+                                                    :visibility_type "hidden"}
+                     :model/Card      dataset {:name                   "rand-name"
+                                               :type                   :model
+                                               :creator_id             (mt/user->id :crowberto)
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :database_id            db-id}
+                     :model/Card      metric  {:name                   "rand-metric-name"
+                                               :type                   :metric
+                                               :creator_id             (mt/user->id :crowberto)
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :database_id            db-id}]
+        (testing "recent_views endpoint shows the current user's recently viewed items."
+          (doseq [[card-event-kw bumps-rvs?] [[:event/card-create true]
+                                              [:event/card-update true]
+                                              [:event/card-read true]
+                                              [:event/card-delete false]]]
+            (clear-recent-views-for-user :crowberto)
+            (testing (str "> EVENT: " card-event-kw " " (if bumps-rvs? "does" "does not") " create recent views.")
+              (doseq [[topic event] [[card-event-kw         {:object dataset}]
+                                     [card-event-kw         {:object dataset}]
+                                     [card-event-kw         {:object card1}]
+                                     [card-event-kw         {:object card1}]
+                                     [card-event-kw         {:object card1}]
+                                     [:event/dashboard-read {:object dash}]
+                                     [card-event-kw         {:object card1}]
+                                     [:event/dashboard-read {:object dash}]
+                                     [:event/table-read     {:object table1}]
+                                     [card-event-kw         {:object archived}]
+                                     [:event/table-read     {:object hidden-table}]
+                                     [card-event-kw         {:object metric}]]]
+                (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+              (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))
+                    _ (def recent-views recent-views)
+                    expected     (if bumps-rvs?
+                                   [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
+                                    {:model "table" :id (u/the-id table1) :name "rand-name"}
+                                    {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
+                                    {:model "card" :id (u/the-id card1) :name "rand-name"}
+                                    {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
+                                   [{:model "table" :id (u/the-id table1) :name "rand-name"}
+                                    {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}])]
+                (is (= expected (map #(select-keys % [:model :id :name]) recent-views)))))))))))
+
 (defn- create-views!
   "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
   [views]

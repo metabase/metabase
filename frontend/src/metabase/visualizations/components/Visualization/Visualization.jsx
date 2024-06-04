@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -77,6 +78,7 @@ class Visualization extends PureComponent {
     hovered: null,
     clicked: null,
     error: null,
+    genericError: null,
     warnings: [],
     yAxisSplit: null,
     series: null,
@@ -152,6 +154,7 @@ class Visualization extends PureComponent {
     this.setState({
       hovered: null,
       error: null,
+      genericError: null,
       warnings: [],
       yAxisSplit: null,
       series: series,
@@ -323,6 +326,10 @@ class Visualization extends PureComponent {
     this.setState({ error });
   };
 
+  onErrorBoundaryError = genericError => {
+    this.setState({ genericError });
+  };
+
   hideActions = () => {
     if (this.state.clicked !== null) {
       this.setState({ clicked: null });
@@ -349,7 +356,7 @@ class Visualization extends PureComponent {
       onOpenChartSettings,
       onUpdateVisualizationSettings,
     } = this.props;
-    const { visualization } = this.state;
+    const { genericError, visualization } = this.state;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
@@ -409,7 +416,7 @@ class Visualization extends PureComponent {
       }
     }
 
-    if (!error) {
+    if (!error && !genericError) {
       noResults = _.every(
         series,
         s => s && s.data && datasetContainsNoResults(s.data),
@@ -467,7 +474,7 @@ class Visualization extends PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
-      <ErrorBoundary>
+      <ErrorBoundary onError={this.onErrorBoundaryError}>
         <VisualizationRoot
           className={className}
           style={style}
@@ -500,6 +507,8 @@ class Visualization extends PureComponent {
               isSmall={small}
               isDashboard={isDashboard}
             />
+          ) : genericError ? (
+            <SmallGenericError bordered={false} />
           ) : loading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (

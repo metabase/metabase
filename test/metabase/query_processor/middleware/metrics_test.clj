@@ -428,7 +428,7 @@
                       {:source-query {:source-query {:source-query before}}}))))))
       (testing "inside :source-query inside :joins"
         (is (=? (lib.tu.macros/mbql-query checkins
-                  {:joins [{:condition    [:= [:field (meta/id :checkins :id) {}] 2]
+                  {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
                             :source-query after}]})
                 (expand-macros
                   (lib.tu.macros/mbql-query checkins

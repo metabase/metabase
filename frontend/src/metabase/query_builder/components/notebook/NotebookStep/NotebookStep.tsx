@@ -9,7 +9,6 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import type { Query } from "metabase-lib";
-import * as Lib from "metabase-lib";
 
 import NotebookStepPreview from "../NotebookStepPreview";
 import type {
@@ -27,10 +26,10 @@ import {
   StepHeader,
   StepRoot,
 } from "./NotebookStep.styled";
-import { STEP_UI } from "./steps";
+import { getStepUIConfig } from "./steps";
 
 function hasLargeButton(action: NotebookStepAction) {
-  return !STEP_UI[action.type].compact;
+  return !getStepUIConfig(action.type)?.compact;
 }
 
 interface NotebookStepProps {
@@ -62,7 +61,7 @@ function NotebookStep({
 
     actions.push(
       ...step.actions.map(action => {
-        const stepUi = STEP_UI[action.type];
+        const stepUi = getStepUIConfig(action.type);
         const title = stepUi.title;
         return {
           priority: stepUi.priority,
@@ -104,10 +103,9 @@ function NotebookStep({
     title,
     color,
     component: NotebookStepComponent,
-  } = STEP_UI[step.type] || {};
+  } = getStepUIConfig(step.type) || {};
 
-  const canPreview =
-    step.previewQuery != null && Lib.canPreview(step.previewQuery);
+  const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 

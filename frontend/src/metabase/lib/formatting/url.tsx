@@ -1,7 +1,9 @@
 import cx from "classnames";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
@@ -37,8 +39,16 @@ export function formatUrl(value: string, options: OptionsType = {}) {
 
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
+    const className = cx(CS.link, CS.linkWrappable);
+    if (isSameOrSiteUrlOrigin(url)) {
+      return (
+        <Link className={className} to={url}>
+          {text}
+        </Link>
+      );
+    }
     return (
-      <ExternalLink className={cx(CS.link, CS.linkWrappable)} href={url}>
+      <ExternalLink className={className} href={url}>
         {text}
       </ExternalLink>
     );

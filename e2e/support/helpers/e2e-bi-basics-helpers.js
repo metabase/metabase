@@ -129,7 +129,7 @@ function getIcon(actionType) {
 export function assertQueryBuilderRowCount(count) {
   const message =
     count === 1 ? "Showing 1 row" : `Showing ${count.toLocaleString()} rows`;
-  cy.findByTestId("question-row-count").contains(message);
+  cy.findByTestId("question-row-count").should("contain.text", message);
 }
 
 /**

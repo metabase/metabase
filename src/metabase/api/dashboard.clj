@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -835,6 +836,13 @@
     :id          id
     :user-id     api/*current-user-id*
     :revision-id revision_id}))
+
+(api/defendpoint GET "/:id/query_metadata"
+  "Get all of the required query metadata for the cards on dashboard."
+  [id]
+  {id ms/PositiveInt}
+  (let [dashboard (get-dashboard id)]
+    (api.query-metadata/dashboard-metadata dashboard)))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

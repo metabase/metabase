@@ -259,11 +259,23 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
+    // the null data label which should exist at index -3
+    // should now display no label. so the label at index -3 should be the label
+    // before the null data point
     getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
       .invoke("text")
-      .should("eq", " ");
+      .should("eq", "0.1");
+
+    // but the x-axis label and area should still be shown for the null data point
+    echartsContainer().findByText("f");
+
+    getWaterfallDataLabels()
+      .as("labels")
+      .eq(-2)
+      .invoke("text")
+      .should("eq", "(2)");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });

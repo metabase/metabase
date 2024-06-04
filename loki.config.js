@@ -1,6 +1,6 @@
 module.exports = {
   diffingEngine: "looks-same",
-  storiesFilter: "static-viz",
+  storiesFilter: "static-viz|viz",
   configurations: {
     "chrome.laptop": {
       target: "chrome.docker",

@@ -32,6 +32,7 @@
    [toucan2.execute :as t2.execute])
   (:import
    (java.util Locale)
+   (javax.sql DataSource)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -1031,8 +1032,23 @@
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
 
+(defn- mariadb?
+  [ds]
+  (with-open [conn (.getConnection ^DataSource ds)]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
+(defn- db-type*
+  "Like [[metabase.connection/db-type]] but distinguishes between mysql and mariadb."
+  []
+  (let [db-type (mdb.connection/db-type)]
+    (if (= db-type :mysql)
+      (if (mariadb? (mdb.connection/data-source))
+        :mariadb
+        :mysql)
+      db-type)))
+
 (define-reversible-migration CardRevisionAddType
-  (case (mdb.connection/db-type)
+  (case (db-type*)
     :postgres
     ;; postgres doesn't allow `\u0000` in text when converting to jsonb, so we need to remove them before we can
     ;; parse the json. We use negative look behind to avoid matching `\\u0000` (metabase#40835)
@@ -1055,7 +1071,10 @@
                        ELSE 'question'
                    END)
                WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
-    :h2
+
+    ;; json_extract on mariadb throws an error if the json is more than 32 levels nested. See #41924
+    ;; So we do this in clojure land for mariadb
+    (:h2 :mariadb)
     (let [migrate! (fn [revision]
                      (let [object     (json/parse-string (:object revision) keyword)
                            new-object (assoc object :type (if (:dataset object)
@@ -1067,7 +1086,8 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-  (case (mdb.connection/db-type)
+
+  (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
                 SET object = jsonb_set(
@@ -1082,7 +1102,7 @@
 
     :mysql
     (do
-      (t2/query ["UPDATE revision
+     (t2/query ["UPDATE revision
                  SET object = JSON_SET(
                      object,
                      '$.dataset',
@@ -1091,11 +1111,11 @@
                          THEN true ELSE false
                      END)
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
-      (t2/query ["UPDATE revision
+     (t2/query ["UPDATE revision
                  SET object = JSON_REMOVE(object, '$.type')
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
 
-    :h2
+    (:h2 :mariadb)
     (let [rollback! (fn [revision]
                       (let [object     (json/parse-string (:object revision) keyword)
                             new-object (-> object
@@ -1202,7 +1222,7 @@
                (no-db?))
       (let [table-name->raw-rows  (load-edn "sample-content.edn")
             example-dashboard-id  1
-            example-collection-id 1
+            example-collection-id 2 ; trash collection is 1
             expected-sample-db-id 1
             replace-temporals     (fn [v]
                                     (if (isa? (type v) java.time.temporal.Temporal)
@@ -1249,7 +1269,8 @@
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`
   ;; -----------------------------------------------------------------------------
-  ;; Start a fresh metabase instance without the :ee alias so instance analytics stuff is not created.
+  ;; Check out a fresh metabase instance on the branch of the major version you're targeting,
+  ;; and without the :ee alias so instance analytics content is not created.
   ;; 1. create a collection with dashboards, or import one with (metabase.cmd/import "<path>")
   ;; 2. execute the following to spit out the collection to an EDN file:
   (let [pretty-spit (fn [file-name data]
@@ -1257,6 +1278,7 @@
                         (binding [*out* writer]
                           #_{:clj-kondo/ignore [:discouraged-var]}
                           (pprint/pprint data))))
+        columns-to-remove [:view_count]
         data (into {}
                    (for [table-name [:collection
                                      :metabase_database
@@ -1273,12 +1295,23 @@
                                        (= table-name :collection) (assoc :where [:and
                                                                                  [:= :namespace nil] ; excludes the analytics namespace
                                                                                  [:= :personal_owner_id nil]]))]]
-                     [table-name (sort-by :id (map #(into {} %) (t2/query query)))]))]
+                     [table-name (->> (t2/query query)
+                                      (map (fn [x] (into {} (apply dissoc x columns-to-remove))))
+                                      (keep (fn [x] (and (= table-name :collection)
+                                                         (= (:type x)
+                                                            ;; avoid requiring `metabase.models.collection` in this
+                                                            ;; namespace to deter others using it in migrations
+                                                            #_{:clj-kondo/ignore [:unresolved-namespace]}
+                                                            metabase.models.collection/trash-collection-type))))
+                                      (sort-by :id))]))]
     (pretty-spit "resources/sample-content.edn" data)))
   ;; (make sure there's no other content in the file)
   ;; 3. update the EDN file:
+  ;; - add any columns that need removing to `columns-to-remove` above (use your common sense and list anything that
+  ;;   shouldn't be carried into new instances
+  ;;   instances), and create the EDN file again
   ;; - replace the database details and dbms_version with placeholders e.g. "{}" to make sure they are replaced
-  ;; - find-replace :creator_id 1, 2, etc with :creator_id 13371338 (the internal user ID)
+  ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
 
 
@@ -1336,7 +1369,7 @@
 (defn- area-bar-stacked-viz-migration
   [{display :display viz :visualization_settings :as card}]
   (if (and (#{:area :bar "area" "bar"} display)
-             (:stackable.stack_type viz))
+           (:stackable.stack_type viz))
     (let [actual-display (or (:stackable.stack_display viz) display)
           new-viz        (m/update-existing viz :series_settings update-vals (fn [m] (dissoc m :display)))]
       (assoc card

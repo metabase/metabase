@@ -616,7 +616,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
         .then(embedTheme => {
-          expect(embedTheme).to.eq(undefined); // default value, unset
+          expect(embedTheme).to.eq("light"); // default value
         });
 
       // We're getting an input element which is 0x0 in size

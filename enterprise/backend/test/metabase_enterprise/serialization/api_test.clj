@@ -127,7 +127,8 @@
                   (is (= 4 (count @files*))))
 
                 (testing "Snowplow export event was sent"
-                  (is (=? {"event"           "serialization_export"
+                  (is (=? {"event"           "serialization"
+                           "direction"       "export"
                            "collection"      (str (:id coll))
                            "all_collections" false
                            "data_model"      false
@@ -154,7 +155,8 @@
                       (is (= (:name card)
                              (t2/select-one-fn :name :model/Card :id (:id card)))))
                     (testing "Snowplow import event was sent"
-                      (is (=? {"event"         "serialization_import"
+                      (is (=? {"event"         "serialization"
+                               "direction"     "import"
                                "duration_ms"   pos?
                                "source"        "api"
                                "models"        "Card,Collection,Dashboard"
@@ -170,7 +172,8 @@
                           ;; consume response to remove on-disk data
                           io/input-stream))
                   (testing "Snowplow event about error was sent"
-                    (is (=? {"event"           "serialization_export"
+                    (is (=? {"event"           "serialization"
+                             "direction"       "export"
                              "duration_ms"     pos?
                              "source"          "api"
                              "count"           0

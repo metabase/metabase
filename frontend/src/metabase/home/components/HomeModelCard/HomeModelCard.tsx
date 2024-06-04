@@ -12,7 +12,6 @@ interface HomeModelCardProps {
 
 export interface HomeModelIconProps {
   name: IconName;
-  variant?: "secondary";
 }
 
 export const HomeModelCard = ({

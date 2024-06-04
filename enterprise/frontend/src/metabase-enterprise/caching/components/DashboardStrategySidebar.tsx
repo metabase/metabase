@@ -96,6 +96,7 @@ const DashboardStrategySidebar_Base = ({
           targetId={dashboardId}
           targetModel="dashboard"
           targetName={dashboard.name}
+          isInSidebar
           setIsDirty={setIsStrategyFormDirty}
           saveStrategy={saveAndCloseSidebar}
           savedStrategy={savedStrategy}
@@ -116,7 +117,7 @@ export const DashboardStrategySidebar = withRouter(
 const BackButton = ({ onClick }: { onClick: () => void }) => (
   <Button
     lh={0}
-    style={{ marginInlineStart: ".5rem" }}
+    style={{ marginInlineStart: "1rem" }}
     variant="subtle"
     onClick={onClick}
   >

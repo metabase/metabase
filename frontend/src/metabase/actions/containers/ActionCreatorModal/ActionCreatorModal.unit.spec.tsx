@@ -12,6 +12,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  act,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type { Card, WritebackAction } from "metabase-types/api";
@@ -58,9 +59,7 @@ async function setup({
         component={routeProps => (
           <ActionCreatorModal
             {...routeProps}
-            onClose={() => {
-              history?.push(`/model/${MODEL.id}/detail/actions`);
-            }}
+            onClose={() => history?.push(`/model/${MODEL.id}/detail/actions`)}
           />
         )}
       />
@@ -123,13 +122,17 @@ describe("actions > containers > ActionCreatorModal", () => {
       const actionRoute = `/model/${MODEL.id}/detail/actions/action`;
       const { history } = await setup({ initialRoute, action: null });
 
-      history.push(actionRoute);
+      act(() => {
+        history.push(actionRoute);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
       });
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -141,7 +144,9 @@ describe("actions > containers > ActionCreatorModal", () => {
       const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
       const { history } = await setup({ initialRoute, action: null });
 
-      history.push(actionRoute);
+      act(() => {
+        history.push(actionRoute);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
@@ -150,7 +155,9 @@ describe("actions > containers > ActionCreatorModal", () => {
       await userEvent.type(screen.getByDisplayValue("New Action"), "a change");
       await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
@@ -160,11 +167,11 @@ describe("actions > containers > ActionCreatorModal", () => {
       const actionRoute = `/model/${MODEL.id}/detail/actions/new`;
       const { history } = await setup({ initialRoute, action: null });
 
-      history.push(actionRoute);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("action-creator")).toBeInTheDocument();
+      act(() => {
+        history.push(actionRoute);
       });
+
+      expect(await screen.findByTestId("action-creator")).toBeInTheDocument();
 
       const query = "select 1;";
 
@@ -215,7 +222,9 @@ describe("actions > containers > ActionCreatorModal", () => {
       const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
       const { history } = await setup({ initialRoute, action });
 
-      history.push(actionRoute);
+      act(() => {
+        history.push(actionRoute);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
@@ -227,7 +236,9 @@ describe("actions > containers > ActionCreatorModal", () => {
       await userEvent.type(input, "{backspace}{backspace}");
       await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -240,7 +251,9 @@ describe("actions > containers > ActionCreatorModal", () => {
       const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
       const { history } = await setup({ initialRoute, action });
 
-      history.push(actionRoute);
+      act(() => {
+        history.push(actionRoute);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
@@ -249,9 +262,13 @@ describe("actions > containers > ActionCreatorModal", () => {
       await userEvent.type(screen.getByDisplayValue(action.name), "a change");
       await userEvent.tab(); // need to click away from the input to re-compute the isDirty flag
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("leave-confirmation"),
+      ).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when saving changes", async () => {
@@ -261,7 +278,9 @@ describe("actions > containers > ActionCreatorModal", () => {
       const actionRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
       const { history } = await setup({ initialRoute, action });
 
-      history.push(actionRoute);
+      act(() => {
+        history.push(actionRoute);
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("action-creator")).toBeInTheDocument();
