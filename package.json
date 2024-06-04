@@ -67,6 +67,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
+    "lodash.clonedeep": "^4.5.0",
     "lodash.debounce": "^4.0.8",
     "lodash.orderby": "^4.6.0",
     "moment-timezone": "^0.5.38",
