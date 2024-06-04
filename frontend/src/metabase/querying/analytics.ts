@@ -38,7 +38,7 @@ export const trackColumnCompareViaColumnHeader = (
   expressions: Lib.ExpressionClause[],
   questionId?: number,
 ) => {
-  trackSchemaEvent("question", "1-0-4", {
+  trackSchemaEvent("question", "1-0-6", {
     event: "column_compare_via_column_header",
     custom_expressions_used: expressions.flatMap(expression =>
       Lib.functionsUsedByExpression(query, stageIndex, expression),
