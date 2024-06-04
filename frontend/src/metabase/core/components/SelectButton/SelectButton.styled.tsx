@@ -46,7 +46,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     color: ${color("text-medium")};
     pointer-events: none;
   }

@@ -1,7 +1,8 @@
 (ns metabase.search.impl-test
-  "There are a lot more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of those tests
+  "There are a lot more tests around search in [[metabase.api.search-test]]. TODO: we should move more of those tests
   into this namespace."
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -247,3 +248,19 @@
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
           (test-search "today" new-result))))))
+
+(deftest ^:parallel serialize-test
+  (testing "It normalizes dataset queries from strings"
+    (let [query  {:type     :query
+                  :query    {:source-query {:source-table 1}}
+                  :database 1}
+          result {:name          "card"
+                  :model         "card"
+                  :dataset_query (json/generate-string query)
+                  :all-scores {}
+                  :relevant-scores {}}]
+      (is (= query (-> result search.impl/serialize :dataset_query)))))
+  (testing "Doesn't error on other models without a query"
+    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
+                  search.impl/serialize
+                  :dataset_query)))))

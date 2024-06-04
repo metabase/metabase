@@ -25,6 +25,8 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};
       --mb-color-brand-lighter: ${lighten("brand", 0.598)};
       --mb-color-focus: ${color("focus")};
+      --mb-color-bg-dark: ${color("bg-dark")};
+      --mb-color-bg-light: ${color("bg-light")};
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}

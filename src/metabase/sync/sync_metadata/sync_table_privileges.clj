@@ -14,7 +14,7 @@
    This is a cache of the data returned from `driver/table-privileges`, but it's stored in the database for performance."
   [database :- (ms/InstanceOf :model/Database)]
   (let [driver (driver.u/database->driver database)]
-    (when (driver/database-supports? driver :table-privileges database)
+    (when (driver.u/supports? driver :table-privileges database)
       (let [rows               (driver/current-user-table-privileges driver database)
             schema+table->id   (t2/select-fn->pk (fn [t] {:schema (:schema t), :table (:name t)}) :model/Table :db_id (:id database))
             rows-with-table-id (keep (fn [row]

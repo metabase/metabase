@@ -458,6 +458,12 @@ CompactXAxisDoesNotWork38917.args = {
   renderingContext,
 };
 
+export const DataLabelsUnderTrendGoalLines41280 = Template.bind({});
+DataLabelsUnderTrendGoalLines41280.args = {
+  rawSeries: data.dataLabelsUnderTrendGoalLines41280 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
 export const TicksNativeWeekWithGapShortRange = Template.bind({});
 TicksNativeWeekWithGapShortRange.args = {
   rawSeries: data.ticksNativeWeekWithGapShortRange as any,
@@ -682,6 +688,13 @@ BarCorrectWidthWhenTwoYAxes.args = {
   renderingContext,
 };
 
+export const BarDataLabelsNegatives = Template.bind({});
+BarDataLabelsNegatives.args = {
+  rawSeries: data.barDataLabelsNegatives as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarStackedNormalizedSeriesLabels = Template.bind({});
 BarStackedNormalizedSeriesLabels.args = {
   rawSeries: data.barStackedNormalizedSeriesLabels as any,
@@ -713,6 +726,29 @@ BarStackedSeriesLabelsRotated.args = {
 export const BarStackedSeriesLabelsAutoCompactness = Template.bind({});
 BarStackedSeriesLabelsAutoCompactness.args = {
   rawSeries: data.barStackedSeriesLabelsAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsAndTotalsOrdinal = Template.bind({});
+BarStackedSeriesLabelsAndTotalsOrdinal.args = {
+  rawSeries: data.barStackedSeriesLabelsAndTotalsOrdinal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsNormalizedAutoCompactness = Template.bind(
+  {},
+);
+BarStackedSeriesLabelsNormalizedAutoCompactness.args = {
+  rawSeries: data.barStackedSeriesLabelsNormalizedAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedLabelsNullVsZero = Template.bind({});
+BarStackedLabelsNullVsZero.args = {
+  rawSeries: data.barStackedLabelsNullVsZero as any,
   dashcardSettings: {},
   renderingContext,
 };

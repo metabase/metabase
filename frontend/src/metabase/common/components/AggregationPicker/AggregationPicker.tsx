@@ -37,15 +37,18 @@ interface AggregationPickerProps {
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
+  type: "operator";
   operator: Lib.AggregationOperator;
 };
 
 type MetricListItem = Lib.MetricDisplayInfo & {
+  type: "metric";
   metric: Lib.MetricMetadata;
   selected: boolean;
 };
 
 type CompareListItem = {
+  type: "compare";
   displayName: string;
   selected?: boolean;
 };
@@ -59,14 +62,6 @@ type Section = {
   icon?: string;
   type?: string;
 };
-
-function isOperatorListItem(item: ListItem): item is OperatorListItem {
-  return "operator" in item;
-}
-
-function isMetricListItem(item: ListItem): item is MetricListItem {
-  return "metric" in item;
-}
 
 export function AggregationPicker({
   className,
@@ -216,11 +211,11 @@ export function AggregationPicker({
 
   const handleChange = useCallback(
     (item: ListItem) => {
-      if (isOperatorListItem(item)) {
+      if (item.type === "operator") {
         handleOperatorSelect(item);
-      } else if (isMetricListItem(item)) {
+      } else if (item.type === "metric") {
         handleMetricSelect(item);
-      } else {
+      } else if (item.type === "compare") {
         handleCompareSelect();
       }
     },
@@ -391,6 +386,7 @@ function getOperatorListItem(
   const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
   return {
     ...operatorInfo,
+    type: "operator",
     operator,
   };
 }
@@ -404,6 +400,7 @@ function getMetricListItem(
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
+    type: "metric",
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
@@ -423,6 +420,7 @@ function getCompareListItem(
 
   if (aggregations.length > 1) {
     return {
+      type: "compare",
       displayName: t`Compare to previous ${period} ...`,
     };
   }
@@ -431,6 +429,7 @@ function getCompareListItem(
   const info = Lib.displayInfo(query, stageIndex, aggregation);
 
   return {
+    type: "compare",
     displayName: t`Compare “${info.displayName}” to previous ${period} ...`,
   };
 }

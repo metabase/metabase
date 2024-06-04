@@ -125,6 +125,6 @@ export const MenuItem = styled.li`
   &:focus,
   :hover {
     color: ${color("brand")};
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;

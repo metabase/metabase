@@ -543,10 +543,10 @@ const countFittingLabels = (
 
       const seriesFitCounts = chartModel.transformedDataset.reduce(
         (fitCounts, datum, index) => {
-          const originalDatumIndex = datum[ORIGINAL_INDEX_DATA_KEY ?? index];
+          const datumIndex = datum[ORIGINAL_INDEX_DATA_KEY] ?? index;
           const value =
-            originalDatumIndex != null
-              ? chartModel.dataset[originalDatumIndex][seriesKey]
+            datumIndex != null
+              ? chartModel.dataset[datumIndex][seriesKey]
               : null;
 
           // Nulls and zeros should not be considered because they can't have labels
