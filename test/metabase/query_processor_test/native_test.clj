@@ -38,15 +38,6 @@
            (mt/native-query
             {:query "select name from users;"}))))))
 
-(comment
-  (qp/process-query {:native {:query "select id, id from orders"}
-                     :database (mt/id)
-                     :type :native})
-  ;; START HERE: Duplicate `:name` in the `:result_metadata` is not how it really gets returned.
-  ;; But trying to run this test even with the de-duplicated name throws a different error.
-  ;; This might just be an MLv2 bug, if MLv2 is failing to de-dupe the aliases in `returned-columns` for native queries.
-  )
-
 (deftest ^:parallel native-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     (mt/with-test-drivers (sql.qp-test-util/sql-drivers)
@@ -65,7 +56,7 @@
                                                                     :effective_type :type/BigInteger,
                                                                     :field_ref [:field "ID_2" {:base-type :type/BigInteger}],
                                                                     :fingerprint nil,
-                                                                    :name "ID_2",
+                                                                    :name "ID",
                                                                     :semantic_type :type/PK}]}]
         (is (=? {:columns ["ID" "ID_2"]}
                 (mt/rows+column-names

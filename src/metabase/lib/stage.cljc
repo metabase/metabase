@@ -53,8 +53,9 @@
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
   native stage or a source-Card or a metric stage. If it's any other sort of stage then ignore the metadata, it's
   probably wrong; we can recalculate the correct metadata anyway."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   unique-name-fn :- ::lib.metadata.calculation/unique-name-fn]
   (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
@@ -67,7 +68,7 @@
                (for [col (:columns metadata)]
                  (merge
                   {:lib/source-column-alias  (:name col)
-                   :lib/desired-column-alias (:name col)}
+                   :lib/desired-column-alias (unique-name-fn (:name col))}
                   col
                   {:lib/source source-type})))))))))
 
@@ -288,7 +289,7 @@
 (defmethod lib.metadata.calculation/returned-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn], :as options}]
   (or
-   (existing-stage-metadata query stage-number)
+   (existing-stage-metadata query stage-number unique-name-fn)
    (let [query        (ensure-previous-stages-have-metadata query stage-number)
          summary-cols (summary-columns query stage-number unique-name-fn)
          field-cols   (fields-columns query stage-number unique-name-fn)]
