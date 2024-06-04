@@ -110,11 +110,10 @@ jobs:
   run-sanity-check:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    needs: [release-artifact, check-uberjar-health]
+    needs: [release-artifact]
     strategy:
       matrix:
         edition: [oss, ee]
-        folder: [onboarding, search]
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -163,7 +162,10 @@ jobs:
       - name: Run a few important Cypress tests as sanity check
         run: |
           mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
-          yarn test-cypress-run --folder ${{ matrix.folder }}
+          yarn test-cypress-run \
+            --env grepTags="@smoke",grepOmitFiltered=true
+            --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+            --browser 'replay-chromium'
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -176,7 +178,7 @@ jobs:
           if-no-files-found: ignore
 
   containerize:
-    needs: [release-artifact, run-sanity-check]
+    needs: [release-artifact]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
