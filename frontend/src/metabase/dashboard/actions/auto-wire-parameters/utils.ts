@@ -7,7 +7,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { isNotNull } from "metabase/lib/types";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -19,7 +18,6 @@ import type {
   ParameterId,
   ParameterTarget,
   Parameter,
-  DashboardCard,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 
@@ -124,39 +122,6 @@ export function getAutoWiredMappingsForDashcards(
     }
   }
   return targetDashcardMappings;
-}
-
-export function getAutoWiredMappingsForParameter(
-  parameter: Parameter,
-  dashcards: DashboardCard[],
-  questions: Record<CardId, Question>,
-) {
-  return dashcards
-    .filter(isQuestionDashCard)
-    .map(dashcard => {
-      const options = getParameterMappingOptions(
-        questions[dashcard.card.id],
-        parameter,
-        dashcard.card,
-        dashcard,
-      );
-
-      if (options.length > 0) {
-        const [option] = options;
-        return {
-          id: dashcard.id,
-          attributes: {
-            parameter_mappings: getParameterMappings(
-              dashcard,
-              parameter.id,
-              dashcard.card.id,
-              option.target,
-            ),
-          },
-        };
-      }
-    })
-    .filter(isNotNull);
 }
 
 export function getParameterMappings(
