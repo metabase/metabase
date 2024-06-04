@@ -17,6 +17,7 @@ export * from "./limit";
 export * from "./metadata";
 export * from "./metrics";
 export * from "./native";
+export * from "./offset";
 export * from "./order_by";
 export * from "./query";
 export * from "./segments";

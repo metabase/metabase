@@ -1,0 +1,12 @@
+.input {
+  max-width: 50px;
+}
+
+.wrapper {
+  margin-top: 0.25rem;
+}
+
+.help {
+  position: absolute;
+  left: 50px;
+}

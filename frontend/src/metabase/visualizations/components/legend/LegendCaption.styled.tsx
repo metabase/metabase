@@ -3,17 +3,22 @@ import styled from "@emotion/styled";
 import { color, lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import { LegendLabel as BaseLegendLabel } from "./LegendLabel";
-
 export const LegendCaptionRoot = styled.div`
   display: flex;
   align-items: center;
   min-width: 0;
 `;
 
-export const LegendLabel = styled(BaseLegendLabel)`
+export const LegendLabel = styled.div`
+  color: ${color("text-dark")};
+  font-weight: bold;
+  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
   margin-top: 2px;
+
+  &:hover {
+    color: ${({ onClick }) => (onClick ? color("brand") : "")};
+  }
 `;
 
 export const LegendLabelIcon = styled(Icon)`

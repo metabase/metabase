@@ -1,5 +1,9 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
- * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
+ * NOTE: KEEP SYNCRONIZED WITH:
+ * frontend/src/metabase/ui/utils/colors.ts
+ * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
+ * enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+ * .storybook/preview-head.html
  */
 :root {
   --color-white: #fff;
@@ -11,9 +15,9 @@
   --mb-color-text-light: #949aab;
   --color-text-white: #fff;
   --mb-color-bg-black: #2e353b;
-  --color-bg-dark: #93a1ab;
+  --mb-color-bg-dark: #93a1ab;
   --color-bg-medium: #edf2f5;
-  --color-bg-light: #f9fbfc;
+  --mb-color-bg-light: #f9fbfc;
   --mb-color-bg-white: #fff;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
@@ -70,7 +74,7 @@
 
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
 }
 
 .bgMedium {
@@ -88,7 +92,7 @@
 }
 
 .bgLightBlue {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
 }
 
 .DashboardNight .bgLight {
@@ -100,5 +104,5 @@
 }
 
 .DashboardNight .textDark {
-  color: var(--color-bg-light);
+  color: var(--mb-color-bg-light);
 }

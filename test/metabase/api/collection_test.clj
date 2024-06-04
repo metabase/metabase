@@ -785,8 +785,8 @@
 
 (deftest collections-are-moved-to-trash-when-archived
   (let [set-of-item-names (fn [user coll] (->> (get-items user coll)
-                                          (map :name)
-                                          set))]
+                                           (map :name)
+                                           set))]
     (testing "I can trash something by marking it as archived"
       (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}
                                Collection _ {:name "Baby Collection"
