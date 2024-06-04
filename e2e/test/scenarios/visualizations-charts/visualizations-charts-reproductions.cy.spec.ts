@@ -8,15 +8,14 @@ import {
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const questionDetails: StructuredQuestionDetails = {
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-    breakout: [["field", PRODUCTS.CATEGORY, null]],
-  },
-};
-
 describe("issue 43075", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", PRODUCTS.CATEGORY, null]],
+    },
+  };
   beforeEach(() => {
     cy.viewport(1000, 300);
 
