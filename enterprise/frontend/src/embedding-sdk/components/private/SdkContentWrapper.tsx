@@ -53,6 +53,7 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
   --mb-color-danger: ${({ theme }) => theme.fn.themeColor("danger")};
   --mb-color-error: ${({ theme }) => theme.fn.themeColor("error")};
+  --mb-color-filter: ${({ theme }) => theme.fn.themeColor("filter")};
 
   font-size: ${({ theme }) => theme.other.fontSize ?? "0.875em"};
 

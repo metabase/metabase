@@ -35,6 +35,6 @@ export const BackButton = styled.button`
   text-align: left;
 
   &:hover {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;
