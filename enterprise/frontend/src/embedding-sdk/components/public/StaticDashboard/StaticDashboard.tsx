@@ -9,34 +9,33 @@ import {
   useEmbedTheme,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
+type StaticDashboardProps = {
+  dashboardId: DashboardId;
+  withTitle: boolean;
+  withDownloads: boolean;
+  hideParameters: string[];
+  initialParameterValues: Query;
+};
+
 const _StaticDashboard = ({
   dashboardId,
-  parameterQueryParams = {},
-  bordered,
-  titled,
-  theme: userTheme,
-  font,
-  hideDownloadButton,
+  initialParameterValues: parameterQueryParams = {},
+  withTitle: titled,
+  withDownloads: hideDownloadButton,
   hideParameters,
-}: {
-  dashboardId: DashboardId;
-  parameterQueryParams?: Query;
-  hideParameters?: string[];
-} & Partial<Omit<EmbedDisplayParams, "hideParameters">>) => {
+}: StaticDashboardProps) => {
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
     ...pick(
       {
-        bordered,
         titled,
-        theme: userTheme,
-        font,
         hideDownloadButton,
         hideParameters: hideParameters ? hideParameters.join(",") : null,
       },
@@ -55,27 +54,29 @@ const _StaticDashboard = ({
     });
 
   const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =
-    useEmbedTheme(options.theme);
+    useEmbedTheme();
+
+  const { font } = useEmbedFont();
 
   return (
     <Box ref={ref} style={{ overflow: "auto" }}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
-        bordered={options.bordered}
-        font={options.font}
         hasNightModeToggle={hasNightModeToggle}
         hideDownloadButton={options.hideDownloadButton}
         hideParameters={options.hideParameters}
         isNightMode={isNightMode}
         onNightModeChange={onNightModeChange}
-        theme={theme}
         titled={options.titled}
+        theme={theme}
         isFullscreen={isFullscreen}
         onFullscreenChange={onFullscreenChange}
         refreshPeriod={refreshPeriod}
         onRefreshPeriodChange={onRefreshPeriodChange}
         setRefreshElapsedHook={setRefreshElapsedHook}
+        font={font}
+        bordered={options.bordered}
       />
     </Box>
   );
