@@ -18,9 +18,6 @@ import type { Dispatch } from "metabase-types/store";
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 const AUTO_WIRE_UNDO_TOAST_ID = _.uniqueId();
 
-// TODO:
-// 1. generate correct toast messages for same tab
-// 2. generate correct toast messages for multiple tabs
 export const showAutoWireParametersToast =
   ({
     dashcardAttributes,
