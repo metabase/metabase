@@ -152,20 +152,13 @@
   (mi/instances-with-hydrated-data
    cards :can_run_adhoc_query
    (fn []
-     (mu/disable-enforcement
-       (let [db->mp (into {}
-                          (comp
-                           (keep :database_id)
-                           (map (juxt identity
-                                      lib.metadata.jvm/application-database-metadata-provider)))
-                          cards)]
-         (into {}
-               (comp
-                (filter (comp seq :dataset_query))
-                (map
-                 (fn [{card-id :id :keys [dataset_query]}]
-                   [card-id (query-perms/can-run-query? dataset_query)])))
-               cards))))
+     (into {}
+           (comp
+            (filter (comp seq :dataset_query))
+            (map
+             (fn [{card-id :id :keys [dataset_query]}]
+               [card-id (query-perms/can-run-query? dataset_query)])))
+           cards))
    :id
    {:default false}))
 
