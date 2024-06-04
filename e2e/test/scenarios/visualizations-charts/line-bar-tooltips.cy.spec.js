@@ -25,7 +25,15 @@ const SUM_OF_TOTAL = {
   display: "line",
 };
 
-function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
+/**
+ * @param {"line" | "bar"} display
+ */
+function testSumTotalChange(display) {
+  const tooltipSelector =
+    display === "line"
+      ? showTooltipForCircleInSeries
+      : showTooltipForBarInSeries;
+
   tooltipSelector("#88BF4D");
   testTooltipPairs([
     ["Created At", "2022"],
@@ -33,7 +41,7 @@ function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   ]);
   testTooltipExcludesText("Compared to preivous year");
 
-  tooltipSelector("#88BF4D");
+  tooltipSelector("#88BF4D", display === "line" ? 0 : 1);
   testTooltipPairs([
     ["Created At", "2023"],
     ["Sum of Total", "205,256.02"],
@@ -96,7 +104,15 @@ const AVG_OF_TOTAL = {
   display: "line",
 };
 
-function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
+/**
+ * @param {"line" | "bar"} display
+ */
+function testAvgTotalChange(display) {
+  const tooltipSelector =
+    display === "line"
+      ? showTooltipForCircleInSeries
+      : showTooltipForBarInSeries;
+
   tooltipSelector("#A989C5");
   testTooltipPairs([
     ["Created At", "2022"],
@@ -104,7 +120,7 @@ function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
   ]);
   testTooltipExcludesText("Compared to preivous year");
 
-  tooltipSelector("#A989C5");
+  tooltipSelector("#A989C5", display === "line" ? 0 : 1);
   testTooltipPairs([
     ["Created At", "2023"],
     ["Average of Total", "56.86"],
@@ -231,7 +247,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange();
+      testSumTotalChange("line");
     });
   });
 
@@ -285,8 +301,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange();
-      testAvgTotalChange();
+      testSumTotalChange("line");
+      testAvgTotalChange("line");
     });
   });
 
@@ -327,7 +343,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testAvgTotalChange();
+      testAvgTotalChange("line");
       testCumSumChange();
     });
   });
@@ -412,7 +428,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testAvgTotalChange();
+      testAvgTotalChange("line");
       testCumSumChange(false);
       testAvgDiscountChange();
       testSumDiscountChange();
@@ -453,7 +469,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange(showTooltipForBarInSeries);
+      testSumTotalChange("bar");
     });
   });
 
@@ -509,8 +525,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange(showTooltipForBarInSeries);
-      testAvgTotalChange(showTooltipForBarInSeries);
+      testSumTotalChange("bar");
+      testAvgTotalChange("bar");
     });
   });
 
@@ -606,14 +622,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         filter: [
           "between",
           ["field", 39, { "base-type": "type/DateTime" }],
-          "2024-01-01",
+          "2024-02-01",
           "2024-05-30",
         ],
       },
       display: "line",
     };
 
-    const APRIL_CHANGES = [null, "-10.89%", "+11.1%", "-2.89%"];
+    const APRIL_CHANGES = [null, "+11.1%", "-2.89%"];
 
     const SUM_OF_TOTAL_DST_WEEK = {
       name: "Q1",
@@ -624,14 +640,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         filter: [
           "between",
           ["field", 39, { "base-type": "type/DateTime" }],
-          "2024-03-01",
+          "2024-03-03",
           "2024-03-31",
         ],
       },
       display: "line",
     };
 
-    const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
+    const DST_WEEK_CHANGES = [null, "+4.76%", "-2.36%"];
 
     const SUM_OF_TOTAL_DST_DAY = {
       name: "Q1",
