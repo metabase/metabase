@@ -19,8 +19,10 @@
   --color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
   --mb-color-bg-white: #fff;
+  --mb-color-bg-error: #ed6e6e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
+  --mb-color-danger: #ed6e6e;
 }
 
 .textDefault {
