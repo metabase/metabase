@@ -163,7 +163,7 @@ jobs:
         run: |
           mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
           yarn test-cypress-run \
-            --env grepTags="@smoke",grepOmitFiltered=true
+            --env grepTags="@smoke",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser 'replay-chromium'
 
