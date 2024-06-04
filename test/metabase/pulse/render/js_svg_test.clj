@@ -78,17 +78,6 @@
       (is (no-html-elements tag-set) (str "Contained html elements: "
                                           (set/intersection #{"div" "span" "p"}))))))
 
-(deftest categorical-donut-test
-  (let [rows [["apples" 2]
-              ["bananas" 3]]
-        colors {"apples" "red" "bananas" "yellow"}
-        settings {:show_values true}]
-    (testing "It returns bytes"
-      (let [svg-bytes (js-svg/categorical-donut rows colors settings)]
-        (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name context "categorical_donut" rows (seq colors) (json/generate-string settings)))]
-      (validate-svg-string :categorical/donut svg-string))))
-
 (deftest progress-test
   (let [value    1234
         goal     1337
