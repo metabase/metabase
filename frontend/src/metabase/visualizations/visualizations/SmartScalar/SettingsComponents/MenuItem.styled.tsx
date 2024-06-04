@@ -8,10 +8,10 @@ import { Menu } from "metabase/ui";
 type MenuItemStyledProps = MenuItemProps & HTMLAttributes<HTMLButtonElement>;
 
 export const MenuItemStyled = styled(Menu.Item)<MenuItemStyledProps>`
-  ${({ theme, "aria-selected": isSelected }) =>
+  ${({ "aria-selected": isSelected }) =>
     isSelected &&
     css`
       color: var(--mb-color-brand);
-      background-color: ${theme.fn.themeColor("brand-lighter")};
+      background-color: var(--mb-color-brand-lighter);
     `}
 `;

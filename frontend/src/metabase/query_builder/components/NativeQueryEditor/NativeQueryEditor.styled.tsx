@@ -108,7 +108,7 @@ export const aceEditorStyles = css`
 
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
     border: none;
     outline: none;
   }

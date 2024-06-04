@@ -20,7 +20,7 @@ export const InfoIcon = styled(Icon)`
 export const InfoIconContainer = styled.div`
   padding: 1.25rem;
   border-radius: 50%;
-  background-color: ${color("brand-light")};
+  background-color: var(--mb-color-brand-light);
   margin-bottom: 1.5rem;
 `;
 

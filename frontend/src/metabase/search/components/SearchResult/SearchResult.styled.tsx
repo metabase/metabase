@@ -63,14 +63,14 @@ export const SearchResultContainer = styled(Box, {
     css`
       border-radius: ${theme.radius.md};
       color: ${isSelected && "var(--mb-color-brand)"};
-      background-color: ${isSelected && theme.fn.themeColor("brand-lighter")};
+      background-color: ${isSelected && "var(--mb-color-brand-lighter)"};
 
       ${ResultTitle} {
         color: ${isSelected && "var(--mb-color-brand)"};
       }
 
       &:hover {
-        background-color: ${theme.fn.themeColor("brand-lighter")};
+        background-color: var(--mb-color-brand-lighter);
         cursor: pointer;
 
         ${ResultTitle} {
@@ -79,7 +79,7 @@ export const SearchResultContainer = styled(Box, {
       }
 
       &:focus-within {
-        background-color: ${theme.fn.themeColor("brand-lighter")};
+        background-color: var(--mb-color-brand-lighter);
       }
     `}
 `;

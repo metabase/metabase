@@ -37,6 +37,8 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-bg-light: ${({ theme }) => theme.fn.themeColor("bg-light")};
   --mb-color-bg-dark: ${({ theme }) => theme.fn.themeColor("bg-dark")};
   --mb-color-brand: ${({ theme }) => theme.fn.themeColor("brand")};
+  --mb-color-brand-light: ${({ theme }) =>
+    lighten(theme.fn.themeColor("brand"), 0.532)};
   --mb-color-brand-lighter: ${({ theme }) =>
     lighten(theme.fn.themeColor("brand"), 0.598)};
   --mb-color-brand-alpha-04: ${({ theme }) =>

@@ -150,7 +150,7 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   margin: ${space(1)};
   padding: 2px 6px;
   svg {
-    color: ${color("brand-light")};
+    color: var(--mb-color-brand-light);
   }
   transition: background-color 0.3s linear;
 
@@ -163,7 +163,7 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
     color: ${color("white")};
 
     svg {
-      color: ${color("brand-light")} !important;
+      color: var(--mb-color-brand-light) !important;
     }
   }
 `;

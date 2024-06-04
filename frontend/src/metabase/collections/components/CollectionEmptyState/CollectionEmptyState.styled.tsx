@@ -23,6 +23,6 @@ export const EmptyStateIconForeground = styled.path`
 `;
 
 export const EmptyStateIconBackground = styled.path`
-  fill: ${color("brand-light")};
+  fill: var(--mb-color-brand-light);
   stroke: var(--mb-color-brand);
 `;

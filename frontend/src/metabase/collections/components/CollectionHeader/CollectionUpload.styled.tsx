@@ -28,7 +28,7 @@ export const NewBadge = styled.div`
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--mb-color-brand);
-  background-color: ${color("brand-lighter")};
+  background-color: var(--mb-color-brand-lighter);
   margin: 0 auto;
   border-radius: 6px;
 `;
