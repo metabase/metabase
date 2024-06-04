@@ -237,8 +237,6 @@ const getNumberOrZero = (value: RowValue): number =>
 export const computeTotal = (datum: Datum, keys: DataKey[]): number =>
   keys.reduce((total, key) => total + getNumberOrZero(datum[key]), 0);
 
-export const getNonNormalizedKey = (key: DataKey) => `${key}:non-normalized`;
-
 export const getNormalizedDatasetTransform = (
   stackModels: StackModel[],
 ): TransformFn => {
@@ -252,9 +250,6 @@ export const getNormalizedDatasetTransform = (
 
       // Compute normalized values for metrics
       return stackModel.seriesKeys.reduce((acc, key) => {
-        const nonNormalizedKey = getNonNormalizedKey(key);
-        acc[nonNormalizedKey] = acc[key];
-
         const numericValue = getNumberOrZero(datum[key]);
         acc[key] = numericValue / total;
         return acc;
@@ -633,11 +628,12 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
-const getColumnValueScalingTransform = (
+export function scaleDataset(
+  dataset: ChartDataset,
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
-): TransformFn => {
-  return datum => {
+): ChartDataset {
+  const transformFn = (datum: Datum) => {
     const transformedRecord = { ...datum };
     for (const seriesModel of seriesModels) {
       const { scale: seriesScale } =
@@ -654,7 +650,11 @@ const getColumnValueScalingTransform = (
     }
     return transformedRecord;
   };
-};
+
+  return dataset.map(datum => {
+    return transformFn(datum);
+  });
+}
 
 const getYAxisScaleTransforms = (
   seriesModels: SeriesModel[],
@@ -733,7 +733,6 @@ export const applyVisualizationSettingsDataTransformations = (
   }
 
   return transformDataset(dataset, [
-    getColumnValueScalingTransform(seriesModels, settings),
     getNullReplacerTransform(settings, seriesModels),
     {
       condition: settings["stackable.stack_type"] === "normalized",

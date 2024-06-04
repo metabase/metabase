@@ -8,6 +8,7 @@ import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -42,7 +43,6 @@ import type {
   ChartMeasurements,
   TicksRotation,
 } from "../chart-measurements/types";
-import { getNonNormalizedKey } from "../model/dataset";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -340,8 +340,8 @@ export const computeBarWidth = (
 
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
-  settings: ComputedVisualizationSettings,
   formatter: LabelFormatter | undefined,
+  originalDataset: ChartDataset,
   renderingContext: RenderingContext,
 ): SeriesLabelOption | undefined => {
   if (!formatter) {
@@ -361,12 +361,11 @@ export const buildEChartsStackLabelOptions = (
       renderingContext.getColor,
     ),
     formatter: (params: CallbackDataParams) => {
-      const datum = params.data as Datum;
-      const key =
-        settings["stackable.stack_type"] === "normalized"
-          ? getNonNormalizedKey(seriesModel.dataKey)
-          : seriesModel.dataKey;
-      const value = datum[key];
+      const transformedDatum = params.data as Datum;
+      const originalIndex =
+        transformedDatum[ORIGINAL_INDEX_DATA_KEY] ?? params.dataIndex;
+      const datum = originalDataset[originalIndex];
+      const value = datum[seriesModel.dataKey];
 
       if (typeof value !== "number") {
         return "";
@@ -432,6 +431,7 @@ function getDataLabelSeriesOption(
 
 const buildEChartsBarSeries = (
   dataset: ChartDataset,
+  originalDataset: ChartDataset,
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   chartMeasurements: ChartMeasurements,
@@ -482,8 +482,8 @@ const buildEChartsBarSeries = (
     label: isStacked
       ? buildEChartsStackLabelOptions(
           seriesModel,
-          settings,
           labelFormatter,
+          originalDataset,
           renderingContext,
         )
       : buildEChartsLabelOptions(
@@ -892,6 +892,7 @@ export const buildEChartsSeries = (
         case "bar":
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
+            chartModel.dataset,
             chartModel.xAxisModel,
             chartModel.yAxisScaleTransforms,
             chartMeasurements,
