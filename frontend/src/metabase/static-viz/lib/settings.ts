@@ -10,6 +10,17 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+export const fillWithDefaultValue = (
+  settings: Record<string, unknown>,
+  key: string,
+  defaultValue: unknown,
+  isValid = true,
+) => {
+  if (typeof settings[key] === "undefined" || !isValid) {
+    settings[key] = defaultValue;
+  }
+};
+
 const getColumnSettings = (
   column: DatasetColumn,
   settings: VisualizationSettings,
