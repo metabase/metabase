@@ -1,3 +1,4 @@
+import { fillWithDefaultValue } from "metabase/static-viz/lib/settings";
 import {
   getDefaultDecreaseColor,
   getDefaultIncreaseColor,
@@ -10,10 +11,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 
-import {
-  computeStaticComboChartSettings,
-  fillWithDefaultValue,
-} from "../ComboChart/settings";
+import { computeStaticComboChartSettings } from "../ComboChart/settings";
 
 export function computeStaticWaterfallChartSettings(
   rawSeries: RawSeries,
