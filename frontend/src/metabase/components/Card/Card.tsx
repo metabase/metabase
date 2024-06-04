@@ -19,11 +19,11 @@ const Card = styled.div<CardProps>`
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   line-height: 24px;
-  ${props =>
-    props.hoverable &&
+  ${({ hoverable, theme }) =>
+    hoverable &&
     css`
       &:hover {
-        box-shadow: 0 10px 22px ${() => alpha(color("shadow"), 0.09)};
+        box-shadow: 0 10px 22px ${alpha(theme.fn.themeColor("shadow"), 0.09)};
       }
     `};
   ${props =>
