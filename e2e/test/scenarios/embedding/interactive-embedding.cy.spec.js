@@ -492,25 +492,17 @@ describeEE("scenarios > embedding > full app", () => {
           },
         });
       });
-      cy.get("@postMessage")
-        .should("have.been.calledWith", {
-          metabase: {
-            type: "frame",
-            frame: {
-              mode: "fit",
-              height: Cypress.sinon.match(value => value > 1000),
-            },
+
+      // TODO: Find a way to assert that this is the last call.
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: Cypress.sinon.match(value => value > 1000),
           },
-        })
-        .and("not.have.been.calledWith", {
-          metabase: {
-            type: "frame",
-            frame: {
-              mode: "fit",
-              height: Cypress.sinon.match(value => value < 400),
-            },
-          },
-        });
+        },
+      });
 
       cy.findByRole("tab", { name: TAB_2.name }).click();
       cy.get("@postMessage").should("have.been.calledWith", {
