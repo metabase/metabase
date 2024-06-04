@@ -40,7 +40,7 @@ export const SearchInputContainer = styled.div<{
       background-color: ${color("white")};
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: var(--mb-color-bg-light);
       }
     `;
   }}

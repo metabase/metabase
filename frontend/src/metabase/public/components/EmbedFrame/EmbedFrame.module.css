@@ -14,14 +14,14 @@ body {
 
 .ThemeNight.EmbedFrame {
   background-color: var(--mb-color-bg-black);
-  border-color: var(--color-bg-dark);
+  border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
   color: color-mod(var(--color-text-white) alpha(-14%));
   background-color: var(--mb-color-bg-black);
-  border-color: var(--color-bg-dark);
+  border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .fullscreenNightText {
@@ -36,7 +36,7 @@ body {
 
 .ThemeNight.EmbedFrame .DashCard .Card {
   background-color: var(--mb-color-bg-black);
-  border: 1px solid var(--color-bg-dark);
+  border: 1px solid var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),

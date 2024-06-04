@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 
+import { delay } from "__support__/utils";
 import { AdHocQuestionLoader } from "metabase/containers/AdHocQuestionLoader";
-import { delay } from "metabase/lib/promise";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 

@@ -7,22 +7,16 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
-   [metabase.api.field :as api.field]
-   [metabase.api.table :as api.table]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
@@ -425,8 +419,8 @@
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (events/publish-event! :event/dashboard-read {:object dashboard :user-id api/*current-user-id*})
-    (last-edit/with-last-edit-info dashboard :dashboard)))
+    (u/prog1 (last-edit/with-last-edit-info dashboard :dashboard)
+      (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*}))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
@@ -843,75 +837,12 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id}))
 
-(defn- dashboard-metadata
-  [dashboard]
-  (let [dashcards (:dashcards dashboard)
-        links (group-by :type (set (for [dashcard dashcards
-                                         :let [top-click-behavior (get-in dashcard [:visualization_settings :click_behavior])
-                                               col-click-behaviors (keep (comp :click_behavior val)
-                                                                         (get-in dashcard [:visualization_settings :column_settings]))]
-                                         {:keys [linkType type targetId]} (conj col-click-behaviors top-click-behavior)
-                                         :when (and (= type "link")
-                                                    (contains? #{"question" "dashboard"} linkType))]
-                                     {:type (case linkType
-                                              "question" :card
-                                              "dashboard" :dashboard)
-                                      :id targetId})))
-
-        fetch-or-warn (fn [{entity-type :type entity-id :id} f & f-args]
-                        (try
-                          (apply f entity-id f-args)
-                          (catch Exception e
-                            (log/warnf "Error in dashboard metadata %s %s: %s" entity-type entity-id (ex-message e)))))
-        link-cards (->> (:card links)
-                        (sort-by :id)
-                        (into []
-                              (keep #(fetch-or-warn % api.card/get-card))))
-        cards (->> (concat
-                     (for [{:keys [card series]} dashcards
-                           :let [all (conj series card)]
-                           card all]
-                       card)
-                     link-cards)
-                   (filter :dataset_query))
-        database-ids (set (map :database_id cards))
-        db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
-                             database-ids))
-        dependents (group-by :type (set (mapcat (fn [card]
-                                                  (let [database-id (:database_id card)
-                                                        mp (db->mp database-id)
-                                                        query (lib/query mp (:dataset_query card))]
-                                                    (lib/dependent-metadata query (:id card) (:type card)))) cards)))]
-    {:tables (->> (:table dependents)
-                  ;; Can be int or "card__<id>"
-                  (sort-by (comp str :id))
-                  (into []
-                        (keep #(fetch-or-warn
-                                 %
-                                 (fn [card-or-table-id]
-                                   (if-let [card-id (lib.util/legacy-string-table-id->card-id card-or-table-id)]
-                                     (api.table/fetch-card-query-metadata card-id)
-                                     (api.table/fetch-table-query-metadata card-or-table-id {})))))))
-     :databases (->> (:database dependents)
-                     (sort-by :id)
-                     (into []
-                           (keep #(fetch-or-warn % api.database/get-database {}))))
-     :fields (->> (:field dependents)
-                  (sort-by :id)
-                  (into []
-                        (keep #(fetch-or-warn % api.field/get-field {}))))
-     :cards link-cards
-     :dashboards (->> (:dashboard links)
-                      (sort-by :id)
-                      (into []
-                            (keep #(fetch-or-warn % get-dashboard))))}))
-
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (dashboard-metadata dashboard)))
+    (api.query-metadata/dashboard-metadata dashboard)))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -1228,12 +1159,13 @@
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/process-query-for-dashcard
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id})))
+  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                     (merge
+                      body
+                      {:dashboard-id dashboard-id
+                       :card-id      card-id
+                       :dashcard-id  dashcard-id}))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
@@ -1274,12 +1206,13 @@
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
    parameters   [:maybe [:sequential ParameterWithID]]}
-  (m/mapply qp.dashboard/process-query-for-dashcard
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id
-              :qp           qp.pivot/run-pivot-query})))
+  (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
+                     (merge
+                      body
+                      {:dashboard-id dashboard-id
+                       :card-id      card-id
+                       :dashcard-id  dashcard-id
+                       :qp           qp.pivot/run-pivot-query}))
+    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/define-routes)

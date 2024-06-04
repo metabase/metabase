@@ -33,6 +33,7 @@ import {
   entityPickerModal,
   questionInfoButton,
   entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 import {
@@ -391,8 +392,7 @@ describe("scenarios > models", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subtotal").click();
+      tableHeaderClick("Subtotal");
       selectFromDropdown("Sum over time");
 
       assertQuestionIsBasedOnModel({

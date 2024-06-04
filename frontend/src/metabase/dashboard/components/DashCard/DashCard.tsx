@@ -40,7 +40,6 @@ import type {
   CardSlownessStatus,
   NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
-  DashCardGetNewCardUrlHandler,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -70,9 +69,6 @@ export interface DashCardProps {
   onReplaceCard: (dashcard: StoreDashcard) => void;
   onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
-  getNewCardUrl?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => string | undefined;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -106,7 +102,6 @@ function DashCardInner({
   onAddSeries,
   onReplaceCard,
   onRemove,
-  getNewCardUrl,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -259,30 +254,26 @@ function DashCardInner({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler =
-    useCallback<DashCardOnChangeCardAndRunHandler>(
-      ({ nextCard, previousCard, objectId }) => {
-        return navigateToNewCardFromDashboard?.({
-          nextCard,
-          previousCard,
-          dashcard,
-          objectId,
-        });
-      },
-      [dashcard, navigateToNewCardFromDashboard],
-    );
+  const changeCardAndRunHandler = useMemo(() => {
+    if (!navigateToNewCardFromDashboard) {
+      return null;
+    }
 
-  const getHref = useCallback<DashCardGetNewCardUrlHandler>(
-    ({ nextCard, previousCard, objectId }) => {
-      return getNewCardUrl?.({
+    const handler: DashCardOnChangeCardAndRunHandler = ({
+      nextCard,
+      previousCard,
+      objectId,
+    }) => {
+      navigateToNewCardFromDashboard({
         nextCard,
         previousCard,
         dashcard,
         objectId,
       });
-    },
-    [dashcard, getNewCardUrl],
-  );
+    };
+
+    return handler;
+  }, [dashcard, navigateToNewCardFromDashboard]);
 
   return (
     <ErrorBoundary>
@@ -314,14 +305,12 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
-            onAddSeries={() => onAddSeries(dashcard)}
-            onRemove={() => onRemove(dashcard)}
-            onReplaceCard={() => onReplaceCard(dashcard)}
-            onUpdateVisualizationSettings={settings =>
-              onUpdateVisualizationSettings(dashcard.id, settings)
-            }
-            onReplaceAllVisualizationSettings={settings =>
-              onReplaceAllVisualizationSettings(dashcard.id, settings)
+            onAddSeries={onAddSeries}
+            onRemove={onRemove}
+            onReplaceCard={onReplaceCard}
+            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            onReplaceAllVisualizationSettings={
+              onReplaceAllVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
@@ -338,7 +327,6 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          getHref={getNewCardUrl ? getHref : null}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
@@ -354,12 +342,8 @@ function DashCardInner({
           isMobile={isMobile}
           isPublicOrEmbedded={isPublicOrEmbedded}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
-          onUpdateVisualizationSettings={settings =>
-            onUpdateVisualizationSettings(dashcard.id, settings)
-          }
-          onChangeCardAndRun={
-            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
-          }
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onChangeCardAndRun={changeCardAndRunHandler}
           onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>

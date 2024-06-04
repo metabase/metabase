@@ -23,7 +23,7 @@ export const SectionMessageLink = styled.span`
 export const ParameterRoot = styled.div`
   margin-bottom: 1rem;
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const ParameterBody = styled.div`

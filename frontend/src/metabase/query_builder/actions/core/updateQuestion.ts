@@ -230,13 +230,8 @@ export const updateQuestion = (
       newQuestion.id(),
       newQuestion.type(),
     );
-    try {
-      if (!_.isEqual(currentDependencies, nextDependencies)) {
-        await dispatch(loadMetadataForCard(newQuestion.card()));
-      }
-    } catch (e) {
-      // this will fail if user doesn't have data permissions but thats ok
-      console.warn("Couldn't load metadata", e);
+    if (!_.isEqual(currentDependencies, nextDependencies)) {
+      await dispatch(loadMetadataForCard(newQuestion.card()));
     }
 
     if (run) {
