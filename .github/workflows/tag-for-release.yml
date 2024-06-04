@@ -150,7 +150,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: 21
+        java-version: 17 # 11 throws an error on jar uf
 
     - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
       id: find_release_artifact
@@ -211,7 +211,7 @@ jobs:
         echo "\n\nNew version.properties:"
         cat version.properties
         echo "\n\nUpdating metabase.jar with new version.properties"
-        jar -uf metabase.jar version.properties
+        jar uf metabase.jar version.properties
 
     - name: Store commit's SHA-1 hash
       run:  echo ${{ inputs.commit }} > COMMIT-ID
