@@ -26,6 +26,7 @@ import {
   publishChanges,
   setEmbeddingParameter,
   assertEmbeddingParameter,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -314,16 +315,18 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.log("should allow searching PEOPLE.ID by PEOPLE.NAME");
 
       openFilterOptions("Id");
-      popover()
-        .findByPlaceholderText("Search by Name or enter an ID")
-        .type("Aly");
+      popover().within(() => {
+        multiAutocompleteInput().type("Aly");
+      });
 
       popover().last().contains("Alycia McCullough - 2016");
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
-      popover().findByPlaceholderText("Search by Name").type("Aly");
+      popover().within(() => {
+        multiAutocompleteInput().type("Aly");
+      });
 
       popover().last().contains("Alycia McCullough");
 
@@ -335,9 +338,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.log("should allow searching ORDER.USER_ID by PEOPLE.NAME");
 
       openFilterOptions("User");
-      popover()
-        .findByPlaceholderText("Search by Name or enter an ID")
-        .type("Aly");
+      popover().within(() => {
+        multiAutocompleteInput().type("Aly");
+      });
 
       popover().last().contains("Alycia McCullough - 2016");
 

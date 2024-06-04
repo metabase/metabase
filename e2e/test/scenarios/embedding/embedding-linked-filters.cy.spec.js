@@ -7,6 +7,7 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   testPairedTooltipValues,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 import {
@@ -212,7 +213,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       popover()
         .last()
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
+          multiAutocompleteInput().type("An");
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
