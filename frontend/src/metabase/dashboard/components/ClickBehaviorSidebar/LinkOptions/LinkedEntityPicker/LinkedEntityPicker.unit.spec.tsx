@@ -5,7 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -105,7 +105,7 @@ function setup({
     collection: PUBLIC_COLLECTION,
     collectionItems: [],
   });
-  setupRecentViewsEndpoints([]);
+  setupRecentSelectionsEndpoints([]);
 
   fetchMock.get("path:/api/user/recipients", { data: [] });
 

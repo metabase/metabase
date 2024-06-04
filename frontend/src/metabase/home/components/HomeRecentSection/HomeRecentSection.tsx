@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListRecentItemsQuery } from "metabase/api";
+import { useListRecentViewsQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
@@ -21,7 +21,7 @@ export const HomeRecentSection = () => {
     data: recentItems = [],
     isLoading,
     error,
-  } = useListRecentItemsQuery();
+  } = useListRecentViewsQuery();
   const user = useSelector(getUser);
   const hasHelpCard =
     user != null && user.is_installer && isWithinWeeks(user.first_login, 2);

@@ -5,7 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
-  setupRecentViewsEndpoints,
+  setupRecentSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -55,7 +55,7 @@ function setup({
 } = {}) {
   mockGetBoundingClientRect();
   mockScrollBy();
-  setupRecentViewsEndpoints([]);
+  setupRecentSelectionsEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });

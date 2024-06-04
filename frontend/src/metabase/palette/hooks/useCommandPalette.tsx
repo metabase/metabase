@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
+import { useListRecentViewsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
@@ -72,7 +72,7 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems } = useListRecentItemsQuery(undefined, {
+  const { data: recentItems } = useListRecentViewsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
 

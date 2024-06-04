@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import {
-  useListRecentItemsQuery,
+  useListRecentViewsQuery,
   useListPopularItemsQuery,
 } from "metabase/api";
 import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
@@ -25,7 +25,7 @@ export const HomeContent = (): JSX.Element | null => {
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases, error: databasesError } = useDatabaseListQuery();
   const { data: recentItemsRaw, error: recentItemsError } =
-    useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
+    useListRecentViewsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: popularItems, error: popularItemsError } =
     useListPopularItemsQuery(undefined, { refetchOnMountOrArgChange: true });
   const error = databasesError || recentItemsError || popularItemsError;

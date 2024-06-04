@@ -1,5 +1,7 @@
 import type {
   RecentItem,
+  CreateRecentRequest,
+  RecentSelectionsResponse,
   PopularItem,
   RecentItemsResponse,
   PopularItemsResponse,
@@ -10,13 +12,22 @@ import { provideActivityItemListTags } from "./tags";
 
 export const activityApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listRecentItems: builder.query<RecentItem[], void>({
+    listRecentViews: builder.query<RecentItem[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/activity/recent_views",
+        url: "/api/activity/recents?context=views",
       }),
       transformResponse: (response: RecentItemsResponse) =>
         response?.recent_views,
+      providesTags: items => provideActivityItemListTags(items ?? []),
+    }),
+    listRecentSelections: builder.query<RecentItem[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/activity/recents?context=selections",
+      }),
+      transformResponse: (response: RecentSelectionsResponse) =>
+        response?.recent_selections,
       providesTags: items => provideActivityItemListTags(items ?? []),
     }),
     listPopularItems: builder.query<PopularItem[], void>({
@@ -28,8 +39,29 @@ export const activityApi = Api.injectEndpoints({
         response?.popular_items,
       providesTags: items => provideActivityItemListTags(items ?? []),
     }),
+    logRecentItem: builder.mutation<void, Omit<CreateRecentRequest, "context">>(
+      {
+        query: ({ model_id, model }) => ({
+          method: "POST",
+          url: "/api/activity/recents",
+          body: {
+            model_id,
+            model,
+            context: "selection",
+          },
+        }),
+        invalidatesTags: (_, error, item) =>
+          invalidateTags(error, [
+            idTag(TAG_TYPE_MAPPING[item.model], item.model_id),
+          ]),
+      },
+    ),
   }),
 });
 
-export const { useListRecentItemsQuery, useListPopularItemsQuery } =
-  activityApi;
+export const {
+  useListRecentViewsQuery,
+  useListRecentSelectionsQuery,
+  useListPopularItemsQuery,
+  useLogRecentItemMutation,
+} = activityApi;

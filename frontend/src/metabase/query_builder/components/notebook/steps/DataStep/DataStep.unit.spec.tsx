@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
@@ -55,7 +55,7 @@ const setup = (
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
+  setupRecentSelectionsEndpoints([]);
 
   renderWithProviders(
     <DataStep

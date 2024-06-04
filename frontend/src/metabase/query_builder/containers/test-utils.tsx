@@ -18,6 +18,7 @@ import {
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
+  setupRecentSelectionsEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -245,6 +246,7 @@ export const setup = async ({
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);
+  setupRecentSelectionsEndpoints([]);
 
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
