@@ -94,12 +94,20 @@ const EntityIconCheckBox = ({
   );
 };
 
-function EntityItemName({ name, variant }: { name: string; variant?: string }) {
+function EntityItemName({
+  name,
+  variant,
+  ...props
+}: {
+  name: string;
+  variant?: string;
+} & React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
       className={cx(CS.overflowHidden, {
         [CS.textList]: variant === "list",
       })}
+      {...props}
     >
       <Ellipsified>{name}</Ellipsified>
     </h3>
