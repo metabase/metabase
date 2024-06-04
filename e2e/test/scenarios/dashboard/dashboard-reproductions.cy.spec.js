@@ -32,7 +32,6 @@ import {
   setTokenFeatures,
   describeEE,
   visitQuestion,
-  createSegment,
   getTextCardDetails,
   modal,
   queryBuilderHeader,
@@ -42,6 +41,7 @@ import {
   createDashboardWithTabs,
   dashboardGrid,
 } from "e2e/support/helpers";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
