@@ -422,7 +422,14 @@
                        (assoc :dbname pk-db
                               :private-key-value (u/encode-base64 pk-key)
                               :user pk-user))]
-       (is (driver/can-connect? :snowflake details))))))
+       (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
+         (is (driver/can-connect? :snowflake details)))
+       ;; Following is required when private key and role are used together. See
+       ;; the [[metabase.driver.snowflake/maybe-add-role-to-spec-url]] for the details.
+       (testing "Role is added to connection url, if url is present (#43600)"
+         (is (str/includes?
+              (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :role "SOME_ROLE"))
+              "role=SOME_ROLE")))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake
