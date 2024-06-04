@@ -483,9 +483,7 @@ export type ColumnExtractDrillThruInfo =
   };
 
 export type CompareAggregationsDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/compare-aggregations"> & {
-    aggregationIndex: number;
-  };
+  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
 
 export type CombineColumnsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/combine-columns">;
@@ -575,6 +573,10 @@ export type FilterDrillDetails = {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
+};
+
+export type AggregationDrillDetails = {
+  aggregation: AggregationClause;
 };
 
 export type PivotType = "category" | "location" | "time";

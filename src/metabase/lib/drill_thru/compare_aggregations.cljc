@@ -9,6 +9,7 @@
 
   - Adds 1 or more aggregations that compare the clicked column over time."
   (:require
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -23,14 +24,9 @@
              (nil? value)
              (lib.drill-thru.common/mbql-stage? query stage-number)
              (= (:lib/source column) :source/aggregations))
-    {:lib/type :metabase.lib.drill-thru/drill-thru
-     :type     :drill-thru/compare-aggregations
-     :column   column}))
-
-(defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/compare-aggregations
-  [_query _stage-number drill-thru]
-  (assoc (select-keys drill-thru [:type])
-    :aggregation-index 0))
+    {:lib/type    :metabase.lib.drill-thru/drill-thru
+     :type        :drill-thru/compare-aggregations
+     :aggregation (lib.aggregation/resolve-aggregation query stage-number (:lib/source-uuid column))}))
 
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/compare-aggregations
   [_query _stage-number _drill & _args]
