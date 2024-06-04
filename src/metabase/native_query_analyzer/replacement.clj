@@ -142,7 +142,7 @@
 (defn replace-names
   "Given a dataset_query and a map of renames (with keys `:tables` and `:columns`, as in Macaw), return a new inner query
   with the appropriate replacements made."
-  ;; This arity exists as a convenient for all the tests that are fairly driver agnostic.
+  ;; This arity exists as a convenience for all the tests that are fairly driver agnostic.
   ([query renames]
    ;; Postgres is both popular and adheres closely to the standard SQL specifications.
    (replace-names :postgres query renames))
