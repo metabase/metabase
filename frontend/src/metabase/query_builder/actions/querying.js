@@ -212,17 +212,31 @@ export const queryCompleted = (
       series,
     ).settings();
 
-    const isLineAreaBar = ["line", "area", "bar"].includes(question.display());
-    if (isLineAreaBar) {
+    const hasGraphSettings = [
+      "line",
+      "area",
+      "bar",
+      "row",
+      "combo",
+      "pie",
+      "waterfall",
+      "scatter",
+    ].includes(question.display());
+
+    if (hasGraphSettings) {
+      const dimensions =
+        vizSettings["graph.dimensions"].length > 0
+          ? vizSettings["graph.dimensions"]
+          : previousVizSettings["graph.dimensions"];
+
+      const metrics =
+        vizSettings["graph.metrics"].length > 0
+          ? vizSettings["graph.metrics"]
+          : previousVizSettings["graph.metrics"];
+
       question = question.updateSettings({
-        "graph.dimensions":
-          vizSettings["graph.dimensions"].length > 0
-            ? vizSettings["graph.dimensions"]
-            : previousVizSettings["graph.dimensions"],
-        "graph.metrics":
-          vizSettings["graph.metrics"].length > 0
-            ? vizSettings["graph.metrics"]
-            : previousVizSettings["graph.metrics"],
+        "graph.dimensions": dimensions,
+        "graph.metrics": metrics,
       });
     }
 
