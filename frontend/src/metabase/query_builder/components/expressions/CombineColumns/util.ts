@@ -59,7 +59,12 @@ export const formatSeparator = (separator: string) => {
   return separator;
 };
 
-export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
+export const getDefaultSeparator = (
+  column: Lib.ColumnMetadata | undefined,
+): string => {
+  if (!column) {
+    return " ";
+  }
   if (Lib.isEmail(column)) {
     return "";
   }
@@ -159,3 +164,27 @@ const getColumnExample = (
 export function hasCombinations(query: Lib.Query, stageIndex: number) {
   return Lib.expressionableColumns(query, stageIndex).length > 0;
 }
+
+export const getNextColumnAndSeparator = (
+  expressionableColumns: Lib.ColumnMetadata[],
+  defaultSeparator: string,
+  columnsAndSeparators: ColumnAndSeparator[],
+  enable: boolean,
+): ColumnAndSeparator => {
+  const lastSeparator = columnsAndSeparators.at(-1)?.separator;
+  const separator = lastSeparator ?? defaultSeparator;
+
+  if (!enable) {
+    return {
+      column: null,
+      separator,
+    };
+  }
+
+  const nextUnusedColumn = expressionableColumns.find(candidate =>
+    columnsAndSeparators.every(({ column }) => candidate !== column),
+  );
+
+  const result = nextUnusedColumn ?? expressionableColumns[0];
+  return { column: result, separator };
+};

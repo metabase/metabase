@@ -14,6 +14,7 @@ import {
   getDefaultSeparator,
   formatSeparator,
   getExpressionName,
+  getNextColumnAndSeparator,
   flatten,
 } from "./util";
 
@@ -22,6 +23,17 @@ interface Props {
   stageIndex: number;
   onSubmit: (name: string, clause: Lib.ExpressionClause) => void;
   width?: number;
+
+  /**
+   * If set, use this as the first column to combine.
+   */
+  column?: Lib.ColumnMetadata;
+
+  /**
+   * If true, automatically select the next column to combine when first
+   * rendering the component or when adding a new column.
+   */
+  autoPickColumn?: boolean;
 }
 
 type State = {
@@ -30,27 +42,39 @@ type State = {
   defaultSeparator: string;
 };
 
-const initialDefaultSeparator = " ";
+export function CombineColumns({
+  query,
+  stageIndex,
+  onSubmit,
+  width,
+  column,
+  autoPickColumn = false,
+}: Props) {
+  const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
 
-export function CombineColumns({ query, stageIndex, onSubmit, width }: Props) {
-  const [state, setState] = useState<State>({
-    columnsAndSeparators: [
-      {
-        column: null,
-        separator: "",
-      },
-      {
-        column: null,
-        separator: initialDefaultSeparator,
-      },
-    ],
-    isUsingDefaultSeparator: true,
-    defaultSeparator: initialDefaultSeparator,
+  const [state, setState] = useState<State>(() => {
+    const defaultSeparator = getDefaultSeparator(column);
+
+    const firstColumnAndSeparator = {
+      column: column ?? (autoPickColumn ? expressionableColumns[0] : null),
+      separator: "",
+    };
+
+    const secondColumnAndSeparator = getNextColumnAndSeparator(
+      expressionableColumns,
+      defaultSeparator,
+      [firstColumnAndSeparator],
+      autoPickColumn,
+    );
+
+    return {
+      columnsAndSeparators: [firstColumnAndSeparator, secondColumnAndSeparator],
+      isUsingDefaultSeparator: true,
+      defaultSeparator,
+    };
   });
 
   const { columnsAndSeparators, isUsingDefaultSeparator } = state;
-
-  const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
 
   const handleRowChange = (
     index: number,
@@ -68,7 +92,7 @@ export function CombineColumns({ query, stageIndex, onSubmit, width }: Props) {
       };
 
       if (index === 0 && state.isUsingDefaultSeparator && column) {
-        // rewrite the default separators when the first column is selected
+        // rewrite the default separator when the first column is selected
         const defaultSeparator = getDefaultSeparator(column);
         updated.columnsAndSeparators = updated.columnsAndSeparators.map(
           columnAndSeparator => ({
@@ -95,13 +119,16 @@ export function CombineColumns({ query, stageIndex, onSubmit, width }: Props) {
 
   const handleRowAdd = () => {
     setState(state => {
-      const lastSeparator =
-        state.columnsAndSeparators.at(-1)?.separator ?? state.defaultSeparator;
       return {
         ...state,
         columnsAndSeparators: [
           ...state.columnsAndSeparators,
-          { column: null, separator: lastSeparator },
+          getNextColumnAndSeparator(
+            expressionableColumns,
+            state.defaultSeparator,
+            state.columnsAndSeparators,
+            autoPickColumn,
+          ),
         ],
       };
     });
@@ -143,21 +170,26 @@ export function CombineColumns({ query, stageIndex, onSubmit, width }: Props) {
           <Stack spacing="md">
             <Box>
               <Stack spacing="md">
-                {columnsAndSeparators.map(({ column, separator }, index) => (
-                  <ColumnAndSeparatorRow
-                    key={index}
-                    query={query}
-                    stageIndex={stageIndex}
-                    index={index}
-                    columns={expressionableColumns}
-                    column={column}
-                    separator={separator}
-                    showSeparator={!isUsingDefaultSeparator && index !== 0}
-                    showRemove={columnsAndSeparators.length >= 3}
-                    onChange={handleRowChange}
-                    onRemove={handleRowRemove}
-                  />
-                ))}
+                {columnsAndSeparators.map(
+                  (item, index) =>
+                    // Do not allow editing the first column when it is passed from
+                    // the props.
+                    (!column || index > 0) && (
+                      <ColumnAndSeparatorRow
+                        key={index}
+                        query={query}
+                        stageIndex={stageIndex}
+                        index={index}
+                        columns={expressionableColumns}
+                        column={item.column}
+                        separator={item.separator}
+                        showSeparator={!isUsingDefaultSeparator && index !== 0}
+                        showRemove={columnsAndSeparators.length >= 3}
+                        onChange={handleRowChange}
+                        onRemove={handleRowRemove}
+                      />
+                    ),
+                )}
               </Stack>
             </Box>
             <Flex
