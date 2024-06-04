@@ -245,8 +245,12 @@ const NameCell = ({
   icon: IconProps;
 }) => {
   const { id, name } = model;
+  const headingId = `model-${id}-heading`;
   return (
-    <ItemNameCell data-testid={`${testIdPrefix}-name`}>
+    <ItemNameCell
+      data-testid={`${testIdPrefix}-name`}
+      aria-labelledby={headingId}
+    >
       <ItemLink
         to={Urls.model({ id, name })}
         onClick={onClick}
@@ -262,7 +266,7 @@ const NameCell = ({
           color={color("brand")}
           style={{ flexShrink: 0 }}
         />
-        <EntityItem.Name name={model.name} variant="list" />
+        <EntityItem.Name name={model.name} variant="list" id={headingId} />
       </ItemLink>
     </ItemNameCell>
   );

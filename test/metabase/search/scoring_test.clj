@@ -1,6 +1,5 @@
 (ns metabase.search.scoring-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.search.config :as search.config]
@@ -273,21 +272,6 @@
                      {:weight 100 :score 0 :name "Some other score type"}])]
       (is (= 0 (:score (scoring/score-and-result "" {:name "racing yo" :model "card"})))))))
 
-(deftest ^:parallel serialize-test
-  (testing "It normalizes dataset queries from strings"
-    (let [query  {:type     :query
-                  :query    {:source-query {:source-table 1}}
-                  :database 1}
-          result {:name          "card"
-                  :model         "card"
-                  :dataset_query (json/generate-string query)
-                  :all-scores {}
-                  :relevant-scores {}}]
-      (is (= query (-> result scoring/serialize :dataset_query)))))
-  (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
-                  (#'scoring/serialize)
-                  :dataset_query)))))
 
 (deftest ^:parallel force-weight-test
   (is (= [{:weight 10}]

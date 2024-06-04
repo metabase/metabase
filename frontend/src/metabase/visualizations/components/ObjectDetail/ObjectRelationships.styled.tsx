@@ -6,7 +6,7 @@ export const ObjectRelationships = styled.div`
   overflow-y: auto;
   flex: 0 0 100%;
   padding: 2rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export interface ObjectRelationshipContentProps {

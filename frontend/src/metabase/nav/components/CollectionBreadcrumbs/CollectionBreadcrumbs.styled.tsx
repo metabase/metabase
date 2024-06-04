@@ -24,7 +24,7 @@ export const ExpandButton = styled(Button)`
   border: none;
   margin: 0;
   padding: 0.25rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-radius: 2px;
   color: ${color("text-medium")};
 

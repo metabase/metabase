@@ -176,7 +176,7 @@
   (let [database           (t2/select-one :model/Database (:db_id table))
         driver             (driver.u/database->driver database)
         text-fields        (filter text-field? fields)
-        field->expressions (when (and truncation-size (driver/database-supports? driver :expressions database))
+        field->expressions (when (and truncation-size (driver.u/supports? driver :expressions database))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
                                                 [:substring [:field (u/the-id field) nil]

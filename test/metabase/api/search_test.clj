@@ -1,5 +1,5 @@
 (ns ^:mb/once metabase.api.search-test
-  "There are  more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
+  "There are more tests around search in [[metabase.search.impl-test]]. TODO: we should move more of the tests
   below into that namespace."
   (:require
    [clojure.set :as set]
@@ -134,7 +134,8 @@
     (cond-> result
       true (assoc :archived true)
       (= (:model result) "collection") (assoc :location (collection/trash-path)
-                                              :effective_location (collection/trash-path)))))
+                                              :effective_location (collection/trash-path)
+                                              :collection (assoc default-collection :id true :name true :type "trash")))))
 
 (defn- on-search-types [model-set f coll]
   (for [search-item coll]
@@ -1498,6 +1499,34 @@
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
                                           :filter_items_in_personal_collection "exclude"))))))))
 
+(deftest collection-effective-parent-test
+  (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
+                 :model/Collection coll-2  {:name "Collection 2", :location (collection/location-path coll-1)}
+                 :model/Collection _coll-3 {:name "Collection 3", :location (collection/location-path coll-1 coll-2)}]
+    (testing "Collection search results are properly hydrated with their effective parent in the :collection field"
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              (u/the-id coll-2)
+                :name            "Collection 2"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection))))
+
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-2)
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              (u/the-id coll-1)
+                :name            "Collection 1"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection))))
+
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-1)
+      (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
+        (is (= {:id              "root"
+                :name            "Our analytics"
+                :authority_level nil
+                :type            nil}
+               (-> result :data first :collection)))))))
+
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
@@ -1587,12 +1616,12 @@
         (testing "the collection data includes the type under `item.type` for collections"
           (is (every? #(contains? % :type)
                       (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                              :data
-                              (filter #(= (:model %) "collection")))))
+                           :data
+                           (filter #(= (:model %) "collection")))))
           (is (not-any? #(contains? % :type)
                         (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                              :data
-                              (remove #(= (:model %) "collection"))))))
+                             :data
+                             (remove #(= (:model %) "collection"))))))
         (testing "`item.type` is correct for collections"
           (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
                                  :data

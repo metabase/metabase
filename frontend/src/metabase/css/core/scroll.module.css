@@ -37,17 +37,17 @@
 }
 
 .scrollShow:hover::-webkit-scrollbar-thumb {
-  background-color: var(--color-bg-dark);
+  background-color: var(--mb-color-bg-dark);
 }
 
 .scrollShow::-webkit-scrollbar-thumb:horizontal:hover,
 .scrollShow::-webkit-scrollbar-thumb:vertical:hover {
-  background-color: var(--color-bg-dark);
+  background-color: var(--mb-color-bg-dark);
 }
 
 .scrollShow::-webkit-scrollbar-thumb:horizontal:active,
 .scrollShow::-webkit-scrollbar-thumb:vertical:active {
-  background-color: var(--color-bg-dark);
+  background-color: var(--mb-color-bg-dark);
 }
 
 /* scroll light */
