@@ -33,6 +33,6 @@ export const FeatureDescriptionText = styled.p`
 
 export const ErrorMessage = styled.p`
   width: 80%;
-  color: ${color("error")};
+  color: var(--mb-color-error);
   line-height: 1.5rem;
 `;

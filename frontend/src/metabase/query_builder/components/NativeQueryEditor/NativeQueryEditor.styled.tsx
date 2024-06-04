@@ -31,7 +31,7 @@ const aceEditorStyle = css`
 
   .ace_nomatch {
     border-radius: 5px;
-    outline: 1px solid ${color("error")};
+    outline: 1px solid var(--mb-color-error);
   }
 
   .ace_searchbtn {

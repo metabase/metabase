@@ -82,8 +82,8 @@ export const TargetButton = styled.div<{ variant: string }>`
   ${({ variant }) =>
     variant === "invalid" &&
     css`
-      border-color: ${color("error")};
-      background-color: ${color("error")};
+      border-color: var(--mb-color-error);
+      background-color: var(--mb-color-error);
       color: ${color("white")};
     `}
 `;

@@ -9,7 +9,8 @@
   --color-white: #fff;
   --color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
-  --color-error: #ed6e6e;
+  --mb-color-error: #ed6e6e;
+  --mb-color-danger: #ed6e6e;
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
@@ -22,7 +23,6 @@
   --mb-color-bg-error: #ed6e6e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
-  --mb-color-danger: #ed6e6e;
 }
 
 .textDefault {
@@ -41,11 +41,11 @@
 
 .textError,
 .textErrorHover {
-  color: var(--color-error);
+  color: var(--mb-color-error);
 }
 
 .bgErrorHover:hover {
-  background-color: var(--color-error);
+  background-color: var(--mb-color-error);
 }
 
 .bgErrorInput {

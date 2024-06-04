@@ -14,7 +14,7 @@ export const TextPickerInput = styled.input<TextPickerInputProps>`
   ${({ hasInvalidValues }) =>
     hasInvalidValues &&
     css`
-      border-color: ${color("error")};
+      border-color: var(--mb-color-error);
     `}
 `;
 
@@ -28,6 +28,6 @@ export const TextPickerArea = styled(AutosizeTextarea)<TextPickerAreaProps>`
   ${({ hasInvalidValues }) =>
     hasInvalidValues &&
     css`
-      border-color: ${color("error")};
+      border-color: var(--mb-color-error);
     `}
 `;

@@ -44,7 +44,7 @@ export const ModalHelpMessage = styled.div`
 export const ModalErrorMessage = styled.div`
   color: ${color("text-medium")};
   padding: 1rem;
-  border: 1px solid ${color("error")};
+  border: 1px solid var(--mb-color-error);
   border-radius: 0.5rem;
 `;
 
