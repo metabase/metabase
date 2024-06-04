@@ -62,14 +62,14 @@
                                     "question"  :model/Card)
                                   :id [:in ids]))))
 
-(defn- check-cache-access [models id]
+(defn- check-cache-access [model id]
   (if (or (nil? id)
           ;; sometimes its a sequence and we're going to check for settings access anyway
           (not (number? id))
           (zero? id))
     ;; if you're not accessing a concrete entity, you should be able to access settings
     (validation/check-has-application-permission :setting)
-    (api/write-check (case (first models)
+    (api/write-check (case model
                        "database" :model/Database
                        "dashboard" :model/Dashboard
                        "question" :model/Card)
@@ -87,7 +87,7 @@
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
-  (check-cache-access model id)
+  (check-cache-access (first model) id)
   {:data (cache-config/get-list model collection id)})
 
 (api/defendpoint PUT "/"
@@ -98,7 +98,7 @@
    strategy (CacheStrategyAPI)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
-  (check-cache-access [model] model_id)
+  (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
 (api/defendpoint DELETE "/"
@@ -108,7 +108,7 @@
    model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)}
   (validation/check-has-application-permission :setting)
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
-  (check-cache-access [model] model_id)
+  (check-cache-access model model_id)
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
