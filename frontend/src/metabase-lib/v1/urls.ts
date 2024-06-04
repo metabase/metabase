@@ -51,10 +51,11 @@ export function getUrlWithParameters(
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  if (parameters.length === 0) {
+    return getUrl(question, { includeDisplayIsLocked });
+  }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
     let questionWithParameters = question.setParameters(parameters);
 
