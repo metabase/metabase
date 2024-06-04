@@ -153,11 +153,11 @@
                                                        :condition    [:= $checkins.venue_id $venues.id]}]})}]
       (mt/$ids
         (is (= {:direct #{%venues.name %venues.price}}
-               (#'query-field/query-field-ids (:dataset_query c1))))
+               (#'query-field/query-field-ids c1)))
         (is (= {:direct nil}
-               (#'query-field/query-field-ids (:dataset_query c2))))
+               (#'query-field/query-field-ids c2)))
         (is (= {:direct #{%venues.id %checkins.venue_id}}
-               (#'query-field/query-field-ids (:dataset_query c3)))))))
+               (#'query-field/query-field-ids c3))))))
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
@@ -165,4 +165,4 @@
           mlv2-query        (-> (lib/query metadata-provider venues)
                                 (lib/aggregate (lib/distinct venues-name)))]
       (is (= {:direct #{(mt/id :venues :name)}}
-               (#'query-field/query-field-ids mlv2-query))))))
+             (#'query-field/query-field-ids {:dataset_query mlv2-query}))))))

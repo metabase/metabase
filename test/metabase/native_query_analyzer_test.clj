@@ -1,5 +1,6 @@
 (ns metabase.native-query-analyzer-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
@@ -68,8 +69,12 @@
                    :indirect count)))))))
 
 (deftest ^:parallel driver-support-test
-  (testing "We only support parsing queries for certain drivers"
-    (doseq [supported-driver #{:h2 :mysql :postgres :redshift :sqlite :sqlserver}]
-      (is (driver/database-supports? supported-driver :native-parsing nil)))
-    (doseq [unsupported-driver #{:mongo :snowflake}]
-      (is (not (driver/database-supports? unsupported-driver :native-parsing nil))))))
+  (let [supported-drivers   #{:h2 :mysql :postgres :redshift :sqlite :sqlserver}
+        ;; ↓ not an exhaustive list; just a sanity check to make sure it's not true for everything
+        unsupported-drivers #{:mongo :snowflake}]
+    (mt/test-drivers (set/union supported-drivers unsupported-drivers)
+      (testing "We only support parsing queries for certain drivers"
+        (doseq [supported-driver supported-drivers]
+          (is (driver/database-supports? supported-driver :native-parsing nil)))
+        (doseq [unsupported-driver unsupported-drivers]
+          (is (not (driver/database-supports? unsupported-driver :native-parsing nil))))))))

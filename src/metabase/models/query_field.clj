@@ -1,6 +1,6 @@
 (ns metabase.models.query-field
   (:require
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
@@ -26,7 +26,7 @@
   (case (lib/normalized-query-type query)
     :native     (try
                   (when-let [db (t2/select-one :model/Database :id db-id)]
-                    (when (driver/database-supports? (:engine db) :native-parsing db)
+                    (when (driver.u/supports? (:engine db) :native-parsing db)
                       (query-analyzer/field-ids-for-sql query)))
                   (catch Exception e
                     (log/error e "Error parsing SQL" query)))
