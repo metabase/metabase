@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { isDesktopSafari } from "metabase/lib/browser";
-import { color } from "metabase/lib/colors";
 
 interface SharedProps {
   isNarrow: boolean;
@@ -17,7 +16,7 @@ interface FunnelStepProps {
 export const FunnelStep = styled.div<FunnelStepProps>`
   width: 100%;
   min-width: 20px;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid var(--mb-color-border);
   display: flex;
   flex-direction: column;
 
@@ -95,7 +94,7 @@ interface FunnelNormalRootProps {
 export const FunnelNormalRoot = styled.div<FunnelNormalRootProps>`
   display: flex;
   padding: ${props => (props.isSmall ? "0.5rem" : "1rem")};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   ${isDesktopSafari()
     ? css`

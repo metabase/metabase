@@ -3,6 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { ComboChart } from "./ComboChart";
@@ -27,6 +28,7 @@ const renderingContext: RenderingContext = {
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   fontFamily: "Lato",
+  theme: DEFAULT_VISUALIZATION_THEME,
 };
 
 export const LineLinearXScale = Template.bind({});
@@ -458,6 +460,12 @@ CompactXAxisDoesNotWork38917.args = {
   renderingContext,
 };
 
+export const DataLabelsUnderTrendGoalLines41280 = Template.bind({});
+DataLabelsUnderTrendGoalLines41280.args = {
+  rawSeries: data.dataLabelsUnderTrendGoalLines41280 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
 export const TicksNativeWeekWithGapShortRange = Template.bind({});
 TicksNativeWeekWithGapShortRange.args = {
   rawSeries: data.ticksNativeWeekWithGapShortRange as any,
@@ -678,6 +686,71 @@ TwoBarsTwoAreasOneLineLog.args = {
 export const BarCorrectWidthWhenTwoYAxes = Template.bind({});
 BarCorrectWidthWhenTwoYAxes.args = {
   rawSeries: data.barCorrectWidthWhenTwoYAxes as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarDataLabelsNegatives = Template.bind({});
+BarDataLabelsNegatives.args = {
+  rawSeries: data.barDataLabelsNegatives as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedNormalizedSeriesLabels = Template.bind({});
+BarStackedNormalizedSeriesLabels.args = {
+  rawSeries: data.barStackedNormalizedSeriesLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsAndTotals = Template.bind({});
+BarStackedSeriesLabelsAndTotals.args = {
+  rawSeries: data.barStackedSeriesLabelsAndTotals as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsNoTotals = Template.bind({});
+BarStackedSeriesLabelsNoTotals.args = {
+  rawSeries: data.barStackedSeriesLabelsNoTotals as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsRotated = Template.bind({});
+BarStackedSeriesLabelsRotated.args = {
+  rawSeries: data.barStackedSeriesLabelsRotated as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsAutoCompactness = Template.bind({});
+BarStackedSeriesLabelsAutoCompactness.args = {
+  rawSeries: data.barStackedSeriesLabelsAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsAndTotalsOrdinal = Template.bind({});
+BarStackedSeriesLabelsAndTotalsOrdinal.args = {
+  rawSeries: data.barStackedSeriesLabelsAndTotalsOrdinal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedSeriesLabelsNormalizedAutoCompactness = Template.bind(
+  {},
+);
+BarStackedSeriesLabelsNormalizedAutoCompactness.args = {
+  rawSeries: data.barStackedSeriesLabelsNormalizedAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedLabelsNullVsZero = Template.bind({});
+BarStackedLabelsNullVsZero.args = {
+  rawSeries: data.barStackedLabelsNullVsZero as any,
   dashcardSettings: {},
   renderingContext,
 };

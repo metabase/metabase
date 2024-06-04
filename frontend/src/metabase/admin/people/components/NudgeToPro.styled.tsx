@@ -4,7 +4,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 
 export const NudgeCard = styled.div`
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-radius: 0.375rem;
   padding: 1.25rem 1.5rem;
   margin-top: 2rem;

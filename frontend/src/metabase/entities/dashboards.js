@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { dashboardApi } from "metabase/api";
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -8,7 +8,7 @@ import {
 import {
   getCollectionType,
   normalizedCollection,
-} from "metabase/entities/collections";
+} from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -19,13 +19,18 @@ import {
   compose,
   withAction,
   withAnalytics,
-  withCachedDataAndRequestState,
   withNormalize,
   withRequestState,
 } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls/dashboards";
 import { addUndo } from "metabase/redux/undo";
-import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import {
+  DashboardSchema,
+  DatabaseSchema,
+  FieldSchema,
+  QuestionSchema,
+  TableSchema,
+} from "metabase/schema";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 const FETCH_METADATA = "metabase/entities/dashboards/FETCH_METADATA";
@@ -164,15 +169,12 @@ const Dashboards = createEntity({
 
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
-      withCachedDataAndRequestState(
-        ({ id }) => [...Dashboards.getObjectStatePath(id)],
-        ({ id }) => [...Dashboards.getObjectStatePath(id), "fetchMetadata"],
-        entityQuery => Dashboards.getQueryKey(entityQuery),
-      ),
       withNormalize({
         databases: [DatabaseSchema],
         tables: [TableSchema],
         fields: [FieldSchema],
+        cards: [QuestionSchema],
+        dashboards: [DashboardSchema],
       }),
     )(
       ({ id }) =>
@@ -180,7 +182,26 @@ const Dashboards = createEntity({
           entityCompatibleQuery(
             id,
             dispatch,
-            dashboardApi.endpoints.getDashboardMetadata,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+          ),
+    ),
+
+    fetchXrayMetadata: compose(
+      withAction(FETCH_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+        cards: [QuestionSchema],
+        dashboards: [DashboardSchema],
+      }),
+    )(
+      ({ entity, entityId }) =>
+        dispatch =>
+          entityCompatibleQuery(
+            { entity, entityId },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
     ),
   },

@@ -20,7 +20,7 @@ const CacheSection = ({ initialCacheTTL, onSave }: CacheSectionProps) => {
   const [cacheTTL, setCacheTTL] = useState(initialCacheTTL);
 
   const handleChange = useCallback(
-    number => {
+    (number: number | undefined) => {
       setCacheTTL(normalizeCacheTTL(number));
     },
     [setCacheTTL],

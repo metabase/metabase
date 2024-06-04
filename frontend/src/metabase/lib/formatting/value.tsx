@@ -130,7 +130,7 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
 export function formatValueRaw(
   value: unknown,
   options: OptionsType = {},
-): React.ReactElement | Moment | string | number | null {
+): React.ReactElement | string | number | null {
   options = {
     jsx: false,
     remap: true,

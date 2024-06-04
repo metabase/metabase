@@ -8,13 +8,13 @@ import type { TypedUseSelectorHook } from "react-redux";
 import { useSelector, useDispatch } from "react-redux";
 
 import type { SdkStoreState } from "embedding-sdk/store/types";
-import reducers from "metabase/reducers-main";
+import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";
 
 export const sdkReducers = {
-  ...reducers,
+  ...mainReducers,
   sdk,
 } as unknown as Record<string, Reducer>;
 

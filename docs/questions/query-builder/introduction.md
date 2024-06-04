@@ -241,6 +241,10 @@ You can also convert the question to a [native editor question](../native-editor
 
 Conversion is a one-way street: you can't convert a SQL question back into a query builder question.
 
+## Caching question results
+
+See [Caching question results](../../configuring-metabase/caching.md#question-caching-policy).
+
 ## Play around with saved questions
 
 Each time you start modifying a saved question, Metabase will create a new question for you. The query builder will display the name of your starting question under **Data**.

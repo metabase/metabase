@@ -56,7 +56,11 @@ const ApplicationPermissionsPage = ({
   }, [initialize]);
 
   const handlePermissionChange = useCallback(
-    (item: { id: GroupId }, permission, value: ApplicationPermissionsValue) => {
+    (
+      item: { id: GroupId },
+      permission: any,
+      value: ApplicationPermissionsValue,
+    ) => {
       updatePermission({
         groupId: item.id,
         permission,

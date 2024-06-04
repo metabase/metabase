@@ -1,5 +1,6 @@
 import { getStore } from "__support__/entities-store";
 import {
+  setupDashboardQueryMetadataEndpoint,
   setupDashboardsEndpoints,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
@@ -7,6 +8,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import {
   createMockDashboard,
+  createMockDashboardQueryMetadata,
   createMockSettings,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -39,6 +41,12 @@ function setup({ dashboards = [] }) {
 
   setupDatabaseEndpoints(database);
   setupDashboardsEndpoints(dashboards);
+  dashboards.forEach(dashboard =>
+    setupDashboardQueryMetadataEndpoint(
+      dashboard,
+      createMockDashboardQueryMetadata({ databases: [database] }),
+    ),
+  );
 
   return store;
 }

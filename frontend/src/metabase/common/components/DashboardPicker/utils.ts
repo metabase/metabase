@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
   CollectionItemModel,

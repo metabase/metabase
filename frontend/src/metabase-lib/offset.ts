@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
-import { inflect } from "metabase/lib/formatting";
-
 import { breakoutColumn, breakouts } from "./breakout";
 import { isDate } from "./column_types";
 import { expressionClause, withExpressionName } from "./expression";
-import { displayInfo } from "./metadata";
+import { describeTemporalUnit, displayInfo } from "./metadata";
 import { temporalBucket } from "./temporal_bucket";
 import type { AggregationClause, ExpressionClause, Query } from "./types";
 
@@ -103,8 +101,10 @@ function getOffsetClauseName(
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
-  const bucketName = bucketInfo.displayName.toLowerCase();
-  const period = inflect(bucketName, absoluteOffset);
+  const period = describeTemporalUnit(
+    bucketInfo.shortName,
+    absoluteOffset,
+  ).toLowerCase();
 
   return absoluteOffset === 1
     ? t`${displayName} (${prefix}previous ${period})`

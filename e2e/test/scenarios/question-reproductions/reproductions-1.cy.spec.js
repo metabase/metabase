@@ -24,7 +24,6 @@ import {
   saveDashboard,
   editDashboard,
   visitDashboard,
-  openColumnOptions,
   questionInfoButton,
   rightSidebar,
   getNotebookStep,
@@ -35,6 +34,7 @@ import {
   openProductsTable,
   mockSessionProperty,
   visitQuestionAdhoc,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -639,7 +639,7 @@ describe("issue 17514", () => {
       });
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      openColumnOptions("Subtotal");
+      tableHeaderClick("Subtotal");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this column");
     });

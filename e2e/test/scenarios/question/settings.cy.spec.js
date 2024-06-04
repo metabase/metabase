@@ -11,6 +11,7 @@ import {
   sidebar,
   moveDnDKitElement,
   entityPickerModal,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -265,15 +266,23 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("viz-settings-button").click(); // open settings sidebar
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
-      cy.get(".test-TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
+
+      // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
+      tableHeaderClick("Subtotal"); // open subtotal column header actions
+
       popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
-      cy.get(".test-TableInteractive").findByText("Created At").click(); // open created_at column header actions
-      popover().icon("gear").click(); // open created_at column settings
+      cy.findByTestId("head-crumbs-container").findByText("Orders").click(); //Dismiss popover
+
+      tableHeaderClick("Created At"); // open created_at column header actions
+
+      popover().within(() => {
+        cy.icon("gear").click(); // open created_at column settings
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });

@@ -8,6 +8,10 @@ To add a database connection, click on the **gear** icon in the top right, and n
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
 
+## Select "Druid JBDC"
+
+Prefer the Druid JDBC connection.
+
 ## Settings
 
 You can edit these settings at any time. Just remember to save your changes.
@@ -27,6 +31,14 @@ The database port (e.g, 8082).
 ### Use an SSH tunnel
 
 See our [guide to SSH tunneling](../ssh-tunnel.md).
+
+### Allow unfolding of JSON columns
+
+> Only available for the Druid JDBC connection.
+
+This enables unfolding of JSON columns into their component fields.
+
+See [JSON unfolding](../../data-modeling/json-unfolding.md).
 
 ### Re-run queries for simple explorations
 

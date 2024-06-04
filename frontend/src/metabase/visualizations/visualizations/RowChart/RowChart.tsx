@@ -48,7 +48,7 @@ import {
   getHoverData,
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
-import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
+import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
@@ -110,7 +110,6 @@ const RowChartVisualization = ({
   series: multipleSeries,
   fontFamily,
   width,
-  href,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -135,8 +134,8 @@ const RowChartVisualization = ({
     [chartColumns, data, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
-  const theme = useMemo(getChartTheme, []);
   const stackOffset = getStackOffset(settings);
+  const theme = useRowChartTheme({ fontFamily });
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),
@@ -276,7 +275,6 @@ const RowChartVisualization = ({
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
           width={width}
-          href={href}
         />
       )}
       <RowChartLegendLayout

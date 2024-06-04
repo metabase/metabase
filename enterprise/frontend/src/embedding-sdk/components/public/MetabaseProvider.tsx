@@ -9,6 +9,7 @@ import { store } from "embedding-sdk/store";
 import {
   setErrorComponent,
   setLoaderComponent,
+  setMetabaseClientUrl,
   setPlugins,
 } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
@@ -53,6 +54,10 @@ const MetabaseProviderInternal = ({
   useEffect(() => {
     store.dispatch(setErrorComponent(config.errorComponent ?? null));
   }, [config.errorComponent]);
+
+  useEffect(() => {
+    store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
+  }, [config.metabaseInstanceUrl]);
 
   return (
     <Provider store={store}>

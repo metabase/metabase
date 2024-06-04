@@ -78,6 +78,9 @@ describe("scenarios > dashboard cards > undo", () => {
         undo();
         getDashboardCards().should("have.length", cards.length);
         checkOrder();
+        // Seems to be needed to allow the UI to catch up before hovering the next element.
+        // TODO: improve this.
+        cy.wait(200);
       }
 
       createNewTab();
@@ -90,6 +93,7 @@ describe("scenarios > dashboard cards > undo", () => {
         undo();
         getDashboardCards().should("have.length", cards.length);
         checkOrder();
+        cy.wait(200);
       }
     },
   );

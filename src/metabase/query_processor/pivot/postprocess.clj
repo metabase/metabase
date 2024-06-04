@@ -47,18 +47,34 @@
   [{:keys [column-titles pivot-rows]} :- ::pivot-spec]
   (mapv #(get column-titles %) pivot-rows))
 
+(mu/defn ^:private pivot-measure-titles
+  [{:keys [column-titles pivot-measures]} :- ::pivot-spec]
+  (mapv #(get column-titles %) pivot-measures))
+
 (mu/defn ^:private header-builder
   "Construct the export-style pivot headers from the raw pivot rows, according to the indices specified in `pivot-spec`."
-  [rows {:keys [pivot-cols] :as pivot-spec} :- ::pivot-spec]
-  (let [row-titles       (pivot-row-titles pivot-spec)
+  [rows {:keys [pivot-cols pivot-measures] :as pivot-spec} :- ::pivot-spec]
+  (let [row-titles         (pivot-row-titles pivot-spec)
+        measure-titles     (pivot-measure-titles pivot-spec)
+        n-measures         (count pivot-measures)
+        multiple-measures? (< 1 n-measures)
         ;; For each pivot column, get the possible values for that column
         ;; Then, get the cartesian product of each to for all of the value groups
         ;; Each group will have (count pivot-cols) entries and the values
         ;; will be from the columns in the same order as presented in pivot-cols.
         ;; So, if pivot-cols is [0 1], the first col-value-group will have [first-value-from-first-col first-value-from-second-col]
-        col-value-groups (apply math.combo/cartesian-product (map (fn [col-k]
-                                                                    (all-values-for rows col-k false))
-                                                                  pivot-cols))]
+        col-value-groups   (apply math.combo/cartesian-product (concat
+                                                                (map (fn [col-k]
+                                                                       (all-values-for rows col-k false))
+                                                                     pivot-cols)
+                                                                (when (seq measure-titles)
+                                                                  [measure-titles])))
+        header-indices     (if multiple-measures?
+                             ;; when there are more than 1 pivot-measures, we need to
+                             ;; add one more header row that holds the titles of the measure columns
+                             ;; and we know it's always just one more row, so we can inc the count.
+                             (range (inc (count pivot-cols)))
+                             (range (count pivot-cols)))]
     ;; Each Header (1 header row per pivot-col) will first start with the Pivot Row Titles. There will be (count pivot-rows) entries.
     ;; Then, Get all of the nth entries in the col-value-gropus for the nth header, and then append "Row Totals" label.
     (mapv
@@ -66,8 +82,12 @@
        (vec (concat
              row-titles
              (map #(nth % col-idx) col-value-groups)
-             ["Row totals"])))
-     (range (count pivot-cols)))))
+             (if (and
+                  multiple-measures?
+                  (= col-idx (last header-indices)))
+               measure-titles
+               (repeat (max 1 n-measures) "Row totals")))))
+     header-indices)))
 
 (mu/defn ^:private col-grouper
   "Map of raw pivot rows keyed by [pivot-cols]. Use it per row-group.

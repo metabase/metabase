@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { WaterfallChart } from "./WaterfallChart";
@@ -27,6 +28,7 @@ const renderingContext: RenderingContext = {
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   fontFamily: "Lato",
+  theme: DEFAULT_VISUALIZATION_THEME,
 };
 
 export const YAxisCompactWithoutDataLabels = Template.bind({});
@@ -291,6 +293,13 @@ LinearNullDimension.args = {
 export const OrdinalNullDimension = Template.bind({});
 OrdinalNullDimension.args = {
   rawSeries: data.ordinalNullDimension as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TwoBarsWithTotal = Template.bind({});
+TwoBarsWithTotal.args = {
+  rawSeries: data.twoBarsWithTotal as any,
   dashcardSettings: {},
   renderingContext,
 };

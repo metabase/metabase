@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
@@ -44,7 +44,9 @@ describe("ParameterSidebar", () => {
     await fillValue(labelInput, "");
     // expect there to be an error message with the text "Required"
     expect(screen.getByText(/required/i)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
@@ -53,7 +55,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with a non-blank value
     await fillValue(labelInput, "bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });
@@ -71,7 +75,9 @@ describe("ParameterSidebar", () => {
     await fillValue(labelInput, "tAb");
     // expect there to be an error message with the text "reserved"
     expect(screen.getByText(/reserved/i)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
@@ -80,7 +86,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with a non-blank value
     await fillValue(labelInput, "bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });

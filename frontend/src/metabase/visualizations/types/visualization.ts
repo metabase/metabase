@@ -31,6 +31,25 @@ export interface RenderingContext {
 
   measureText: TextWidthMeasurer;
   fontFamily: string;
+
+  theme: VisualizationTheme;
+}
+
+/**
+ * Visualization theming overrides.
+ * Refer to DEFAULT_METABASE_COMPONENT_THEME for the default values.
+ **/
+export interface VisualizationTheme {
+  cartesian: {
+    label: {
+      fontSize: number;
+    };
+    goalLine: {
+      label: {
+        fontSize: number;
+      };
+    };
+  };
 }
 
 export type OnChangeCardAndRunOpts = {
@@ -54,7 +73,6 @@ export interface StaticVisualizationProps {
 export interface VisualizationProps {
   series: Series;
   card: Card;
-  href: string | undefined;
   data: DatasetData;
   metadata: Metadata;
   rawSeries: RawSeries;
