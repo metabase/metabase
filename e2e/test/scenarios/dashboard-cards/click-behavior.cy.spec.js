@@ -1447,7 +1447,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.button(DASHBOARD_FILTER_TEXT.name).click();
         popover().within(() => {
-          cy.icon("close").click();
+          cy.get("[value][index=0]").within(() => {
+            cy.get("button").click();
+          });
           cy.findByPlaceholderText("Search by Name").type("Dell Adams");
           cy.button("Update filter").click();
         });
