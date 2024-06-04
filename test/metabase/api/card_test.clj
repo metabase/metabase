@@ -1117,32 +1117,32 @@
 
         (testing "Should be able to fetch the Card if you have Collection read perms"
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (is (= (merge
-                  card-defaults
-                  (select-keys card [:id :name :entity_id :created_at :updated_at :last_used_at])
-                  {:dashboard_count        0
-                   :parameter_usage_count  0
-                   :creator_id             (mt/user->id :rasta)
-                   :creator                (merge
-                                            (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
-                                            {:common_name  "Rasta Toucan"
-                                             :is_superuser false
-                                             :is_qbnewb    true
-                                             :last_name    "Toucan"
-                                             :first_name   "Rasta"
-                                             :email        "rasta@metabase.com"})
-                   :dataset_query          (mt/obj->json->obj (:dataset_query card))
-                   :display                "table"
-                   :query_type             "query"
-                   :visualization_settings {}
-                   :can_write              false
-                   :database_id            (mt/id) ; these should be inferred from the dataset_query
-                   :table_id               (mt/id :venues)
-                   :collection_id          (u/the-id collection)
-                   :collection             (into {:is_personal false} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
-                   :metabase_version       config/mb-version-string})
-                 (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
+          (is (=? (merge
+                   card-defaults
+                   (select-keys card [:id :name :entity_id :created_at :updated_at :last_used_at])
+                   {:dashboard_count        0
+                    :parameter_usage_count  0
+                    :creator_id             (mt/user->id :rasta)
+                    :creator                (merge
+                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                             {:common_name  "Rasta Toucan"
+                                              :is_superuser false
+                                              :is_qbnewb    true
+                                              :last_name    "Toucan"
+                                              :first_name   "Rasta"
+                                              :email        "rasta@metabase.com"})
+                    :dataset_query          (mt/obj->json->obj (:dataset_query card))
+                    :display                "table"
+                    :query_type             "query"
+                    :visualization_settings {}
+                    :can_write              false
+                    :database_id            (mt/id) ; these should be inferred from the dataset_query
+                    :table_id               (mt/id :venues)
+                    :collection_id          (u/the-id collection)
+                    :collection             (into {:is_personal false} collection)
+                    :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                    :metabase_version       config/mb-version-string})
+                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp [:model/User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
                          :model/Revision _             {:model    "Card"
@@ -3491,6 +3491,17 @@
                            :crowberto :post 200
                            (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
+
+(deftest ^:parallel can-run-adhoc-query-test
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (mt/with-temp [:model/Card card {:dataset_query query}
+                   :model/Card no-query {}]
+      (is (=? {:can_run_adhoc_query true}
+              (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)))))
+      (is (=? {:can_run_adhoc_query false}
+              (mt/user-http-request :crowberto :get 200 (str "card/" (:id no-query))))))))
 
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
