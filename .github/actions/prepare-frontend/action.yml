@@ -1,6 +1,7 @@
 name: Prepare front-end environment
 inputs:
   node-version:
+    description: "The version of Node.js to use, overriding .nvmrc"
     required: false
 runs:
   using: "composite"

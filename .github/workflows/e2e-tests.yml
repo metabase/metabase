@@ -49,7 +49,6 @@ jobs:
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
-      build_process: ${{ fromJson(steps.dependencies.outputs.result).build_process }}
     steps:
     - uses: actions/checkout@v4
       with:
