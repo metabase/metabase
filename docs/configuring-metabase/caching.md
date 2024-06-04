@@ -24,11 +24,15 @@ These policies determines how long cached results will be stored.
 
 ### Duration caching policy
 
+{% include plans-blockquote.html feature="Duration caching policy" %}
+
 Keep the cache for a number of hours. When someone runs a query, Metabase will first check if it's cached the results. If not, it runs the query and caches the results for as long as you set the duration.
 
 ### Schedule caching policy
 
-Pick when to regularly invalidate the cache. Metabase will periodically run the query according to the schedule you set and store the results. Other people running queries have no effect on when the results are refreshed; they'll always get the cached results unless they explicitly [clear the cache](#clearing-the-cache).
+{% include plans-blockquote.html feature="Schedule caching policy" %}
+
+Pick when to regularly invalidate the cache. Metabase will only store results when people run a query, and it will clear the cached results according to the cadence you set here.
 
 You can schedule caching to invalidate:
 
@@ -43,8 +47,9 @@ We do not yet support lunar cycles.
 
 Use a query’s average execution time to determine how long to cache the query's results.
 
+
 - **Minimum query duration**: Metabase will cache this question if it has an average query execution time greater than this many seconds.
-- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds.
+- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10s to return results. If you set a multiplier of 100, Metabase will store the cache for 1000 seconds (~16 minutes).
 
 On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md).
 
@@ -56,11 +61,10 @@ Always re-run the query to refresh results.
 
 {% include plans-blockquote.html feature="Advanced caching controls" %}
 
-You can set up caching at different levels, from largest to smallest scope:
+You can set up caching at different levels, from largest to smallest scope. Policies set at more restricted scopes override policies set at larger scopes. So a policy set on a question will take precedence over a dashboard, database, or default policy.
 
 - [Setting a default caching policy](#default-caching-policy)
 - [Database caching policy (specific to each connected database)](#database-caching-policy)*
-- [Model caching](../data-modeling/models.md#model-caching)*
 - [Dashboard caching](#dashboard-caching)*
 - [Question caching](#question-caching)*
 
@@ -80,11 +84,11 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 
 Same as the default caching policy, though you can set a caching policy for specific databases.
 
-### Dashboard caching
+### Dashboard caching policy
 
 {% include plans-blockquote.html feature="Dashboard caching controls" %}
 
-You can tell Metabase how long to keep the cached results for each of the questions on a dashboard.
+To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
 
 1. Go to your dashboard.
 2. Click on the **info** icon.
@@ -92,9 +96,11 @@ You can tell Metabase how long to keep the cached results for each of the questi
 4. Select the [caching invalidation policy](#cache-invalidation-policies).
 5. Save your changes.
 
-### Question caching
+### Question caching policy
 
 {% include plans-blockquote.html feature="Question caching controls" %}
+
+To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
 
 1. Go to your question.
 2. Click on the **info** icon.
@@ -104,10 +110,10 @@ You can tell Metabase how long to keep the cached results for each of the questi
 
 ## Clearing the cache
 
-To clear the cache for a question or dashboard and refresh the results: Click through the **Info > Caching policy > Clear cache** (the Clear cache button is at the bottom of the sidebar).
+To clear the cache for a question or dashboard and refresh the results: click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
 
 ## Caching location
 
 If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
-If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States.
+If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States (as our Cloud service manages your application database for you.)
