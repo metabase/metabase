@@ -17,7 +17,7 @@ export const compareAggregationsDrill: Drill<
     return [];
   }
 
-  const aggregation = Lib.aggregationDrillDetails(drill);
+  const { aggregation } = Lib.aggregationDrillDetails(drill);
 
   const DrillPopover = ({
     onChangeCardAndRun,
