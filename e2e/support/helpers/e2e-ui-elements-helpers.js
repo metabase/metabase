@@ -131,7 +131,7 @@ export function setFilterWidgetValue(
 ) {
   filterWidget().eq(0).click();
   popover().within(() => {
-    cy.icon("close").click();
+    removeMultiAutocompleteValue(0);
     if (value) {
       cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
     }
