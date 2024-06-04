@@ -1,6 +1,10 @@
 // Reducers shared between "main" and "public" apps
 
+import { combineReducers } from "@reduxjs/toolkit";
+
 import { Api } from "metabase/api";
+import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
+import * as parameters from "metabase/parameters/reducers";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import embed from "metabase/redux/embed";
@@ -12,7 +16,7 @@ import undo from "metabase/redux/undo";
 import upload from "metabase/redux/uploads";
 import { currentUser } from "metabase/redux/user";
 
-export default {
+export const commonReducers = {
   // global reducers
   app,
   embed,
@@ -26,4 +30,6 @@ export default {
   auth,
   [Api.reducerPath]: Api.reducer,
   modal,
+  dashboard,
+  parameters: combineReducers(parameters),
 };
