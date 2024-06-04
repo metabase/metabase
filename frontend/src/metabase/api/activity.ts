@@ -8,7 +8,12 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideActivityItemListTags } from "./tags";
+import {
+  provideActivityItemListTags,
+  invalidateTags,
+  idTag,
+  TAG_TYPE_MAPPING,
+} from "./tags";
 
 export const activityApi = Api.injectEndpoints({
   endpoints: builder => ({
