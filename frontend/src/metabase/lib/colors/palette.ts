@@ -45,6 +45,10 @@ export const colors = {
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
 
+  /** Colors for theme customization. */
+  "bg-dashboard-card": "#FFFFFF",
+  "bg-visualization": "transparent",
+
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
   "saturated-green": "#70A63A",
