@@ -52,19 +52,16 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         previousCard,
       );
 
-      let question = new Question(cardAfterClick, metadata);
-      const { isEditable } = Lib.queryDisplayInfo(question.query());
-      if (isEditable) {
-        question = question
-          .setDisplay(cardAfterClick.display || previousCard.display)
-          .setSettings(dashcard.card.visualization_settings)
-          .lockDisplay();
-      } else {
-        question = question.setCard(dashcard.card).setDashboardProps({
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-        });
-      }
+      const previousQuestion = new Question(previousCard, metadata);
+      const nextQuestion = previousQuestion.canRunAdhocQuery()
+        ? new Question(cardAfterClick, metadata)
+            .setDisplay(cardAfterClick.display || previousCard.display)
+            .setSettings(dashcard.card.visualization_settings)
+            .lockDisplay()
+        : new Question(dashcard.card, metadata).setDashboardProps({
+            dashboardId: dashboard.id,
+            dashcardId: dashcard.id,
+          });
 
       const parametersMappedToCard = getParametersMappedToDashcard(
         dashboard,
@@ -72,7 +69,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       );
 
       const url = ML_Urls.getUrlWithParameters(
-        question,
+        nextQuestion,
         parametersMappedToCard,
         parameterValues,
         {
