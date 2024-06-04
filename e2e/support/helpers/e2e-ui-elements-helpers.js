@@ -271,3 +271,13 @@ export function multiSelectInput() {
 export function multiAutocompleteInput() {
   return cy.findByRole("combobox").get("input").last();
 }
+
+export function multiAutocompleteValue(index) {
+  return cy.findByRole("combobox").get(`[value][index=${index}]`);
+}
+
+export function removeMultiAutocompleteValue(index) {
+  return multiAutocompleteValue(index)
+    .findByRole("button", { hidden: true })
+    .click();
+}
