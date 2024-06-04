@@ -65,8 +65,8 @@ You can set up caching at different levels, from largest to smallest scope. Poli
 
 - [Setting a default caching policy](#default-caching-policy)
 - [Database caching policy (specific to each connected database)](#database-caching-policy)*
-- [Dashboard caching](#dashboard-caching)*
-- [Question caching](#question-caching)*
+- [Dashboard caching](#dashboard-caching-policy)*
+- [Question caching](#question-caching-policy)*
 
 _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
 
