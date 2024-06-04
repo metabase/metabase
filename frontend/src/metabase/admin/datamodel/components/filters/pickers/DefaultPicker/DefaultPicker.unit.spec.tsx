@@ -6,6 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  getByRole,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
@@ -92,7 +93,7 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
@@ -103,7 +104,7 @@ describe("Filters > DefaultPicker", () => {
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
     expect(screen.getByText("Ugly Shoes")).toBeInTheDocument();
   });
 
@@ -113,7 +114,7 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
     const productTitles = [
       "Fancy Shoes",
       "Ugly Shoes",
@@ -141,7 +142,8 @@ describe("Filters > DefaultPicker", () => {
   it("should update values for a multi-value filter", async () => {
     const { setValuesSpy } = await setup({ filter: stringQuery.filters()[0] });
 
-    const input = screen.getByRole("textbox");
+    const combobox = screen.getByRole("combobox");
+    const input = getInput(combobox);
 
     await userEvent.type(input, "Fancy Sandals");
 
@@ -155,9 +157,11 @@ describe("Filters > DefaultPicker", () => {
     const query = makeQuery({ filter: [">", ["field", PRODUCTS.ID, null], 1] });
     const { setValueSpy } = await setup({ filter: query.filters()[0] });
 
-    const input = screen.getByRole("textbox");
+    const combobox = screen.getByRole("combobox");
+    const input = getInput(combobox);
 
-    await userEvent.type(input, "25");
+    await userEvent.type(input, "{backspace}125");
+
     // index, value
     expect(setValueSpy).toHaveBeenLastCalledWith(0, 125);
   });
@@ -177,3 +181,10 @@ describe("Filters > DefaultPicker", () => {
     expect(onCommitSpy).toHaveBeenCalled();
   });
 });
+
+function getInput(parent: HTMLElement) {
+  /* eslint-disable-next-line testing-library/prefer-screen-queries */
+  const input = getByRole(parent, "searchbox");
+  expect(input).toBeInTheDocument();
+  return input;
+}
