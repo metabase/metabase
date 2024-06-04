@@ -114,16 +114,11 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(defn- snake-keys
-  "Util to convert keys to snake case"
-  [m]
-  (update-keys m u/->snake_case_en))
-
 (api/defendpoint ^:deprecated GET "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  (snake-keys
+  (u/snake-keys
    (recent-views/get-recents *current-user-id* :views)))
 
 (api/defendpoint GET "/recents"
@@ -131,7 +126,7 @@
   Allows for filtering by context, either view or selection"
   [:as {{:keys [context]} :params}]
   {context [:enum :views :selections :all]}
-  (snake-keys
+  (u/snake-keys
    (recent-views/get-recents *current-user-id* context)))
 
 (api/defendpoint POST "/recents"
