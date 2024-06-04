@@ -45,7 +45,7 @@ describeWithSnowplow(
       popover().findByText("Combine columns").click();
 
       popover().within(() => {
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "contain",
           "email@example.com12345",
         );
@@ -57,25 +57,25 @@ describeWithSnowplow(
       popover().within(() => {
         cy.findByText("Separated by (empty)").click();
         cy.findByLabelText("Separator").type("__");
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text",
         );
 
         cy.findByText("Add column").click();
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text__12345",
         );
 
         cy.findAllByRole("textbox").last().clear();
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text12345",
         );
 
         cy.findAllByRole("textbox").last().clear().type("+");
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text+12345",
         );
