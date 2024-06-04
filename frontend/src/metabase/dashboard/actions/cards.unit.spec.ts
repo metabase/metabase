@@ -10,7 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
-import mainReducers from "metabase/reducers-main";
+import { mainReducers } from "metabase/reducers-main";
 import { CardApi } from "metabase/services";
 import type {
   CardId,

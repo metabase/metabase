@@ -262,7 +262,7 @@
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "mysql2": "^3.9.7",
+    "mysql2": "^3.9.8",
     "node-polyfill-webpack-plugin": "2.0.1",
     "null-loader": "^4.0.1",
     "open-cli": "^8.0.0",

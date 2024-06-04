@@ -21,6 +21,7 @@ import type {
 import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartMeasurements } from "../chart-measurements/types";
+import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
@@ -87,14 +88,14 @@ export const getCartesianChartOption = (
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
-    ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
-  ];
-
-  if (settings["stackable.stack_type"] != null) {
-    dimensions.push(
-      ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
-    );
-  }
+    POSITIVE_STACK_TOTAL_DATA_KEY,
+    NEGATIVE_STACK_TOTAL_DATA_KEY,
+    ...chartModel.seriesModels.map(seriesModel => [
+      seriesModel.dataKey,
+      getBarSeriesDataLabelKey(seriesModel.dataKey, "+"),
+      getBarSeriesDataLabelKey(seriesModel.dataKey, "-"),
+    ]),
+  ].flatMap(dimension => dimension);
 
   const echartsDataset = [
     {
