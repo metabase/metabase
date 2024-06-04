@@ -1,6 +1,11 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, restore, visitQuestion } from "e2e/support/helpers";
+import {
+  createQuestion,
+  restore,
+  visitQuestion,
+  openReviewsTable,
+} from "e2e/support/helpers";
 import type {
   ConcreteFieldReference,
   StructuredQuery,
@@ -85,5 +90,28 @@ describe("issue 11994", () => {
       cy.location("href").should("eq", questionLocation.href);
     });
     cy.findByTestId("qb-header").findByText(/Save/).should("not.exist");
+  });
+});
+
+describe("issue 39221", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/setting").as("siteSettings");
+    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+
+    restore();
+  });
+
+  ["admin", "normal"].forEach(user => {
+    it(`${user.toUpperCase()}: updating user-specific setting should not result in fetching all site settings (metabase#39221)`, () => {
+      cy.signOut();
+      cy.signIn(user as "admin" | "normal");
+      openReviewsTable({ mode: "notebook" });
+      // Opening a SQL preview sidebar will trigger a user-local setting update
+      cy.findByLabelText("View the SQL").click();
+
+      cy.wait("@sessionProperties");
+
+      cy.get("@siteSettings").should("be.null");
+    });
   });
 });
