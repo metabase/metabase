@@ -1,6 +1,12 @@
 import type { TokenFeatures } from "metabase-types/api";
 import { tokenFeatures } from "metabase-types/api";
 
+// Yearly plans are missing
+// - starter-yearly
+// - starter-with-dwh-yearly
+// - pro-self-hosted-yearly
+// - pro-cloud-yearly
+// - pro-cloud-with-dwh-yearly
 export type Plan =
   | "oss"
   | "starter"
