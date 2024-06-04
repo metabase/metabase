@@ -94,10 +94,12 @@ describe("scenarios > dashboard > chained filter", () => {
       filterWidget().contains("Location 1").click();
 
       popover().within(() => {
-        // input = cy.findByPlaceholderText(
-        //   has_field_values === "search" ? "Search by City" : "Search the list",
-        // );
-        multiAutocompleteInput().type("An");
+        if (has_field_values === "search") {
+          multiAutocompleteInput().type("An");
+        }
+        if (has_field_values === "list") {
+          cy.findByPlaceholderText("Search the list").type("An");
+        }
       });
 
       popover()
@@ -110,7 +112,12 @@ describe("scenarios > dashboard > chained filter", () => {
       popover()
         .first()
         .within(() => {
-          multiAutocompleteInput().type("{backspace}{backspace}");
+          if (has_field_values === "search") {
+            multiAutocompleteInput().type("{backspace}{backspace}");
+          }
+          if (has_field_values === "list") {
+            cy.findByPlaceholderText("Search the list").clear();
+          }
         });
 
       // close the suggestion list
@@ -129,7 +136,12 @@ describe("scenarios > dashboard > chained filter", () => {
       // do it again to make sure it isn't cached incorrectly
       filterWidget().contains("Location 1").click();
       popover().within(() => {
-        multiAutocompleteInput().type("An");
+        if (has_field_values === "search") {
+          multiAutocompleteInput().type("An");
+        }
+        if (has_field_values === "list") {
+          cy.findByPlaceholderText("Search the list").type("An");
+        }
       });
 
       popover()
@@ -152,9 +164,11 @@ describe("scenarios > dashboard > chained filter", () => {
 
       // do it again without a state filter to make sure it isn't cached incorrectly
       filterWidget().contains("Location 1").click();
-      popover().within(() => {
-        multiAutocompleteInput().type("An");
-      });
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().type("An");
+        });
 
       popover()
         .last()
