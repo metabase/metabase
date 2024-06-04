@@ -345,12 +345,37 @@
                                             :sensitive include-sensitive-fields?
                                             true)))))))
 
+(defn batch-fetch-query-metadatas*
+  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
+  [ids]
+  (let [tables (->> (t2/select Table :id [:in ids])
+                    (filter mi/can-read?))
+        tables (t2/hydrate tables
+                           :db
+                           [:fields [:target :has_field_values] :dimensions :has_field_values]
+                           :segments
+                           :metrics)
+        dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)])]
+    (for [table tables]
+      (-> table
+          (m/dissoc-in [:db :details])
+          (assoc-dimension-options (-> table :db_id dbs))
+          format-fields-for-response
+          fix-schema
+          (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %))))))
+
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   metabase-enterprise.sandbox.api.table
   [id opts]
   (fetch-query-metadata* (t2/select-one Table :id id) opts))
+
+(defenterprise batch-fetch-table-query-metadatas
+  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`."
+  metabase-enterprise.sandbox.api.table
+  [ids]
+  (batch-fetch-query-metadatas* ids))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -468,6 +493,35 @@
         (card->virtual-table :include-fields? true)
         (assoc-dimension-options db)
         (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
+
+(defn batch-fetch-card-query-metadatas
+  "Return metadata for the 'virtual' tables for a Cards.
+  Unreadable cards are silently skipped."
+  [ids]
+  (when (seq ids)
+    (let [cards (t2/select Card
+                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                                        :c.description :c.collection_id :c.database_id :c.type
+                                        [:r.status :moderated_status]]
+                            :from      [[:report_card :c]]
+                            :left-join [[{:select   [:moderated_item_id :status]
+                                          :from     [:moderation_review]
+                                          :where    [:and
+                                                     [:= :moderated_item_type "card"]
+                                                     [:= :most_recent true]]
+                                          :order-by [[:id :desc]]
+                                          :limit    1} :r]
+                                        [:= :r.moderated_item_id :c.id]]
+                            :where     [:in :c.id ids]})
+          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])]
+      (for [card cards :when (mi/can-read? card)]
+        ;; a native model can have columns with keys as semantic types only if a user configured them
+        (let [trust-semantic-keys? (and (= (:type card) :model)
+                                        (= (-> card :dataset_query :type) :native))]
+          (-> card
+              (card->virtual-table :include-fields? true)
+              (assoc-dimension-options (-> card :database_id dbs))
+              (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
