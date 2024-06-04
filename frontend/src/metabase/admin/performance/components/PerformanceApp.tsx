@@ -32,8 +32,6 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
     };
     window.addEventListener("resize", handleResize);
     handleResize();
-    // TODO: Is this needed?
-    // setTimeout(handleResize, 50);
     return () => {
       window.removeEventListener("resize", handleResize);
     };
