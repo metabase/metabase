@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import { Group, Text } from "metabase/ui";
@@ -36,13 +36,17 @@ export const PaginationControls = ({
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
   return (
-    <Group align="center" fw="bold" aria-label="pagination">
+    <Group align="center" fw="bold" aria-label="pagination" role="navigation">
       <Text span mr="sm">
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
           <>
             <Text span c="text-light">
-              &nbsp;{t`of`}&nbsp;
+              &nbsp;
+              {c(
+                "Appears in phrases like '1-10 of 100', referring to a page of results",
+              ).t`of`}
+              &nbsp;
             </Text>
             <Text span data-testid="pagination-total">
               {total}
