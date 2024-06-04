@@ -38,14 +38,14 @@
    table    :- i/TableInstance]
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)
-          result (if (driver/database-supports? driver :describe-fields database)
+          result (if (driver.u/supports? driver :describe-fields database)
                    (set (driver/describe-fields driver
                                                 database
                                                 :table-names [(:name table)]
                                                 :schema-names [(:schema table)]))
                    (:fields (driver/describe-table driver database table)))]
       (cond-> result
-        (driver/database-supports? driver :nested-field-columns database)
+        (driver.u/supports? driver :nested-field-columns database)
         ;; TODO: decouple nested field columns sync from field sync. This will allow
         ;; describe-fields to be used for field sync for databases with nested field columns
         ;; Also this should be a driver method, not a sql-jdbc.sync method
@@ -69,7 +69,7 @@
   [database :- i/DatabaseInstance & {:as args}]
   (log-if-error "fields-metadata"
     (let [driver             (driver.u/database->driver database)
-          describe-fields-fn (if (driver/database-supports? driver :describe-fields database)
+          describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
                                driver/describe-fields
                                ;; In a future version we may remove [[driver/describe-table]]
                                ;; and we'll just use [[driver/describe-fields]] here
@@ -103,8 +103,8 @@
   [database :- i/DatabaseInstance & {:as args}]
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
-      (when (driver/database-supports? driver :foreign-keys database)
-        (let [describe-fks-fn (if (driver/database-supports? driver :describe-fks database)
+      (when (driver.u/supports? driver :foreign-keys database)
+        (let [describe-fks-fn (if (driver.u/supports? driver :describe-fks database)
                                 driver/describe-fks
                                 ;; In version 52 we'll remove [[driver/describe-table-fks]]
                                 ;; and we'll just use [[driver/describe-fks]] here

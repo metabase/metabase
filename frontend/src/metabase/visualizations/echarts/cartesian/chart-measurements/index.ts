@@ -6,7 +6,7 @@ import {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   AxisFormatter,
-  CartesianChartModel,
+  BaseCartesianChartModel,
   ChartDataset,
   NumericAxisScaleTransforms,
   StackModel,
@@ -212,7 +212,7 @@ const X_LABEL_ROTATE_45_THRESHOLD_FACTOR = 2.1;
 const X_LABEL_ROTATE_90_THRESHOLD_FACTOR = 1.2;
 
 const getAutoAxisEnabledSetting = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   boundaryWidth: number,
   maxXTickWidth: number,
@@ -258,7 +258,7 @@ const getAutoAxisEnabledSetting = (
 };
 
 const getTicksDimensions = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   chartWidth: number,
   outerHeight: number,
   settings: ComputedVisualizationSettings,
@@ -359,7 +359,7 @@ const getTicksDimensions = (
 const TICK_OVERFLOW_BUFFER = 4;
 
 export const getChartPadding = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
@@ -492,7 +492,7 @@ export const getChartBounds = (
 };
 
 const getDimensionWidth = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   boundaryWidth: number,
 ) => {
   const { xAxisModel } = chartModel;
@@ -542,7 +542,7 @@ const areHorizontalXAxisTicksOverlapping = (
 };
 
 const countFittingLabels = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   barStack: StackModel,
   barWidth: number,
   renderingContext: RenderingContext,
@@ -556,10 +556,10 @@ const countFittingLabels = (
 
       const seriesFitCounts = chartModel.transformedDataset.reduce(
         (fitCounts, datum, index) => {
-          const originalDatumIndex = datum[ORIGINAL_INDEX_DATA_KEY ?? index];
+          const datumIndex = datum[ORIGINAL_INDEX_DATA_KEY] ?? index;
           const value =
-            originalDatumIndex != null
-              ? chartModel.dataset[originalDatumIndex][seriesKey]
+            datumIndex != null
+              ? chartModel.dataset[datumIndex][seriesKey]
               : null;
 
           // Nulls and zeros should not be considered because they can't have labels
@@ -599,7 +599,7 @@ const BAR_WIDTH_PRECISION = 0.85;
 const HORIZONTAL_LABELS_COUNT_THRESHOLD = 0.8;
 
 const getStackedBarTicksRotation = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   boundaryWidth: number,
   renderingContext: RenderingContext,
 ) => {
@@ -640,7 +640,7 @@ const getStackedBarTicksRotation = (
 };
 
 export const getChartMeasurements = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   width: number,

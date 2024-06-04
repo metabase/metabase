@@ -1,5 +1,5 @@
 ;; -*- comment-column: 100; -*-
-{:config-paths ["macros"]
+{:config-paths ["macros" "src"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
   :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
@@ -107,6 +107,7 @@
    malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
+   metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
    toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}}
@@ -835,7 +836,11 @@
   ;; `metabase.driver.*`, excluding `-test` namespaces.
   ;;
   {:pattern "metabase(?:(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.)|(?:\\.driver\\.)).*(?<!-test)$"
-   :name    qp-and-driver-source-namespaces}]
+   :name    qp-and-driver-source-namespaces}
+
+  ;; driver namespaces
+  {:pattern "metabase\\.driver.*$"
+   :name    driver-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -843,12 +848,14 @@
    {:inline-def                              {:level :off}
     :missing-docstring                       {:level :off}
     :private-call                            {:level :off}
-    :metabase/defsetting-must-specify-export {:level :off}}
-   :hooks
-   {:analyze-call
-    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
+    :metabase/defsetting-must-specify-export {:level :off}
+    :discouraged-var                         {metabase.driver/database-supports? {:level :off}}}
+
+  :hooks
+  {:analyze-call
+   {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+    clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+    clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters
@@ -892,6 +899,11 @@
      toucan.models              {:message "Don't use application database inside MLv2 code"}
      toucan.util.test           {:message "Don't use application database inside MLv2 code"}
      toucan2.core               {:message "Don't use application database inside MLv2 code"}}}}
+
+  driver-namespaces
+  {:linters
+   {:discouraged-var
+    {metabase.driver/database-supports? {:level :off}}}}
 
   qp-and-driver-source-namespaces
   {:linters

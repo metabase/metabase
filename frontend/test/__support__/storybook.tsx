@@ -3,7 +3,7 @@ import { Provider } from "react-redux";
 
 import type { MetabaseTheme } from "embedding-sdk";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
-import mainReducers from "metabase/reducers-main";
+import { mainReducers } from "metabase/reducers-main";
 import type { MantineThemeOverride } from "metabase/ui";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 

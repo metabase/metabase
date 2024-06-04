@@ -31,11 +31,12 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleTableChange = (
+  const handleTableChange = async (
     table: Lib.TableMetadata | Lib.CardMetadata,
     metadataProvider: Lib.MetadataProvider,
   ) => {
-    updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, table));
+    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    await updateQuery(newQuery);
   };
 
   return (

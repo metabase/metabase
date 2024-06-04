@@ -10,7 +10,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
-  setupDashboardMetadataEndpoint,
+  setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
@@ -31,6 +31,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockDashboardQueryMetadata,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -66,7 +67,12 @@ async function setup({ dashboard }: Options = {}) {
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
-  setupDashboardMetadataEndpoint(mockDashboard, [TEST_DATABASE_WITH_ACTIONS]);
+  setupDashboardQueryMetadataEndpoint(
+    mockDashboard,
+    createMockDashboardQueryMetadata({
+      databases: [TEST_DATABASE_WITH_ACTIONS],
+    }),
+  );
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,

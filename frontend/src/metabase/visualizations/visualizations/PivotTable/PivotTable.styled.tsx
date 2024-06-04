@@ -118,7 +118,9 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   box-shadow: -1px 0 0 0 ${getBorderColor} inset;
   border-bottom: 1px solid
     ${props =>
-      props.isBorderedHeader ? color("bg-dark") : getBorderColor(props)};
+      props.isBorderedHeader
+        ? "var(--mb-color-bg-dark)"
+        : getBorderColor(props)};
   background-color: ${getCellBackgroundColor};
   ${props =>
     props.hasTopBorder &&

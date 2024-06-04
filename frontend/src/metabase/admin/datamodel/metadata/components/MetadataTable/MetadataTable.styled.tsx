@@ -24,7 +24,7 @@ export const TableNameInput = styled(InputBlurChange)`
     font-size: 20px;
     color: ${color("text-dark")};
     border-radius: 8px 8px 0 0;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     padding: 0.75rem 1.5rem;
   }
 `;
@@ -36,7 +36,7 @@ export const TableDescriptionInput = styled(InputBlurChange)`
     border-radius: 0 0 8px 8px;
     font-weight: 400;
     font-size: 14px;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     padding: 0.75rem 1.5rem;
   }
 `;

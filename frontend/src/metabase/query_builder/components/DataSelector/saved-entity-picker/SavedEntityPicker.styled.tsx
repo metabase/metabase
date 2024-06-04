@@ -20,7 +20,7 @@ export const CollectionsContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 310px;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   overflow: auto;
 
   ${breakpointMaxSmall} {

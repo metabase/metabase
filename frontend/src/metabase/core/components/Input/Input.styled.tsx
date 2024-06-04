@@ -59,7 +59,8 @@ export const InputField = styled.input<InputProps>`
   color: ${color("text-dark")};
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
-  background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
+  background-color: ${props =>
+    props.readOnly ? "var(--mb-color-bg-light)" : color("bg-white")};
   outline: none;
   text-align: inherit;
 
@@ -71,7 +72,7 @@ export const InputField = styled.input<InputProps>`
 
   &:disabled {
     cursor: default;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 
   ${props => focusOutlineStyle(props.colorScheme)};

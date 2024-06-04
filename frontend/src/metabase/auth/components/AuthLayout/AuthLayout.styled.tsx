@@ -6,7 +6,7 @@ import { breakpointMinSmall } from "metabase/styled-components/theme";
 export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100vh;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const LayoutBody = styled.div`

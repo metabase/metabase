@@ -4,6 +4,10 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
+import {
+  CompareAggregations,
+  getOffsetPeriod,
+} from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -27,20 +31,29 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onSelect: (operator: Lib.Aggregable) => void;
+  onAdd: (aggregations: Lib.Aggregable[]) => void;
+  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
+  type: "operator";
   operator: Lib.AggregationOperator;
 };
 
 type MetricListItem = Lib.MetricDisplayInfo & {
+  type: "metric";
   metric: Lib.MetricMetadata;
   selected: boolean;
 };
 
-type ListItem = OperatorListItem | MetricListItem;
+type CompareListItem = {
+  type: "compare";
+  displayName: string;
+  selected?: boolean;
+};
+
+type ListItem = OperatorListItem | MetricListItem | CompareListItem;
 
 type Section = {
   name?: string;
@@ -50,10 +63,6 @@ type Section = {
   type?: string;
 };
 
-function isOperatorListItem(item: ListItem): item is OperatorListItem {
-  return "operator" in item;
-}
-
 export function AggregationPicker({
   className,
   query,
@@ -62,6 +71,7 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
+  onAdd,
   onSelect,
   onClose,
 }: AggregationPickerProps) {
@@ -76,6 +86,7 @@ export function AggregationPicker({
   ] = useToggle(
     isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
   );
+  const [isComparing, setIsComparing] = useState(false);
 
   // For really simple inline expressions like Average([Price]),
   // MLv2 can figure out that "Average" operator is used.
@@ -97,14 +108,17 @@ export function AggregationPicker({
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
     const isMetricBased = Lib.isMetricBased(query, stageIndex);
+    const compareItem = getCompareListItem(query, stageIndex);
 
-    if (operators.length > 0 && !isMetricBased) {
+    if ((compareItem || operators.length > 0) && !isMetricBased) {
+      const operatorItems = operators.map(operator =>
+        getOperatorListItem(query, stageIndex, operator),
+      );
+
       sections.push({
         key: "operators",
         name: t`Basic Metrics`,
-        items: operators.map(operator =>
-          getOperatorListItem(query, stageIndex, operator),
-        ),
+        items: compareItem ? [compareItem, ...operatorItems] : operatorItems,
         icon: "table2",
       });
     }
@@ -175,15 +189,25 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const handleCompareSelect = useCallback(() => {
+    setIsComparing(true);
+  }, []);
+
+  const handleCompareClose = useCallback(() => {
+    setIsComparing(false);
+  }, []);
+
   const handleChange = useCallback(
     (item: ListItem) => {
-      if (isOperatorListItem(item)) {
+      if (item.type === "operator") {
         handleOperatorSelect(item);
-      } else {
+      } else if (item.type === "metric") {
         handleMetricSelect(item);
+      } else if (item.type === "compare") {
+        handleCompareSelect();
       }
     },
-    [handleOperatorSelect, handleMetricSelect],
+    [handleOperatorSelect, handleMetricSelect, handleCompareSelect],
   );
 
   const handleSectionChange = useCallback(
@@ -203,6 +227,25 @@ export function AggregationPicker({
     },
     [onSelect, onClose],
   );
+
+  const handleCompareSubmit = useCallback(
+    (aggregations: Lib.Aggregable[]) => {
+      onAdd(aggregations);
+      onClose?.();
+    },
+    [onAdd, onClose],
+  );
+
+  if (isComparing) {
+    return (
+      <CompareAggregations
+        query={query}
+        stageIndex={stageIndex}
+        onSubmit={handleCompareSubmit}
+        onClose={handleCompareClose}
+      />
+    );
+  }
 
   if (isEditingExpression) {
     return (
@@ -330,6 +373,7 @@ function getOperatorListItem(
   const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
   return {
     ...operatorInfo,
+    type: "operator",
     operator,
   };
 }
@@ -343,9 +387,38 @@ function getMetricListItem(
   const metricInfo = Lib.displayInfo(query, stageIndex, metric);
   return {
     ...metricInfo,
+    type: "metric",
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
+  };
+}
+
+function getCompareListItem(
+  query: Lib.Query,
+  stageIndex: number,
+): CompareListItem | undefined {
+  const aggregations = Lib.aggregations(query, stageIndex);
+
+  if (aggregations.length === 0) {
+    return undefined;
+  }
+
+  const period = getOffsetPeriod(query, stageIndex);
+
+  if (aggregations.length > 1) {
+    return {
+      type: "compare",
+      displayName: t`Compare to previous ${period} ...`,
+    };
+  }
+
+  const [aggregation] = aggregations;
+  const info = Lib.displayInfo(query, stageIndex, aggregation);
+
+  return {
+    type: "compare",
+    displayName: t`Compare “${info.displayName}” to previous ${period} ...`,
   };
 }
 

@@ -47,7 +47,7 @@
 }
 
 .AdminList {
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
   border: var(--border-size) var(--border-style) var(--mb-color-border);
   border-radius: var(--default-border-radius);
   width: 266px;
@@ -114,7 +114,7 @@
 .AdminInput {
   color: var(--mb-color-text-dark);
   padding: var(--padding-1);
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
   border: 1px solid transparent;
 }
 

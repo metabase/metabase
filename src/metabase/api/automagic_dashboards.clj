@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -143,6 +144,14 @@
   [show]
   (cond-> show (= "all" show) keyword))
 
+(defn get-automagic-dashboard
+  "Return an automagic dashboard for entity `entity` with id `id`."
+  [entity entity-id-or-query show]
+  (if (= entity "transform")
+    (xrays/dashboard (->entity entity entity-id-or-query))
+    (-> (->entity entity entity-id-or-query)
+        (xrays/automagic-analysis {:show (coerce-show show)}))))
+
 (api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
@@ -150,10 +159,16 @@
    entity (mu/with-api-error-message
            (into [:enum] entities)
            (deferred-tru "Invalid entity type"))}
-  (if (= entity "transform")
-    (xrays/dashboard (->entity entity entity-id-or-query))
-    (-> (->entity entity entity-id-or-query)
-        (xrays/automagic-analysis {:show (coerce-show show)}))))
+  (get-automagic-dashboard entity entity-id-or-query show))
+
+(api/defendpoint GET "/:entity/:entity-id-or-query/query_metadata"
+  "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
+  [entity entity-id-or-query]
+  {entity (mu/with-api-error-message
+            (into [:enum] entities)
+            (deferred-tru "Invalid entity type"))}
+  (api.query-metadata/dashboard-metadata
+    (get-automagic-dashboard entity entity-id-or-query nil)))
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."

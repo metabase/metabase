@@ -27,7 +27,7 @@ export function JoinStep({
     updateQuery(newQuery);
   };
 
-  const handleUpdateJoin = (newJoin: Lib.Join) => {
+  const handleUpdateJoin = async (newJoin: Lib.Join) => {
     if (join) {
       const newQuery = Lib.replaceClause(query, stageIndex, join, newJoin);
       updateQuery(newQuery);

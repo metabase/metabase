@@ -160,6 +160,16 @@
                   (mi/encrypted-json-out
                    (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))))))))
 
+(deftest instances-with-hydrated-data-test
+  (let [things [{:id 2} nil {:id 1}]]
+    (is (= [{:id 2 :even-id? true} nil {:id 1 :even-id? false}]
+           (mi/instances-with-hydrated-data
+             things :even-id?
+             #(into {} (comp (remove nil?)
+                             (map (juxt :id (comp even? :id))))
+                    things)
+             :id)))))
+
 (deftest normalize-mbql-clause-impostor-in-visualization-settings-test
   (let [viz-settings
         {"table.pivot_column" "TAX",

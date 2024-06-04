@@ -17,7 +17,7 @@ export const TableHeader = styled.div`
   border: 1px solid ${color("border")};
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const TableHeaderRow = styled.div`

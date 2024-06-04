@@ -23,7 +23,7 @@ export const StatusHeader = styled.div`
 export const StatusTitle = styled.div`
   flex: 1 1 auto;
   width: 100%;
-  color: ${color("bg-light")};
+  color: var(--mb-color-bg-light);
   font-size: 0.875rem;
   font-weight: bold;
   line-height: 1rem;
@@ -71,7 +71,7 @@ export const StatusCardTitle = styled.div`
 `;
 
 export const StatusCardDescription = styled.div`
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   font-size: 0.6875rem;
   font-weight: bold;
   line-height: 0.8125rem;

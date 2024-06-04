@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Collection Field Table]]
@@ -88,7 +89,7 @@
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
+    (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
               {:query
                (format-honeysql
@@ -105,7 +106,7 @@
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
+    (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
               {:query
                (format-honeysql
