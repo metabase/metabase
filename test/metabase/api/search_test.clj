@@ -106,6 +106,7 @@
                                             :effective_location "/"
                                             :location "/"
                                             :updated_at false
+                                            :type nil
                                             :can_write true))
 
 (def ^:private action-model-params {:name "ActionModel", :type :model})
@@ -1679,7 +1680,7 @@
                    Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
                    Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}
                    Card {top-card-id :id} {:type :model :collection_id top-col-id :name "top model"}]
-      (is (= #{[leaf-card-id [{:name "top level col" :id top-col-id}]]
+      (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
                [top-card-id []]}
              (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
                   :data
@@ -1712,3 +1713,44 @@
              (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors false :q "model" :models ["dataset"])
                   :data
                   (map #(get-in % [:collection :effective_ancestors]))))))))
+
+(deftest collection-type-is-returned
+  (let [search-name (random-uuid)
+        named       #(str search-name "-" %)]
+    (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
+                   :model/Collection _ {:location (collection/children-location parent)
+                                        :name (named "collection")
+                                        :type "meow mix"}
+                   :model/Dashboard _ {:collection_id parent-id :name (named "dashboard")}
+                   :model/Card _ {:collection_id parent-id :name (named "card")}
+                   :model/Card _ {:collection_id parent-id :type :model :name (named "model")}]
+      (testing "the collection data includes the type under `item.type` for collections"
+        (is (every? #(contains? % :type)
+                    (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                         :data
+                         (filter #(= (:model %) "collection")))))
+        (is (not-any? #(contains? % :type)
+                      (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                           :data
+                           (remove #(= (:model %) "collection"))))))
+      (testing "`item.type` is correct for collections"
+        (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                                  :data
+                                  (keep :type)
+                                  set)))))
+    (testing "Type is on both `item.collection.type` and `item.collection.effective_ancestors`"
+      (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/" :type "foo"}
+                     Collection {mid-col-id :id} {:name "middle level col" :type "bar" :location (str "/" top-col-id "/")}
+                     Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}]
+        (let [leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                                      :data
+                                      (filter #(= (:id %) leaf-card-id))
+                                      first)]
+          (is (= {:id mid-col-id
+                  :name "middle level col"
+                  :type "bar"
+                  :authority_level nil
+                  :effective_ancestors [{:id top-col-id
+                                         :name "top level col"
+                                         :type "foo"}]}
+                 (:collection leaf-card-response))))))))
