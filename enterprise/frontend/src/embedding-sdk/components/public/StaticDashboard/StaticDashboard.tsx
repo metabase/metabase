@@ -18,26 +18,29 @@ import type { DashboardId } from "metabase-types/api";
 
 type StaticDashboardProps = {
   dashboardId: DashboardId;
-  withTitle: boolean;
-  withDownloads: boolean;
-  hideParameters: string[];
-  initialParameterValues: Query;
+  withTitle?: boolean;
+  withDownloads?: boolean;
+  hiddenParameters?: string[];
+  initialParameterValues?: Query;
 };
 
 const _StaticDashboard = ({
   dashboardId,
   initialParameterValues: parameterQueryParams = {},
-  withTitle: titled,
-  withDownloads: hideDownloadButton,
-  hideParameters,
+  withTitle: titled = true,
+  withDownloads = true,
+  hiddenParameters = [],
 }: StaticDashboardProps) => {
+  // temporary name until we change `hideDownloadButton` to `downloads`
+  const hideDownloadButton = !withDownloads;
+
   const options: EmbedDisplayParams = {
     ...DEFAULT_EMBED_DISPLAY_OPTIONS,
     ...pick(
       {
         titled,
         hideDownloadButton,
-        hideParameters: hideParameters ? hideParameters.join(",") : null,
+        hideParameters: hiddenParameters.join(",") ?? null,
       },
       isNotNull,
     ),
