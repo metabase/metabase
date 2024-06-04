@@ -42,6 +42,7 @@ import type {
   ChartMeasurements,
   TicksRotation,
 } from "../chart-measurements/types";
+import { getNonNormalizedKey } from "../model/dataset";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -360,7 +361,8 @@ export const buildEChartsStackLabelOptions = (
     ),
     formatter: (params: CallbackDataParams) => {
       const datum = params.data as Datum;
-      const value = datum[seriesModel.dataKey];
+      const nonNormalizedKey = getNonNormalizedKey(seriesModel.dataKey);
+      const value = datum[nonNormalizedKey];
 
       if (typeof value !== "number") {
         return "";
