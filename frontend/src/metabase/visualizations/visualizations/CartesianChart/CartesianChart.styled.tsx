@@ -35,7 +35,6 @@ export const CartesianChartLegendLayout = styled(LegendLayout)`
   flex: 1 1 auto;
 `;
 
-// @ts-expect-error emotion does not accept the `WrappedComponent` class type
 // created in ExplicitSize
 export const CartesianChartRenderer = styled(ResponsiveEChartsRenderer)`
   height: 100%;

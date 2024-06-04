@@ -39,7 +39,6 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -76,7 +75,7 @@
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
-          schemas?        (driver/database-supports? driver :schemas database)
+          schemas?        (driver.u/supports? driver :schemas database)
           fields-metadata (if schemas?
                             (fetch-metadata/fields-metadata database :schema-names (sync-util/db->sync-schemas database))
                             (fetch-metadata/fields-metadata database))]

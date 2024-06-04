@@ -7,7 +7,11 @@ import type { ColorPalette } from "./types";
 export const ACCENT_COUNT = 8;
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
+// NOTE: KEEP SYNCRONIZED WITH:
+// frontend/src/metabase/css/core/colors.module.css
+// frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
+// enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+// .storybook/preview-head.html
 export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
@@ -22,7 +26,6 @@ export const colors = {
   accent7: "#7172AD",
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
-  black: "#2E353B",
   success: "#84BB4C",
   danger: "#ED6E6E",
   error: "#ED6E6E",

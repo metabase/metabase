@@ -54,7 +54,6 @@ export interface StaticVisualizationProps {
 export interface VisualizationProps {
   series: Series;
   card: Card;
-  href: string | undefined;
   data: DatasetData;
   metadata: Metadata;
   rawSeries: RawSeries;

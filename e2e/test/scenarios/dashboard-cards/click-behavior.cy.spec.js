@@ -1406,6 +1406,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
             parseSpecialCharSequences: false,
           });
+          customLinkTextInput.blur();
+
           cy.button("Done").click();
         });
 

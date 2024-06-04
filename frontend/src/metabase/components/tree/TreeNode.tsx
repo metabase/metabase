@@ -24,7 +24,7 @@ const BaseTreeNode = React.memo(
       onSelect,
       onToggleExpand,
       ...props
-    },
+    }: TreeNodeProps,
     ref,
   ) {
     const { name, icon } = item;

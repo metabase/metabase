@@ -55,7 +55,7 @@ export const TableBodyCell = styled.div`
 
   &:not(:first-of-type) {
     border-left: 1px solid ${color("border")};
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 
   ${breakpointMinLarge} {
