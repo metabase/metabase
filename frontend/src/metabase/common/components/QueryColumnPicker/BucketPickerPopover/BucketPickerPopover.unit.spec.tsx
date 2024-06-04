@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
@@ -16,7 +16,7 @@ const numericColumn = findColumn("ORDERS", "TOTAL");
 
 function setup({ column }: { column: Lib.ColumnMetadata }) {
   const onSelect = jest.fn();
-  renderWithProviders(
+  render(
     <div data-testid="container">
       <BucketPickerPopover
         query={query}
