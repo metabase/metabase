@@ -47,7 +47,7 @@ export const ModelFilterControls = ({
             <Text
               align="end"
               weight="bold"
-            >{t`Only show verified models`}</Text>
+            >{t`Show verified models only`}</Text>
           }
           role="switch"
           checked={checked}
