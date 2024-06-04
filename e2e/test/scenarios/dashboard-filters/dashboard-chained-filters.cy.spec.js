@@ -15,6 +15,7 @@ import {
   editDashboard,
   setFilter,
   sidebar,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -93,45 +94,75 @@ describe("scenarios > dashboard > chained filter", () => {
       filterWidget().contains("Location 1").click();
 
       popover().within(() => {
-        cy.findByPlaceholderText(
-          has_field_values === "search" ? "Search by City" : "Search the list",
-        ).type("An");
-        cy.findByText("Anchorage");
-        cy.findByText("Anacoco").should("not.exist");
-
-        cy.get("input").first().clear();
+        // input = cy.findByPlaceholderText(
+        //   has_field_values === "search" ? "Search by City" : "Search the list",
+        // );
+        multiAutocompleteInput().type("An");
       });
+
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("Anchorage");
+          cy.findByText("Anacoco").should("not.exist");
+        });
+
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().type("{backspace}{backspace}");
+        });
+
+      // close the suggestion list
+      popover().first().click({ force: true });
 
       filterWidget().contains("AK").click();
-      popover().within(() => {
-        cy.findByText("AK").click();
-        cy.findByText("GA").click();
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("AK").click();
+          cy.findByText("GA").click();
 
-        cy.findByText("Update filter").click();
-      });
+          cy.findByText("Update filter").click();
+        });
 
       // do it again to make sure it isn't cached incorrectly
       filterWidget().contains("Location 1").click();
       popover().within(() => {
-        cy.get("input").first().type("An");
-        cy.findByText("Canton");
-        cy.findByText("Anchorage").should("not.exist");
+        multiAutocompleteInput().type("An");
       });
 
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("Canton");
+          cy.findByText("Anchorage").should("not.exist");
+        });
+
+      // close the suggestion list
+      popover().first().click({ force: true });
+
       filterWidget().contains("GA").click();
-      popover().within(() => {
-        cy.findByText("GA").click();
-        cy.findByText("Update filter").click();
-      });
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("GA").click();
+          cy.findByText("Update filter").click();
+        });
 
       // do it again without a state filter to make sure it isn't cached incorrectly
       filterWidget().contains("Location 1").click();
       popover().within(() => {
-        cy.get("input").first().type("An");
-        cy.findByText("Adrian");
-        cy.findByText("Anchorage");
-        cy.findByText("Canton");
+        multiAutocompleteInput().type("An");
       });
+
+      popover()
+        .last()
+        .within(() => {
+          cy.findByText("Adrian");
+          cy.findByText("Anchorage");
+          cy.findByText("Canton");
+        });
     });
   }
 
