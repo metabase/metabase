@@ -14,7 +14,6 @@ import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
@@ -141,8 +140,7 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  return question.canWrite() && isEditable;
+  return question.canWrite() && question.canRunAdhocQuery();
 };
 
 const canDownloadResults = (result?: Dataset) => {
