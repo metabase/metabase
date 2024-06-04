@@ -107,9 +107,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type(
-          "1{enter}3{enter}",
-        );
+        cy.findByPlaceholderText("Search by Name or enter an ID").type("1,3,");
 
         cy.button("Add filter").click();
       });
@@ -140,7 +138,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
-      popover().findByText("Lina Heaney").click();
+      popover().last().findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
 
@@ -316,20 +314,18 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.log("should allow searching PEOPLE.ID by PEOPLE.NAME");
 
       openFilterOptions("Id");
-      popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
+      popover()
+        .findByPlaceholderText("Search by Name or enter an ID")
+        .type("Aly");
 
-        cy.contains("Alycia McCullough - 2016");
-      });
+      popover().last().contains("Alycia McCullough - 2016");
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
       openFilterOptions("Name");
-      popover().within(() => {
-        cy.findByPlaceholderText("Search by Name").type("Aly");
+      popover().findByPlaceholderText("Search by Name").type("Aly");
 
-        cy.contains("Alycia McCullough");
-      });
+      popover().last().contains("Alycia McCullough");
 
       cy.log("should show values for PEOPLE.SOURCE");
 
@@ -339,11 +335,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.log("should allow searching ORDER.USER_ID by PEOPLE.NAME");
 
       openFilterOptions("User");
-      popover().within(() => {
-        cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
+      popover()
+        .findByPlaceholderText("Search by Name or enter an ID")
+        .type("Aly");
 
-        cy.contains("Alycia McCullough - 2016");
-      });
+      popover().last().contains("Alycia McCullough - 2016");
 
       cy.log("should accept url parameters");
 
