@@ -483,7 +483,9 @@ export type ColumnExtractDrillThruInfo =
   };
 
 export type CompareAggregationsDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
+  BaseDrillThruInfo<"drill-thru/compare-aggregations"> & {
+    aggregationIndex: number;
+  };
 
 export type CombineColumnsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/combine-columns">;

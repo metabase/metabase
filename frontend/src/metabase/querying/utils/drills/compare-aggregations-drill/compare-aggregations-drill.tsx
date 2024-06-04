@@ -12,13 +12,13 @@ import * as Lib from "metabase-lib";
 
 export const compareAggregationsDrill: Drill<
   Lib.CompareAggregationsDrillThruInfo
-> = ({ question, query, stageIndex, clicked }) => {
-  if (!clicked.column || typeof clicked.column.aggregation_index !== "number") {
+> = ({ drillInfo, question, query, stageIndex, clicked }) => {
+  if (!clicked.column) {
     return [];
   }
 
   const aggregations = Lib.aggregations(query, stageIndex);
-  const aggregation = aggregations[clicked.column.aggregation_index];
+  const aggregation = aggregations[drillInfo.aggregationIndex];
 
   const DrillPopover = ({
     onChangeCardAndRun,
