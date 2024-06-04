@@ -126,6 +126,37 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+  be-tests-databricks-ee:
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: databricks-jdbc
+      MB_DATABRICKS_JDBC_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+      MB_DATABRICKS_JDBC_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+      MB_DATABRICKS_JDBC_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_JDBC_TEST_CATALOG: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CATALOG }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Databricks JDBC driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-databricks-jdbc-ee'
+        test-args: ":exclude-tags '[:mb/once]'"
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
   be-tests-googleanalytics-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
