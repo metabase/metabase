@@ -23,7 +23,9 @@ export function getSizeInPx(
       return undefined;
     }
 
-    return em * parentFontSize;
+    const emValue = em * parentFontSize;
+
+    return Math.round(emValue * 100) / 100;
   }
 }
 
