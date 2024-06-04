@@ -54,10 +54,6 @@ export const CombineColumnsDrill = ({
       separator: defaultSeparator,
     },
   ]);
-  const expressionClause = useMemo(
-    () => getDrillExpressionClause(column, columnsAndSeparators),
-    [column, columnsAndSeparators],
-  );
   const example = useMemo(() => {
     return getExample(column, columnsAndSeparators);
   }, [column, columnsAndSeparators]);
@@ -102,6 +98,10 @@ export const CombineColumnsDrill = ({
       columnsAndSeparators,
     );
 
+    const expressionClause = getDrillExpressionClause(
+      column,
+      columnsAndSeparators,
+    );
     const newQuery = Lib.expression(query, stageIndex, name, expressionClause);
 
     onSubmit(newQuery);
