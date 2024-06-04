@@ -29,7 +29,7 @@ export const Breadcrumb = styled(ResponsiveChild)<{
     return `
     @container ${props.containerName} (width < ${breadcrumbBreakpoint}) {
       ${props.index === 0 && !props.isSoleBreadcrumb ? `display: none;` : ""}
-      max-width: calc(95cqw - ${props.isSoleBreadcrumb ? 1 : 3}rem) !important;
+      td & { max-width: calc(95cqw - ${props.isSoleBreadcrumb ? 1 : 3}rem); };
     }`;
   }}
 `;
