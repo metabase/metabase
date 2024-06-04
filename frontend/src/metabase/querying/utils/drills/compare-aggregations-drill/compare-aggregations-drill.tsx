@@ -4,6 +4,7 @@ import {
   CompareAggregations,
   getTitle,
 } from "metabase/query_builder/components/CompareAggregations";
+import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
   Drill,
@@ -42,6 +43,7 @@ export const compareAggregationsDrill: Drill<
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
 
+          trackColumnCompareViaColumnHeader(nextQuery, nextQuestion);
           dispatch(setUIControls({ scrollToLastColumn: true }));
           onChangeCardAndRun({ nextCard });
           onClose();
