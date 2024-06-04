@@ -5,6 +5,7 @@ import {
   clearFilterWidget,
   filterWidget,
   popover,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -69,7 +70,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       filterWidget().click();
       popover().within(() => {
-        cy.icon("close").click();
+        removeMultiAutocompleteValue(0);
         cy.findByText("Set to default").click();
       });
       filterWidget()
