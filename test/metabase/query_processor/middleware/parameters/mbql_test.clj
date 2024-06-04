@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -320,7 +321,7 @@
 (deftest ^:parallel handle-fk-forms-test
   (mt/test-drivers (params-test-drivers)
     (qp.store/with-metadata-provider (mt/id)
-      (when (driver/database-supports? driver/*driver* :foreign-keys (mt/db))
+      (when (driver.u/supports? driver/*driver* :foreign-keys (mt/db))
         (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
           (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
                   [32 "Boneyard Bistro" 5 34.1477 -118.428 3]

@@ -13,7 +13,7 @@ export const CurrentContainer = styled.div<{ first?: boolean }>`
 
 export const CurrentPopover = styled.div`
   color: ${color("white")};
-  background-color: ${color("black")};
+  background-color: var(--mb-color-bg-black);
   padding: ${space(1)} ${space(2)};
 `;
 

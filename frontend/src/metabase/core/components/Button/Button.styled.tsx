@@ -57,7 +57,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       color: ${color("brand")};
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: var(--mb-color-bg-light);
       }
     `}
 `;

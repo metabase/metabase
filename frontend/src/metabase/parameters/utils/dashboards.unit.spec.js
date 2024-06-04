@@ -3,6 +3,7 @@ import {
   createParameter,
   setParameterName,
   hasMapping,
+  getParametersMappedToDashcard,
   hasMatchingParameters,
   getFilteringParameterValuesMap,
   getDashboardUiParameters,
@@ -187,6 +188,65 @@ describe("metabase/parameters/utils/dashboards", () => {
       };
 
       expect(hasMapping(parameter, dashboard)).toBe(true);
+    });
+  });
+
+  describe("getParametersMappedToDashcard", () => {
+    const dashboard = {
+      parameters: [
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+        {
+          id: "baz",
+        },
+      ],
+    };
+
+    const dashboardWithNoParameters = { parameters: [] };
+
+    const dashcard = {
+      parameter_mappings: [
+        {
+          parameter_id: "foo",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          parameter_id: "bar",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ],
+    };
+
+    const dashcardWithNoMappings = {};
+
+    it("should return the subset of the dashboard's parameters that are found in a given dashcard's parameter_mappings", () => {
+      expect(
+        getParametersMappedToDashcard(dashboardWithNoParameters, dashcard),
+      ).toEqual([]);
+      expect(
+        getParametersMappedToDashcard(dashboard, dashcardWithNoMappings),
+      ).toEqual([]);
+
+      expect(getParametersMappedToDashcard(dashboard, dashcard)).toEqual([
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ]);
     });
   });
 
