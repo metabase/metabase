@@ -14,7 +14,7 @@ export const StaticEmbedIconRoot = styled.svg`
       }
 
       ${SharingPaneButtonContent}:hover & {
-        color: ${theme.fn.themeColor("focus")};
+        color: var(--mb-color-focus);
 
         .innerFill {
           fill: ${theme.fn.themeColor("brand")};

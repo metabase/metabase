@@ -17,7 +17,7 @@ export const DatabaseLink = styled(Link)`
 `;
 
 export const DatabaseLinkIcon = styled(Icon)`
-  color: ${color("focus")};
+  color: var(--mb-color-focus);
   width: 1rem;
   height: 1rem;
   margin-right: 0.25rem;
