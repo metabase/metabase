@@ -441,16 +441,8 @@ function getStackedDataLabelTransform(
 }
 
 function getBarSeriesDataLabelTransform(
-  settings: ComputedVisualizationSettings,
-  seriesModels: SeriesModel[],
+  barSeriesModels: SeriesModel[],
 ): ConditionalTransform {
-  const barSeriesModels = seriesModels.filter(seriesModel => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return seriesSettings.display === "bar";
-  });
-
   return {
     condition: barSeriesModels.length > 0,
     fn: (datum: Datum) => {
@@ -469,6 +461,27 @@ function getBarSeriesDataLabelTransform(
           transforedDatum[getBarSeriesDataLabelKey(dataKey, "-")] =
             -Number.MIN_VALUE;
         }
+      });
+
+      return transforedDatum;
+    },
+  };
+}
+
+/**
+ * Replaces zero values with nulls for bar series so that we can use minHeight ECharts option
+ * to set minimum bar height for all non-zero values because it applies to bars with zero values too.
+ */
+function getBarSeriesZeroToNullTransform(
+  barSeriesModels: SeriesModel[],
+): ConditionalTransform {
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
       });
 
       return transforedDatum;
@@ -660,6 +673,12 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
+  const barSeriesModels = seriesModels.filter(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return seriesSettings.display === "bar";
+  });
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
@@ -714,7 +733,7 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     getStackedDataLabelTransform(settings, seriesDataKeys),
-    getBarSeriesDataLabelTransform(settings, seriesModels),
+    getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:
         settings["stackable.stack_type"] != null &&
@@ -725,6 +744,7 @@ export const applyVisualizationSettingsDataTransformations = (
           ?.seriesKeys ?? [],
       ),
     },
+    getBarSeriesZeroToNullTransform(barSeriesModels),
   ]);
 };
 
