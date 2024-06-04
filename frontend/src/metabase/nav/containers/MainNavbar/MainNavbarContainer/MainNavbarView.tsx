@@ -95,6 +95,7 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
+  // TO BE REVIEWED
   // upload CSVs
   const databaseDWH = databases.find(
     ({ name }) =>
