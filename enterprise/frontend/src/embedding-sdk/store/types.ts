@@ -5,6 +5,7 @@ import type {
 } from "@reduxjs/toolkit";
 import type { JSX } from "react";
 
+import type { SDKConfig } from "embedding-sdk";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
 
@@ -44,6 +45,7 @@ export type LoginStatus =
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
 export type SdkState = {
+  metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;

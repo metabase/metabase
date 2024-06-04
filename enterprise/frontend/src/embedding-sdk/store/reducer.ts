@@ -12,10 +12,14 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
+const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 
 export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
+export const setMetabaseClientUrl = createAction<string>(
+  SET_METABASE_CLIENT_URL,
+);
 export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
   SET_LOADER_COMPONENT,
 );
@@ -57,6 +61,7 @@ const SET_PLUGINS = "sdk/SET_PLUGINS";
 export const setPlugins = createAction<SdkPluginsConfig | null>(SET_PLUGINS);
 
 const initialState: SdkState = {
+  metabaseInstanceUrl: "",
   token: {
     token: null,
     loading: false,
@@ -113,5 +118,10 @@ export const sdk = createReducer(initialState, builder => {
   builder.addCase(setErrorComponent, (state, action) => ({
     ...state,
     errorComponent: action.payload,
+  }));
+
+  builder.addCase(setMetabaseClientUrl, (state, action) => ({
+    ...state,
+    metabaseInstanceUrl: action.payload,
   }));
 });
