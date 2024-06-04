@@ -1,8 +1,4 @@
-import {
-  filterWidget,
-  multiAutocompleteInput,
-  popover,
-} from "e2e/support/helpers";
+import { filterWidget, popover } from "e2e/support/helpers";
 
 // FILTER WIDGET TYPE
 
@@ -40,9 +36,7 @@ export function clearWidgetValue() {
 }
 
 export function setWidgetStringFilter(value) {
-  popover().within(() => {
-    multiAutocompleteInput().type(`${value},`).blur();
-  });
+  popover().find("input").not("[type=hidden]").first().type(`${value}{enter}`);
 }
 
 /**
