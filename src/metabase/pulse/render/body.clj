@@ -528,8 +528,11 @@
      :render/text (str value)}))
 
 (defn- result-k->data-k
-  [m]
-  (m/map-keys (fn [k] (if (= :results k) :data k)) m))
+  [{:keys [result] :as m}]
+  (-> m
+      (assoc :data (:data result))
+      (dissoc :result))
+  #_(m/map-keys (fn [k] (if (#{:result} k) :data k)) m))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -543,9 +546,10 @@
         cards-with-data                        (->> series-cards-results
                                                     (map result-k->data-k)
                                                     (cons {:card card :data data})
-                                                    (map add-dashcard-timeline-events))
-        viz-settings                           (or (get card :visualization_settings)
-                                                   (get dashcard :visualization_settings))
+                                                    (map add-dashcard-timeline-events)
+                                                    (m/distinct-by #(get-in % [:card :id])))
+        viz-settings                           (or (get dashcard :visualization_settings)
+                                                   (get card :visualization_settings))
         {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data viz-settings)]
     (case rendered-type
       :svg
