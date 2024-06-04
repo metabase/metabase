@@ -608,6 +608,10 @@
     ;; DEFAULTS TO TRUE
     :upload-with-auto-pk
 
+    ;; Can we parse native queries to power the query validator, find-and-replace, etc?
+    ;; DEFAULTS TO FALSE
+    :native-parsing
+
     ;; Does the driver support fingerprint the fields. Default is true
     :fingerprint
 
@@ -653,14 +657,15 @@
 (defmethod database-supports?
   :default [_driver _feature _] false)
 
-(doseq [[feature supported?] {:convert-timezone                       false
-                              :basic-aggregations                     true
+(doseq [[feature supported?] {:basic-aggregations                     true
                               :case-sensitivity-string-filter-options true
+                              :convert-timezone                       false
                               :date-arithmetics                       true
-                              :temporal-extract                       true
-                              :schemas                                true
-                              :test/jvm-timezone-setting              true
                               :fingerprint                            true
+                              :native-parsing                         false
+                              :schemas                                true
+                              :temporal-extract                       true
+                              :test/jvm-timezone-setting              true
                               :upload-with-auto-pk                    true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 

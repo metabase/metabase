@@ -4,6 +4,11 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.1
+
+- New feature `:native-parsing` has been added, defaulting to disabled. Drivers that enable it are expected to work with
+  the `metabase.native-query-analyzer` machinery.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to

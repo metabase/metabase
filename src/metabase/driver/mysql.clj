@@ -61,6 +61,7 @@
                               :datetime-diff                          true
                               :full-join                              false
                               :index-info                             true
+                              :native-parsing                         true
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true

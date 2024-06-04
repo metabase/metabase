@@ -36,6 +36,7 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :index-info                             true
+                              :native-parsing                         true
                               :now                                    true
                               :regex                                  false
                               :test/jvm-timezone-setting              false}]

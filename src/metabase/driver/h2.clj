@@ -71,6 +71,7 @@
                               :full-join                 false
                               :index-info                true
                               :now                       true
+                              :native-parsing            true
                               :percentile-aggregations   false
                               :regex                     true
                               :test/jvm-timezone-setting false

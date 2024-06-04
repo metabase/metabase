@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
    [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]))
@@ -65,3 +66,10 @@
         (is (= 6
                (-> (q "select v.* from venues v join checkins")
                    :indirect count)))))))
+
+(deftest ^:parallel driver-support-test
+  (testing "We only support parsing queries for certain drivers"
+    (doseq [supported-driver #{:h2 :mysql :postgres :redshift :sqlite :sqlserver}]
+      (is (driver/database-supports? supported-driver :native-parsing nil)))
+    (doseq [unsupported-driver #{:mongo :snowflake}]
+      (is (not (driver/database-supports? unsupported-driver :native-parsing nil))))))

@@ -142,7 +142,7 @@
 
 (def ^:private considered-drivers
   "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to repeat"
-  #{:mysql :sqlserver :h2 :sqlite :postgres :redshift})
+  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
 
 (defn- macaw-options
   "Generate the options expected by Macaw based on the nature of the given driver."

@@ -14,6 +14,7 @@
    [metabase.compatibility :as compatibility]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -942,15 +943,19 @@ saved later when it is ready."
    :tables {100 101}}
 
   Update the card so that its references to the Field with ID 1 is replaced by Field 2, etc."
-  [{q :dataset_query :as card} replacements]
-  (if (= :native (:type q))
-    (let [new-query (assoc-in q [:native :query]
-                              (replaced-inner-query-for-native-card q replacements))]
-      (update-card! {:card-before-update card
-                     :card-updates       {:dataset_query new-query}
-                     :actor              api/*current-user*}))
+  [{q :dataset_query db-id :database_id :as card} replacements]
+  (if (not= :native (:type q))
     (throw (ex-info "We don't (yet) support replacing field and table refs in cards with MBQL queries"
-                    {:card card :replacements replacements}))))
+                    {:card card :replacements replacements}))
+    (let [db (t2/select-one :model/Database :id db-id)]
+      (if (or (nil? db)
+              (not (driver/database-supports? (:engine db) :native-parsing db)))
+        (throw (ex-info "Attempted to replace fields in a card using an unspported engine" {:card card :engine (:engine db)}))
+        (let [new-query (assoc-in q [:native :query]
+                                  (replaced-inner-query-for-native-card q replacements))]
+          (update-card! {:card-before-update card
+                         :card-updates       {:dataset_query new-query}
+                         :actor              api/*current-user*}))))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

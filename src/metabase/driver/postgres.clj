@@ -64,6 +64,7 @@
 (doseq [[feature supported?] {:connection-impersonation true
                               :convert-timezone         true
                               :datetime-diff            true
+                              :native-parsing           true
                               :now                      true
                               :persist-models           true
                               :schemas                  true

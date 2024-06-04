@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -58,40 +59,44 @@
 ;;;;
 
 (deftest query-fields-created-by-queries-test
-  (with-test-setup
-    (let [total-qf {:card_id          card-id
-                    :field_id         total-id
-                    :direct_reference true}
-          tax-qf   {:card_id          card-id
-                    :field_id         tax-id
-                    :direct_reference true}]
+  (mt/test-drivers #{:postgres :mongo} ;; one supported, one unsupported
+    (let [result (fn [r] (if (= driver/*driver* :postgres)
+                           r
+                           #{}))]
+      (with-test-setup
+        (let [total-qf {:card_id          card-id
+                        :field_id         total-id
+                        :direct_reference true}
+              tax-qf   {:card_id          card-id
+                        :field_id         tax-id
+                        :direct_reference true}]
 
-      (testing "A freshly created card has relevant corresponding QueryFields"
-        (is (= #{total-qf}
-               (query-fields-for-card card-id))))
+          (testing "A freshly created card has relevant corresponding QueryFields"
+            (is (= (result #{total-qf})
+                   (query-fields-for-card card-id))))
 
-      (testing "Adding new columns to the query also adds the QueryFields"
-        (trigger-parse! card-id)
-        (is (= #{tax-qf total-qf}
-               (query-fields-for-card card-id))))
+          (testing "Adding new columns to the query also adds the QueryFields"
+            (trigger-parse! card-id)
+            (is (= (result #{tax-qf total-qf})
+                   (query-fields-for-card card-id))))
 
-      (testing "Removing columns from the query removes the QueryFields"
-        (trigger-parse! card-id "SELECT tax, not_total FROM orders")
-        (is (= #{tax-qf}
-               (query-fields-for-card card-id))))
+          (testing "Removing columns from the query removes the QueryFields"
+            (trigger-parse! card-id "SELECT tax, not_total FROM orders")
+            (is (= (result #{tax-qf})
+                   (query-fields-for-card card-id))))
 
-      (testing "Columns referenced via field filters are still found"
-        (trigger-parse! card-id
-                        (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
-                                          :template-tags {"adequate_total"
-                                                          {:type         :dimension
-                                                           :name         "adequate_total"
-                                                           :display-name "Total is big enough"
-                                                           :dimension    [:field (mt/id :orders :total)
-                                                                          {:base-type :type/Number}]
-                                                           :widget-type  :number/>=}}}))
-        (is (= #{tax-qf total-qf}
-               (query-fields-for-card card-id)))))))
+          (testing "Columns referenced via field filters are still found"
+            (trigger-parse! card-id
+                            (mt/native-query {:query "SELECT tax FROM orders WHERE {{adequate_total}}"
+                                              :template-tags {"adequate_total"
+                                                              {:type         :dimension
+                                                               :name         "adequate_total"
+                                                               :display-name "Total is big enough"
+                                                               :dimension    [:field (mt/id :orders :total)
+                                                                              {:base-type :type/Number}]
+                                                               :widget-type  :number/>=}}}))
+            (is (= (result #{tax-qf total-qf})
+                   (query-fields-for-card card-id)))))))))
 
 (deftest bogus-queries-test
   (with-test-setup

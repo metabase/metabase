@@ -29,19 +29,20 @@
 (driver/register! :sqlite, :parent :sql-jdbc)
 
 ;; SQLite does not support a lot of features, so do not show the options in the interface
-(doseq [[feature supported?] {:right-join                             false
-                              :full-join                              false
-                              :regex                                  false
-                              :percentile-aggregations                false
-                              :advanced-math-expressions              false
-                              :standard-deviation-aggregations        false
-                              :schemas                                false
-                              :datetime-diff                          true
-                              :now                                    true
+(doseq [[feature supported?] {:advanced-math-expressions              false
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+                              :datetime-diff                          true
+                              :full-join                              false
+                              :index-info                             true
+                              :native-parsing                         true
+                              :now                                    true
+                              :percentile-aggregations                false
+                              :regex                                  false
+                              :right-join                             false
+                              :schemas                                false
+                              :standard-deviation-aggregations        false}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so

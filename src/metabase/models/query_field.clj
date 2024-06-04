@@ -1,5 +1,6 @@
 (ns metabase.models.query-field
   (:require
+   [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
@@ -21,10 +22,12 @@
   so returns `{:direct #{...int ids}}` map.
 
   Does not track wildcards for queries rendered as tables afterwards."
-  [query]
+  [{query :dataset_query db-id :database_id}]
   (case (lib/normalized-query-type query)
     :native     (try
-                  (query-analyzer/field-ids-for-sql query)
+                  (when-let [db (t2/select-one :model/Database :id db-id)]
+                    (when (driver/database-supports? (:engine db) :native-parsing db)
+                      (query-analyzer/field-ids-for-sql query)))
                   (catch Exception e
                     (log/error e "Error parsing SQL" query)))
     :query      {:direct (mbql.u/referenced-field-ids query)}
@@ -36,10 +39,10 @@
 
   If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]].
 
-  Returns `nil` (and logs the error) if there was a parse error."
-  [{card-id :id, query :dataset_query}]
+  Returns `nil` (and logs the error) if there was a parse error or if we don't support the relevant DB engine."
+  [{card-id :id :as card}]
   (try
-    (let [{:keys [direct indirect] :as res} (query-field-ids query)
+    (let [{:keys [direct indirect] :as res} (query-field-ids card)
           id->row                           (fn [direct? field-id]
                                               {:card_id          card-id
                                                :field_id         field-id
