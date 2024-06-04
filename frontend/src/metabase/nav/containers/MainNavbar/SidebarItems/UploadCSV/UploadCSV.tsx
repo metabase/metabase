@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode, type ReactElement } from "react";
+import type { ChangeEvent, ReactNode, ReactElement } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
