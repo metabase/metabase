@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, render, screen, getIcon, within } from "__support__/ui";
+import {
+  fireEvent,
+  screen,
+  getIcon,
+  within,
+  renderWithProviders,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -56,7 +62,7 @@ function createQueryWithTemporalBreakout(bucketName: string) {
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 
-  render(
+  renderWithProviders(
     <BreakoutStep
       step={step}
       stageIndex={step.stageIndex}
