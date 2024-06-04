@@ -2,7 +2,10 @@ import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import {
+  getDatasetKey,
+  getNonNormalizedKey,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   ComboChartDataDensity,
   ChartDataset,
@@ -653,9 +656,15 @@ const getSeriesLabelsFormattingInfo = (
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  isStackSegmentedFormatter?: boolean,
 ) => {
   return seriesModels.map(seriesModel => {
-    const getValue = (datum: Datum) => datum[seriesModel.dataKey];
+    const key =
+      isStackSegmentedFormatter &&
+      settings["stackable.stack_type"] === "normalized"
+        ? getNonNormalizedKey(seriesModel.dataKey)
+        : seriesModel.dataKey;
+    const getValue = (datum: Datum) => datum[key];
 
     const compactFormatter = createSeriesLabelsFormatter(
       seriesModel,
@@ -748,6 +757,7 @@ export const getSeriesLabelsFormatters = (
       dataset,
       settings,
       renderingContext,
+      true,
     );
     const shouldApplyCompactFormattingToBarStack =
       barSeriesLabelsFormattingInfo.some(({ isCompact }) => isCompact);
