@@ -85,11 +85,24 @@ export const getExpressionName = (
     .map(({ column }) => column)
     .filter(isNotNull);
 
+  const allColumnNames = Lib.returnedColumns(query, stageIndex).map(
+    column => Lib.displayInfo(query, stageIndex, column).displayName,
+  );
+
   const names = columns.map(
     column => Lib.displayInfo(query, stageIndex, column).displayName,
   );
-  return t`Combined ${names.join(", ")}`;
+
+  return getNextName(allColumnNames, t`Combined ${names.join(", ")}`, 1);
 };
+
+function getNextName(names: string[], name: string, index: number): string {
+  const suffixed = index === 1 ? name : `${name}_${index}`;
+  if (!names.includes(suffixed)) {
+    return suffixed;
+  }
+  return getNextName(names, name, index + 1);
+}
 
 export const flatten = (
   columnsAndSeparators: ColumnAndSeparator[],

@@ -85,7 +85,7 @@ describeWithSnowplow(
 
       cy.findAllByTestId("header-cell")
         .last()
-        .should("have.text", "Email Name ID");
+        .should("have.text", "Combined Email, Name, ID");
 
       expectGoodSnowplowEvent({
         event: "column_combine_via_column_header",
@@ -119,8 +119,12 @@ describeWithSnowplow(
       popover().findByText("Combine columns").click();
       popover().findByText("Done").click();
 
-      cy.findAllByTestId("header-cell").contains("Email ID").should("exist");
-      cy.findAllByTestId("header-cell").contains("Email ID_2").should("exist");
+      cy.findAllByTestId("header-cell")
+        .contains("Combined Email, ID")
+        .should("exist");
+      cy.findAllByTestId("header-cell")
+        .contains("Combined Email, ID_2")
+        .should("exist");
     });
   },
 );
