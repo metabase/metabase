@@ -43,6 +43,11 @@ frontend_all: &frontend_all
   - *frontend_sources
   - *frontend_specs
 
+frontend_loki_ci: &frontend_loki_ci
+  - ".github/workflows/loki.yml"
+  - ".loki/**"
+  - ".storybook/**"
+
 backend_ci: &backend_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
