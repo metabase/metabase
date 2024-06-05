@@ -32,6 +32,7 @@ import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
+import { DragDropContextProviderContext } from "metabase/collections/context";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
@@ -70,12 +71,16 @@ function _init(reducers, getRoutes, callback) {
   root.render(
     <Provider store={store}>
       <EmotionCacheProvider>
-        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-          <ThemeProvider>
-            <GlobalStyles />
-            <Router history={history}>{routes}</Router>
-          </ThemeProvider>
-        </DragDropContextProvider>
+        <DragDropContextProviderContext.Provider
+          value={DragDropContextProvider}
+        >
+          <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+            <ThemeProvider>
+              <GlobalStyles />
+              <Router history={history}>{routes}</Router>
+            </ThemeProvider>
+          </DragDropContextProvider>
+        </DragDropContextProviderContext.Provider>
       </EmotionCacheProvider>
     </Provider>,
   );

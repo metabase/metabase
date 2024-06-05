@@ -18,6 +18,7 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
   ColumnHeader,
@@ -26,13 +27,8 @@ import {
   Table,
   TBody,
 } from "./BaseItemsTable.styled";
-import { Columns, SortDirection } from "./Columns";
+import { Columns } from "./Columns";
 import type { ResponsiveProps } from "./utils";
-
-export type SortingOptions = {
-  sort_column: string;
-  sort_direction: SortDirection;
-};
 
 export type SortableColumnHeaderProps = {
   name?: string;
@@ -150,7 +146,8 @@ export const BaseItemsTable = ({
   includeColGroup = true,
   ...props
 }: BaseItemsTableProps) => {
-  const canSelect = !!collection?.can_write;
+  const canSelect =
+    collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
