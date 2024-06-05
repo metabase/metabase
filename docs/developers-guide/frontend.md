@@ -370,7 +370,7 @@ When dealing with business logic you don't want to be concerned with the specifi
 
 ```css
 .text-brand {
-  color: -var(--color-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 
