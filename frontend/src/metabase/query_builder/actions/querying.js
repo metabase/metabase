@@ -215,6 +215,9 @@ export const queryCompleted = (
       series,
     ).settings();
 
+    // Try using old dimension/metric settings when new ones are empty
+    // (for cases like metabase#10493 when metadata is different between reruns)
+    // If columns are actually missing, the viz settings layer should take care of that
     if (hasGraphDataSettings(question.display())) {
       const dimensions =
         vizSettings["graph.dimensions"].length > 0
