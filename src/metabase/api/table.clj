@@ -404,12 +404,13 @@
   [card-id database-id metadata]
   (let [db (t2/select-one Database :id database-id)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
-                                     (t2/select Field :id [:in ids])))
+                                     (-> (t2/select Field :id [:in ids])
+                                         (t2/hydrate [:target :has_field_values] :has_field_values))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
@@ -419,10 +420,8 @@
                       ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     (assoc-field-dimension-options db)))
-        field->annotated (let [with-ids (filter (comp number? :id) fields)]
-                           (zipmap with-ids (t2/hydrate with-ids [:target :has_field_values] :has_field_values)))]
-    (map #(field->annotated % %) fields)))
+                     (assoc-field-dimension-options db)))]
+    fields))
 
 (defn root-collection-schema-name
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
