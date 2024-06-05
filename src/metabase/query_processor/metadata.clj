@@ -105,10 +105,16 @@
               ;; can't be bothered to go in and fix all of them even if this is objectively a better display name.
               ;; Seeing if this fixes things. -- Cam
               (not (:display_name col)) (assoc :display_name (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
+          (ensure-field-ref [col]
+            ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
+            ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam
+            (cond-> col
+              (not (:field_ref col)) (assoc :field_ref [:field (:name col) {:base-type (or (:base_type col) :type/*)}])))
           (->legacy [col]
             (-> col
                 #_{:clj-kondo/ignore [:deprecated-var]} qp.store/->legacy-metadata
-                ensure-display-name))]
+                ensure-display-name
+                ensure-field-ref))]
     (cond-> col
       (:lib/type col) ->legacy)))
 
