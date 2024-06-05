@@ -244,10 +244,6 @@
   [dashboard]
   (update dashboard :dashcards add-query-average-duration-to-dashcards))
 
-(defn- fix-collection-id [dashboard]
-  (cond-> dashboard
-    (:trashed_directly dashboard) (assoc :collection_id (collection/trash-collection-id))))
-
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
@@ -260,7 +256,7 @@
         collection.root/hydrate-root-collection
         hide-unreadable-cards
         add-query-average-durations
-        fix-collection-id)))
+        (api/present-in-trash-if-trashed-directly (collection/trash-collection-id)))))
 
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to

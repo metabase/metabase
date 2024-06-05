@@ -693,3 +693,10 @@
   (fn [request respond raise]
     (binding [*memoize-per-request-middleware* (atom {})]
       (handler request respond raise))))
+
+(defn present-in-trash-if-trashed-directly
+  "If `:trashed_directly` is `true`, set `:collection_id` to the trash collection ID."
+  [item trash-collection-id]
+  (cond-> item
+    (:trashed_directly item)
+    (assoc :collection_id trash-collection-id)))

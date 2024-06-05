@@ -196,10 +196,6 @@
         (cond->                                             ; card
           (card/model? card) (t2/hydrate :persisted)))))
 
-(defn- fix-collection-id [card]
-  (cond-> card
-    (:trashed_directly card) (assoc :collection_id (collection/trash-collection-id))))
-
 (defn get-card
   "Get `Card` with ID."
   [id]
@@ -211,7 +207,7 @@
         ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
         with-last-edit-info
         collection.root/hydrate-root-collection
-        fix-collection-id)))
+        (api/present-in-trash-if-trashed-directly (collection/trash-collection-id)))))
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
