@@ -9,6 +9,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 import type { FieldReference } from "metabase-types/api";
 
@@ -63,16 +64,33 @@ describeWithSnowplow("scenarios > question > column compare", () => {
     });
   });
 
-  describe.skip("chill mode - column header drill", () => {
-    it("works", () => {});
+  describe.skip("chill mode - summarize", () => {
+    it("should create a snowplow event for the column compare action", () => {});
+  });
+
+  describe("chill mode - column header drill", () => {
+    it("should create a snowplow event for the column compare action", () => {
+      tableHeaderClick("Count");
+
+      popover().findByText("Compare “Count” to previous months").click();
+      toggleColumnPicker();
+      toggleColumnPickerItem("Percentage difference");
+      toggleColumnPicker();
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_column_header",
+          custom_expressions_used: ["offset", "count"],
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+    });
   });
 
   describe.skip("chill mode - plus button", () => {
-    it("works", () => {});
-  });
-
-  describe.skip("chill mode - summarize", () => {
-    it("works", () => {});
+    it("should create a snowplow event for the column compare action", () => {});
   });
 });
 
