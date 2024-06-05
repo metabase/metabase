@@ -672,12 +672,12 @@
              :databases [{:id (mt/id)}]}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                    {:database (mt/id)
-                                    :type    :native
-                                    :native  {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
-                                              :template-tags
-                                              {"id" {:name         "id"
-                                                     :display-name "Id"
-                                                     :type         :dimension
-                                                     :dimension    [:field (mt/id :people :id) nil]
-                                                           :widget-type  :id
-                                                           :default      nil}}}})))))
+                                    :type     :native
+                                    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                               :template-tags
+                                               {"id" {:name         "id"
+                                                      :display-name "Id"
+                                                      :type         :dimension
+                                                      :dimension    [:field (mt/id :people :id) nil]
+                                                      :widget-type  :id
+                                                      :default      nil}}}})))))
