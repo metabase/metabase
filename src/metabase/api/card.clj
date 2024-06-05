@@ -12,7 +12,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
@@ -185,6 +185,7 @@
                     :creator
                     :dashboard_count
                     :can_write
+                    :can_run_adhoc_query
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
@@ -212,7 +213,7 @@
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
 
 (defn- card-columns-from-names
   [card names]
@@ -761,13 +762,11 @@
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models database)
+      (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models-enabled database)
+      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))

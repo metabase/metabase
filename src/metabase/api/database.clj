@@ -104,7 +104,7 @@
 (defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
-      (driver/database-supports? driver :nested-queries database))))
+      (driver.u/supports? driver :nested-queries database))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -144,7 +144,7 @@
   (set (filter (fn [db-id]
                  (try
                    (when-let [db (t2/select-one Database :id db-id)]
-                     (driver/database-supports? (:engine db) :nested-queries db))
+                     (driver.u/supports? (:engine db) :nested-queries db))
                    (catch Throwable e
                      (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set Database))))
@@ -242,7 +242,7 @@
 (defn- uploadable-db?
   "Are uploads supported for this database?"
   [db]
-  (driver/database-supports? (driver.u/database->driver db) :uploads db))
+  (driver.u/supports? (driver.u/database->driver db) :uploads db))
 
 (defn- add-can-upload
   "Adds :can_upload boolean, which is true if the user can create a new upload to this DB."

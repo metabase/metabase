@@ -25,9 +25,11 @@ title: API changelog
 
 - `GET /api/permissions/graph` and `PUT /api/permissions/graph`
 
-   The `data` key has been removed from the permissions graph. It has been replaced with `view-data` and `create-queries`.
+   The `data` key has been removed from the permissions graph. The `data` key has been replaced with two new keys: `view-data` and `create-queries`.
    Valid permission values for `view-data` are `unrestricted`, `blocked`, `sandboxed` or `restricted`. Valid permission values
    for `create-queries` are `query-builder-and-native`, `query-builder`, and `no`.
+
+   If you're scripting permissions, you'll need to update your scripts to reflect these breaking changes to the `/api/permissions/graph` endpoints. For more about the new data permissions of View data and Create queries, see our docs on [data permissions](../permissions/data.md). And here's a page that [talks about the change (and why we did it)](../permissions/no-self-service-deprecation.md).
 
 - `GET /api/transform/:db-id/:schema/:transform-name`, which hasn't been used internally by Metabase for ages, has
   been removed.

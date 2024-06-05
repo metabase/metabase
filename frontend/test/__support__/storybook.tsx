@@ -1,7 +1,7 @@
 // Storybook helpers
 import { Provider } from "react-redux";
 
-import mainReducers from "metabase/reducers-main";
+import { mainReducers } from "metabase/reducers-main";
 
 import { getStore } from "./entities-store";
 

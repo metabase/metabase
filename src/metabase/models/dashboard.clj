@@ -477,14 +477,15 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        Card
-                        (-> card
-                            (update :result_metadata #(or % (-> card
-                                                                :dataset_query
-                                                                result-metadata-for-query)))
-                            (dissoc :id))))]
+                       Card
+                       (-> card
+                           (update :result_metadata #(or % (-> card
+                                                               :dataset_query
+                                                               result-metadata-for-query)))
+                            ;; Xrays populate this in their transient cards
+                           (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]

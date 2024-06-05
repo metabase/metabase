@@ -23,7 +23,7 @@ You can use models to:
 
 - Create, uh, models, with model here meaning an intuitive description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
 - Let people explore the results of SQL queries with the drill-through menu and query builder (provided you [set the column types](#column-type)).
-- Create summary tables that aggregate data from multiple tables.
+- Create summary tables that pull in or aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
 The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about the subject being modeled.
@@ -171,28 +171,27 @@ See [History](../exploration-and-organization/history.md).
 
 Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
 
-## Model caching
+## Model persistence
 
 _Currently available for PostgreSQL, MySQL, and Redshift_.
 
-Metabase can cache the results of your models so that the models load faster. Metabase caches models by creating tables in a bespoke schema in your data warehouse, and saves the results of the queries that underlie your models in those tables. When people ask questions based on your models, Metabase will substitute those cached results in place of running the model's query.
+Metabase can persist the results of your models so that your models (and the questions based on those models) load faster.
 
-To set up model caching:
+You can think of persisted models as materialized views. Metabase will store model results in tables in a bespoke schema in your data warehouse (not the Metabase application database). When people ask questions based on your models, Metabase will use those stored results instead of re-running the model's query.
 
-1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
-2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
+> Model persistence doesn't work with [data sandboxing](../permissions/data-sandboxes.md).
 
-> Model caching doesn't work with [data sandboxing](../permissions/data-sandboxes.md).
+### Turn on model persistence in Metabase
 
-### Enable model caching in Metabase
+To persist models for faster loading, go to **Admin settings** > **Performance** > **Model persistence**.
 
-Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the feature on.
+You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency.
 
-![Model caching](./images/model-caching-custom.png)
+The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected and otherwise uses the System Timezone (which defaults to GMT in Metabase Cloud).
 
-You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data. The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected and otherwise uses the System Timezone (which defaults to GMT in Metabase Cloud).
+We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 
-If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will skip the cache until the next cache refresh.
+If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will re-run the query until the next scheduled model refresh.
 
 ### Create a schema to store cached models
 
