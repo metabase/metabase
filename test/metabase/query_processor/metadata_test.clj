@@ -68,6 +68,25 @@
                 :base-type     :type/Integer}]
               (qp.metadata/result-metadata query))))))
 
+(deftest ^:parallel native-query-metadata-semantic-type-test
+  (testing "Should still infer Semantic type based on column name"
+    (let [query (mt/native-query {:query "SELECT id, created_at FROM products LIMIT 5;"})]
+      (is (=? [{:name          "ID"
+                :display-name  "ID"
+                :semantic-type :type/PK}
+               {:name          "CREATED_AT"
+                :display-name  "CREATED_AT"
+                :semantic-type :type/CreationTimestamp}]
+              (qp.metadata/result-metadata query nil)))
+      (is (=? [{:name          "ID"
+                :display_name  "ID"
+                :semantic_type :type/PK}
+               {:name          "CREATED_AT"
+                :display_name  "CREATED_AT"
+                :semantic_type :type/CreationTimestamp}]
+              #_{:clj-kondo/ignore [:deprecated-var]}
+              (qp.metadata/legacy-result-metadata query nil))))))
+
 (deftest ^:parallel native-query-fallback-metadata-test
   (testing "Should be able to get metadata for native query using fallback :default implementation that runs the query"
     ;; at the time of this writing this method returns metadata in the legacy shape. I would expect this to change at

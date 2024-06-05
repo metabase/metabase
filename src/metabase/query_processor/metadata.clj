@@ -4,6 +4,7 @@
   [[metabase.driver/query-result-metadata]], which hopefully can calculate metadata without running the query. If
   that's not possible, our fallback `:default` implementation adds the equivalent of `LIMIT 1` to query and runs it."
   (:require
+   [metabase.analyze :as analyze]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -12,10 +13,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   #_[metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -73,10 +72,26 @@
         driver (driver.u/database->driver (:database query))]
     (driver/query-result-metadata driver query)))
 
+(defn- add-extra-column-metadata [col]
+  (letfn [(ensure-display-name [col]
+            (cond-> col
+              ;; I'm trying to disable nice display name humanization because it breads like 100 Cypress tests and I
+              ;; can't be bothered to go in and fix all of them even if this is objectively a better display name.
+              ;; Seeing if this fixes things. -- Cam
+              (not (:display-name col)) (assoc :display-name (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
+          (infer-semantic-type-by-name [col]
+            (let [legacy-col                     (update-keys col u/->snake_case_en)
+                  {semantic-type :semantic_type} (analyze/infer-and-assoc-semantic-type-by-name legacy-col nil)]
+              (assoc col :semantic-type semantic-type)))]
+    (-> col
+        ensure-display-name
+        infer-semantic-type-by-name)))
+
 (mu/defn ^:private result-metadata* :- [:sequential :map]
   [query current-user-id]
-  (or (metadata-from-preprocessing query)
-      (metadata-from-driver query current-user-id)))
+  (let [cols (or (metadata-from-preprocessing query)
+                 (metadata-from-driver query current-user-id))]
+    (mapv add-extra-column-metadata cols)))
 
 (mu/defn result-metadata :- [:sequential ::lib.schema.metadata/column]
   "Get result metadata for a query, hopefully without actually having to run the query itself. For MBQL queries we can
@@ -99,22 +114,10 @@
 
 (mu/defn ^:private ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
   [col :- :map]
-  (letfn [(ensure-display-name [col]
-            (cond-> col
-              ;; I'm trying to disable nice display name humanization because it breads like 100 Cypress tests and I
-              ;; can't be bothered to go in and fix all of them even if this is objectively a better display name.
-              ;; Seeing if this fixes things. -- Cam
-              (not (:display_name col)) (assoc :display_name (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
-          (ensure-field-ref [col]
-            ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
-            ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam
-            (cond-> col
-              (not (:field_ref col)) (assoc :field_ref [:field (:name col) {:base-type (or (:base_type col) :type/*)}])))
-          (->legacy [col]
+  (letfn [(->legacy [col]
             (-> col
-                #_{:clj-kondo/ignore [:deprecated-var]} qp.store/->legacy-metadata
-                ensure-display-name
-                ensure-field-ref))]
+                (dissoc :lib/type)
+                (update-keys u/->snake_case_en)))]
     (cond-> col
       (:lib/type col) ->legacy)))
 

@@ -44,7 +44,7 @@
       (is (nil? (-> {:semantic_type :type/FK
                      :name          "City"
                      :base_type     :type/Text}
-                    (classifiers.name/infer-and-assoc-semantic-type nil)
+                    (classifiers.name/infer-and-assoc-semantic-type-by-name nil)
                     :semantic_type))))))
 
 (deftest ^:parallel infer-entity-type-test-3
@@ -54,7 +54,7 @@
              (-> {:semantic_type :type/Category
                   :name          "City"
                   :base_type     :type/Text}
-                 (classifiers.name/infer-and-assoc-semantic-type nil)
+                 (classifiers.name/infer-and-assoc-semantic-type-by-name nil)
                  :semantic_type))))))
 
 (deftest ^:parallel infer-semantic-type-test

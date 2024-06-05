@@ -152,7 +152,7 @@
                 (str/blank? (:name field-or-column)))
     (semantic-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
-(mu/defn infer-and-assoc-semantic-type :- [:maybe FieldOrColumn]
+(mu/defn infer-and-assoc-semantic-type-by-name :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
    _fingerprint    :- [:maybe fingerprint.schema/Fingerprint]]
