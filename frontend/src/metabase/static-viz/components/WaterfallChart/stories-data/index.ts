@@ -1,4 +1,5 @@
 import customColors from "./custom-colors.json";
+import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column-scaling.json";
 import dataLabelsColumnFormatting from "./data-labels-column-formatting.json";
 import dataLabelsMixed from "./data-labels-mixed.json";
 import dataLabelsTimeseries from "./data-labels-timeseries.json";
@@ -39,6 +40,7 @@ import yAxisCompactWithoutDataLabels from "./y-axis-compact-without-data-labels.
 import yAxisFullWithDataLabels from "./y-axis-full-with-data-labels.json";
 
 export const data = {
+  customYAxisRangeWithColumnScaling,
   yAxisCompactWithoutDataLabels,
   yAxisAutoCompactWithDataLabels,
   yAxisFullWithDataLabels,
