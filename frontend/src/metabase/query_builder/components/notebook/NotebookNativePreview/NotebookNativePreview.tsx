@@ -39,7 +39,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
-  const showError = !isFetching && canRun && error;
+  const showError = !isFetching && canRun && !!error;
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
@@ -60,7 +60,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = `1px solid ${color("border")}`;
+  const borderStyle = "1px solid var(--mb-color-border)";
 
   return (
     <Box

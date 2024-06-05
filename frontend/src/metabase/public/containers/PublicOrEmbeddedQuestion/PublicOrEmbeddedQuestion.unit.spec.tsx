@@ -5,7 +5,11 @@ import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -87,11 +91,15 @@ describe("PublicOrEmbeddedQuestion", () => {
   it("should update card settings when visualization component changes them (metabase#37429)", async () => {
     await setup();
 
+    await waitForLoaderToBeRemoved();
+
     await userEvent.click(
       await screen.findByRole("button", {
         name: /update settings/i,
       }),
     );
+
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByTestId("settings")).toHaveTextContent(
       JSON.stringify({ foo: "bar" }),

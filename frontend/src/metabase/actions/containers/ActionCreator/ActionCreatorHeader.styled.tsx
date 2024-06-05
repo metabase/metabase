@@ -13,7 +13,7 @@ export const Container = styled.div`
   justify-content: space-between;
   width: 100%;
   background-color: ${color("white")};
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding: ${space(2)} ${space(3)};
 `;
 
@@ -50,7 +50,7 @@ export const CompactSelect = styled(Select)`
   }
   &:hover {
     ${SelectButton.Root} {
-      background-color: ${color("bg-light")};
+      background-color: var(--mb-color-bg-light);
     }
   }
 `;

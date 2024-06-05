@@ -2,9 +2,11 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  CHART_STYLE,
+  Z_INDEXES,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  CartesianChartModel,
   ChartDataset,
   LabelFormatter,
   WaterfallChartModel,
@@ -75,7 +77,7 @@ const getLabelLayoutFn = (
 };
 
 const computeWaterfallBarWidth = (
-  chartModel: CartesianChartModel,
+  chartModel: WaterfallChartModel,
   boundaryWidth: number,
 ) => {
   if (isCategoryAxis(chartModel.xAxisModel)) {
@@ -93,9 +95,10 @@ const computeWaterfallBarWidth = (
 };
 
 export const buildEChartsWaterfallSeries = (
-  chartModel: CartesianChartModel,
+  chartModel: WaterfallChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
 ) => {
@@ -111,6 +114,7 @@ export const buildEChartsWaterfallSeries = (
       seriesModel,
       chartModel.yAxisScaleTransforms,
       renderingContext,
+      chartWidth,
       labelFormatter,
     ),
     formatter:
@@ -119,6 +123,9 @@ export const buildEChartsWaterfallSeries = (
         WATERFALL_VALUE_KEY,
         chartModel.yAxisScaleTransforms,
         labelFormatter,
+        chartWidth,
+        settings,
+        chartModel.dataDensity,
       ),
   });
 
@@ -133,7 +140,7 @@ export const buildEChartsWaterfallSeries = (
         x: X_AXIS_DATA_KEY,
         y: [WATERFALL_START_KEY, WATERFALL_END_KEY],
       },
-      z: CHART_STYLE.series.zIndex,
+      z: Z_INDEXES.series,
       renderItem: (_params, api) => {
         const xValue = api.value(0);
         const yStart = api.value(1);
@@ -165,7 +172,7 @@ export const buildEChartsWaterfallSeries = (
     {
       id: WATERFALL_LABELS_SERIES_ID,
       type: "scatter",
-      z: CHART_STYLE.seriesLabels.zIndex,
+      z: Z_INDEXES.dataLabels,
       silent: true,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_VALUE_KEY, WATERFALL_END_KEY],
       symbolSize: 0,
@@ -184,7 +191,7 @@ export const buildEChartsWaterfallSeries = (
       id: WATERFALL_TOTAL_KEY,
       type: "bar",
       barWidth,
-      z: CHART_STYLE.series.zIndex,
+      z: Z_INDEXES.series,
       dimensions: [X_AXIS_DATA_KEY, WATERFALL_TOTAL_KEY],
       encode: {
         y: WATERFALL_TOTAL_KEY,
@@ -223,6 +230,7 @@ export const getWaterfallChartOption = (
     chartModel,
     settings,
     chartMeasurements,
+    chartWidth,
     chartModel.waterfallLabelFormatter,
     renderingContext,
   );

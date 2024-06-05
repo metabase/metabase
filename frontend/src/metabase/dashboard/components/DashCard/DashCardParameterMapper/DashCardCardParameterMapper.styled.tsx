@@ -47,7 +47,7 @@ export const TargetButton = styled.div<{ variant: string }>`
   justify-content: space-between;
   background-color: ${color("white")};
   cursor: pointer;
-  border: 2px solid ${color("brand")};
+  border: 2px solid var(--mb-color-brand);
   border-radius: 8px;
   min-height: 30px;
   padding: 0.25em 0.5em;
@@ -65,8 +65,8 @@ export const TargetButton = styled.div<{ variant: string }>`
   ${({ variant }) =>
     variant === "mapped" &&
     css`
-      border-color: ${color("brand")};
-      background-color: ${color("brand")};
+      border-color: var(--mb-color-brand);
+      background-color: var(--mb-color-brand);
       color: ${color("white")};
     `}
 
@@ -74,8 +74,8 @@ export const TargetButton = styled.div<{ variant: string }>`
     variant === "unauthed" &&
     css`
       pointer-events: none;
-      border-color: ${color("bg-light")};
-      background-color: ${color("bg-light")};
+      border-color: var(--mb-color-bg-light);
+      background-color: var(--mb-color-bg-light);
       color: ${color("text-medium")};
     `}
 

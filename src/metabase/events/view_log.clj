@@ -30,30 +30,28 @@
       (t2/insert! :model/ViewLog view-or-views))))
 
 (defn- generate-view
-  "Generates a view, given an event map."
-  [{:keys [object user-id has-access]
-    :or   {has-access true}}]
-  {:model      (u/lower-case-en (audit-log/model-name object))
+  "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
+  [& {:keys [model object-id object user-id has-access context]
+      :or   {has-access true}}]
+  {:model      (u/lower-case-en (audit-log/model-name (or model object)))
    :user_id    (or user-id api/*current-user-id*)
-   :model_id   (u/id object)
-   :has_access has-access})
+   :model_id   (or object-id (u/id object))
+   :has_access has-access
+   :context    context})
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
 
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
-  [topic {:keys [object user-id] :as event}]
+  [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
-    {:name "view-log-card-read"
-     :topic topic
+    {:name    "view-log-card-read"
+     :topic   topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Card (:id object))
-      (-> event
-          generate-view
-          (assoc :context "question")
-          record-views!)
+      (increment-view-counts! :model/Card object-id)
+      (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 
@@ -89,35 +87,16 @@
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
 
-(defn- readable-dashcard?
-  "Returns true if the dashcard's card was readable by the current user, and false otherwise. Unreadable cards are
-  replaced with maps containing just the card's ID, so we can check for this to determine whether the card was readable"
-  [dashcard]
-  (let [card (:card dashcard)]
-    (not= (set (keys card)) #{:id})))
-
 (m/defmethod events/publish-event! ::dashboard-read
-  "Handle processing for the dashboard read event. Logs the dashboard view as well as card views for each card on the
-  dashboard."
-  [topic {:keys [object user-id] :as event}]
+  "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
+  [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
     {:name "view-log-dashboard-read"
      :topic topic
      :user-id user-id}
     (try
-      (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
-            user-id   (or user-id api/*current-user-id*)
-            views     (map (fn [dashcard]
-                             {:model      "card"
-                              :model_id   (u/id (:card_id dashcard))
-                              :user_id    user-id
-                              :has_access (readable-dashcard? dashcard)
-                              :context    "dashboard"})
-                           dashcards)
-            dash-view (generate-view event)]
-        (apply increment-view-counts! :model/Card (map :card_id dashcards))
-        (increment-view-counts! :model/Dashboard (:id object))
-        (record-views! (cons dash-view views)))
+      (increment-view-counts! :model/Dashboard object-id)
+      (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
 

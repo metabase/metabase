@@ -15,7 +15,7 @@ export const SidebarIcon = styled(Icon)<{
   ${props =>
     !props.color &&
     css`
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     `}
 `;
 
@@ -25,11 +25,11 @@ SidebarIcon.defaultProps = {
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 const activeColorCSS = css`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 function getTextColor(isSelected: boolean) {
@@ -52,11 +52,11 @@ export const NodeRoot = styled(TreeNode.Root)<{
   }
 
   &:hover {
-    background-color: ${alpha("brand", 0.35)};
-    color: ${color("brand")};
+    background-color: ${() => alpha("brand", 0.35)};
+    color: var(--mb-color-brand);
 
     ${ExpandToggleButton} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${SidebarIcon} {
@@ -71,7 +71,7 @@ NodeRoot.defaultProps = {
 
 export const collectionDragAndDropHoverStyle = css`
   color: ${color("text-white")};
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;
 
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
@@ -105,7 +105,7 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
     text-align: start;
 
     &:hover {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;
@@ -119,7 +119,6 @@ const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
 export const ItemName = styled(TreeNode.NameContainer)`
   width: ${ITEM_NAME_LABEL_WIDTH}px;
-  padding: 6px 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

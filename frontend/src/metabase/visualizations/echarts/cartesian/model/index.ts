@@ -8,9 +8,11 @@ import {
   getSortedSeriesModels,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
+  scaleDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
+  getComboChartDataDensity,
   getDimensionModel,
   getSeriesLabelsFormatters,
   getStackedLabelsFormatters,
@@ -109,11 +111,12 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
+  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
     showWarning,
@@ -125,7 +128,7 @@ export const getCartesianChartModel = (
   const stackModels = getStackModels(seriesModels, settings);
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
-    dataset,
+    scaledDataset,
     stackModels,
     xAxisModel,
     seriesModels,
@@ -138,7 +141,7 @@ export const getCartesianChartModel = (
     getSeriesLabelsFormatters(
       seriesModels,
       stackModels,
-      transformedDataset,
+      scaledDataset,
       settings,
       renderingContext,
     );
@@ -147,13 +150,24 @@ export const getCartesianChartModel = (
     getStackedLabelsFormatters(
       seriesModels,
       stackModels,
-      transformedDataset,
+      scaledDataset,
       settings,
       renderingContext,
     );
 
+  const dataDensity = getComboChartDataDensity(
+    seriesModels,
+    stackModels,
+    dataset,
+    seriesLabelsFormatters,
+    stackedLabelsFormatters,
+    settings,
+    renderingContext,
+  );
+
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
@@ -176,7 +190,7 @@ export const getCartesianChartModel = (
 
   return {
     stackModels,
-    dataset,
+    dataset: scaledDataset,
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,
@@ -188,5 +202,6 @@ export const getCartesianChartModel = (
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,
+    dataDensity,
   };
 };

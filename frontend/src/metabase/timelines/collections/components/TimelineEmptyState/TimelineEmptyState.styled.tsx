@@ -18,7 +18,7 @@ export const EmptyStateBody = styled.div`
 `;
 
 export const EmptyStateChart = styled.div`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   margin-bottom: -1rem;
 `;
 
@@ -65,7 +65,7 @@ export const EmptyStateThreadLine = styled.div`
   margin: 0 0.5rem;
   width: 11.75rem;
   height: 1px;
-  background-color: ${alpha("brand", 0.2)};
+  background-color: ${() => alpha("brand", 0.2)};
 `;
 
 export const EmptyStateThreadIcon = styled(Icon)`
@@ -81,7 +81,7 @@ export const EmptyStateThreadIconContainer = styled.div`
   width: 2rem;
   height: 2rem;
   border-radius: 1rem;
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;
 
 export const EmptyStateMessage = styled.div`

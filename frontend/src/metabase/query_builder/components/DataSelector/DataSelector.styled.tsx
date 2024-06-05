@@ -37,7 +37,7 @@ const BackButtonLabel = styled.span`
   word-wrap: anywhere;
 
   :hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -62,14 +62,14 @@ export const EmptyStateContainer = styled.div`
 
 export const TableSearchContainer = styled.div`
   padding: 0.5rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const TriggerContainer = styled.div`
   width: 100%;
   position: relative;
   padding: 0.5rem 2.625rem 0.5rem 0.6875rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(0)};
   cursor: pointer;
 `;
@@ -85,7 +85,7 @@ export const TriggerContainerIcon = styled.div`
   height: 100%;
 `;
 
-export const TextSchema = styled(Text)`
+export const TextSchema = styled(Text)<React.PropsWithChildren>`
   font-size: 0.75em;
   color: ${color("text-light")};
   line-height: 0.75rem;

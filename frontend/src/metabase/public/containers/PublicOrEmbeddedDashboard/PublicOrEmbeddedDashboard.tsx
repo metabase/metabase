@@ -48,7 +48,7 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import type { Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import EmbedFrame from "../../components/EmbedFrame";
+import { EmbedFrame } from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
@@ -266,6 +266,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                   isPublicOrEmbedded
                   mode={PublicMode as unknown as Mode}
+                  navigateToNewCardFromDashboard={() => {}}
                   selectedTabId={this.props.selectedTabId}
                   slowCards={this.props.slowCards}
                   isEditing={false}

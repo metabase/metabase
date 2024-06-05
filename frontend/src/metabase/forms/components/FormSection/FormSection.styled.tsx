@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const CollapsibleSectionContent = styled.div`
   display: flex;
   align-items: center;
@@ -9,6 +7,6 @@ export const CollapsibleSectionContent = styled.div`
   margin-bottom: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

@@ -2,12 +2,11 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 import { SyncedParametersList } from "../../parameters/components/ParametersList";
 
 export const FilterButton = styled(Button)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   margin: 0.5rem;
 `;
 
@@ -31,7 +30,7 @@ interface ParametersListContainerProps {
 }
 
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   ${({ isSmallScreen, isShowingMobile }) =>
     isSmallScreen &&
@@ -41,7 +40,7 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
       left: 0;
 
       width: 100%;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
 
       overflow-y: auto;
       bottom: ${isShowingMobile ? "0" : "100%"};

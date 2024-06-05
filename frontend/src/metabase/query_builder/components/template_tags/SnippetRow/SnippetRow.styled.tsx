@@ -4,13 +4,13 @@ import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 export const SnippetButton = styled(Button)`
-  color: ${color("brand")};
-  background-color: ${color("bg-light")};
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-bg-light);
   margin-top: 0.5rem;
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;
 
@@ -18,6 +18,6 @@ export const SnippetContent = styled.div`
   display: flex;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

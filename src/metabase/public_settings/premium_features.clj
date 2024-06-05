@@ -474,6 +474,10 @@
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
 
+(define-premium-feature has-attached-dwh?
+  "Does the Metabase Cloud instance have an internal data warehouse attached?"
+  :attached-dwh)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean

@@ -27,7 +27,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   align-items: center;
   border: 1px solid
     ${({ hasValue, highlighted }) =>
-      hasValue && highlighted ? color("brand") : color("border")};
+      hasValue && highlighted ? color("brand") : "var(--mb-color-border)"};
   background-color: ${({ hasValue, highlighted }) =>
     hasValue && highlighted ? color("brand") : color("white")};
   border-radius: ${space(1)};
@@ -37,7 +37,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   color: ${getColor};
 
   &:focus {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
     outline: 2px solid ${color("focus")};
   }
 
@@ -46,7 +46,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     color: ${color("text-medium")};
     pointer-events: none;
   }

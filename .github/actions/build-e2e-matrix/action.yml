@@ -36,6 +36,7 @@ runs:
             ["dashboard-filters", {} ],
             ["embedding", {} ],
             ["filters", {} ],
+            ["filters-reproductions", {}],
             ["joins", {} ],
             ["metrics", {} ],
             ["models", {} ],

@@ -64,13 +64,13 @@ export const FieldDescription = styled.div`
 `;
 
 export const FieldInfoIcon = styled(Icon)`
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   margin-left: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  CartesianChartModel,
+  BaseCartesianChartModel,
   DateRange,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
@@ -62,6 +62,7 @@ const getMinDistanceFromTimelineEventGroup = (
 
   const countLabelWidth = renderingContext.measureText(eventsCount.toString(), {
     ...CHART_STYLE.axisTicks,
+    size: renderingContext.theme.cartesian.label.fontSize,
     family: renderingContext.fontFamily,
   });
 
@@ -132,7 +133,7 @@ const getTimelineEventsInsideRange = (
 };
 
 export const getTimelineEventsModel = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   chartMeasurements: ChartMeasurements,
   timelineEvents: TimelineEvent[],
   renderingContext: RenderingContext,

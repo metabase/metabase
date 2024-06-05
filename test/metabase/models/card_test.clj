@@ -998,3 +998,15 @@
                      :table_id      (mt/id :orders)
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
+
+(deftest can-run-adhoc-query-test
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-temp [:model/Card card {:dataset_query query}
+                     :model/Card no-query {}]
+        (is (=? {:can_run_adhoc_query true}
+                (t2/hydrate card :can_run_adhoc_query)))
+        (is (=? {:can_run_adhoc_query false}
+                (t2/hydrate no-query :can_run_adhoc_query)))))))

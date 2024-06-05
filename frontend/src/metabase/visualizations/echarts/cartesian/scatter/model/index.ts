@@ -13,13 +13,10 @@ import {
   getCardsColumnByDataKeyMap,
   getDatasetExtents,
   getSortedSeriesModels,
+  scaleDataset,
   sortDataset,
 } from "../../model/dataset";
-import {
-  getCardsSeriesModels,
-  getDimensionModel,
-  getSeriesLabelsFormatters,
-} from "../../model/series";
+import { getCardsSeriesModels, getDimensionModel } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
@@ -86,11 +83,12 @@ export function getScatterPlotModel(
     settings["graph.x_axis.scale"],
     showWarning,
   );
+  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
     showWarning,
@@ -100,7 +98,7 @@ export function getScatterPlotModel(
   );
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
-    dataset,
+    scaledDataset,
     [],
     xAxisModel,
     seriesModels,
@@ -109,23 +107,15 @@ export function getScatterPlotModel(
     showWarning,
   );
 
-  const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
-    getSeriesLabelsFormatters(
-      seriesModels,
-      [],
-      transformedDataset,
-      settings,
-      renderingContext,
-    );
-
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
     false,
     [],
-    compactSeriesDataKeys,
+    [],
     renderingContext,
   );
 
@@ -142,7 +132,7 @@ export function getScatterPlotModel(
 
   return {
     stackModels: [],
-    dataset,
+    dataset: scaledDataset,
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,
@@ -152,7 +142,7 @@ export function getScatterPlotModel(
     leftAxisModel,
     rightAxisModel,
     trendLinesModel,
-    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset), // TODO move function
-    seriesLabelsFormatters,
+    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
+    seriesLabelsFormatters: {},
   };
 }

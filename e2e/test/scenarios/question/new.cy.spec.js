@@ -26,6 +26,7 @@ import {
   modal,
   pickEntity,
   visitQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -215,8 +216,10 @@ describe("scenarios > question > new", () => {
 
     cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
       .eq(1) // first table body cell
-      .should("contain", "2") // quantity for order ID#1
-      .click();
+      .should("contain", "2"); // quantity for order ID#1
+
+    // Test was flaky due to long chain.
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(1).click();
     cy.wait("@dataset");
 
     cy.get(
@@ -346,7 +349,7 @@ describe("scenarios > question > new", () => {
     cy.findByDisplayValue(originalQuestionName).should("exist");
 
     cy.log("Change anything about this question to make it dirty");
-    cy.findByTestId("header-cell").should("have.text", "Count").click();
+    tableHeaderClick("Count");
     popover().icon("arrow_down").click();
 
     cy.findByTestId("qb-header-action-panel").button("Save").click();

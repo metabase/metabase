@@ -6,10 +6,10 @@ import { SharingPaneButtonContent } from "../../SharingPaneButton/SharingPaneBut
 export const StaticEmbedIconRoot = styled.svg`
   ${({ theme }) =>
     css`
-      color: ${theme.fn.themeColor("bg-medium")};
+      color: var(--mb-color-bg-medium);
 
       .innerFill {
-        fill: ${theme.fn.themeColor("bg-dark")};
+        fill: var(--mb-color-bg-dark);
         fill-opacity: 0.5;
       }
 
@@ -17,7 +17,7 @@ export const StaticEmbedIconRoot = styled.svg`
         color: ${theme.fn.themeColor("focus")};
 
         .innerFill {
-          fill: ${theme.fn.themeColor("brand")};
+          fill: var(--mb-color-brand);
           fill-opacity: 1;
         }
       }

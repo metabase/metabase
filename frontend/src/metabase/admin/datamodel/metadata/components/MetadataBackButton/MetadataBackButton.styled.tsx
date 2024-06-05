@@ -10,9 +10,9 @@ export const BackButtonLink = styled(Link)`
   padding: 1rem;
   border-radius: 99px;
   color: ${color("white")};
-  background-color: ${color("bg-dark")};
+  background-color: var(--mb-color-bg-dark);
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

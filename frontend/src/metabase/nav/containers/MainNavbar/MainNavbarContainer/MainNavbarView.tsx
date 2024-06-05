@@ -197,7 +197,7 @@ function CollectionSectionHeading({
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ closePopover }) => (
+    ({ closePopover }: { closePopover: () => void }) => (
       <CollectionMenuList>
         <SidebarLink
           icon="add"

@@ -39,7 +39,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       border: none;
       padding: 0;
 
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
 
       &:hover {
         background-color: unset;
@@ -54,10 +54,10 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       line-height: 1.5rem;
       padding: 0.5rem;
 
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: var(--mb-color-bg-light);
       }
     `}
 `;

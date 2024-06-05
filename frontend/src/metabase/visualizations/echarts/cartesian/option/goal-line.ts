@@ -7,8 +7,8 @@ import type {
 
 import type { EChartsCartesianCoordinateSystem } from "../../types";
 import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
-import { CHART_STYLE } from "../constants/style";
-import type { ChartDataset, CartesianChartModel } from "../model/types";
+import { CHART_STYLE, Z_INDEXES } from "../constants/style";
+import type { ChartDataset, BaseCartesianChartModel } from "../model/types";
 
 export const GOAL_LINE_DASH = [3, 4];
 
@@ -27,7 +27,7 @@ function getFirstNonNullXValue(dataset: ChartDataset) {
 }
 
 export function getGoalLineSeriesOption(
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
@@ -36,6 +36,7 @@ export function getGoalLineSeriesOption(
   }
 
   const goalValue = settings["graph.goal_value"];
+  const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {
     id: GOAL_LINE_SERIES_ID,
@@ -43,7 +44,7 @@ export function getGoalLineSeriesOption(
     data: [
       [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
     ],
-    z: CHART_STYLE.goalLine.zIndex,
+    z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
     },
@@ -78,8 +79,7 @@ export function getGoalLineSeriesOption(
       const hasRightYAxis = chartModel.rightAxisModel == null;
       const align = hasRightYAxis ? ("right" as const) : ("left" as const);
       const labelX = hasRightYAxis ? xEnd : xStart;
-      const labelY =
-        y - CHART_STYLE.goalLine.label.size - CHART_STYLE.goalLine.label.margin;
+      const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
 
       const label = {
         type: "text" as const,
@@ -94,7 +94,7 @@ export function getGoalLineSeriesOption(
           align,
           text: settings["graph.goal_label"] ?? "",
           fontFamily: renderingContext.fontFamily,
-          fontSize: CHART_STYLE.goalLine.label.size,
+          fontSize,
           fontWeight: CHART_STYLE.goalLine.label.weight,
           fill: renderingContext.getColor("text-medium"),
         },
