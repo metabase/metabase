@@ -1,6 +1,6 @@
 import { WebClient } from '@slack/web-api';
 
-import _githubSlackMap from "../../.github/github-slack-map.json";
+import _githubSlackMap from "../github-slack-map.json";
 
 const githubSlackMap: Record<string, string> = _githubSlackMap;
 
