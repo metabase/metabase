@@ -302,7 +302,7 @@ describe("issue 39150", () => {
   });
 
   it(
-    "shows allows custom columns with the same name in nested models (metabase#39150)",
+    "allows custom columns with the same name in nested models (metabase#39150)",
     { viewportWidth: 1600 },
     () => {
       createQuestion({
