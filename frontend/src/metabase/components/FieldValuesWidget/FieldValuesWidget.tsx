@@ -483,7 +483,7 @@ export function FieldValuesWidgetInner({
                 if (Array.isArray(option)) {
                   const value = option[0];
                   const column = fields[0];
-                  let label = formatValue(value, {
+                  const label = formatValue(value, {
                     ...formatOptions,
                     column,
                     remap: showRemapping(fields),
@@ -491,21 +491,13 @@ export function FieldValuesWidgetInner({
                     maximumFractionDigits: 20,
                   });
 
-                  if (
-                    showRemapping(fields) &&
-                    column.isID() &&
-                    value !== null
-                  ) {
-                    label += " - ";
-                    label += value.toString();
-                  }
-
                   return { value, label };
                 }
 
                 return option;
               })
               .filter(Boolean)}
+            renderValue={value => optionRenderer?.([value])}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
