@@ -1,4 +1,3 @@
-/* eslint-disable import/order */
 import Fields from "metabase/entities/fields";
 
 import { fetchField } from "./metadata";
