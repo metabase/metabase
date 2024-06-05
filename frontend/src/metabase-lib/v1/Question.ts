@@ -366,6 +366,16 @@ class Question {
     return this._card && this._card.can_write;
   }
 
+  canRunAdhocQuery(): boolean {
+    if (this.isSaved()) {
+      return this._card.can_run_adhoc_query;
+    }
+
+    const query = this.query();
+    const { isEditable } = Lib.queryDisplayInfo(query);
+    return isEditable;
+  }
+
   canWriteActions(): boolean {
     const database = this.database();
 
@@ -701,11 +711,10 @@ class Question {
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,
-    clean = true,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
+    const query = this.query();
 
     const cardCopy = {
       name: this._card.name,

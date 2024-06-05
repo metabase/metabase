@@ -266,6 +266,8 @@ export const buildEChartsLabelOptions = (
   chartDataDensity?: ChartDataDensity,
   position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
+  const { fontSize } = renderingContext.theme.cartesian.label;
+
   return {
     show: !!formatter,
     silent: true,
@@ -273,7 +275,7 @@ export const buildEChartsLabelOptions = (
     opacity: 1,
     fontFamily: renderingContext.fontFamily,
     fontWeight: CHART_STYLE.seriesLabels.weight,
-    fontSize: CHART_STYLE.seriesLabels.size,
+    fontSize,
     color: renderingContext.getColor("text-dark"),
     textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,
