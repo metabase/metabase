@@ -99,6 +99,7 @@ function ProfileLink({ adminItems, onLogout }) {
             color: color("text-white"),
           },
         }}
+        triggerAriaLabel={t`Settings`}
         // I've disabled this transition, since it results in the menu
         // sometimes not appearing until content finishes loading on complex
         // dashboards and questions #39303

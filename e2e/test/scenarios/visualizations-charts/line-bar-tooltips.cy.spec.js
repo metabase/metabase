@@ -11,6 +11,7 @@ import {
   testPairedTooltipValues,
   testTooltipPairs,
   popover,
+  settings,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -40,6 +41,8 @@ function testSumTotalChange(display) {
     ["Sum of Total", "42,156.87"],
   ]);
   testTooltipExcludesText("Compared to preivous year");
+
+  showTooltipOutsideChart();
 
   tooltipSelector("#88BF4D", display === "line" ? 0 : 1);
   testTooltipPairs([
@@ -120,6 +123,8 @@ function testAvgTotalChange(display) {
   ]);
   testTooltipExcludesText("Compared to preivous year");
 
+  showTooltipOutsideChart();
+
   tooltipSelector("#A989C5", display === "line" ? 0 : 1);
   testTooltipPairs([
     ["Created At", "2023"],
@@ -154,6 +159,8 @@ function testCumSumChange(testFirstTooltip = true) {
     testTooltipExcludesText("Compared to preivous year");
   }
 
+  showTooltipOutsideChart();
+
   showTooltipForCircleInSeries("#88BF4D", testFirstTooltip ? 0 : 1);
   testTooltipPairs([
     ["Created At", "2023"],
@@ -183,6 +190,8 @@ function testAvgDiscountChange() {
   ]);
   testTooltipExcludesText("Compared to preivous year");
 
+  showTooltipOutsideChart();
+
   showTooltipForCircleInSeries("#509EE3");
   testTooltipPairs([
     ["Created At", "2023"],
@@ -198,6 +207,8 @@ function testSumDiscountChange() {
     ["Sum of Discount", "342.09"],
   ]);
   testTooltipExcludesText("Compared to preivous year");
+
+  showTooltipOutsideChart();
 
   showTooltipForCircleInSeries("#98D9D9");
   testTooltipPairs([
@@ -545,6 +556,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ]);
       testTooltipExcludesText("Compared to preivous month");
 
+      showTooltipOutsideChart();
+
       showTooltipForCircleInSeries("#88BF4D");
       testTooltipPairs([
         ["Created At", "May 2022"],
@@ -567,6 +580,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ]);
       testTooltipExcludesText("Compared to preivous month");
 
+      showTooltipOutsideChart();
+
       showTooltipForCircleInSeries("#88BF4D");
       testTooltipPairs([
         ["Created At", "June 2022"],
@@ -574,14 +589,18 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       ]);
       testTooltipExcludesText("Compared to preivous month");
 
-      showTooltipForCircleInSeries("#88BF4D");
+      showTooltipOutsideChart();
+
+      showTooltipForCircleInSeries("#88BF4D", 1); // since we are already hovering the second datum, use index 1 to prevent hovering the first datum again
       testTooltipPairs([
         ["Created At", "July 2022"],
         ["Sum of Total", "3,734.69"],
         ["Compared to previous month", "+80.16%"],
       ]);
 
-      showTooltipForCircleInSeries("#88BF4D");
+      showTooltipOutsideChart();
+
+      showTooltipForCircleInSeries("#88BF4D", 2); // since we are already hovering the third datum, use index 2 to prevent hovering the first and second datum again
       testTooltipPairs([
         ["Created At", "September 2022"],
         ["Sum of Total", "5,372.08"],
@@ -602,6 +621,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Sum of Total", "52.76"],
       ]);
       testTooltipExcludesText("Compared to preivous month");
+
+      showTooltipOutsideChart();
 
       showTooltipForCircleInSeries("#88BF4D");
       testTooltipPairs([
@@ -672,13 +693,15 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         visitDashboard(dashboardId);
       });
 
-      APRIL_CHANGES.forEach(change => {
-        showTooltipForCircleInSeries("#88BF4D");
+      APRIL_CHANGES.forEach((change, index) => {
+        showTooltipForCircleInSeries("#88BF4D", Math.max(index - 1, 0)); // prevents re-hovering the previous datum
         if (change === null) {
           testTooltipExcludesText("Compared to preivous");
+          showTooltipOutsideChart();
           return;
         }
         testPairedTooltipValues("Compared to previous month", change);
+        showTooltipOutsideChart();
       });
     });
 
@@ -687,13 +710,15 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         visitDashboard(dashboardId);
       });
 
-      DST_WEEK_CHANGES.forEach(change => {
-        showTooltipForCircleInSeries("#88BF4D");
+      DST_WEEK_CHANGES.forEach((change, index) => {
+        showTooltipForCircleInSeries("#88BF4D", Math.max(index - 1, 0));
         if (change === null) {
           testTooltipExcludesText("Compared to preivous");
+          showTooltipOutsideChart();
           return;
         }
         testPairedTooltipValues("Compared to previous week", change);
+        showTooltipOutsideChart();
       });
     });
 
@@ -702,13 +727,15 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         visitDashboard(dashboardId);
       });
 
-      DST_DAY_CHANGES.forEach(change => {
-        showTooltipForCircleInSeries("#88BF4D");
+      DST_DAY_CHANGES.forEach((change, index) => {
+        showTooltipForCircleInSeries("#88BF4D", Math.max(index - 1, 0));
         if (change === null) {
           testTooltipExcludesText("Compared to preivous");
+          showTooltipOutsideChart();
           return;
         }
         testPairedTooltipValues("Compared to previous day", change);
+        showTooltipOutsideChart();
       });
     });
   });
@@ -742,6 +769,14 @@ function setupDashboard(cardId, addedSeriesCardId) {
       return dashboardId;
     });
   });
+}
+
+/**
+ * Trigger another tooltip outside of the chart, before hovering the next
+ * element This helps prevent flakes
+ */
+function showTooltipOutsideChart() {
+  settings().realHover();
 }
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
