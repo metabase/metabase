@@ -1,5 +1,8 @@
 import { WebClient } from '@slack/web-api';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 
+dayjs.extend(relativeTime);
 import _githubSlackMap from "../github-slack-map.json";
 
 const githubSlackMap: Record<string, string> = _githubSlackMap;
@@ -25,6 +28,62 @@ export function getChannelTopic(channelName: string) {
     const channel = response?.channels?.find(channel => channel.name === channelName);
     return channel?.topic?.value;
   });
+}
+
+export async function sendBackportReminder({
+  channelName, backports,
+}: {
+  channelName: string,
+  backports: Issue[],
+}) {
+
+  const text = backports
+    .filter(issue => dayjs().diff(dayjs(issue.created_at), 'hours') > 8)
+    .reverse()
+    .map(formatBackportItem).join("\n");
+
+    const blocks = [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": `:shame-conga: ${backports.length} Open Backports :shame-conga:`,
+          "emoji": true
+        }
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": `_<https://github.com/metabase/metabase/pulls?q=is%3Aopen+is%3Apr+label%3Awas-backported|See all open backports>_`,
+        }
+      },
+    ];
+
+    const attachments = [
+      {
+        "color": "#F9841A",
+        "blocks": [{
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": text,
+          }
+        }],
+      },
+    ];
+
+    return slack.chat.postMessage({
+      channel: channelName,
+      blocks,
+      attachments,
+      text: `${backports.length} open backports`,
+    });
+}
+
+function formatBackportItem(issue: Issue) {
+  const age = dayjs(issue.created_at).fromNow();
+  return `${mentionUserByGithubLogin(issue.assignee?.login)} - ${slackLink(issue.title, issue.html_url)} - ${age}`;
 }
 
 export async function sendPreReleaseStatus({

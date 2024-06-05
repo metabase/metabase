@@ -41,4 +41,6 @@ export type Issue = {
   html_url: string;
   labels: { name: string }[];
   assignee: { login: string };
+  created_at: string;
+  name: string;
 };
