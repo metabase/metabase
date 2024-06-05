@@ -51,7 +51,7 @@ export function getUrlWithParameters(
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
-  if (parameters.length === 0) {
+  if (parameters.length === 0 && objectId == null) {
     return getUrl(question, { includeDisplayIsLocked });
   }
 
