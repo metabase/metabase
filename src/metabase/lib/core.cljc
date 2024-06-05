@@ -316,6 +316,7 @@
   describe-temporal-interval
   describe-relative-datetime
   available-temporal-buckets
+  available-temporal-units
   raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]

@@ -12,6 +12,7 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/v1/parameters/utils/filters";
+import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   buildColumnTarget,
   buildDimensionTarget,
@@ -161,9 +162,14 @@ export function getParameterMappingOptions(
       ? question.composeQuestionAdhoc().query()
       : question.query();
     const stageIndex = -1;
-    const availableColumns = Lib.filterableColumns(query, stageIndex);
+    const availableColumns =
+      parameter && isTemporalUnitParameter(parameter)
+        ? Lib.returnedColumns(query, stageIndex)
+        : Lib.filterableColumns(query, stageIndex);
     const parameterColumns = parameter
-      ? availableColumns.filter(columnFilterForParameter(parameter))
+      ? availableColumns.filter(
+          columnFilterForParameter(query, stageIndex, parameter),
+        )
       : availableColumns;
     const columnGroups = Lib.groupColumns(parameterColumns);
 

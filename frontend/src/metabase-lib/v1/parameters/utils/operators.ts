@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -84,6 +86,14 @@ export function buildTypedOperatorOptions(
       ),
     };
   });
+}
+
+export function buildTemporalUnitOption(): ParameterMappingOptions {
+  return {
+    name: t`Unit of Time`,
+    type: "temporal-unit",
+    sectionId: "temporal-unit",
+  };
 }
 
 export function getNumberParameterArity(parameter: Parameter) {
