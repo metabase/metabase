@@ -18,6 +18,7 @@ import type {
   ParameterId,
   ParameterTarget,
   DashboardTabId,
+  DashboardCard,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 
@@ -119,7 +120,7 @@ export function getAutoWiredMappingsForDashcards(
 }
 
 export function getParameterMappings(
-  dashcard: QuestionDashboardCard,
+  dashcard: DashboardCard,
   parameter_id: ParameterId,
   card_id: CardId,
   target: ParameterTarget | null,
@@ -132,6 +133,7 @@ export function getParameterMappings(
   // allow mapping the same parameter to multiple action targets
   if (!isAction) {
     parameter_mappings = parameter_mappings.filter(
+      // @ts-expect-error action and virtual dashcards do not have card_id
       m => m.card_id !== card_id || m.parameter_id !== parameter_id,
     );
   }
@@ -144,6 +146,7 @@ export function getParameterMappings(
         m => !_.isEqual(m.target, target),
       );
     }
+    // @ts-expect-error action and virtual dashcards do not have card_id
     parameter_mappings = parameter_mappings.concat({
       parameter_id,
       card_id,

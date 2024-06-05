@@ -167,12 +167,7 @@ export const setParameterMapping = createThunkAction(
 
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (!isQuestionDashCard(dashcard)) {
-        // proceed only with question dashcards
-        return;
-      }
-
-      if (target !== null) {
+      if (target !== null && isQuestionDashCard(dashcard)) {
         const selectedTabId = getSelectedTabId(getState());
 
         dispatch(
