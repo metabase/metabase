@@ -141,7 +141,7 @@ describe(
                   cy.get("header").findByText(NEW_COLLECTION_NAME);
                 });
 
-                it("should be able to move models", { tags: "@flaky" }, () => {
+                it("should be able to move models", () => {
                   // TODO: Currently nodata users can't turn a question into a model
                   cy.skipOn(user === "nodata");
 

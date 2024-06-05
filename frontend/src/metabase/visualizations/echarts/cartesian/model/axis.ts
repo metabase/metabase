@@ -335,12 +335,12 @@ const getYAxisSplit = (
 
 const calculateStackedExtent = (
   seriesKeys: DataKey[],
-  data: ChartDataset,
+  dataset: ChartDataset,
 ): Extent => {
   let min = 0;
   let max = 0;
 
-  data.forEach(entry => {
+  dataset.forEach(entry => {
     let positiveStack = 0;
     let negativeStack = 0;
     seriesKeys.forEach(key => {
@@ -362,12 +362,12 @@ const calculateStackedExtent = (
 
 function calculateNonStackedExtent(
   seriesKeys: DataKey[],
-  data: ChartDataset,
+  dataset: ChartDataset,
 ): Extent {
   let min = Infinity;
   let max = -Infinity;
 
-  data.forEach(entry => {
+  dataset.forEach(entry => {
     seriesKeys.forEach(key => {
       const value = entry[key];
       if (typeof value === "number") {
@@ -491,7 +491,7 @@ export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
   stackModels: StackModel[],
-  dataset: ChartDataset,
+  trasnformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
@@ -502,7 +502,12 @@ export function getYAxisModel(
     return null;
   }
 
-  const extent = getYAxisExtent(seriesKeys, stackModels, dataset, stackType);
+  const extent = getYAxisExtent(
+    seriesKeys,
+    stackModels,
+    trasnformedDataset,
+    stackType,
+  );
   const column = columnByDataKey[seriesKeys[0]];
   const label = getYAxisLabel(seriesNames, settings);
   const formatter = getYAxisFormatter(
@@ -526,6 +531,7 @@ export function getYAxisModel(
 export function getYAxesModels(
   seriesModels: SeriesModel[],
   dataset: ChartDataset,
+  transformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
@@ -581,7 +587,7 @@ export function getYAxesModels(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
       leftStackModels,
-      dataset,
+      transformedDataset,
       settings,
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
@@ -592,7 +598,7 @@ export function getYAxesModels(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
       rightStackModels,
-      dataset,
+      transformedDataset,
       settings,
       columnByDataKey,
       settings["stackable.stack_type"] === "normalized"
