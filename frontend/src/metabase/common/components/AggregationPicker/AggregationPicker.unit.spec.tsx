@@ -43,7 +43,7 @@ function createQueryWithCountAndSumAggregations({
     query: createQuery({ metadata }),
     aggregations: [
       { operatorName: "count" },
-      { operatorName: "sum", columnName: "Price" },
+      { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
     ],
   });
 }
