@@ -100,6 +100,10 @@ export function AggregationPicker({
     [query, stageIndex, operator],
   );
 
+  const aggregations = useMemo(() => {
+    return Lib.aggregations(query, stageIndex);
+  }, [query, stageIndex]);
+
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
@@ -108,7 +112,7 @@ export function AggregationPicker({
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
     const isMetricBased = Lib.isMetricBased(query, stageIndex);
-    const compareItem = getCompareListItem(query, stageIndex);
+    const compareItem = getCompareListItem(query, stageIndex, aggregations);
 
     if ((compareItem || operators.length > 0) && !isMetricBased) {
       const operatorItems = operators.map(operator =>
@@ -145,7 +149,15 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
+  }, [
+    metadata,
+    query,
+    stageIndex,
+    clauseIndex,
+    operators,
+    hasExpressionInput,
+    aggregations,
+  ]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -239,10 +251,11 @@ export function AggregationPicker({
   if (isComparing) {
     return (
       <CompareAggregations
+        aggregations={aggregations}
         query={query}
         stageIndex={stageIndex}
-        onSubmit={handleCompareSubmit}
         onClose={handleCompareClose}
+        onSubmit={handleCompareSubmit}
       />
     );
   }
@@ -397,9 +410,8 @@ function getMetricListItem(
 function getCompareListItem(
   query: Lib.Query,
   stageIndex: number,
+  aggregations: Lib.AggregationClause[],
 ): CompareListItem | undefined {
-  const aggregations = Lib.aggregations(query, stageIndex);
-
   if (aggregations.length === 0) {
     return undefined;
   }
