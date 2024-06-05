@@ -362,7 +362,7 @@ When dealing with business logic you don't want to be concerned with the specifi
 
 ```css
 .Button.Button--primary {
-  color: -var(--mb-olor-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 

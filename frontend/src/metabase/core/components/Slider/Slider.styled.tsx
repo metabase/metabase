@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color, alpha } from "metabase/lib/colors";
@@ -5,7 +6,9 @@ import { space } from "metabase/styled-components/theme";
 
 export const THUMB_SIZE = "1.2rem";
 
-const activeThumbStyle = `box-shadow: 0 0 4px 1px var(--mb-color-brand)`;
+const activeThumbStyle = css`
+  box-shadow: 0 0 4px 1px var(--mb-color-brand);
+`;
 
 export const SliderContainer = styled.div`
   position: relative;

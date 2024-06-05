@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import CollapseSection from "metabase/components/CollapseSection";
@@ -25,8 +26,11 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   border-radius: ${space(0)};
   cursor: pointer;
 
-  ${({ isSelected }) =>
-    isSelected ? `background-color: ${() => alpha("brand", 0.2)};` : ""}
+  ${({ isSelected, theme }) =>
+    isSelected &&
+    css`
+      background-color: ${alpha(theme.fn.themeColor("brand"), 0.2)};
+    `}
 
   &:hover {
     background-color: ${() => alpha("brand", 0.35)};
