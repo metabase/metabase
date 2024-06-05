@@ -45,7 +45,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { getBarSeriesDataLabelKey } from "./util";
+import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**
  * Sums two metric column values.
@@ -636,9 +636,7 @@ export function scaleDataset(
   const transformFn = (datum: Datum) => {
     const transformedRecord = { ...datum };
     for (const seriesModel of seriesModels) {
-      const { scale: seriesScale } =
-        settings.column?.(seriesModel.column) ?? {};
-      const scale = Number.isFinite(seriesScale) ? (seriesScale as number) : 1;
+      const scale = getColumnScaling(seriesModel.column, settings);
 
       const key = seriesModel.dataKey;
       if (key in datum) {

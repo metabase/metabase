@@ -26,6 +26,7 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import type { RowValue } from "metabase-types/api";
 
 import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
+import { getColumnScaling } from "../../model/util";
 
 export const getWaterfallDataset = (
   dataset: ChartDataset,
@@ -36,8 +37,7 @@ export const getWaterfallDataset = (
 ): ChartDataset => {
   let transformedDataset: ChartDataset = [];
 
-  const { scale: seriesScale } = settings.column?.(seriesModel.column) ?? {};
-  const scale = Number.isFinite(seriesScale) ? (seriesScale as number) : 1;
+  const scale = getColumnScaling(seriesModel.column, settings);
 
   const key = seriesModel.dataKey;
   dataset.forEach((datum, index) => {
