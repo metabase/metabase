@@ -348,21 +348,22 @@
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
   [ids]
-  (let [tables (->> (t2/select Table :id [:in ids])
-                    (filter mi/can-read?))
-        tables (t2/hydrate tables
-                           :db
-                           [:fields [:target :has_field_values] :dimensions :has_field_values]
-                           :segments
-                           :metrics)
-        dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)])]
-    (for [table tables]
-      (-> table
-          (m/dissoc-in [:db :details])
-          (assoc-dimension-options (-> table :db_id dbs))
-          format-fields-for-response
-          fix-schema
-          (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %))))))
+  (when (seq ids)
+    (let [tables (->> (t2/select Table :id [:in ids])
+                      (filter mi/can-read?))
+          tables (t2/hydrate tables
+                             :db
+                             [:fields [:target :has_field_values] :dimensions :has_field_values]
+                             :segments
+                             :metrics)
+          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)])]
+      (for [table tables]
+        (-> table
+            (m/dissoc-in [:db :details])
+            (assoc-dimension-options (-> table :db_id dbs))
+            format-fields-for-response
+            fix-schema
+            (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
