@@ -23,18 +23,18 @@ export const checkOpenBackports = async ({ github, owner, repo, channelName }: {
 
   console.log(`Found ${openBackports.length} open backports`);
 
-  const recentBackports = openBackports
+  const staleBackports = openBackports
     .filter(issue => dayjs().diff(dayjs(issue.created_at), 'hours') > RECENT_BACKPORT_THRESHOLD_HOURS);
 
-  if (!recentBackports.length) {
+  if (!staleBackports.length) {
     console.log("No recent backports to remind about");
     return;
   }
 
-  console.log(`Reminding about ${recentBackports.length} recent backports`);
+  console.log(`Reminding about ${staleBackports.length} stale backports`);
 
   sendBackportReminder({
     channelName,
-    backports: recentBackports,
+    backports: staleBackports,
   });
 }
