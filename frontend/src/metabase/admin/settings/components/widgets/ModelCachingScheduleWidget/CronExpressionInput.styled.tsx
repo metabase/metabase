@@ -22,7 +22,7 @@ export const ErrorMessage = styled.span`
 
 export const StyledInput = styled.input`
   width: 100%;
-  border: 1px solid ${darken("border", 0.1)};
+  border: 1px solid ${({ theme }) => darken(theme.fn.themeColor("border"), 0.1)};
 `;
 
 export const InputContainer = styled.div`
@@ -37,7 +37,7 @@ export const InfoIcon = styled(Icon)`
   color: ${color("text-medium")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

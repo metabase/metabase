@@ -146,7 +146,7 @@
 .ButtonGroupBrand .Button {
   border-color: white;
   color: var(--mb-color-brand);
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 .ButtonGroupBrand .ButtonActive {

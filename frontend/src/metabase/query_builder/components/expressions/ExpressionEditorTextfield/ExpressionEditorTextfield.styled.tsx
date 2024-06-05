@@ -10,7 +10,7 @@ export const EditorContainer = styled.div<{
   hasError: boolean;
 }>`
   border: 1px solid;
-  border-color: ${color("border")};
+  border-color: var(--mb-color-border);
   border-radius: ${space(1)};
   display: flex;
   position: relative;
@@ -21,7 +21,7 @@ export const EditorContainer = styled.div<{
   ${({ isFocused }) =>
     isFocused &&
     css`
-      border-color: ${color("brand")};
+      border-color: var(--mb-color-brand);
     `}
 
   ${({ hasError }) =>
@@ -57,7 +57,7 @@ export const EditorContainer = styled.div<{
   }
 
   .ace-tm .ace_variable {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace-tm .ace_string {
@@ -76,7 +76,7 @@ export const EditorContainer = styled.div<{
     position: absolute;
     border-bottom: 2px solid var(--mb-color-error);
     border-radius: 0px;
-    background-color: ${color("bg-error")};
+    background-color: var(--mb-color-bg-error);
   }
 `;
 

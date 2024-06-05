@@ -9,7 +9,7 @@ export const SidebarRoot = styled.aside`
   flex-shrink: 0;
   overflow: hidden;
   width: 300px;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid var(--mb-color-border);
 `;
 
 export const SidebarHeader = styled.div`

@@ -14,7 +14,7 @@ type CardProps = {
 const Card = styled.div<CardProps>`
   background-color: ${props => (props.dark ? color("text-dark") : "white")};
   border: 1px solid
-    ${props => (props.dark ? "transparent" : color("bg-medium"))};
+    ${props => (props.dark ? "transparent" : "var(--mb-color-bg-medium)")};
   ${props => props.dark && `color: white`};
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);

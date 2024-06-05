@@ -36,13 +36,13 @@ export const OptionsListItem = styled.li`
 `;
 
 export const ActionsList = styled(OptionsList)`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const ToggleContainer = styled.div`
   display: flex;
   align-items: center;
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
   padding: 0.5rem 1rem;
   justify-content: flex-end;
 `;

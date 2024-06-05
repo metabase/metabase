@@ -15,7 +15,7 @@ const SettingsAsideBlock = styled.div`
   flex-shrink: 0;
   width: 21.6rem;
   padding: 2rem;
-  border-right: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  border-right: 1px solid var(--mb-color-border);
   background-color: ${({ theme }) => theme.fn.themeColor("white")};
 
   height: 45.125rem;

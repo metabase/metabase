@@ -70,7 +70,7 @@ export const FieldInfoIcon = styled(Icon)`
   height: 0.75rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

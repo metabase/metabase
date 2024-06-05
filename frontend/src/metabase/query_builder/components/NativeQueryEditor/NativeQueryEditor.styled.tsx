@@ -17,7 +17,7 @@ const getAceEditorStyles = () => css`
     font-family: Lato;
     background-color: var(--mb-color-bg-light);
     color: ${color("text-dark")};
-    border-color: ${color("border")};
+    border-color: var(--mb-color-border);
     padding-bottom: 2px;
   }
 
@@ -26,7 +26,7 @@ const getAceEditorStyles = () => css`
   .ace_button {
     background-color: ${color("white")};
     border-radius: 5px;
-    border: 1px solid ${color("border")};
+    border: 1px solid var(--mb-color-border);
   }
 
   .ace_nomatch {
@@ -61,7 +61,7 @@ const getAceEditorStyles = () => css`
   }
 
   .ace_editor .ace_templateTag {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .react-resizable {
@@ -108,13 +108,13 @@ export const aceEditorStyles = css`
 
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
     border: none;
     outline: none;
   }
 
   .ace_completion-highlight {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace_editor.ace_autocomplete .ace_line {
@@ -155,7 +155,7 @@ export const DragHandleContainer = styled.div`
 export const DragHandle = styled.div`
   width: 100px;
   height: 5px;
-  background-color: ${darken("border", 0.03)};
+  background-color: ${() => darken("border", 0.03)};
   border-radius: 4px;
 `;
 
@@ -169,5 +169,5 @@ export const StyledResizableBox = styled(ResizableBox)<
   }
 >`
   display: ${props => (props.isOpen ? "flex" : "none")};
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

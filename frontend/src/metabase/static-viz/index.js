@@ -11,6 +11,7 @@ import {
   measureTextWidth,
   measureTextEChartsAdapter,
 } from "metabase/static-viz/lib/text";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -38,6 +39,7 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     measureText: (text, style) =>
       measureTextWidth(text, style.size, style.weight),
     fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+    theme: DEFAULT_VISUALIZATION_THEME,
   };
 
   const props = {

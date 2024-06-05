@@ -121,9 +121,19 @@ class TableInteractive extends Component {
   static defaultProps = {
     isPivoted: false,
     hasMetadataPopovers: true,
-    renderTableHeaderWrapper: children => {
+
+    // NOTE: the column and index arguments are used in the DatasetEditor,
+    //       which renders table header differently.
+    renderTableHeaderWrapper: (children, _column, _index, theme) => {
+      const cellTheme = theme.other?.table?.cell;
+
       return (
-        <Box className={TableS.cellData} data-testid="cell-data" c="brand">
+        <Box
+          className={TableS.cellData}
+          data-testid="cell-data"
+          c="brand"
+          fz={cellTheme?.fontSize}
+        >
           {children}
         </Box>
       );
@@ -145,6 +155,7 @@ class TableInteractive extends Component {
         c={cellTheme.color}
         bg={cellTheme.background}
         style={{ border: cellTheme.border }}
+        fz={cellTheme.fontSize}
       >
         {children}
       </Box>
@@ -771,6 +782,7 @@ class TableInteractive extends Component {
       renderTableHeaderWrapper,
       question,
       mode,
+      theme,
     } = this.props;
 
     const { dragColIndex, showDetailShortcut } = this.state;
@@ -921,6 +933,7 @@ class TableInteractive extends Component {
               </Ellipsified>,
               column,
               columnIndex,
+              theme,
             )}
           </QueryColumnInfoPopover>
           <TableDraggable

@@ -417,6 +417,7 @@ export const getSeriesHoverData = (
 
   return {
     settings,
+    isAlreadyScaled: true,
     index: seriesIndex,
     datumIndex: dataIndex,
     event: event.event.event,

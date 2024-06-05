@@ -26,7 +26,7 @@ const getBackgroundColor = ({
   if (checked) {
     return currentColor ?? color("brand");
   } else {
-    return color("bg-medium");
+    return "var(--mb-color-bg-medium)";
   }
 };
 
@@ -39,8 +39,8 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   width: ${props => (props.small ? "28px" : "48px")};
   height: ${props => (props.small ? "17px" : "24px")};
   border-radius: 99px;
-  border: 1px solid ${color("border")};
-  background-color: ${color("bg-medium")};
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-bg-medium);
   background-color: ${getBackgroundColor};
   transition: background-color 0.3s;
   flex-shrink: 0;
@@ -48,7 +48,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   &[disabled] {
     cursor: not-allowed;
     opacity: 0.5;
-    background-color: ${color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
 
   &:after {

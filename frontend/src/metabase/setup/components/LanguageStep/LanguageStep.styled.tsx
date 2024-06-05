@@ -12,7 +12,7 @@ export const LocaleGroup = styled.ol`
   padding: 0.5rem;
   max-height: 17.5rem;
   overflow-y: scroll;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.25rem;
 `;
 
@@ -36,12 +36,13 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   padding: 0.5rem;
   color: ${props => color(props.checked ? "white" : "text-dark")};
   border-radius: 0.25rem;
-  background-color: ${props => color(props.checked ? "brand" : "white")};
+  background-color: ${props =>
+    props.checked ? "var(--mb-color-brand)" : color("white")};
   font-weight: 700;
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus + & {

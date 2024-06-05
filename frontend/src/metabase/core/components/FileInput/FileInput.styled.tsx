@@ -30,7 +30,7 @@ export const InputField = styled.input<InputFieldProps>`
 `;
 
 export const InputButton = styled.span`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   box-sizing: border-box;
   color: ${color("text-dark")};

@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EditIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const ErrorIcon = styled(Icon)`

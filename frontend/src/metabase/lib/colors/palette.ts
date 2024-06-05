@@ -63,7 +63,7 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
 
-  "brand-light": palette => lighten(color("brand", palette), 0.532),
+  "brand-light": palette => lighten(color("brand", palette), 0.532), // #F9FBFC
   "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),
 

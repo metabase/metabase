@@ -7,7 +7,7 @@ export const NotificationCardRoot = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   background-color: ${color("white")};
 

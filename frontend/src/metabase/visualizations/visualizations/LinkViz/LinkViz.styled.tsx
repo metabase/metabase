@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import BaseExternalLink from "metabase/core/components/ExternalLink";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { Icon } from "metabase/ui";
 
@@ -39,7 +38,7 @@ export const CardLink = styled(Link)`
   font-weight: bold;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -54,12 +53,12 @@ export const ExternalLink = styled(BaseExternalLink)`
   font-weight: bold;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const BrandIconWithHorizontalMargin = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   margin: 0 0.5rem;
 `;
 
@@ -69,12 +68,12 @@ const searchResultsStyles = `
   min-width: 20rem;
   overflow-y: auto;
 
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   line-height: 24px;
 
   max-height: 400px;
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   pointer-events: all;

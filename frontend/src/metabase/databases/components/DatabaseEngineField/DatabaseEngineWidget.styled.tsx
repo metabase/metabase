@@ -33,7 +33,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   justify-content: center;
   height: 5.375rem;
   padding: 1rem;
-  border: 1px solid ${color("bg-medium")};
+  border: 1px solid var(--mb-color-bg-medium);
   border-radius: 0.375rem;
   background-color: ${color("white")};
   cursor: pointer;
@@ -41,8 +41,8 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
     props.isActive ? `2px solid var(--mb-color-focus)` : ""};
 
   &:hover {
-    border-color: ${color("brand")};
-    background-color: ${lighten("brand", 0.6)};
+    border-color: var(--mb-color-brand);
+    background-color: ${() => lighten("brand", 0.6)};
   }
 `;
 

@@ -184,10 +184,10 @@ export const ResizeHandle = styled.div`
   cursor: ew-resize;
 
   &:active {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;
