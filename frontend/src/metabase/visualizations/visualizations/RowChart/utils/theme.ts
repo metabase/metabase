@@ -5,17 +5,12 @@ import { useMantineTheme } from "metabase/ui";
 import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
 import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
 
-interface RowChartThemeOptions {
-  fontFamily?: string;
-}
-
 export const useRowChartTheme = (
-  options: RowChartThemeOptions,
+  fontFamily: string = "Lato",
 ): RowChartTheme => {
   const theme = useMantineTheme();
 
   return useMemo(() => {
-    const { fontFamily = "Lato" } = options;
     const { cartesian } = getVisualizationTheme(theme.other);
 
     return {
@@ -53,5 +48,5 @@ export const useRowChartTheme = (
         color: color("border"),
       },
     };
-  }, [options, theme]);
+  }, [theme, fontFamily]);
 };
