@@ -72,7 +72,7 @@ export const Title = styled.div`
 const selectedStyle = css`
   ${Content},
   ${ColumnTypeIcon} {
-    background-color: ${color("summarize")};
+    background-color: var(--mb-color-summarize);
     color: ${color("white")};
   }
 
@@ -101,7 +101,7 @@ const unselectedStyle = css`
     ${Content},
     ${ColumnTypeIcon},
     ${AddButton} {
-      color: ${color("summarize")};
+      color: var(--mb-color-summarize);
       background-color: var(--mb-color-bg-light);
     }
 

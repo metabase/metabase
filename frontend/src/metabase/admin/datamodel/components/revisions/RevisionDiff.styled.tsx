@@ -12,5 +12,5 @@ export const ErrorIcon = styled(Icon)`
 `;
 
 export const SuccessIcon = styled(Icon)`
-  color: ${color("summarize")};
+  color: var(--mb-color-summarize);
 `;

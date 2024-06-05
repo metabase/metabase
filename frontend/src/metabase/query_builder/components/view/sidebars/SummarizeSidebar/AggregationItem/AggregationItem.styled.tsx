@@ -10,15 +10,15 @@ export const Root = styled.button`
   font-weight: bold;
   border-radius: 6px;
   color: ${color("white")};
-  background-color: ${color("summarize")};
+  background-color: var(--mb-color-summarize);
   transition: background 300ms linear, border 300ms linear;
   min-height: 34px;
   min-width: 34px;
   cursor: pointer;
 
   &:hover {
-    background-color: ${alpha("summarize", 0.8)};
-    border-color: ${alpha("summarize", 0.8)};
+    background-color: ${() => alpha("summarize", 0.8)};
+    border-color: ${() => alpha("summarize", 0.8)};
   }
 `;
 

@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const NewVersionContainer = styled.div`
-  background-color: ${color("summarize")};
+  background-color: var(--mb-color-summarize);
 `;
 
 export const OnLatestVersionMessage = styled.div`
