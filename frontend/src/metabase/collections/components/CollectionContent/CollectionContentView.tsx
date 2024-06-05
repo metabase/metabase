@@ -1,12 +1,13 @@
+/* eslint-disable react/prop-types */
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import type {
@@ -35,7 +36,6 @@ import type {
   CollectionItem,
 } from "metabase-types/api";
 
-import { CollectionBulkActions } from "../CollectionBulkActions";
 import type { CollectionOrTableIdProps } from "../ModelUploadModal";
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
@@ -267,20 +267,20 @@ export const CollectionContentView = ({
               <ErrorBoundary>
                 <CollectionItemsTable
                   collectionId={collectionId}
-                  hasPinnedItems={hasPinnedItems}
-                  clear={clear}
+                  collection={collection}
                   getIsSelected={getIsSelected}
-                  selected={selected}
                   selectOnlyTheseItems={selectOnlyTheseItems}
-                  toggleItem={toggleItem}
-                  handleMove={handleMove}
-                  handleCopy={handleCopy}
-                  loadingPinnedItems={loadingPinnedItems}
                   databases={databases}
                   bookmarks={bookmarks}
-                  collection={collection}
                   createBookmark={createBookmark}
                   deleteBookmark={deleteBookmark}
+                  loadingPinnedItems={loadingPinnedItems}
+                  hasPinnedItems={hasPinnedItems}
+                  selected={selected}
+                  toggleItem={toggleItem}
+                  clear={clear}
+                  handleMove={handleMove}
+                  handleCopy={handleCopy}
                 />
                 <CollectionBulkActions
                   collection={collection}

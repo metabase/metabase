@@ -1,11 +1,13 @@
 import {
   useCallback,
+  useContext,
   useMemo,
   type HTMLAttributes,
   type PropsWithChildren,
 } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
+import { DragDropContextProviderContext } from "metabase/collections/context";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -121,6 +123,203 @@ export type BaseItemsTableProps = {
   includeColGroup?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy">>;
 
+const TableRow = ({
+  testIdPrefix,
+  databases,
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
+  ItemComponent = DefaultItemRenderer,
+  isPinned,
+  onCopy,
+  onMove,
+  onToggleSelected,
+  item,
+  isSelected,
+  itemKey,
+  collection,
+}: PropsWithChildren<
+  {
+    testIdPrefix: string;
+    itemKey: string;
+    item: CollectionItem;
+    isSelected: boolean;
+  } & Pick<
+    BaseItemsTableProps,
+    | "items"
+    | "getIsSelected"
+    | "isPinned"
+    | "collection"
+    | "selectedItems"
+    | "onDrop"
+    | "ItemComponent"
+    | "databases"
+    | "bookmarks"
+    | "createBookmark"
+    | "deleteBookmark"
+    | "onCopy"
+    | "onMove"
+    | "onToggleSelected"
+  >
+>) => (
+  <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
+    <ItemComponent
+      testIdPrefix={testIdPrefix}
+      item={item}
+      isSelected={isSelected}
+      databases={databases}
+      bookmarks={bookmarks}
+      createBookmark={createBookmark}
+      deleteBookmark={deleteBookmark}
+      collection={collection}
+      isPinned={isPinned}
+      onCopy={onCopy}
+      onMove={onMove}
+      onToggleSelected={onToggleSelected}
+    />
+  </tr>
+);
+
+const ItemDragSourceTableRow = ({
+  item,
+  collection,
+  isSelected,
+  selectedItems,
+  onDrop,
+  itemKey,
+  testIdPrefix,
+  ItemComponent = DefaultItemRenderer,
+  isPinned,
+  databases,
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
+
+  onCopy,
+  onMove,
+  onToggleSelected,
+}: {
+  testIdPrefix: string;
+  itemKey: string;
+  item: CollectionItem;
+  isSelected: boolean;
+} & Pick<
+  BaseItemsTableProps,
+  | "items"
+  | "getIsSelected"
+  | "isPinned"
+  | "collection"
+  | "selectedItems"
+  | "onDrop"
+  | "ItemComponent"
+  | "databases"
+  | "bookmarks"
+  | "createBookmark"
+  | "deleteBookmark"
+  | "onCopy"
+  | "onMove"
+  | "onToggleSelected"
+>) => {
+  return (
+    <ItemDragSource
+      item={item}
+      collection={collection}
+      isSelected={isSelected}
+      selected={selectedItems}
+      onDrop={onDrop}
+      key={`item-drag-source-${itemKey}`}
+    >
+      {/* We can't use <TableRow> due to React DnD throwing an error: Only native element nodes can now be passed to React DnD connectors. */}
+      <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
+        <ItemComponent
+          testIdPrefix={testIdPrefix}
+          item={item}
+          isSelected={isSelected}
+          databases={databases}
+          bookmarks={bookmarks}
+          createBookmark={createBookmark}
+          deleteBookmark={deleteBookmark}
+          collection={collection}
+          isPinned={isPinned}
+          onCopy={onCopy}
+          onMove={onMove}
+          onToggleSelected={onToggleSelected}
+        />
+      </tr>
+    </ItemDragSource>
+  );
+};
+
+const BaseItemsTableBody = ({
+  items,
+  getIsSelected = () => false,
+  isPinned,
+  collection,
+  selectedItems,
+  onDrop,
+  ItemComponent = DefaultItemRenderer,
+  databases,
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
+  onCopy,
+  onMove,
+  onToggleSelected,
+}: Pick<
+  BaseItemsTableProps,
+  | "items"
+  | "getIsSelected"
+  | "isPinned"
+  | "collection"
+  | "selectedItems"
+  | "onDrop"
+  | "ItemComponent"
+  | "databases"
+  | "bookmarks"
+  | "createBookmark"
+  | "deleteBookmark"
+  | "onCopy"
+  | "onMove"
+  | "onToggleSelected"
+>) => {
+  const isDndAvailable = useContext(DragDropContextProviderContext);
+
+  const TableRowComponent = isDndAvailable ? ItemDragSourceTableRow : TableRow;
+
+  return (
+    <TBody>
+      {items.map((item: CollectionItem) => {
+        const isSelected = getIsSelected(item);
+
+        const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
+        const itemKey = `${item.model}-${item.id}`;
+
+        return (
+          <TableRowComponent
+            key={itemKey}
+            itemKey={itemKey}
+            testIdPrefix={testIdPrefix}
+            item={item}
+            isSelected={isSelected}
+            selectedItems={selectedItems}
+            onDrop={onDrop}
+            collection={collection}
+            ItemComponent={ItemComponent}
+            databases={databases}
+            bookmarks={bookmarks}
+            createBookmark={createBookmark}
+            deleteBookmark={deleteBookmark}
+            onCopy={onCopy}
+            onMove={onMove}
+            onToggleSelected={onToggleSelected}
+            items={items}
+          />
+        );
+      })}
+    </TBody>
+  );
+};
+
 export const BaseItemsTable = ({
   databases,
   bookmarks,
@@ -201,41 +400,22 @@ export const BaseItemsTable = ({
           </tr>
         </thead>
       )}
-      <TBody>
-        {items.map((item: CollectionItem) => {
-          const isSelected = getIsSelected(item);
-
-          const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
-          const key = `${item.model}-${item.id}`;
-          return (
-            <ItemDragSource
-              item={item}
-              collection={collection}
-              isSelected={isSelected}
-              selected={selectedItems}
-              onDrop={onDrop}
-              key={`item-drag-source-${key}`}
-            >
-              <tr data-testid={testIdPrefix} style={{ height: 48 }}>
-                <ItemComponent
-                  testIdPrefix={testIdPrefix}
-                  item={item}
-                  isSelected={isSelected}
-                  databases={databases}
-                  bookmarks={bookmarks}
-                  createBookmark={createBookmark}
-                  deleteBookmark={deleteBookmark}
-                  collection={collection}
-                  isPinned={isPinned}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                  onToggleSelected={onToggleSelected}
-                />
-              </tr>
-            </ItemDragSource>
-          );
-        })}
-      </TBody>
+      <BaseItemsTableBody
+        items={items}
+        getIsSelected={getIsSelected}
+        isPinned={isPinned}
+        collection={collection}
+        selectedItems={selectedItems}
+        onDrop={onDrop}
+        ItemComponent={ItemComponent}
+        databases={databases}
+        bookmarks={bookmarks}
+        createBookmark={createBookmark}
+        deleteBookmark={deleteBookmark}
+        onCopy={onCopy}
+        onMove={onMove}
+        onToggleSelected={onToggleSelected}
+      />
     </Table>
   );
 };

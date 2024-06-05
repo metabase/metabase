@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { useCallback, useEffect, useState } from "react";
 
-import { useListCollectionItemsQuery } from "metabase/api";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
+import { useSearchListQuery } from "metabase/common/hooks";
 import { ItemsTable } from "metabase/components/ItemsTable";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
@@ -21,7 +21,6 @@ import type {
   CollectionId,
   CollectionItem,
   CollectionItemModel,
-  ListCollectionItemsRequest,
 } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -63,23 +62,29 @@ export type CollectionItemsTableProps = {
 
 export const CollectionItemsTable = ({
   collectionId,
-  bookmarks,
-  clear,
   collection,
-  createBookmark,
-  databases,
-  deleteBookmark,
   getIsSelected,
-  handleCopy,
-  handleMove,
-  hasPinnedItems,
-  loadingPinnedItems,
-  models = ALL_MODELS,
-  pageSize = PAGE_SIZE,
   selectOnlyTheseItems,
+  databases,
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
+  loadingPinnedItems,
+  hasPinnedItems,
   selected,
   toggleItem,
+  clear,
+  handleMove,
+  handleCopy,
+  pageSize = PAGE_SIZE,
+  models = ALL_MODELS,
 }: CollectionItemsTableProps) => {
+  const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
+    useState<SortingOptions>({
+      sort_column: "name",
+      sort_direction: SortDirection.Asc,
+    });
+
   const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
     usePagination();
 
@@ -89,35 +94,37 @@ export const CollectionItemsTable = ({
     }
   }, [collectionId, resetPage]);
 
-  const [itemsSorting, setItemsSorting] = useState<SortingOptions>({
-    sort_column: "name",
-    sort_direction: SortDirection.Asc,
-  });
-
   const handleUnpinnedItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions) => {
-      setItemsSorting(sortingOpts);
+      setUnpinnedItemsSorting(sortingOpts);
       setPage(0);
     },
     [setPage],
   );
 
-  const query: ListCollectionItemsRequest = {
-    id: collectionId,
+  const unpinnedQuery = {
+    collection: collectionId,
     models,
     limit: pageSize,
     offset: pageSize * page,
     ...(isRootTrashCollection(collection)
       ? {}
       : { pinned_state: "is_not_pinned" }),
-    ...itemsSorting,
+    ...unpinnedItemsSorting,
   };
 
-  const { data, isLoading } = useListCollectionItemsQuery(query);
+  const {
+    data = [],
+    isLoading: loadingUnpinnedItems,
+    metadata,
+  } = useSearchListQuery({
+    // @ts-expect-error SearchRequest[models] is SearchModel[] but we use CollectionItem[] for this query
+    query: unpinnedQuery,
+  });
 
   const dispatch = useDispatch();
 
-  const items = (data?.data ?? []).map(object => {
+  const unpinnedItems = (data ?? []).map(object => {
     const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
@@ -126,21 +133,23 @@ export const CollectionItemsTable = ({
       return object;
     }
   });
-  const total = data?.total || 0;
+
+  const total = metadata?.total ?? 0;
   const hasPagination: boolean = total > PAGE_SIZE;
+
   const unselected = getIsSelected
-    ? items.filter(item => !getIsSelected(item))
-    : items;
+    ? unpinnedItems.filter(item => !getIsSelected(item))
+    : unpinnedItems;
   const hasUnselected = unselected.length > 0;
 
   const handleSelectAll = () => {
-    selectOnlyTheseItems?.(items);
+    selectOnlyTheseItems?.(unpinnedItems);
   };
 
-  const loading = loadingPinnedItems || isLoading;
-  const isEmpty = !loading && !hasPinnedItems && items.length === 0;
+  const loading = loadingPinnedItems || loadingUnpinnedItems;
+  const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-  if (isEmpty && !isLoading) {
+  if (isEmpty && !loadingUnpinnedItems) {
     return (
       <CollectionEmptyContent>
         <CollectionEmptyState collection={collection} />
@@ -149,39 +158,41 @@ export const CollectionItemsTable = ({
   }
 
   return (
-    <CollectionTable data-testid="collection-table">
-      <ItemsTable
-        databases={databases}
-        bookmarks={bookmarks}
-        createBookmark={createBookmark}
-        deleteBookmark={deleteBookmark}
-        items={items}
-        collection={collection}
-        sortingOptions={itemsSorting}
-        onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-        selectedItems={selected}
-        hasUnselected={hasUnselected}
-        getIsSelected={getIsSelected}
-        onToggleSelected={toggleItem}
-        onDrop={clear}
-        onMove={handleMove}
-        onCopy={handleCopy}
-        onSelectAll={handleSelectAll}
-        onSelectNone={clear}
-      />
-      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-        {hasPagination && (
-          <PaginationControls
-            showTotal
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            itemsLength={items.length}
-            onNextPage={handleNextPage}
-            onPreviousPage={handlePreviousPage}
-          />
-        )}
-      </div>
-    </CollectionTable>
+    <>
+      <CollectionTable data-testid="collection-table">
+        <ItemsTable
+          databases={databases}
+          bookmarks={bookmarks}
+          createBookmark={createBookmark}
+          deleteBookmark={deleteBookmark}
+          items={unpinnedItems}
+          collection={collection}
+          sortingOptions={unpinnedItemsSorting}
+          onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+          selectedItems={selected}
+          hasUnselected={hasUnselected}
+          getIsSelected={getIsSelected}
+          onToggleSelected={toggleItem}
+          onDrop={clear}
+          onMove={handleMove}
+          onCopy={handleCopy}
+          onSelectAll={handleSelectAll}
+          onSelectNone={clear}
+        />
+        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+          {hasPagination && (
+            <PaginationControls
+              showTotal
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={total}
+              itemsLength={unpinnedItems.length}
+              onNextPage={handleNextPage}
+              onPreviousPage={handlePreviousPage}
+            />
+          )}
+        </div>
+      </CollectionTable>
+    </>
   );
 };
