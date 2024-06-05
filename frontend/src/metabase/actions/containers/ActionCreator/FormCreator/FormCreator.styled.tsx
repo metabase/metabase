@@ -24,8 +24,8 @@ export const FieldSettingsButtonsContainer = styled.div`
 
 export const WarningBanner = styled.div`
   padding: ${space(2)};
-  border: 1px solid ${color("warning")};
+  border: 1px solid ${() => color("warning")};
   border-radius: ${space(1)};
-  background: ${alpha("warning", 0.1)};
+  background: ${() => alpha("warning", 0.1)};
   line-height: 1.25rem;
 `;
