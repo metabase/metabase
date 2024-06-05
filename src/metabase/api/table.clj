@@ -400,12 +400,15 @@
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
-   database."
-  [card-id database-id metadata]
-  (let [db (t2/select-one Database :id database-id)
-        underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
-                                     (-> (t2/select Field :id [:in ids])
-                                         (t2/hydrate [:target :has_field_values] :has_field_values))))
+   database.
+  `metadata-fields` can be nil."
+  [card-id database-or-id metadata metadata-fields]
+  (let [db (cond->> database-or-id
+             (int? database-or-id) (t2/select-one Database :id))
+        underlying (m/index-by :id (or metadata-fields
+                                       (when-let [ids (seq (keep :id metadata))]
+                                         (-> (t2/select Field :id [:in ids])
+                                             (t2/hydrate [:target :has_field_values] :has_field_values)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -432,9 +435,11 @@
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
   'virtual' fields as well."
-  [{:keys [database_id] :as card} & {:keys [include-fields?]}]
+  [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (t2/hydrate card :collection)
+  (let [card (cond-> card
+               (not (contains? card :collection))
+               (t2/hydrate :collection))
         card-type (:type card)
         dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
@@ -450,8 +455,11 @@
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                           database_id
-                                                           (:result_metadata card))))))
+                                                           (cond-> database_id
+                                                             databases databases)
+                                                           (:result_metadata card)
+                                                           (when card-id->metadata-fields
+                                                             (card-id->metadata-fields (u/the-id card))))))))
 
 (defn- remove-nested-pk-fk-semantic-types
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
@@ -499,27 +507,45 @@
   Unreadable cards are silently skipped."
   [ids]
   (when (seq ids)
-    (let [cards (t2/select Card
-                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                        :c.description :c.collection_id :c.database_id :c.type
-                                        [:r.status :moderated_status]]
-                            :from      [[:report_card :c]]
-                            :left-join [[{:select   [:moderated_item_id :status]
-                                          :from     [:moderation_review]
-                                          :where    [:and
-                                                     [:= :moderated_item_type "card"]
-                                                     [:= :most_recent true]]
-                                          :order-by [[:id :desc]]
-                                          :limit    1} :r]
-                                        [:= :r.moderated_item_id :c.id]]
-                            :where     [:in :c.id ids]})
-          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])]
+    (let [cards (-> (t2/select Card
+                               {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                                            :c.description :c.collection_id :c.database_id :c.type
+                                            [:r.status :moderated_status]]
+                                :from      [[:report_card :c]]
+                                :left-join [[{:select   [:moderated_item_id :status]
+                                              :from     [:moderation_review]
+                                              :where    [:and
+                                                         [:= :moderated_item_type "card"]
+                                                         [:= :most_recent true]]
+                                              :order-by [[:id :desc]]
+                                              :limit    1} :r]
+                                            [:= :r.moderated_item_id :c.id]]
+                                :where     [:in :c.id ids]})
+                    (t2/hydrate :collection))
+          dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
+          metadata-field-ids (into #{}
+                                   (comp (mapcat :result_metadata)
+                                         (keep :id))
+                                   cards)
+          metadata-fields (if (seq metadata-field-ids)
+                            (-> (t2/select Field :id [:in metadata-field-ids])
+                                (t2/hydrate [:target :has_field_values] :has_field_values)
+                                (->> (m/index-by :id)))
+                            {})
+          card-id->metadata-fields (into {}
+                                         (map (fn [card]
+                                                [(:id card) (into []
+                                                                  (keep (comp metadata-fields :id))
+                                                                  (:result_metadata card))]))
+                                         cards)]
       (for [card cards :when (mi/can-read? card)]
         ;; a native model can have columns with keys as semantic types only if a user configured them
         (let [trust-semantic-keys? (and (= (:type card) :model)
                                         (= (-> card :dataset_query :type) :native))]
           (-> card
-              (card->virtual-table :include-fields? true)
+              (card->virtual-table :include-fields? true
+                                   :databases dbs
+                                   :card-id->metadata-fields card-id->metadata-fields)
               (assoc-dimension-options (-> card :database_id dbs))
               (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))
 
