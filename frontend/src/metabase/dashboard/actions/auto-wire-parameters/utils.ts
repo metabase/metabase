@@ -95,9 +95,11 @@ export function getAutoWiredMappingsForDashcards(
   const targetDashcardMappings: SetMultipleDashCardAttributesOpts = [];
 
   for (const targetDashcard of targetDashcards) {
-    const selectedMappingOption: {
-      target: ParameterTarget;
-    } | null = getMatchingParameterOption(targetDashcard, target, questions);
+    const selectedMappingOption = getMatchingParameterOption(
+      targetDashcard,
+      target,
+      questions,
+    );
 
     if (selectedMappingOption && targetDashcard.card_id) {
       targetDashcardMappings.push({
