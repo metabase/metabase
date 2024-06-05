@@ -17,7 +17,7 @@ export const loadMetadataForCard =
   (card: Card | UnsavedCard) => async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {
       return dispatch(Questions.actions.fetchMetadata({ id: card.id }));
-    } else {
+    } else if (card.dataset_query.database != null) {
       return dispatch(Questions.actions.fetchAdhocMetadata(card.dataset_query));
     }
   };
