@@ -48,6 +48,7 @@ export const compareAggregationsDrill: Drill<
             aggregations,
             nextQuestion.id(),
           );
+
           dispatch(setUIControls({ scrollToLastColumn: true }));
           onChangeCardAndRun({ nextCard });
           onClose();
