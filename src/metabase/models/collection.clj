@@ -10,6 +10,7 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.events :as events]
    [metabase.models.collection.root :as collection.root]
@@ -120,7 +121,7 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (= id (:id (perms/default-audit-collection))))
+  (= id (:id (audit/default-audit-collection))))
 
 (defmethod mi/can-write? Collection
   ([instance]
@@ -680,7 +681,7 @@
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; Make sure we're not trying to archive the Custom Reports Collection...
-  (when (= (perms/default-custom-reports-collection) collection)
+  (when (= (audit/default-custom-reports-collection) collection)
     (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
   (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])

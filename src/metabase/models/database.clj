@@ -3,7 +3,7 @@
    [clojure.core.match :refer [match]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -68,7 +68,7 @@
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id config/audit-db-id)))
+  (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
 (defmethod mi/can-read? Database
   ([instance]
@@ -96,7 +96,7 @@
   ([instance]
    (mi/can-write? :model/Database (u/the-id instance)))
   ([_model pk]
-   (and (not= pk config/audit-db-id)
+   (and (not= pk audit/audit-db-id)
         (current-user-can-write-db? pk))))
 
 (defn- infer-db-schedules

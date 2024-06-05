@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-db-test :as audit-db-test]
-   [metabase.models.permissions :as perms]
+   [metabase.audit :as audit]
    [metabase.test :as mt]))
 
 (deftest audit-db-unmodifiable-test
@@ -15,4 +15,4 @@
                              [:delete "database/%d"]]
                 user [:crowberto :lucky]]
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request user verb 403 (format path perms/audit-db-id)))))))))
+                 (mt/user-http-request user verb 403 (format path audit/audit-db-id)))))))))

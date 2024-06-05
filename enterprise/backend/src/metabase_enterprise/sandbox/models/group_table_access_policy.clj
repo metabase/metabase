@@ -6,7 +6,7 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
@@ -128,7 +128,7 @@
                               :where [:and
                                       (when group-id [:= :s.group_id group-id])
                                       (when db-id [:= :t.db_id db-id])
-                                      (when-not audit? [:not [:= :t.db_id config/audit-db-id]])]})]
+                                      (when-not audit? [:not [:= :t.db_id audit/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
     (reduce (fn [acc {:keys [group_id table_id db_id schema]}]
               (merge-sandbox-into-graph acc group_id table_id db_id schema [:view-data] :sandboxed))

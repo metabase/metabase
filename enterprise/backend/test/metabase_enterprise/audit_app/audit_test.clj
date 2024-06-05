@@ -1,16 +1,16 @@
-(ns metabase-enterprise.audit-db-test
+(ns metabase-enterprise.audit-app.audit-test
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
@@ -39,23 +39,23 @@
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
       ;; reset checksum
-      (audit-db/last-analytics-checksum! 0)
-      (with-redefs [audit-db/analytics-dir-resource nil]
-        (is (nil? @#'audit-db/analytics-dir-resource))
-        (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
-        (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (audit/last-analytics-checksum! 0)
+      (with-redefs [ee-audit/analytics-dir-resource nil]
+        (is (nil? @#'ee-audit/analytics-dir-resource))
+        (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
+        (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
-        (is (= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
+        (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
       (t2/delete! :model/Database :is_audit true)
-      (audit-db/last-analytics-checksum! 0))
+      (audit/last-analytics-checksum! 0))
 
     (testing "Audit DB content is installed when it is found"
-      (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
-      (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
+      (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
-      (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
+      (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
 
     (testing "Audit DB starts with no permissions for all users"
@@ -64,8 +64,8 @@
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
               :perms/create-queries        :no}
-             (-> (data-perms/data-permissions-graph :db-id perms/audit-db-id :audit? true)
-                 (get-in [(u/the-id (perms-group/all-users)) perms/audit-db-id])))))
+             (-> (data-perms/data-permissions-graph :db-id audit/audit-db-id :audit? true)
+                 (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
       (let [db-has-sync-job-trigger? (fn [db-id]
@@ -73,14 +73,14 @@
                                         (set (map #(-> % :data (get "db-id"))
                                                   (task/job-info "metabase.task.sync-and-analyze.job")))
                                         db-id))]
-        (is (not (db-has-sync-job-trigger? perms/audit-db-id)))))
+        (is (not (db-has-sync-job-trigger? audit/audit-db-id)))))
 
     (testing "Audit DB doesn't get re-installed unless the engine changes"
-      (with-redefs [audit-db/load-analytics-content (constantly nil)]
-        (is (= ::audit-db/no-op (audit-db/ensure-audit-db-installed!)))
+      (with-redefs [ee-audit/load-analytics-content (constantly nil)]
+        (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! Database :is_audit true {:engine "datomic"})
-        (is (= ::audit-db/updated (audit-db/ensure-audit-db-installed!)))
-        (is (= ::audit-db/no-op (audit-db/ensure-audit-db-installed!)))
+        (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
+        (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
         (t2/update! Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
@@ -88,7 +88,7 @@
     (try
      (let [plugins-dir (plugins/plugins-dir)]
        (fs/create-dirs plugins-dir)
-       (#'audit-db/ia-content->plugins plugins-dir)
+       (#'ee-audit/ia-content->plugins plugins-dir)
        (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
                                          (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
          (testing (str top-level-plugin-dir " starts with plugins value")
@@ -99,7 +99,7 @@
 (deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]
     (try
-      (#'audit-db/ia-content->plugins (plugins/plugins-dir))
+      (#'ee-audit/ia-content->plugins (plugins/plugins-dir))
       (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
              (count (file-seq (io/file (io/resource "instance_analytics"))))))
      (finally
@@ -107,15 +107,15 @@
 
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
-        audit-db? #(str/includes? % (str perms/audit-db-id))]
+        audit-db? #(str/includes? % (str audit/audit-db-id))]
     (filter audit-db? trigger-keys)))
 
 (deftest no-sync-tasks-for-audit-db
   (with-audit-db-restoration
-    (audit-db/ensure-audit-db-installed!)
+    (ee-audit/ensure-audit-db-installed!)
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync scheduled after installation")
 
-    (with-redefs [task.sync-databases/job-context->database-id (constantly perms/audit-db-id)]
+    (with-redefs [task.sync-databases/job-context->database-id (constantly audit/audit-db-id)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cannot sync Database: It is the audit db."
@@ -139,28 +139,28 @@
           (is (thrown? Exception
                        (serdes.backfill/backfill-ids-for! :model/Collection))))
         (testing "No exception is thrown when db has 'duplicate' entries."
-          (is (= :metabase-enterprise.audit-db/no-op
-                 (audit-db/ensure-audit-db-installed!))))))))
+          (is (= ::ee-audit/no-op
+                 (ee-audit/ensure-audit-db-installed!))))))))
 
 (deftest checksum-not-recorded-when-load-fails-test
   (mt/test-drivers #{:postgres :h2 :mysql}
     (t2/delete! :model/Database :is_audit true)
     (testing "If audit content loading throws an exception, the checksum should not be stored"
-      (audit-db/last-analytics-checksum! 0)
+      (audit/last-analytics-checksum! 0)
       (with-redefs [serialization.cmd/v2-load-internal! (fn [& _] (throw (Exception. "Audit loading failed")))]
         (is (thrown-with-msg? Exception
                               #"Audit loading failed"
-                              (audit-db/ensure-audit-db-installed!)))
-        (is (= 0 (audit-db/last-analytics-checksum)))))))
+                              (ee-audit/ensure-audit-db-installed!)))
+        (is (= 0 (audit/last-analytics-checksum)))))))
 
 (deftest should-load-audit?-test
   (testing "load-analytics-content + checksums dont match => load"
-    (is (= (#'audit-db/should-load-audit? true 1 3) true)))
+    (is (= (#'ee-audit/should-load-audit? true 1 3) true)))
   (testing "load-analytics-content + last-checksum is -1 => load (even if current-checksum is also -1)"
-    (is (= (#'audit-db/should-load-audit? true -1 -1) true)))
+    (is (= (#'ee-audit/should-load-audit? true -1 -1) true)))
   (testing "checksums are the same => do not load"
-    (is (= (#'audit-db/should-load-audit? true 3 3) false)))
+    (is (= (#'ee-audit/should-load-audit? true 3 3) false)))
   (testing "load-analytics-content false => do not load"
-    (is (= (#'audit-db/should-load-audit? false 3 5) false)))
+    (is (= (#'ee-audit/should-load-audit? false 3 5) false)))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
-    (is (= (#'audit-db/should-load-audit? false 1 3) false))))
+    (is (= (#'ee-audit/should-load-audit? false 1 3) false))))
