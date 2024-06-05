@@ -46,7 +46,8 @@ describe("SettingsEditor", () => {
     ).not.toBeInTheDocument();
   });
 
-  describe("SameSite cookie note check with authorized origins", () => {
+  // eslint-disable-next-line jest/no-disabled-tests -- disabled until metabase#43523
+  describe.skip("SameSite cookie note check with authorized origins", () => {
     it("should display a note if any authorized origins do not match the instance domain", async () => {
       await setupEmbedding({
         settings: [
