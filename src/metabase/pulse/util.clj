@@ -62,33 +62,33 @@
 
   This function should be executed under pulse's creator permissions."
   [dashcard parameters]
-  (let [{card-id      :card_id
-         dashboard-id :dashboard_id} dashcard]
-    (try
-      (let [card           (t2/select-one :model/Card :id card-id)
-            multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
-            result-fn      (fn [card-id]
-                             {:card     (if (= card-id (:id card))
-                                          card
-                                          (t2/select-one :model/Card :id card-id))
-                              :dashcard dashcard
-                              :type     :card
-                              :result   (qp.dashboard/process-query-for-dashcard
-                                         :dashboard-id  dashboard-id
-                                         :card-id       card-id
-                                         :dashcard-id   (u/the-id dashcard)
-                                         :context       :dashboard-subscription
-                                         :export-format :api
-                                         :parameters    parameters
-                                         :middleware    {:process-viz-settings? true
-                                                         :js-int-to-string?     false}
-                                         :run           (^:once fn* [query info]
-                                                         (qp/process-query
-                                                          (qp/userland-query-with-default-constraints query info))))})
-            result         (result-fn card-id)
-            series-results (map (comp result-fn :id) multi-cards)]
-        (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
-                       (is-card-empty? (assoc card :result (:result result))))
-          (update result :dashcard assoc :series-results series-results)))
-      (catch Throwable e
-        (log/warnf e "Error running query for Card %s" card-id)))))
+  (try
+    (let [{card-id      :card_id
+           dashboard-id :dashboard_id} dashcard
+          card                         (t2/select-one :model/Card :id card-id)
+          multi-cards                  (dashboard-card/dashcard->multi-cards dashcard)
+          result-fn                    (fn [card-id]
+                                         {:card     (if (= card-id (:id card))
+                                                      card
+                                                      (t2/select-one :model/Card :id card-id))
+                                          :dashcard dashcard
+                                          :type     :card
+                                          :result   (qp.dashboard/process-query-for-dashcard
+                                                     :dashboard-id  dashboard-id
+                                                     :card-id       card-id
+                                                     :dashcard-id   (u/the-id dashcard)
+                                                     :context       :dashboard-subscription
+                                                     :export-format :api
+                                                     :parameters    parameters
+                                                     :middleware    {:process-viz-settings? true
+                                                                     :js-int-to-string?     false}
+                                                     :run           (^:once fn* [query info]
+                                                                     (qp/process-query
+                                                                      (qp/userland-query-with-default-constraints query info))))})
+          result                       (result-fn card-id)
+          series-results               (map (comp result-fn :id) multi-cards)]
+      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                     (is-card-empty? (assoc card :result (:result result))))
+        (update result :dashcard assoc :series-results series-results)))
+    (catch Throwable e
+      (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))
