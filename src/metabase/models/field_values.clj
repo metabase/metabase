@@ -245,6 +245,7 @@
         (not (isa? base-type :type/field-values-unsupported))
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
         (not (isa? (keyword base-type) :type/Temporal))
+        (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn take-by-length
