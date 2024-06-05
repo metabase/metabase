@@ -54,7 +54,11 @@ const SdkContentWrapperInner = styled.div<
 
   /**
     Theming-specific CSS variables.
+
     These CSS variables are not part of the core design system colors.
+    Do NOT add them to [palette.ts] and [colors.ts]
+
+    Keep in sync with [GlobalStyles.tsx] and [.storybook/preview-head.html]
   */
   --mb-color-bg-dashboard: ${({ theme }) =>
     theme.other.dashboard.backgroundColor};
