@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 import { Table } from "./Table";
 
 export const StyledTable = styled(Table)`

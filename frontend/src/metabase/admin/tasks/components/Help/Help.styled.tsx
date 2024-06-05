@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 
 export const HelpRoot = styled.div`
   padding-left: 1rem;

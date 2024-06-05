@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const ItemName = styled.span`
   color: var(--mb-color-brand);
 `;
