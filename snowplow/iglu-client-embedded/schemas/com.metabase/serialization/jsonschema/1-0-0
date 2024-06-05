@@ -13,30 +13,41 @@
     "event": {
       "description": "Event name",
       "type": "string",
-      "enum": ["serialization_export"],
+      "enum": ["serialization"],
       "maxLength": 1024
     },
+    "direction": {
+      "description": "Is it import or export",
+      "type": "string"
+      "enum": ["import", "export"],
+      "maxLength": 6
+    },
     "source": {
-      "description": "The way export was triggered",
+      "description": "The way serialization was triggered",
       "type": "string",
       "enum": ["cli", "api"]
     },
     "duration_ms": {
-      "description": "Time in milliseconds it took to generate an export",
+      "description": "Time in milliseconds it took to execute",
       "type": "integer"
     },
     "success": {
-      "description": "If export succeeded or failed",
+      "description": "If serialization succeeded or failed",
       "type": "boolean"
     },
     "error_message": {
-      "description": "Why export failed",
+      "description": "Why serialization failed",
       "type": "string",
       "maxLength": 1024
     },
     "count": {
-      "description": "Total count of exported entities",
+      "description": "Total count of serialized entities",
       "type": "integer"
+    },
+    "models": {
+      "description": "Which models were imported",
+      "type": "string",
+      "maxLength": 1024
     },
     "collection": {
       "description": "Which collections were exported",
@@ -56,7 +67,7 @@
       "type": "boolean"
     },
     "secrets": {
-      "description": "If database secrets were included",
+      "description": "If database secrets were included in export",
       "type": "boolean"
     }
   }
