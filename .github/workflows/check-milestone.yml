@@ -2,13 +2,9 @@ name: Milestone Reminder
 
 on:
   pull_request:
-    types: [closed]
-    branches:
-      - "master"
 
 jobs:
   milestone-reminder:
-    if: github.event.pull_request.merged == true
     name: Remind to set milestone
     runs-on: ubuntu-22.04
     timeout-minutes: 5
