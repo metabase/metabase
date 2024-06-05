@@ -107,8 +107,25 @@ describeWithSnowplow("scenarios > question > column compare", () => {
     });
   });
 
-  describe.skip("chill mode - plus button", () => {
-    it("should create a snowplow event for the column compare action", () => {});
+  describe("chill mode - plus button", () => {
+    it("should create a snowplow event for the column compare action", () => {
+      cy.button("Add column").click();
+
+      popover().findByText("Compare “Count” to previous months").click();
+      toggleColumnPicker();
+      toggleColumnPickerItem("Percentage difference");
+      toggleColumnPicker();
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_plus_modal",
+          custom_expressions_used: ["offset", "count"],
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+    });
   });
 });
 
