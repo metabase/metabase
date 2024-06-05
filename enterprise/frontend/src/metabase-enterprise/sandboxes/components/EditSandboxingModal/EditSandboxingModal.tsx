@@ -328,8 +328,8 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
                     <TargetName
                       key="target"
                       policy={policy}
-                      target={target}
                       policyTable={policyTable}
+                      target={target}
                     />
                   )} equals ${(
                     <span key="attr" className={CS.textCode}>
