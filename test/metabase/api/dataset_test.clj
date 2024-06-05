@@ -664,28 +664,20 @@
     (is (=? {:fields empty?
              :tables [{:id (mt/id :products)}]
              :databases [{:id (mt/id)}]}
-            (->(mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                     (mt/mbql-query products))
-               ;; The output is so large, these help debugging
-               (update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id])) %))))))
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                   (mt/mbql-query products)))))
   (testing "Parameterized native query"
     (is (=? {:fields [{:id (mt/id :people :id)}]
              :tables empty?
              :databases [{:id (mt/id)}]}
-            (->(mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                     {:database (mt/id)
-                                      :type    :native
-                                      :native  {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
-                                                :template-tags
-                                                {"id" {:name         "id"
-                                                       :display-name "Id"
-                                                       :type         :dimension
-                                                       :dimension    [:field (mt/id :people :id) nil]
-                                                             :widget-type  :id
-                                                             :default      nil}}}})
-               ;; The output is so large, these help debugging
-               (update :fields #(map (fn [x] (select-keys x [:id])) %))
-               (update :databases #(map (fn [x] (select-keys x [:id])) %))
-               (update :tables #(map (fn [x] (select-keys x [:id])) %)))))))
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                   {:database (mt/id)
+                                    :type    :native
+                                    :native  {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                              :template-tags
+                                              {"id" {:name         "id"
+                                                     :display-name "Id"
+                                                     :type         :dimension
+                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                           :widget-type  :id
+                                                           :default      nil}}}})))))
