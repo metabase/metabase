@@ -80,6 +80,7 @@ const Questions = createEntity({
             id,
             dispatch,
             cardApi.endpoints.getCardQueryMetadata,
+            { forceRefetch: false },
           ),
     ),
     fetchAdhocMetadata: compose(
@@ -95,6 +96,7 @@ const Questions = createEntity({
           query,
           dispatch,
           datasetApi.endpoints.getAdhocQueryMetadata,
+          { forceRefetch: false },
         ),
     ),
   },

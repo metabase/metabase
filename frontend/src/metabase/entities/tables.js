@@ -113,6 +113,7 @@ const Tables = createEntity({
             { id, ...params, ...options.params },
             dispatch,
             tableApi.endpoints.getTableQueryMetadata,
+            { forceRefetch: false },
           ),
     ),
 
