@@ -209,11 +209,30 @@
 ;;; |                                             Available Drivers Info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def supports?-timeout-ms
+  "The maximum time in milliseconds that [[supports?]] should take to execute. This should be enough for a driver to
+   query the database and check if it supports a feature under normal circumstances, but not so high that it delays
+   critical metabase features that use this check."
+  5000)
+
+(defn supports?
+  "A defensive wrapper around [[database-supports?]]. It adds logging and error handling to avoid crashing the app if this
+   method takes a long time to execute or throws an exception. This is useful because `supports?` is used in so many critical
+   places in the app, and we don't want a single driver to crash the app if it throws an exception, or delay the user if it
+   takes a long time to execute."
+  [driver feature database]
+  (try
+    (u/with-timeout supports?-timeout-ms
+      (driver/database-supports? driver feature database))
+    (catch Throwable e
+      (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+      false)))
+
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver database]
   (set (for [feature driver/features
-             :when (driver/database-supports? driver feature database)]
+             :when (supports? driver feature database)]
          feature)))
 
 (defn available-drivers
