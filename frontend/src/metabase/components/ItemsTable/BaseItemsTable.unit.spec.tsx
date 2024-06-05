@@ -110,6 +110,7 @@ describe("BaseItemsTable", () => {
       hasUnselected: true,
       onSelectAll,
       collection: createMockCollection({ can_write: true }),
+      onToggleSelected: jest.fn(),
     });
 
     await userEvent.click(screen.getByLabelText("Select all items"));
@@ -123,6 +124,7 @@ describe("BaseItemsTable", () => {
       hasUnselected: false,
       onSelectNone,
       collection: createMockCollection({ can_write: true }),
+      onToggleSelected: jest.fn(),
     });
 
     await userEvent.click(screen.getByLabelText("Select all items"));
