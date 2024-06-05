@@ -1956,6 +1956,18 @@
        "stageIndex" stage-number
        "value"      (if (= value :null) nil value)})
 
+(defn ^:export aggregation-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.
+  The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].
+
+  The return value has the form:
+
+      aggregation: aggregation clause as returned by [[aggregation-clause]]
+
+  > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
+  [{:keys [aggregation] :as _aggregation-drill}]
+  #js {"aggregation" aggregation})
+
 (defn ^:export column-extract-drill-extractions
   "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.
 

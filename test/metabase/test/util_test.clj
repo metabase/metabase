@@ -102,3 +102,19 @@
       (take-latch)
       (testing "The original definition survives"
         (is (= "original" (clump "orig" "inal")))))))
+
+(defn mock-me-inner []
+  :mock/original)
+
+(defn mock-me-outer []
+  (mock-me-inner))
+
+(deftest with-dynamic-redefs-nested-binding-test
+  (defn z []
+    (mt/with-dynamic-redefs [mock-me-outer
+                             (let [orig (mt/dynamic-value mock-me-outer)]
+                               (fn []
+                                 (mt/with-dynamic-redefs [mock-me-inner (constantly :mock/redefined)]
+                                   (orig))))]
+      (mock-me-outer)))
+  (is (= :mock/redefined (z))))
