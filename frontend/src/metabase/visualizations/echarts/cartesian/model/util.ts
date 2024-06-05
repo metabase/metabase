@@ -30,6 +30,6 @@ export function getColumnScaling(
   const columnSettings =
     settings.column?.(column) ??
     settings.column_settings?.[getColumnKey(column)];
-  const { scale: columnScale } = columnSettings;
-  return Number.isFinite(columnScale) ? (columnScale as number) : 1;
+  const scale = columnSettings?.scale;
+  return Number.isFinite(scale) ? (scale as number) : 1;
 }

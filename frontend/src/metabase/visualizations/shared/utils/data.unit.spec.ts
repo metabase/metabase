@@ -69,7 +69,7 @@ describe("data utils", () => {
         const groupedData = getGroupedDataset(
           rows,
           multipleMetricsChartColumns,
-          createMockVisualizationSettings(),
+          createMockVisualizationSettings({ column: () => {} }),
           columnFormatter,
         );
 
@@ -102,7 +102,7 @@ describe("data utils", () => {
       const groupedData = getGroupedDataset(
         rows,
         breakoutChartColumns,
-        createMockVisualizationSettings(),
+        createMockVisualizationSettings({ column: () => {} }),
         columnFormatter,
       );
 
