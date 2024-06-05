@@ -70,7 +70,7 @@ jobs:
 
                     const author = pull.data.user.login;
                     const guideLink = "https://www.notion.so/metabase/Metabase-Branching-Strategy-6eb577d5f61142aa960a626d6bbdfeb3?pvs=4#3dea255ffa3b4f74942a227844e889fa";
-                    const message = `@${author} Did you forget to add a milestone to the issue for this PR? _[When and where should I add a milestone?](${guideLink})_`;
+                    const message = `@${author} Did you forget to add a milestone to the issue #${issueId} linked in this PR? _[When and where should I add a milestone?](${guideLink})_`;
 
                     await github.rest.issues.createComment({
                       owner,
