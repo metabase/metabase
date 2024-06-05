@@ -41,7 +41,6 @@
       "members": [
         "noahmoss",
         "escherize",
-        "iethree",
         "npfitz",
         "johnswanson",
         "rafpaf",
@@ -58,6 +57,13 @@
         "kulyk",
         "adam-james-v"
       ]
-    }
+    },
+    {
+      "name": "DevEx",
+      "label": ".Team/DevEx",
+      "members": [
+        "iethree"
+      ]
+    },
   ]
 }
