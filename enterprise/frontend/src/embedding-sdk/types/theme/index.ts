@@ -43,8 +43,14 @@ export interface MetabaseColors {
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;
 
-  /** Background color for dashboard cards. */
+  /** Background color for dashboards. Defaults to `background`. */
+  "background-dashboard"?: string;
+
+  /** Background color for dashboard cards. Defaults to `background`. */
   "background-dashboard-card"?: string;
+
+  /** Background color for visualizations. Unset by default. */
+  "background-visualization"?: string;
 
   /** Color used for borders */
   border?: string;

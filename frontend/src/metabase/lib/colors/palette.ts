@@ -46,6 +46,7 @@ export const colors = {
   border: "#EEECEC",
 
   /** Colors for theme customization. */
+  "bg-dashboard": "#FFFFFF",
   "bg-dashboard-card": "#FFFFFF",
   "bg-visualization": "transparent",
 
