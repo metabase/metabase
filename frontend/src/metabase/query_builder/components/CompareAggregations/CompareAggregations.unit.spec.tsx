@@ -29,7 +29,7 @@ describe("CompareAggregations", () => {
       setup({ query: createQueryWithCountAggregation() });
 
       expect(
-        screen.getByText("Compare “Count” to previous period ..."),
+        screen.getByText("Compare “Count” to previous period"),
       ).toBeInTheDocument();
     });
   });
