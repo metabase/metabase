@@ -15,7 +15,7 @@ import { QuestionDataSource } from "./components/QuestionDataSource";
 export const ViewHeaderContainer = styled(ViewSection)<{
   isNavBarOpen?: boolean;
 }>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
@@ -65,7 +65,7 @@ export const SaveButton = styled(Link)`
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
 
   :hover {
     background-color: var(--mb-color-bg-light);
@@ -184,7 +184,7 @@ export const ViewHeaderActionPanel = styled.div`
     margin-left: 0;
     width: 100%;
     justify-content: space-between;
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
     padding: 0.5rem 2.5rem 0 2rem;
   }
@@ -198,7 +198,7 @@ export const ViewHeaderIconButtonContainer = styled.div`
 
     &:hover {
       color: ${color("brand")};
-      background-color: ${color("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
   }
 `;

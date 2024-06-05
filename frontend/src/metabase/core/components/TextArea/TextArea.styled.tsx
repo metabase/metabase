@@ -16,10 +16,10 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   font-size: 1rem;
   color: ${color("text-dark")};
   padding: 0.75rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: ${props =>
-    props.readOnly ? "var(--mb-color-bg-light)" : color("bg-white")};
+    props.readOnly ? "var(--mb-color-bg-light)" : "var(--mb-color-bg-white)"};
   outline: none;
   text-align: inherit;
 

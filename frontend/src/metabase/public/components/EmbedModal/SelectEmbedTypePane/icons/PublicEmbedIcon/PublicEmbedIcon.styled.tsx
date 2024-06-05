@@ -9,7 +9,7 @@ interface PublicEmbedIconRootProps {
 
 export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
   ${({ theme, disabled }) => css`
-    color: ${theme.fn.themeColor("bg-medium")};
+    color: var(--mb-color-bg-medium);
 
     .innerFill {
       stroke: ${disabled

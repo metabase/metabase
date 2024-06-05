@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Modal from "metabase/components/Modal";
-import { color } from "metabase/lib/colors";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
 
 import TableFooter from "../TableSimple/TableFooter";
@@ -21,7 +20,7 @@ export const RootModal = styled(Modal)`
     max-height: 95vh;
     width: 95vw;
 
-    border: 1px solid ${color("border")};
+    border: 1px solid var(--mb-color-border);
     border-radius: 0.5rem;
   }
 

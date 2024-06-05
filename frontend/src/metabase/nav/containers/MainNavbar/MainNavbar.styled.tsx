@@ -15,7 +15,7 @@ import { SidebarLink } from "./SidebarItems";
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
 
-  border-inline-end: 1px solid ${color("border")};
+  border-inline-end: 1px solid var(--mb-color-border);
 
   ${breakpointMaxSmall} {
     width: 90vw;

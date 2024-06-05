@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
 export const AppBarRoot = styled.div`
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export interface AppBarHeaderProps {
@@ -16,7 +16,8 @@ export const AppBarHeader = styled.div<AppBarHeaderProps>`
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
   border-bottom: 1px solid transparent;
-  border-color: ${props => !props.isSubheaderVisible && color("border")};
+  border-color: ${props =>
+    !props.isSubheaderVisible && "var(--mb-color-border)"};
 `;
 
 interface AppBarSubheaderProps {
@@ -28,7 +29,7 @@ export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
   padding: 1rem 1rem 1rem 1.25rem;
   transition: border-bottom-color 200ms ease;
   border-bottom: 1px solid
-    ${props => (props.isNavBarOpen ? color("border") : "transparent")};
+    ${props => (props.isNavBarOpen ? "var(--mb-color-border)" : "transparent")};
 `;
 
 export const AppBarMainContainer = styled.div`

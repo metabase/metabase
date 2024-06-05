@@ -29,7 +29,7 @@ export const StyledSidebarLink = styled(SidebarLink)<{ isDragging: boolean }>`
     css`
       pointer-events: none;
       &:hover {
-        background: ${color("bg-white")};
+        background: var(--mb-color-bg-white);
 
         ${SidebarLink.Icon}, ${DragIcon} {
           color: ${color("brand-light")} !important;

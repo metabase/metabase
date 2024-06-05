@@ -9,12 +9,12 @@ interface Props {
 
 export const StepRoot = styled.section<Props>`
   position: relative;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
   background-color: ${props =>
-    color(props.isCompleted ? "white" : "bg-medium")};
+    props.isCompleted ? color("white") : "var(--mb-color-bg-medium)"};
 `;
 
 export const StepTitle = styled.div<Props>`
@@ -34,9 +34,12 @@ export const StepLabel = styled.div<Props>`
   align-items: center;
   width: 2.625rem;
   height: 2.625rem;
-  border: 1px solid ${props => color(props.isCompleted ? "success" : "border")};
+  border: 1px solid
+    ${props =>
+      props.isCompleted ? color("success") : "var(--mb-color-border)"};
   border-radius: 50%;
-  background-color: ${props => color(props.isCompleted ? "success" : "white")};
+  background-color: ${props =>
+    props.isCompleted ? color("success") : color("white")};
 `;
 
 export const StepLabelText = styled.span`

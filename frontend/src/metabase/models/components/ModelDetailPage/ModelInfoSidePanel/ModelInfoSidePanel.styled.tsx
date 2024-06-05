@@ -9,7 +9,7 @@ export const ModelInfoSection = styled.div``;
 
 export const ModelInfoPanel = styled.div`
   padding-left: 2rem;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
   width: 15rem;
 
   ${ModelInfoSection}:not(:first-of-type) {

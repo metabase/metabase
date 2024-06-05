@@ -21,7 +21,7 @@ export const ItemList = styled.ul`
 `;
 
 export const ToggleItem = styled.li`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   margin-bottom: 0.5em;
 
   ${ItemTitle} {
@@ -39,6 +39,6 @@ export const Label = styled(HoverParent)`
   min-height: 2.25rem;
 
   &:hover {
-    background: ${color("bg-medium")};
+    background: var(--mb-color-bg-medium);
   }
 `;

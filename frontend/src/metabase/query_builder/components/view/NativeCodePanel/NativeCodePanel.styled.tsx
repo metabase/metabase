@@ -14,7 +14,9 @@ export const CodeContainer = styled.pre<CodeContainerProps>`
   box-sizing: border-box;
   margin: 0;
   padding: 1rem;
-  border: 1px solid ${props => color(props.isHighlighted ? "brand" : "border")};
+  border: 1px solid
+    ${props =>
+      props.isHighlighted ? color("brand") : "var(--mb-color-border)"};
   border-radius: 0.5rem;
   background-color: ${props =>
     props.isHighlighted ? color("brand-light") : "var(--mb-color-bg-light)"};

@@ -33,7 +33,7 @@ const selectedStyles = ({ theme }: { theme: Theme }) => css`
 export const SearchDropdownFooter = styled(Group, {
   shouldForwardProp: propName => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
-  border-top: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  border-top: 1px solid var(--mb-color-border);
 
   ${({ theme, isSelected }) => isSelected && selectedStyles({ theme })}
   &:hover {
