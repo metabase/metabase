@@ -142,7 +142,7 @@ export type ListCollectionItemsRequest = {
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
 } & PaginationRequest &
-  SortingOptions;
+  Partial<SortingOptions>;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
