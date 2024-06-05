@@ -174,6 +174,7 @@ function setup({
     query,
     stageIndex,
     getRecentClauseInfo,
+    onAdd,
     onSelect,
   };
 }
@@ -383,6 +384,23 @@ describe("AggregationPicker", () => {
       expect(
         screen.getByText("Compare to previous period ..."),
       ).toBeInTheDocument();
+    });
+
+    it("only calls onAdd when submitted", async () => {
+      const { onAdd, onSelect } = setup({
+        query: createQueryWithCountAggregation(),
+      });
+
+      expect(onAdd).not.toHaveBeenCalled();
+      expect(onSelect).not.toHaveBeenCalled();
+
+      await userEvent.click(
+        screen.getByText("Compare “Count” to previous period ..."),
+      );
+      await userEvent.click(screen.getByText("Done"));
+
+      expect(onAdd).toHaveBeenCalled();
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 });
