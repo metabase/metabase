@@ -27,6 +27,6 @@ export const NoticeCloseIcon = styled(Icon)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("admin-navbar")};
+    color: ${() => color("admin-navbar")};
   }
 `;

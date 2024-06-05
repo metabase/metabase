@@ -11,7 +11,7 @@ import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`
   padding: 0.5rem 1rem;
-  background: ${color("admin-navbar")};
+  background: ${() => color("admin-navbar")};
   color: ${color("white")};
   font-size: 0.85rem;
   height: ${ADMIN_NAVBAR_HEIGHT};
@@ -56,7 +56,7 @@ export const AdminMobileNavBarItems = styled.ul`
   border-radius: 0 0 0 0.5rem;
   top: ${ADMIN_NAVBAR_HEIGHT};
   right: 0;
-  background: ${color("admin-navbar")};
+  background: ${() => color("admin-navbar")};
 `;
 
 export const AdminExitLink = styled(Link)`
