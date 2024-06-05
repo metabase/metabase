@@ -137,7 +137,7 @@ jobs:
       MB_DATABRICKS_JDBC_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
       MB_DATABRICKS_JDBC_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
       MB_DATABRICKS_JDBC_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
-      MB_DATABRICKS_JDBC_TEST_CATALOG: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CATALOG }}
+      MB_DATABRICKS_JDBC_TEST_CATALOG: 'metabase_drivers'
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks JDBC driver
