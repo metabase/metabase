@@ -44,7 +44,7 @@ export const EmptyModelStateContainer = styled.div`
 `;
 
 export const EditButton = styled(Button)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   padding: 0 0.5rem;
 `;
 

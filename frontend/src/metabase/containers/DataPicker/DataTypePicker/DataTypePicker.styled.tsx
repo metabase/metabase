@@ -34,7 +34,7 @@ export const ItemDescriptionContainer = styled.div`
 `;
 
 export const ItemDescription = styled.span`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 700;
   font-size: 12px;
 `;

@@ -16,7 +16,7 @@ export const ActionLink = styled(Link)`
 `;
 
 export const TriggerIconContainer = styled.span`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 
   &:hover {
     color: ${color("brand")};

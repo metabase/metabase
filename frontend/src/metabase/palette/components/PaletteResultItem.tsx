@@ -104,7 +104,7 @@ export const PaletteResultItem = ({
         </Box>
         <Text
           component="span"
-          color={active ? "white" : "text-light"}
+          color={active ? "text-white" : "text-light"}
           fw="normal"
           style={{
             textOverflow: "ellipsis",

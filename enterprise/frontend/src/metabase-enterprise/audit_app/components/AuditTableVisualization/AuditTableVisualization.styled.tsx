@@ -32,5 +32,5 @@ export const RowCell = styled.td<RowCellProps>`
 `;
 
 export const RemoveRowButton = styled(IconButtonWrapper)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

@@ -44,5 +44,5 @@ export const HeaderMenu = styled.div`
 
 export const HeaderCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

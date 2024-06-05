@@ -83,7 +83,7 @@ export const CollectionHeaderLink = styled(Link)`
 `;
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   margin-inline-start: auto;
 `;
 

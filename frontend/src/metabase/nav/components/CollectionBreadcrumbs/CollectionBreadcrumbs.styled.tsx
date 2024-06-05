@@ -12,7 +12,7 @@ export const PathContainer = styled.div`
 export const PathSeparator = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-size: 0.8em;
   font-weight: bold;
   margin-left: 0.5rem;

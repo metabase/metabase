@@ -147,7 +147,7 @@ export const CloseSearchButton = styled.button`
   width: 3rem;
   height: 100%;
 
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 
   cursor: pointer;
 

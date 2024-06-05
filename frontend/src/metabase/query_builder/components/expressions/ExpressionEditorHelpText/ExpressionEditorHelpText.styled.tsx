@@ -51,7 +51,7 @@ export const ArgumentTitle = styled.div`
 export const BlockSubtitleText = styled.div`
   margin-bottom: 0.5rem;
 
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const ExampleCode = styled.div`

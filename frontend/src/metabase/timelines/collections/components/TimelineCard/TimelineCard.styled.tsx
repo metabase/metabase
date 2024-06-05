@@ -7,7 +7,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   width: 1.375rem;
   height: 1.375rem;
 `;

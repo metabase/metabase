@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
@@ -21,7 +21,7 @@ export const ClickActionButtonTextIcon = styled.span`
 `;
 
 export const Subtitle = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: normal;
   margin-left: 1rem;
 `;
@@ -74,7 +74,7 @@ export const SortControl = styled(Button)`
 `;
 
 export const FormattingControl = styled(Button)`
-  color: ${({ theme }) => alpha(theme.fn.themeColor("text-light"), 0.65)};
+  color: ${() => alpha(color("text-light"), 0.65)};
   margin-left: auto;
   line-height: 1;
 

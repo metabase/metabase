@@ -24,7 +24,7 @@ export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
           }
         `
       : css`
-          color: ${theme.fn.themeColor("text-light")};
+          color: var(--mb-color-text-light);
         `}
 `;
 

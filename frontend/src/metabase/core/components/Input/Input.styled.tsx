@@ -145,7 +145,7 @@ export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
 `;
 
 export const InputSubtitle = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   position: absolute;
   top: 1.25em;
   left: 1.25em;

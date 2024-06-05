@@ -8,7 +8,7 @@ export const CardMenuRoot = styled(EntityMenu)`
   align-items: center;
   margin: 0 0 0 0.5rem;
   cursor: pointer;
-  color: ${lighten("text-light", 0.1)};
+  color: ${() => lighten("text-light", 0.1)};
 
   &:hover {
     color: ${color("brand")};

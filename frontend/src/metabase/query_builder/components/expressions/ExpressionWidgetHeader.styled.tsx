@@ -13,5 +13,5 @@ export const Header = styled.div`
 `;
 
 export const HeaderButton = styled(Button)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

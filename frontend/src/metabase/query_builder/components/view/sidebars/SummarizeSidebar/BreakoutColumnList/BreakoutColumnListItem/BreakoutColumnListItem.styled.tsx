@@ -90,11 +90,11 @@ const selectedStyle = css`
 const unselectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
   }
 
   ${ColumnTypeIcon} {
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
   }
 
   &:hover {
@@ -111,7 +111,7 @@ const unselectedStyle = css`
 
     ${BucketPickerPopover.TriggerButton} {
       opacity: 1;
-      color: ${color("text-light")};
+      color: var(--mb-color-text-light);
     }
 
     ${BucketPickerPopover.TriggerButton}:hover {

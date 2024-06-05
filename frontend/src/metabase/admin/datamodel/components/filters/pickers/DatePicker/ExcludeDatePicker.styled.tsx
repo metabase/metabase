@@ -23,7 +23,7 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
 
 export const Separator = styled.div`
   margin: 1rem;
-  border-top: solid 1px ${color("text-light")};
+  border-top: solid 1px var(--mb-color-text-light);
   opacity: 0.5;
 `;
 

@@ -73,7 +73,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
     isEmpty &&
     css`
       border: 1px solid ${color("brand")};
-      color: ${color("text-light")};
+      color: var(--mb-color-text-light);
     `}
 
   ${({ isSingleRow, isPreviewing, isEmpty, isMobile }) => {

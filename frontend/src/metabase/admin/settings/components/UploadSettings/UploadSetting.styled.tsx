@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 
 export const SectionTitle = styled.h3`
   font-weight: bold;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
 `;

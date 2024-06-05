@@ -77,7 +77,7 @@ export const EngineEmptyIcon = styled(Icon)`
 `;
 
 export const EngineEmptyText = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 26rem;

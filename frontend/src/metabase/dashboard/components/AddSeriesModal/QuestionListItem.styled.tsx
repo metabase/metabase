@@ -27,7 +27,7 @@ export const CheckboxContainer = styled.div`
 `;
 
 export const WarningIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   cursor: pointer;
   margin-left: auto;
   max-width: 36px;

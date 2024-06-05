@@ -31,7 +31,7 @@ export const DataBucketListItemDescriptionContainer = styled.div`
 `;
 
 export const DataBucketListItemDescription = styled.span`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 700;
   font-size: 12px;
 `;

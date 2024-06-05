@@ -84,7 +84,7 @@ const aceEditorStyle = css`
     padding-top: 2px;
     font-size: 10px;
     font-weight: 700;
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
     padding-left: 0;
     padding-right: 7px;
     display: block;

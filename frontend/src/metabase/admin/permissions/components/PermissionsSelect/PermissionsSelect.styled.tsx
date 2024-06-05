@@ -54,7 +54,7 @@ export const ToggleLabel = styled.label`
 
 export const WarningIcon = styled(Icon)`
   margin-right: 0.25rem;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 WarningIcon.defaultProps = {

@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import TableLabel from "../TableLabel/TableLabel";
 
 export const InteractiveTableLabel = styled(TableLabel)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const LabelButton = styled.button`

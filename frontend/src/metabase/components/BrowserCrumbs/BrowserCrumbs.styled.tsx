@@ -24,5 +24,5 @@ export const BrowserCrumbsLink = styled(Link)`
 
 export const BrowserCrumbsIcon = styled(Icon)`
   margin: 0 0.5rem;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

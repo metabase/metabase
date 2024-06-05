@@ -134,7 +134,7 @@ export const LoadingAndErrorContent = styled.div`
 `;
 
 export const LoadingAndErrorTitle = styled.h2`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 400;
   margin-top: ${space(1)};
 `;

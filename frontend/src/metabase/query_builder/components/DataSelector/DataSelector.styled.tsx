@@ -87,7 +87,7 @@ export const TriggerContainerIcon = styled.div`
 
 export const TextSchema = styled(Text)<React.PropsWithChildren>`
   font-size: 0.75em;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   line-height: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;

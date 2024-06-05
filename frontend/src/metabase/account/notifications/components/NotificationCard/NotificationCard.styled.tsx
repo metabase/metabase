@@ -38,7 +38,7 @@ export const NotificationMessage = styled.span`
 `;
 
 export const NotificationIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   cursor: pointer;
   width: 1rem;
   height: 1rem;

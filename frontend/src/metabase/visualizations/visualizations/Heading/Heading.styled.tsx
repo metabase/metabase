@@ -42,7 +42,7 @@ export const InputContainer = styled.div<InputContainerProps>`
     isEmpty &&
     css`
       border: 1px solid ${color("brand")};
-      color: ${color("text-light")};
+      color: var(--mb-color-text-light);
     `}
 `;
 

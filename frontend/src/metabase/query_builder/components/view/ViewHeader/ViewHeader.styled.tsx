@@ -104,7 +104,7 @@ export const IconHeaderButton = styled(HeaderButton)`
 
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   //margin-left: 4px;
 
   ${breakpointMaxSmall} {

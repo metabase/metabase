@@ -21,7 +21,7 @@ export const InputDivider = styled.div`
 `;
 
 export const InputClearIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 interface InputPeriodButtonProps {

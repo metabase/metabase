@@ -113,7 +113,7 @@ describe("Text", () => {
         );
         expect(screen.getByTestId("editing-dashboard-text-container"))
           .toHaveStyle(`border: 1px solid ${color("brand")};
-                        color: ${color("text-light")};`);
+                        color: var(--mb-color-text-light);`);
       });
 
       it("should preview with text when it has content", () => {

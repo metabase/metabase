@@ -30,7 +30,7 @@ export const SkeletonIcon = styled(Icon)`
 
 export const SkeletonTooltipIcon = styled(Icon)`
   display: block;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   width: 0.75rem;
   height: 0.75rem;
 `;

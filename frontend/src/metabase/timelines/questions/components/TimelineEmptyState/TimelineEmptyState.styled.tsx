@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmptyStateRoot = styled.div`
@@ -12,7 +11,7 @@ export const EmptyStateRoot = styled.div`
 `;
 
 export const EmptyStateIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   width: 5rem;
   height: 5rem;
   margin-bottom: 2.5rem;

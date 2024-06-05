@@ -14,7 +14,7 @@ export const StepRoot = styled.section`
 `;
 
 export const StepTitle = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   padding: 1rem 0;
   font-size: 2rem;
   font-weight: 700;
