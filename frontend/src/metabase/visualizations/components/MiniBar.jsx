@@ -81,7 +81,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
               left: "50%",
               top: 0,
               bottom: 0,
-              borderLeft: "1px solid var(--mb-color-white)",
+              borderLeft: `1px solid ${color("white")}`,
             }}
           />
         )}

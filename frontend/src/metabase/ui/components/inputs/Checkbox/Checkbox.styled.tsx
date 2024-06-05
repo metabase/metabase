@@ -115,7 +115,6 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
         labelWrapper: {
-          position: "relative",
           top: rem(-2),
         },
       }),
