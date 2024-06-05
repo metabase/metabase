@@ -206,19 +206,19 @@ export const queryCompleted = (
       );
     }
 
-    const previousQuestion = getQuestion(getState());
-    const previousVizSettings = previousQuestion?.settings() ?? {};
-
-    const series = [{ card: question.card(), data }];
-    const vizSettings = getQuestionWithDefaultVisualizationSettings(
-      question,
-      series,
-    ).settings();
-
     // Try using old dimension/metric settings when new ones are empty
     // (for cases like metabase#10493 when metadata is different between reruns)
     // If columns are actually missing, the viz settings layer should take care of that
     if (hasGraphDataSettings(question.display())) {
+      const previousQuestion = getQuestion(getState());
+      const previousVizSettings = previousQuestion?.settings() ?? {};
+
+      const series = [{ card: question.card(), data }];
+      const vizSettings = getQuestionWithDefaultVisualizationSettings(
+        question,
+        series,
+      ).settings();
+
       const dimensions =
         vizSettings["graph.dimensions"].length > 0
           ? vizSettings["graph.dimensions"]
