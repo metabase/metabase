@@ -205,7 +205,7 @@ jobs:
                        --assignee "${GITHUB_ACTOR}"\
                        --title "Update SDK version to ${{ inputs.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
-          gh pr edit --add-reviewer @metabase/embedding
+          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
