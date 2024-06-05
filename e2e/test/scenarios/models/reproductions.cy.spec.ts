@@ -295,14 +295,14 @@ describe("issue 23103", () => {
 });
 
 describe("issue 39150", { viewportWidth: 1600 }, () => {
-  const ccName = "CC Rating";
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
   it("allows custom columns with the same name in nested models (metabase#39150-1)", () => {
+    const ccName = "CC Rating";
+
     createQuestion({
       name: "Source Model",
       type: "model",
