@@ -29,9 +29,9 @@ export const FONT_SIZES = {
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   dashboard: {
-    backgroundColor: "bg-white",
+    backgroundColor: "var(--mb-color-bg-white)",
     card: {
-      backgroundColor: "bg-white",
+      backgroundColor: "var(--mb-color-bg-white)",
     },
   },
   question: {

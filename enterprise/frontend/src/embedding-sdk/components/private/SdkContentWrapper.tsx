@@ -56,18 +56,17 @@ const SdkContentWrapperInner = styled.div<
     Theming-specific CSS variables.
     Keep in sync with [GlobalStyles.tsx] and [.storybook/preview-head.html].
 
-    We use fn.themeColor to allow referencing design system colors.
-    Refer to DEFAULT_METABASE_COMPONENT_THEME for more details.
+    Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
 
     These CSS variables are not part of the core design system colors.
     Do NOT add them to [palette.ts] and [colors.ts].
   */
   --mb-color-bg-dashboard: ${({ theme }) =>
-    theme.fn.themeColor(theme.other.dashboard.backgroundColor)};
+    theme.other.dashboard.backgroundColor};
   --mb-color-bg-dashboard-card: ${({ theme }) =>
-    theme.fn.themeColor(theme.other.dashboard.card.backgroundColor)};
+    theme.other.dashboard.card.backgroundColor};
   --mb-color-bg-question: ${({ theme }) =>
-    theme.fn.themeColor(theme.other.question.backgroundColor)};
+    theme.other.question.backgroundColor};
 
   font-size: ${({ theme }) => theme.other.fontSize};
 
