@@ -70,9 +70,7 @@ describe("dashboard filters auto-wiring", () => {
       getDashboardCard(1).findByText("User.Name").should("not.exist");
 
       undoToast().findByText("Auto-connect").click();
-      // currently is broken
-      // undoToast().should("contain", "User.Name");
-      undoToast().should("contain", "Undo");
+      undoToast().should("contain", "User.Name");
     });
 
     it("should not wire parameters to cards that already have a parameter, despite matching fields", () => {
