@@ -93,6 +93,10 @@ export function browseDatabases() {
   return navigationSidebar().findByLabelText("Browse databases");
 }
 
+export function settings() {
+  return appBar().findByLabelText("Settings");
+}
+
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
