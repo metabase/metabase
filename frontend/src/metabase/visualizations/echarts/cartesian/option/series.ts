@@ -37,7 +37,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { SeriesSettings } from "metabase-types/api";
+import type { RowValue, SeriesSettings } from "metabase-types/api";
 
 import type {
   ChartMeasurements,
@@ -157,6 +157,7 @@ export function getDataLabelFormatter(
   chartWidth: number,
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
+  accessor?: (datum: Datum) => RowValue,
 ) {
   const getShowLabel = getShowLabelFn(
     chartWidth,
@@ -166,13 +167,10 @@ export function getDataLabelFormatter(
   );
 
   return (params: CallbackDataParams) => {
-    const value = (params.data as Datum)[dataKey];
+    const datum = params.data as Datum;
+    const value = accessor != null ? accessor(datum) : datum[dataKey];
 
-    if (!getShowLabel(params)) {
-      return "";
-    }
-
-    if (typeof value !== "number") {
+    if (!getShowLabel(params) || typeof value !== "number") {
       return "";
     }
 
@@ -467,6 +465,7 @@ const buildEChartsBarSeries = (
     z: Z_INDEXES.series,
     yAxisIndex,
     barGap: 0,
+    barMinHeight: 1,
     stack,
     barWidth: computeBarWidth(
       xAxisModel,
@@ -515,25 +514,35 @@ const buildEChartsBarSeries = (
     return seriesOption;
   }
 
-  const labelOptions = ["+" as const, "-" as const].map(sign => ({
-    ...getDataLabelSeriesOption(
-      getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
-      seriesOption,
-      settings,
-      getDataLabelFormatter(
-        seriesModel.dataKey,
-        yAxisScaleTransforms,
-        labelFormatter,
-        chartWidth,
-        settings,
-        chartDataDensity,
-      ),
-      sign === "+" ? "top" : "bottom",
-      renderingContext,
-      false,
-    ),
-    type: "bar", // ensure type is bar for typescript
-  })) as BarSeriesOption[];
+  const labelOptions: BarSeriesOption[] = ["+" as const, "-" as const].map(
+    sign => {
+      const labelDataKey = getBarSeriesDataLabelKey(seriesModel.dataKey, sign);
+      return {
+        ...getDataLabelSeriesOption(
+          getBarSeriesDataLabelKey(seriesModel.dataKey, sign),
+          seriesOption,
+          settings,
+          getDataLabelFormatter(
+            seriesModel.dataKey,
+            yAxisScaleTransforms,
+            labelFormatter,
+            chartWidth,
+            settings,
+            chartDataDensity,
+            datum => {
+              const value = datum[seriesModel.dataKey];
+              const isZero = value === null && datum[labelDataKey] != null;
+              return isZero ? 0 : value;
+            },
+          ),
+          sign === "+" ? "top" : "bottom",
+          renderingContext,
+          false,
+        ),
+        type: "bar", // ensure type is bar for typescript
+      };
+    },
+  );
 
   if (seriesOption?.label != null) {
     seriesOption.label.show = false;

@@ -288,7 +288,7 @@ export function getStackTotalValue(
   stackDataKeys: DataKey[],
   signKey: StackTotalDataKey,
 ): number | null {
-  let stackValue: number | null = null;
+  let stackValue: number | null = data[signKey] != null ? 0 : null;
   stackDataKeys.forEach(stackDataKey => {
     const seriesValue = data[stackDataKey];
     if (

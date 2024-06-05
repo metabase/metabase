@@ -109,6 +109,7 @@ export function getScatterPlotModel(
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
