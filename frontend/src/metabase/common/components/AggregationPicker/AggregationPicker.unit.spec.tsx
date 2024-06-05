@@ -365,12 +365,12 @@ describe("AggregationPicker", () => {
   });
 
   describe("column compare shortcut", () => {
-    it("does not display the option if there are no aggregations", () => {
+    it("does not display the shortcut if there are no aggregations", () => {
       setup();
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 
-    it("displays the option with correct label if there is 1 aggregation", () => {
+    it("displays the shortcut with correct label if there is 1 aggregation", () => {
       setup({ query: createQueryWithCountAggregation() });
 
       expect(
@@ -378,7 +378,7 @@ describe("AggregationPicker", () => {
       ).toBeInTheDocument();
     });
 
-    it("displays the option with correct label if there are multiple aggregation", () => {
+    it("displays the shortcut with correct label if there are multiple aggregation", () => {
       setup({ query: createQueryWithCountAndSumAggregations() });
 
       expect(
