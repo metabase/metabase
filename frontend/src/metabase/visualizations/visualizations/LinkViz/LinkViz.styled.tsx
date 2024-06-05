@@ -69,7 +69,7 @@ const searchResultsStyles = `
   min-width: 20rem;
   overflow-y: auto;
 
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   line-height: 24px;
 
   max-height: 400px;

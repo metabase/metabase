@@ -10,7 +10,7 @@ import { SIDEBAR_WIDTH } from "../Sidebar";
 export const DashboardInfoSidebarRoot = styled.aside`
   width: ${SIDEBAR_WIDTH}px;
   min-width: ${SIDEBAR_WIDTH}px;
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
   border-left: 1px solid ${color("border")};
   align-self: stretch;
   // FIXME: ensure that removing this style is OK

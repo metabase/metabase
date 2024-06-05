@@ -70,7 +70,7 @@ NodeRoot.defaultProps = {
 };
 
 export const collectionDragAndDropHoverStyle = css`
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   background-color: ${color("brand")};
 `;
 

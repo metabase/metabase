@@ -49,7 +49,7 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   ${props =>
     props.isSelected &&
     css`
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
       background-color: ${color("brand")};
     `}
 
@@ -59,11 +59,11 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   }
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
 
     .Icon {
-      background-color: ${color("white")};
+      background-color: var(--mb-color-bg-white);
       color: ${color("brand")};
     }
   }
@@ -71,9 +71,9 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
 
 export const FieldTypeIcon = styled(Icon)<{ isSelected: boolean }>`
   background-color: ${props =>
-    props.isSelected ? color("white") : color("brand")};
+    props.isSelected ? color("bg-white") : color("brand")};
 
-  color: ${props => (props.isSelected ? color("brand") : color("white"))};
+  color: ${props => (props.isSelected ? color("brand") : color("text-white"))};
 
   border-radius: 0.3em;
   padding: 0.2em;
@@ -89,7 +89,7 @@ export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 

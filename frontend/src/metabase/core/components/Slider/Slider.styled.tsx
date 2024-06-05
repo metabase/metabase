@@ -21,7 +21,7 @@ const thumbStyles = `
   border-radius: 50%;
   border: 2px solid ${color("brand")};
   box-sizing: border-box;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   cursor: pointer;
   box-shadow: 0 0 2px 1px ${color("brand")};
   pointer-events: all;
@@ -78,7 +78,7 @@ export const SliderTooltip = styled.div`
   text-align: center;
   padding: ${space(0.5)} ${space(1)};
   background: var(--mb-color-bg-black);
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   display: block;
   border-radius: ${space(1)};
   opacity: 0;

@@ -8,7 +8,7 @@ export const NewVersionContainer = styled.div`
 
 export const OnLatestVersionMessage = styled.div`
   padding: 1rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   font-weight: bold;
   border: 1px solid ${color("brand")};
   border-radius: 0.5rem;

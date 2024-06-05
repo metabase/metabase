@@ -61,25 +61,25 @@
 }
 
 .ButtonPrimary {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
   background: var(--mb-color-brand);
   border: 1px solid var(--mb-color-brand);
 }
 
 .ButtonPrimary:hover {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
   border-color: var(--mb-color-brand);
   background-color: var(--mb-color-brand-alpha-88);
 }
 
 .ButtonWarning {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
   background: var(--color-error);
   border: 1px solid var(--color-error);
 }
 
 .ButtonWarning:hover {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
   border-color: var(--color-error);
   background-color: var(--color-error);
 }
@@ -132,7 +132,7 @@
 
 .ButtonGroup .ButtonActive {
   background-color: var(--mb-color-success);
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .ButtonGroup .Button:first-child {
@@ -162,7 +162,7 @@
 .ButtonDanger {
   background-color: var(--color-error);
   border-color: var(--color-error);
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .ButtonDanger:hover {
@@ -174,13 +174,13 @@
 .ButtonSuccess {
   background-color: var(--mb-color-success);
   border-color: var(--mb-color-success);
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .ButtonSuccess:hover {
   background-color: var(--mb-color-success);
   border-color: var(--mb-color-success);
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .ButtonFullWidth {

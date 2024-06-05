@@ -12,9 +12,10 @@ const tableBorder = `1px solid ${alpha(color("border"), 0.5)}`;
 const headerBackground = `linear-gradient(to top, ${alpha(
   color("border"),
   0.5,
-)}, ${alpha(color("border"), 0.5)} 1px, ${color("white")} 1px, ${color(
-  "white",
-)} 100%)`;
+)}, ${alpha(
+  color("border"),
+  0.5,
+)} 1px, var(--mb-color-bg-white) 1px, var(--mb-color-bg-white) 100%)`;
 
 export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;

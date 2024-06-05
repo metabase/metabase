@@ -34,7 +34,7 @@ export const TimelineEventName = styled.span`
 `;
 
 export const TimelineEventDate = styled(DateTime)`
-  color: ${darken("white", 0.02)};
+  color: ${() => darken("text-white", 0.02)};
   font-size: 0.75rem;
   margin-top: 0.0625rem;
 `;

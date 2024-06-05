@@ -13,7 +13,7 @@ export const CardRoot = styled(Link)`
   padding: 1rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   box-shadow: 0 7px 20px ${color("shadow")};
   max-width: 100%;
 

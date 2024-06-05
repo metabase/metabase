@@ -28,7 +28,7 @@ export const DangerZone = styled.div`
       opacity: 1;
       background-color: ${color("accent3")};
       border-color: ${color("accent3")};
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

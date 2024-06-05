@@ -73,7 +73,7 @@ const getCellBackgroundColor = ({
     return alpha("bg-black", 0.1);
   }
 
-  return color(backgroundColor ?? "white");
+  return color(backgroundColor ?? "bg-white");
 };
 
 const getCellHoverBackground = (
@@ -95,7 +95,7 @@ const getColor = ({
   isNightMode,
 }: PivotTableCellProps & { theme: MantineTheme }) => {
   if (isNightMode) {
-    return color("white");
+    return color("text-white");
   }
 
   return color(theme.other.table.cell.textColor);

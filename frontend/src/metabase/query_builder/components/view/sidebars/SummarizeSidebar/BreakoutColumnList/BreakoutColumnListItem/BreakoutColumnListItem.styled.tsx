@@ -26,14 +26,14 @@ export const TitleContainer = styled.div`
 `;
 
 export const RemoveButton = styled(Button)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: transparent;
 
   opacity: 0.6;
   transition: all 100ms;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: transparent;
     opacity: 1;
   }
@@ -48,7 +48,7 @@ RemoveButton.defaultProps = {
 export const AddButton = styled(Button)`
   width: 34px;
   margin-left: 0.5rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   transition: none;
 `;
 
@@ -73,16 +73,16 @@ const selectedStyle = css`
   ${Content},
   ${ColumnTypeIcon} {
     background-color: var(--mb-color-summarize);
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
-    color: ${alpha("white", 0.65)};
+    color: ${() => alpha("text-white", 0.65)};
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     opacity: 1;
   }
 `;

@@ -10,7 +10,7 @@ export const ActionLink = styled(Link)`
   text-decoration: none;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
   }
 `;

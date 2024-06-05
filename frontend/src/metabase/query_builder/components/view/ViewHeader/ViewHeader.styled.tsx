@@ -65,7 +65,7 @@ export const SaveButton = styled(Link)`
   font-weight: bold;
   padding: 0.5rem 1rem;
   border-radius: 8px;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
 
   :hover {
     background-color: var(--mb-color-bg-light);
@@ -82,7 +82,7 @@ export const HeaderButton = styled(Button)<{ active: boolean }>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
-  color: ${({ active }) => (active ? "white" : color("text-dark"))};
+  color: ${({ active }) => (active ? color("text-white") : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
@@ -213,6 +213,6 @@ export const ViewRunButtonWithTooltip = styled(
   color: ${color("text-dark")};
 
   &:hover {
-    color: ${props => (props.isDirty ? color("white") : color("brand"))};
+    color: ${props => (props.isDirty ? color("text-white") : color("brand"))};
   }
 `;

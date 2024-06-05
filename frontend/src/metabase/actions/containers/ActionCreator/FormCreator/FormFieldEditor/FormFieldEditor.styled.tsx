@@ -9,7 +9,7 @@ import { Icon } from "metabase/ui";
 const DRAG_HANDLE_SIZE = 12;
 
 export const FormFieldContainer = styled.div`
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
   overflow: hidden;

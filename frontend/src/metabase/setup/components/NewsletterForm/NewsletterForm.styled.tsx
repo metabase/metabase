@@ -26,7 +26,7 @@ export const EmailFormLabelCard = styled.div`
   display: flex;
   padding: 0 1.5rem;
   color: ${color("text-medium")};
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const EmailFormLabelIcon = styled(Icon)`

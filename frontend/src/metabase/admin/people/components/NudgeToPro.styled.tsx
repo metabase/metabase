@@ -31,7 +31,7 @@ export const ProLink = styled(ExternalLink)`
   width: fit-content;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
   }
 `;

@@ -20,7 +20,7 @@ const activeItemCss = css`
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 `;
 

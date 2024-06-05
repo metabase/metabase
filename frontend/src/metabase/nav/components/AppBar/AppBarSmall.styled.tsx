@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
 export const AppBarRoot = styled.div`
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export interface AppBarHeaderProps {

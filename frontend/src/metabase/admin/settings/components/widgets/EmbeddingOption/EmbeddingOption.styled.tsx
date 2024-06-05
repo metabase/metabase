@@ -20,7 +20,7 @@ export const Label = styled.span`
   font-weight: 700;
   border-radius: 0.25rem;
   text-transform: uppercase;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background: ${color("brand")};
 `;
 

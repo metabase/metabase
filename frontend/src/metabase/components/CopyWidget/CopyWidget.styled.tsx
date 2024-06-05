@@ -18,7 +18,7 @@ export const CopyWidgetButton = styled(CopyButton)`
   outline: none;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
   }
 `;

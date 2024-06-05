@@ -35,7 +35,7 @@ export const CardRoot = styled(Link)<CardRootProps>`
   padding: ${props => (props.isPreview ? "0" : "0.5rem 0")};
   border: 1px solid ${color("border")};
   border-radius: 0.375rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 
   &:hover {
     ${CardActionMenuContainer} {

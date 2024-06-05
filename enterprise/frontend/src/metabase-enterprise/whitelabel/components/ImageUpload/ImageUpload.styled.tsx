@@ -8,7 +8,7 @@ export const FileInput = styled.input`
     margin-right: 1rem;
     border-radius: 4px;
     border: 1px solid ${color("border")};
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
     color: ${color("text-dark")};
     transition: 200ms;
     cursor: pointer;

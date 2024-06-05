@@ -16,7 +16,7 @@ export const UserPickerOption = styled.div`
 `;
 
 export const UserPickerAvatar = styled(UserAvatar)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const UserPickerText = styled.div`

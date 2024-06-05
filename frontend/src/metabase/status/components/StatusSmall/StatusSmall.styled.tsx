@@ -14,7 +14,7 @@ const getIconColor = ({ status }: Props): string => {
     case "incomplete":
       return color("brand");
     default:
-      return color("white");
+      return color("text-white");
   }
 };
 

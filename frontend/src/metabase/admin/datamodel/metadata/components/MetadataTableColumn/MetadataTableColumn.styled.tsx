@@ -15,7 +15,7 @@ export const ColumnContainer = styled.section`
   &:last-child {
     margin-bottom: 0;
   }
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
 `;
 
 export const ColumnInput = styled(InputBlurChange)`

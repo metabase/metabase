@@ -11,7 +11,7 @@ export const ToastRoot = styled.div`
 `;
 
 export const StyledIcon = styled(Icon)`
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   margin-right: ${space(1)};
 `;
 

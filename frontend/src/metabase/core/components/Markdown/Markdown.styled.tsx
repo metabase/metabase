@@ -31,7 +31,8 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   a {
     cursor: pointer;
     text-decoration: none;
-    color: ${props => (props.unstyleLinks ? color("white") : color("brand"))};
+    color: ${props =>
+      props.unstyleLinks ? color("text-white") : color("brand")};
   }
 
   a:hover {

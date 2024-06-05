@@ -5,7 +5,7 @@ import { space } from "metabase/styled-components/theme";
 
 export const FormWrapper = styled.div`
   padding: 1.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   border-radius: ${space(1)};
   border: 1px solid ${color("border")};
   overflow-y: auto;

@@ -15,11 +15,11 @@ export const OptionItemRoot = styled.li`
   cursor: pointer;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
 
     ${OptionItemTitle}, ${OptionItemDescription} {
-      color: ${color("white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

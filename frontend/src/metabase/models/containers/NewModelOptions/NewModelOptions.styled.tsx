@@ -37,7 +37,7 @@ export const EducationalButton = styled(ExternalLink)`
   transition: all 0.3s;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
   }
 `;

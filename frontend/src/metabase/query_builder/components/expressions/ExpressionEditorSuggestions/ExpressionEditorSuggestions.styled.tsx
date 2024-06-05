@@ -16,7 +16,7 @@ export const SuggestionMatch = styled.span`
 `;
 
 const highlighted = css`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: ${color("brand")};
 `;
 

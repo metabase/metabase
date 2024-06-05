@@ -35,7 +35,7 @@ export const TokenFilterActionButton = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
     background-color: ${({ theme }) => theme.fn.themeColor("brand")};
     border-color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
@@ -50,7 +50,7 @@ export const TokenActionButton = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
     background-color: ${({ theme }) => theme.fn.themeColor("brand")};
     border-color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
@@ -67,7 +67,7 @@ export const SortControl = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
     background-color: ${({ theme }) => theme.fn.themeColor("brand")};
     border-color: ${({ theme }) => theme.fn.themeColor("brand")};
   }

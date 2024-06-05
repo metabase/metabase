@@ -8,7 +8,7 @@ export const SidebarAside = styled.aside<{ $width: number }>`
   width: ${props => props.$width}px;
   min-width: ${props => props.$width}px;
   border-left: 1px solid ${color("border")};
-  background: ${color("bg-white")};
+  background: var(--mb-color-bg-white);
 `;
 
 export const ChildrenContainer = styled.div`

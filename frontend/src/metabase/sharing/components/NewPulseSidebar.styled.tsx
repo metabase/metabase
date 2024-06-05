@@ -15,7 +15,7 @@ export const ChannelCard = styled(Card)<SlackCardProps>`
       cursor: pointer;
 
       &:hover {
-        color: ${color("white")};
+        color: var(--mb-color-text-white);
         background-color: ${color("brand")};
       }
     `}

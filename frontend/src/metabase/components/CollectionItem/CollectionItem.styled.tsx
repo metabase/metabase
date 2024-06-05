@@ -36,5 +36,5 @@ export const CardContent = styled.div`
 `;
 
 export const CollectionIcon = styled(Icon)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;

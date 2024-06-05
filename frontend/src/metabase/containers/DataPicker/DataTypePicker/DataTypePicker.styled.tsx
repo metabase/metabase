@@ -44,7 +44,7 @@ export const ItemContainer = styled(SelectList.BaseItem as any)`
     ${ItemIcon},
     ${ItemTitle},
     ${ItemDescription} {
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

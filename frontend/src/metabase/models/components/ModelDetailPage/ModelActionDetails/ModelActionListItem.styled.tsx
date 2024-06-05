@@ -67,7 +67,7 @@ export const CodeBlock = styled.pre`
   white-space: pre-wrap;
   margin: 0;
 
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   background-color: ${color("text-dark")};
 `;
 
@@ -78,7 +78,7 @@ export const ActionRunButtonContainer = styled.div`
 `;
 
 export const ActionRunButton = styled(Button)`
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   color: ${color("text-dark")};
 `;
 

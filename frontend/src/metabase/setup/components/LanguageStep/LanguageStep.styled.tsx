@@ -34,13 +34,13 @@ export interface LocaleContainerProps {
 export const LocaleButton = styled.span<LocaleContainerProps>`
   display: block;
   padding: 0.5rem;
-  color: ${props => color(props.checked ? "white" : "text-dark")};
+  color: ${props => color(props.checked ? "text-white" : "text-dark")};
   border-radius: 0.25rem;
-  background-color: ${props => color(props.checked ? "brand" : "white")};
+  background-color: ${props => color(props.checked ? "brand" : "bg-white")};
   font-weight: 700;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: ${color("brand")};
   }
 
