@@ -30,7 +30,7 @@ import {
   CollectionTable,
 } from "./CollectionContent.styled";
 
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 25;
 const ALL_MODELS: CollectionItemModel[] = [
   "dashboard",
   "dataset",
