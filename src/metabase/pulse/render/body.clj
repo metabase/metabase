@@ -527,12 +527,12 @@
       (h value)]
      :render/text (str value)}))
 
-(defn- result-k->data-k
+(defn- raise-data-one-level
+  "Raise the :data key inside the given result map up to the top level. This is the expected shape of `add-dashcard-timeline`."
   [{:keys [result] :as m}]
   (-> m
       (assoc :data (:data result))
-      (dissoc :result))
-  #_(m/map-keys (fn [k] (if (#{:result} k) :data k)) m))
+      (dissoc :result)))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -544,7 +544,7 @@
   [_chart-type render-type _timezone-id card dashcard data]
   (let [series-cards-results                   (:series-results dashcard)
         cards-with-data                        (->> series-cards-results
-                                                    (map #(clojure.set/rename-keys % {:result :data}))
+                                                    (map raise-data-one-level)
                                                     (cons {:card card :data data})
                                                     (map add-dashcard-timeline-events)
                                                     (m/distinct-by #(get-in % [:card :id])))
