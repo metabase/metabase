@@ -66,14 +66,14 @@ export const EmailFormSuccessContainer = styled.div`
 `;
 
 export const EmailFormSuccessIcon = styled(Icon)`
-  color: ${color("success")};
+  color: var(--mb-color-success);
   width: 1rem;
   height: 1rem;
   margin-right: 1rem;
 `;
 
 export const EmailFormSuccessText = styled.div`
-  color: ${color("success")};
+  color: var(--mb-color-success);
   font-size: 1rem;
   font-weight: bold;
 `;

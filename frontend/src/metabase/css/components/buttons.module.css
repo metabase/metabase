@@ -131,7 +131,7 @@
 }
 
 .ButtonGroup .ButtonActive {
-  background-color: var(--color-success);
+  background-color: var(--mb-color-success);
   color: var(--color-text-white);
 }
 
@@ -172,14 +172,14 @@
 }
 
 .ButtonSuccess {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
+  background-color: var(--mb-color-success);
+  border-color: var(--mb-color-success);
   color: var(--color-text-white);
 }
 
 .ButtonSuccess:hover {
-  background-color: var(--color-success);
-  border-color: var(--color-success);
+  background-color: var(--mb-color-success);
+  border-color: var(--mb-color-success);
   color: var(--color-text-white);
 }
 

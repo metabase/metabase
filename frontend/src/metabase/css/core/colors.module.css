@@ -7,7 +7,7 @@
  */
 :root {
   --color-white: #fff;
-  --color-success: #84bb4c;
+  --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
   --color-error: #ed6e6e;
   --mb-color-text-dark: #4c5773;
@@ -32,7 +32,7 @@
 }
 
 .textSuccess {
-  color: var(--color-success);
+  color: var(--mb-color-success);
 }
 
 /* error */

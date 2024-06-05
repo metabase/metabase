@@ -98,5 +98,6 @@ export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
   height: 1.5rem;
   border-radius: 1rem;
   color: ${color("white")};
-  background-color: ${props => color(props.isError ? "error" : "success")};
+  background-color: ${props =>
+    props.isError ? color("error") : "var(--mb-color-success)"};
 `;
