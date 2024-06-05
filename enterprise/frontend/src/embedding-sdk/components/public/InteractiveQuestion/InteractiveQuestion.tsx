@@ -112,7 +112,11 @@ export const _InteractiveQuestion = ({
   }
 
   return (
-    <Box className={cx(CS.flexFull, CS.fullWidth)} h={height ?? defaultHeight}>
+    <Box
+      className={cx(CS.flexFull, CS.fullWidth)}
+      h={height ?? defaultHeight}
+      bg="bg-question"
+    >
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
           {withTitle &&
