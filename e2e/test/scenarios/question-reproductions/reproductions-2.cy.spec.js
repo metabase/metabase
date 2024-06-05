@@ -21,9 +21,9 @@ import {
   chartPathWithFillColor,
   openQuestionActions,
   queryBuilderHeader,
-  describeOSS,
   saveQuestion,
   tableHeaderClick,
+  onlyOSS,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -274,8 +274,9 @@ describe("issue 25016", () => {
 });
 
 // this is only testable in OSS because EE always has models from auditv2
-describeOSS("issue 25144", { tags: "@OSS" }, () => {
+describe("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    onlyOSS();
     restore("setup");
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("createCard");

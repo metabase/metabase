@@ -7,7 +7,7 @@ import {
   restore,
   modal,
   describeEE,
-  isOSS,
+  onlyOSS,
   assertPermissionTable,
   assertPermissionOptions,
   modifyPermission,
@@ -27,7 +27,7 @@ const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    cy.onlyOn(isOSS);
+    onlyOSS();
 
     restore();
     cy.signInAsAdmin();

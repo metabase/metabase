@@ -11,7 +11,6 @@ import {
   openNavigationSidebar,
   popover,
   restore,
-  describeOSS,
   modal,
   openNativeEditor,
   saveQuestion,
@@ -51,6 +50,7 @@ import {
   visualize,
   focusNativeEditor,
   tableHeaderClick,
+  onlyOSS,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -195,12 +195,13 @@ describe("issue 19737", () => {
 });
 
 // this is only testable in OSS because EE always has models from auditv2
-describeOSS("issue 19776", { tags: "@OSS" }, () => {
+describe("issue 19776", { tags: "@OSS" }, () => {
   const modelName = "Orders Model";
   function openEllipsisMenuFor(item) {
     cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
   }
   beforeEach(() => {
+    onlyOSS();
     restore();
     cy.signInAsAdmin();
   });

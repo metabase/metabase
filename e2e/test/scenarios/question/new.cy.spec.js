@@ -16,8 +16,6 @@ import {
   saveQuestion,
   getPersonalCollectionName,
   visitCollection,
-  setTokenFeatures,
-  describeOSS,
   queryBuilderHeader,
   entityPickerModal,
   entityPickerModalItem,
@@ -27,6 +25,7 @@ import {
   pickEntity,
   visitQuestion,
   tableHeaderClick,
+  onlyOSS,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -454,14 +453,14 @@ describe("scenarios > question > new", () => {
 // the data picker has different behavior if there are no models in the instance
 // the default instance image has a model in it, so we need to separately test the
 // model-less behavior
-describeOSS(
+describe(
   "scenarios > question > new > data picker > without models",
   { tags: "@OSS" },
   () => {
     beforeEach(() => {
+      onlyOSS();
       restore("without-models");
       cy.signInAsAdmin();
-      setTokenFeatures("none");
     });
 
     it("can create a question from the sample database", () => {
