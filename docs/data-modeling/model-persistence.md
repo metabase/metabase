@@ -30,7 +30,7 @@ The cron scheduler uses the [Report Timezone](../configuring-metabase/localizati
 
 We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 
-If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will re-run the model's query until the next scheduled model refresh.
+If someone [changes the query definition of a model](./models.md#edit-a-models-query), any question based on that model will re-run the model's query until the next scheduled model refresh.
 
 ## Turn on model persistence for each database
 
