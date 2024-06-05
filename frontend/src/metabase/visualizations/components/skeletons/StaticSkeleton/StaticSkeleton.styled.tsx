@@ -10,7 +10,7 @@ export const SkeletonRoot = styled.div`
 `;
 
 export const SkeletonTitle = styled(Ellipsified)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   line-height: 1.5rem;
   font-weight: bold;

@@ -15,7 +15,7 @@ export const ActionHeader = styled.div`
 export const ActionTitle = styled(Link)`
   font-size: 1rem;
   font-weight: 700;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   cursor: ${props => (props.to ? "pointer" : "unset")};
 
   &:hover {
@@ -41,7 +41,7 @@ export const ActionSubtitlePart = styled.span`
 `;
 
 export const MenuIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   cursor: pointer;
 
   &:hover {
@@ -68,7 +68,7 @@ export const CodeBlock = styled.pre`
   margin: 0;
 
   color: ${color("text-white")};
-  background-color: ${color("text-dark")};
+  background-color: var(--mb-color-text-dark);
 `;
 
 export const ActionRunButtonContainer = styled.div`
@@ -79,7 +79,7 @@ export const ActionRunButtonContainer = styled.div`
 
 export const ActionRunButton = styled(Button)`
   background-color: var(--mb-color-bg-white);
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const ImplicitActionCardContentRoot = styled.div`

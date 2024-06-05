@@ -13,7 +13,7 @@ export const Container = styled.div`
 `;
 
 export const FunctionHelpCode = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-family: ${monospaceFontFamily};
 
   font-size: 0.8125rem;

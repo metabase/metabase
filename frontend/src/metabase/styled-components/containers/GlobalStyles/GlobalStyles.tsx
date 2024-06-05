@@ -1,6 +1,6 @@
-import { css, Global, useTheme } from "@emotion/react";
+import { css, Global } from "@emotion/react";
 
-import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
+import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { getSitePath } from "metabase/lib/dom";
@@ -13,7 +13,6 @@ import { getFont, getFontFiles } from "../../selectors";
 export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
-  const theme = useTheme();
 
   const sitePath = getSitePath();
 
@@ -31,6 +30,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-bg-night: ${color("bg-night")};
       --mb-color-bg-white: ${color("bg-white")};
       --mb-color-border: ${color("border")};
+      --mb-color-text-dark: ${color("text-dark")};
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}
@@ -49,7 +49,7 @@ export const GlobalStyles = (): JSX.Element => {
     ${saveDomImageStyles}
     body {
       font-size: 0.875em;
-      ${getRootStyle(theme)}
+      ${rootStyle}
     }
 
     ${baseStyle}

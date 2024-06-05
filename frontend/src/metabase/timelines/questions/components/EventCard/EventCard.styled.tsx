@@ -48,7 +48,7 @@ export const CardBody = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
@@ -56,7 +56,7 @@ export const CardTitle = styled.div`
 `;
 
 export const CardDescription = styled(Markdown)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-top: 0.25rem;
   word-wrap: break-word;
 `;

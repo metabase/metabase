@@ -32,7 +32,7 @@ const ModalWarningIcon = () => (
 
 const Title = ({ children }: { children: string }) => (
   <Box
-    c={color("text-dark")}
+    c="text-dark"
     fz={rem(20)}
     lh={rem(24)}
     fw="bold"

@@ -32,7 +32,7 @@ const messageVariantStyles = {
     }
   `,
   large: css`
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     margin-top: 1rem;
   `,
 };

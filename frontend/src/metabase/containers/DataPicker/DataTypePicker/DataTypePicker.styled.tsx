@@ -14,7 +14,7 @@ export const List = styled(SelectList)`
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const TitleContainer = styled.div`
@@ -23,7 +23,7 @@ export const TitleContainer = styled.div`
 `;
 
 export const ItemTitle = styled.span`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 14px;
   margin-left: ${space(1)};

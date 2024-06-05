@@ -17,7 +17,7 @@ export const StatusContainer = styled.div`
 export const StatusLabel = styled.span`
   font-size: 0.875rem;
   font-weight: bold;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const LastRefreshTimeLabel = styled.span`
@@ -40,5 +40,5 @@ export const ErrorIcon = styled(Icon)`
 `;
 
 export const RefreshIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;

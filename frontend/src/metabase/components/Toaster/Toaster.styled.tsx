@@ -12,7 +12,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   flex-direction: row;
   overflow-x: hidden;
   max-width: 388px;
-  background-color: ${color("text-dark")};
+  background-color: var(--mb-color-text-dark);
   padding: 16px;
   border-radius: 6px;
   ${props =>

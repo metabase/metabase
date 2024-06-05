@@ -19,7 +19,7 @@ export const EmptyStateIcon = styled(Icon)`
 `;
 
 export const EmptyStateText = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 0.875rem;
   line-height: 1.5rem;
   text-align: center;

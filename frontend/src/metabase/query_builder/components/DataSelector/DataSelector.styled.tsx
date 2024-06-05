@@ -12,7 +12,7 @@ export const DataSelectorSection = styled.section`
 
 export const DataBucketIcon = styled(Icon)`
   margin-top: 2px;
-  color: ${color("text-dark")} !important;
+  color: var(--mb-color-text-dark) !important;
 `;
 
 export const DataBucketDescription = styled.span`
@@ -28,7 +28,7 @@ const BackButtonContainer = styled.div`
 
 const BackButtonLabel = styled.span`
   font-size: 16px;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   margin-left: ${space(1)};
 

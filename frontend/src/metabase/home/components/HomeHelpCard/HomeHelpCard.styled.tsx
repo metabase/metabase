@@ -21,13 +21,13 @@ export const CardRoot = styled(ExternalLink)`
 export const CardIcon = styled(Icon)`
   display: block;
   flex: 0 0 auto;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   width: 1rem;
   height: 1rem;
 `;
 
 export const CardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   font-weight: bold;
   margin-left: 1rem;

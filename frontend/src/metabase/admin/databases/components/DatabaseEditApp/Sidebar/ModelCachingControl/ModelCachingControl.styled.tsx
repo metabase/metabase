@@ -22,7 +22,7 @@ export const PopoverContent = styled.div`
 `;
 
 export const FeatureTitle = styled.h4`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 `;
 

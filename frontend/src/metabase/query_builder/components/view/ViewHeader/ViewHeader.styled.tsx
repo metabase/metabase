@@ -210,7 +210,7 @@ interface ViewRunButtonWithTooltipProps {
 export const ViewRunButtonWithTooltip = styled(
   RunButtonWithTooltip,
 )<ViewRunButtonWithTooltipProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: ${props => (props.isDirty ? color("white") : color("brand"))};

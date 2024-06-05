@@ -21,7 +21,7 @@ export const ChunkyListItem = styled.button<{
       !isSelected &&
       css`
         background-color: ${color("brand-lighter")};
-        color: ${color("text-dark")};
+        color: var(--mb-color-text-dark);
       `}
   }
 

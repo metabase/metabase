@@ -10,7 +10,7 @@ export const LegendCaptionRoot = styled.div`
 `;
 
 export const LegendLabel = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;

@@ -21,7 +21,7 @@ export const AuthErrorRoot = styled.div`
 
 export const TextLink = styled(Link)`
   cursor: pointer;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: ${color("brand")};

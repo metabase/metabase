@@ -15,7 +15,7 @@ export const CardBody = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   font-weight: bold;
   margin-bottom: 0.125rem;
@@ -29,7 +29,7 @@ export const CardDescription = styled.div`
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   width: 1rem;
   height: 1rem;
 `;
@@ -47,7 +47,7 @@ export const CardIconContainer = styled.div`
 
 export const CardAside = styled.div`
   flex: 0 0 auto;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 0.75rem;
 `;
 

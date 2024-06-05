@@ -22,7 +22,7 @@ export const StatusSecondary = styled.div`
 `;
 
 export const StatusTitle = styled.h2`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;

@@ -18,7 +18,7 @@ export const EmptyStateContainer = styled.div`
 export const EmptyStateTitle = styled.h4`
   font-size: 1rem;
   font-weight: 700;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const EmptyStateMessage = styled.p`

@@ -19,7 +19,7 @@ export interface SkeletonTitleProps {
 }
 
 export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: ${props => (props.size === "large" ? "1rem" : "")};
   line-height: ${props => (props.size === "large" ? "1.375rem" : "")};
   font-weight: bold;

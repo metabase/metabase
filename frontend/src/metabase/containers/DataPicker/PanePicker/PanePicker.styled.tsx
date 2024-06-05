@@ -38,7 +38,7 @@ export const BackButton = styled.button`
   align-items: center;
   cursor: pointer;
 
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 
   padding-bottom: 1rem;

@@ -24,6 +24,6 @@ export const SettingErrorMessage = styled.div`
 `;
 
 export const SettingEnvVarMessage = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
 `;

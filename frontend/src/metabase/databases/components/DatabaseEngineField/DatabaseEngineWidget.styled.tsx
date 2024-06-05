@@ -46,7 +46,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
 `;
 
 export const EngineCardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-top: 0.5rem;
 `;
 

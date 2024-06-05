@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const Description = styled.p`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   max-width: 360px;
 `;
 

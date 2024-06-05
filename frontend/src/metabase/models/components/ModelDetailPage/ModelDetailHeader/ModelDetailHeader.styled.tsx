@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ModelTitle = styled(EditableText)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 1.25rem;
 `;

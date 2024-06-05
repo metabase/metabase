@@ -64,7 +64,7 @@ export const CollectionHeaderContainer = styled.button`
   border-top: 1px solid var(--mb-color-border);
   margin-top: 0.75rem;
   cursor: pointer;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   &:hover {
     color: ${color("brand")};
   }
@@ -139,7 +139,7 @@ export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
 `;
 
 export const BannerModelIcon = styled(FixedSizeIcon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-inline-end: 0.5rem;
 `;
 

@@ -9,7 +9,7 @@ export const EmptyBanner = styled(Banner)`
   background-color: ${lighten("brand", 0.6)};
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   gap: 0.5rem;
   padding: 1rem;

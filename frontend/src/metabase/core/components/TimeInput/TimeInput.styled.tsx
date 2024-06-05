@@ -16,7 +16,7 @@ export const InputField = styled(NumericInput)`
 `;
 
 export const InputDivider = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin: 0 0.5rem;
 `;
 

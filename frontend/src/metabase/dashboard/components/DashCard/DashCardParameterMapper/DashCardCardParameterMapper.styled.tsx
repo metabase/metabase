@@ -16,7 +16,7 @@ export const Container = styled.div<{ isSmall: boolean }>`
 `;
 
 export const TextCardDefault = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin: ${space(1)} 0;
   display: flex;
   flex-direction: row;

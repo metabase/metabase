@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 
 export const TextLink = styled(Link)`
   cursor: pointer;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: ${color("brand")};

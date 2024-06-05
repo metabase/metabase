@@ -18,7 +18,7 @@ export const NativeCardIcon = styled(Icon)`
 `;
 
 export const NativeCardText = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   max-width: 15rem;
   text-align: center;
   line-height: 1.5rem;

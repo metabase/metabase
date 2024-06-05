@@ -8,11 +8,11 @@ const CONTENT_PADDING = "24px";
 
 const FormContainer = styled.div`
   ${Radio.RadioGroupVariants.join(", ")} {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   ${SelectButton.Root} {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     transition: border 0.3s;
     outline: none;
   }

@@ -29,7 +29,7 @@ export const Separator = styled.div`
 
 export const ExcludeCheckBox = styled(CheckBox)`
   font-size: 1em;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 600;
   min-height: 1.5em;
 `;

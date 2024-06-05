@@ -14,7 +14,7 @@ export const HeaderRoot = styled.header`
 `;
 
 export const HeaderTitle = styled.h2`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;

@@ -25,7 +25,7 @@ export const InfoIconContainer = styled.div`
 `;
 
 export const InfoTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
@@ -34,13 +34,13 @@ export const InfoTitle = styled.div`
 `;
 
 export const InfoMessage = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   text-align: center;
   margin-bottom: 1rem;
 `;
 
 export const InfoLink = styled(Link)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-top: 2.5rem;
 
   &:hover {

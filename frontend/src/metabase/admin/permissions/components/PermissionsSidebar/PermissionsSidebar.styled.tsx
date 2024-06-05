@@ -25,7 +25,7 @@ export const BackIcon = styled(Icon)`
 export const BackButton = styled.button`
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 14px;

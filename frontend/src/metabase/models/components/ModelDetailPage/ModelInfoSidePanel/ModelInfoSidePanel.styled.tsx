@@ -19,7 +19,7 @@ export const ModelInfoPanel = styled.div`
 
 export const ModelInfoTitle = styled.span`
   display: block;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 600;
 
   padding-left: 4px;

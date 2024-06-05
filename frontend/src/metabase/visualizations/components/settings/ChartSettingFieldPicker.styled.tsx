@@ -33,7 +33,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
 
   ${SelectButton.Icon} {
     margin-left: 0;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     height: 0.625rem;
     ${props => props.disabled && "display: none;"}
     flex-shrink: 0;
@@ -47,7 +47,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     overflow-wrap: anywhere;
     text-align: left;
     overflow: hidden;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   ${SelectButton.Root}:disabled {

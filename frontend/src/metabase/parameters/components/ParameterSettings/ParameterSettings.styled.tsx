@@ -17,7 +17,7 @@ export const SettingLabelError = styled.span`
 `;
 
 export const SettingValueWidget = styled(ParameterValueWidget)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;

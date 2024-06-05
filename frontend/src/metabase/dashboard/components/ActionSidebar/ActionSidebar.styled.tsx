@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Heading = styled.h4`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.125rem;
 `;
 

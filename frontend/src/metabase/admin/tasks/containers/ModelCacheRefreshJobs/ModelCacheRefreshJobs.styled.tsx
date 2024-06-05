@@ -6,7 +6,7 @@ export const ErrorBox = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 4px;
 
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   background-color: var(--mb-color-bg-light);
 
   font-family: Monaco, monospace;
@@ -24,7 +24,7 @@ export const IconButtonContainer = styled.button`
 
   &:hover {
     .Icon {
-      color: ${color("text-dark")};
+      color: var(--mb-color-text-dark);
     }
   }
 `;

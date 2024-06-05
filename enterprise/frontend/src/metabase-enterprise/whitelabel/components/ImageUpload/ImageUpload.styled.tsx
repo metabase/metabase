@@ -9,7 +9,7 @@ export const FileInput = styled.input`
     border-radius: 4px;
     border: 1px solid var(--mb-color-border);
     background-color: ${color("white")};
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     transition: 200ms;
     cursor: pointer;
     font-family: var(--mb-default-font-family);

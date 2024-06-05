@@ -38,7 +38,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     padding-right: ${space(1)};
     padding-top: 0;
   }

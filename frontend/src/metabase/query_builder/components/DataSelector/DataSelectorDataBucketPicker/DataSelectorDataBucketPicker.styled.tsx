@@ -11,7 +11,7 @@ export const DataBucketList = styled(SelectList)`
 `;
 
 export const DataBucketListItemIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const DataBucketTitleContainer = styled.div`
@@ -20,7 +20,7 @@ export const DataBucketTitleContainer = styled.div`
 `;
 
 export const DataBucketListItemTitle = styled.span`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 14px;
   margin-left: ${space(1)};

@@ -39,7 +39,7 @@ export const DownloadButtonRoot = styled.button`
 `;
 
 export const DownloadButtonText = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
 
   ${DownloadButtonRoot}:hover & {

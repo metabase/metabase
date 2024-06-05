@@ -10,13 +10,13 @@ const aceEditorStyle = css`
   .ace_editor {
     height: 100%;
     background-color: var(--mb-color-bg-light);
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   .ace_search {
     font-family: Lato;
     background-color: var(--mb-color-bg-light);
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     border-color: var(--mb-color-border);
     padding-bottom: 2px;
   }

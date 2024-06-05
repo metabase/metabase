@@ -49,7 +49,7 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
 `;
 
@@ -79,7 +79,7 @@ export const PreviewContainer = styled(ContentContainer)`
   }
 
   ${FormField.Label} {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 `;
 

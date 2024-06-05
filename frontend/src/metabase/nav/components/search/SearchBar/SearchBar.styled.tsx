@@ -83,7 +83,7 @@ export const SearchInput = styled.input<{
 }>`
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 0.875rem;
 
@@ -95,7 +95,7 @@ export const SearchInput = styled.input<{
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   ${breakpointMinSmall} {
@@ -161,7 +161,7 @@ export const SearchResultsFloatingContainer = styled.div`
   left: 0;
   right: 0;
 
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   ${breakpointMaxSmall} {
     top: ${APP_BAR_HEIGHT};

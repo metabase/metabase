@@ -20,7 +20,7 @@ export const CardTitle = styled(Ellipsified)`
 `;
 
 export const CardTitlePrimary = styled.span`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const CardTitleSecondary = styled.span`
