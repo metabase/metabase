@@ -106,6 +106,32 @@ describe("CompareAggregations", () => {
       expect(onClose).toHaveBeenCalled();
     });
   });
+
+  describe("offset input", () => {
+    it("does not allow negative values", async () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      const input = screen.getByLabelText("Previous period");
+
+      await userEvent.clear(input);
+      await userEvent.type(input, "-5");
+      await userEvent.tab();
+
+      expect(input).toHaveValue(5);
+    });
+
+    it("does not allow non-integer values", async () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      const input = screen.getByLabelText("Previous period");
+
+      await userEvent.clear(input);
+      await userEvent.type(input, "1.234");
+      await userEvent.tab();
+
+      expect(input).toHaveValue(1);
+    });
+  });
 });
 
 function createQueryWithCountAggregation() {
