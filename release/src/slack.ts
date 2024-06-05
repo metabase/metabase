@@ -14,7 +14,7 @@ import { getGenericVersion } from "./version-helpers";
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 const SLACK_CHANNEL_NAME = process.env.SLACK_RELEASE_CHANNEL ?? "bot-testing";
 
-export function mentionUserByGithubLogin(githubLogin: string | null) {
+export function mentionUserByGithubLogin(githubLogin?: string | null) {
   if (githubLogin && githubLogin in githubSlackMap) {
     return `<@${githubSlackMap[githubLogin]}>`;
   }
@@ -30,15 +30,18 @@ export function getChannelTopic(channelName: string) {
   });
 }
 
+function formatBackportItem(issue: Omit<Issue, 'labels'>,) {
+  const age = dayjs(issue.created_at).fromNow();
+  return `${mentionUserByGithubLogin(issue.assignee?.login)} - ${slackLink(issue.title, issue.html_url)} - ${age}`;
+}
+
 export async function sendBackportReminder({
   channelName, backports,
 }: {
   channelName: string,
-  backports: Issue[],
+  backports: Omit<Issue, 'labels'>[],
 }) {
-
   const text = backports
-    .filter(issue => dayjs().diff(dayjs(issue.created_at), 'hours') > 8)
     .reverse()
     .map(formatBackportItem).join("\n");
 
@@ -55,7 +58,9 @@ export async function sendBackportReminder({
         "type": "section",
         "text": {
           "type": "mrkdwn",
-          "text": `_<https://github.com/metabase/metabase/pulls?q=is%3Aopen+is%3Apr+label%3Awas-backported|See all open backports>_`,
+          "text": `_${
+            slackLink('See all open backports','https://github.com/metabase/metabase/pulls?q=is%3Aopen+is%3Apr+label%3Awas-backported')} | ${
+            slackLink('Should I backport this?', 'https://www.notion.so/metabase/Metabase-Branching-Strategy-6eb577d5f61142aa960a626d6bbdfeb3?pvs=4#89f80d6f17714a0198aeb66c0efd1b71')}_`,
         }
       },
     ];
@@ -79,11 +84,6 @@ export async function sendBackportReminder({
       attachments,
       text: `${backports.length} open backports`,
     });
-}
-
-function formatBackportItem(issue: Issue) {
-  const age = dayjs(issue.created_at).fromNow();
-  return `${mentionUserByGithubLogin(issue.assignee?.login)} - ${slackLink(issue.title, issue.html_url)} - ${age}`;
 }
 
 export async function sendPreReleaseStatus({
