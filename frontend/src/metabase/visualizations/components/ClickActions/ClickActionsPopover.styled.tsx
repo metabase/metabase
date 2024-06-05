@@ -21,6 +21,6 @@ export const FlexTippyPopover = styled(TippyPopover)`
 `;
 export const Divider = styled.div`
   height: 1px;
-  background-color: ${({ theme }) => theme.fn.themeColor("border")};
+  background-color: var(--mb-color-border);
   margin: 0.5rem -1.5rem 0.5rem;
 `;

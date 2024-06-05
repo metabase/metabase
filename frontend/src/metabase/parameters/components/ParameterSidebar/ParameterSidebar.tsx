@@ -6,7 +6,9 @@ import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { getEmbeddedParameterVisibility } from "metabase/dashboard/selectors";
 import { slugify } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
+import type { IconName } from "metabase/ui";
 import { Tabs, Text } from "metabase/ui";
+import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -244,22 +246,27 @@ export const ParameterSidebar = ({
   );
 };
 
-const settingsTab = {
-  value: "settings",
-  name: t`Filter settings`,
-  icon: "gear",
-} as const;
-const filtersTab = {
-  value: "filters",
-  name: t`Linked filters`,
-  icon: "link",
-} as const;
+type Tab = {
+  name: string;
+  value: "settings" | "filters";
+  icon: IconName;
+};
 
-const getTabs = (parameter: Parameter) => {
-  const tabs: (typeof settingsTab | typeof filtersTab)[] = [settingsTab];
+const getTabs = (parameter: Parameter): Tab[] => {
+  const tabs: Tab[] = [];
+
+  tabs.push({
+    name: isFilterParameter(parameter) ? t`Filter settings` : t`Settings`,
+    value: "settings",
+    icon: "gear",
+  });
 
   if (canUseLinkedFilters(parameter)) {
-    tabs.push(filtersTab);
+    tabs.push({
+      name: t`Linked filters`,
+      value: "filters",
+      icon: "link",
+    });
   }
 
   return tabs;

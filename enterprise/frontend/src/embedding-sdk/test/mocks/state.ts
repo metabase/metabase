@@ -27,6 +27,7 @@ export const createMockSdkState = ({
   ...opts
 }: Partial<SdkState> = {}): SdkState => {
   return {
+    metabaseInstanceUrl: "",
     loginStatus: createMockLoginStatusState(),
     token: createMockTokenState(),
     plugins: {},

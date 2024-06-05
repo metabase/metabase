@@ -41,7 +41,7 @@ export const CardIconContainer = styled.div`
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 1rem;
 `;
 

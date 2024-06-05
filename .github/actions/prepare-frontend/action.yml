@@ -1,10 +1,15 @@
 name: Prepare front-end environment
+inputs:
+  node-version:
+    description: "The version of Node.js to use, overriding .nvmrc"
+    required: false
 runs:
   using: "composite"
   steps:
     - name: Prepare Node.js
       uses: actions/setup-node@v4
       with:
+        node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
@@ -23,6 +28,6 @@ runs:
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash

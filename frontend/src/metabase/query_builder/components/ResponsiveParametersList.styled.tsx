@@ -31,7 +31,7 @@ interface ParametersListContainerProps {
 }
 
 export const ParametersListContainer = styled.div<ParametersListContainerProps>`
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 
   ${({ isSmallScreen, isShowingMobile }) =>
     isSmallScreen &&
@@ -41,7 +41,7 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
       left: 0;
 
       width: 100%;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
 
       overflow-y: auto;
       bottom: ${isShowingMobile ? "0" : "100%"};

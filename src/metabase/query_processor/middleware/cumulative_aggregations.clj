@@ -18,6 +18,7 @@
   information."
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -50,9 +51,9 @@
   [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
   (cond
     ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions
-    (driver/database-supports? driver/*driver*
-                               :window-functions/cumulative
-                               (lib.metadata/database (qp.store/metadata-provider)))
+    (driver.u/supports? driver/*driver*
+                        :window-functions/cumulative
+                        (lib.metadata/database (qp.store/metadata-provider)))
     query
 
     ;; nothing to rewrite

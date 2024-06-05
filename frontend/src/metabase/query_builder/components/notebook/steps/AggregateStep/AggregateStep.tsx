@@ -21,8 +21,11 @@ export function AggregateStep({
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
 
-  const handleAddAggregation = (aggregation: Lib.Aggregable) => {
-    const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
+  const handleAddAggregations = (aggregations: Lib.Aggregable[]) => {
+    const nextQuery = aggregations.reduce(
+      (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
+      query,
+    );
     updateQuery(nextQuery);
   };
 
@@ -74,7 +77,7 @@ export function AggregateStep({
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
-          onAddAggregation={handleAddAggregation}
+          onAddAggregations={handleAddAggregations}
           onUpdateAggregation={handleUpdateAggregation}
           onClose={onClose}
         />
@@ -94,7 +97,7 @@ interface AggregationPopoverProps {
     currentClause: Lib.AggregationClause,
     nextClause: Lib.Aggregable,
   ) => void;
-  onAddAggregation: (aggregation: Lib.Aggregable) => void;
+  onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
 
   clauseIndex?: number;
 
@@ -106,7 +109,7 @@ function AggregationPopover({
   stageIndex,
   clause,
   clauseIndex,
-  onAddAggregation,
+  onAddAggregations,
   onUpdateAggregation,
   onClose,
 }: AggregationPopoverProps) {
@@ -126,11 +129,12 @@ function AggregationPopover({
       clause={clause}
       clauseIndex={clauseIndex}
       operators={operators}
+      onAdd={onAddAggregations}
       onSelect={aggregation => {
         if (isUpdate) {
           onUpdateAggregation(clause, aggregation);
         } else {
-          onAddAggregation(aggregation);
+          onAddAggregations([aggregation]);
         }
       }}
       onClose={onClose}

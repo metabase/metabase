@@ -14,10 +14,12 @@ export const CodeContainer = styled.pre<CodeContainerProps>`
   box-sizing: border-box;
   margin: 0;
   padding: 1rem;
-  border: 1px solid ${props => color(props.isHighlighted ? "brand" : "border")};
+  border: 1px solid
+    ${props =>
+      props.isHighlighted ? color("brand") : "var(--mb-color-border)"};
   border-radius: 0.5rem;
   background-color: ${props =>
-    color(props.isHighlighted ? "brand-light" : "bg-light")};
+    props.isHighlighted ? color("brand-light") : "var(--mb-color-bg-light)"};
   overflow: auto;
 `;
 
@@ -43,7 +45,7 @@ export const CodeCopyButton = styled(IconButtonWrapper)<CodeCopyButtonProps>`
   height: 1rem;
   color: ${color("brand")};
   background-color: ${props =>
-    color(props.isHighlighted ? "brand-light" : "bg-light")};
+    props.isHighlighted ? color("brand-light") : "var(--mb-color-bg-light)"};
   visibility: hidden;
 `;
 

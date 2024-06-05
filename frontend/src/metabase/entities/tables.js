@@ -117,7 +117,7 @@ const Tables = createEntity({
           entityCompatibleQuery(
             { id, ...params, ...options.params },
             dispatch,
-            tableApi.endpoints.getTableMetadata,
+            tableApi.endpoints.getTableQueryMetadata,
           ),
     ),
 

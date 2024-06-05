@@ -7,7 +7,7 @@ export const StepRoot = styled.section`
   position: relative;
   padding: 2rem;
   margin-bottom: 1.75rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: ${color("white")};
 
@@ -33,7 +33,7 @@ export const StepLabel = styled.div`
   align-items: center;
   width: 2.625rem;
   height: 2.625rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 50%;
   background-color: ${color("white")};
 `;

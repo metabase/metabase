@@ -11,7 +11,7 @@ export const GroupMappingsWidgetAndErrorRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetRoot = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -20,7 +20,7 @@ export const GroupMappingsWidgetRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   display: flex;

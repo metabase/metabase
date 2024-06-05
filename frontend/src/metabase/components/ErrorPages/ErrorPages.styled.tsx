@@ -1,6 +1,5 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-
-import { color } from "metabase/lib/colors";
 
 export const ErrorPageRoot = styled.div<{ bordered?: boolean }>`
   display: flex;
@@ -9,7 +8,11 @@ export const ErrorPageRoot = styled.div<{ bordered?: boolean }>`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  ${({ bordered }) => bordered && `border: 1px solid ${color("border")};`}
+  ${({ bordered }) =>
+    bordered &&
+    css`
+      border: 1px solid var(--mb-color-border);
+    `}
   border-radius: 0.5rem;
   overflow: hidden;
 `;

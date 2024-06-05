@@ -58,7 +58,7 @@ export const AddSnippetIcon = styled(Icon)<AddSnippetIconProps>`
   border-radius: 0.5rem;
 
   &:hover {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
@@ -69,7 +69,7 @@ export const MenuIconContainer = styled.div`
 
   &:hover {
     color: ${color("brand")};
-    background-color: ${color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
 `;
 

@@ -24,7 +24,7 @@ export const Button = styled(BaseButton)<Props>`
 export const FilterPopoverSeparator = styled.hr`
   border: 0;
   height: 0;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 // Mimics the PopoverS.PopoverBodyMarginBottom class in Popover.css that the other

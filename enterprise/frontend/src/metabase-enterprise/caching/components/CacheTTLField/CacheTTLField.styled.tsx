@@ -22,7 +22,7 @@ export const Input = styled(NumericInput)`
   font-weight: bold;
   padding: 0.75em;
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 4px;
   outline: none;
 

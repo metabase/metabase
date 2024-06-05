@@ -15,11 +15,7 @@ import {
   getSortedSeriesModels,
   sortDataset,
 } from "../../model/dataset";
-import {
-  getCardsSeriesModels,
-  getDimensionModel,
-  getSeriesLabelsFormatters,
-} from "../../model/series";
+import { getCardsSeriesModels, getDimensionModel } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
@@ -109,23 +105,15 @@ export function getScatterPlotModel(
     showWarning,
   );
 
-  const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
-    getSeriesLabelsFormatters(
-      seriesModels,
-      [],
-      transformedDataset,
-      settings,
-      renderingContext,
-    );
-
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
     false,
     [],
-    compactSeriesDataKeys,
+    [],
     renderingContext,
   );
 
@@ -153,6 +141,6 @@ export function getScatterPlotModel(
     rightAxisModel,
     trendLinesModel,
     bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
-    seriesLabelsFormatters,
+    seriesLabelsFormatters: {},
   };
 }

@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { WaterfallChart } from "./WaterfallChart";
@@ -27,6 +28,7 @@ const renderingContext: RenderingContext = {
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   fontFamily: "Lato",
+  theme: DEFAULT_VISUALIZATION_THEME,
 };
 
 export const YAxisCompactWithoutDataLabels = Template.bind({});

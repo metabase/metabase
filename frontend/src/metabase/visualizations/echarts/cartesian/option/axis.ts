@@ -4,7 +4,7 @@ import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTyp
 import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  CartesianChartModel,
+  BaseCartesianChartModel,
   DataKey,
   Extent,
   NumericAxisScaleTransforms,
@@ -65,7 +65,7 @@ export const getYAxisRange = (
 };
 
 export const getAxisNameDefaultOption = (
-  { getColor, fontFamily }: RenderingContext,
+  { getColor, fontFamily, theme }: RenderingContext,
   nameGap: number,
   name: string | undefined,
   rotate?: number,
@@ -76,20 +76,21 @@ export const getAxisNameDefaultOption = (
   nameRotate: rotate,
   nameTextStyle: {
     color: getColor("text-dark"),
-    fontSize: CHART_STYLE.axisName.size,
+    fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisName.weight,
     fontFamily,
   },
 });
 
 export const getTicksDefaultOption = ({
+  theme,
   getColor,
   fontFamily,
 }: RenderingContext) => {
   return {
     hideOverlap: true,
     color: getColor("text-dark"),
-    fontSize: CHART_STYLE.axisTicks.size,
+    fontSize: theme.cartesian.label.fontSize,
     fontWeight: CHART_STYLE.axisTicks.weight,
     fontFamily,
   };
@@ -107,10 +108,13 @@ export const getDimensionTicksDefaultOption = (
 };
 
 const getHistogramTicksOptions = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
+  { theme }: RenderingContext,
 ) => {
+  const { fontSize } = theme.cartesian.label;
+
   if (settings["graph.x_axis.scale"] !== "histogram") {
     return {};
   }
@@ -120,16 +124,14 @@ const getHistogramTicksOptions = (
   const options = { showMinLabel: false, showMaxLabel: true };
 
   if (settings["graph.x_axis.axis_enabled"] === "rotate-45") {
-    const topOffset =
-      (histogramDimensionWidth + CHART_STYLE.axisTicks.size / 2) * Math.SQRT1_2;
+    const topOffset = (histogramDimensionWidth + fontSize / 2) * Math.SQRT1_2;
     return {
       ...options,
       padding: [0, topOffset, 0, 0],
       margin: -histogramDimensionWidth / 2 + CHART_STYLE.axisTicksMarginX,
     };
   } else if (settings["graph.x_axis.axis_enabled"] === "rotate-90") {
-    const rightOffset =
-      histogramDimensionWidth / 2 - CHART_STYLE.axisTicks.size / 2;
+    const rightOffset = histogramDimensionWidth / 2 - fontSize / 2;
     return {
       ...options,
       verticalAlign: "bottom",
@@ -185,7 +187,7 @@ const getCommonDimensionAxisOptions = (
 };
 
 export const buildDimensionAxis = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   width: number,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
@@ -308,7 +310,7 @@ export const buildTimeSeriesDimensionAxis = (
 };
 
 export const buildCategoricalDimensionAxis = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
@@ -334,7 +336,12 @@ export const buildCategoricalDimensionAxis = (
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
-      ...getHistogramTicksOptions(chartModel, settings, chartMeasurements),
+      ...getHistogramTicksOptions(
+        chartModel,
+        settings,
+        chartMeasurements,
+        renderingContext,
+      ),
       interval: () => true,
       formatter: (value: string) => {
         const numberValue = parseNumberValue(value);
@@ -411,7 +418,7 @@ export const buildMetricAxis = (
 };
 
 const buildMetricsAxes = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
   hoveredSeriesDataKey: DataKey | null,
@@ -455,7 +462,7 @@ const buildMetricsAxes = (
 };
 
 export const buildAxes = (
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
   width: number,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,

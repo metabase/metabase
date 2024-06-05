@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMaxExtraLarge,
@@ -253,15 +253,15 @@ export const ReactMarkdownStyleWrapper = styled.div`
     text-align: left;
   }
   .text-card-markdown tr {
-    border-bottom: 1px solid color-mod(${color("border")} alpha(-70%));
+    border-bottom: 1px solid color-mod(var(--mb-color-border) alpha(-70%));
   }
   .text-card-markdown tr:nth-of-type(even) {
-    background-color: color-mod(${color("bg-black")} alpha(-98%));
+    background-color: ${() => alpha("bg-black", 0.05)};
   }
   .text-card-markdown th,
   .text-card-markdown td {
     padding: 0.75em;
-    border: 1px solid color-mod(${color("border")} alpha(-70%));
+    border: 1px solid color-mod(var(--mb-color-border) alpha(-70%));
   }
 
   .text-card-markdown code {
@@ -269,7 +269,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-size: 12.64px;
     line-height: 20px;
     padding: 0 0.25em;
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
     border-radius: 8px;
   }
 
@@ -281,7 +281,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
 
   .text-card-markdown blockquote {
     color: ${color("text-medium")};
-    border-left: 5px solid ${color("border")};
+    border-left: 5px solid var(--mb-color-border);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
   }
@@ -310,7 +310,7 @@ export const TextInput = styled.textarea<TextAreaProps>`
   display: flex;
   flex-direction: column;
   flex: 1 0 auto;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border: none;
   border-radius: 8px;
   box-shadow: none;

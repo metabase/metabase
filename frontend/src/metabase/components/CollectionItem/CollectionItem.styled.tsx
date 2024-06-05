@@ -7,7 +7,7 @@ import { Icon } from "metabase/ui";
 
 export const ItemLink = styled(Link)`
   display: block;
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
   color: ${color("text-medium")};
   border-radius: 8px;
 
@@ -23,7 +23,8 @@ export const IconContainer = styled.div`
   flex-shrink: 0;
   height: 42px;
   width: 42px;
-  background-color: ${props => color(props.color || "bg-dark")};
+  background-color: ${props =>
+    props.color ? color(props.color) : "var(--mb-color-bg-dark)"};
   margin-right: ${space(1)};
   border-radius: 6px;
 `;

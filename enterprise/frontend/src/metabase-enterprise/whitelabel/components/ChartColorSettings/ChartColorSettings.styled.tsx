@@ -8,7 +8,7 @@ export const TableHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem 0.5rem 0 0;
 
   ${breakpointMinLarge} {
@@ -34,7 +34,7 @@ export const TableLink = styled.div`
 `;
 
 export const TableBody = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-top: none;
   border-bottom: 0;
 `;
@@ -44,7 +44,7 @@ export const TableBodyRow = styled.div`
   align-items: center;
 
   &:not(:first-of-type) {
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
   }
 `;
 
@@ -54,8 +54,8 @@ export const TableBodyCell = styled.div`
   padding: 1rem 1.5rem;
 
   &:not(:first-of-type) {
-    border-left: 1px solid ${color("border")};
-    background-color: ${color("bg-light")};
+    border-left: 1px solid var(--mb-color-border);
+    background-color: var(--mb-color-bg-light);
   }
 
   ${breakpointMinLarge} {
@@ -65,7 +65,7 @@ export const TableBodyCell = styled.div`
 
 export const TableFooter = styled.div`
   padding: 1rem 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0 0 0.5rem 0.5rem;
 
   ${breakpointMinLarge} {

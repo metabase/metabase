@@ -5,7 +5,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";

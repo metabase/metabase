@@ -42,5 +42,5 @@ export const FormTabsContainer = styled.div`
 export const Divider = styled.div`
   height: 1px;
   width: 100%;
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
 `;

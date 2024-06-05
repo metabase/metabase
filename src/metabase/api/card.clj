@@ -10,15 +10,17 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.compatibility :as compatibility]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Table]]
+   [metabase.models :refer [Card CardBookmark Collection Database
+                            PersistedInfo Table]]
    [metabase.models.card :as card]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
@@ -183,6 +185,7 @@
                     :creator
                     :dashboard_count
                     :can_write
+                    :can_run_adhoc_query
                     :average_query_time
                     :last_query_start
                     :parameter_usage_count
@@ -211,7 +214,7 @@
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
@@ -569,6 +572,11 @@
         (card.metadata/save-metadata-async! metadata-future card))
       card)))
 
+(api/defendpoint GET "/:id/query_metadata"
+  "Get all of the required query metadata for a card."
+  [id]
+  {id ms/PositiveInt}
+  (api.query-metadata/card-metadata (get-card id)))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -772,13 +780,11 @@
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models database)
+      (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
                         {:status-code 400
                          :database    (:name database)})))
-      (when-not (driver/database-supports? (:engine database)
-                                           :persist-models-enabled database)
+      (when-not (driver.u/supports? (:engine database) :persist-models-enabled database)
         (throw (ex-info (tru "Persisting models not enabled for database")
                         {:status-code 400
                          :database    (:name database)})))

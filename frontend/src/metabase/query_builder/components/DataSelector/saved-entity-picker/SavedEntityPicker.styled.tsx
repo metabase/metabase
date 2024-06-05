@@ -7,7 +7,7 @@ export const SavedEntityPickerRoot = styled.div`
   display: flex;
   width: 620px;
   overflow: hidden;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 
   ${breakpointMaxSmall} {
     flex-direction: column;
@@ -20,12 +20,12 @@ export const CollectionsContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 310px;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   overflow: auto;
 
   ${breakpointMaxSmall} {
     min-height: 220px;
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid var(--mb-color-border);
   }
 `;
 
@@ -35,7 +35,7 @@ export const BackButton = styled.a`
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding: 1rem;
 
   &:hover {
