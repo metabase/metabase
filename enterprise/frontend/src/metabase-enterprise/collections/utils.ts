@@ -1,18 +1,21 @@
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import type { IconData, ObjectWithModel } from "metabase/lib/icon";
 import { getIconBase } from "metabase/lib/icon";
+import type { ItemWithCollection } from "metabase/plugins";
 import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionId,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
 
 import {
-  REGULAR_COLLECTION,
   COLLECTION_TYPES,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
   INSTANCE_ANALYTICS_COLLECTION,
   OFFICIAL_COLLECTION,
+  REGULAR_COLLECTION,
 } from "./constants";
 
 export function isRegularCollection({
@@ -71,4 +74,27 @@ export const getIcon = (item: ObjectWithModel): IconData => {
   }
 
   return getIconBase(item);
+};
+
+/** Removes items from the array that belong to the instance analytics collection or one of its children */
+export const filterOutItemsFromInstanceAnalytics = <
+  Item extends ItemWithCollection,
+>(
+  items: Item[],
+) => {
+  /** Cache of ids of instance analytics collections */
+  const cache = new Set<CollectionId>();
+
+  return items.filter(item => {
+    if (cache.has(item.collection.id)) {
+      return false;
+    }
+    const ancestors = item.collection.effective_ancestors || [];
+    const path = [item.collection, ...ancestors];
+    if (path.some(isInstanceAnalyticsCollection)) {
+      path.map(c => c.id).forEach(id => cache.add(id));
+      return false;
+    }
+    return true;
+  });
 };
