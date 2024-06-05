@@ -134,7 +134,7 @@ describe("CompareAggregations", () => {
   });
 
   describe("submit", () => {
-    it("is submittable by default", async () => {
+    it("is submittable by default", () => {
       setup({ query: createQueryWithCountAggregation() });
 
       expect(screen.getByLabelText("Previous period")).toHaveValue(1);
