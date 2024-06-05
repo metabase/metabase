@@ -33,19 +33,19 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: ${color("bg-medium")};
+        background-color: var(--mb-color-bg-medium);
       `;
     }
     return css`
       background-color: ${color("white")};
 
       &:hover {
-        background-color: ${color("bg-light")};
+        background-color: var(--mb-color-bg-light);
       }
     `;
   }}
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
 
   overflow: hidden;
 
@@ -67,7 +67,7 @@ export const SearchInputContainer = styled.div<{
       props.isActive &&
       css`
         width: 100%;
-        border-color: ${color("border")};
+        border-color: var(--mb-color-border);
         ${activeInputCSS};
       `};
   }

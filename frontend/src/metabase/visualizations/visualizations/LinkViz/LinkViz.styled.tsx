@@ -69,12 +69,12 @@ const searchResultsStyles = `
   min-width: 20rem;
   overflow-y: auto;
 
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   line-height: 24px;
 
   max-height: 400px;
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   box-shadow: 0 7px 20px ${color("shadow")};
   pointer-events: all;

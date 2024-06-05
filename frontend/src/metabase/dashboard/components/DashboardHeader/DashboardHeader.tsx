@@ -22,6 +22,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  addTemporalUnitParameter,
   cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
@@ -68,7 +69,6 @@ import type {
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
-import { DashboardParameterList } from "../DashboardParameterList";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -351,10 +351,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
     const buttons = [];
     const extraButtons = [];
 
-    if (isFullscreen) {
-      buttons.push(<DashboardParameterList isFullscreen={isFullscreen} />);
-    }
-
     if (isEditing) {
       const activeSidebarName = sidebar.name;
       const addQuestionButtonHint =
@@ -429,9 +425,24 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         </Menu>,
       );
 
-      // Parameters
+      // Temporal unit parameters
       buttons.push(
-        <span key="add-a-filter">
+        <Tooltip
+          key="add-temporal-unit-parameter"
+          label={t`Add a Unit of Time widget`}
+        >
+          <DashboardHeaderButton
+            aria-label={t`Add a Unit of Time widget`}
+            onClick={() => dispatch(addTemporalUnitParameter())}
+          >
+            <Icon name="clock" />
+          </DashboardHeaderButton>
+        </Tooltip>,
+      );
+
+      // Filter parameters
+      buttons.push(
+        <span key="add-filter-parameter">
           <TippyPopover
             placement="bottom-start"
             onClose={hideAddParameterPopover}

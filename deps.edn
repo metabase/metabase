@@ -49,7 +49,7 @@
   com.snowplowanalytics/snowplow-java-tracker
                                             {:mvn/version "1.0.1"               ; Snowplow analytics
                                              :exclusions [com.fasterxml.jackson.core/jackson-databind]}
-  com.taoensso/nippy                        {:mvn/version "3.3.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
                                             {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
@@ -76,7 +76,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.29"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.1.45"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -254,7 +254,7 @@
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
 
-   :extra-paths ["dev/src" "local/src" "test" "test_resources"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -385,7 +385,6 @@
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
-    "modules/drivers/googleanalytics/test"
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
@@ -412,7 +411,6 @@
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
-                "modules/drivers/googleanalytics/src"
                 "modules/drivers/mongo/src"
                 "modules/drivers/oracle/src"
                 "modules/drivers/presto-jdbc/src"
@@ -435,7 +433,6 @@
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
-                                 "modules/drivers/googleanalytics/src"
                                  "modules/drivers/mongo/src"
                                  "modules/drivers/oracle/src"
                                  "modules/drivers/presto-jdbc/src"
@@ -622,9 +619,9 @@
    :extra-deps
    {org.clojure/data.json {:mvn/version "2.5.0"}}}
 
-  ;;; Run tests for the build scripts:
-  ;;;
-  ;;; clj -X:dev:drivers:build:build-dev:build-test
+  ;; Run tests for the build scripts:
+  ;;
+  ;; clj -X:dev:drivers:build:build-dev:build-test
   :build-test
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
@@ -705,6 +702,12 @@
   :test/search
   {:exec-args {:only [metabase.api.search-test
                       "test/metabase/search"]}}
+
+  ;; test custom clj-kondo linters and hooks.
+  ;;
+  ;;    clj -X:dev:test:test/kondo
+  :test/kondo
+  {:exec-args {:only [".clj-kondo/test"]}}
 
   ;; watch and reload clojure namespaces
   :watch {:extra-deps

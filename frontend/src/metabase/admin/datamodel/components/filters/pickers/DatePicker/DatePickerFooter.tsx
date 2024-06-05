@@ -35,7 +35,7 @@ const getIntervalString = (filter: Filter) => {
   return start.format(formatString) + " - " + end.format(formatString);
 };
 
-const DatePickerFooter: React.FC<Props> = ({
+const DatePickerFooter: React.FC<React.PropsWithChildren<Props>> = ({
   filter,
   primaryColor,
   onFilterChange,

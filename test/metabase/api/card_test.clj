@@ -443,6 +443,7 @@
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name          "Card"
                                 :display       "line"
+                                :dataset_query (mt/mbql-query venues)
                                 :collection_id (t2/select-one-pk Collection :personal_owner_id (mt/user->id :crowberto))}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
@@ -3163,16 +3164,13 @@
   (testing "getting values"
     (with-card-param-values-fixtures [{:keys [card param-keys]}]
       (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          [["Brite Spot Family Restaurant"]
-                                   ["Red Medicine"]
-                                   ["Stout Burgers & Beers"]
-                                   ["The Apple Pan"]
-                                   ["Wurstküche"]]
+        (is (=? {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                   ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                  :has_more_values false}
                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          [["Red Medicine"]]
+        (is (= {:values          [["Fred 62"] ["Red Medicine"]]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red"))))))))
 
@@ -3576,6 +3574,17 @@
     (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
     (is (false? (:can_restore (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))))
 
+(deftest ^:parallel can-run-adhoc-query-test
+  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (mt/with-temp [:model/Card card {:dataset_query query}
+                   :model/Card no-query {}]
+      (is (=? {:can_run_adhoc_query true}
+              (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)))))
+      (is (=? {:can_run_adhoc_query false}
+              (mt/user-http-request :crowberto :get 200 (str "card/" (:id no-query))))))))
+
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
     (mt/with-no-data-perms-for-all-users!
@@ -3607,3 +3616,63 @@
                 (is (mi/can-read? child-card)))
               (is (= [[1] [2]]
                      (mt/rows (process-query-for-card child-card)))))))))))
+
+(deftest query-metadata-test
+  (mt/with-temp
+    [Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
+                           :database_id (mt/id)}
+     Card {card-id-2 :id} {:dataset_query
+                           {:type     :native
+                            :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                       :template-tags
+                                       {"id"      {:name         "id"
+                                                   :display-name "Id"
+                                                   :type         :dimension
+                                                   :dimension    [:field (mt/id :people :id) nil]
+                                                   :widget-type  :id
+                                                   :default      nil}
+                                        "name"    {:name         "name"
+                                                   :display-name "Name"
+                                                   :type         :dimension
+                                                   :dimension    [:field (mt/id :people :name) nil]
+                                                   :widget-type  :category
+                                                   :default      nil}
+                                        "source"  {:name         "source"
+                                                   :display-name "Source"
+                                                   :type         :dimension
+                                                   :dimension    [:field (mt/id :people :source) nil]
+                                                   :widget-type  :category
+                                                   :default      nil}
+                                        "user_id" {:name         "user_id"
+                                                   :display-name "User"
+                                                   :type         :dimension
+                                                   :dimension    [:field (mt/id :orders :user_id) nil]
+                                                   :widget-type  :id
+                                                   :default      nil}}}
+                            :database (mt/id)}
+                           :query_type :native
+                           :database_id (mt/id)}]
+    (testing "Simple card"
+      (is (=?
+            {:fields empty?
+             :tables (sort-by :id [{:id (mt/id :products)}])
+             :databases [{:id (mt/id) :engine string?}]}
+            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
+                ;; The output is so large, these help debugging
+                (update :fields #(map (fn [x] (select-keys x [:id])) %))
+                (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+                (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+    (testing "Parameterized native query"
+      (is (=?
+            {:fields (sort-by :id
+                              [{:id (mt/id :people :id)}
+                               {:id (mt/id :orders :user_id)}
+                               {:id (mt/id :people :source)}
+                               {:id (mt/id :people :name)}])
+             :tables empty?
+             :databases [{:id (mt/id) :engine string?}]}
+            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
+                ;; The output is so large, these help debugging
+                (update :fields #(map (fn [x] (select-keys x [:id])) %))
+                (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+                (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))

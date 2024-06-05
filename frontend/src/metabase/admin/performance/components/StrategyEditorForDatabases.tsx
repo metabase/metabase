@@ -4,10 +4,11 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
+import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Stack } from "metabase/ui";
+import { Stack, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
@@ -134,33 +135,36 @@ const StrategyEditorForDatabases_Base = ({
         </aside>
       </Stack>
       {confirmationModal}
-      <RoundedBox twoColumns={canOverrideRootStrategy}>
-        {canOverrideRootStrategy && (
-          <PLUGIN_CACHING.StrategyFormLauncherPanel
-            configs={configs}
-            setConfigs={setConfigs}
-            targetId={targetId}
-            updateTargetId={updateTargetId}
-            databases={databases}
-            isStrategyFormDirty={isStrategyFormDirty}
-            shouldShowResetButton={shouldShowResetButton}
-          />
-        )}
-        <Panel hasLeftBorder={canOverrideRootStrategy}>
-          {targetId !== null && (
-            <StrategyForm
+      <Flex gap="xl">
+        <RoundedBox twoColumns={canOverrideRootStrategy}>
+          {canOverrideRootStrategy && (
+            <PLUGIN_CACHING.StrategyFormLauncherPanel
+              configs={configs}
+              setConfigs={setConfigs}
               targetId={targetId}
-              targetModel="database"
-              targetName={targetDatabase?.name || t`Untitled database`}
-              setIsDirty={setIsStrategyFormDirty}
-              saveStrategy={saveStrategy}
-              savedStrategy={savedStrategy}
-              shouldAllowInvalidation={shouldAllowInvalidation}
-              shouldShowName={targetId !== rootId}
+              updateTargetId={updateTargetId}
+              databases={databases}
+              isStrategyFormDirty={isStrategyFormDirty}
+              shouldShowResetButton={shouldShowResetButton}
             />
           )}
-        </Panel>
-      </RoundedBox>
+          <Panel hasLeftBorder={canOverrideRootStrategy}>
+            {targetId !== null && (
+              <StrategyForm
+                targetId={targetId}
+                targetModel="database"
+                targetName={targetDatabase?.name || t`Untitled database`}
+                setIsDirty={setIsStrategyFormDirty}
+                saveStrategy={saveStrategy}
+                savedStrategy={savedStrategy}
+                shouldAllowInvalidation={shouldAllowInvalidation}
+                shouldShowName={targetId !== rootId}
+              />
+            )}
+          </Panel>
+        </RoundedBox>
+        <UpsellCacheConfig source="performance-data_cache" />
+      </Flex>
     </TabWrapper>
   );
 };

@@ -21,7 +21,7 @@ export const RequiredToggleLabel = styled.label`
 `;
 
 export const Divider = styled.div`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   margin: ${space(2)} 0;
 `;
 

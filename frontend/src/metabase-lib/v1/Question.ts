@@ -25,8 +25,6 @@ import type {
   CardDisplayType,
   CardType,
   CollectionId,
-  DashboardId,
-  DashCardId,
   DatabaseId,
   Dataset,
   DatasetData,
@@ -43,7 +41,10 @@ import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import { fieldFilterParameterToFilter } from "metabase-lib/v1/parameters/utils/mbql";
+import {
+  applyFilterParameter,
+  applyTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import {
@@ -53,6 +54,10 @@ import {
 } from "metabase-lib/v1/Alert";
 
 import type { Query } from "../types";
+import {
+  isFilterParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -368,6 +373,16 @@ class Question {
     return this._card && this._card.can_write;
   }
 
+  canRunAdhocQuery(): boolean {
+    if (this.isSaved()) {
+      return this._card.can_run_adhoc_query;
+    }
+
+    const query = this.query();
+    const { isEditable } = Lib.queryDisplayInfo(query);
+    return isEditable;
+  }
+
   canWriteActions(): boolean {
     const database = this.database();
 
@@ -526,7 +541,7 @@ class Question {
     dashboardId,
     dashcardId,
   }:
-    | { dashboardId: DashboardId; dashcardId: DashCardId }
+    | { dashboardId: number; dashcardId: number }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)
@@ -703,11 +718,10 @@ class Question {
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,
-    clean = true,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
+    const query = this.query();
 
     const cardCopy = {
       name: this._card.name,
@@ -744,27 +758,27 @@ class Question {
 
   _convertParametersToMbql(): Question {
     const query = this.query();
+    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
       return this;
     }
 
-    const stageIndex = -1;
-    const filters = this.parameters()
-      .map(parameter =>
-        fieldFilterParameterToFilter(query, stageIndex, parameter),
-      )
-      .filter(mbqlFilter => mbqlFilter != null);
-
-    const newQuery = filters.reduce((query, filter) => {
-      return Lib.filter(query, stageIndex, filter);
+    const newQuery = this.parameters().reduce((query, parameter) => {
+      if (isFilterParameter(parameter)) {
+        return applyFilterParameter(query, stageIndex, parameter);
+      } else if (isTemporalUnitParameter(parameter)) {
+        return applyTemporalUnitParameter(query, stageIndex, parameter);
+      } else {
+        return query;
+      }
     }, query);
     const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    const hasQueryBeenAltered = filters.length > 0;
+    const hasQueryBeenAltered = query !== newQuery;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 

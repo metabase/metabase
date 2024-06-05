@@ -3,7 +3,7 @@
   composes: py2 from "style";
   width: 30%;
   max-width: 500px;
-  background-color: var(--color-bg-light);
+  background-color: var(--mb-color-bg-light);
   color: var(--mb-color-text-medium);
 }
 
@@ -24,7 +24,7 @@
 }
 
 .item:hover {
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
   color: var(--mb-color-brand);
 }
 

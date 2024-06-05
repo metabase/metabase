@@ -176,7 +176,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Price] > 1" });
-    cy.get("@formula").blur();
 
     cy.button("Done").click();
 
@@ -361,7 +360,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
-      cy.get("@formula").blur();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/^redundant input/i).should("not.exist");
@@ -569,26 +567,22 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     popover().contains("No description");
   });
 
-  it(
-    "should allow to pick a saved question when there are models",
-    { tags: "@flaky" },
-    () => {
-      cy.createNativeQuestion({
-        name: "Orders, Model",
-        type: "model",
-        native: { query: "SELECT * FROM ORDERS" },
-      });
+  it("should allow to pick a saved question when there are models", () => {
+    cy.createNativeQuestion({
+      name: "Orders, Model",
+      type: "model",
+      native: { query: "SELECT * FROM ORDERS" },
+    });
 
-      startNewQuestion();
+    startNewQuestion();
 
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders, Count").click();
-      });
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("Orders, Count").click();
+    });
 
-      visualize();
-    },
-  );
+    visualize();
+  });
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();
@@ -933,7 +927,7 @@ function assertTableRowCount(expectedCount) {
 }
 
 function addSimpleCustomColumn(name) {
-  enterCustomColumnDetails({ formula: "C" });
+  enterCustomColumnDetails({ formula: "C", blur: false });
   cy.findByText("ategory").click();
   cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();

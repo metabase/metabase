@@ -57,7 +57,7 @@ export const Root = styled.div<{
     props.borderBottom &&
     css`
       padding-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
     `}
 
   input {
@@ -97,7 +97,7 @@ export const InfoIcon = styled(Icon)<VariantProp>`
   ${props =>
     props.variant === "form-field" &&
     css`
-      color: ${color("bg-dark")};
+      color: var(--mb-color-bg-dark);
 
       &:hover {
         color: ${color("brand")};

@@ -14,7 +14,7 @@ const linkStyles = css`
   display: flex;
   align-items: center;
   padding: 1rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   transition: border 0.3s linear;
   text-decoration: none;

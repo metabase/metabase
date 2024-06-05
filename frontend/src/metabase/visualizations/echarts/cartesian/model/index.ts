@@ -11,6 +11,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
+  getComboChartDataDensity,
   getDimensionModel,
   getSeriesLabelsFormatters,
   getStackedLabelsFormatters,
@@ -137,7 +138,8 @@ export const getCartesianChartModel = (
   const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
     getSeriesLabelsFormatters(
       seriesModels,
-      transformedDataset,
+      stackModels,
+      dataset,
       settings,
       renderingContext,
     );
@@ -146,13 +148,24 @@ export const getCartesianChartModel = (
     getStackedLabelsFormatters(
       seriesModels,
       stackModels,
-      transformedDataset,
+      dataset,
       settings,
       renderingContext,
     );
 
+  const dataDensity = getComboChartDataDensity(
+    seriesModels,
+    stackModels,
+    dataset,
+    seriesLabelsFormatters,
+    stackedLabelsFormatters,
+    settings,
+    renderingContext,
+  );
+
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
@@ -187,5 +200,6 @@ export const getCartesianChartModel = (
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,
+    dataDensity,
   };
 };

@@ -722,7 +722,9 @@
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
-(defn- dashcard-url [dashcard & [additional-token-params]]
+(defn dashcard-url
+  "The URL for a request to execute a query for a Card on an embedded Dashboard."
+  [dashcard & [additional-token-params]]
   (str "embed/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
        "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
@@ -1052,13 +1054,13 @@
                      response))))
           (testing "card based param"
             (let [response (dropdown card (:card param-keys))]
-              (is (= {:values          [["Brite Spot Family Restaurant"] ["Red Medicine"]
-                                        ["Stout Burgers & Beers"] ["The Apple Pan"] ["Wurstküche"]]
+              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
                       :has_more_values false}
                      response)))
             (let [response (search card (:card param-keys) "red")]
               (is (= {:has_more_values false,
-                      :values          [["Red Medicine"]]}
+                      :values          [["Fred 62"] ["Red Medicine"]]}
                      response)))))))))
 
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------

@@ -9,7 +9,7 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
@@ -22,6 +22,7 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import type { IconName } from "metabase/ui";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -161,7 +162,7 @@ export const useCommandPalette = ({
             name: t`View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
-            icon: "link" as const,
+            icon: "link" as IconName,
             perform: () => {
               dispatch(push(searchLocation));
             },
@@ -177,7 +178,7 @@ export const useCommandPalette = ({
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
               subtitle: result.description || "",
-              icon: wrappedResult.getIcon().name,
+              icon: getIcon(result).name,
               section: "search",
               keywords: debouncedSearchText,
               priority: Priority.NORMAL,

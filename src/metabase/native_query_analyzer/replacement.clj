@@ -5,6 +5,7 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
+   [metabase.native-query-analyzer.impl :as nqa.impl]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]))
 
@@ -131,18 +132,6 @@
           the-string
           replacements))
 
-;; remove this once Macaw#32 is fixed
-(defn- clean-renames-macaw-issue-32
-  [{:keys [tables columns]}]
-  (let [clean-column (fn [c] (or (:column c) c))
-        clean-table  (fn [t] (or (:table t) t))]
-    {:columns (-> columns
-                  (update-keys clean-column)
-                  (update-vals clean-column))
-     :tables  (-> tables
-                  (update-keys clean-table)
-                  (update-vals clean-table))}))
-
 (defn- param-values
   [query]
   (if (qp.store/initialized?)
@@ -153,11 +142,18 @@
 (defn replace-names
   "Given a dataset_query and a map of renames (with keys `:tables` and `:columns`, as in Macaw), return a new inner query
   with the appropriate replacements made."
-  [query renames]
-  (let [raw-query                    (get-in query [:native :query])
-        parsed-query                 (params.parse/parse raw-query)
-        param->value                 (param-values query)
-        {clean-query :query
-         tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query param->value)
-        renamed-query                (macaw/replace-names clean-query (clean-renames-macaw-issue-32 renames))]
-    (replace-all renamed-query tt-subs)))
+  ;; This arity exists as a convenience for all the tests that are fairly driver agnostic.
+  ([query renames]
+   ;; Postgres is both popular and adheres closely to the standard SQL specifications.
+   (replace-names :postgres query renames))
+  ;; Currently we take just the driver, but in future it may more sense to take the entire database entity, in order to
+  ;; match the actual configuration, reserved words for the given version, etc.
+  ([driver query renames]
+   (let [raw-query     (get-in query [:native :query])
+         parsed-query  (params.parse/parse raw-query)
+         param->value  (param-values query)
+         {clean-query :query
+          tt-subs     :substitutions} (parse-tree->clean-query raw-query parsed-query param->value)
+         macaw-opts    (nqa.impl/macaw-options driver)
+         renamed-query (macaw/replace-names clean-query renames (assoc macaw-opts :allow-unused? true))]
+     (replace-all renamed-query tt-subs))))

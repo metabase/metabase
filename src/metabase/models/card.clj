@@ -31,6 +31,7 @@
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
    [metabase.models.query-field :as query-field]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
@@ -142,6 +143,28 @@
          (into {}))
    :id
    {:default 0}))
+
+(defn with-can-run-adhoc-query
+  "Adds can_run_adhoc_query to each card."
+  [cards]
+  (mi/instances-with-hydrated-data
+   cards :can_run_adhoc_query
+   (fn []
+     (into {}
+           (comp
+            (filter (comp seq :dataset_query))
+            (map
+             (fn [{card-id :id :keys [dataset_query]}]
+               [card-id (query-perms/can-run-query? dataset_query)])))
+           cards))
+   :id
+   {:default false}))
+
+(mi/define-batched-hydration-method add-can-run-adhoc-query
+  :can_run_adhoc_query
+  "Hydrate can_run_adhoc_query onto cards"
+  [cards]
+  (with-can-run-adhoc-query cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
@@ -876,8 +899,8 @@ saved later when it is ready."
 
 (defn- replaced-inner-query-for-native-card
   [query {:keys [fields tables] :as _replacement-ids}]
-  (let [keyvals-set         #(set/union (into #{} (keys %))
-                                        (into #{} (vals %)))
+  (let [keyvals-set         #(set/union (set (keys %))
+                                        (set (vals %)))
         id->field           (if (empty? fields)
                               {}
                               (m/index-by :id
@@ -900,11 +923,14 @@ saved later when it is ready."
         get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
                                               (remove-id (get m k))
                                               (throw (ex-info "ID not found" {:id k :available m})))))
-        update-keyvals      (fn [m f] (-> m
-                                          (update-keys f)
-                                          (update-vals f)))
-        column-replacements (update-keyvals fields (get-or-throw-from id->field))
-        table-replacements  (update-keyvals tables (get-or-throw-from id->table))]
+        ids->replacements   (fn [id->replacement-id id->row row->identifier]
+                              (-> id->replacement-id
+                                  (u/update-keys-vals (get-or-throw-from id->row))
+                                  (update-vals row->identifier)))
+        ;; Note: we are naively providing unqualified new identifier names as the replacements.
+        ;; this will break if previously unambiguous identifiers become ambiguous due to the replacements
+        column-replacements (ids->replacements fields id->field :column)
+        table-replacements  (ids->replacements tables id->table :table)]
     (query-analyzer/replace-names query {:columns column-replacements
                                          :tables  table-replacements})))
 

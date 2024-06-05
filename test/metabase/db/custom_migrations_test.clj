@@ -177,60 +177,6 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest normalize-mbql-clause-impostor-in-visualization-settings-test
-  (let [viz-settings
-        {"table.pivot_column" "TAX",
-         "graph.metrics" ["expression"],
-         "pivot_table.column_split"
-         {"rows"
-          [["field" 39 {"base-type" "type/DateTime", "temporal-unit" "month"}]
-           ["expression" "expression"]
-           ["field"
-            33
-            {"base-type" "type/Float",
-             "binning" {"strategy" "num-bins", "min-value" 0, "max-value" 12, "num-bins" 8, "bin-width" 2}}]],
-          "columns" [],
-          "values" [["aggregation" 0]]},
-         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}},
-         "table.cell_column" "expression",
-         "table.column_formatting"
-         [{"columns" ["expression" nil "TAX" "count"],
-           "type" "single",
-           "operator" "is-null",
-           "value" 10,
-           "color" "#EF8C8C",
-           "highlight_row" false,
-           "id" 0}],
-         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}},
-         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}},
-         "graph.dimensions" ["CREATED_AT"]}]
-    (is (= {:table.pivot_column "TAX"
-            :graph.metrics ["expression"]
-            :pivot_table.column_split
-            {:rows
-             [[:field 39 {:base-type :type/DateTime, :temporal-unit :month}]
-              [:expression "expression"]
-              [:field
-               33
-               {:base-type :type/Float
-                :binning {:strategy :num-bins, :min-value 0, :max-value 12, :num-bins 8, :bin-width 2}}]]
-             :columns []
-             :values [[:aggregation 0]]}
-            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
-            :table.cell_column "expression"
-            :table.column_formatting
-            [{:columns ["expression" nil "TAX" "count"]
-              :type "single"
-              :operator "is-null"
-              :value 10
-              :color "#EF8C8C"
-              :highlight_row false
-              :id 0}]
-            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
-            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
-            :graph.dimensions ["CREATED_AT"]}
-           (mi/normalize-visualization-settings viz-settings)))))
-
 (deftest migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]
@@ -1635,12 +1581,20 @@
               (is (= (:created_at session)
                      (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
 
+(def ^:private deep-nested-map
+  "A 35 level nested map to test for mariadb"
+  (reduce (fn [m _]
+            (hash-map "a" m))
+          {:a 1}
+          (range 35)))
+
 (deftest card-revision-add-type-test
   (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
     (let [user-id          (:id (new-instance-with-default :core_user))
           db-id            (:id (new-instance-with-default :metabase_database))
           card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           model            (new-instance-with-default :report_card {:dataset true :creator_id user-id :database_id db-id})
+          card-2           (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
           card-revision-id (:id (new-instance-with-default :revision
                                                            {:object    (json/generate-string (dissoc card :type))
                                                             :model     "Card"
@@ -1650,7 +1604,13 @@
                                                             {:object    (json/generate-string (dissoc model :type))
                                                              :model     "Card"
                                                              :model_id  (:id card)
-                                                             :user_id   user-id}))]
+                                                             :user_id   user-id}))
+          ;; this is only here to test that the migration doesn't break when there's a deep nested map on mariadb see #41924
+          _                (:id (new-instance-with-default :revision
+                                                           {:object    (json/generate-string deep-nested-map)
+                                                            :model     "Card"
+                                                            :model_id  (:id card-2)
+                                                            :user_id   user-id}))]
       (testing "sanity check revision object"
         (let [card-revision-object (t2/select-one-fn (comp json/parse-string :object) :revision card-revision-id)]
           (testing "doesn't have type"

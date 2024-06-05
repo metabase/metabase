@@ -20,6 +20,6 @@ export const ChevronIconContainer = styled.div`
   padding: 4px 6px;
   margin-right: 8px;
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 4px;
 `;

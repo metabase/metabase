@@ -24,7 +24,7 @@ export const ModelCard = styled(Card)`
   justify-content: flex-start;
   align-items: flex-start;
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
 
   box-shadow: none;
   &:hover {
@@ -61,7 +61,7 @@ export const CollectionHeaderContainer = styled.button`
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
   margin-top: 0.75rem;
   cursor: pointer;
   color: ${color("text-dark")};
