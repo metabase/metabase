@@ -661,15 +661,15 @@
 
 (deftest ^:parallel query-metadata-test
   (testing "MBQL query"
-    (is (=? {:fields empty?
-             :tables [{:id (mt/id :products)}]
-             :databases [{:id (mt/id)}]}
+    (is (=? {:databases [{:id (mt/id)}]
+             :tables    [{:id (mt/id :products)}]
+             :fields    empty?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                    (mt/mbql-query products)))))
   (testing "Parameterized native query"
-    (is (=? {:fields [{:id (mt/id :people :id)}]
-             :tables empty?
-             :databases [{:id (mt/id)}]}
+    (is (=? {:databases [{:id (mt/id)}]
+             :tables    empty?
+             :fields    [{:id (mt/id :people :id)}]}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                    {:database (mt/id)
                                     :type     :native
