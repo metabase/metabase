@@ -111,8 +111,8 @@
                          nil)))))
 
 (comment
- (def alert-id 1)
- (def crowberto-id 13371341)
+ (def alert-id 13)
+ (def crowberto-id (t2/select-one-pk :model/User :email "crowberto@metabase.com"))
 
  (execute-payload {:payload_type :alert
                    :payload_id   alert-id
@@ -128,8 +128,15 @@
 
 
 (comment
- (def dash-sub-id 2)
+ (def dash-sub-id 12)
 
+ (def payload (execute-payload (notification->payload-info {:payload_type :dashboard-subscription
+                                                            :payload_id   dash-sub-id
+                                                            :creator_id   crowberto-id})))
+
+ (ngoc/with-tc
+   (channel/deliver! {:channel_type :slack} payload [{:kind :slack-channel
+                                                      :recipient "#test-pulse"}] nil))
  (ngoc/with-tc
    (send-notification! {:payload_type :dashboard-subscription
                         :payload_id   dash-sub-id

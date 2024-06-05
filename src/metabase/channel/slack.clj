@@ -154,11 +154,12 @@
 
 (defmethod channel.interface/deliver! [:slack :dashboard-subscription]
   [_channel-details payload recipients _template]
-  (def payload payload)
-  (def recipients recipients)
-  (doseq [{channel-id :recipient} recipients]
-    (let [dashboard (:dashboard payload)]
-      (slack/post-chat-message! channel-id nil (remove nil?
-                                                       (flatten [(slack-dashboard-header (:dashboard-subscription payload) dashboard)
-                                                                 (create-slack-attachment-data (:result payload))
-                                                                 (when dashboard (slack-dashboard-footer (:dashboard-subscription payload) dashboard))]))))))
+  (let [{:keys [dashboard
+                dashboard-subscription]} payload
+        attachments                      (remove nil?
+                                                 (flatten [(slack-dashboard-header dashboard-subscription dashboard)
+                                                           (create-slack-attachment-data (:result payload))
+                                                           (when dashboard (slack-dashboard-footer dashboard-subscription dashboard))]))
+        uploaded-attachments             (create-and-upload-slack-attachments! attachments)]
+    (doseq [{channel-id :recipient} recipients]
+      (slack/post-chat-message! channel-id nil uploaded-attachments))))
