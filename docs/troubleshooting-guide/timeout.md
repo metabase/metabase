@@ -16,7 +16,7 @@ If your queries are hanging or timing out, the problem could be coming from your
 
 Fixes for timeout problems will depend on your specific setup. These resources may help:
 
-- [Configuring Jetty connectors][configuring-jetty]
+- [Jetty connectors][configuring-jetty]
 - [EC2 Troubleshooting][ec2-troubleshooting]
 - [Elastic Load Balancing Connection Timeout Management][elb-timeout]
 - [App Engine: Dealing with DeadlineExceededErrors][app-engine-timeout]

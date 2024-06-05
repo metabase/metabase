@@ -52,46 +52,27 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         previousCard,
       );
 
-      let question = new Question(cardAfterClick, metadata);
-      const { isEditable } = Lib.queryDisplayInfo(question.query());
-      if (isEditable) {
-        question = question
-          .setDisplay(cardAfterClick.display || previousCard.display)
-          .setSettings(dashcard.card.visualization_settings)
-          .lockDisplay();
-      } else {
-        question = question.setCard(dashcard.card).setDashboardProps({
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-        });
-      }
+      const previousQuestion = new Question(previousCard, metadata);
+      const nextQuestion = previousQuestion.canRunAdhocQuery()
+        ? new Question(cardAfterClick, metadata)
+            .setDisplay(cardAfterClick.display || previousCard.display)
+            .setSettings(dashcard.card.visualization_settings)
+            .lockDisplay()
+        : new Question(dashcard.card, metadata).setDashboardProps({
+            dashboardId: dashboard.id,
+            dashcardId: dashcard.id,
+          });
 
       const parametersMappedToCard = getParametersMappedToDashcard(
         dashboard,
         dashcard,
       );
 
-      // When drilling from a native model, the drill can return a new question
-      // querying a table for which we don't have any metadata for
-      // When building a question URL, it'll usually clean the query and
-      // strip clauses referencing fields from tables without metadata
-      const previousQuestion = new Question(previousCard, metadata);
-      const { isNative: isPreviousNative } = Lib.queryDisplayInfo(
-        previousQuestion.query(),
-      );
-
-      const isFromModelOrMetric =
-        previousQuestion.type() === "model" ||
-        previousQuestion.type() === "metric";
-      const isDrillingFromNativeModelOrMetric =
-        isFromModelOrMetric && isPreviousNative;
-
       const url = ML_Urls.getUrlWithParameters(
-        question,
+        nextQuestion,
         parametersMappedToCard,
         parameterValues,
         {
-          clean: !isDrillingFromNativeModelOrMetric,
           objectId,
         },
       );
