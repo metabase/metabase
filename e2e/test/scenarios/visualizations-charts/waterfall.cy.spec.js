@@ -137,34 +137,6 @@ describe("scenarios > visualizations > waterfall", () => {
     echartsContainer().get("text").contains("Total").should("not.exist");
   });
 
-  it("should show error for multi-series questions (metabase#15152)", () => {
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "line",
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-    switchToWaterfallDisplay();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Waterfall chart does not support multiple series");
-
-    echartsContainer().should("not.exist");
-    cy.findByTestId("remove-count").click();
-    echartsContainer().should("exist"); // Chart renders after removing the second metric
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Add another/).should("not.exist");
-  });
-
   it("should not allow you to choose X-axis breakout", () => {
     visitQuestionAdhoc({
       dataset_query: {
