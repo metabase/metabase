@@ -15,6 +15,7 @@ import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenFie
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { formatValue } from "metabase/lib/formatting";
 import { parseNumberValue } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
@@ -474,8 +475,37 @@ export function FieldValuesWidgetInner({
             onChange={onChange}
             value={value.filter(v => v !== null && v !== undefined)}
             data={options
-              .flat()
-              .filter((item): item is string => Boolean(item))}
+              .map(function (option) {
+                if (!option) {
+                  return null;
+                }
+
+                if (Array.isArray(option)) {
+                  const value = option[0];
+                  const column = fields[0];
+                  let label = formatValue(value, {
+                    ...formatOptions,
+                    column,
+                    remap: showRemapping(fields),
+                    jsx: false,
+                    maximumFractionDigits: 20,
+                  });
+
+                  if (
+                    showRemapping(fields) &&
+                    column.isID() &&
+                    value !== null
+                  ) {
+                    label += " - ";
+                    label += value.toString();
+                  }
+
+                  return { value, label };
+                }
+
+                return option;
+              })
+              .filter(Boolean)}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
@@ -602,9 +632,9 @@ function renderValue({
   fields,
   formatOptions,
   value,
-  autoLoad,
-  compact,
-}: {
+}: // autoLoad,
+// compact,
+{
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
@@ -615,11 +645,11 @@ function renderValue({
     <ValueComponent
       value={value}
       column={fields[0]}
-      maximumFractionDigits={20}
+      // maximumFractionDigits={20}
       remap={showRemapping(fields)}
       {...formatOptions}
-      autoLoad={autoLoad}
-      compact={compact}
+      // autoLoad={autoLoad}
+      // compact={compact}
     />
   );
 }
