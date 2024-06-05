@@ -56,7 +56,7 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-bg-visualization: ${({ theme }) =>
     theme.fn.themeColor("bg-visualization")};
 
-  font-size: ${({ theme }) => theme.other.fontSize ?? "0.875em"};
+  font-size: ${({ theme }) => theme.other.fontSize};
 
   ${aceEditorStyles}
   ${saveDomImageStyles}

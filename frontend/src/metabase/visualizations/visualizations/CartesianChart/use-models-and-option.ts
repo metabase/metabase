@@ -33,6 +33,8 @@ export function useModelsAndOption({
   onRender,
   hovered,
 }: VisualizationProps) {
+  const renderingContext = useBrowserRenderingContext({ fontFamily });
+
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
     [rawSeries],
@@ -47,8 +49,6 @@ export function useModelsAndOption({
     (warning: string) => onRender({ warnings: [warning] }),
     [onRender],
   );
-
-  const renderingContext = useBrowserRenderingContext(fontFamily);
 
   const hasTimelineEvents = timelineEvents
     ? timelineEvents.length !== 0
