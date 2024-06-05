@@ -233,11 +233,7 @@ jobs:
         with:
           ref: ${{ inputs.git_ref }}
 
-      - name: Setup git user
-        run: |
-          git config --global user.email "github-automation@metabase.com"
-          git config --global user.name "Metabase Automation"
-
+      # Lightweight tags don't need committer name and email
       - name: Create a new git tag
         run: |
           git tag ${{ env.tag }}
