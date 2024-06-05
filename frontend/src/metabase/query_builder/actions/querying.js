@@ -218,7 +218,6 @@ export const queryCompleted = (
       "bar",
       "row",
       "combo",
-      "pie",
       "waterfall",
       "scatter",
     ].includes(question.display());
