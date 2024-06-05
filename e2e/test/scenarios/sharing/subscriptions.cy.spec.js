@@ -791,9 +791,13 @@ function addParametersToDashboard() {
 
   // add default value to the above filter
   cy.findByText("No default").click();
-  popover().find("input").type("Corbin");
-  popover().findByText("Corbin Mertz").click();
-  popover().contains("Add filter").click();
+  popover().within(() => {
+    multiAutocompleteInput().type("Corbin");
+  });
+
+  popover().last().findByText("Corbin Mertz").click();
+
+  popover().first().contains("Add filter").click();
 
   setFilter("Text or Category", "Is");
 
