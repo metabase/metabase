@@ -217,14 +217,30 @@ describe("snapshots", () => {
       }).then(({ body }) => callback && callback(body));
     }
 
-    postCollection("First collection", undefined, firstCollection =>
+    function logSelectCollection(collection_id) {
+      console.log("select collection:", collection_id);
+      cy.request("Post", "/api/activity/recents", {
+        model_id: collection_id,
+        model: "collection",
+        context: "selection",
+      });
+    }
+
+    postCollection("First collection", undefined, firstCollection => {
+      logSelectCollection(firstCollection.id);
       postCollection(
         "Second collection",
         firstCollection.id,
-        secondCollection =>
-          postCollection("Third collection", secondCollection.id),
-      ),
-    );
+        secondCollection => {
+          logSelectCollection(secondCollection.id);
+          postCollection(
+            "Third collection",
+            secondCollection.id,
+            thirdCollection => logSelectCollection(thirdCollection.id),
+          );
+        },
+      );
+    });
   }
 
   function createQuestionsAndDashboards({ ORDERS, ORDERS_ID }) {
