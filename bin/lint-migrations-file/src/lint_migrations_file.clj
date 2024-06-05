@@ -5,7 +5,8 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +20,82 @@
 (s/def ::migrations
   (s/keys :req-un [::databaseChangeLog]))
 
+;; ================================= Error handling =================================================================
+;; When specs completely fail, the output is really painful. Instead of failing specs, let's conform all our inputs to
+;; *either* the input (if valid) or an error (if it's not). This way we can print out the error message and details in
+;; a more readable way.
+
+;; An error looks like `{:error/message ...}`, optionally with an `:error/details` map.
+;;
+;; When writing validation specs in this namespace, you *can* use any normal spec, like `(s/def ::foo even?)`,
+;; but preferably you'll instead write a function that returns an error in the invalid case, and use it like
+;; ```
+;; (s/def ::foo
+;;  (or-error-conformer
+;;   (fn [i]
+;;    (when-not (even? i)
+;;     (error "`i` is not even." :number-i i)))))
+;; ```
+;; This way, when the spec fails, the user sees nice errors like
+(s/def :error/message string?)
+(s/def :error/details (s/map-of keyword? any?))
+(s/def ::error (s/keys :req [:error/message]
+                       :opt [:error/details]))
+
+(s/def :error/errors (s/coll-of ::error :kind vector? :min-count 1))
+;; the input, so we can continue checking
+(s/def :error/in any?)
+(s/def ::errors (s/keys :req [:error/errors
+                              :error/in]))
+
+(defn- add-error [errors error]
+  (update errors :errors conj error))
+
+(defn- new-errors [input error]
+  {:error/errors [error]
+   :error/in input})
+
+(defn- error?
+  [x]
+  (s/valid? ::error x))
+
+(defn- errors?
+  [xs]
+  (s/valid? ::errors xs))
+
+(defn- error
+  "Make a new error"
+  [message & details]
+  {:error/message message
+   :error/details (apply hash-map details)})
+
+(defn- or-error-conformer
+  "Takes a function `f` that returns either an `error` or an arbitrary value.
+
+  Returns a function that conforms the input to either:
+  - an `::errors` value, or
+  - the input itself."
+  [f]
+  (s/conformer
+   (fn [x]
+     ;; in the error case, we continue checking specs against the *original* input
+     (let [in (if (errors? x)
+                (:error/in x)
+                x)
+           out (f in)]
+       (cond
+         ;; if we found an error and we already have errors, add the error to the existing errors
+         (and (errors? x)
+              (error? out))
+         (add-error x out)
+
+         ;; if we found an error and we don't already have errors, make a new `::errors`
+         (error? out)
+         (new-errors in out)
+
+         ;; return the input (either `::errors` if we already had them or the value to check)
+         :else x)))))
+
 (defn- change-set-ids
   "Returns all the change set ids given a change-log."
   [change-log]
@@ -26,14 +103,30 @@
         :when id]
     id))
 
-(defn- distinct-change-set-ids? [change-log]
-  (let [ids (change-set-ids change-log)]
-    ;; can't apply distinct? with so many IDs
-    (= (count ids) (count (set ids)))))
+(s/def ::distinct-change-set-ids
+  (or-error-conformer
+   (fn [change-log]
+     (let [ids (change-set-ids change-log)
+           ;; can't apply distinct? with so many IDs
+           duplicates (->> ids
+                           (group-by identity)
+                           (keep (fn [[k v]]
+                                   (when (< 1 (count v))
+                                     k))))]
+       (when (seq duplicates)
+         (error "Change set IDs are not distinct." :duplicates duplicates))))))
 
-(defn- change-set-ids-in-order? [change-log]
-  (let [ids (change-set-ids change-log)]
-    (= ids (sort-by identity compare ids))))
+(s/def ::change-set-ids-in-order
+  (or-error-conformer
+   (fn [change-log]
+     (when-let [out-of-order-ids (->> change-log
+                                      (change-set-ids)
+                                      (partition 2 1)
+                                      (filter (fn [[id1 id2]]
+                                                (pos? (compare id1 id2))))
+                                      seq)]
+       (error "Change set IDs are not in order"
+              :out-of-order-ids out-of-order-ids)))))
 
 (defn- check-change-use-types?
   "Return `true` if change use any type in `types`."
@@ -67,26 +160,36 @@
    (assert-no-types-in-change-log target-types change-log (constantly true)))
   ([target-types change-log id-filter-fn]
    {:pre [(set? target-types)]}
-   (->> change-log
-        (filter (fn [change-set]
-                  (let [id (get-in change-set [:changeSet :id])]
-                    (and (string? id)
-                         (id-filter-fn id)))))
-        (some #(check-change-set-use-types? target-types %))
-        not)))
+   (when-let [using-types? (->> change-log
+                                (filter (fn [change-set]
+                                          (let [id (get-in change-set [:changeSet :id])]
+                                            (and (string? id)
+                                                 (id-filter-fn id)))))
+                                (filter #(check-change-set-use-types? target-types %))
+                                (map #(get-in % [:changeSet :id]))
+                                seq)]
+     (error (format "Migration(s) [%s] uses invalid types (in %s)"
+                    (str/join "," (map #(str "'" % "'") using-types?))
+                    (str/join "," (map #(str "'" % "'") target-types)))
+            :invalid-ids using-types?
+            :target-types target-types))))
 
 (defn no-bare-blob-or-text-types?
-  "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
-  0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
-  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
+  "Ensures that no \"text\" or \"blob\" type columns are added in any changesets."
   [change-log]
   (assert-no-types-in-change-log #{"blob" "text"} change-log))
+
+(s/def ::no-bare-blob-or-text-types
+  (or-error-conformer
+   no-bare-blob-or-text-types?))
 
 (defn no-bare-boolean-types?
   "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
   \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
   [change-log]
   (assert-no-types-in-change-log #{"boolean"} change-log #(pos? (compare % "v49.00-032"))))
+
+(s/def ::no-bare-boolean-types (or-error-conformer no-bare-boolean-types?))
 
 (defn no-datetime-type?
   "Ensures that no \"datetime\" or \"timestamp without time zone\".
@@ -97,25 +200,46 @@
    change-log
    #(pos? (compare % "v49.00-000"))))
 
+(s/def ::no-datetime-type (or-error-conformer no-datetime-type?))
+
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
 
 (s/def ::databaseChangeLog
-  (s/and distinct-change-set-ids?
-         change-set-ids-in-order?
-         no-bare-blob-or-text-types?
-         no-bare-boolean-types?
-         no-datetime-type?
-         (s/+ (s/alt :property              (s/keys :req-un [::property])
-                     :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
-                     :changeSet             (s/keys :req-un [::changeSet])))))
+  (s/and (s/nonconforming
+          (s/+ (s/alt :property              (s/keys :req-un [::property])
+                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
+                      :changeSet             (s/keys :req-un [::changeSet]))))
+         ::distinct-change-set-ids
+         ::change-set-ids-in-order
+         ::no-bare-blob-or-text-types
+         ::no-bare-boolean-types
+         ::no-datetime-type))
+
+(defn- collect-errors [result]
+  ;; there's probably a way prettier way to do this, but ... this works.
+  (let [collector (atom [])]
+    (walk/postwalk #(do
+                      (when (error? %)
+                        (swap! collector conj %))
+                      %)
+                   result)
+    @collector))
 
 (defn- validate-migrations [migrations]
-  (when (= (s/conform ::migrations migrations) ::s/invalid)
-    (let [data (s/explain-data ::migrations migrations)]
-      (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
-                                                                                     (::s/problems data)))))
-                      (or (dissoc data ::s/value) {})))))
+  (let [result (s/conform ::migrations migrations)
+        errors (collect-errors result)]
+    (cond
+      (seq errors)
+      (throw (ex-info "Validation error"
+                      {::errors errors}))
+
+      (= ::s/invalid result)
+      (let [data (s/explain-data ::migrations migrations)]
+        (throw (ex-info (format "Validation failed: %s"
+                                (with-out-str (pprint/pprint (mapv #(dissoc % :val)
+                                                                   (::s/problems data)))))
+                        (or (dissoc data ::s/value) {}))))))
   :ok)
 
 (def ^:private filename
@@ -145,6 +269,13 @@
     (println "Ok.")
     (System/exit 0)
     (catch Throwable e
-      (pprint/pprint (Throwable->map e))
-      (println (.getMessage e))
+      (if-let [errors (::errors (ex-data e))]
+        (doseq [error errors]
+          (println)
+          (printf "Error:\t%s\n" (:error/message error))
+          (printf "Details:\n\n %s" (with-out-str (pprint/pprint (:error/details error))))
+          (println))
+        (do
+          (pprint/pprint (Throwable->map e))
+          (println (.getMessage e))))
       (System/exit 1))))
