@@ -16,6 +16,7 @@ import {
   goToTab,
   createNewTab,
   undoToast,
+  undoToastList,
   setFilter,
   visitQuestion,
   modal,
@@ -259,7 +260,7 @@ describe("dashboard filters auto-wiring", () => {
   });
 
   describe("wiring parameters when adding a card", () => {
-    it("should automatically wire a parameters to cards that are added to the dashboard", () => {
+    it("should wire parameters to cards that are added to the dashboard", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -269,26 +270,30 @@ describe("dashboard filters auto-wiring", () => {
       setFilter("Text or Category", "Is");
 
       selectDashboardFilter(getDashboardCard(0), "Name");
+      undoToast().findByRole("button", { name: "Auto-connect" }).click();
 
       for (let i = 0; i < cards.length; i++) {
         getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
       addCardToDashboard();
+      undoToastList()
+        .eq(1)
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
       goToFilterMapping();
 
       for (let i = 0; i < cards.length + 1; i++) {
         getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast()
-        .findByText(
-          "Orders Model has been auto-connected with filters with the same field.",
-        )
+      undoToastList()
+        .eq(1)
+        .findByText("“Orders Model” was auto-connected to “Text”.")
         .should("be.visible");
     });
 
-    it("should automatically wire parameters to cards that are added to the dashboard in a different tab", () => {
+    it("should not wire parameters to cards that are added to the dashboard in a different tab", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -298,6 +303,15 @@ describe("dashboard filters auto-wiring", () => {
       setFilter("Text or Category", "Is");
 
       selectDashboardFilter(getDashboardCard(0), "Name");
+
+      undoToast()
+        .should(
+          "contain",
+          "Auto-connect this filter to all questions containing",
+        )
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
+
       for (let i = 0; i < cards.length; i++) {
         getDashboardCard(i).findByText("User.Name").should("exist");
       }
@@ -306,16 +320,19 @@ describe("dashboard filters auto-wiring", () => {
       addCardToDashboard();
       goToFilterMapping();
 
-      getDashboardCard(0).findByText("User.Name").should("exist");
+      getDashboardCard(0).findByText("User.Name").should("not.exist");
 
-      undoToast()
-        .findByText(
-          "Orders Model has been auto-connected with filters with the same field.",
-        )
-        .should("be.visible");
+      cy.log("verify that no new toast with suggestion to auto-wire appeared");
+
+      undoToastList()
+        .should("have.length", 1)
+        .should(
+          "contain",
+          "The filter was auto-connected to all questions containing “User.Name”",
+        );
     });
 
-    it("should undo parameter wiring when 'Undo auto-connection' is clicked", () => {
+    it("should undo parameter wiring when 'Undo' is clicked", () => {
       createDashboardWithCards({ cards }).then(dashboardId => {
         visitDashboard(dashboardId);
       });
@@ -325,6 +342,7 @@ describe("dashboard filters auto-wiring", () => {
       setFilter("Text or Category", "Is");
 
       selectDashboardFilter(getDashboardCard(0), "Name");
+      undoToast().findByRole("button", { name: "Auto-connect" }).click();
 
       for (let i = 0; i < cards.length; i++) {
         getDashboardCard(i).findByText("User.Name").should("exist");
@@ -333,11 +351,18 @@ describe("dashboard filters auto-wiring", () => {
       addCardToDashboard();
       goToFilterMapping();
 
+      undoToastList()
+        .eq(1)
+        .should("contain", "Auto-connect “Orders Model” to “Text”?")
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
+
       for (let i = 0; i < cards.length + 1; i++) {
         getDashboardCard(i).findByText("User.Name").should("exist");
       }
 
-      undoToast().findByText("Undo auto-connection").click();
+      cy.log("verify undo functionality");
+      undoToastList().eq(1).findByText("Undo").click();
 
       getDashboardCard(0).findByText("User.Name").should("exist");
       getDashboardCard(1).findByText("User.Name").should("exist");
@@ -396,6 +421,18 @@ describe("dashboard filters auto-wiring", () => {
       cy.wait("@cardQuery");
 
       goToFilterMapping("ID");
+
+      undoToastList()
+        .findByText("Auto-connect “Orders Question” to “ID”?")
+        .closest("[data-testid='toast-undo']")
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
+
+      undoToastList()
+        .findByText("Auto-connect “Reviews Question” to “ID”?")
+        .closest("[data-testid='toast-undo']")
+        .findByRole("button", { name: "Auto-connect" })
+        .click();
 
       getDashboardCard(0).findByText("Product.ID").should("exist");
       getDashboardCard(1).findByText("Product.ID").should("exist");
@@ -537,7 +574,9 @@ function addQuestionFromQueryBuilder({
     cy.button("Select").click();
   });
 
-  undoToast().should("be.visible");
+  undoToast().findByRole("button", { name: "Auto-connect" }).click();
+  undoToast().should("contain", "Undo");
+
   if (saveDashboardAfterAdd) {
     saveDashboard();
   }

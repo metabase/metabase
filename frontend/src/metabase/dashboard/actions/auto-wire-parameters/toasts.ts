@@ -130,7 +130,7 @@ export const showAddedCardAutoWireParametersToast =
 
       dispatch(
         addUndo({
-          id: AUTO_WIRE_UNDO_TOAST_ID,
+          id: _.uniqueId(),
           message,
           actionLabel: t`Undo`,
           timeout: 12000,
@@ -138,6 +138,10 @@ export const showAddedCardAutoWireParametersToast =
           action: revertAutoWireParametersToNewCard,
         }),
       );
+    }
+
+    function hideAutoConnectToast(toastId: string) {
+      dispatch(dismissUndo(toastId, false));
     }
 
     let message = "";
@@ -148,16 +152,17 @@ export const showAddedCardAutoWireParametersToast =
       message = t`Auto-connect “${targetDashcard.card.name}” to ${parametersToAutoApply.length} filters with the same field?`;
     }
 
+    const toastId = _.uniqueId();
     dispatch(
       addUndo({
-        id: AUTO_WIRE_TOAST_ID,
+        id: toastId,
         message,
-        actionLabel: t`Auto-connect ...`,
+        actionLabel: t`Auto-connect`,
         undo: true,
         timeout: 12000,
         action: () => {
+          hideAutoConnectToast(toastId);
           autoWireParametersToNewCard();
-
           showUndoToast();
         },
       }),
