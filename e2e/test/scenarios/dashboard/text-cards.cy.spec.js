@@ -18,7 +18,6 @@ import {
   filterWidget,
   addTextBoxWhileEditing,
   addHeadingWhileEditing,
-  popover,
   multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
