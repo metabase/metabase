@@ -54,6 +54,8 @@ export type CollectionItemsTableProps = {
   handleMove: (items: CollectionItem[]) => void;
   hasPinnedItems: boolean;
   loadingPinnedItems: boolean;
+  models: CollectionItemModel[];
+  pageSize: number;
   selectOnlyTheseItems: (items: CollectionItem[]) => void;
   selected: CollectionItem[];
   toggleItem: (item: CollectionItem) => void;
@@ -72,6 +74,8 @@ export const CollectionItemsTable = ({
   handleMove,
   hasPinnedItems,
   loadingPinnedItems,
+  models = ALL_MODELS,
+  pageSize = PAGE_SIZE,
   selectOnlyTheseItems,
   selected,
   toggleItem,
@@ -85,37 +89,35 @@ export const CollectionItemsTable = ({
     }
   }, [collectionId, resetPage]);
 
-  const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
-    useState<SortingOptions>({
-      sort_column: "name",
-      sort_direction: SortDirection.Asc,
-    });
+  const [itemsSorting, setItemsSorting] = useState<SortingOptions>({
+    sort_column: "name",
+    sort_direction: SortDirection.Asc,
+  });
 
   const handleUnpinnedItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions) => {
-      setUnpinnedItemsSorting(sortingOpts);
+      setItemsSorting(sortingOpts);
       setPage(0);
     },
     [setPage],
   );
 
-  const unpinnedQuery: ListCollectionItemsRequest = {
+  const query: ListCollectionItemsRequest = {
     id: collectionId,
-    models: ALL_MODELS,
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
+    models,
+    limit: pageSize,
+    offset: pageSize * page,
     ...(isRootTrashCollection(collection)
       ? {}
       : { pinned_state: "is_not_pinned" }),
-    ...unpinnedItemsSorting,
+    ...itemsSorting,
   };
 
-  const { data, isLoading: loadingUnpinnedItems } =
-    useListCollectionItemsQuery(unpinnedQuery);
+  const { data, isLoading } = useListCollectionItemsQuery(query);
 
   const dispatch = useDispatch();
 
-  const unpinnedItems = (data?.data ?? []).map(object => {
+  const items = (data?.data ?? []).map(object => {
     const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
@@ -127,18 +129,18 @@ export const CollectionItemsTable = ({
   const total = data?.total || 0;
   const hasPagination: boolean = total > PAGE_SIZE;
   const unselected = getIsSelected
-    ? unpinnedItems.filter(item => !getIsSelected(item))
-    : unpinnedItems;
+    ? items.filter(item => !getIsSelected(item))
+    : items;
   const hasUnselected = unselected.length > 0;
 
   const handleSelectAll = () => {
-    selectOnlyTheseItems?.(unpinnedItems);
+    selectOnlyTheseItems?.(items);
   };
 
-  const loading = loadingPinnedItems || loadingUnpinnedItems;
-  const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
+  const loading = loadingPinnedItems || isLoading;
+  const isEmpty = !loading && !hasPinnedItems && items.length === 0;
 
-  if (isEmpty && !loadingUnpinnedItems) {
+  if (isEmpty && !isLoading) {
     return (
       <CollectionEmptyContent>
         <CollectionEmptyState collection={collection} />
@@ -153,9 +155,9 @@ export const CollectionItemsTable = ({
         bookmarks={bookmarks}
         createBookmark={createBookmark}
         deleteBookmark={deleteBookmark}
-        items={unpinnedItems}
+        items={items}
         collection={collection}
-        sortingOptions={unpinnedItemsSorting}
+        sortingOptions={itemsSorting}
         onSortingOptionsChange={handleUnpinnedItemsSortingChange}
         selectedItems={selected}
         hasUnselected={hasUnselected}
@@ -174,7 +176,7 @@ export const CollectionItemsTable = ({
             page={page}
             pageSize={PAGE_SIZE}
             total={total}
-            itemsLength={unpinnedItems.length}
+            itemsLength={items.length}
             onNextPage={handleNextPage}
             onPreviousPage={handlePreviousPage}
           />
