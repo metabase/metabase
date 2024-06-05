@@ -43,6 +43,13 @@
       (log/warn "Some (possibly virtual) tables are not readable by the current user"))
     all-metadatas))
 
+(defn- metadata-for-field-dependents
+  [field-dependents]
+  (let [metadatas (api.field/get-fields (map :id field-dependents))]
+    (when (< (count metadatas) (count field-dependents))
+      (log/warn "Some fields are not readable by the current user"))
+    (vec (sort-by :id metadatas))))
+
 (defn- metadata-for-dependents [dependents]
   {:tables (->> (:table dependents)
                 ;; Can be int or "card__<id>"
@@ -52,9 +59,7 @@
                    (into []
                          (keep #(fetch-or-warn % api.database/get-database {}))))
    :fields (->> (:field dependents)
-                (sort-by :id)
-                (into []
-                      (keep #(fetch-or-warn % api.field/get-field {}))))})
+                metadata-for-field-dependents)})
 
 (defn- collect-source-tables
   [query]
