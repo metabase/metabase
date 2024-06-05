@@ -5,7 +5,11 @@ import type { DeepPartial } from "../utils";
  * Theme configuration for embedded Metabase components.
  */
 export interface MetabaseTheme {
-  /** Base font size */
+  /**
+   * Base font size.
+   * Supported units are px, em and rem.
+   * Defaults to ~14px (0.875em)
+   **/
   fontSize?: string;
 
   /**
@@ -92,6 +96,9 @@ export interface MetabaseComponentTheme {
 
       /** Default background color of cells, defaults to `background` */
       backgroundColor?: string;
+
+      /** Font size of cell values, defaults to ~12.5px */
+      fontSize: string;
     };
 
     idColumn?: {
@@ -118,6 +125,21 @@ export interface MetabaseComponentTheme {
     value?: {
       fontSize?: string;
       lineHeight?: string;
+    };
+  };
+
+  /** Cartesian charts */
+  cartesian: {
+    label: {
+      /** Labels used in cartesian charts, such as axis ticks and series. */
+      fontSize: string;
+    };
+
+    goalLine: {
+      label: {
+        /** Font size of goal line labels */
+        fontSize: string;
+      };
     };
   };
 }
