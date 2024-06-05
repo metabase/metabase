@@ -37,8 +37,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   cursor: pointer;
-  outline: ${props =>
-    props.isActive ? `2px solid var(--mb-color-focus)` : ""};
+  outline: ${props => props.isActive && `2px solid var(--mb-color-focus)`};
 
   &:hover {
     border-color: var(--mb-color-brand);
