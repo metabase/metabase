@@ -1,5 +1,6 @@
 (ns metabase.driver.databricks-jdbc
   (:require
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -11,7 +12,7 @@
    [ring.util.codec :as codec])
   (:import
    [java.sql Connection Date PreparedStatement Timestamp]
-   [java.time LocalDate LocalDateTime]))
+   [java.time LocalDate LocalDateTime ZonedDateTime]))
 
 (set! *warn-on-reflection* true)
 
@@ -229,3 +230,41 @@
     (recur driver hsql-form (* amount 3) :month)
     (h2x/+ (h2x/->timestamp hsql-form)
            [::interval amount unit])))
+
+;; Following 3 implementations are necessary for data loading logic in `insert-rows-honeysql-form :sql/test-extensions`
+;; to work correctly. Databricks jdbc driver is unable to execute `.setObject` with argument being instance of one of
+;; those classes.
+;;
+;; Relevant trace:
+;  [[com.databricks.client.exceptions.ExceptionConverter toSQLException nil -1]
+;   [com.databricks.client.jdbc.common.SPreparedStatement setObject nil -1]
+;   [com.databricks.client.jdbc.common.SPreparedStatement setObject nil -1]
+;   [com.databricks.client.hivecommon.jdbc42.Hive42PreparedStatement setObject nil -1]
+;   [metabase.db.jdbc_protocols$set_object invokeStatic jdbc_protocols.clj 25]
+;   [metabase.db.jdbc_protocols$set_object invoke jdbc_protocols.clj 23]
+;   [metabase.db.jdbc_protocols$eval75770$fn__75771 invoke jdbc_protocols.clj 39]
+;   ...
+;   [metabase.test.data.databricks_jdbc$eval184535$fn__184536$fn__184537 invoke databricks_jdbc.clj 74]
+;   [metabase.driver.sql_jdbc.execute$eval128039$fn__128040$fn__128041 invoke execute.clj 390]
+;;
+;; Specifically, `set-parameter` implementations of `clojure.java.jdbc/ISQLParameter` defined in
+;; [[metabase.db.jdbc-protocols]] come into play here.
+;;
+;; Databricks jdbc driver is unable to convert eg. LocalDate to java.sql.Date. To overcome values are converted into
+;; java.sql.<TYPE> types.
+;;
+;; TODO: Check the conversion (when jdbc driver applies parameters) is correct! The instant is same!
+;;
+;; It may have undesired effect I'm not yet aware of. Analyzing test failures should reveal that.
+;; Also I believe there is more reasonable way to do those transformations.
+(defmethod sql.qp/->honeysql [:databricks-jdbc LocalDateTime]
+  [_driver ^LocalDateTime value]
+  (Timestamp/valueOf value))
+
+(defmethod sql.qp/->honeysql [:databricks-jdbc LocalDate]
+  [_driver ^LocalDate value]
+  (Date/valueOf value))
+
+(defmethod sql.qp/->honeysql [:databricks-jdbc ZonedDateTime]
+  [_driver ^ZonedDateTime value]
+  (t/instant->sql-timestamp (.toInstant value)))
