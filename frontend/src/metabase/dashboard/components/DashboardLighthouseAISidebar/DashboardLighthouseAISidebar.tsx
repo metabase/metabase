@@ -201,7 +201,7 @@ export function DashboardLighthouseAISidebar({
       dispatch,
       setFailed,
     ),
-    [dashboard.id, selectedTabId, dispatch, setFailed],
+    [dashboard.id, selectedTabId, parameterValues, dispatch, setFailed],
   );
 
   useEffect(() => {
