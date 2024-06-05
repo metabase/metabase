@@ -4,6 +4,7 @@ import {
   createQuestion,
   describeWithSnowplow,
   expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getNotebookStep,
   openNotebook,
   popover,
@@ -37,6 +38,10 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       },
       { visitQuestion: true, wrapId: true, idAlias: "questionId" },
     );
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
   });
 
   describe("notebook editor", () => {
