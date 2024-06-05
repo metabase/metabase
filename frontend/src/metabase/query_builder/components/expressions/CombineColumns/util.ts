@@ -183,12 +183,12 @@ export const getNextColumnAndSeparator = (
   expressionableColumns: Lib.ColumnMetadata[],
   defaultSeparator: string,
   columnsAndSeparators: ColumnAndSeparator[],
-  enable: boolean,
+  autoPickColumns: boolean,
 ): ColumnAndSeparator => {
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
   const separator = lastSeparator ?? defaultSeparator;
 
-  if (!enable) {
+  if (!autoPickColumns) {
     return {
       column: null,
       separator,
