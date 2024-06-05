@@ -1,7 +1,7 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
+import { cardApi, datasetApi } from "metabase/api";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
@@ -30,6 +30,7 @@ import {
 } from "metabase/selectors/metadata";
 
 const FETCH_METADATA = "metabase/entities/questions/FETCH_METADATA";
+const FETCH_ADHOC_METADATA = "metabase/entities/questions/FETCH_ADHOC_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -80,6 +81,21 @@ const Questions = createEntity({
             dispatch,
             cardApi.endpoints.getCardQueryMetadata,
           ),
+    ),
+    fetchAdhocMetadata: compose(
+      withAction(FETCH_ADHOC_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+      }),
+    )(
+      query => dispatch =>
+        entityCompatibleQuery(
+          query,
+          dispatch,
+          datasetApi.endpoints.getAdhocQueryMetadata,
+        ),
     ),
   },
 

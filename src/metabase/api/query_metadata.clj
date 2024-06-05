@@ -87,3 +87,11 @@
   "Fetches dependent query-metadata for a given card."
   [card]
   (metadata-for-dependents (dependents-for-cards [card])))
+
+(defn adhoc-query-metadata
+  "Fetches dependent query-metadata for a given ad-hoc query."
+  [{:keys [database] :as dataset-query}]
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider database)
+        query (lib/query mp dataset-query)
+        dependents (lib/dependent-metadata query nil :question)]
+    (metadata-for-dependents (group-by :type dependents))))
