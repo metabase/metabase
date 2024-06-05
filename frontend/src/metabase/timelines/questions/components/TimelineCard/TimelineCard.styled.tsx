@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import CheckBox from "metabase/core/components/CheckBox";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`
@@ -30,7 +29,7 @@ export const CardLabel = styled.span`
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 1.125rem;
   height: 1.125rem;
 `;

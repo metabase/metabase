@@ -7,7 +7,7 @@ export const OptionItemTitle = styled.div`
 `;
 
 export const OptionItemDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const OptionItemRoot = styled.li`

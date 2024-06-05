@@ -50,6 +50,6 @@ export const VirtualDashCardOverlayRoot = styled.div`
 `;
 
 export const VirtualDashCardOverlayText = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding: 1rem;
 `;

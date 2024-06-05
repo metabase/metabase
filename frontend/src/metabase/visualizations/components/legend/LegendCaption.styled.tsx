@@ -30,7 +30,7 @@ export const LegendDescriptionIcon = styled(Icon)`
   margin: 0 0.375rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

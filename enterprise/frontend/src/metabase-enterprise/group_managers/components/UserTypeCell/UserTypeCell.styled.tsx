@@ -13,7 +13,7 @@ export const UserTypeCellRoot = styled.td`
   text-transform: capitalize;
   font-size: 14px;
   font-weight: bold;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   ${ChangeTypeButton} {
     visibility: hidden;

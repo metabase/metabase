@@ -33,7 +33,7 @@ export const valueBlockStyle = css`
 
 const commonInfoTextStyle = css`
   ${valueBlockStyle}
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const ModelInfoText = styled.span`

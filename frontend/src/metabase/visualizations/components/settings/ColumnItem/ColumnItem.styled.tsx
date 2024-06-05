@@ -24,7 +24,7 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     pointer-events: auto !important;
   }
 
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   ${props =>
     props.isDraggable &&

@@ -45,6 +45,6 @@ export const StepLabelText = styled.span`
 `;
 
 export const StepDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin: 0.875rem 0;
 `;

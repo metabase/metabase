@@ -51,7 +51,7 @@ export const EngineCardTitle = styled.div`
 `;
 
 export const EngineCardIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 1rem;
   height: 1rem;
   padding: 0.5rem;
@@ -72,7 +72,7 @@ export const EngineEmptyStateRoot = styled.div`
 `;
 
 export const EngineEmptyIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 0.5rem;
 `;
 

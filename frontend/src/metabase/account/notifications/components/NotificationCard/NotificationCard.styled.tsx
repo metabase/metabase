@@ -27,7 +27,7 @@ export const NotificationDescription = styled.div`
 `;
 
 export const NotificationMessage = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.75rem;
   line-height: 0.875rem;
 
@@ -44,6 +44,6 @@ export const NotificationIcon = styled(Icon)`
   height: 1rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;

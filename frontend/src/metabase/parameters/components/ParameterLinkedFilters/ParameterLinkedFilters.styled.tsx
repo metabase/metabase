@@ -12,7 +12,7 @@ export const SectionHeader = styled.div`
 `;
 
 export const SectionMessage = styled.p`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const SectionMessageLink = styled.span`
@@ -68,5 +68,5 @@ export const FieldRoot = styled.div`
 `;
 
 export const FieldLabel = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

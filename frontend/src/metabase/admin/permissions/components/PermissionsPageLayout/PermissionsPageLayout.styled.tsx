@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const PermissionPageRoot = styled.div`
@@ -48,7 +47,7 @@ export const CloseSidebarButton = styled(Icon)`
   transition: color 200ms;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

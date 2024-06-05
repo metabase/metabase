@@ -71,7 +71,7 @@ export const SettingsButton = styled(Button)<SettingsIconProps>`
 
 export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
   &:hover {

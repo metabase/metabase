@@ -25,7 +25,7 @@ export const EmailFormLabel = styled.div`
 export const EmailFormLabelCard = styled.div`
   display: flex;
   padding: 0 1.5rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   background-color: ${color("white")};
 `;
 
@@ -42,7 +42,7 @@ export const EmailFormLabelText = styled.div`
 `;
 
 export const EmailFormHeader = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 1.5rem;

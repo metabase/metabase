@@ -10,7 +10,7 @@ export const SettingsPopoverBody = styled.div`
 
 export const SectionLabel = styled.label`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   padding-left: ${space(0)};
   margin-bottom: ${space(1)};
@@ -34,7 +34,7 @@ export const ToggleContainer = styled.div`
 `;
 
 export const SettingsTriggerIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   &:hover {
     color: ${color("brand")};
   }

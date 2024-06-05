@@ -16,5 +16,5 @@ export const ColorText = styled.div<{ color: string }>`
 
 export const PaddedForm = styled.form`
   padding: 0 1rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

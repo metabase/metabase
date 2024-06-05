@@ -23,7 +23,7 @@ export const CardTitle = styled.div`
 `;
 
 export const CardDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.75rem;
   word-wrap: break-word;
 `;

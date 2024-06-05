@@ -43,7 +43,7 @@ export interface OptionIconContainerProps {
 
 export const OptionText = styled.div`
   margin-top: 0.5rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   font-size: 0.75rem;
 `;
@@ -84,7 +84,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
 `;
 
 export const OptionLabel = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   font-size: 0.75rem;
   text-transform: uppercase;

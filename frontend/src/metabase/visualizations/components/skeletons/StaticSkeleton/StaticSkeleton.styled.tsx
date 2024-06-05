@@ -17,13 +17,13 @@ export const SkeletonTitle = styled(Ellipsified)`
 `;
 
 export const SkeletonDescription = styled(MarkdownPreview)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1.5rem;
 `;
 
 export const SkeletonIcon = styled(Icon)`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 1.5rem;
   height: 1.5rem;
 `;
@@ -43,7 +43,7 @@ export const SkeletonIconContainer = styled.div`
 
   &:hover {
     ${SkeletonTooltipIcon} {
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
     }
   }
 `;

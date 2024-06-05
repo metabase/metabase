@@ -96,7 +96,7 @@ export const SidebarHeadingWrapper = styled.div`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
@@ -111,7 +111,7 @@ export const CollectionsMoreIconContainer = styled.button`
 `;
 
 export const CollectionsMoreIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const CollectionMenuList = styled.ul`

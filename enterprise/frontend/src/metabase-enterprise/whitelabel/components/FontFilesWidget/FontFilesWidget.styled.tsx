@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 const cellStyles = css`
   padding-left: 1.5rem;
   padding-right: 1.5rem;
@@ -35,7 +33,7 @@ export const TableHeaderRow = styled.div`
 
 export const TableHeaderCell = styled.div`
   ${cellStyles};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.6rem;
   letter-spacing: 1px;
   line-height: 0.625rem;
@@ -66,7 +64,7 @@ export interface TableBodyCellProps {
 
 export const TableBodyCell = styled.div<TableBodyCellProps>`
   ${cellStyles};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding-top: 1rem;
   padding-bottom: 1rem;
   font-weight: ${props => props.fontWeight};

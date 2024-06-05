@@ -24,7 +24,7 @@ export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
 
 const messageVariantStyles = {
   default: css`
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
 
     margin-left: 0.5rem;
     ${breakpointMinMedium} {

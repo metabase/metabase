@@ -56,7 +56,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
     padding: 0.75em 1em 0.75em;
   }
   font-weight: bold;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   ${hideResponsively}
 `;
 
@@ -110,7 +110,7 @@ export const SortingIcon = styled(FixedSizeIcon)`
 `;
 
 export const DescriptionIcon = styled(FixedSizeIcon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 SortingIcon.defaultProps = {
@@ -118,7 +118,7 @@ SortingIcon.defaultProps = {
 };
 
 export const ModelDetailLink = styled(BaseModelDetailLink)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   visibility: hidden;
 `;
 
@@ -156,7 +156,7 @@ export const RowActionsContainer = styled.div`
 
 export const TableItemSecondaryField = styled.span`
   font-size: 0.95em;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const TBody = styled.tbody`

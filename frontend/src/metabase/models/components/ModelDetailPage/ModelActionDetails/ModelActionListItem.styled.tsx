@@ -28,7 +28,7 @@ export const ActionSubtitle = styled.span`
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 0.875rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;
 
@@ -88,7 +88,7 @@ export const ImplicitActionCardContentRoot = styled.div`
   display: flex;
   align-items: center;
 
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   background-color: var(--mb-color-bg-medium);
 
   font-weight: 400;

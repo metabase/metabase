@@ -24,7 +24,7 @@ export const LastRefreshTimeLabel = styled.span`
   display: block;
   font-size: 0.875rem;
   font-weight: 400;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;
 

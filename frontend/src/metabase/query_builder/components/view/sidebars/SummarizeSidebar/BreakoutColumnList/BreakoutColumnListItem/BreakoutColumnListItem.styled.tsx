@@ -59,7 +59,7 @@ AddButton.defaultProps = {
 };
 
 export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const Title = styled.div`
@@ -115,7 +115,7 @@ const unselectedStyle = css`
     }
 
     ${BucketPickerPopover.TriggerButton}:hover {
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
     }
   }
 `;

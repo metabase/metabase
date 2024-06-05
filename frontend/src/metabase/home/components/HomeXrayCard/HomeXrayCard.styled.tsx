@@ -24,5 +24,5 @@ export const CardTitlePrimary = styled.span`
 `;
 
 export const CardTitleSecondary = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

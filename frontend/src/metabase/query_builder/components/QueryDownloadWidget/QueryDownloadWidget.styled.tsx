@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const DownloadIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: ${color("brand")};

@@ -26,7 +26,7 @@ export const SectionTitle = styled.div`
 `;
 
 export const SectionDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 0.5rem;
 `;
 

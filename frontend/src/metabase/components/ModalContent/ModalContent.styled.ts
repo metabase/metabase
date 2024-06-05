@@ -48,7 +48,7 @@ export const ModalContentActionIcon = styled(Icon)`
   padding: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

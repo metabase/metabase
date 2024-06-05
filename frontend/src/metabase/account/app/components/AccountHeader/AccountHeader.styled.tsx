@@ -41,7 +41,7 @@ export const HeaderTitle = styled.h2`
 
 export const HeaderSubtitle = styled.h3`
   text-align: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`

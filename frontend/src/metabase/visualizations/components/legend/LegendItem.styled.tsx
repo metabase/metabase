@@ -51,7 +51,7 @@ export const LegendItemRemoveIcon = styled(Icon)`
   margin-left: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

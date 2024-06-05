@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const EmptyStateContainer = styled.div`
   display: flex;
   height: 100%;
@@ -22,7 +20,7 @@ export const EmptyStateTitle = styled.h4`
 `;
 
 export const EmptyStateMessage = styled.p`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.18rem;

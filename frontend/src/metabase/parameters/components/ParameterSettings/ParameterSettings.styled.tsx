@@ -6,7 +6,7 @@ import ParameterValueWidget from "../ParameterValueWidget";
 
 export const SettingLabel = styled.label`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 0.5rem;
   font-weight: bold;
 `;

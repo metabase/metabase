@@ -152,7 +152,7 @@ export const CloseSearchButton = styled.button`
   cursor: pointer;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

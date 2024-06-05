@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 export const ItemLink = styled(Link)`
   display: block;
   background-color: var(--mb-color-bg-medium);
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   border-radius: 8px;
 
   &:hover {

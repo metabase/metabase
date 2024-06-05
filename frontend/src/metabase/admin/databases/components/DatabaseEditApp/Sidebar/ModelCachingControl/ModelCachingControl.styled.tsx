@@ -27,7 +27,7 @@ export const FeatureTitle = styled.h4`
 `;
 
 export const FeatureDescriptionText = styled.p`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: 400;
 `;
 

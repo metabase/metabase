@@ -26,7 +26,7 @@ export const PageTitle = styled.h1`
 `;
 
 export const PageBody = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 1.286em;
   line-height: 1.457em;
   margin: 1rem 0;

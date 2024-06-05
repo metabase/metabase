@@ -39,7 +39,7 @@ export const Title = styled.div`
 `;
 
 export const Description = styled(MarkdownPreview)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const Body = styled.div`

@@ -22,7 +22,7 @@ const backButtonStyle = () => css`
 
 const defaultBackButtonStyle = () => css`
   ${backButtonStyle()}
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.83em;
   text-transform: uppercase;
   letter-spacing: 0.06em;

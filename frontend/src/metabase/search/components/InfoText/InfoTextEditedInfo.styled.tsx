@@ -8,7 +8,7 @@ import { breakpointMaxSmall } from "metabase/styled-components/theme";
 export const LastEditedInfoText = styled(LastEditInfoLabel)`
   ${({ theme }) => {
     return css`
-      color: ${theme.fn.themeColor("text-medium")};
+      color: var(--mb-color-text-medium);
       font-size: ${theme.fontSizes.sm};
       font-weight: 500;
 

@@ -130,7 +130,7 @@ export const CollectionSummary = styled.div`
   margin-inline-start: auto;
   white-space: nowrap;
   font-size: 0.75rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const FixedSizeIcon = styled(Icon)<{ size?: number }>`

@@ -78,7 +78,7 @@ export const CardDateInfo = styled.div`
 `;
 
 export const CardCreatorInfo = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 0.25rem;
   font-size: 0.75rem;
 `;

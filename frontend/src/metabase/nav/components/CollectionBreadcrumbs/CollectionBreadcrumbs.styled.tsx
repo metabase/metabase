@@ -26,7 +26,7 @@ export const ExpandButton = styled(Button)`
   padding: 0.25rem;
   background-color: var(--mb-color-bg-light);
   border-radius: 2px;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: ${color("text-white")};

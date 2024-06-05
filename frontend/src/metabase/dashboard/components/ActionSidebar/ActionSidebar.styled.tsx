@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Heading = styled.h4`
@@ -28,7 +27,7 @@ export const SidebarFooter = styled(SidebarContent)`
 `;
 
 export const ClickBehaviorPickerText = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: ${space(2)};
   margin-left: ${space(2)};
 `;
