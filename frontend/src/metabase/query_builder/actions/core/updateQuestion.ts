@@ -6,6 +6,10 @@ import Questions from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -150,7 +154,10 @@ export const updateQuestion = (
 
     const hasGraphDataSettings =
       "graph.dimensions" in vizSettings || "graph.metrics" in vizSettings;
-    const isWaterfall = newQuestion.display() === "waterfall";
+    const maxMetricCount = getMaxMetricsSupported(newQuestion.display());
+    const maxDimensionCount = getMaxDimensionsSupported(newQuestion.display());
+    const hasDimensionOrMetricLimit =
+      Number.isFinite(maxMetricCount) || Number.isFinite(maxDimensionCount);
 
     const isCurrentQuestionNative =
       currentQuestion && Lib.queryDisplayInfo(currentQuestion.query()).isNative;
@@ -187,18 +194,13 @@ export const updateQuestion = (
       });
     }
 
-    if (hasGraphDataSettings && isWaterfall) {
+    if (hasGraphDataSettings && hasDimensionOrMetricLimit) {
       const dimensions = vizSettings["graph.dimensions"] ?? [];
       const metrics = vizSettings["graph.metrics"] ?? [];
-      const isMultiSeries = dimensions.length > 1 || metrics.length > 1;
-      if (isMultiSeries) {
-        const [firstDimension] = dimensions;
-        const [firstMetric] = metrics;
-        newQuestion = newQuestion.updateSettings({
-          "graph.dimensions": [firstDimension],
-          "graph.metrics": [firstMetric],
-        });
-      }
+      newQuestion = newQuestion.updateSettings({
+        "graph.dimensions": dimensions.slice(0, maxDimensionCount),
+        "graph.metrics": metrics.slice(0, maxMetricCount),
+      });
     }
 
     // Native query should never be in notebook mode (metabase#12651)
