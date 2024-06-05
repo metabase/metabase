@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type * as Lib from "metabase-lib";
 import { createQueryWithClauses } from "metabase-lib/test-helpers";
 
@@ -24,7 +24,7 @@ const setup = ({ query }: SetupOpts) => {
     />,
   );
 
-  return { onClose };
+  return { onClose, onSubmit };
 };
 
 describe("CompareAggregations", () => {
@@ -130,6 +130,64 @@ describe("CompareAggregations", () => {
       await userEvent.tab();
 
       expect(input).toHaveValue(1);
+    });
+  });
+
+  describe("submit", () => {
+    it("is submittable by default", async () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      expect(screen.getByLabelText("Previous period")).toHaveValue(1);
+      expect(screen.getByText("Previous value")).toBeInTheDocument();
+      expect(screen.getByText("Percentage difference")).toBeInTheDocument();
+      expect(screen.queryByText("Value difference")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
+
+    it("disables the submit button when offset input is empty", async () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      const input = screen.getByLabelText("Previous period");
+
+      await userEvent.clear(input);
+
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
+
+    it("disables the submit button when no columns are selected", async () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      await userEvent.click(screen.getByLabelText("Columns to create"));
+
+      const listBox = screen.getByRole("listbox");
+      await userEvent.click(within(listBox).getByText("Previous value"));
+      await userEvent.click(within(listBox).getByText("Percentage difference"));
+
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    });
+
+    it("calls 'onSubmit' with single aggregation", async () => {
+      const { onSubmit } = setup({ query: createQueryWithCountAggregation() });
+
+      await userEvent.click(screen.getByLabelText("Columns to create"));
+
+      const listBox = screen.getByRole("listbox");
+      await userEvent.click(within(listBox).getByText("Previous value"));
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      const [aggregations] = onSubmit.mock.lastCall;
+      expect(onSubmit).toHaveBeenCalled();
+      expect(aggregations).toHaveLength(1);
+    });
+
+    it("calls 'onSubmit' with multiple aggregations", async () => {
+      const { onSubmit } = setup({ query: createQueryWithCountAggregation() });
+
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      const [aggregations] = onSubmit.mock.lastCall;
+      expect(onSubmit).toHaveBeenCalled();
+      expect(aggregations).toHaveLength(2);
     });
   });
 });
