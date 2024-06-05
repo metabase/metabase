@@ -16,15 +16,19 @@ jobs:
       pull-requests: write
       issues: read
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
       - uses: actions/github-script@v7
         with:
           script: | # js
-            const { getLinkedIssues } = require('${{ github.workspace }}/release/utils/index.cjs');
+            const { getLinkedIssues } = require('${{ github.workspace }}/release/dist/index.cjs');
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
             const pullNumber = '${{ github.event.pull_request.number }}';
-
 
             function getMilestone(pullOrIssue) {
               // pull has pull.data.milestone, issue has issue.milestone
@@ -43,12 +47,13 @@ jobs:
             }
 
             // the github API doesn't expose linked issues, so we have to parse the body ourselves
-            const linkedIssues = getLinkedIssues(pull);
+            const prDescription = pull.data.body;
+            const linkedIssues = getLinkedIssues(prDescription);
 
             if (Array.isArray(linkedIssues) && linkedIssues.length > 0) {
               console.log('linked issue(s) found');
 
-              linkedIssues.forEach((issueId, index) => {
+              linkedIssues.forEach(async (issueId, index) => {
                 const issue = await github.rest.issues.get({
                   owner,
                   repo,

@@ -1,4 +1,4 @@
-export function getLinkedIssues(body) {
+export function getLinkedIssues(body: string) {
   const matches = body.match(
     /(close(s|d)?|fixe?(s|d)?|resolve(s|d)?) (#|https?:\/\/github.com\/.+\/issues\/)(\d+)/gi,
   );

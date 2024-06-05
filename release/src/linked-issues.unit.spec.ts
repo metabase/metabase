@@ -12,7 +12,8 @@ const closingKeywords = [
   "Resolved",
 ];
 
-const issueUrl = id => `https://github.com/metabase/metabase/issues/${id}`;
+const issueUrl = (id: number | string) =>
+  `https://github.com/metabase/metabase/issues/${id}`;
 
 describe("getLinkedIssues", () => {
   describe("null", () => {
