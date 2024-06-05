@@ -6,20 +6,21 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
-  createQuery,
   columnFinder,
+  createQuery,
+  createQueryWithClauses,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
+  ORDERS,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
-  ORDERS,
-  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -29,10 +30,10 @@ import { AggregationPicker } from "./AggregationPicker";
 function createQueryWithCountAggregation({
   metadata,
 }: { metadata?: Metadata } = {}) {
-  const initialQuery = createQuery({ metadata });
-  const count = findAggregationOperator(initialQuery, "count");
-  const clause = Lib.aggregationClause(count);
-  return Lib.aggregate(initialQuery, 0, clause);
+  return createQueryWithClauses({
+    query: createQuery({ metadata }),
+    aggregations: [{ operatorName: "count" }],
+  });
 }
 
 function createQueryWithMaxAggregation({
