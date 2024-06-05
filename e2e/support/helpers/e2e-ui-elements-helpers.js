@@ -264,20 +264,23 @@ export function newButton(menuItem) {
   return cy.findByTestId("app-bar").button("New");
 }
 
-export function multiSelectInput() {
-  return cy.findByRole("combobox").get("input").last();
+export function multiSelectInput(filter = ":eq(0)") {
+  return cy.findByRole("combobox").filter(filter).get("input").last();
 }
 
-export function multiAutocompleteInput() {
-  return cy.findByRole("combobox").get("input").last();
+export function multiAutocompleteInput(filter = ":eq(0)") {
+  return cy.findAllByRole("combobox").filter(filter).get("input").last();
 }
 
-export function multiAutocompleteValue(index) {
-  return cy.findByRole("combobox").get(`[value][index=${index}]`);
+export function multiAutocompleteValue(index, filter = ":eq(0)") {
+  return cy
+    .findByRole("combobox")
+    .filter(filter)
+    .get(`[value][index=${index}]`);
 }
 
-export function removeMultiAutocompleteValue(index) {
-  return multiAutocompleteValue(index)
+export function removeMultiAutocompleteValue(index, filter) {
+  return multiAutocompleteValue(index, filter)
     .findByRole("button", { hidden: true })
     .click();
 }
