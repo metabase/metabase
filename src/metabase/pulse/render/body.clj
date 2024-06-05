@@ -544,7 +544,7 @@
   [_chart-type render-type _timezone-id card dashcard data]
   (let [series-cards-results                   (:series-results dashcard)
         cards-with-data                        (->> series-cards-results
-                                                    (map result-k->data-k)
+                                                    (map #(clojure.set/rename-keys % {:result :data}))
                                                     (cons {:card card :data data})
                                                     (map add-dashcard-timeline-events)
                                                     (m/distinct-by #(get-in % [:card :id])))
