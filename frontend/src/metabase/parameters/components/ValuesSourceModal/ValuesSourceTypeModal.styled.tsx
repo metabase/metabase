@@ -54,7 +54,7 @@ export const ModalEmptyState = styled.div`
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: var(--mb-color-bg-light);
   color: ${color("text-medium")};

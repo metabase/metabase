@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 
 export const CardTitle = styled.span`
   font-weight: 700;
@@ -21,6 +20,6 @@ export const CardListItem = styled(Link)`
   }
 
   &:hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
   }
 `;

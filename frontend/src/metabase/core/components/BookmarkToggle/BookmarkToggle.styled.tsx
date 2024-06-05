@@ -42,8 +42,8 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
   width: 2rem;
 
   &:hover {
-    color: ${color("brand")};
-    background-color: ${color("bg-medium")};
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-bg-medium);
   }
 
   svg {

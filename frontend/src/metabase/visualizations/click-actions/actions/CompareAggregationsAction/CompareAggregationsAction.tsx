@@ -54,10 +54,11 @@ export const CompareAggregationsAction: LegacyDrill = ({
 
     return (
       <CompareAggregations
+        aggregations={aggregations}
         query={query}
         stageIndex={stageIndex}
-        onSubmit={handleSubmit}
         onClose={onClose}
+        onSubmit={handleSubmit}
       />
     );
   };

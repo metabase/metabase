@@ -26,7 +26,7 @@ export function fieldFilterForParameter(parameter) {
   return () => false;
 }
 
-export function columnFilterForParameter(parameter) {
+export function columnFilterForParameter(query, stageIndex, parameter) {
   const type = getParameterType(parameter);
   switch (type) {
     case "date":
@@ -42,6 +42,14 @@ export function columnFilterForParameter(parameter) {
     case "string":
       return column =>
         Lib.isStringOrStringLike(column) && !Lib.isLocation(column);
+    case "temporal-unit":
+      return column => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        return (
+          columnInfo.isBreakout &&
+          Lib.isTemporalBucketable(query, stageIndex, column)
+        );
+      };
   }
 
   return () => false;

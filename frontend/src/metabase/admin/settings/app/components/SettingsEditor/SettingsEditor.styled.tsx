@@ -7,6 +7,6 @@ export const NewVersionIndicator = styled.span`
   color: ${color("white")};
   font-size: 0.75em;
   font-weight: bold;
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
   border-radius: 0.5rem;
 `;

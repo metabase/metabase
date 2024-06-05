@@ -3,6 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { ComboChart } from "./ComboChart";
@@ -27,6 +28,7 @@ const renderingContext: RenderingContext = {
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   fontFamily: "Lato",
+  theme: DEFAULT_VISUALIZATION_THEME,
 };
 
 export const LineLinearXScale = Template.bind({});
@@ -95,6 +97,13 @@ LineShowDotsOff.args = {
 export const LineCustomYAxisRangeEqualsExtents = Template.bind({});
 LineCustomYAxisRangeEqualsExtents.args = {
   rawSeries: data.lineCustomYAxisRangeEqualsExtents as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const CustomYAxisRangeWithColumnScaling = Template.bind({});
+CustomYAxisRangeWithColumnScaling.args = {
+  rawSeries: data.customYAxisRangeWithColumnScaling as any,
   dashcardSettings: {},
   renderingContext,
 };
@@ -749,6 +758,13 @@ BarStackedSeriesLabelsNormalizedAutoCompactness.args = {
 export const BarStackedLabelsNullVsZero = Template.bind({});
 BarStackedLabelsNullVsZero.args = {
   rawSeries: data.barStackedLabelsNullVsZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarMinHeightLimit = Template.bind({});
+BarMinHeightLimit.args = {
+  rawSeries: data.barMinHeightLimit as any,
   dashcardSettings: {},
   renderingContext,
 };

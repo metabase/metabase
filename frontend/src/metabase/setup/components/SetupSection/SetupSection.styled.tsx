@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const SectionHeader = styled.div`
@@ -31,7 +31,7 @@ export const SectionDescription = styled.div`
 `;
 
 export const SectionButton = styled(Button)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: 2.5rem;
   height: 2.5rem;
 `;

@@ -7,7 +7,7 @@ import { space } from "metabase/styled-components/theme";
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
   .react-resizable-handle {
     display: none;
   }
@@ -31,7 +31,7 @@ export const ModalActions = styled.div`
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const ModalRoot = styled.div`
@@ -44,7 +44,7 @@ export const ModalLeft = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid var(--mb-color-border);
 `;
 
 export const ModalRight = styled.div`
