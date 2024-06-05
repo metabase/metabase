@@ -65,7 +65,6 @@ import type {
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
-import { DashboardParameterList } from "../DashboardParameterList";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
@@ -357,10 +356,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
 
     const buttons = [];
     const extraButtons = [];
-
-    if (isFullscreen) {
-      buttons.push(<DashboardParameterList isFullscreen={isFullscreen} />);
-    }
 
     if (isEditing) {
       const activeSidebarName = sidebar.name;

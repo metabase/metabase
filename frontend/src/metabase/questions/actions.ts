@@ -1,21 +1,55 @@
+import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 import { loadMetadataForDependentItems } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { Card } from "metabase-types/api";
+import type { Card, TableId } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export interface LoadMetadataOptions {
   reload?: boolean;
 }
 
-export const loadMetadataForCard = (
-  card: Card,
-  options?: LoadMetadataOptions,
-) => loadMetadataForCards([card], options);
+export const loadMetadataForTable =
+  (tableId: TableId, options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    try {
+      await dispatch(Tables.actions.fetchMetadata({ id: tableId }, options));
+    } catch (error) {
+      console.error("Error in loadMetadataForTable", error);
+    }
+  };
+
+export const loadMetadataForCard =
+  (card: Card, options?: LoadMetadataOptions) => async (dispatch: Dispatch) => {
+    await dispatch(loadMetadataForCards([card], options));
+  };
 
 export const loadMetadataForCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const savedCards = cards.filter(card => isSavedCard(card));
+    const adhocCards = cards.filter(card => !isSavedCard(card));
+    await Promise.all([
+      dispatch(loadMetadataForSavedCards(savedCards, options)),
+      dispatch(loadMetadataForAdhocCards(adhocCards, options)),
+    ]);
+  };
+
+const loadMetadataForSavedCards =
+  (cards: Card[], options?: LoadMetadataOptions) =>
+  async (dispatch: Dispatch) => {
+    const actions = cards.map(card =>
+      Questions.actions.fetchMetadata({ id: card.id }, options),
+    );
+    return Promise.all(actions.map(dispatch)).catch(error => {
+      console.error("Error in loadMetadataForSavedCards", error);
+    });
+  };
+
+const loadMetadataForAdhocCards =
   (cards: Card[], options?: LoadMetadataOptions) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const getDependencies = () => {
@@ -24,21 +58,13 @@ export const loadMetadataForCards =
       const metadata = getMetadata(getState());
       return cards
         .map(card => new Question(card, metadata))
-        .flatMap(question => {
-          const dependencies = [...Lib.dependentMetadata(question.query())];
-          if (question.isSaved() && question.type() !== "question") {
-            const tableId = getQuestionVirtualTableId(question.id());
-            dependencies.push({ id: tableId, type: "table" });
-
-            if (metadata.table(tableId)) {
-              const adhocQuestion = question.composeQuestionAdhoc();
-              dependencies.push(
-                ...Lib.dependentMetadata(adhocQuestion.query()),
-              );
-            }
-          }
-          return dependencies;
-        });
+        .flatMap(question =>
+          Lib.dependentMetadata(
+            question.query(),
+            question.id(),
+            question.type(),
+          ),
+        );
     };
     await dispatch(loadMetadata(getDependencies, [], options));
   };

@@ -1,16 +1,21 @@
 (ns metabase.lib.fe-util
   (:require
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.formatting.date :as fmt.date]
@@ -151,6 +156,15 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
+(defn- query-dependents-foreign-keys
+  [metadata-providerable columns]
+  (for [column columns
+        :let [fk-target-field-id (:fk-target-field-id column)]
+        :when (and fk-target-field-id (lib.types.isa/foreign-key? column))]
+    (if-let [fk-target-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+      {:type :table, :id (:table-id fk-target-field)}
+      {:type :field, :id fk-target-field-id})))
+
 (defn- query-dependents
   [metadata-providerable query-or-join]
   (let [base-stage (first (:stages query-or-join))
@@ -159,18 +173,20 @@
      (when (pos? database-id)
        [{:type :database, :id database-id}
         {:type :schema,   :id database-id}])
-     ;; cf. frontend/src/metabase-lib/queries/NativeQuery.ts
      (when (= (:lib/type base-stage) :mbql.stage/native)
        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
              :when (and (= tag-type :dimension)
                         (= dim-tag :field)
                         (integer? id))]
          {:type :field, :id id}))
-     ;; cf. frontend/src/metabase-lib/Question.ts and frontend/src/metabase-lib/queries/StructuredQuery.ts
      (when-let [card-id (:source-card base-stage)]
-       [{:type :table, :id (str "card__" card-id)}])
+       (concat [{:type :table, :id (str "card__" card-id)}]
+               (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
+                 (query-dependents-foreign-keys metadata-providerable card-columns))))
      (when-let [table-id (:source-table base-stage)]
-       [{:type :table, :id table-id}])
+       (cons {:type :table, :id table-id}
+             (query-dependents-foreign-keys metadata-providerable
+                                            (lib.metadata/fields metadata-providerable table-id))))
      (for [stage (:stages query-or-join)
            join (:joins stage)
            dependent (query-dependents metadata-providerable join)]
@@ -179,7 +195,7 @@
 (def ^:private DependentItem
   [:and
    [:map
-    [:type [:enum :database :schema :table :field]]]
+    [:type [:enum :database :schema :table :card :field]]]
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
@@ -188,6 +204,19 @@
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required
-  for the FE to function properly."
-  [query :- ::lib.schema/query]
-  (into [] (distinct) (query-dependents query query)))
+  for the FE to function properly.  `card-id` is provided
+  when editing the card with that ID and in this case `a-query` is its
+  definition (i.e., the dataset-query). `card-type` specifies the type
+  of the card being created or edited."
+  [query     :- ::lib.schema/query
+   card-id   :- [:maybe ::lib.schema.id/card]
+   card-type :- ::lib.schema.metadata/card.type]
+  (into []
+        (distinct)
+        (concat
+         (query-dependents query query)
+         (when (and (some? card-id)
+                    (#{:model :metric} card-type))
+           (cons {:type :table, :id (str "card__" card-id)}
+                 (when-let [card (lib.metadata/card query card-id)]
+                   (query-dependents query (lib.query/query query card))))))))

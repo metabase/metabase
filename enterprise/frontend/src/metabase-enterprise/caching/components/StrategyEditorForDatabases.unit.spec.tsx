@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen } from "__support__/ui";
@@ -63,65 +64,63 @@ describe("StrategyEditorForDatabases", () => {
     const editButton = await screen.findByLabelText(
       `Edit default policy (currently: Duration)`,
     );
-    editButton.click();
+    await userEvent.click(editButton);
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
-    await act(async () => {
-      const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /keep the cache for a number of hours/i,
-      });
-      expect(durationStrategyRadioButton).toBeChecked();
-
-      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
-
-      await changeInput(/Cache results for this many hours/, 24, 48);
+    const durationStrategyRadioButton = await screen.findByRole("radio", {
+      name: /keep the cache for a number of hours/i,
     });
+    expect(durationStrategyRadioButton).toBeChecked();
 
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
+
+    await changeInput(/Cache results for this many hours/, 24, 48);
+
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
 
     expect(
       await screen.findByLabelText(`Edit default policy (currently: Duration)`),
     ).toBeInTheDocument();
 
-    await act(async () => {
-      const noCacheStrategyRadioButton = await screen.findByRole("radio", {
-        name: /Don.t cache/i,
-      });
-      noCacheStrategyRadioButton.click();
-
-      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
-
-      (await screen.findByTestId("strategy-form-submit-button")).click();
+    const noCacheStrategyRadioButton = await screen.findByRole("radio", {
+      name: /Don.t cache/i,
     });
+    await userEvent.click(noCacheStrategyRadioButton);
+
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
 
     expect(
-      await screen.findByRole("button", { name: /Saved/i }),
-    ).toBeInTheDocument();
+      await screen.findByTestId("strategy-form-submit-button"),
+    ).toHaveTextContent(/Saved/i);
 
     expect(await screen.findByLabelText(/Edit default policy/)).toHaveAttribute(
       "aria-label",
       "Edit default policy (currently: No caching)",
     );
 
-    await act(async () => {
-      const adaptiveStrategyRadioButton = await screen.findByRole("radio", {
-        name: /Adaptive/i,
-      });
-      adaptiveStrategyRadioButton.click();
+    const adaptiveStrategyRadioButton = await screen.findByRole("radio", {
+      name: /Adaptive/i,
     });
+    await userEvent.click(adaptiveStrategyRadioButton);
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
     expect(await getSaveButton()).toBeInTheDocument();
 
-    await act(async () => {
-      await changeInput(/minimum query duration/i, 1, 5);
-      await changeInput(/multiplier/i, 10, 3);
-    });
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
 
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
 
     expect(
       await screen.findByLabelText(`Edit default policy (currently: Adaptive)`),
@@ -132,22 +131,22 @@ describe("StrategyEditorForDatabases", () => {
     const editButton = await screen.findByLabelText(
       `Edit policy for database 'Database 1' (currently: Adaptive)`,
     );
-    editButton.click();
+    await userEvent.click(editButton);
 
     expect(
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
-    await act(async () => {
-      const noCacheStrategyRadioButton = await screen.findByRole("radio", {
-        name: /Don.t cache/i,
-      });
-      noCacheStrategyRadioButton.click();
-
-      expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    const noCacheStrategyRadioButton = await screen.findByRole("radio", {
+      name: /Don.t cache/i,
     });
+    await userEvent.click(noCacheStrategyRadioButton);
 
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
 
     expect(
       await screen.findByLabelText(
@@ -155,20 +154,21 @@ describe("StrategyEditorForDatabases", () => {
       ),
     ).toBeInTheDocument();
 
-    await act(async () => {
-      const durationStrategyRadioButton = await screen.findByRole("radio", {
-        name: /keep the cache for a number of hours/i,
-      });
-      durationStrategyRadioButton.click();
-
-      expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
-
-      await changeInput(/Cache results for this many hours/, 24, 48);
+    const durationStrategyRadioButton = await screen.findByRole("radio", {
+      name: /keep the cache for a number of hours/i,
     });
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    await userEvent.click(durationStrategyRadioButton);
+
+    expect((await screen.findAllByRole("spinbutton")).length).toBe(1);
+
+    await changeInput(/Cache results for this many hours/, 24, 48);
+
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
     expect(
-      await screen.findByRole("button", { name: /Saved/i }),
-    ).toBeInTheDocument();
+      await screen.findByTestId("strategy-form-submit-button"),
+    ).toHaveTextContent(/Saved/i);
 
     expect(
       await screen.findByLabelText(/Edit policy for database 'Database 1'/),
@@ -181,7 +181,7 @@ describe("StrategyEditorForDatabases", () => {
     const multiplierStrategyRadioButton = await screen.findByRole("radio", {
       name: /Adaptive/i,
     });
-    multiplierStrategyRadioButton.click();
+    await userEvent.click(multiplierStrategyRadioButton);
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
 
@@ -190,7 +190,9 @@ describe("StrategyEditorForDatabases", () => {
       await changeInput(/multiplier/i, 10, 3);
     });
 
-    (await screen.findByTestId("strategy-form-submit-button")).click();
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
 
     expect(
       await screen.findByLabelText(

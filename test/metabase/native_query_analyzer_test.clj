@@ -38,7 +38,7 @@
         (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
                (q "select id from venues"))))
       (testing "quotes stop case matching"
-        ;; MySQL does case-insensitive string comparisons by default; quoting does not make it conside case
+        ;; MySQL does case-insensitive string comparisons by default; quoting does not make it consider case
         ;; in field names either, so it's consistent behavior
         (if (= (mdb.connection/db-type) :mysql)
           (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
@@ -49,7 +49,9 @@
                (q "select \"ID\" from venues"))))
       (testing "you can mix quoted and unquoted names"
         (is (= {:direct #{(mt/id :venues :id) (mt/id :venues :name)} :indirect nil}
-               (q "select v.\"ID\", v.name from venues"))))
+               (q "select v.\"ID\", v.name from venues")))
+        (is (= {:direct #{(mt/id :venues :id) (mt/id :venues :name)} :indirect nil}
+               (q "select v.`ID`, v.name from venues"))))
       (testing "It will find all relevant columns if query is not specific"
         (is (= {:direct #{(mt/id :venues :id) (mt/id :checkins :id)} :indirect nil}
                (q "select id from venues join checkins"))))

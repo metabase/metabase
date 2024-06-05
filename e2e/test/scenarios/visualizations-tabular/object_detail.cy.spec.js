@@ -132,26 +132,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       name: "34070",
       query: {
         "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }]],
         joins: [
           {
-            fields: "all",
+            fields: [["field", REVIEWS.RATING, { "join-alias": "Products" }]],
             alias: "Products",
             condition: [
               "=",
-              [
-                "field",
-                PRODUCTS.ID,
-                {
-                  "base-type": "type/BigInteger",
-                },
-              ],
+              ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
               [
                 "field",
                 REVIEWS.PRODUCT_ID,
-                {
-                  "base-type": "type/BigInteger",
-                  "join-alias": "Products",
-                },
+                { "base-type": "type/BigInteger", "join-alias": "Products" },
               ],
             ],
             "source-table": REVIEWS_ID,
@@ -163,14 +155,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     createQuestion(questionDetails, { visitQuestion: true });
 
-    // there should be a hover instead of click
-    // but realHover is flaky
-    cy.get("[data-testid=cell-data]").contains("4966277046676").click();
-
-    cy.findByTestId("detail-shortcut")
-      .findByRole("button")
-      .should("be.visible")
-      .click();
+    cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
     cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
 

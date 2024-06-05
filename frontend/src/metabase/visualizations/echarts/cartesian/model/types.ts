@@ -100,7 +100,7 @@ export type TimeSeriesAxisFormatter = (
   value: RowValue,
   unit?: DateTimeAbsoluteUnit,
 ) => string;
-export type SeriesFormatters = Record<DataKey, LabelFormatter>;
+export type SeriesFormatters = Record<DataKey, LabelFormatter | undefined>;
 export type StackedSeriesFormatters = { [T in StackDisplay]?: LabelFormatter };
 
 export type DateRange = [Dayjs, Dayjs];
@@ -192,6 +192,27 @@ export type StackModel = {
   seriesKeys: DataKey[];
 };
 
+type BaseChartDataDensity = {
+  type: string;
+  averageLabelWidth: number;
+  totalNumberOfLabels: number;
+};
+
+export type ChartDataDensity =
+  | WaterFallChartDataDensity
+  | ComboChartDataDensity;
+
+export type WaterFallChartDataDensity = BaseChartDataDensity & {
+  type: "waterfall";
+};
+
+export type ComboChartDataDensity = BaseChartDataDensity & {
+  type: "combo";
+  seriesDataKeysWithLabels: DataKey[];
+  stackedDisplayWithLabels: StackDisplay[];
+  totalNumberOfDots: number;
+};
+
 export type BaseCartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
@@ -211,13 +232,21 @@ export type BaseCartesianChartModel = {
   seriesIdToDataKey?: Record<string, DataKey>;
 
   trendLinesModel?: TrendLinesModel;
-  seriesLabelsFormatters?: SeriesFormatters;
-  stackedLabelsFormatters?: StackedSeriesFormatters;
-  waterfallLabelFormatter?: LabelFormatter;
+  seriesLabelsFormatters: SeriesFormatters;
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {
+  stackedLabelsFormatters: StackedSeriesFormatters;
+  dataDensity: ComboChartDataDensity;
+};
+
+export type ScatterPlotModel = BaseCartesianChartModel & {
   bubbleSizeDomain: Extent | null;
+};
+
+export type WaterfallChartModel = BaseCartesianChartModel & {
+  waterfallLabelFormatter: LabelFormatter | undefined;
+  dataDensity: WaterFallChartDataDensity;
 };
 
 export type ShowWarning = (warning: string) => void;

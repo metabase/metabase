@@ -1,8 +1,8 @@
-import type { CartesianChartModel, DataKey } from "../model/types";
+import type { DataKey, BaseCartesianChartModel } from "../model/types";
 
 export function getSeriesYAxisIndex(
   dataKey: DataKey,
-  chartModel: CartesianChartModel,
+  chartModel: BaseCartesianChartModel,
 ): number {
   const { leftAxisModel, rightAxisModel } = chartModel;
   const hasSingleYAxis = leftAxisModel == null || rightAxisModel == null;

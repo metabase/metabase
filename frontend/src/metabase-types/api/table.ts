@@ -90,7 +90,7 @@ export interface GetTableRequest {
   include_editable_data_model?: boolean;
 }
 
-export interface GetTableMetadataRequest {
+export interface GetTableQueryMetadataRequest {
   id: TableId;
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;

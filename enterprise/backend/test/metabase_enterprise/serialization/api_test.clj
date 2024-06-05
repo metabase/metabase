@@ -79,7 +79,7 @@
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
-                (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "Just an error" {})))]
+                (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "[test] deliberate error message" {})))]
                   (let [res   (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false)
                         lines (str/split-lines (slurp (io/input-stream res)))]
@@ -127,7 +127,8 @@
                   (is (= 4 (count @files*))))
 
                 (testing "Snowplow export event was sent"
-                  (is (=? {"event"           "serialization_export"
+                  (is (=? {"event"           "serialization"
+                           "direction"       "export"
                            "collection"      (str (:id coll))
                            "all_collections" false
                            "data_model"      false
@@ -154,7 +155,8 @@
                       (is (= (:name card)
                              (t2/select-one-fn :name :model/Card :id (:id card)))))
                     (testing "Snowplow import event was sent"
-                      (is (=? {"event"         "serialization_import"
+                      (is (=? {"event"         "serialization"
+                               "direction"     "import"
                                "duration_ms"   pos?
                                "source"        "api"
                                "models"        "Card,Collection,Dashboard"
@@ -164,13 +166,14 @@
                               (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))
 
               (testing "ERROR /api/ee/serialization/export"
-                (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "Just an error" {})))]
+                (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "[test] deliberate error message" {})))]
                   (is (-> (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
                                                 :collection (:id coll) :data_model false :settings false)
                           ;; consume response to remove on-disk data
                           io/input-stream))
                   (testing "Snowplow event about error was sent"
-                    (is (=? {"event"           "serialization_export"
+                    (is (=? {"event"           "serialization"
+                             "direction"       "export"
                              "duration_ms"     pos?
                              "source"          "api"
                              "count"           0
@@ -181,7 +184,7 @@
                              "field_values"    false
                              "secrets"         false
                              "success"         false
-                             "error_message"   "clojure.lang.ExceptionInfo: Just an error {}"}
+                             "error_message"   "clojure.lang.ExceptionInfo: [test] deliberate error message {}"}
                            (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))))
 
               (testing "Only admins can export/import"

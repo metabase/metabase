@@ -113,7 +113,6 @@ export function JoinComplete({
             query={query}
             stageIndex={stageIndex}
             table={rhsTable}
-            tableName={rhsTableName}
             color={color}
             isReadOnly={isReadOnly}
             columnPicker={

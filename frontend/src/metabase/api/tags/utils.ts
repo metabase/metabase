@@ -12,7 +12,7 @@ import type {
   Dashboard,
   DashboardSubscription,
   Database,
-  DatabaseCandidate,
+  DatabaseXray,
   Field,
   FieldDimension,
   FieldId,
@@ -33,6 +33,9 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  DashboardQueryMetadata,
+  CardQueryMetadata,
+  CardId,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -134,6 +137,18 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
   ];
 }
 
+export function provideCardMetadataTags(
+  id: CardId,
+  metadata: CardQueryMetadata,
+): TagDescription<TagType>[] {
+  return [
+    idTag("card", id),
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
+  ];
+}
+
 export function provideCloudMigrationTags(
   migration: CloudMigration,
 ): TagDescription<TagType>[] {
@@ -172,7 +187,7 @@ export function provideCollectionTags(
 }
 
 export function provideDatabaseCandidateListTags(
-  candidates: DatabaseCandidate[],
+  candidates: DatabaseXray[],
 ): TagDescription<TagType>[] {
   return [
     listTag("schema"),
@@ -181,7 +196,7 @@ export function provideDatabaseCandidateListTags(
 }
 
 export function provideDatabaseCandidateTags(
-  candidate: DatabaseCandidate,
+  candidate: DatabaseXray,
 ): TagDescription<TagType>[] {
   return [idTag("schema", candidate.schema)];
 }
@@ -223,6 +238,18 @@ export function provideDashboardTags(
     ...(dashboard.collection
       ? provideCollectionTags(dashboard.collection)
       : []),
+  ];
+}
+
+export function provideDashboardMetadataTags(
+  metadata: DashboardQueryMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
+    ...provideCardListTags(metadata.cards),
+    ...provideDashboardListTags(metadata.dashboards),
   ];
 }
 

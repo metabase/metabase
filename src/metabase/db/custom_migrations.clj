@@ -31,6 +31,7 @@
    [toucan2.execute :as t2.execute])
   (:import
    (java.util Locale)
+   (javax.sql DataSource)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -1030,8 +1031,23 @@
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
 
+(defn- mariadb?
+  [ds]
+  (with-open [conn (.getConnection ^DataSource ds)]
+    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+
+(defn- db-type*
+  "Like [[metabase.connection/db-type]] but distinguishes between mysql and mariadb."
+  []
+  (let [db-type (mdb.connection/db-type)]
+    (if (= db-type :mysql)
+      (if (mariadb? (mdb.connection/data-source))
+        :mariadb
+        :mysql)
+      db-type)))
+
 (define-reversible-migration CardRevisionAddType
-  (case (mdb.connection/db-type)
+  (case (db-type*)
     :postgres
     ;; postgres doesn't allow `\u0000` in text when converting to jsonb, so we need to remove them before we can
     ;; parse the json. We use negative look behind to avoid matching `\\u0000` (metabase#40835)
@@ -1054,7 +1070,10 @@
                        ELSE 'question'
                    END)
                WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
-    :h2
+
+    ;; json_extract on mariadb throws an error if the json is more than 32 levels nested. See #41924
+    ;; So we do this in clojure land for mariadb
+    (:h2 :mariadb)
     (let [migrate! (fn [revision]
                      (let [object     (json/parse-string (:object revision) keyword)
                            new-object (assoc object :type (if (:dataset object)
@@ -1066,7 +1085,8 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-  (case (mdb.connection/db-type)
+
+  (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
                 SET object = jsonb_set(
@@ -1081,7 +1101,7 @@
 
     :mysql
     (do
-      (t2/query ["UPDATE revision
+     (t2/query ["UPDATE revision
                  SET object = JSON_SET(
                      object,
                      '$.dataset',
@@ -1090,11 +1110,11 @@
                          THEN true ELSE false
                      END)
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
-      (t2/query ["UPDATE revision
+     (t2/query ["UPDATE revision
                  SET object = JSON_REMOVE(object, '$.type')
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
 
-    :h2
+    (:h2 :mariadb)
     (let [rollback! (fn [revision]
                       (let [object     (json/parse-string (:object revision) keyword)
                             new-object (-> object
@@ -1342,7 +1362,7 @@
 (defn- area-bar-stacked-viz-migration
   [{display :display viz :visualization_settings :as card}]
   (if (and (#{:area :bar "area" "bar"} display)
-             (:stackable.stack_type viz))
+           (:stackable.stack_type viz))
     (let [actual-display (or (:stackable.stack_display viz) display)
           new-viz        (m/update-existing viz :series_settings update-vals (fn [m] (dissoc m :display)))]
       (assoc card

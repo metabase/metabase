@@ -49,7 +49,7 @@
   com.snowplowanalytics/snowplow-java-tracker
                                             {:mvn/version "1.0.1"               ; Snowplow analytics
                                              :exclusions [com.fasterxml.jackson.core/jackson-databind]}
-  com.taoensso/nippy                        {:mvn/version "3.3.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
                                             {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
@@ -76,7 +76,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.29"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.1.44"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector

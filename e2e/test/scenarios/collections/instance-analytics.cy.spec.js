@@ -83,7 +83,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           expect(response.statusCode).to.eq(200);
         });
 
-        modal().button("Not now").click();
+        cy.button("Not now").click();
 
         cy.log("saving copied question");
 

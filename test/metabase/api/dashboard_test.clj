@@ -2254,6 +2254,7 @@
                 :series                 [{:name                   "Series Card"
                                           :description            nil
                                           :display                :table
+                                          :type                   :question
                                           :dataset_query          {}
                                           :visualization_settings {}}]
                 :created_at             true
@@ -3293,7 +3294,8 @@
           (is (= []
                  (#'api.dashboard/chain-filter-constraints dashboard {"qqq" "www"}))))))))
 
-(defn- card-fields-from-table-metadata
+;; See the commented-out test below which calls this helper, and the TODO on why it's disabled.
+#_(defn- card-fields-from-table-metadata
   [card-id]
   (:fields (mt/user-http-request :rasta :get 200 (format "/table/card__%d/query_metadata" card-id))))
 
@@ -3307,7 +3309,7 @@
                  (mt/user-http-request :rasta :get 200 url)))))
 
       (testing "it only returns search matches"
-        (mt/let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
+        (mt/let-url [url (chain-filter-search-url dashboard (:card param-keys) "afr")]
           (is (= {:values          [["African"]]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))))
@@ -3372,7 +3374,16 @@
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red"))))))))
 
-  (testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
+  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by MLv2,
+  ;; the FE does not use the /api/table/:card__id/query_metadata API call to determine the fields which can be filtered
+  ;; on a saved question. It uses `Lib.filterableColumns` instead, which given a saved question with aggregations in the
+  ;; last stage will return the pre-aggregation columns on that last stage. That allows linking the dashboard filter not
+  ;; to the aggregations and breakouts, but to the pre-aggregation columns which feed into the aggregations.
+  ;; This is typically what's wanted for filtering an aggregated query in a dashboard: filtering SUM(subtotal) to a
+  ;; time range, product category, etc.
+  ;; This test should either (1) be rehabilitated to use MLv2 to get the set of columns for filtering a dashcard (like
+  ;; the FE); or (2) just be dropped if it's not providing value.
+  #_(testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
     ;; FE use the id returned by /api/table/:card__id/query_metadata
     ;; for the `values_source_config.value_field`, so we need to test to make sure
     ;; the id is a valid field that we could use to retrieve values.
@@ -3394,6 +3405,7 @@
 
        (let [mbql-card-fields   (card-fields-from-table-metadata mbql-card-id)
              native-card-fields (card-fields-from-table-metadata native-card-id)
+             _ (prn "mbql-card-fields" mbql-card-fields)
              fields->parameter  (fn [fields card-id]
                                   (for [{:keys [id field_ref name]} fields]
                                     {:id                   (format "id_%s" name)
@@ -3443,7 +3455,9 @@
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dashboard-card-query-url [dashboard-id card-id dashcard-id]
+(defn dashboard-card-query-url
+  "The URL for a request to execute a query for a Card on a Dashboard."
+  [dashboard-id card-id dashcard-id]
   (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
 
 (defn- dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
@@ -4452,3 +4466,91 @@
                            :crowberto :post 200
                            (format "/dashboard/%s/dashcard/%s/card/%s/query/%s?format_rows=%s"                                   dashboard-id dashcard-id card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format)))))))))))
+
+(deftest dependent-metadata-test
+  (mt/with-temp
+    [Dashboard           {dashboard-id :id}  {}
+     Dashboard           {link-dash :id}     {}
+     Card                {link-card :id}     {:dataset_query (mt/mbql-query reviews)
+                                              :database_id (mt/id)}
+     Card                {card-id-1 :id}     {:dataset_query (mt/mbql-query products)
+                                              :database_id (mt/id)}
+     Card                {card-id-2 :id}     {:dataset_query
+                                              {:type     :native
+                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
+                                                          :template-tags
+                                                          {"id"      {:name         "id"
+                                                                      :display-name "Id"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :id) nil]
+                                                                      :widget-type  :id
+                                                                      :default      nil}
+                                                           "name"    {:name         "name"
+                                                                      :display-name "Name"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :name) nil]
+                                                                      :widget-type  :category
+                                                                      :default      nil}
+                                                           "source"  {:name         "source"
+                                                                      :display-name "Source"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :people :source) nil]
+                                                                      :widget-type  :category
+                                                                      :default      nil}
+                                                           "user_id" {:name         "user_id"
+                                                                      :display-name "User"
+                                                                      :type         :dimension
+                                                                      :dimension    [:field (mt/id :orders :user_id) nil]
+                                                                      :widget-type  :id
+                                                                      :default      nil}}}
+                                               :database (mt/id)}
+                                              :query_type :native
+                                              :database_id (mt/id)}
+     DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id,
+                                              :card_id card-id-1
+                                              :visualization_settings {:column_settings
+                                                                       {"[\"name\", 0]" ;; FE reference that must be json formatted
+                                                                        {:click_behavior {:type :link
+                                                                                          :linkType "dashboard"
+                                                                                          :targetId link-dash}}}}}
+     DashboardCard       _                   {:dashboard_id dashboard-id,
+                                              :card_id card-id-2
+                                              :visualization_settings {:click_behavior {:type :link
+                                                                                        :linkType "question"
+                                                                                        :targetId link-card}}}
+     Card                {series-id-1 :id}   {:name "Series Card 1"
+                                              :dataset_query (mt/mbql-query checkins)
+                                              :database_id (mt/id)}
+     Card                {series-id-2 :id}   {:name "Series Card 2"
+                                              :dataset_query (mt/mbql-query venues)
+                                              :database_id (mt/id)}
+     DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
+                                              :card_id series-id-1
+                                              :position 0}
+     DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1,
+                                              :card_id series-id-2
+                                              :position 1}]
+    (is (=?
+          {:fields (sort-by :id
+                            [{:id (mt/id :people :id)}
+                             {:id (mt/id :orders :user_id)}
+                             {:id (mt/id :people :source)}
+                             {:id (mt/id :people :name)}])
+           :tables (sort-by :id [{:id (mt/id :categories)}
+                                 {:id (mt/id :users)}
+                                 {:id (mt/id :checkins)}
+                                 {:id (mt/id :reviews)}
+                                 {:id (mt/id :products)
+                                  :fields sequential?
+                                  :db map?
+                                  :dimension_options map?}
+                                 {:id (mt/id :venues)}])
+           :cards [{:id link-card}]
+           :databases [{:id (mt/id) :engine string?}]
+           :dashboards [{:id link-dash}]}
+          (-> (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))
+              ;; The output is so large, these help debugging
+              #_#_#_
+              (update :fields #(map (fn [x] (select-keys x [:id])) %))
+              (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+              (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))

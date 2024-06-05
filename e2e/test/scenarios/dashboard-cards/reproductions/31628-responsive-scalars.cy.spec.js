@@ -33,10 +33,8 @@ const CARDS_SIZE_1X = {
 
 const VIEWPORTS = [
   { width: 375, height: 667, openSidebar: false },
-  { width: 820, height: 800, openSidebar: true },
   { width: 820, height: 800, openSidebar: false },
-  { width: 1200, height: 800, openSidebar: true },
-  { width: 1440, height: 800, openSidebar: true },
+  { width: 1200, height: 800, openSidebar: false },
   { width: 1440, height: 800, openSidebar: false },
 ];
 

@@ -318,7 +318,11 @@
   with-test-drivers]
 
  [schema-migrations-test.impl
-  with-temp-empty-app-db])
+  with-temp-empty-app-db]
+
+ [tu.dr
+  dynamic-value
+  with-dynamic-redefs])
 
 ;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
 (p/import-fn hawk.approx/malli malli=?)
@@ -327,11 +331,3 @@
 (alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
   it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
   global state of the application database.")
-
-;; Cursive does not understand p/import-macro, so we just proxy this manually
-(defmacro with-dynamic-redefs
-  "A thread-safe version of with-redefs. It only support functions, and adds a fair amount of overhead.
-   It works by replacing each original definition with a proxy the first time it is redefined.
-   This proxy uses a dynamic mapping to check whether the function is currently redefined."
-  [bindings & body]
-  `(tu.dr/with-dynamic-redefs ~bindings ~@body))
