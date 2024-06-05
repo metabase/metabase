@@ -2,17 +2,13 @@
   "Methods for creating DDL statements for things like creating/dropping databases and loading data."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x])
-  (:import
-   [java.sql Date]
-   [java.time LocalDate LocalDateTime ZonedDateTime]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,20 +108,7 @@
                                     (if (and (vector? value)
                                              (= (first value) :raw))
                                       value
-                                      (sql.qp/->honeysql driver (cond
-                                                                  (instance? LocalDateTime value)
-                                                                  (t/instant->sql-timestamp (t/instant (t/offset-date-time value (t/zone-id "UTC"))))
-
-                                                                  (instance? LocalDate value)
-                                                                                     ;; surprising that hint is necessary
-                                                                  (Date/valueOf ^LocalDate value)
-
-                                                                                     ;; for zoned date time
-                                                                  (instance? ZonedDateTime value)
-                                                                  (t/instant->sql-timestamp value)
-
-                                                                  :else
-                                                                  value)))))
+                                      (sql.qp/->honeysql driver value))))
                                 columns)
                           (catch Throwable e
                             (throw (ex-info (format "Error compiling test data row: %s" (ex-message e))
