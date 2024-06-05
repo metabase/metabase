@@ -1,4 +1,7 @@
 (ns metabase.pulse.render.body
+  ;; TODO toucan2 and qp namespaces should be banned from this namespace,
+  ;; This namespace shouldn't require anything form DB or executing query.
+  ;; If it needs anything, it should be provided from upstream
   (:require
    [clojure.string :as str]
    [hiccup.core :refer [h]]
@@ -460,6 +463,7 @@
 (defn dashcard-timeline-events
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
+  ;; TODO: we shouldn't fetch the timeline here, figure a way to make it available from upstream
   (let [timelines (t2/select :model/Timeline
                              :collection_id collection_id
                              :archived false)]
@@ -540,6 +544,7 @@
 (mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [combined-cards-results (if dashcard
+                                 ;; TODO: we shouldn't execute cards here, figure a way to make it available from upstream
                                  (pu/execute-multi-card card dashcard)
                                  [(pu/execute-card {:creator_id (:creator_id card)} (:id card))])
         cards-with-data        (m/distinct-by

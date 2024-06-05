@@ -9,7 +9,6 @@
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]

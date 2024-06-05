@@ -30,21 +30,23 @@
                               ;; should be model/Alert in the future
                               [:alert [:and (ms/InstanceOf :model/Pulse)
                                        [:map [:card_id pos-int?]]]]]]
-    [:dashboard-subscription [:map
+    [:dashboard-subscription [:map {:closed true}
                               ;; should be model/DashboardSubscription in the future
-                              [:dashboard-subscription (ms/InstanceOf :model/Pulse)]]]]])
+                              [:dashboard-subscription [:and (ms/InstanceOf :model/Pulse)
+                                                        [:map [:dashboard_id pos-int?]]]]]]]])
 
 (def ^:private Payload
   [:multi {:dispatch :payload-type}
-   [:alert [:map
+   [:alert [:map {:closed true}
             [:payload-type [:= :alert]]
+            [:alert        :map]
             [:card         :map]
             [:result       :map]]]
-   [:dashboard-subscription [:map
-                             [:payload-type [:= :dashboard-subscription]]
-                             [:dashboard    :map]
-                             [:result       [:sequential :map]]]]])
-
+   [:dashboard-subscription [:map {:closed true}
+                             [:payload-type           [:= :dashboard-subscription]]
+                             [:dashboard              :map]
+                             [:dashboard-subscription :map]
+                             [:result                 [:sequential :map]]]]])
 
 (mu/defmethod notification->payload-info :alert :- PayloadInfo
   [notification :- Notification]
@@ -63,6 +65,7 @@
   (let [card (t2/select-one :model/Card :id (get-in payload-info [:alert :card_id]) :archived false)]
     {:payload-type :alert
      :card         card
+     :alert        (:alert payload-info)
      :result       (noti.execute/execute-card (:creator_id payload-info) card)}))
 
 (mu/defmethod execute-payload :dashboard-subscription :- Payload
@@ -111,12 +114,13 @@
                          nil)))))
 
 (comment
- (def alert-id 13)
+ (def alert-id 14)
  (def crowberto-id (t2/select-one-pk :model/User :email "crowberto@metabase.com"))
 
- (execute-payload {:payload_type :alert
-                   :payload_id   alert-id
-                   :creator_id   crowberto-id})
+ (ngoc/with-tc
+   (execute-payload (notification->payload-info {:payload_type :alert
+                                                 :payload_id   alert-id
+                                                 :creator_id   crowberto-id})))
 
  (def payload (execute-payload alert))
 
