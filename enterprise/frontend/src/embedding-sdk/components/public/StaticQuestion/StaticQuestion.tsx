@@ -123,7 +123,7 @@ const _StaticQuestion = ({
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
       h={height ?? defaultHeight}
-      bg="bg-question"
+      bg="var(--mb-color-bg-question)"
     >
       <Group h="100%" pos="relative" align="flex-start">
         {showVisualizationSelector && (

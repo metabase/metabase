@@ -47,15 +47,6 @@ export interface MetabaseColors {
   /** Slightly darker background color used for hover and accented elements. */
   "background-hover"?: string;
 
-  /** Background color for dashboards. Defaults to `background`. */
-  "background-dashboard"?: string;
-
-  /** Background color for dashboard cards. Defaults to `background`. */
-  "background-dashboard-card"?: string;
-
-  /** Background color for visualizations. Unset by default. */
-  "background-question"?: string;
-
   /** Color used for borders */
   border?: string;
 
@@ -88,6 +79,18 @@ export type MetabaseColor = keyof MetabaseColors;
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
 export interface MetabaseComponentTheme {
+  dashboard: {
+    backgroundColor: string;
+
+    card: {
+      backgroundColor: string;
+    };
+  };
+
+  question: {
+    backgroundColor: string;
+  };
+
   /** Data tables **/
   table: {
     cell: {

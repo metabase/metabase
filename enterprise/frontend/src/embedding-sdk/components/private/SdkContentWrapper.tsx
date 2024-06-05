@@ -51,11 +51,17 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-dark: ${({ theme }) => theme.fn.themeColor("text-dark")};
   --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
+
+  /**
+    Theming-specific CSS variables.
+    These CSS variables are not part of the core design system colors.
+  */
   --mb-color-bg-dashboard: ${({ theme }) =>
-    theme.fn.themeColor("bg-dashboard")};
+    theme.other.dashboard.backgroundColor};
   --mb-color-bg-dashboard-card: ${({ theme }) =>
-    theme.fn.themeColor("bg-dashboard-card")};
-  --mb-color-bg-question: ${({ theme }) => theme.fn.themeColor("bg-question")};
+    theme.other.dashboard.card.backgroundColor};
+  --mb-color-bg-question: ${({ theme }) =>
+    theme.other.question.backgroundColor};
 
   font-size: ${({ theme }) => theme.other.fontSize};
 

@@ -28,6 +28,15 @@ export const FONT_SIZES = {
  * such as charts, data tables and popovers.
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
+  dashboard: {
+    backgroundColor: "bg-white",
+    card: {
+      backgroundColor: "bg-white",
+    },
+  },
+  question: {
+    backgroundColor: "transparent",
+  },
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,

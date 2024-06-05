@@ -115,7 +115,7 @@ export const _InteractiveQuestion = ({
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
       h={height ?? defaultHeight}
-      bg="bg-question"
+      bg="var(--mb-color-bg-question)"
     >
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
