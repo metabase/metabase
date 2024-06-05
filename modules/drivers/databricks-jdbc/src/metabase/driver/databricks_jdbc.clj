@@ -1,18 +1,12 @@
 (ns metabase.driver.databricks-jdbc
   (:require
-   #_[java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
-   #_[metabase.driver.sql.util :as sql.u]
-   #_[metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.interface :as mi]
-   [metabase.query-processor.store :as qp.store]
-   #_[metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [ring.util.codec :as codec])
   (:import
@@ -23,6 +17,7 @@
 
 (driver/register! :databricks-jdbc, :parent :sql-jdbc)
 
+;; TODO: Iterate over features (not limited to following) and maybe add more.
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
@@ -56,20 +51,9 @@
    ;; TODO: Decide whether following is necessary
    ;;       based on https://docs.databricks.com/en/integrations/jdbc/capability.html#jdbc-native.
    :UseNativeQuery 1
-   ;; TODO: There's an exception
-   "LogLevel" 0})
-
-;; TODO: Rather make this public in original namespace.
-(defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
-        db-or-id-or-spec
-
-        (integer? db-or-id-or-spec)
-        (qp.store/with-metadata-provider db-or-id-or-spec
-          (lib.metadata/database (qp.store/metadata-provider)))
-
-        :else
-        nil))
+   ;; TODO: There's an exception on logging thrown when attempting to create a database for a first time.
+   ;;       Following has no effect in that regards.
+   :LogLevel 0})
 
 (defmethod driver/describe-database :databricks-jdbc
   [driver db-or-id-or-spec]
@@ -79,7 +63,7 @@
     db-or-id-or-spec
     nil
     (fn [^Connection conn]
-      (let [database                 (db-or-id-or-spec->database db-or-id-or-spec)
+      (let [database                 (sql-jdbc.describe-database/db-or-id-or-spec->database db-or-id-or-spec)
             {:keys [catalog schema]} (:details database)
             dbmeta                   (.getMetaData conn)]
         (with-open [rs (.getTables dbmeta catalog schema nil

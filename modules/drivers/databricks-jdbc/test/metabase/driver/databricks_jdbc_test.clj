@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
-;; can connect with details...
+;; TODO: can connect with details test
+
+;; This is used now just to repl verify no exception is thrown during db creation.
 (deftest dummy-test
   (mt/test-driver
    :databricks-jdbc
@@ -11,6 +13,7 @@
     places-cam-likes
     (mt/db))))
 
+;; This is used now just to repl verify no exception is thrown during db creation.
 (deftest dummy-test-2
   (mt/test-driver
    :databricks-jdbc

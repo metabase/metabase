@@ -11,8 +11,7 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   ))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,7 +39,6 @@
     :catalog   (tx/db-test-env-var-or-throw :databricks-jdbc :catalog)
     :schema    database-name}))
 
-;; TODO: Make this work so already loaded databases are not removed.
 (defn- existing-databases
   "Set of databases that already exist. Used to avoid creating those"
   []
@@ -62,7 +60,7 @@
         (log/infof "Creating Databricks database %s" (pr-str schema))
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))))
 
-;; TODO: Verify this is ready to go!
+;; Following implementation does not attemp to .setAutoCommit, that is not supported by Databricks jdbc driver.
 (defmethod load-data/do-insert! :databricks-jdbc
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
@@ -72,22 +70,16 @@
      {:write? true}
      (fn [^java.sql.Connection conn]
        (try
-         ;; Not supported!
-         #_(.setAutoCommit conn false)
          (doseq [sql+args statements]
            (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
-         (catch #_java.sql.SQLException Throwable e
+         (catch java.sql.SQLException e
                 (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
                 (jdbc/print-sql-exception-chain e)
                 (throw e)))))))
 
-;; TODO: It seems ids have to be added!!!
-(defmethod load-data/load-data! :databricks-jdbc [& args]
-  (try
-    ;; TODO: Following may be redundant!
-    (apply load-data/load-data-AND-add-ids! args)
-    (catch Throwable t
-      (throw t))))
+(defmethod load-data/load-data! :databricks-jdbc
+  [& args]
+  (apply load-data/load-data-and-add-ids! args))
 
 #_(defmethod load-data/load-data! :databricks-jdbc [& args]
   (apply (get-method load-data/load-data! :sql-jdbc) args))
