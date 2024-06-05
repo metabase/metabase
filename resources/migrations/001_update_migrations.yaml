@@ -7450,7 +7450,7 @@ databaseChangeLog:
               - column:
                   name: context
                   remarks: The contextual action that netted a recent view.
-                  type: ${text.type}
+                  type: varchar(256)
                   defaultValue: "view"
                   constraints:
                     nullable: false
