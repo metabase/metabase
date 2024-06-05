@@ -169,12 +169,12 @@ export function autoWireParametersToNewCard({
           !processedParameterIds.has(mapping.parameter_id)
         ) {
           parametersToAutoApply.push(
-            ...getParameterMappings(
+            ...(getParameterMappings(
               targetDashcard,
               mapping.parameter_id,
               targetDashcard.card_id,
               option.target,
-            ),
+            ) as DashboardParameterMapping[]),
           );
           processedParameterIds.add(mapping.parameter_id);
         }
