@@ -9,6 +9,7 @@ import {
   summarize,
   echartsContainer,
   chartPathWithFillColor,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -154,21 +155,14 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.findByTestId("view-footer").button("Visualization").click();
     switchToWaterfallDisplay();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("Created At").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Select a field").click();
-    cy.get("[data-element-id=list-item]").contains("Count").click();
 
     echartsContainer().should("exist"); // Chart renders after adding a metric
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Add another/).should("not.exist");
+    queryBuilderMain()
+      .findByText(/Add another/)
+      .should("not.exist");
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {
