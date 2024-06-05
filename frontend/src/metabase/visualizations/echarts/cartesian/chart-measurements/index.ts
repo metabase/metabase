@@ -49,7 +49,7 @@ const getYAxisTicksWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
-  { measureText, fontFamily }: RenderingContext,
+  { measureText, fontFamily, theme }: RenderingContext,
 ): number => {
   if (!settings["graph.y_axis.axis_enabled"]) {
     return 0;
@@ -58,7 +58,9 @@ const getYAxisTicksWidth = (
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     family: fontFamily,
+    size: theme.cartesian.label.fontSize,
   };
+
   // extents need to be untransformed to get the value of the tick label
   const [min, max] = axisModel.extent.map(extent =>
     yAxisScaleTransforms.fromEChartsAxisValue(extent),
@@ -117,20 +119,23 @@ const getXAxisTicksWidth = (
   dataset: ChartDataset,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   axisModel: XAxisModel,
-  { measureText, fontFamily }: RenderingContext,
+  { theme, measureText, fontFamily }: RenderingContext,
 ) => {
+  const { fontSize } = theme.cartesian.label;
+
   if (!axisEnabledSetting) {
     return { firstXTickWidth: 0, lastXTickWidth: 0 };
   }
   if (axisEnabledSetting === "rotate-90") {
     return {
-      firstXTickWidth: CHART_STYLE.axisTicks.size,
-      lastXTickWidth: CHART_STYLE.axisTicks.size,
+      firstXTickWidth: fontSize,
+      lastXTickWidth: fontSize,
     };
   }
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
+    size: fontSize,
     family: fontFamily,
   };
 
@@ -161,13 +166,16 @@ const getXAxisTicksWidth = (
 const getXAxisTicksHeight = (
   maxXTickWidth: number,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
+  { theme }: RenderingContext,
 ) => {
+  const { fontSize } = theme.cartesian.label;
+
   if (!axisEnabledSetting) {
     return 0;
   }
 
   if (axisEnabledSetting === true || axisEnabledSetting === "compact") {
-    return CHART_STYLE.axisTicks.size;
+    return fontSize;
   }
 
   if (axisEnabledSetting === "rotate-90") {
@@ -182,7 +190,7 @@ const getXAxisTicksHeight = (
     `Unexpected "graph.x_axis.axis_enabled" value ${axisEnabledSetting}`,
   );
 
-  return CHART_STYLE.axisTicks.size + CHART_STYLE.axisNameMargin;
+  return fontSize + CHART_STYLE.axisNameMargin;
 };
 
 const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
@@ -211,6 +219,8 @@ const getAutoAxisEnabledSetting = (
   outerHeight: number,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
+  const { fontSize } = renderingContext.theme.cartesian.label;
+
   const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
     (settings["graph.x_axis.scale"] === "ordinal" ||
@@ -232,19 +242,13 @@ const getAutoAxisEnabledSetting = (
     return true;
   }
 
-  if (
-    dimensionWidth >=
-    CHART_STYLE.axisTicks.size * X_LABEL_ROTATE_45_THRESHOLD_FACTOR
-  ) {
+  if (dimensionWidth >= fontSize * X_LABEL_ROTATE_45_THRESHOLD_FACTOR) {
     return checkHeight(maxXTickWidth, outerHeight, "rotate-45")
       ? "rotate-45"
       : false;
   }
 
-  if (
-    dimensionWidth >=
-    CHART_STYLE.axisTicks.size * X_LABEL_ROTATE_90_THRESHOLD_FACTOR
-  ) {
+  if (dimensionWidth >= fontSize * X_LABEL_ROTATE_90_THRESHOLD_FACTOR) {
     return checkHeight(maxXTickWidth, outerHeight, "rotate-90")
       ? "rotate-90"
       : false;
@@ -261,6 +265,8 @@ const getTicksDimensions = (
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
+  const { fontSize } = renderingContext.theme.cartesian.label;
+
   const ticksDimensions: TicksDimensions = {
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
@@ -302,6 +308,7 @@ const getTicksDimensions = (
   if (hasBottomAxis) {
     const fontStyle = {
       ...CHART_STYLE.axisTicks,
+      size: fontSize,
       family: renderingContext.fontFamily,
     };
 
@@ -333,7 +340,7 @@ const getTicksDimensions = (
     ticksDimensions.lastXTickWidth = lastXTickWidth;
 
     ticksDimensions.xTicksHeight =
-      getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting) +
+      getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting, renderingContext) +
       CHART_STYLE.axisTicksMarginX +
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
@@ -357,7 +364,13 @@ export const getChartPadding = (
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
+  { theme }: RenderingContext,
 ): Padding => {
+  const { fontSize } = theme.cartesian.label;
+
+  const axisNameFontSize = fontSize;
+  const seriesLabelFontSize = fontSize;
+
   const padding: Padding = {
     top: CHART_STYLE.padding.y,
     left: CHART_STYLE.padding.x,
@@ -372,8 +385,7 @@ export const getChartPadding = (
     settings["graph.show_values"] ||
     (settings["graph.show_goal"] && settings["graph.goal_label"])
   ) {
-    padding.top +=
-      CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
+    padding.top += seriesLabelFontSize + CHART_STYLE.seriesLabels.offset;
   }
 
   // 2. Bottom Padding
@@ -382,14 +394,12 @@ export const getChartPadding = (
 
   const hasXAxisName = settings["graph.x_axis.labels_enabled"];
   if (hasXAxisName) {
-    padding.bottom +=
-      CHART_STYLE.axisName.size / 2 + CHART_STYLE.axisNameMargin;
+    padding.bottom += axisNameFontSize / 2 + CHART_STYLE.axisNameMargin;
   }
 
   // 3. Side (Left and Right) Padding
 
-  const yAxisNameTotalWidth =
-    CHART_STYLE.axisName.size + CHART_STYLE.axisNameMargin;
+  const yAxisNameTotalWidth = axisNameFontSize + CHART_STYLE.axisNameMargin;
 
   padding.left += ticksDimensions.yTicksWidthLeft;
   if (chartModel.leftAxisModel?.label) {
@@ -500,10 +510,13 @@ const areHorizontalXAxisTicksOverlapping = (
   dataset: ChartDataset,
   dimensionWidth: number,
   formatter: AxisFormatter,
-  { measureText, fontFamily }: RenderingContext,
+  { theme, measureText, fontFamily }: RenderingContext,
 ) => {
+  const { fontSize } = theme.cartesian.label;
+
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
+    size: fontSize,
     family: fontFamily,
   };
 
@@ -648,6 +661,7 @@ export const getChartMeasurements = (
     ticksDimensions,
     axisEnabledSetting,
     width,
+    renderingContext,
   );
   const bounds = getChartBounds(width, height, padding, ticksDimensions);
 

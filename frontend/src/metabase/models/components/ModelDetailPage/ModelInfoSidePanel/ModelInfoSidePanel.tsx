@@ -58,7 +58,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
         <ModelInfoSection>
           <ModelInfoTitle>{t`Backing table`}</ModelInfoTitle>
           <ModelInfoLink
-            to={ML_Urls.getUrl(mainTable.newQuestion(), { clean: false })}
+            to={ML_Urls.getUrl(mainTable.newQuestion())}
             aria-label={t`Backing table`}
           >
             {mainTable.displayName()}

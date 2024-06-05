@@ -92,7 +92,7 @@ jobs:
         if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
-          token: ${{ steps.generate-token.outputs.token }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
           merge-method: squash
 

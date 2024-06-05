@@ -209,7 +209,7 @@
   :visibility :internal
   :setter     :none
   :audit      :never
-  :doc        false)
+  :doc        "Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.")
 
 (def ^:constant SKIP_CHECKSUM_FLAG
   "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
