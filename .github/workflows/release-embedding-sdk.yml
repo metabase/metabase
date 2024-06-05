@@ -168,8 +168,8 @@ jobs:
 
       - name: Setup git user
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
 
       # TODO: Remove this step after the build utils script is merged to master
       - name: Download release utils script
@@ -196,12 +196,6 @@ jobs:
         run: |
           mv CHANGELOG.md ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
       - name: Create a PR updating readme + published version, and changelog
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
@@ -213,7 +207,7 @@ jobs:
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
           gh pr edit --add-reviewer @metabase/embedding
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
@@ -241,8 +235,8 @@ jobs:
 
       - name: Setup git user
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
 
       - name: Create a new git tag
         run: |
