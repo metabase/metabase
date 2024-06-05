@@ -40,10 +40,10 @@ export const ExplainerLink = styled(ExternalLink)`
   font-weight: 700;
   margin-top: ${space(2)};
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 
   &:hover {
-    color: ${lighten("brand", 0.1)};
+    color: ${() => lighten("brand", 0.1)};
   }
 `;
 
@@ -51,7 +51,7 @@ export const IconContainer = styled.div`
   display: inline-block;
   padding: 1.25rem;
   position: relative;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   align-self: center;
 `;
 

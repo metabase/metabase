@@ -23,10 +23,15 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-brand: ${color("brand")};
       --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
       --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};
+      --mb-color-brand-light: ${lighten("brand", 0.532)};
       --mb-color-brand-lighter: ${lighten("brand", 0.598)};
       --mb-color-focus: ${color("focus")};
       --mb-color-bg-dark: ${color("bg-dark")};
       --mb-color-bg-light: ${color("bg-light")};
+      --mb-color-bg-medium: ${color("bg-medium")};
+      --mb-color-bg-night: ${color("bg-night")};
+      --mb-color-bg-white: ${color("bg-white")};
+      --mb-color-border: ${color("border")};
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}

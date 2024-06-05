@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const MonospaceErrorDisplay = styled.div`
   font-family: monospace;
   white-space: pre-wrap;
@@ -10,7 +8,7 @@ export const MonospaceErrorDisplay = styled.div`
   font-weight: bold;
   border-radius: 0.5rem;
   background-color: var(--mb-color-bg-light);
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   max-height: 16rem;
   overflow-y: auto;
 `;

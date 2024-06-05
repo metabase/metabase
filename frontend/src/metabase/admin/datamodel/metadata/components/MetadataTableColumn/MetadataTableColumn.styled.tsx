@@ -9,7 +9,7 @@ export const ColumnContainer = styled.section`
   margin-top: 0.5rem;
   margin-bottom: 1.5rem;
   display: flex;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 8px;
 
   &:last-child {
@@ -26,6 +26,6 @@ export const FieldSettingsLink = styled(Link)`
   margin-right: 0.5rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

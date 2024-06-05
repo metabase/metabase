@@ -26,7 +26,7 @@ export const LogsContainer = styled(LoadingAndErrorWrapper)`
 `;
 
 export const LogsContent = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: var(--mb-color-bg-light);
   font-family: "Lucida Console", Monaco, monospace;

@@ -34,7 +34,7 @@ export const ResultTitle = styled(Anchor)<
   &:focus-visible,
   &:focus {
     text-decoration: none;
-    color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-brand);
     outline: 0;
   }
 `;
@@ -62,24 +62,24 @@ export const SearchResultContainer = styled(Box, {
     isActive &&
     css`
       border-radius: ${theme.radius.md};
-      color: ${isSelected && theme.fn.themeColor("brand")};
-      background-color: ${isSelected && theme.fn.themeColor("brand-lighter")};
+      color: ${isSelected && "var(--mb-color-brand)"};
+      background-color: ${isSelected && "var(--mb-color-brand-lighter)"};
 
       ${ResultTitle} {
-        color: ${isSelected && theme.fn.themeColor("brand")};
+        color: ${isSelected && "var(--mb-color-brand)"};
       }
 
       &:hover {
-        background-color: ${theme.fn.themeColor("brand-lighter")};
+        background-color: var(--mb-color-brand-lighter);
         cursor: pointer;
 
         ${ResultTitle} {
-          color: ${theme.fn.themeColor("brand")};
+          color: var(--mb-color-brand);
         }
       }
 
       &:focus-within {
-        background-color: ${theme.fn.themeColor("brand-lighter")};
+        background-color: var(--mb-color-brand-lighter);
       }
     `}
 `;
