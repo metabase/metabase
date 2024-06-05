@@ -37,7 +37,7 @@ export const ButtonBar = ({
       align="center"
       p="md"
       style={{
-        borderTop: `1px solid var(--mb-color-border)`,
+        borderTop: "1px solid var(--mb-color-border)",
       }}
     >
       <Flex gap="md">{actionButtons}</Flex>

@@ -13,7 +13,7 @@ const cellStyles = (props: CellProps) => css`
   font-weight: bold;
   color: ${props.isSecondary ? color("text-medium") : color("text-dark")};
   border-bottom: ${props.isBordered
-    ? `1px solid var(--mb-color-border)`
+    ? "1px solid var(--mb-color-border)"
     : "none"};
 `;
 

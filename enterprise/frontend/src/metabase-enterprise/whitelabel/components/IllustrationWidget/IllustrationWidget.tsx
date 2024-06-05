@@ -146,7 +146,7 @@ export function IllustrationWidget({
           align="center"
           justify="center"
           w="7.5rem"
-          style={{ borderRight: `1px solid var(--mb-color-border)` }}
+          style={{ borderRight: "1px solid var(--mb-color-border)" }}
         >
           {getPreviewImage({
             value,

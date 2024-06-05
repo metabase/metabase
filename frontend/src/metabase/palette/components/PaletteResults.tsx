@@ -83,7 +83,7 @@ export const PaletteResults = withRouter(
                       isFirst
                         ? undefined
                         : {
-                            borderTop: `1px solid var(--mb-color-border)`,
+                            borderTop: "1px solid var(--mb-color-border)",
                             marginTop: "1rem",
                           }
                     }

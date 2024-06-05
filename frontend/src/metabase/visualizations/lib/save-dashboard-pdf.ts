@@ -19,7 +19,7 @@ export const saveDashboardPdf = async (
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       const title = doc.createElement("h2") as HTMLElement;
       title.innerHTML = dashboardName;
-      title.style["borderBottom"] = `1px solid var(--mb-color-border)`;
+      title.style["borderBottom"] = "1px solid var(--mb-color-border)";
       title.style["padding"] = "0 1rem 1rem 1rem";
       node.insertBefore(title, node.firstChild);
     },

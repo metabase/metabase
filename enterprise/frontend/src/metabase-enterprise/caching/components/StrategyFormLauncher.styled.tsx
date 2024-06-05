@@ -61,7 +61,10 @@ export const StyledLauncher = styled(Flex)<
   background-color: ${({ forRoot }) =>
     forRoot ? "var(--mb-color-bg-medium)" : color("white")};
   ${({ forRoot }) =>
-    forRoot ? "" : `border: 1px solid var(--mb-color-border)`};
+    !forRoot &&
+    css`
+      border: 1px solid var(--mb-color-border);
+    `};
   flex-direction: row;
   align-items: center;
   ${breakpointMaxSmall} {

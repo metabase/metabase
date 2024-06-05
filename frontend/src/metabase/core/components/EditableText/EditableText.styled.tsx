@@ -19,8 +19,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
 
   &:hover,
   &:focus-within {
-    border-color: ${props =>
-      props.isDisabled ? "" : "var(--mb-color-border)"};
+    border-color: ${props => !props.isDisabled && "var(--mb-color-border)"};
   }
 
   ${props =>

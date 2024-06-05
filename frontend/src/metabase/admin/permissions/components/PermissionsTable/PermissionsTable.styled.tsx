@@ -6,6 +6,9 @@ import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
+const getTableBorder = (theme: Theme) =>
+  `1px solid ${alpha(theme.fn.themeColor("border"), 0.5)}`;
+
 // background with 1px of border color at the bottom
 // to work properly with sticky positioning
 const getHeaderBackground = (theme: Theme) =>
@@ -44,8 +47,7 @@ export const PermissionsTableCell = styled.td`
       right: 0;
       top: 0;
       height: 100%;
-      border-right: 1px solid
-        ${({ theme }) => alpha(theme.fn.themeColor("border"), 0.5)};
+      border-right: ${({ theme }) => getTableBorder(theme)};
       content: " ";
     }
   }
@@ -70,8 +72,7 @@ export const PermissionTableHeaderCell = styled(
 `;
 
 export const PermissionsTableRow = styled.tr`
-  border-bottom: 1px solid
-    ${({ theme }) => alpha(theme.fn.themeColor("border"), 0.5)};
+  border-bottom: ${({ theme }) => getTableBorder(theme)};
 `;
 
 export const EntityName = styled.span`

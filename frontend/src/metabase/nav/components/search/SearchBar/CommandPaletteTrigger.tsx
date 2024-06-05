@@ -23,7 +23,7 @@ export const CommandPaletteTrigger = ({
         mr="0.5rem"
         style={{
           borderRadius: "0.25rem",
-          border: `1px solid var(--mb-color-border)`,
+          border: "1px solid var(--mb-color-border)",
         }}
         styles={{
           root: {
