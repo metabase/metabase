@@ -11,6 +11,7 @@ export interface EmbedOptions {
   action_buttons?: boolean;
   enable_chart_explainer?: boolean;
   enable_dashboard_summarizer?: boolean;
+  enable_copy_to_workspace?: boolean;
 }
 
 export interface EmbedState {

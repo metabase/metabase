@@ -8,6 +8,7 @@ import {
   setOptions,
   toggleChartExplainer,
   toggleDashboardSummarizer,
+  toggleCopyToWorkspace,
 } from "metabase/redux/embed";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
@@ -62,6 +63,21 @@ export function initializeEmbedding(store) {
             );
           }
         }
+      } else if (e.data.pipelines) {
+        if (
+          e.data.pipelines?.type === "FeatureToggles" &&
+          e.data.pipelines?.payload
+        ) {
+          if ("enableCopyToWorkspace" in e.data.pipelines.payload) {
+            const { enableCopyToWorkspace: enable_copy_to_workspace } =
+              e.data.pipelines.payload;
+            store.dispatch(
+              toggleCopyToWorkspace({
+                enable_copy_to_workspace,
+              }),
+            );
+          }
+        }
       }
     });
     store.dispatch(
@@ -71,6 +87,7 @@ export function initializeEmbedding(store) {
       }),
     );
     window.parent.postMessage({ lighthouse: { type: "FeatureToggles" } }, "*");
+    window.parent.postMessage({ pipelines: { type: "FeatureToggles" } }, "*");
   }
 }
 

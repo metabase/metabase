@@ -28,6 +28,9 @@ export const TOGGLE_DASHBOARD_SUMMARIZER =
 export const toggleDashboardSummarizer = createAction(
   TOGGLE_DASHBOARD_SUMMARIZER,
 );
+export const TOGGLE_COPY_TO_WORKSPACE =
+  "metabase/embed/TOGGLE_COPY_TO_WORKSPACE";
+export const toggleCopyToWorkspace = createAction(TOGGLE_COPY_TO_WORKSPACE);
 
 const options = handleActions(
   {
@@ -40,6 +43,10 @@ const options = handleActions(
       ...payload,
     }),
     [TOGGLE_DASHBOARD_SUMMARIZER]: (state, { payload }) => ({
+      ...state,
+      ...payload,
+    }),
+    [TOGGLE_COPY_TO_WORKSPACE]: (state, { payload }) => ({
       ...state,
       ...payload,
     }),
