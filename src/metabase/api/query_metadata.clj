@@ -68,16 +68,15 @@
   (let [cards-by-db (group-by :database_id cards)
         db->mp (into {} (map (juxt identity lib.metadata.jvm/application-database-metadata-provider)
                              (keys cards-by-db)))]
-    (run! (fn [[database-id cards]]
-            (let [{:keys [card-ids table-ids]}
-                  (->> cards
-                       (mapcat (comp collect-source-tables #(-> % :dataset_query :query)))
-                       partition-table-ids)
-                  all-card-ids (filter pos-int? (concat (map :id cards) card-ids))
-                  mp (db->mp database-id)]
-              (lib.metadata.protocols/metadatas mp :metadata/card all-card-ids)
-              (lib.metadata.protocols/metadatas mp :metadata/table table-ids)))
-          cards-by-db)
+    (doseq [[database-id cards] cards-by-db]
+      (let [{:keys [card-ids table-ids]}
+            (->> cards
+                 (mapcat (comp collect-source-tables #(-> % :dataset_query :query)))
+                 partition-table-ids)
+            real-card-ids (filter pos-int? (concat (map :id cards) card-ids)) ; xray cards don't have real ids
+            mp (db->mp database-id)]
+        (lib.metadata.protocols/metadatas mp :metadata/card real-card-ids)
+        (lib.metadata.protocols/metadatas mp :metadata/table table-ids)))
     (group-by :type (set (mapcat (fn [{card-type :type card-id :id :keys [database_id dataset_query]}]
                                    (let [mp (db->mp database_id)
                                          query (lib/query mp dataset_query)]
