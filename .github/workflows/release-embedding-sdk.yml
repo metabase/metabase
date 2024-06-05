@@ -35,7 +35,7 @@ jobs:
 
       - name: check tags
         run: |
-          if [ $(git tag -l | grep $tag) ]
+          if [ $(git tag -l | grep $tag$) ]
           then
             echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
             exit 1
