@@ -36,6 +36,18 @@ function createQueryWithCountAggregation({
   });
 }
 
+function createQueryWithCountAndSumAggregations({
+  metadata,
+}: { metadata?: Metadata } = {}) {
+  return createQueryWithClauses({
+    query: createQuery({ metadata }),
+    aggregations: [
+      { operatorName: "count" },
+      { operatorName: "sum", columnName: "Price" },
+    ],
+  });
+}
+
 function createQueryWithMaxAggregation({
   metadata,
 }: { metadata?: Metadata } = {}) {
@@ -348,6 +360,29 @@ describe("AggregationPicker", () => {
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+    });
+  });
+
+  describe("column compare shortcut", () => {
+    it("does not display the option if there are no aggregations", () => {
+      setup();
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
+    it("displays the option with correct label if there is 1 aggregation", () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      expect(
+        screen.getByText("Compare “Count” to previous period ..."),
+      ).toBeInTheDocument();
+    });
+
+    it("displays the option with correct label if there are multiple aggregation", () => {
+      setup({ query: createQueryWithCountAndSumAggregations() });
+
+      expect(
+        screen.getByText("Compare to previous period ..."),
+      ).toBeInTheDocument();
     });
   });
 });
