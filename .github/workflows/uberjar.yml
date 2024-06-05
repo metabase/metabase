@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "master"
-      - "echarts_pie" # TODO: remove this before merging to master
+      - "echarts-pie" # TODO: remove this before merging to master
     paths-ignore:
       # config files
       - ".**"
