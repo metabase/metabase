@@ -1,8 +1,8 @@
-import type { MultiSelectProps } from "@mantine/core";
+import type { MultiSelectProps, SelectItemProps } from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
-import type { ClipboardEvent, FocusEvent } from "react";
-import { useMemo, useState } from "react";
+import type { ClipboardEvent, FocusEvent, ReactNode } from "react";
+import { useMemo, useState, useCallback, forwardRef } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -34,6 +34,7 @@ export type MultiAutocompleteProps<ValueType extends Base> = Omit<
   parseValue?: (str: string) => ValueType | null;
   value?: ValueType[];
   onChange?: (value: ValueType[]) => void;
+  renderValue?: (value: ValueType) => ReactNode;
 };
 
 export function MultiAutocomplete<ValueType extends Base>({
@@ -51,6 +52,7 @@ export function MultiAutocomplete<ValueType extends Base>({
   prefix,
   filter = defaultFilter,
   parseValue = defaultParseValue,
+  renderValue,
   ...props
 }: MultiAutocompleteProps<ValueType>) {
   const [selectedValues, setSelectedValues] = useUncontrolled<ValueType[]>({
@@ -199,6 +201,15 @@ export function MultiAutocomplete<ValueType extends Base>({
     <span />
   );
 
+  const CustomItemComponent = useCallback(
+    (props: SelectItemProps) => {
+      const customLabel =
+        props.value !== undefined && renderValue?.(props.value as ValueType);
+      return <ItemWrapper {...props} label={customLabel} />;
+    },
+    [renderValue],
+  );
+
   return (
     <MultiSelect
       {...props}
@@ -221,6 +232,7 @@ export function MultiAutocomplete<ValueType extends Base>({
       icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
       // @ts-expect-error: see above
       filter={filter as FilterFn<ValueType>}
+      itemComponent={CustomItemComponent}
     />
   );
 }
@@ -291,3 +303,13 @@ function defaultParseValue<ValueType extends Base>(
   // @ts-expect-error: for the default case we ignore the type
   return str;
 }
+
+export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
+  function ItemWrapper({ label, value, ...others }, ref) {
+    return (
+      <div ref={ref} {...others}>
+        {label || value}
+      </div>
+    );
+  },
+);
