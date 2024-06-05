@@ -213,7 +213,7 @@
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
 
 (defn- card-columns-from-names
   [card names]
