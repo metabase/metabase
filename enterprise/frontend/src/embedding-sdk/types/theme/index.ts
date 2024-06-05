@@ -54,7 +54,7 @@ export interface MetabaseColors {
   "background-dashboard-card"?: string;
 
   /** Background color for visualizations. Unset by default. */
-  "background-visualization"?: string;
+  "background-question"?: string;
 
   /** Color used for borders */
   border?: string;

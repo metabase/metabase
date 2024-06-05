@@ -31,7 +31,7 @@ const CUSTOM_COLORS = [
   "bg-white",
   "bg-dashboard",
   "bg-dashboard-card",
-  "bg-visualization",
+  "bg-question",
   "border",
   "brand",
   "brand-lighter",

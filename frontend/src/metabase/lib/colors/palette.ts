@@ -48,7 +48,7 @@ export const colors = {
   /** Colors for theme customization. */
   "bg-dashboard": "#FFFFFF",
   "bg-dashboard-card": "#FFFFFF",
-  "bg-visualization": "transparent",
+  "bg-question": "transparent",
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",

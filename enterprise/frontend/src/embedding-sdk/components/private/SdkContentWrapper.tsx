@@ -55,8 +55,7 @@ const SdkContentWrapperInner = styled.div<
     theme.fn.themeColor("bg-dashboard")};
   --mb-color-bg-dashboard-card: ${({ theme }) =>
     theme.fn.themeColor("bg-dashboard-card")};
-  --mb-color-bg-visualization: ${({ theme }) =>
-    theme.fn.themeColor("bg-visualization")};
+  --mb-color-bg-question: ${({ theme }) => theme.fn.themeColor("bg-question")};
 
   font-size: ${({ theme }) => theme.other.fontSize};
 
