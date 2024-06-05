@@ -716,7 +716,11 @@ class Question {
       collection_id: this._card.collection_id,
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
-      parameters: this._card.parameters,
+      ...(_.isEmpty(this._card.parameters)
+        ? undefined
+        : {
+            parameters: this._card.parameters,
+          }),
       type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
