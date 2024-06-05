@@ -23,7 +23,7 @@ import {
   queryBuilderHeader,
   saveQuestion,
   tableHeaderClick,
-  onlyOSS,
+  onlyOnOSS,
   entityPickerModalItem,
   newButton,
 } from "e2e/support/helpers";
@@ -278,7 +278,7 @@ describe("issue 25016", () => {
 // this is only testable in OSS because EE always has models from auditv2
 describe("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    onlyOSS();
+    onlyOnOSS();
     restore("setup");
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("createCard");

@@ -25,7 +25,7 @@ import {
   pickEntity,
   visitQuestion,
   tableHeaderClick,
-  onlyOSS,
+  onlyOnOSS,
   createQuestion,
 } from "e2e/support/helpers";
 
@@ -459,7 +459,7 @@ describe(
   { tags: "@OSS" },
   () => {
     beforeEach(() => {
-      onlyOSS();
+      onlyOnOSS();
       restore("without-models");
       cy.signInAsAdmin();
     });

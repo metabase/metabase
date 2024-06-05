@@ -1,6 +1,6 @@
 import {
   restore,
-  onlyEE,
+  onlyOnEE,
   setTokenFeatures,
   appBar,
   main,
@@ -37,7 +37,7 @@ const brokenQuestionDetails = {
 describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
   describe.skip("when feature enabled", () => {
     beforeEach(() => {
-      onlyEE();
+      onlyOnEE();
 
       restore();
       cy.signInAsAdmin();
@@ -125,7 +125,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
 
   describe("when feature disabled", () => {
     beforeEach(() => {
-      onlyEE();
+      onlyOnEE();
 
       restore();
       cy.signInAsAdmin();

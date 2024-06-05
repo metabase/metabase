@@ -8,10 +8,10 @@ export const isEE = Cypress.env("IS_ENTERPRISE");
 export const isOSS = !isEE;
 
 /** run only if the test is running on an EE jar */
-export const onlyEE = () => cy.onlyOn(isEE);
+export const onlyOnEE = () => cy.onlyOn(isEE);
 
 /** run only if the test is running on an OSS jar */
-export const onlyOSS = () => cy.onlyOn(isOSS);
+export const onlyOnOSS = () => cy.onlyOn(isOSS);
 
 /**
  *

@@ -12,8 +12,8 @@ import {
   visitModel,
   visitQuestion,
   tableHeaderClick,
-  onlyOSS,
-  onlyEE,
+  onlyOnOSS,
+  onlyOnEE,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -262,7 +262,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 describe("question and dashboard links", () => {
   describeEE("ee", () => {
     beforeEach(() => {
-      onlyEE();
+      onlyOnEE();
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
@@ -343,7 +343,7 @@ describe("question and dashboard links", () => {
   });
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      onlyOSS();
+      onlyOnOSS();
       restore();
       cy.signInAsAdmin();
     });

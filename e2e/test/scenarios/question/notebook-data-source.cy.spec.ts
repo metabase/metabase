@@ -20,8 +20,8 @@ import {
   restore,
   resyncDatabase,
   saveQuestion,
-  onlyOSS,
-  onlyEE,
+  onlyOnOSS,
+  onlyOnEE,
   startNewQuestion,
   tabsShouldBe,
   visitModel,
@@ -43,7 +43,7 @@ describe("scenarios > notebook > data source", () => {
       "should display tables from the only existing database by default",
       { tags: "@OSS" },
       () => {
-        onlyOSS();
+        onlyOnOSS();
         cy.visit("/");
         cy.findByTestId("app-bar").findByText("New").click();
         popover().findByTextEnsureVisible("Question").click();
@@ -74,7 +74,7 @@ describe("scenarios > notebook > data source", () => {
     );
 
     it.skip("should display tables from the only existing database by default on an enterprise instance without token activation (metabase#40223)", () => {
-      onlyEE();
+      onlyOnEE();
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByTextEnsureVisible("Question").click();
@@ -410,7 +410,7 @@ describe("scenarios > notebook > data source", () => {
 
 describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    onlyOSS();
+    onlyOnOSS();
     restore("setup");
     cy.signInAsAdmin();
   });

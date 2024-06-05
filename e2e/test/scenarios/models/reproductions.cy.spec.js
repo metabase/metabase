@@ -50,7 +50,7 @@ import {
   visualize,
   focusNativeEditor,
   tableHeaderClick,
-  onlyOSS,
+  onlyOnOSS,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -201,7 +201,7 @@ describe("issue 19776", { tags: "@OSS" }, () => {
     cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
   }
   beforeEach(() => {
-    onlyOSS();
+    onlyOnOSS();
     restore();
     cy.signInAsAdmin();
   });

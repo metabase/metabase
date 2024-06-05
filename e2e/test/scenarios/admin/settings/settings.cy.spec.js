@@ -6,7 +6,7 @@ import {
   popover,
   describeEE,
   setupMetabaseCloud,
-  onlyOSS,
+  onlyOnOSS,
   isEE,
   isOSS,
   setTokenFeatures,
@@ -30,7 +30,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
     "should prompt admin to migrate to a hosted instance",
     { tags: "@OSS" },
     () => {
-      onlyOSS();
+      onlyOnOSS();
       cy.visit("/admin/settings/setup");
 
       cy.findByTestId("upsell-card").findByText(/Migrate to Metabase Cloud/);
@@ -345,7 +345,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
 describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
-    onlyOSS();
+    onlyOnOSS();
     restore();
     cy.signInAsAdmin();
   });
