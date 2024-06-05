@@ -594,6 +594,11 @@
    (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
 
+(defn ^:export available-temporal-units
+  "The temporal bucketing units for date type expressions."
+  []
+  (to-array (map clj->js (lib.core/available-temporal-units))))
+
 ;; # Manipulating Clauses
 ;;
 ;; These three functions work on any kind of clause - aggregations, filters, breakouts, custom expressions, order-by.

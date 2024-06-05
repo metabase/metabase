@@ -156,7 +156,7 @@ export const getCartesianChartModel = (
   const dataDensity = getComboChartDataDensity(
     seriesModels,
     stackModels,
-    transformedDataset,
+    dataset,
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     settings,
@@ -165,6 +165,7 @@ export const getCartesianChartModel = (
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,

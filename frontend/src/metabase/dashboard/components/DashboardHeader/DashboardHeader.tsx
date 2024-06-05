@@ -22,6 +22,7 @@ import type { NewDashCardOpts } from "metabase/dashboard/actions";
 import {
   addActionToDashboard,
   addSectionToDashboard,
+  addTemporalUnitParameter,
   cancelEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
@@ -424,9 +425,24 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
         </Menu>,
       );
 
-      // Parameters
+      // Temporal unit parameters
       buttons.push(
-        <span key="add-a-filter">
+        <Tooltip
+          key="add-temporal-unit-parameter"
+          label={t`Add a Unit of Time widget`}
+        >
+          <DashboardHeaderButton
+            aria-label={t`Add a Unit of Time widget`}
+            onClick={() => dispatch(addTemporalUnitParameter())}
+          >
+            <Icon name="clock" />
+          </DashboardHeaderButton>
+        </Tooltip>,
+      );
+
+      // Filter parameters
+      buttons.push(
+        <span key="add-filter-parameter">
           <TippyPopover
             placement="bottom-start"
             onClose={hideAddParameterPopover}

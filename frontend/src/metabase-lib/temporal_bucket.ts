@@ -83,3 +83,7 @@ export function formatRelativeDateRange({
     "include-current": includeCurrent,
   });
 }
+
+export function availableTemporalUnits(): string[] {
+  return ML.available_temporal_units();
+}
