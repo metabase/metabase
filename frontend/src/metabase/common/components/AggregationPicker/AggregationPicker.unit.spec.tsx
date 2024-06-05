@@ -386,13 +386,8 @@ describe("AggregationPicker", () => {
       ).toBeInTheDocument();
     });
 
-    it("only calls onAdd when submitted", async () => {
-      const { onAdd, onSelect } = setup({
-        query: createQueryWithCountAggregation(),
-      });
-
-      expect(onAdd).not.toHaveBeenCalled();
-      expect(onSelect).not.toHaveBeenCalled();
+    it("calls 'onAdd' on submit", async () => {
+      const { onAdd } = setup({ query: createQueryWithCountAggregation() });
 
       await userEvent.click(
         screen.getByText("Compare “Count” to previous period ..."),
@@ -400,6 +395,16 @@ describe("AggregationPicker", () => {
       await userEvent.click(screen.getByText("Done"));
 
       expect(onAdd).toHaveBeenCalled();
+    });
+
+    it("does not call 'onSelect' on submit", async () => {
+      const { onSelect } = setup({ query: createQueryWithCountAggregation() });
+
+      await userEvent.click(
+        screen.getByText("Compare “Count” to previous period ..."),
+      );
+      await userEvent.click(screen.getByText("Done"));
+
       expect(onSelect).not.toHaveBeenCalled();
     });
   });
