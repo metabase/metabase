@@ -156,13 +156,13 @@ const defaultConfig = {
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
+  viewportHeight: 800,
+  viewportWidth: 1280,
 };
 
 const mainConfig = {
   ...defaultConfig,
   projectId: "ywjy9z",
-  viewportHeight: 800,
-  viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {

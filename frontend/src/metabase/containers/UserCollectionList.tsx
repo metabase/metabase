@@ -2,7 +2,7 @@ import { useUserListQuery } from "metabase/common/hooks";
 import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {

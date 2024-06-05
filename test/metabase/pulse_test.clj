@@ -394,15 +394,16 @@
       :assert
       {:email
        (fn [_ _]
-         (is (= (into {} (map (fn [user-kwd]
-                                (mt/email-to user-kwd {:subject "Pulse: Pulse Name"
-                                                       :bcc     #{"rasta@metabase.com" "crowberto@metabase.com"}
-                                                       :body    [{"Pulse Name" true}
-                                                                 pulse.test-util/png-attachment
-                                                                 pulse.test-util/png-attachment]
-                                                       :bcc?    true}))
-                              [:rasta :crowberto]))
-                (mt/summarize-multipart-email #"Pulse Name"))))}})))
+         (testing @mt/inbox
+           (is (= (into {} (map (fn [user-kwd]
+                                  (mt/email-to user-kwd {:subject "Pulse: Pulse Name"
+                                                         :bcc     #{"rasta@metabase.com" "crowberto@metabase.com"}
+                                                         :body    [{"Pulse Name" true}
+                                                                   pulse.test-util/png-attachment
+                                                                   pulse.test-util/png-attachment]
+                                                         :bcc?    true}))
+                                [:rasta :crowberto]))
+                  (mt/summarize-multipart-email #"Pulse Name")))))}})))
 
 (deftest two-cards-in-one-pulse-test
   (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
@@ -618,9 +619,10 @@
        :assert
        {:email
         (fn [_ _]
-          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
-                 (mt/summarize-multipart-email test-card-regex))))}})))
+          (testing @mt/inbox
+            (is (= (rasta-alert-email "Alert: Test card has reached its goal"
+                                      [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
+                   (mt/summarize-multipart-email test-card-regex)))))}})))
 
 (deftest below-goal-alert-test
   (testing "Below goal alert"

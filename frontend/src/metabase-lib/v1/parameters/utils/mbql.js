@@ -178,7 +178,7 @@ function isFieldFilterParameterConveratableToMBQL(parameter) {
 }
 
 /** compiles a parameter with value to MBQL */
-function fieldFilterParameterToMBQL(query, stageIndex, parameter) {
+function filterParameterToMBQL(query, stageIndex, parameter) {
   if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
     return null;
   }
@@ -206,11 +206,46 @@ function fieldFilterParameterToMBQL(query, stageIndex, parameter) {
   }
 }
 
-export function fieldFilterParameterToFilter(query, stageIndex, parameter) {
-  const mbql = fieldFilterParameterToMBQL(query, stageIndex, parameter);
+export function applyFilterParameter(query, stageIndex, parameter) {
+  const mbql = filterParameterToMBQL(query, stageIndex, parameter);
   if (mbql) {
-    return Lib.expressionClauseForLegacyExpression(query, stageIndex, mbql);
+    const filter = Lib.expressionClauseForLegacyExpression(
+      query,
+      stageIndex,
+      mbql,
+    );
+    return Lib.filter(query, stageIndex, filter);
   } else {
-    return null;
+    return query;
   }
+}
+
+export function applyTemporalUnitParameter(query, stageIndex, parameter) {
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const columns = breakouts.map(breakout =>
+    Lib.breakoutColumn(query, stageIndex, breakout),
+  );
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    [parameter.target[1]],
+  );
+  if (columnIndex < 0) {
+    return query;
+  }
+
+  const column = columns[columnIndex];
+  const breakout = breakouts[columnIndex];
+  const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
+  const bucket = buckets.find(
+    bucket =>
+      Lib.displayInfo(query, stageIndex, bucket).shortName === parameter.value,
+  );
+  if (!bucket) {
+    return query;
+  }
+
+  const columnWithBucket = Lib.withTemporalBucket(column, bucket);
+  return Lib.replaceClause(query, stageIndex, breakout, columnWithBucket);
 }
