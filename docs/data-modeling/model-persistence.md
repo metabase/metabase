@@ -64,8 +64,8 @@ You can view the logs for model caching by clicking on the **gear** icon in the 
 
 Persisted models differ from [cached results](../configuring-metabase/caching.md):
 
-- Metabase stores cached results in its application database. Metabase persists models in your connected data warehouse as materialized views.
-- Metabase will refresh results of models according the schedule you set. That is, Metabase will re-run the model's query and store the results in your data warehouse. For cached results of saved questions and dashboards, Metabase won't run the queries automatically; it will cached results when people view the question or dashboard, and invalidate the cached results according to the caching policy you set.
+- **Models are persisted in your data warehouse, cached results are stored in the application database**. Metabase stores cached results in its application database. Metabase persists models in your connected data warehouse as materialized views.
+- **Metabase refreshes model results and invalidates cached results**. Metabase will refresh results of models according to the schedule you set. That is, Metabase will re-run the model's query and store the results in your data warehouse. For cached results of saved questions and dashboards, Metabase won't run the queries automatically; it will cached results when people view the question or dashboard, and invalidate the cached results according to the caching policy you set.
 
 ## Further reading
 
