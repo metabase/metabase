@@ -293,7 +293,7 @@ describe("issue 23103", () => {
   });
 });
 
-describe("issue 39150", () => {
+describe("issue 39150", { viewportWidth: 1600 }, () => {
   const ccName = "CC Rating";
 
   beforeEach(() => {
@@ -301,58 +301,54 @@ describe("issue 39150", () => {
     cy.signInAsAdmin();
   });
 
-  it(
-    "allows custom columns with the same name in nested models (metabase#39150)",
-    { viewportWidth: 1600 },
-    () => {
-      createQuestion({
-        name: "Source Model",
-        type: "model",
-        query: {
-          "source-table": PRODUCTS_ID,
-          expressions: {
-            [ccName]: [
-              "ceil",
-              [
-                "field",
-                PRODUCTS.RATING,
-                {
-                  "base-type": "type/Float",
-                },
-              ],
+  it("allows custom columns with the same name in nested models (metabase#39150)", () => {
+    createQuestion({
+      name: "Source Model",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [ccName]: [
+            "ceil",
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                "base-type": "type/Float",
+              },
             ],
-          },
-          limit: 2,
+          ],
         },
-      }).then(({ body: { id: sourceModelId } }) => {
-        createQuestion(
-          {
-            name: "Nested Model",
-            type: "model",
-            query: {
-              "source-table": `card__${sourceModelId}`,
-            },
+        limit: 2,
+      },
+    }).then(({ body: { id: sourceModelId } }) => {
+      createQuestion(
+        {
+          name: "Nested Model",
+          type: "model",
+          query: {
+            "source-table": `card__${sourceModelId}`,
           },
-          { visitQuestion: true },
-        );
-      });
+        },
+        { visitQuestion: true },
+      );
+    });
 
-      openNotebook();
-      cy.findByTestId("action-buttons").findByText("Custom column").click();
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
 
-      enterCustomColumnDetails({
-        formula: "floor([Rating])",
-        name: ccName,
-        blur: true,
-      });
+    enterCustomColumnDetails({
+      formula: "floor([Rating])",
+      name: ccName,
+      blur: true,
+    });
 
-      cy.button("Done").click();
+    cy.button("Done").click();
 
-      visualize();
+    visualize();
 
-      cy.findAllByTestId("header-cell")
-        .filter(`:contains('${ccName}')`)
-        .should("have.length", 2);
-    },
-  );
+    cy.findAllByTestId("header-cell")
+      .filter(`:contains('${ccName}')`)
+      .should("have.length", 2);
+  });
 });
