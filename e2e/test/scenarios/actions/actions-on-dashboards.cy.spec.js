@@ -793,9 +793,11 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("JSONB").should("not.exist");
             cy.findByPlaceholderText("Binary").should("not.exist");
 
-            if (dialect === "mysql") {
-              // we only have enums in postgres as of Feb 2023
+            if (dialect === "postgres") {
+              // Cal 2024-05-04: why don't we allow enums in implicit actions for postgres?
               cy.findByPlaceholderText("Enum").should("not.exist");
+            } else if (dialect === "mysql") {
+              cy.findByPlaceholderText("Enum").should("be.visible");
             }
           });
         });
