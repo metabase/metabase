@@ -255,12 +255,10 @@ export function tableHeaderClick(headerString) {
  * @returns
  */
 export function newButton(menuItem) {
-  const btn = cy.findByTestId("app-bar").button("New");
-
   if (menuItem) {
-    btn.click();
+    cy.findByTestId("app-bar").button("New").click();
     return popover().findByText(menuItem);
-  } else {
-    return btn;
   }
+
+  return cy.findByTestId("app-bar").button("New");
 }
