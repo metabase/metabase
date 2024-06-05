@@ -48,7 +48,6 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
           query={query}
           stageIndex={stageIndex}
           width={474}
-          autoPickColumn
           onSubmit={(name, expressionClause) => {
             const newQuery = Lib.expression(
               query,

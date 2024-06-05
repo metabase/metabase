@@ -27,12 +27,6 @@ interface Props {
    * If set, use this as the first column to combine.
    */
   column?: Lib.ColumnMetadata;
-
-  /**
-   * If true, automatically select the next column to combine when first
-   * rendering the component or when adding a new column.
-   */
-  autoPickColumn?: boolean;
 }
 
 type State = {
@@ -47,7 +41,6 @@ export function CombineColumns({
   onSubmit,
   width,
   column,
-  autoPickColumn = false,
 }: Props) {
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
 
@@ -55,7 +48,7 @@ export function CombineColumns({
     const defaultSeparator = getDefaultSeparator(column);
 
     const firstColumnAndSeparator = {
-      column: column ?? (autoPickColumn ? expressionableColumns[0] : null),
+      column: column ?? expressionableColumns[0] ?? null,
       separator: null,
     };
 
@@ -63,7 +56,6 @@ export function CombineColumns({
       expressionableColumns,
       defaultSeparator,
       [firstColumnAndSeparator],
-      autoPickColumn,
     );
 
     return {
@@ -126,7 +118,6 @@ export function CombineColumns({
             expressionableColumns,
             state.defaultSeparator,
             state.columnsAndSeparators,
-            autoPickColumn,
           ),
         ],
       };
