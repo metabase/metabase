@@ -14,7 +14,7 @@ interface PaletteResultItemProps {
 }
 
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
-  const icon = getCommandPaletteIcon(item, active);
+  const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
 
   const parentName =
     item.extra?.parentCollection || item.extra?.database || null;
@@ -43,9 +43,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       aria-label={item.name}
     >
       {/** Icon Container */}
-      {item.icon && (
+      {icon && (
         <Icon
-          aria-hidden
           {...icon}
           style={{
             flexBasis: "16px",
