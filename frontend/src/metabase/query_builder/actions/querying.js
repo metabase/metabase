@@ -7,7 +7,10 @@ import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
-import { getSensibleDisplays } from "metabase/visualizations";
+import {
+  getSensibleDisplays,
+  hasGraphDataSettings,
+} from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
@@ -212,17 +215,7 @@ export const queryCompleted = (
       series,
     ).settings();
 
-    const hasGraphSettings = [
-      "line",
-      "area",
-      "bar",
-      "row",
-      "combo",
-      "waterfall",
-      "scatter",
-    ].includes(question.display());
-
-    if (hasGraphSettings) {
+    if (hasGraphDataSettings(question.display())) {
       const dimensions =
         vizSettings["graph.dimensions"].length > 0
           ? vizSettings["graph.dimensions"]

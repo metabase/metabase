@@ -148,9 +148,8 @@ export const updateQuestion = (
     const wasPivot = currentQuestion?.display() === "pivot";
     const isPivot = newQuestion.display() === "pivot";
 
-    const hasGraphSettings =
+    const hasGraphDataSettings =
       "graph.dimensions" in vizSettings || "graph.metrics" in vizSettings;
-    const wasWaterfall = currentQuestion?.display() === "waterfall";
     const isWaterfall = newQuestion.display() === "waterfall";
 
     const isCurrentQuestionNative =
@@ -188,7 +187,7 @@ export const updateQuestion = (
       });
     }
 
-    if (hasGraphSettings && !wasWaterfall && isWaterfall) {
+    if (hasGraphDataSettings && isWaterfall) {
       const dimensions = vizSettings["graph.dimensions"] ?? [];
       const metrics = vizSettings["graph.metrics"] ?? [];
       const isMultiSeries = dimensions.length > 1 || metrics.length > 1;
