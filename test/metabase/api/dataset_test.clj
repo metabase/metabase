@@ -658,3 +658,15 @@
                        (format "dataset/%s?format_rows=%s" (name export-format) apply-formatting?)
                        :query (json/generate-string q))
                       ((get output-helper export-format))))))))))
+
+(deftest query-metadata-test
+  (testing "MBQL query"
+    (is (=? {:fields empty?
+             :tables [{:id (mt/id :products)}]
+             :databases [{:id (mt/id)}]}
+            (->(mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                     (mt/mbql-query products))
+               ;; The output is so large, these help debugging
+               (update :fields #(map (fn [x] (select-keys x [:id])) %))
+               (update :databases #(map (fn [x] (select-keys x [:id])) %))
+               (update :tables #(map (fn [x] (select-keys x [:id])) %)))))))
