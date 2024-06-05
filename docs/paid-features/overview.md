@@ -86,7 +86,7 @@ All Metabase editions include global caching controls. Paid plans includes addit
 ## Model persistence for individual models
 
 - [Toggle persistence for individual models](../data-modeling/model-persistence.md#turn-on-model-persistence-for-individual-models)
--
+
 ## Usage analytics
 
 See how people are using your Metabase.
