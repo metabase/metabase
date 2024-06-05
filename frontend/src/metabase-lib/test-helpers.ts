@@ -5,13 +5,13 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
-  DatasetQuery,
   DatasetColumn,
+  DatasetQuery,
   RowValue,
 } from "metabase-types/api";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -158,6 +158,7 @@ function withTemporalBucketAndBinningStrategy(
 
 interface AggregationClauseOpts {
   operatorName: string;
+  columnName?: string;
 }
 
 interface BreakoutClauseOpts {
@@ -214,6 +215,12 @@ export function createQueryWithClauses({
       -1,
       Lib.aggregationClause(
         findAggregationOperator(query, aggregation.operatorName),
+        aggregation.columnName
+          ? columnFinder(query, Lib.visibleColumns(query, -1))(
+              aggregation.columnName,
+              aggregation.columnName,
+            )
+          : undefined,
       ),
     );
   }, queryWithExpressions);
