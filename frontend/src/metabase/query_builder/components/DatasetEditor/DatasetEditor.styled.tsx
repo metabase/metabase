@@ -20,7 +20,7 @@ export const TabHintToastContainer = styled.div<{ isVisible: boolean }>`
 `;
 
 export const DatasetEditBar = styled(EditBar)`
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;
 
 export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
@@ -36,12 +36,12 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   text-overflow: ellipsis;
   overflow-x: hidden;
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   background-color: transparent;
   font-weight: bold;
   cursor: pointer;
 
-  border: 1px solid ${color("brand")};
+  border: 1px solid var(--mb-color-brand);
   border-radius: 8px;
 
   transition: all 0.25s;
@@ -50,7 +50,7 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
     props.isSelected &&
     css`
       color: ${color("text-white")};
-      background-color: ${color("brand")};
+      background-color: var(--mb-color-brand);
     `}
 
   .Icon {
@@ -60,11 +60,11 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
 
     .Icon {
       background-color: ${color("white")};
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

@@ -26,7 +26,7 @@ export const ToggleButton = styled(Button)<ToggleButtonProps>`
   font-weight: normal;
 
   &:hover {
-    color: ${props => `${props.primaryColor || color("brand")}`};
+    color: ${props => `${props.primaryColor || "var(--mb-color-brand)"}`};
     background: none;
   }
 `;

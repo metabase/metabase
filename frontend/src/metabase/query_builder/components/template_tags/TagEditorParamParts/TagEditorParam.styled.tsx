@@ -12,7 +12,7 @@ export const TagName = styled.h3`
   font-weight: 900;
   margin-bottom: 2rem;
   align-self: flex-end;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 interface ContainerLabelProps {

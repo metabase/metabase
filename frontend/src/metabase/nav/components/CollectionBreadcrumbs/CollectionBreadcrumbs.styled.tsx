@@ -30,6 +30,6 @@ export const ExpandButton = styled(Button)`
 
   &:hover {
     color: ${color("text-white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

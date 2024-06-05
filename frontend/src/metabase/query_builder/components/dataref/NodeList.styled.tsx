@@ -33,7 +33,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   border-radius: 8px;
   display: flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   overflow-wrap: anywhere;
   word-break: break-word;

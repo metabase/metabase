@@ -7,6 +7,9 @@
  */
 :root {
   --color-white: #fff;
+  --mb-color-brand: #509ee3;
+  --mb-color-brand-light: #f9fbfc;
+  --mb-color-brand-lighter: #eef6fc;
   --color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
   --color-error: #ed6e6e;

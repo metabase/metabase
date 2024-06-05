@@ -17,7 +17,7 @@ export const StaticEmbedIconRoot = styled.svg`
         color: ${theme.fn.themeColor("focus")};
 
         .innerFill {
-          fill: ${theme.fn.themeColor("brand")};
+          fill: var(--mb-color-brand);
           fill-opacity: 1;
         }
       }

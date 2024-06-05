@@ -24,7 +24,7 @@ interface SidebarIconProps {
 }
 
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   display: block;
 
   ${props =>
@@ -33,7 +33,7 @@ export const SidebarIcon = styled(Icon)<SidebarIconProps>`
       color: ${color("text-medium")};
 
       &:hover {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     `}
 `;

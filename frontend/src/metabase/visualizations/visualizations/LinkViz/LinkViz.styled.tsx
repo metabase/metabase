@@ -39,7 +39,7 @@ export const CardLink = styled(Link)`
   font-weight: bold;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -54,12 +54,12 @@ export const ExternalLink = styled(BaseExternalLink)`
   font-weight: bold;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const BrandIconWithHorizontalMargin = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   margin: 0 0.5rem;
 `;
 

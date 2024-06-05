@@ -23,6 +23,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-brand: ${color("brand")};
       --mb-color-brand-alpha-04: ${alpha("brand", 0.04)};
       --mb-color-brand-alpha-88: ${alpha("brand", 0.88)};
+      --mb-color-brand-light: ${lighten("brand", 0.532)};
       --mb-color-brand-lighter: ${lighten("brand", 0.598)};
       --mb-color-focus: ${color("focus")};
       --mb-color-bg-dark: ${color("bg-dark")};

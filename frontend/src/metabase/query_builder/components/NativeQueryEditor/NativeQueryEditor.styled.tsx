@@ -61,7 +61,7 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_templateTag {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .react-resizable {
@@ -108,13 +108,13 @@ export const aceEditorStyles = css`
 
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
     border: none;
     outline: none;
   }
 
   .ace_completion-highlight {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace_editor.ace_autocomplete .ace_line {

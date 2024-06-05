@@ -25,13 +25,13 @@ export const ProLink = styled(ExternalLink)`
   margin-top: 1rem;
   font-weight: 700;
   padding: 0.75rem 1rem;
-  border: 1px solid ${color("brand")};
+  border: 1px solid var(--mb-color-brand);
   border-radius: 0.5rem;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: fit-content;
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

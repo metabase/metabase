@@ -28,7 +28,7 @@ export const Input = styled(NumericInput)`
 
   :focus,
   :hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 
   transition: border 300ms ease-in-out;
