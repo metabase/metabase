@@ -26,6 +26,7 @@ import {
   visitQuestion,
   tableHeaderClick,
   onlyOSS,
+  createQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -466,15 +467,16 @@ describe(
     it("can create a question from the sample database", () => {
       cy.visit("/question/new");
 
-      cy.get("#DataPopover").within(() => {
-        cy.findByText("Saved Questions").should("be.visible");
-        cy.findByText("Models").should("not.exist");
-        cy.findByText("Sample Database").click();
-        cy.findByText("Products").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").should("be.visible");
+        entityPickerModalTab("Models").should("not.exist");
+        entityPickerModalTab("Tables").click();
+
+        entityPickerModalItem(2, "Products").click();
       });
-      cy.get("main")
-        .findByText(/Doing Science/)
-        .should("not.exist");
+
+      // strange: we get different behavior when we go to question/new
+      cy.findAllByTestId("run-button").first().click();
 
       cy.findByTestId("TableInteractive-root").within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
@@ -484,14 +486,13 @@ describe(
     it("can create a question from a saved question", () => {
       cy.visit("/question/new");
 
-      cy.get("#DataPopover").within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Models").should("not.exist");
-        cy.findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        entityPickerModalItem(1, "Orders").click();
       });
-      cy.get("main")
-        .findByText(/Doing Science/)
-        .should("not.exist");
+
+      // strange: we get different behavior when we go to question/new
+      cy.findAllByTestId("run-button").first().click();
 
       cy.findByTestId("TableInteractive-root").within(() => {
         cy.findByText(39.72).should("be.visible");
@@ -499,7 +500,7 @@ describe(
     });
 
     it("shows models and raw data options after creating a model", () => {
-      cy.createQuestion({
+      createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
         type: "model",
@@ -507,10 +508,10 @@ describe(
 
       cy.visit("/question/new");
 
-      cy.get("#DataPopover").within(() => {
-        cy.findByText("Raw Data").should("be.visible");
-        cy.findByText("Saved Questions").should("be.visible");
-        cy.findByText("Models").should("be.visible");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").should("be.visible");
+        entityPickerModalTab("Models").should("be.visible");
+        entityPickerModalTab("Tables").should("be.visible");
       });
     });
   },

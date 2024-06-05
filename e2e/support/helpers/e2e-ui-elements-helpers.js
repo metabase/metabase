@@ -249,3 +249,18 @@ export function tableHeaderClick(headerString) {
     cy.findByTextEnsureVisible(headerString).trigger("mouseup");
   });
 }
+/**
+ * selects the global new button
+ * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
+ * @returns
+ */
+export function newButton(menuItem) {
+  const btn = cy.findByTestId("app-bar").button("New");
+
+  if (menuItem) {
+    btn.click();
+    return popover().findByText(menuItem);
+  } else {
+    return btn;
+  }
+}
