@@ -80,6 +80,8 @@
     ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
     ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
     ;; unlikely to ever cause issues in practice.
+    ;;
+    ;; If we want 100% correctness, we can use the Macaw :case-insensitive option here to do the right thing.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query

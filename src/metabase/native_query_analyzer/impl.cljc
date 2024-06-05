@@ -22,9 +22,9 @@
     ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
     ;; reference is quoted.
     ;;
-    ;; For MySQL the case sensitivity of databases and tables depends on both the underlying
-    ;; file system, and a system variable used to initialize the database. For SQL Server it depends on the collation
-    ;; settings of the collection where the corresponding schema element is defined.
+    ;; For MySQL the case sensitivity of databases and tables depends on both the underlying file system, and a system
+    ;; variable used to initialize the database. For SQL Server it depends on the collation settings of the collection
+    ;; where the corresponding schema element is defined.
     ;;
     ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
     ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
@@ -32,7 +32,12 @@
     ;; In future Macaw may support discriminating on the identifier type, in which case we could be more precise for
     ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
     ;; which is likely a step too far in complexity.
-    {:case-insensitive?     true
+    ;;
+    ;; Currently, we go with :agnostic, as it is the most relaxed semantics (the case of both the identifiers and the
+    ;; underlying schema is totally ignored, and correspondence is non-deterministic), but Macaw supports more nuanced
+    ;; :lower and :upper configuration values which coerce the query identifiers to a given case then do an exact
+    ;; comparison with the schema.
+    {:case-insensitive      :agnostic
      ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
-     ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive?`.
+     ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive`.
      :quotes-preserve-case? (not (#{:mysql :sqlserver} driver))}))
