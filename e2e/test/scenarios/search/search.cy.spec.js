@@ -10,9 +10,10 @@ import {
   main,
   restore,
   visitFullAppEmbeddingUrl,
+  isScrollableHorizontally,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const visitEmbeddingWithSearch = (url = "/") => {
   visitFullAppEmbeddingUrl({
@@ -251,6 +252,65 @@ describe("scenarios > search", () => {
         expect(loc.pathname).to.eq("/search");
         expect(loc.search).to.eq("?q=orders");
       });
+    });
+  });
+});
+
+describe.skip("issue 16785", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.request("PUT", "/api/table", {
+      ids: [REVIEWS_ID],
+      visibility_type: "hidden",
+    });
+  });
+
+  it("should not display hidden tables (metabase#16785)", () => {
+    cy.visit("/");
+    cy.findByPlaceholderText("Search…").type("Reviews");
+
+    cy.findByTestId("search-results-list").within(() => {
+      cy.findByText("Reviews").should("not.exist");
+    });
+  });
+});
+
+describe("issue 28788", () => {
+  const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/search*").as("search");
+  });
+
+  it("search results container should not be scrollable horizontally (metabase#28788)", () => {
+    const questionDetails = {
+      name: `28788-${LONG_STRING}`,
+      type: "model",
+      description: LONG_STRING,
+      query: {
+        "source-table": PEOPLE_ID,
+      },
+    };
+
+    cy.createCollection({
+      name: `Collection-${LONG_STRING}`,
+    }).then(({ body: collection }) => {
+      cy.createQuestion({
+        ...questionDetails,
+        collection_id: collection.id,
+      });
+    });
+
+    visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
+    cy.findByPlaceholderText("Search…").type(questionDetails.name);
+    cy.wait("@search");
+    cy.icon("hourglass").should("not.exist");
+
+    cy.findByTestId("search-bar-results-container").then($container => {
+      expect(isScrollableHorizontally($container[0])).to.be.false;
     });
   });
 });
