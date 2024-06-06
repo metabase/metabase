@@ -637,6 +637,7 @@ function verifySummarizeText(options: CheckTextOpts) {
 
     if (options.step1Title) {
       cy.findByText(options.step1Title).should("exist");
+      cy.findByText("Sum of Price").should("exist");
       cy.findByText("Count").click();
     }
 
@@ -663,6 +664,7 @@ function verifyPlusButtonText(options: CheckTextOpts) {
 
     if (options.step1Title) {
       cy.findByText(options.step1Title).should("exist");
+      cy.findByText("Sum of Price").should("exist");
       cy.findByText("Count").click();
     }
 
