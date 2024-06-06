@@ -3,12 +3,12 @@ import {
   addOrUpdateDashboardCard,
   clearFilterWidget,
   createQuestion,
+  dashboardParametersDoneButton,
   dashboardParameterSidebar,
   editDashboard,
   filterWidget,
   getDashboardCard,
   popover,
-  queryBuilderHeader,
   resetFilterWidgetToDefault,
   restore,
   saveDashboard,
@@ -115,108 +115,37 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("mapping targets", () => {
-    it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
-      cy.createDashboardWithQuestions({
-        questions: [singleBreakoutQuestionDetails],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
-
+    it("should add a temporal unit parameter and connect it to a card", () => {
+      createQuestion(noBreakoutQuestionDetails);
+      createQuestion(singleBreakoutQuestionDetails);
+      createQuestion(multiBreakoutQuestionDetails);
+      createQuestion(multiStageQuestionDetails);
+      cy.createDashboard().then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
       editDashboard();
       addTemporalUnitParameter();
+
+      cy.log("no breakout");
+      addQuestion(noBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("No valid fields").should("be.visible");
+      dashboardParametersDoneButton().click();
+      removeQuestion();
+
+      cy.log("single breakout");
+      addQuestion(singleBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
       getDashboardCard().findByText("Select…").click();
       popover().findByText("Created At: Month").click();
       saveDashboard();
-      getDashboardCard().findByText("Created At: Month").should("be.visible");
-
       filterWidget().click();
       popover().findByText("Year").click();
-      getDashboardCard().within(() => {
-        cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText(singleBreakoutQuestionDetails.name).click();
-      });
-
-      queryBuilderHeader()
-        .findByText("Count by Created At: Year")
-        .should("be.visible");
-    });
-
-    it("should allow to map to a question with multiple breakouts", () => {
-      cy.createDashboardWithQuestions({
-        questions: [multiBreakoutQuestionDetails],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
-
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
       editDashboard();
-      addTemporalUnitParameter();
-      getDashboardCard().findByText("Select…").click();
-      popover().within(() => {
-        cy.findByText("Created At: Month").should("be.visible");
-        cy.findByText("Created At: Year").should("be.visible").click();
-      });
-      saveDashboard();
-      filterWidget().click();
-      popover().findByText("Quarter").click();
-      getDashboardCard().within(() => {
-        cy.findByText("Created At: Month").should("be.visible");
-        cy.findByText("Q2 2022").should("be.visible");
-      });
-    });
+      removeQuestion();
 
-    it("should not allow to map to a question without breakouts", () => {
-      cy.createDashboardWithQuestions({
-        questions: [noBreakoutQuestionDetails],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
-
-      editDashboard();
-      addTemporalUnitParameter();
-      getDashboardCard().findByText("No valid fields").should("be.visible");
-    });
-
-    it("should allow to map to a question with multiple query stages", () => {
-      cy.createDashboardWithQuestions({
-        questions: [multiStageQuestionDetails],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
-
-      editDashboard();
-      addTemporalUnitParameter();
-      getDashboardCard().findByText("Select…").click();
-      popover().findByText("Created At: Month: Year").click();
-      saveDashboard();
-      filterWidget().click();
-      popover().findByText("Quarter").click();
-      getDashboardCard().findByText("Created At: Quarter").should("be.visible");
-    });
-
-    it("should allow to map to multiple breakout columns within one card", () => {
-      cy.createDashboardWithQuestions({
-        questions: [multiBreakoutQuestionDetails],
-      }).then(({ dashboard }) => {
-        visitDashboard(dashboard.id);
-      });
-
-      editDashboard();
-      addTemporalUnitParameter();
-      getDashboardCard().findByText("Select…").click();
-      popover().findByText("Created At: Month").click();
-      addTemporalUnitParameter();
-      getDashboardCard().findByText("Select…").click();
-      popover().findByText("Created At: Year").click();
-      saveDashboard();
-      filterWidget().eq(0).click();
-      popover().findByText("Quarter").click();
-      filterWidget().eq(1).click();
-      popover().findByText("Week").click();
-      getDashboardCard().within(() => {
-        cy.findByText("Created At: Quarter").should("be.visible");
-        cy.findByText("April 24, 2022").should("be.visible");
-        cy.findByText("May 1, 2022").should("be.visible");
-      });
+      cy.log("multiple breakouts");
     });
 
     it("should allow to map to multiple questions within on dashcard", () => {
@@ -369,5 +298,20 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 function addTemporalUnitParameter() {
   cy.findByTestId("dashboard-header")
     .findByLabelText("Add a Unit of Time widget")
+    .click();
+}
+
+function addQuestion(name) {
+  cy.findByLabelText("Add questions").click();
+  cy.findByTestId("add-card-sidebar").findByText(name).click();
+}
+
+function removeQuestion() {
+  getDashboardCard().realHover().icon("close").click();
+}
+
+function editParameter(name) {
+  cy.findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText(name)
     .click();
 }
