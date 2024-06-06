@@ -114,11 +114,9 @@ describe("scenarios > question > column compare TODO", () => {
       rightSidebar().button("Add aggregation").click();
       assertNoColumnCompareShortcut();
 
-      // TODO move this test and rename ?
-      // cy.log("chill mode - column header drill");
-      //
-      // tableHeaderClick("Title");
-      // assertNoColumnCompareShortcut();
+      cy.log("chill mode - column drill");
+      tableHeaderClick("Title");
+      assertNoColumnCompareShortcut();
 
       cy.log("chill mode - plus button");
       cy.button("Add column").click();
