@@ -1,11 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  clearFilterWidget,
   createQuestion,
+  dashboardParameterSidebar,
   editDashboard,
   filterWidget,
   getDashboardCard,
   popover,
+  resetFilterWidgetToDefault,
   restore,
   saveDashboard,
   visitDashboard,
@@ -228,6 +231,50 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText(multiStageQuestionDetails.name).should("be.visible");
         cy.findByText("Q1 2023").should("be.visible");
       });
+    });
+  });
+
+  describe("parameter settings", () => {
+    it("should be able to set the default value and make it required", () => {
+      cy.createDashboardWithQuestions({
+        questions: [singleBreakoutQuestionDetails],
+      }).then(({ dashboard }) => cy.wrap(dashboard.id).as("dashboardId"));
+
+      cy.log("add a parameter with a default value");
+      cy.get("@dashboardId").then(visitDashboard);
+      editDashboard();
+      addTemporalUnitParameter();
+      dashboardParameterSidebar().findByText("No default").click();
+      popover().findByText("Year").click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Month").click();
+      saveDashboard();
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+
+      cy.log("clear the default value");
+      clearFilterWidget();
+      getDashboardCard().findByText("Created At: Month").should("be.visible");
+
+      cy.log("reload the dashboard and check the default value is applied");
+      cy.get("@dashboardId").then(visitDashboard);
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+
+      cy.log("make the parameter required");
+      editDashboard();
+      cy.findByTestId("dashboard-parameters-and-cards")
+        .findByText("Unit of Time")
+        .click();
+      dashboardParameterSidebar().findByText("Always require a value").click();
+      saveDashboard();
+
+      cy.log("change the parameter value and reset it to the default value");
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().findByText("Created At: Quarter").should("be.visible");
+      resetFilterWidgetToDefault();
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
   });
 });
