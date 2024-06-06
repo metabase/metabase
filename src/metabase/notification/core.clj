@@ -7,6 +7,7 @@
    [metabase.notification.execute :as noti.execute]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defmulti ^:private execute-payload
@@ -30,7 +31,7 @@
                               ;; should be model/Alert in the future
                               [:alert [:and (ms/InstanceOf :model/Pulse)
                                        [:map [:card_id pos-int?]]]]]]
-    [:dashboard-subscription [:map {:closed true}
+    [:dashboard-subscription [:map
                               ;; should be model/DashboardSubscription in the future
                               [:dashboard-subscription [:and (ms/InstanceOf :model/Pulse)
                                                         [:map [:dashboard_id pos-int?]]]]]]]])
@@ -87,9 +88,11 @@
                                          :user user})
                                       ;; TODO: n+1 here
                                       (t2/select :model/User
-                                                 {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
+                                                 {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]
+                                                              [:pulse_channel :pc] [:= :pc.id :pcr.pulse_channel_id]
+                                                              [:pulse :p] [:= :p.id :pc.pulse_id]]
                                                   :where     [:and
-                                                              [:= :pcr.pulse_channel_id (:payload_id notification)]
+                                                              [:= :p.id (:payload_id notification)]
                                                               [:= :core_user.is_active true]]
                                                   :order-by [[:core_user.id :asc]]}))
                                  ;; non-user-email
@@ -108,6 +111,7 @@
     channel+recipients]
    (let [payload (execute-payload payload-info)]
      (doseq [channel channel+recipients]
+       (log/infof "Sending notification %s to channel %s" (dissoc payload-info :dashboard-subscription :alert) channel)
        (channel/deliver! {:channel_type (:channel_type channel)}
                          payload
                          (:recipients channel)
@@ -122,30 +126,25 @@
                                                  :payload_id   alert-id
                                                  :creator_id   crowberto-id})))
 
- (def payload (execute-payload alert))
-
 
  (ngoc/with-tc
    (send-notification! {:payload_type :alert
                         :payload_id   alert-id
                         :creator_id   crowberto-id})))
 
-
 (comment
- (def dash-sub-id 12)
+ (def dash-sub-id 16)
 
  (def payload (execute-payload (notification->payload-info {:payload_type :dashboard-subscription
                                                             :payload_id   dash-sub-id
                                                             :creator_id   crowberto-id})))
 
  (ngoc/with-tc
-   (channel/deliver! {:channel_type :slack} payload [{:kind :slack-channel
-                                                      :recipient "#test-pulse"}] nil))
- (ngoc/with-tc
    (send-notification! {:payload_type :dashboard-subscription
                         :payload_id   dash-sub-id
                         :creator_id   crowberto-id})))
 
+  ; nil
 
 ;; call stack for alert
 ;; pulse/send-pulse! -> pulse/pulse->notifications -> pulse.util/execute-card -> parts->notifications
