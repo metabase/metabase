@@ -1,10 +1,8 @@
-import { t } from "ttag";
-
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
   CompareAggregations,
-  getOffsetPeriod,
+  getTitle,
 } from "metabase/query_builder/components/CompareAggregations";
 import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {
@@ -69,15 +67,4 @@ export const compareAggregationsDrill: Drill<
       popover: DrillPopover,
     },
   ];
-};
-
-export const getTitle = (
-  query: Lib.Query,
-  stageIndex: number,
-  aggregation: Lib.AggregationClause | Lib.ExpressionClause,
-): string => {
-  const period = getOffsetPeriod(query, stageIndex);
-  const info = Lib.displayInfo(query, stageIndex, aggregation);
-
-  return t`Compare “${info.displayName}” to previous ${period}`;
 };

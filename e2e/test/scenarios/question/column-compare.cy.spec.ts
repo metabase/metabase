@@ -293,7 +293,7 @@ describe("scenarios > question > column compare TODO", () => {
   });
 
   describe("multiple aggregations", () => {
-    describe.only("no breakout", () => {
+    describe("no breakout", () => {
       beforeEach(() => {
         createQuestion(
           { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
@@ -306,6 +306,13 @@ describe("scenarios > question > column compare TODO", () => {
         checkSummarizeText({
           itemName: "Compare to previous period ...",
           step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
+        });
+
+        cy.log("chill mode - column drill");
+        checkColumnDrillText({
+          itemName: "Compare “Count” to previous period",
           step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on grouping",
         });
@@ -331,7 +338,7 @@ describe("scenarios > question > column compare TODO", () => {
     describe("breakout on binned datetime column", () => {
       beforeEach(() => {
         createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+          { query: QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
       });
@@ -339,9 +346,9 @@ describe("scenarios > question > column compare TODO", () => {
       it("shows correct shortcut label and popover title", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
-          itemName: "Compare “Count” to previous months ...",
+          itemName: "Compare to previous months ...",
+          step1Title: "Compare one of these to the previous months",
           step2Title: "Compare “Count” to previous months",
-          step1Title: "Compare one of these to the previous period",
           offsetHelp: "months ago based on “Created At”",
         });
 
@@ -349,23 +356,22 @@ describe("scenarios > question > column compare TODO", () => {
         checkColumnDrillText({
           itemName: "Compare “Count” to previous months",
           step2Title: "Compare “Count” to previous months",
-          step1Title: "Compare one of these to the previous period",
           offsetHelp: "months ago based on “Created At”",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
-          itemName: "Compare “Count” to previous months",
+          itemName: "Compare to previous months",
+          step1Title: "Compare one of these to the previous months",
           step2Title: "Compare “Count” to previous months",
-          step1Title: "Compare one of these to the previous period",
           offsetHelp: "months ago based on “Created At”",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
-          itemName: "Compare “Count” to previous months ...",
+          itemName: "Compare to previous months ...",
+          step1Title: "Compare one of these to the previous months",
           step2Title: "Compare “Count” to previous months",
-          step1Title: "Compare one of these to the previous period",
           offsetHelp: "months ago based on “Created At”",
         });
       });
@@ -374,7 +380,7 @@ describe("scenarios > question > column compare TODO", () => {
     describe("breakout on non-binned datetime column", () => {
       beforeEach(() => {
         createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT },
+          { query: QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
       });
@@ -382,9 +388,9 @@ describe("scenarios > question > column compare TODO", () => {
       it("shows correct shortcut label and popover title", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
-          itemName: "Compare “Count” to previous period ...",
-          step2Title: "Compare “Count” to previous period",
+          itemName: "Compare to previous period ...",
           step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
 
@@ -392,23 +398,22 @@ describe("scenarios > question > column compare TODO", () => {
         checkColumnDrillText({
           itemName: "Compare “Count” to previous period",
           step2Title: "Compare “Count” to previous period",
-          step1Title: "Compare one of these to the previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
-          itemName: "Compare “Count” to previous period",
-          step2Title: "Compare “Count” to previous period",
+          itemName: "Compare to previous period",
           step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
-          itemName: "Compare “Count” to previous period ...",
-          step2Title: "Compare “Count” to previous period",
+          itemName: "Compare to previous period ...",
           step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
       });
@@ -417,7 +422,7 @@ describe("scenarios > question > column compare TODO", () => {
     describe("breakout on non-datetime column", () => {
       beforeEach(() => {
         createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
+          { query: QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
       });
@@ -425,9 +430,9 @@ describe("scenarios > question > column compare TODO", () => {
       it("shows correct shortcut label and popover title", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
-          itemName: "Compare “Count” to previous rows ...",
+          itemName: "Compare to previous rows ...",
           step2Title: "Compare “Count” to previous rows",
-          step1Title: "Compare one of these to the previous period",
+          step1Title: "Compare one of these to the previous rows",
           offsetHelp: "rows above based on “Category”",
         });
 
@@ -435,23 +440,22 @@ describe("scenarios > question > column compare TODO", () => {
         checkColumnDrillText({
           itemName: "Compare “Count” to previous rows",
           step2Title: "Compare “Count” to previous rows",
-          step1Title: "Compare one of these to the previous period",
           offsetHelp: "rows above based on “Category”",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
-          itemName: "Compare “Count” to previous rows",
+          itemName: "Compare to previous rows",
           step2Title: "Compare “Count” to previous rows",
-          step1Title: "Compare one of these to the previous period",
+          step1Title: "Compare one of these to the previous rows",
           offsetHelp: "rows above based on “Category”",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
-          itemName: "Compare “Count” to previous rows ...",
+          itemName: "Compare to previous rows ...",
           step2Title: "Compare “Count” to previous rows",
-          step1Title: "Compare one of these to the previous period",
+          step1Title: "Compare one of these to the previous rows",
           offsetHelp: "rows above based on “Category”",
         });
       });
@@ -629,20 +633,13 @@ function checkSummarizeText({
 
 function checkColumnDrillText({
   itemName,
-  step1Title,
   step2Title,
   offsetHelp,
-}: CheckTextOpts) {
+}: Omit<CheckTextOpts, "step1Title">) {
   tableHeaderClick("Count");
 
   popover().within(() => {
     cy.findByText(itemName).should("exist").click();
-
-    if (step1Title) {
-      cy.findByText(step1Title).should("exist");
-      cy.findByText("Count").click();
-    }
-
     cy.findByText(step2Title).should("exist");
     cy.findByText(offsetHelp).should("exist");
   });
@@ -683,7 +680,8 @@ function checkNotebookText({
 
     if (step1Title) {
       cy.findByText(step1Title).should("exist");
-      cy.findByText("Count").click();
+      cy.findByText("Sum of Price").should("exist");
+      cy.findByText("Count").should("exist").click();
     }
 
     cy.findByText(step2Title).should("exist");
