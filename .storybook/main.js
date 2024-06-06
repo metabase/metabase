@@ -16,6 +16,9 @@ module.exports = {
     "@storybook/addon-a11y",
   ],
   babel: () => {},
+  typescript: {
+    reactDocgen: "react-docgen-typescript-plugin",
+  },
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
     plugins: [
