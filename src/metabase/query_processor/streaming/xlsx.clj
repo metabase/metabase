@@ -542,7 +542,7 @@
 
       (finish! [_ {:keys [row_count]}]
         (if @pivot-options
-          (let [header (m/remove-nth (:pivot-groupig-key @pivot-options) (:column-titles @pivot-options))
+          (let [header (vec (m/remove-nth (:pivot-grouping-key @pivot-options) (:column-titles @pivot-options)))
                 wb     (native-pivot (concat [header] @rows!) @pivot-options)]
             (try
               (spreadsheet/save-workbook-into-stream! os wb)
