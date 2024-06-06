@@ -30,17 +30,17 @@
                         :remarks   "Wow"}
                        (apply array-map keyvals))})
 
-(defn- validate [& changes]
-  (#'lint-migrations-file/validate-migrations
+(defn- validate! [& changes]
+  (#'lint-migrations-file/validate-migrations!
    {:databaseChangeLog changes}))
 
-(defn- validate-ex-info [& changes]
-  (try (#'lint-migrations-file/validate-migrations {:databaseChangeLog changes})
+(defn- validate-ex-info! [& changes]
+  (try (#'lint-migrations-file/validate-migrations! {:databaseChangeLog changes})
        (catch Exception e (ex-data e))))
 
-(defmacro is-thrown-with-error-info? [error-info & body]
+(defmacro is-thrown-with-error-info? [msg info & body]
   `(let [exception# (try (do ~@body)
-                         (throw (ex-info "Expected an exception but none was thrown" {::no-exception? true}))
+                         nil
                          (catch clojure.lang.ExceptionInfo e# e#)
                          (catch Throwable t#
                            (throw (ex-info "An unexpected exception type was thrown"
@@ -48,37 +48,40 @@
                                             :actual t#}))))]
      (is (instance? clojure.lang.ExceptionInfo exception#)
          "Expected clojure.lang.ExceptionInfo but caught different type.")
-     (is (not (::no-exception? (ex-data exception#)))
+     (is (not (nil? exception#))
          "No exception was thrown.")
-     (is (contains? (ex-data exception#) ::lint-migrations-file/errors)
-         "No error info was found in the exception.")
-     (let [actual-error# (->> exception# ex-data ::lint-migrations-file/errors first)]
-       (is (= ~error-info actual-error#)
+     (is (::lint-migrations-file/validation-error (ex-data exception#))
+         "The exception was not a validation error.")
+     (let [ex-msg# (.getMessage exception#)
+           ex-data# (dissoc (ex-data exception#) ::lint-migrations-file/validation-error)]
+       (is (= ~msg ex-msg#)
+           "Error message does not match expected.")
+       (is (= ~info ex-data#)
            "Error info does not match expected."))))
 
 (deftest require-unique-ids-test
   (testing "Make sure all migration IDs are unique"
     (is-thrown-with-error-info?
-     {:error/message "Change set IDs are not distinct."
-      :error/details {:duplicates ["v49.2024-01-01T10:30:00"]}}
-      (validate
-          (mock-change-set :id "v49.2024-01-01T10:30:00")
-          (mock-change-set :id "v49.2024-01-01T10:30:00")))))
+        "Change set IDs are not distinct."
+        {:duplicates ["v49.2024-01-01T10:30:00"]}
+      (validate!
+       (mock-change-set :id "v49.2024-01-01T10:30:00")
+       (mock-change-set :id "v49.2024-01-01T10:30:00")))))
 
 (deftest require-migrations-in-order-test
   (testing "Migrations must be in order"
     (is-thrown-with-error-info?
-        {:error/message "Change set IDs are not in order"
-         :error/details {:out-of-order-ids [["v45.00-002" "v45.00-001"]]}}
-      (validate
+        "Change set IDs are not in order"
+        {:out-of-order-ids [["v45.00-002" "v45.00-001"]]}
+      (validate!
        (mock-change-set :id "v45.00-002")
        (mock-change-set :id "v45.00-001")))
 
     (is-thrown-with-error-info?
-        {:error/message "Change set IDs are not in order"
-         :error/details {:out-of-order-ids [["v49.2023-12-14T08:54:54"
-                                             "v49.2023-12-14T08:54:53"]]}}
-      (validate
+        "Change set IDs are not in order"
+        {:out-of-order-ids [["v49.2023-12-14T08:54:54"
+                             "v49.2023-12-14T08:54:53"]]}
+      (validate!
        (mock-change-set :id "v49.2023-12-14T08:54:54")
        (mock-change-set :id "v49.2023-12-14T08:54:53")))))
 
@@ -86,14 +89,14 @@
   (testing "we should only allow one column per addColumn change"
     (doseq [id [1 200]]
       (is (= :ok
-             (validate
+             (validate!
               (mock-change-set
                :id (format "v45.00-%03d" id)
                :changes [(mock-add-column-changes)]))))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Extra input"
-           (validate
+           #"Invalid change set\."
+           (validate!
             (mock-change-set
              :id id
              :changes [(mock-add-column-changes :columns [(mock-column :name "A")
@@ -103,18 +106,18 @@
   (testing "only allow one change per change set"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Extra input"
-         (validate
+         #"Invalid change set\."
+         (validate!
           (mock-change-set :changes [(mock-add-column-changes) (mock-add-column-changes)]))))))
 
 (deftest require-comment-test
   (testing "require a comment for a change set"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Validation failed:"
-         (validate (update (mock-change-set) :changeSet dissoc :comment))))
+         #"Invalid change set\."
+         (validate! (update (mock-change-set) :changeSet dissoc :comment))))
     (is (= :ok
-           (validate (mock-change-set :id "v49.2024-01-01T10:30:00", :comment "Added x.45.0"))))))
+           (validate! (mock-change-set :id "v49.2024-01-01T10:30:00", :comment "Added x.45.0"))))))
 
 (deftest no-on-delete-in-constraints-test
   (testing "Make sure we don't use onDelete in constraints"
@@ -130,15 +133,15 @@
       (testing (format "Change set =\n%s" (pr-str change-set))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"onDelete is only for addForeignKeyConstraints"
-             (validate change-set)))))))
+             #"Invalid change set\."
+             (validate! change-set)))))))
 
 (deftest require-remarks-for-create-table-test
   (testing "require remarks for newly created tables"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #":remarks"
-         (validate
+         #"Invalid change set\."
+         (validate!
           (mock-change-set
            :id 200
            :changes [(update (mock-create-table-changes) :createTable dissoc :remarks)]))))))
@@ -146,7 +149,7 @@
 (deftest allow-multiple-sql-changes-if-dbmses-are-different
   (testing "Allow multiple SQL changes if DBMSes are different"
     (is (= :ok
-           (validate
+           (validate!
             (mock-change-set
              :changes
              [{:sql {:dbms "h2", :sql "1"}}
@@ -156,8 +159,8 @@
   (testing "should fail if *any* change is missing dbms"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #":dbms"
-         (validate
+         #"Invalid change set\."
+         (validate!
           (mock-change-set
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
@@ -166,8 +169,8 @@
   (testing "should fail if a DBMS is repeated"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #":changes"
-         (validate
+         #"Invalid change set\."
+         (validate!
           (mock-change-set
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
@@ -175,7 +178,7 @@
 
 (deftest validate-id-test
   (letfn [(validate-id [id]
-            (validate (mock-change-set :id id)))]
+            (validate! (mock-change-set :id id)))]
     (testing "Valid old-style ID"
       (is (= :ok
              (validate-id "v42.00-000"))))
@@ -185,11 +188,11 @@
 
     (testing "invalid date components should throw an error"
       (are [msg id]
-        (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Validation failed"
-         (validate-id "v49.2024-30-01T10:30:00")
-         msg)
+          (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid change set\."
+           (validate-id "v49.2024-30-01T10:30:00")
+           msg)
         "invalid month"  "v49.2024-13-01T10:30:00"
         "invalid day"    "v49.2024-01-32T10:30:00"
         "invalid hour"   "v49.2024-01-01T25:30:00"
@@ -199,84 +202,83 @@
 (deftest prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
     (is (= :ok
-          (validate
-           (mock-change-set
+           (validate!
+            (mock-change-set
              :id "v49.2024-01-01T10:30:00"
              :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type}")])]))))
     (doseq [problem-type ["blob" "text"]]
       (testing (format "should prevent \"%s\" columns from being added after ID 320" problem-type)
         (is-thrown-with-error-info?
-         {:error/message "Migration(s) ['v49.2024-01-01T10:30:00'] uses invalid types (in 'blob','text')"
-          :error/details {:invalid-ids ["v49.2024-01-01T10:30:00"]
-                          :target-types #{"blob" "text"}}}
-         (validate
-          (mock-change-set
-           :id "v49.2024-01-01T10:30:00"
-           :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])])))))))
+            "Migration(s) ['v49.2024-01-01T10:30:00'] uses invalid types (in 'blob','text')"
+            {:invalid-ids ["v49.2024-01-01T10:30:00"]
+             :target-types #{"blob" "text"}}
+          (validate!
+           (mock-change-set
+            :id "v49.2024-01-01T10:30:00"
+            :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])])))))))
 
 (deftest prevent-bare-boolean-type-test
   (testing "should allow adding \"${boolean.type}\" columns"
     (is (= :ok
-          (validate
-           (mock-change-set
+           (validate!
+            (mock-change-set
              :id "v49.00-033"
              :changes [(mock-add-column-changes :columns [(mock-column :type "${boolean.type}")])]))))
-    (testing (format "should prevent \"boolean\" columns from being added after ID v49.00-033")
+    (testing "should prevent \"boolean\" columns from being added after ID v49.00-033"
       (is-thrown-with-error-info?
-          {:error/message "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
-           :error/details {:invalid-ids ["v49.00-033"]
-                           :target-types #{"boolean"}}}
-        (validate
-         (mock-change-set
-          :id "v49.00-033"
-          :changes [(mock-add-column-changes :columns [(mock-column :type "boolean")])]))))))
+          "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
+          {:invalid-ids ["v49.00-033"]
+           :target-types #{"boolean"}}
+        (validate! (mock-change-set
+                    :id "v49.00-033"
+                    :changes [(mock-add-column-changes :columns [(mock-column :type "boolean")])]))))))
 
 (deftest require-rollback-test
   (testing "change types with no automatic rollback support"
     (testing "missing rollback key fails"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"rollback-present-when-required"
-           (validate (update (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [{:sql {:sql "select 1"}}])
-                             :changeSet dissoc :rollback)))))
+           #"Invalid change set\."
+           (validate! (update (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [{:sql {:sql "select 1"}}])
+                              :changeSet dissoc :rollback)))))
     (testing "nil rollback is allowed"
-      (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00"
-                                            :changes [{:sql {:sql "select 1"}}]
-                                            :rollback nil)))))
+      (is (= :ok (validate! (mock-change-set :id "v49.2024-01-01T10:30:00"
+                                             :changes [{:sql {:sql "select 1"}}]
+                                             :rollback nil)))))
     (testing "rollback values are allowed"
-      (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00"
-                                            :changes [{:sql {:sql "select 1"}}]
-                                            :rollback {:sql {:sql "select 1"}}))))))
+      (is (= :ok (validate! (mock-change-set :id "v49.2024-01-01T10:30:00"
+                                             :changes [{:sql {:sql "select 1"}}]
+                                             :rollback {:sql {:sql "select 1"}}))))))
   (testing "change types with automatic rollback support are allowed"
-    (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [(mock-add-column-changes)]))))))
+    (is (= :ok (validate! (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [(mock-add-column-changes)]))))))
 
 (deftest disallow-deletecascade-in-addcolumn-test
   (testing "addColumn with deleteCascade fails"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"disallow-delete-cascade"
-         (validate (mock-change-set :id "v49.2024-01-01T10:30:00"
-                                    :changes [(mock-add-column-changes
-                                               :columns [(mock-column :constraints {:deleteCascade true})])]))))))
+         #"Invalid change set."
+         (validate! (mock-change-set :id "v49.2024-01-01T10:30:00"
+                                     :changes [(mock-add-column-changes
+                                                :columns [(mock-column :constraints {:deleteCascade true})])]))))))
 
 (deftest custom-changes-test
   (let [change-set (mock-change-set
                     :changes
                     [{:customChange {:class "metabase.db.custom_migrations.ReversibleUppercaseCards"}}])]
     (is (= :ok
-           (validate change-set))))
+           (validate! change-set))))
   (testing "missing value"
     (let [change-set (mock-change-set
                       :changes
                       [{:customChange {}}])
-          ex-info    (validate-ex-info change-set)]
+          ex-info    (validate-ex-info! change-set)]
       (is (not= :ok ex-info))))
   (testing "invalid values"
     (doseq [bad-value [nil 3 ""]]
       (let [change-set (mock-change-set
                         :changes
                         [{:customChange {:class bad-value}}])
-            ex-info    (validate-ex-info change-set)
+            ex-info    (validate-ex-info! change-set)
             specific   (->> ex-info
                             ::s/problems
                             (some (fn [problem]
@@ -289,65 +291,65 @@
 (deftest forbidden-new-types-test
   (testing "should throw if changes contains text type"
     (is (is-thrown-with-error-info?
-            {:error/message "Migration(s) ['v45.12-345'] uses invalid types (in 'blob','text')"
-             :error/details {:invalid-ids ["v45.12-345"]
-                             :target-types #{"blob" "text"}}}
-          (validate (mock-change-set :id "v45.12-345"
-                                     :changes [{:modifyDataType {:newDataType "text"}}]
-                                     :rollback nil))))
+            "Migration(s) ['v45.12-345'] uses invalid types (in 'blob','text')"
+            {:invalid-ids ["v45.12-345"]
+             :target-types #{"blob" "text"}}
+          (validate! (mock-change-set :id "v45.12-345"
+                                      :changes [{:modifyDataType {:newDataType "text"}}]
+                                      :rollback nil))))
     (is-thrown-with-error-info?
-        {:error/message "Migration(s) ['v45.12-345'] uses invalid types (in 'blob','text')"
-         :error/details {:invalid-ids ["v45.12-345"]
-                         :target-types #{"blob" "text"}}}
-         (validate (mock-change-set :id "v45.12-345"
-                                    :changes [{:createTable {:tableName "my_table"
-                                                             :remarks "meow"
-                                                             :columns [{:column {:name "foo"
-                                                                                 :remarks "none"
-                                                                                 :type "text"}}]}}]
-                                    :rollback nil))))
+        "Migration(s) ['v45.12-345'] uses invalid types (in 'blob','text')"
+        {:invalid-ids ["v45.12-345"]
+         :target-types #{"blob" "text"}}
+      (validate! (mock-change-set :id "v45.12-345"
+                                  :changes [{:createTable {:tableName "my_table"
+                                                           :remarks "meow"
+                                                           :columns [{:column {:name "foo"
+                                                                               :remarks "none"
+                                                                               :type "text"}}]}}]
+                                  :rollback nil))))
 
   (testing "should throw if changes contains boolean type"
     (is-thrown-with-error-info?
-        {:error/message "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
-         :error/details {:invalid-ids ["v49.00-033"]
-                         :target-types #{"boolean"}}}
-      (validate (mock-change-set :id "v49.00-033"
-                                 :changes [{:modifyDataType {:newDataType "boolean"}}]
-                                 :rollback nil)))
+        "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
+        {:invalid-ids ["v49.00-033"]
+         :target-types #{"boolean"}}
+      (validate! (mock-change-set :id "v49.00-033"
+                                  :changes [{:modifyDataType {:newDataType "boolean"}}]
+                                  :rollback nil)))
 
     (is-thrown-with-error-info?
-        {:error/message "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
-         :error/details {:invalid-ids ["v49.00-033"]
-                         :target-types #{"boolean"}}}
-      (validate (mock-change-set :id "v49.00-033"
-                                 :changes [{:createTable {:tableName "my_table"
-                                                          :remarks "meow"
-                                                          :columns [{:column {:name "foo"
-                                                                              :remarks "none"
-                                                                              :type "boolean"}}]}}])))
+        "Migration(s) ['v49.00-033'] uses invalid types (in 'boolean')"
+        {:invalid-ids ["v49.00-033"]
+         :target-types #{"boolean"}}
+      (validate! (mock-change-set :id "v49.00-033"
+                                  :changes [{:createTable {:tableName "my_table"
+                                                           :remarks "meow"
+                                                           :columns [{:column {:name "foo"
+                                                                               :remarks "none"
+                                                                               :type "boolean"}}]}}])))
     (testing "does not throw for older migrations"
-      (is (validate (mock-change-set :id "v45.00-033"
-                                     :changes [{:createTable {:tableName "my_table"
-                                                              :remarks "meow"
-                                                              :columns [{:column {:name "foo"
-                                                                                  :remarks "none"
-                                                                                  :type "boolean"}}]}}])))))
+      (is (validate! (mock-change-set :id "v45.00-033"
+                                      :changes [{:createTable {:tableName "my_table"
+                                                               :remarks "meow"
+                                                               :columns [{:column {:name "foo"
+                                                                                   :remarks "none"
+                                                                                   :type "boolean"}}]}}])))))
 
   (testing "should throw if changes contains datetime type"
     (is-thrown-with-error-info?
-        {:error/message "Migration(s) ['v49.00-033'] uses invalid types (in 'timestamp','timestamp without time zone','datetime')"
-         :error/details {:invalid-ids ["v49.00-033"]
-                         :target-types #{"timestamp" "timestamp without time zone" "datetime"}}}
-      (validate (mock-change-set :id "v49.00-033"
-                                 :changes [{:modifyDataType {:newDataType "datetime"}}]
-                                 :rollback nil)))
+        "Migration(s) ['v49.00-033'] uses invalid types (in 'timestamp','timestamp without time zone','datetime')"
+        {:invalid-ids ["v49.00-033"]
+         :target-types #{"timestamp" "timestamp without time zone" "datetime"}}
+      (validate! (mock-change-set :id "v49.00-033"
+                                  :changes [{:modifyDataType {:newDataType "datetime"}}]
+                                  :rollback nil)))
 
     (testing "but not if it's an older migration)"
-      (is (validate (mock-change-set :id "v45.12-345"
-                                     :changes [{:createTable {:tableName "my_table"
-                                                              :remarks "meow"
-                                                              :columns [{:column {:name "foo"
-                                                                                  :remarks "none"
-                                                                                  :type "timestamp with time zone"}}]}}]
-                                     :rollback nil))))))
+      (is (validate! (mock-change-set :id "v45.12-345"
+                                      :changes [{:createTable {:tableName "my_table"
+                                                               :remarks "meow"
+                                                               :columns [{:column {:name "foo"
+                                                                                   :remarks "none"
+                                                                                   :type "timestamp with time zone"}}]}}]
+                                      :rollback nil))))))
