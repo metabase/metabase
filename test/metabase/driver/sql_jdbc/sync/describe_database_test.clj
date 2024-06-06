@@ -203,14 +203,16 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
 
+;; dbricks TODO: Databricks does not support `.setAutoCommit`! Find proper solution.
 (deftest have-select-privilege?-test
   (testing "cheking select privilege works with and without auto commit (#36040)"
     (let [default-have-slect-privilege?
           #(identical? (get-method sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc)
                        (get-method sql-jdbc.sync.interface/have-select-privilege? %))]
-      (mt/test-drivers (into #{}
-                             (filter default-have-slect-privilege?)
-                             (descendants driver/hierarchy :sql-jdbc))
+      (mt/test-drivers (disj (into #{}
+                                   (filter default-have-slect-privilege?)
+                                   (descendants driver/hierarchy :sql-jdbc))
+                             :databricks-jdbc)
         (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
           (qp.store/with-metadata-provider (mt/id)
             (testing (sql-jdbc.describe-database/simple-select-probe-query driver/*driver* schema table-name)

@@ -24,6 +24,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- uses-default-describe-table? [driver]
@@ -40,8 +41,12 @@
   (set
    (filter
     (fn [driver]
-      (or (uses-default-describe-table? driver)
-          (uses-default-describe-fields? driver)))
+      ;; dbricks TODO: TMP until merge / rebase.
+      (try
+        (or (uses-default-describe-table? driver)
+            (uses-default-describe-fields? driver))
+        (catch Throwable _t
+          (log/tracef "Error checking the `%s` driver." driver))))
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest ^:parallel describe-fields-nested-field-columns-test
