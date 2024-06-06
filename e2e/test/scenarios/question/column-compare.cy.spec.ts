@@ -12,6 +12,7 @@ import {
   restore,
   rightSidebar,
   tableHeaderClick,
+  visualize,
 } from "e2e/support/helpers";
 import type { FieldReference, StructuredQuery } from "metabase-types/api";
 
@@ -92,11 +93,15 @@ const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT: StructuredQuery = {
   breakout: [NON_DATETIME_BREAKOUT],
 };
 
-describe("scenarios > question > column compare TODO", () => {
+describeWithSnowplow("scenarios > question > column compare TODO", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
     cy.signInAsAdmin();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
   });
 
   describe("no aggregations", () => {
@@ -112,20 +117,20 @@ describe("scenarios > question > column compare TODO", () => {
       cy.button("Summarize").click();
       rightSidebar().button("Count").icon("close").click();
       rightSidebar().button("Add aggregation").click();
-      assertNoColumnCompareShortcut();
+      verifyNoColumnCompareShortcut();
 
       cy.log("chill mode - column drill");
       tableHeaderClick("Title");
-      assertNoColumnCompareShortcut();
+      verifyNoColumnCompareShortcut();
 
       cy.log("chill mode - plus button");
       cy.button("Add column").click();
-      assertNoColumnCompareShortcut();
+      verifyNoColumnCompareShortcut();
 
       cy.log("notebook editor");
       openNotebook();
       cy.button("Summarize").click();
-      assertNoColumnCompareShortcut();
+      verifyNoColumnCompareShortcut();
     });
   });
 
@@ -137,32 +142,49 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
+
+      toggleColumnPickerItems(["Percentage difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: ["offset", "count"],
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        { name: "Count (previous period)", expression: "Offset(Count, -1)" },
+      ]);
+      verifyNoBreakoutError();
     });
 
     it("breakout on binned datetime column", () => {
@@ -172,32 +194,49 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare “Count” to previous months ...",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare “Count” to previous months ...",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
+
+      toggleColumnPickerItems(["Percentage difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: ["offset", "count"],
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        { name: "Count (previous month)", expression: "Offset(Count, -1)" },
+      ]);
+      verifyColumns(["Count (previous month)"]);
     });
 
     it("breakout on non-binned datetime column", () => {
@@ -207,32 +246,49 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
+
+      toggleColumnPickerItems(["Percentage difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: ["offset", "count"],
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        { name: "Count (previous period)", expression: "Offset(Count, -1)" },
+      ]);
+      verifyColumns(["Count (previous period)"]);
     });
 
     it("breakout on non-datetime column", () => {
@@ -242,36 +298,65 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare “Count” to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare “Count” to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
+
+      toggleColumnPickerItems(["Percentage difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: ["offset", "count"],
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous value)",
+          expression: "Offset(Count, -1)",
+        },
+      ]);
+      verifyColumns(["Count (previous value)"]);
     });
   });
 
   describe("multiple aggregations", () => {
+    const customExpressionsUsed = [
+      "offset",
+      "count",
+      "-",
+      "count",
+      "offset",
+      "count",
+    ];
+
     it("no breakout", () => {
       createQuestion(
         { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
@@ -279,7 +364,7 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
@@ -287,14 +372,14 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare to previous period",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
@@ -302,12 +387,36 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
+
+      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: customExpressionsUsed,
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous period)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous period)",
+          expression: "Count - Offset(Count, -1)",
+        },
+      ]);
+      verifyNoBreakoutError();
     });
 
     it("breakout on binned datetime column", () => {
@@ -317,7 +426,7 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare to previous months ...",
         step1Title: "Compare one of these to the previous months",
         step2Title: "Compare “Count” to previous months",
@@ -325,14 +434,14 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare to previous months",
         step1Title: "Compare one of these to the previous months",
         step2Title: "Compare “Count” to previous months",
@@ -340,12 +449,36 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare to previous months ...",
         step1Title: "Compare one of these to the previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
+
+      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: customExpressionsUsed,
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous month)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous month)",
+          expression: "Count - Offset(Count, -1)",
+        },
+      ]);
+      verifyColumns(["Count (previous month)", "Count (vs previous month)"]);
     });
 
     it("breakout on non-binned datetime column", () => {
@@ -355,7 +488,7 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
@@ -363,14 +496,14 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare to previous period",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
@@ -378,12 +511,36 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
+
+      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: customExpressionsUsed,
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous period)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous period)",
+          expression: "Count - Offset(Count, -1)",
+        },
+      ]);
+      verifyColumns(["Count (previous period)", "Count (vs previous period)"]);
     });
 
     it("breakout on non-datetime column", () => {
@@ -393,7 +550,7 @@ describe("scenarios > question > column compare TODO", () => {
       );
 
       cy.log("chill mode - summarize sidebar");
-      checkSummarizeText({
+      verifySummarizeText({
         itemName: "Compare to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         step1Title: "Compare one of these to the previous rows",
@@ -401,14 +558,14 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
-      checkColumnDrillText({
+      verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
       cy.log("chill mode - plus button");
-      checkPlusButtonText({
+      verifyPlusButtonText({
         itemName: "Compare to previous rows",
         step2Title: "Compare “Count” to previous rows",
         step1Title: "Compare one of these to the previous rows",
@@ -416,136 +573,49 @@ describe("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("notebook editor");
-      checkNotebookText({
+      verifyNotebookText({
         itemName: "Compare to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         step1Title: "Compare one of these to the previous rows",
         offsetHelp: "rows above based on “Category”",
       });
-    });
-  });
-});
 
-describeWithSnowplow("scenarios > question > column compare", () => {
-  beforeEach(() => {
-    restore();
-    resetSnowplow();
-    cy.signInAsAdmin();
-  });
-
-  afterEach(() => {
-    expectNoBadSnowplowEvents();
-  });
-
-  describe("notebook editor", () => {
-    it("should create a snowplow event for the column compare action", () => {
-      createQuestion(
-        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-      );
-
-      openNotebook();
-      getNotebookStep("summarize")
-        .findByTestId("aggregate-step")
-        .icon("add")
-        .click();
-
-      popover().findByText("Compare “Count” to previous months ...").click();
-      toggleColumnPicker();
-      toggleColumnPickerItem("Percentage difference");
-      toggleColumnPicker();
+      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: ["offset", "count"],
+          custom_expressions_used: customExpressionsUsed,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
       });
-    });
-  });
 
-  describe("chill mode - summarize sidebar", () => {
-    it("should create a snowplow event for the column compare action", () => {
-      createQuestion(
-        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-      );
-
-      cy.button("Summarize").click();
-      rightSidebar().button("Add aggregation").click();
-
-      popover().findByText("Compare “Count” to previous months ...").click();
-      toggleColumnPicker();
-      toggleColumnPickerItem("Percentage difference");
-      toggleColumnPicker();
-      popover().button("Done").click();
-
-      cy.get("@questionId").then(questionId => {
-        expectGoodSnowplowEvent({
-          event: "column_compare_via_shortcut",
-          custom_expressions_used: ["offset", "count"],
-          database_id: SAMPLE_DB_ID,
-          question_id: questionId,
-        });
-      });
-    });
-  });
-
-  describe("chill mode - column header drill", () => {
-    it("should create a snowplow event for the column compare action", () => {
-      createQuestion(
-        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-      );
-
-      tableHeaderClick("Count");
-
-      popover().findByText("Compare “Count” to previous months").click();
-      toggleColumnPicker();
-      toggleColumnPickerItem("Percentage difference");
-      toggleColumnPicker();
-      popover().button("Done").click();
-
-      cy.get("@questionId").then(questionId => {
-        expectGoodSnowplowEvent({
-          event: "column_compare_via_column_header",
-          custom_expressions_used: ["offset", "count"],
-          database_id: SAMPLE_DB_ID,
-          question_id: questionId,
-        });
-      });
-    });
-  });
-
-  describe("chill mode - plus button", () => {
-    it("should create a snowplow event for the column compare action", () => {
-      createQuestion(
-        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-      );
-
-      cy.button("Add column").click();
-
-      popover().findByText("Compare “Count” to previous months").click();
-      toggleColumnPicker();
-      toggleColumnPickerItem("Percentage difference");
-      toggleColumnPicker();
-      popover().button("Done").click();
-
-      cy.get("@questionId").then(questionId => {
-        expectGoodSnowplowEvent({
-          event: "column_compare_via_plus_modal",
-          custom_expressions_used: ["offset", "count"],
-          database_id: SAMPLE_DB_ID,
-          question_id: questionId,
-        });
-      });
+      verifyAggregations([
+        {
+          name: "Count (previous value)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous value)",
+          expression: "Count - Offset(Count, -1)",
+        },
+      ]);
+      verifyColumns(["Count (previous value)", "Count (vs previous value)"]);
     });
   });
 });
+
+function toggleColumnPickerItems(items: string[]) {
+  toggleColumnPicker();
+
+  for (const item of items) {
+    toggleColumnPickerItem(item);
+  }
+
+  toggleColumnPicker();
+}
 
 function toggleColumnPicker() {
   cy.findByTestId("column-picker").click({ force: true });
@@ -555,7 +625,7 @@ function toggleColumnPickerItem(name: string) {
   cy.findAllByTestId("column-picker-item").contains(name).click();
 }
 
-function assertNoColumnCompareShortcut() {
+function verifyNoColumnCompareShortcut() {
   popover()
     .findByText(/compare/)
     .should("not.exist");
@@ -568,7 +638,7 @@ type CheckTextOpts = {
   offsetHelp: string;
 };
 
-function checkSummarizeText(options: CheckTextOpts) {
+function verifySummarizeText(options: CheckTextOpts) {
   cy.button("Summarize").click();
   rightSidebar().button("Add aggregation").click();
 
@@ -585,7 +655,7 @@ function checkSummarizeText(options: CheckTextOpts) {
   });
 }
 
-function checkColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
+function verifyColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
   tableHeaderClick("Count");
 
   popover().within(() => {
@@ -595,7 +665,7 @@ function checkColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
   });
 }
 
-function checkPlusButtonText(options: CheckTextOpts) {
+function verifyPlusButtonText(options: CheckTextOpts) {
   cy.button("Add column").click();
 
   popover().within(() => {
@@ -611,7 +681,7 @@ function checkPlusButtonText(options: CheckTextOpts) {
   });
 }
 
-function checkNotebookText(options: CheckTextOpts) {
+function verifyNotebookText(options: CheckTextOpts) {
   openNotebook();
   getNotebookStep("summarize")
     .findByTestId("aggregate-step")
@@ -630,4 +700,44 @@ function checkNotebookText(options: CheckTextOpts) {
     cy.findByText(options.step2Title).should("exist");
     cy.findByText(options.offsetHelp).should("exist");
   });
+}
+
+type AggregationResult = {
+  name: string;
+  expression: string;
+};
+
+function verifyAggregations(results: AggregationResult[]) {
+  for (const result of results) {
+    cy.findByTestId("aggregate-step")
+      .findByText(result.name)
+      .should("exist")
+      .click();
+
+    cy.get(".ace_content").should("have.text", result.expression);
+
+    cy.realPress("Escape");
+  }
+}
+
+function verifyColumns(names: string[]) {
+  visualize();
+
+  for (const name of names) {
+    cy.findAllByTestId("header-cell").contains(name).should("exist");
+  }
+}
+
+function verifyNoBreakoutError() {
+  visualize();
+
+  cy.get("main")
+    .findByText("There was a problem with your question")
+    .should("exist");
+  cy.get("main").findByText("Show error details").should("exist").click();
+  cy.get("main")
+    .findByText(
+      "Window function requires either breakouts or order by in the query",
+    )
+    .should("exist");
 }
