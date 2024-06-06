@@ -1,10 +1,9 @@
-import {
-  useCallback,
-  useContext,
-  useMemo,
+import type {
+  MouseEvent,
   type HTMLAttributes,
   type PropsWithChildren,
 } from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import { DragDropContextProviderContext } from "metabase/collections/context";
@@ -18,6 +17,7 @@ import type {
 import { isTrashedCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import { color } from "metabase/lib/colors";
+import { Loader, Center } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
@@ -121,7 +121,9 @@ export type BaseItemsTableProps = {
   isInDragLayer?: boolean;
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
-} & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy">>;
+  onClick?: (item: CollectionItem, event: MouseEvent) => void;
+  isLoading?: boolean;
+} & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 const TableRow = ({
   testIdPrefix,
@@ -138,6 +140,7 @@ const TableRow = ({
   isSelected,
   itemKey,
   collection,
+  onClick,
 }: PropsWithChildren<
   {
     testIdPrefix: string;
@@ -160,10 +163,12 @@ const TableRow = ({
     | "onCopy"
     | "onMove"
     | "onToggleSelected"
+    | "onClick"
   >
 >) => (
   <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
     <ItemComponent
+      onClick={onClick}
       testIdPrefix={testIdPrefix}
       item={item}
       isSelected={isSelected}
@@ -198,6 +203,7 @@ const ItemDragSourceTableRow = ({
   onCopy,
   onMove,
   onToggleSelected,
+  onClick,
 }: {
   testIdPrefix: string;
   itemKey: string;
@@ -219,6 +225,7 @@ const ItemDragSourceTableRow = ({
   | "onCopy"
   | "onMove"
   | "onToggleSelected"
+  | "onClick"
 >) => {
   return (
     <ItemDragSource
@@ -244,6 +251,7 @@ const ItemDragSourceTableRow = ({
           onCopy={onCopy}
           onMove={onMove}
           onToggleSelected={onToggleSelected}
+          onClick={onClick}
         />
       </tr>
     </ItemDragSource>
@@ -265,8 +273,10 @@ const BaseItemsTableBody = ({
   onCopy,
   onMove,
   onToggleSelected,
+  onClick,
 }: Pick<
   BaseItemsTableProps,
+  | "onClick"
   | "items"
   | "getIsSelected"
   | "isPinned"
@@ -285,7 +295,6 @@ const BaseItemsTableBody = ({
   const isDndAvailable = useContext(DragDropContextProviderContext);
 
   const TableRowComponent = isDndAvailable ? ItemDragSourceTableRow : TableRow;
-
   return (
     <TBody>
       {items.map((item: CollectionItem) => {
@@ -313,6 +322,7 @@ const BaseItemsTableBody = ({
             onMove={onMove}
             onToggleSelected={onToggleSelected}
             items={items}
+            onClick={onClick}
           />
         );
       })}
@@ -343,11 +353,21 @@ export const BaseItemsTable = ({
   isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
+  onClick,
+  isLoading,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
+
+  if (isLoading) {
+    return (
+      <Center>
+        <Loader size="lg" />
+      </Center>
+    );
+  }
 
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
@@ -415,6 +435,7 @@ export const BaseItemsTable = ({
         onCopy={onCopy}
         onMove={onMove}
         onToggleSelected={onToggleSelected}
+        onClick={onClick}
       />
     </Table>
   );
@@ -430,7 +451,8 @@ export type ItemRendererProps = {
   testIdPrefix?: string;
   databases?: Database[];
   bookmarks?: Bookmark[];
-} & ActionMenuProps;
+} & ActionMenuProps &
+  Pick<BaseItemsTableProps, "onClick">;
 
 const DefaultItemRenderer = ({
   item,
@@ -445,6 +467,7 @@ const DefaultItemRenderer = ({
   databases,
   bookmarks,
   testIdPrefix = "item",
+  onClick,
 }: ItemRendererProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
@@ -474,7 +497,11 @@ const DefaultItemRenderer = ({
         icon={icon}
         isPinned={isPinned}
       />
-      <Columns.Name.Cell item={item} testIdPrefix={testIdPrefix} />
+      <Columns.Name.Cell
+        item={item}
+        testIdPrefix={testIdPrefix}
+        onClick={onClick}
+      />
       <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
       <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />
       <Columns.ActionMenu.Cell

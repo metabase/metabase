@@ -101,7 +101,7 @@ function ActionMenu({
   const canArchive = canArchiveItem(item, collection);
   const canRestore = item.can_restore;
   const canDelete = canDeleteItem(item, collection);
-  const canCopy = canCopyItem(item);
+  const canCopy = onCopy && canCopyItem(item);
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 

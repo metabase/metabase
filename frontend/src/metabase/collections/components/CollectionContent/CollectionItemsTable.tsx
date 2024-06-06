@@ -58,6 +58,7 @@ export type CollectionItemsTableProps = {
   selectOnlyTheseItems: (items: CollectionItem[]) => void;
   selected: CollectionItem[];
   toggleItem: (item: CollectionItem) => void;
+  onClick: (item: CollectionItem, event: any) => void;
 }>;
 
 export const CollectionItemsTable = ({
@@ -78,6 +79,7 @@ export const CollectionItemsTable = ({
   handleCopy,
   pageSize = PAGE_SIZE,
   models = ALL_MODELS,
+  onClick,
 }: CollectionItemsTableProps) => {
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
@@ -178,6 +180,8 @@ export const CollectionItemsTable = ({
           onCopy={handleCopy}
           onSelectAll={handleSelectAll}
           onSelectNone={clear}
+          onClick={onClick ? (item, event) => onClick(item, event) : undefined}
+          isLoading={!hasPinnedItems && loadingUnpinnedItems}
         />
         <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
           {hasPagination && (

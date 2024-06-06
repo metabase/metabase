@@ -1,3 +1,4 @@
+import type { ReactNode, MouseEvent } from "react";
 import { c, t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
@@ -12,6 +13,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
+import { Button } from "metabase/ui";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
@@ -134,29 +136,41 @@ export const Columns = {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
-      onClick?: () => void;
-    }) => (
-      <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-        <ItemLink to={item.getUrl()} onClick={onClick}>
-          <EntityItem.Name name={item.name} variant="list" />
-          <PLUGIN_MODERATION.ModerationStatusIcon
-            size={16}
-            status={item.moderated_status}
-          />
-          {item.description && includeDescription && (
-            <DescriptionIcon
-              name="info"
+      onClick?: (item: CollectionItem, event: MouseEvent) => void;
+    }) => {
+      const ItemLinkComponent = onClick
+        ? ({ children }: { children: ReactNode }) => (
+            <Button onClick={(e: MouseEvent) => onClick(item, e)}>
+              {children}
+            </Button>
+          )
+        : ({ children }: { children: ReactNode }) => (
+            <ItemLink to={item.getUrl()}>{children}</ItemLink>
+          );
+
+      return (
+        <ItemNameCell data-testid={`${testIdPrefix}-name`}>
+          <ItemLinkComponent>
+            <EntityItem.Name name={item.name} variant="list" />
+            <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
-              tooltip={
-                <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                  {item.description}
-                </Markdown>
-              }
+              status={item.moderated_status}
             />
-          )}
-        </ItemLink>
-      </ItemNameCell>
-    ),
+            {item.description && includeDescription && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                    {item.description}
+                  </Markdown>
+                }
+              />
+            )}
+          </ItemLinkComponent>
+        </ItemNameCell>
+      );
+    },
   },
   LastEditedBy: {
     Col: () => (
