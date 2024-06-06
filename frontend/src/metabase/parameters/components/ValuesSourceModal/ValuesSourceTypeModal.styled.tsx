@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import TextArea from "metabase/core/components/TextArea";
-import { color } from "metabase/lib/colors";
 import { ModalBody } from "metabase/parameters/components/ValuesSourceModal/ValuesSourceModal.styled";
 
 export const ModalBodyWithPane = styled(ModalBody)`
@@ -44,7 +43,7 @@ export const ModalHelpMessage = styled.div`
 export const ModalErrorMessage = styled.div`
   color: var(--mb-color-text-medium);
   padding: 1rem;
-  border: 1px solid ${color("error")};
+  border: 1px solid var(--mb-color-error);
   border-radius: 0.5rem;
 `;
 

@@ -12,7 +12,7 @@ export const ItemLink = styled(Link)`
   border-radius: 8px;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

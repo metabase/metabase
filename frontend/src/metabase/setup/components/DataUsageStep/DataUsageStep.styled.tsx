@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Toggle from "metabase/core/components/Toggle";
-import { color } from "metabase/lib/colors";
 
 export const StepDescription = styled.div`
   margin: 0.875rem 0 1.25rem;
@@ -34,6 +33,6 @@ export const StepInfoList = styled.ul`
 `;
 
 export const StepError = styled.div`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   margin-top: 0.5rem;
 `;

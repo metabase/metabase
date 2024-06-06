@@ -53,6 +53,6 @@ export const VisibilityBadge = styled.span<VisibilityBadgeProps>`
   color: ${props => (props.isChecked ? color("brand") : color("text-dark"))};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Radio from "metabase/core/components/Radio";
 import SelectButton from "metabase/core/components/SelectButton";
-import { color } from "metabase/lib/colors";
 
 const CONTENT_PADDING = "24px";
 
@@ -18,7 +17,7 @@ const FormContainer = styled.div`
   }
 
   ${SelectButton.Root}:focus {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;
 

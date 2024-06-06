@@ -85,7 +85,7 @@ export const ItemLink = styled(Link)`
   align-items: center;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -98,7 +98,7 @@ export const ItemNameCell = styled.td`
 
   &:hover {
     ${ItemLink} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     cursor: pointer;

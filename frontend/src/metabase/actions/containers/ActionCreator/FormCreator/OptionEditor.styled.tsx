@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const OptionEditorContainer = styled.div`
@@ -22,7 +21,7 @@ export const AddMorePrompt = styled.div<{ isVisible: boolean }>`
 export const ErrorMessage = styled.div`
   text-align: center;
   font-size: 0.875rem;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 export const TextArea = styled.textarea`

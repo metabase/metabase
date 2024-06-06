@@ -12,7 +12,7 @@ export const PromptSection = styled.div`
   align-items: center;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  box-shadow: 0 2px 2px ${color("shadow")};
+  box-shadow: 0 2px 2px var(--mb-color-shadow);
   background-color: var(--mb-color-bg-white);
 `;
 

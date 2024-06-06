@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ToggleRoot = styled.div`
@@ -29,7 +28,7 @@ export const ToggleContent = styled.a<ToggleContentProps>`
   transition: all 0.2s linear;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

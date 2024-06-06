@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const Row = styled.div`
@@ -34,7 +33,7 @@ export const IconButton = styled.button`
 `;
 
 export const ErrorIcon = styled(Icon)`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   margin-top: 1px;
   margin-left: 4px;
 `;

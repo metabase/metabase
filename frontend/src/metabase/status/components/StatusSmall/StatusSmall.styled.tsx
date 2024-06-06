@@ -63,8 +63,8 @@ export const StatusContainer = styled.div<Props>`
   color: ${getIconColor};
   border: 0.25rem solid ${getBorderColor};
   border-radius: 50%;
-  background-color: ${lighten("brand", 0.6)};
-  box-shadow: 0 1px 12px ${color("shadow")};
+  background-color: ${() => lighten("brand", 0.6)};
+  box-shadow: 0 1px 12px var(--mb-color-shadow);
 `;
 
 export const StatusIconContainer = styled.div`
@@ -86,5 +86,5 @@ export const StatusSpinner = styled(LoadingSpinner)`
   position: absolute;
   top: 0;
   left: 0;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;

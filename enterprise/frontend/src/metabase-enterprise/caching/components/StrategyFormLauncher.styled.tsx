@@ -21,7 +21,7 @@ export const PolicyToken = styled(Button)<
   ${({ variant }) =>
     css`
       border-color: ${["filled", "outline"].includes(variant || "")
-        ? color("brand")
+        ? "var(--mb-color-brand)"
         : "var(--mb-color-border)"} !important;
     `};
   span {
@@ -53,7 +53,7 @@ export const StyledLauncher = styled(Flex)<
   ${({ variant }) =>
     css`
       border-color: ${["filled", "outline"].includes(variant || "")
-        ? color("brand")
+        ? "var(--mb-color-brand)"
         : "var(--mb-color-border)"} !important;
     `};
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>

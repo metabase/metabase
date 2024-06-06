@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import { color } from "metabase/lib/colors";
 import type { ButtonProps as BaseButtonProps, TextProps } from "metabase/ui";
 import { Button, Icon, Text } from "metabase/ui";
 
@@ -41,7 +40,7 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
 
   &:hover {
     ${ComparisonPickerSecondaryText} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

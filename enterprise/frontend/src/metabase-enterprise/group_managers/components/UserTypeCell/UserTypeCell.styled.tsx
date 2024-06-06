@@ -1,10 +1,8 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const ChangeTypeButton = styled.button`
   padding: 0 0.25rem;
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
   cursor: pointer;
   vertical-align: middle;
 `;

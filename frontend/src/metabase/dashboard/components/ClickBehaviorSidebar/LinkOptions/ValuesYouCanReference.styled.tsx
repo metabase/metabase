@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const PopoverTrigger = styled.div`
   display: flex;
   align-items: center;
@@ -10,6 +8,6 @@ export const PopoverTrigger = styled.div`
   color: var(--mb-color-text-medium);
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

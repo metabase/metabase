@@ -17,7 +17,7 @@ export const StepRoot = styled.section`
 `;
 
 export const StepTitle = styled.div`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-size: 1.3125rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
@@ -39,7 +39,7 @@ export const StepLabel = styled.div`
 `;
 
 export const StepLabelText = styled.span`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 `;

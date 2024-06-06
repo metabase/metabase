@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -19,7 +18,7 @@ export const QuestionPaneDetailLinkText = styled.span`
 export const QuestionPaneDetailLink = styled.a`
   display: flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const QuestionPaneDetailText = styled.span`

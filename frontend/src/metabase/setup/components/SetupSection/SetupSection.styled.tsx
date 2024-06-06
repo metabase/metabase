@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;
@@ -31,7 +30,7 @@ export const SectionDescription = styled.div`
 `;
 
 export const SectionButton = styled(Button)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: 2.5rem;
   height: 2.5rem;
 `;

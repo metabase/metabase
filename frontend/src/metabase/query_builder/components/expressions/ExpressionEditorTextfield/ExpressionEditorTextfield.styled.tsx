@@ -21,13 +21,13 @@ export const EditorContainer = styled.div<{
   ${({ isFocused }) =>
     isFocused &&
     css`
-      border-color: ${color("brand")};
+      border-color: var(--mb-color-brand);
     `}
 
   ${({ hasError }) =>
     hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: var(--mb-color-error);
     `}
 
   @media (prefers-reduced-motion) {
@@ -57,7 +57,7 @@ export const EditorContainer = styled.div<{
   }
 
   .ace-tm .ace_variable {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace-tm .ace_string {
@@ -74,7 +74,7 @@ export const EditorContainer = styled.div<{
 
   .ace_content .error {
     position: absolute;
-    border-bottom: 2px solid ${color("error")};
+    border-bottom: 2px solid var(--mb-color-error);
     border-radius: 0px;
     background-color: var(--mb-color-bg-error);
   }
@@ -92,7 +92,7 @@ export const EditorEqualsSign = styled.div`
 `;
 
 export const ErrorMessageContainer = styled.div`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   margin: 0.5rem 0;
   white-space: pre-wrap;
 `;

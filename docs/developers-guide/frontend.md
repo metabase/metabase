@@ -362,7 +362,7 @@ When dealing with business logic you don't want to be concerned with the specifi
 
 ```css
 .Button.Button--primary {
-  color: -var(--color-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 
@@ -389,7 +389,7 @@ const Foo = ({ color ) =>
 
 ```css
 :local(.primary) {
-  color: -var(--color-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 

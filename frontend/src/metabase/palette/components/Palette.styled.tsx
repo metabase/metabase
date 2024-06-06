@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 import { KBarSearch } from "kbar";
 
-import { color } from "metabase/lib/colors";
-
 export const PaletteInput = styled(KBarSearch)`
   padding: 0.75rem;
   font-weight: bold;
@@ -14,6 +12,6 @@ export const PaletteInput = styled(KBarSearch)`
   line-height: 1rem;
 
   &:focus {
-    outline: 1px solid ${color("brand")};
+    outline: 1px solid var(--mb-color-brand);
   }
 `;

@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const SidebarRoot = styled.aside`
@@ -35,6 +34,6 @@ export const BackButton = styled.button`
   text-align: left;
 
   &:hover {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;

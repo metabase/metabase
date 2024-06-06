@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
@@ -24,7 +23,7 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   transition: opacity 0.25s linear;
 
   &:hover {
-    color: ${({ onMouseEnter }) => (onMouseEnter ? color("brand") : "")};
+    color: ${({ onMouseEnter }) => onMouseEnter && "var(--mb-color-brand)"};
   }
 `;
 

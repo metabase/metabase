@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 
 import TableLabel from "../TableLabel/TableLabel";
 
@@ -16,7 +15,7 @@ export const LabelButton = styled.button`
   &:hover,
   &:focus {
     ${InteractiveTableLabel} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;
@@ -25,7 +24,7 @@ export const LabelLink = styled(Link)`
   &:hover,
   &:focus {
     ${InteractiveTableLabel} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -26,7 +25,7 @@ export const ToggleButton = styled(Button)<ToggleButtonProps>`
   font-weight: normal;
 
   &:hover {
-    color: ${props => `${props.primaryColor || color("brand")}`};
+    color: ${props => `${props.primaryColor || "var(--mb-color-brand)"}`};
     background: none;
   }
 `;

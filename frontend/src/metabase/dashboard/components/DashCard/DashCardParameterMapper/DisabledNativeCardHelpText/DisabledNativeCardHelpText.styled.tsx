@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const NativeCardDefault = styled.div`
@@ -25,7 +24,7 @@ export const NativeCardText = styled.div`
 `;
 
 export const NativeCardLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   margin-top: 0.5rem;
 `;

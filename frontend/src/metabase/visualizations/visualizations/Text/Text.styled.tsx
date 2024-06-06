@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
   breakpointMaxExtraLarge,
@@ -62,17 +62,17 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid ${color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid ${color("brand")};
+    border: 1px solid var(--mb-color-brand);
   }
 
   ${({ isEmpty }) =>
     isEmpty &&
     css`
-      border: 1px solid ${color("brand")};
+      border: 1px solid var(--mb-color-brand);
       color: var(--mb-color-text-light);
     `}
 
@@ -227,7 +227,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-weight: bold;
     cursor: pointer;
     text-decoration: none;
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
   .text-card-markdown a:hover {
     text-decoration: underline;

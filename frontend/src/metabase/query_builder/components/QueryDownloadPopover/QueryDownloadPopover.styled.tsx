@@ -34,7 +34,7 @@ export const DownloadButtonRoot = styled.button`
   cursor: pointer;
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;
 

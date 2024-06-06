@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link/Link";
-import { color } from "metabase/lib/colors";
 
 export const PasswordFormTitle = styled.div`
   color: var(--mb-color-text-dark);
@@ -23,6 +22,6 @@ export const PasswordFormLink = styled(Link)`
   color: var(--mb-color-text-dark);
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

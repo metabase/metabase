@@ -43,11 +43,11 @@ export const CardRoot = styled(Link)<CardRootProps>`
     }
 
     ${LegendLabel} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${ChartSkeleton.Title} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${ChartSkeleton.Description} {

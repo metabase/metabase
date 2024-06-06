@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
-export function withPublicComponentWrapper<P>(
+export function withPublicComponentWrapper<P extends object>(
   WrappedComponent: ComponentType<P>,
 ): React.FC<P> {
   const WithPublicComponentWrapper: React.FC<P> = props => {

@@ -14,7 +14,7 @@ export const CardRoot = styled(Link)`
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: ${color("white")};
-  box-shadow: 0 7px 20px ${color("shadow")};
+  box-shadow: 0 7px 20px var(--mb-color-shadow);
   max-width: 100%;
 
   ${breakpointMinSmall} {
@@ -26,6 +26,6 @@ export const CardRoot = styled(Link)`
   }
 
   &:hover {
-    box-shadow: 0 10px 22px ${alpha("shadow", 0.09)};
+    box-shadow: 0 10px 22px ${() => alpha("shadow", 0.09)};
   }
 `;

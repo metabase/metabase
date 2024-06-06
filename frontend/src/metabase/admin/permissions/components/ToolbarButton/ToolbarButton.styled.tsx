@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const ToolbarButtonRoot = styled.button`
@@ -13,7 +12,7 @@ export const ToolbarButtonRoot = styled.button`
   transition: color 200ms;
 
   &:hover {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;
 

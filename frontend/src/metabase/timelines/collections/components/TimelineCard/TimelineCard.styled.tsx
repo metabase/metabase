@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
 import Markdown from "metabase/core/components/Markdown";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
@@ -51,14 +50,14 @@ export const CardMenu = styled.span`
 
 const cardRootHoverStyles = css`
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
 
     ${CardIcon} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${CardTitle} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

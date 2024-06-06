@@ -61,7 +61,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     transform: translateX(${getTranslateX});
     background-color: ${color("white")};
     transition: transform 0.3s;
-    box-shadow: 2px 2px 6px ${color("shadow")};
+    box-shadow: 2px 2px 6px var(--mb-color-shadow);
   }
 
   ${focusOutlineStyle("brand")};

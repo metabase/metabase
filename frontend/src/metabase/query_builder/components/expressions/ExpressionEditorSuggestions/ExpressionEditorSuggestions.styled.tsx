@@ -17,7 +17,7 @@ export const SuggestionMatch = styled.span`
 
 const highlighted = css`
   color: ${color("white")};
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;
 
 export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`

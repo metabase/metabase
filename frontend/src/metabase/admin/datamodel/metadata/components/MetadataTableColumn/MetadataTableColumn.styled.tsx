@@ -26,6 +26,6 @@ export const FieldSettingsLink = styled(Link)`
   margin-right: 0.5rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

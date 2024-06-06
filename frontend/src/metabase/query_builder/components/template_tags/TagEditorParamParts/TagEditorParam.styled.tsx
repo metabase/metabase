@@ -12,7 +12,7 @@ export const TagName = styled.h3`
   font-weight: 900;
   margin-bottom: 2rem;
   align-self: flex-end;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 interface ContainerLabelProps {
@@ -29,7 +29,7 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
 
 export const ErrorSpan = styled.span`
   margin: 0 0.5rem;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 interface InputContainerProps {

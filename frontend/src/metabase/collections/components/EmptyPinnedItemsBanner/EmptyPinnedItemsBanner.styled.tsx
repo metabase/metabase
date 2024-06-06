@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 
 import Banner from "metabase/components/Banner";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmptyBanner = styled(Banner)`
-  border: 1px solid ${color("brand")};
-  background-color: ${lighten("brand", 0.6)};
+  border: 1px solid var(--mb-color-brand);
+  background-color: ${() => lighten("brand", 0.6)};
   display: flex;
   align-items: center;
   color: var(--mb-color-text-dark);
@@ -16,5 +16,5 @@ export const EmptyBanner = styled(Banner)`
 `;
 
 export const ColoredIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;

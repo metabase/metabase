@@ -16,7 +16,7 @@ export const FileInput = styled.input`
   }
 
   &::file-selector-button:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     background-color: var(--mb-color-bg-light);
   }
 `;

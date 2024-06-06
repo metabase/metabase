@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
@@ -14,7 +13,7 @@ export const ItemLink = styled(Link)`
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   height: 1.5rem;
   width: 1.5rem;
 `;
@@ -50,7 +49,7 @@ export const Body = styled.div`
 
   &:hover {
     ${Title} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${ActionsContainer} {

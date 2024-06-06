@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -36,6 +35,6 @@ export const ToggleContainer = styled.div`
 export const SettingsTriggerIcon = styled(Icon)`
   color: var(--mb-color-text-medium);
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

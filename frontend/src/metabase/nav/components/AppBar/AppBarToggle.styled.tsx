@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 interface SidebarButtonProps {
@@ -24,7 +23,7 @@ interface SidebarIconProps {
 }
 
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   display: block;
 
   ${props =>
@@ -33,7 +32,7 @@ export const SidebarIcon = styled(Icon)<SidebarIconProps>`
       color: var(--mb-color-text-medium);
 
       &:hover {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     `}
 `;

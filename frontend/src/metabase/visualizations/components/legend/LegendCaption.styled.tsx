@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const LegendCaptionRoot = styled.div`
@@ -17,7 +17,7 @@ export const LegendLabel = styled.div`
   margin-top: 2px;
 
   &:hover {
-    color: ${({ onClick }) => (onClick ? color("brand") : "")};
+    color: ${({ onClick }) => onClick && "var(--mb-color-brand)"};
   }
 `;
 

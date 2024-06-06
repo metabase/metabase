@@ -144,7 +144,9 @@ export const ModelPersistenceConfiguration = () => {
               {" "}
               <ExternalLink
                 key="model-caching-link"
-                href={MetabaseSettings.docsUrl("data-modeling/models")}
+                href={MetabaseSettings.docsUrl(
+                  "data-modeling/model-persistence",
+                )}
               >{t`Learn more`}</ExternalLink>
             </>
           )}

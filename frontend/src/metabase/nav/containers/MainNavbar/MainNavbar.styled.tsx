@@ -129,7 +129,7 @@ export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   text-align: center;
 `;
 
@@ -144,13 +144,13 @@ export const PaddedSidebarLink = styled(SidebarLink)`
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`
-  background: ${color("brand")};
+  background: var(--mb-color-brand);
   border-radius: 8px;
   color: ${color("white")};
   margin: ${space(1)};
   padding: 2px 6px;
   svg {
-    color: ${color("brand-light")};
+    color: var(--mb-color-brand-light);
   }
   transition: background-color 0.3s linear;
 
@@ -159,11 +159,11 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   }
 
   &:hover {
-    background: ${lighten("brand", 0.12)};
+    background: ${() => lighten("brand", 0.12)};
     color: ${color("white")};
 
     svg {
-      color: ${color("brand-light")} !important;
+      color: var(--mb-color-brand-light) !important;
     }
   }
 `;

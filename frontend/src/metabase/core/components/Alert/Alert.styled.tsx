@@ -56,7 +56,7 @@ export const AlertIcon = styled(Icon)<AlertIconProps>`
 `;
 
 export const AlertLink = styled.a`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   cursor: pointer;
   font-weight: bold;
 `;

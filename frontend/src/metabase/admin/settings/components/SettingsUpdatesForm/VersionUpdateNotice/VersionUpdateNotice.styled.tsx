@@ -10,7 +10,7 @@ export const OnLatestVersionMessage = styled.div`
   padding: 1rem;
   color: ${color("white")};
   font-weight: bold;
-  border: 1px solid ${color("brand")};
+  border: 1px solid var(--mb-color-brand);
   border-radius: 0.5rem;
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;

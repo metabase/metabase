@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const OptionsIcon = styled(Icon)`
@@ -10,7 +9,7 @@ export const OptionsIcon = styled(Icon)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

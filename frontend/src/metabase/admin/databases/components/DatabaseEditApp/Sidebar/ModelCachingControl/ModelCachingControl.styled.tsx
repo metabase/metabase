@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const ControlContainer = styled.div`
@@ -13,7 +12,7 @@ export const ControlContainer = styled.div`
 export const HoverableIcon = styled(Icon)`
   cursor: pointer;
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -33,6 +32,6 @@ export const FeatureDescriptionText = styled.p`
 
 export const ErrorMessage = styled.p`
   width: 80%;
-  color: ${color("error")};
+  color: var(--mb-color-error);
   line-height: 1.5rem;
 `;

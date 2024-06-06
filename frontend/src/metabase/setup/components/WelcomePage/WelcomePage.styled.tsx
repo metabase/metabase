@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const PageRoot = styled.div`
   display: flex;
@@ -21,7 +20,7 @@ export const PageMain = styled.main`
 `;
 
 export const PageTitle = styled.h1`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-size: 2.2rem;
 `;
 

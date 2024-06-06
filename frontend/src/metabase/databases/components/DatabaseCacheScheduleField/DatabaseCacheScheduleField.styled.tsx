@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 
 export const ScheduleOptionList = styled.div`
   border: 1px solid var(--mb-color-border);
-  box-shadow: 0 2px 2px ${color("shadow")};
+  box-shadow: 0 2px 2px var(--mb-color-shadow);
 `;
 
 interface ScheduleOptionRootProps {

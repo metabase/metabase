@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import CheckBox from "metabase/core/components/CheckBox";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 type OptionButtonProps = {
@@ -12,11 +11,11 @@ type OptionButtonProps = {
 
 export const OptionButton = styled(Button)<OptionButtonProps>`
   display: block;
-  color: ${({ primaryColor = color("brand"), selected }) =>
+  color: ${({ primaryColor = "var(--mb-color-brand)", selected }) =>
     selected ? primaryColor : undefined};
   border: none;
   &:hover {
-    color: ${props => props.primaryColor || color("brand")};
+    color: ${props => props.primaryColor || "var(--mb-color-brand)"};
     background: none;
   }
 `;

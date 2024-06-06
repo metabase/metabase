@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const UploadInput = styled.input`
   display: none;
 `;
@@ -11,7 +9,7 @@ export const LoadingStateContainer = styled.div`
   transform: translateY(10px);
   align-items: center;
   height: 16px;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const InfoModalTitle = styled.h2`
@@ -27,8 +25,8 @@ export const NewBadge = styled.div`
   padding: 5px 10px;
   font-size: 0.875rem;
   font-weight: 700;
-  color: ${color("brand")};
-  background-color: ${color("brand-lighter")};
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-lighter);
   margin: 0 auto;
   border-radius: 6px;
 `;

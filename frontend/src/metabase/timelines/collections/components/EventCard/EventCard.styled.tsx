@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Markdown from "metabase/core/components/Markdown";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`
@@ -19,7 +18,7 @@ export const CardThread = styled.div`
 `;
 
 export const CardThreadIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: 1rem;
   height: 1rem;
 `;
@@ -51,7 +50,7 @@ export interface CardTitleProps {
 
 const cardTitleHoverStyles = css`
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -71,7 +70,7 @@ export const CardDescription = styled(Markdown)`
 `;
 
 export const CardDateInfo = styled.div`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-size: 0.75rem;
   line-height: 1.5rem;
   font-weight: bold;

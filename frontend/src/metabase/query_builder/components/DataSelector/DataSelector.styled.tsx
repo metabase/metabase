@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon, Text } from "metabase/ui";
 
@@ -37,7 +36,7 @@ const BackButtonLabel = styled.span`
   word-wrap: anywhere;
 
   :hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

@@ -5,7 +5,6 @@ import Card from "metabase/components/Card";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
 
 import { BrowseGrid } from "./BrowseContainer.styled";
@@ -29,7 +28,7 @@ export const ModelCard = styled(Card)`
   box-shadow: none;
   &:hover {
     h1 {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
   transition: box-shadow 0.15s;
@@ -66,7 +65,7 @@ export const CollectionHeaderContainer = styled.button`
   cursor: pointer;
   color: var(--mb-color-text-dark);
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
   :first-of-type {
     margin-top: 1rem;
@@ -78,7 +77,7 @@ export const CollectionHeaderLink = styled(Link)`
   display: flex;
   align-items: center;
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -121,7 +120,7 @@ export const CollectionHeaderToggleContainer = styled.div`
     background-color: inherit;
     div,
     svg {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

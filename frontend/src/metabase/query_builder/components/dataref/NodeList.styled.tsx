@@ -5,7 +5,6 @@ import {
   HoverParent,
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -20,7 +19,7 @@ export const NodeListIcon = styled(Icon)`
 `;
 
 export const NodeListItemIcon = styled(Icon)`
-  color: ${color("focus")};
+  color: var(--mb-color-focus);
   margin-top: 1px;
   width: ${space(2)};
 `;
@@ -33,7 +32,7 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   border-radius: 8px;
   display: flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   overflow-wrap: anywhere;
   word-break: break-word;
