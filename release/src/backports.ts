@@ -14,7 +14,7 @@ export const checkOpenBackports = async ({ github, owner, repo, channelName }: {
   channelName: string,
 }) => {
 
-  const { data: openBackports } = await github.issues.listForRepo({
+  const { data: openBackports } = await github.rest.issues.listForRepo({
     owner,
     repo,
     labels: "was-backported",
