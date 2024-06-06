@@ -73,6 +73,7 @@ export function getPieChartOption(
 
     return formatters.formatPercent(
       getSliceByKey(name, chartModel.slices).normalizedPercentage,
+      "chart",
     );
   };
 
