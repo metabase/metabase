@@ -10,6 +10,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  rightSidebar,
   tableHeaderClick,
 } from "e2e/support/helpers";
 import type { FieldReference, StructuredQuery } from "metabase-types/api";
@@ -91,6 +92,92 @@ const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT: StructuredQuery = {
   breakout: [NON_DATETIME_BREAKOUT],
 };
 
+describe("scenarios > question > column compare TODO", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+  });
+
+  describe("no aggregations", () => {
+    beforeEach(() => {
+      createQuestion(
+        { query: QUERY_NO_AGGREGATION },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+    });
+
+    describe("notebook editor", () => {
+      it("does not show column compare shortcut", () => {
+        openNotebook();
+        cy.button("Summarize").click();
+        assertNoColumnCompareShortcut();
+      });
+    });
+
+    describe("chill mode - summarize sidebar", () => {
+      it("does not show column compare shortcut", () => {
+        cy.button("Summarize").click();
+        rightSidebar().button("Count").icon("close").click();
+        rightSidebar().button("Add aggregation").click();
+        assertNoColumnCompareShortcut();
+      });
+    });
+
+    // TODO move this test and rename ?
+    describe.skip("chill mode - column header drill", () => {
+      it("does not show column compare shortcut", () => {
+        tableHeaderClick("Title");
+        assertNoColumnCompareShortcut();
+      });
+    });
+
+    describe("chill mode - plus button", () => {
+      it("does not show column compare shortcut", () => {
+        cy.button("Add column").click();
+        assertNoColumnCompareShortcut();
+      });
+    });
+  });
+
+  describe("single aggregation", () => {
+    beforeEach(() => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+    });
+
+    describe("notebook editor", () => {
+      it("shows correct label", () => {
+        openNotebook();
+        startNewAggregation();
+
+        popover()
+          .findByText("Compare “Count” to previous period ...")
+          .should("exist")
+          .click();
+
+        popover()
+          .findByText("Compare “Count” to previous period")
+          .should("exist");
+      });
+    });
+
+    describe("chill mode - summarize sidebar", () => {
+      it("shows correct label", () => {});
+    });
+
+    describe("chill mode - column header drill", () => {
+      it("shows correct label", () => {});
+    });
+
+    describe("chill mode - plus button", () => {
+      it("shows correct label", () => {});
+    });
+  });
+});
+
 describeWithSnowplow("scenarios > question > column compare", () => {
   beforeEach(() => {
     restore();
@@ -110,10 +197,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       );
 
       openNotebook();
-      getNotebookStep("summarize")
-        .findByTestId("aggregate-step")
-        .icon("add")
-        .click();
+      startNewAggregation();
 
       popover().findByText("Compare “Count” to previous months ...").click();
       toggleColumnPicker();
@@ -140,7 +224,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       );
 
       cy.button("Summarize").click();
-      cy.button("Add aggregation").click();
+      rightSidebar().button("Add aggregation").click();
 
       popover().findByText("Compare “Count” to previous months ...").click();
       toggleColumnPicker();
@@ -218,4 +302,17 @@ function toggleColumnPicker() {
 
 function toggleColumnPickerItem(name: string) {
   cy.findAllByTestId("column-picker-item").contains(name).click();
+}
+
+function startNewAggregation() {
+  getNotebookStep("summarize")
+    .findByTestId("aggregate-step")
+    .icon("add")
+    .click();
+}
+
+function assertNoColumnCompareShortcut() {
+  popover()
+    .findByText(/compare/)
+    .should("not.exist");
 }
