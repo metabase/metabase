@@ -44,6 +44,16 @@ Questions asked using SQL can be saved, downloaded, converted to models, and add
 
 You can also [refer to models and saved questions][ref-models] in your SQL queries.
 
+## Format SQL queries
+
+You can format your SQL queries by clicking on the "document" icon in the editor sidebar.
+
+| Before format                                                         | After format                                                        |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| ![a SQL query before formatting](../images/before-sql-formatting.png) | ![a SQL query after formatting](../images/after-sql-formatting.png) |
+
+The formatter works only for SQL queries, and isn’t available for SQLite and SQL Server.
+
 ## Using SQL filters
 
 If you or someone else wrote a SQL query that includes [variables][variable-gloss], that question might have filter widgets at the top of the screen above the editor. Filter widgets let you modify the SQL query before it's run, changing the results you might get.
