@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -207,7 +206,7 @@
       (t2/delete! 'Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
             audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
-            _ (is (= ::ee-audit/installed status))
+            _ (is (= :metabase-enterprise.audit-app.audit/installed status))
             _ (is (= 13371337 audit-db-id))
             first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
             second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
