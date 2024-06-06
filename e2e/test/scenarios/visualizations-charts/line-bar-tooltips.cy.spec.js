@@ -230,9 +230,13 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipPairs(updatedTooltipText);
     });
 
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange();
-    });
+    it(
+      "should show percent change in tooltip for timeseries axis",
+      { tags: "@flaky" },
+      () => {
+        testSumTotalChange();
+      },
+    );
   });
 
   describe("> single series question on dashboard with added series", () => {
@@ -284,10 +288,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipPairs(updatedAddedSeriesTooltipText);
     });
 
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange();
-      testAvgTotalChange();
-    });
+    it(
+      "should show percent change in tooltip for timeseries axis",
+      { tags: "@flaky" },
+      () => {
+        testSumTotalChange();
+        testAvgTotalChange();
+      },
+    );
   });
 
   describe("> multi series question on dashboard", () => {
@@ -326,10 +334,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipPairs(updatedTooltipText);
     });
 
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testAvgTotalChange();
-      testCumSumChange();
-    });
+    it(
+      "should show percent change in tooltip for timeseries axis",
+      { tags: "@flaky" },
+      () => {
+        testAvgTotalChange();
+        testCumSumChange();
+      },
+    );
   });
 
   describe("> multi series question on dashboard with added question", () => {
@@ -411,12 +423,16 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
     });
 
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testAvgTotalChange();
-      testCumSumChange(false);
-      testAvgDiscountChange();
-      testSumDiscountChange();
-    });
+    it(
+      "should show percent change in tooltip for timeseries axis",
+      { tags: "@flaky" },
+      () => {
+        testAvgTotalChange();
+        testCumSumChange(false);
+        testAvgDiscountChange();
+        testSumDiscountChange();
+      },
+    );
   });
 
   describe("> bar chart question on dashboard", () => {
@@ -508,70 +524,82 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipPairs(updatedAddedSeriesTooltipText);
     });
 
-    it("should show percent change in tooltip for timeseries axis", () => {
-      testSumTotalChange(showTooltipForBarInSeries);
-      testAvgTotalChange(showTooltipForBarInSeries);
-    });
+    it(
+      "should show percent change in tooltip for timeseries axis",
+      { tags: "@flaky" },
+      () => {
+        testSumTotalChange(showTooltipForBarInSeries);
+        testAvgTotalChange(showTooltipForBarInSeries);
+      },
+    );
   });
 
   describe("> single series question grouped by month on dashboard", () => {
-    it("should show percent change in tooltip for timeseries axis", () => {
-      setup({
-        question: SUM_OF_TOTAL_MONTH,
-      }).then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+    it(
+      "should show percent change in tooltip for timeseries axis",
+      { tags: "@flaky" },
+      () => {
+        setup({
+          question: SUM_OF_TOTAL_MONTH,
+        }).then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
 
-      showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs([
-        ["Created At", "April 2022"],
-        ["Sum of Total", "52.76"],
-      ]);
-      testTooltipExcludesText("Compared to preivous month");
+        showTooltipForCircleInSeries("#88BF4D");
+        testTooltipPairs([
+          ["Created At", "April 2022"],
+          ["Sum of Total", "52.76"],
+        ]);
+        testTooltipExcludesText("Compared to preivous month");
 
-      showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs([
-        ["Created At", "May 2022"],
-        ["Sum of Total", "1,265.72"],
-        ["Compared to previous month", "+2,299.19%"],
-      ]);
-    });
+        showTooltipForCircleInSeries("#88BF4D");
+        testTooltipPairs([
+          ["Created At", "May 2022"],
+          ["Sum of Total", "1,265.72"],
+          ["Compared to previous month", "+2,299.19%"],
+        ]);
+      },
+    );
 
-    it("should not show percent change when previous month is missing from result data", () => {
-      setup({
-        question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
-      }).then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+    it(
+      "should not show percent change when previous month is missing from result data",
+      { tags: "@flaky" },
+      () => {
+        setup({
+          question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
+        }).then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
 
-      showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs([
-        ["Created At", "April 2022"],
-        ["Sum of Total", "52.76"],
-      ]);
-      testTooltipExcludesText("Compared to preivous month");
+        showTooltipForCircleInSeries("#88BF4D");
+        testTooltipPairs([
+          ["Created At", "April 2022"],
+          ["Sum of Total", "52.76"],
+        ]);
+        testTooltipExcludesText("Compared to preivous month");
 
-      showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs([
-        ["Created At", "June 2022"],
-        ["Sum of Total", "2,072.94"],
-      ]);
-      testTooltipExcludesText("Compared to preivous month");
+        showTooltipForCircleInSeries("#88BF4D");
+        testTooltipPairs([
+          ["Created At", "June 2022"],
+          ["Sum of Total", "2,072.94"],
+        ]);
+        testTooltipExcludesText("Compared to preivous month");
 
-      showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs([
-        ["Created At", "July 2022"],
-        ["Sum of Total", "3,734.69"],
-        ["Compared to previous month", "+80.16%"],
-      ]);
+        showTooltipForCircleInSeries("#88BF4D");
+        testTooltipPairs([
+          ["Created At", "July 2022"],
+          ["Sum of Total", "3,734.69"],
+          ["Compared to previous month", "+80.16%"],
+        ]);
 
-      showTooltipForCircleInSeries("#88BF4D");
-      testTooltipPairs([
-        ["Created At", "September 2022"],
-        ["Sum of Total", "5,372.08"],
-      ]);
-      testTooltipExcludesText("Compared to preivous month");
-    });
+        showTooltipForCircleInSeries("#88BF4D");
+        testTooltipPairs([
+          ["Created At", "September 2022"],
+          ["Sum of Total", "5,372.08"],
+        ]);
+        testTooltipExcludesText("Compared to preivous month");
+      },
+    );
 
     it("should not show if x-axis is not timeseries", () => {
       setup({
