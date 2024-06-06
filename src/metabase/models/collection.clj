@@ -665,7 +665,7 @@
     (into
       [:and
        ;; it is a descendant of Collection A. For the Trash, this just means the collection is archived. Otherwise
-       ;; it's the location.
+       ;; we check that Collection B's location contains A's location as a prefix
        (if (is-trash? collection)
          [:= :archived true]
          [:like :location (h2x/literal (str (children-location collection) "%"))])
