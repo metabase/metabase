@@ -268,10 +268,6 @@ describe(
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    entityPickerModal()
-                      .findByRole("tab", { name: /Dashboards/ })
-                      .click();
-
                     findActivePickerItem("Orders in a dashboard");
                   });
 

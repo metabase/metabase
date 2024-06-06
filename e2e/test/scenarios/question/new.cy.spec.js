@@ -427,6 +427,8 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
+
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
         cy.findByText("Bobby Tables's Personal Collection").should(
           "be.visible",
         );

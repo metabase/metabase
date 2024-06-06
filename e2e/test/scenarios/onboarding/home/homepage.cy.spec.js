@@ -153,7 +153,7 @@ describe("scenarios > home > homepage", () => {
       });
     });
 
-    it("should show pinned questions in recent items when viewed in a collection", () => {
+    it("should not show pinned questions in recent items when viewed in a collection", () => {
       cy.signInAsAdmin();
 
       visitDashboard(ORDERS_DASHBOARD_ID);
@@ -171,7 +171,7 @@ describe("scenarios > home > homepage", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").should("exist");
+      cy.findByText("Orders, Count").should("not.exist");
     });
   });
 });
