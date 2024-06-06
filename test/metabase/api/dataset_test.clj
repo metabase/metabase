@@ -658,3 +658,26 @@
                        (format "dataset/%s?format_rows=%s" (name export-format) apply-formatting?)
                        :query (json/generate-string q))
                       ((get output-helper export-format))))))))))
+
+(deftest ^:parallel query-metadata-test
+  (testing "MBQL query"
+    (is (=? {:databases [{:id (mt/id)}]
+             :tables    [{:id (mt/id :products)}]
+             :fields    empty?}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                   (mt/mbql-query products)))))
+  (testing "Parameterized native query"
+    (is (=? {:databases [{:id (mt/id)}]
+             :tables    empty?
+             :fields    [{:id (mt/id :people :id)}]}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                               :template-tags
+                                               {"id" {:name         "id"
+                                                      :display-name "Id"
+                                                      :type         :dimension
+                                                      :dimension    [:field (mt/id :people :id) nil]
+                                                      :widget-type  :id
+                                                      :default      nil}}}})))))

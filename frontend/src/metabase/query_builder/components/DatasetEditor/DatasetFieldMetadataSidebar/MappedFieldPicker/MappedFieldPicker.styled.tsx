@@ -9,8 +9,8 @@ export const StyledSelectButton = styled(SelectButton)`
     props.hasValue &&
     css`
       color: ${color("text-white")} !important;
-      background-color: ${color("brand")};
-      border-color: ${color("brand")};
+      background-color: var(--mb-color-brand);
+      border-color: var(--mb-color-brand);
 
       .Icon {
         color: ${color("text-white")};

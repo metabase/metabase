@@ -1,11 +1,11 @@
 import { getMilestoneIssues, isLatestRelease } from "./github";
+import type { ReleaseProps, Issue } from "./types";
 import {
   isEnterpriseVersion,
   isRCVersion,
   isValidVersionString,
 } from "./version-helpers";
 
-import type { ReleaseProps, Issue } from "./types";
 
 const releaseTemplate = `**Upgrading**
 
@@ -38,8 +38,12 @@ SHA-256 checksum for the {{version}} JAR:
 
 `;
 
-const isBugIssue = (issue: Issue) =>
-  issue.labels.some(tag => tag.name === "Type:Bug");
+const isBugIssue = (issue: Issue) => {
+  if (typeof issue.labels === 'string') {
+    return issue.labels.includes("Type:Bug");
+  }
+  return issue.labels.some(tag => tag.name === "Type:Bug");
+}
 
 const formatIssue = (issue: Issue) => `- ${issue.title} (#${issue.number})`;
 

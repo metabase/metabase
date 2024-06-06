@@ -11,9 +11,9 @@ describe("issue 26470", { tags: "@external" }, () => {
   it("Model Cache enable / disable button should update button text", () => {
     cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    cy.button("Turn model caching on").click();
+    cy.button("Turn model persistence on").click();
     cy.button(/Done/).should("exist");
     cy.tick(6000);
-    cy.button("Turn model caching off").should("exist");
+    cy.button("Turn model persistence off").should("exist");
   });
 });

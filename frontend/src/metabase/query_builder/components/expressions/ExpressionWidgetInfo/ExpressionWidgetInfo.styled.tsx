@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const InfoLink = styled(ExternalLink)`
@@ -9,7 +8,7 @@ export const InfoLink = styled(ExternalLink)`
 
   &:hover,
   :focus {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

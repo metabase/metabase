@@ -56,14 +56,14 @@ export interface CardProps {
 }
 
 const selectedStyles = css`
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
     color: ${color("white")};
   }
 
   ${CardIcon} {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   ${CardIconContainer} {

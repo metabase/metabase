@@ -1,4 +1,4 @@
-name: Release Status Check
+name: Release and Backport Status Check
 
 on:
   workflow_dispatch:
@@ -37,4 +37,32 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             channelName: process.env.SLACK_RELEASE_CHANNEL,
+          });
+
+  open-backport-reminder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn --frozen-lockfile && yarn build
+    - name: Check release status and post to Slack
+      uses: actions/github-script@v7
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      with:
+        script: | # js
+          const { checkOpenBackports } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          if (!process.env.SLACK_BOT_TOKEN) {
+            throw new Error('SLACK_BOT_TOKEN is required');
+          }
+
+          const ossReleased = await checkOpenBackports({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            channelName: 'engineering-ci',
           });

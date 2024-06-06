@@ -44,7 +44,7 @@ export const BackButton = styled.button`
   padding-bottom: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

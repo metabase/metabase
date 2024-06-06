@@ -60,6 +60,7 @@ import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getAxisTransforms } from "./transforms";
+import { getFormattingOptionsWithoutScaling } from "./util";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -405,14 +406,17 @@ const getYAxisFormatter = (
 
   return (value: RowValue) => {
     if (!isNumber(value)) {
-      return " ";
+      return "";
     }
 
-    return renderingContext.formatValue(value, {
+    // since we already transformed the dataset values, we do not need to
+    // consider scaling anymore
+    const options = getFormattingOptionsWithoutScaling({
       column,
       ...(settings.column?.(column) ?? {}),
       ...formattingOptions,
     });
+    return renderingContext.formatValue(value, options);
   };
 };
 
@@ -536,7 +540,7 @@ export function getYAxesModels(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
-  compactSeriesDataKeys: DataKey[],
+  isCompactFormatting: boolean,
   renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
@@ -571,17 +575,6 @@ export function getYAxesModels(
     stackModel => stackModel.axis === "left",
   );
 
-  const leftAxisFormattingOptions = getYAxisFormattingOptions({
-    compactSeriesDataKeys,
-    axisSeriesKeysSet: leftAxisSeriesKeysSet,
-    settings,
-  });
-  const rightAxisFormattingOptions = getYAxisFormattingOptions({
-    compactSeriesDataKeys,
-    axisSeriesKeysSet: rightAxisSeriesKeysSet,
-    settings,
-  });
-
   return {
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
@@ -592,7 +585,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       renderingContext,
-      leftAxisFormattingOptions,
+      { compact: isCompactFormatting },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
@@ -605,7 +598,7 @@ export function getYAxesModels(
         ? null
         : settings["stackable.stack_type"] ?? null,
       renderingContext,
-      rightAxisFormattingOptions,
+      { compact: isCompactFormatting },
     ),
   };
 }

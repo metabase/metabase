@@ -1,3 +1,4 @@
+export * from "./backports";
 export * from "./github";
 export * from "./release-notes";
 export * from "./release-status";

@@ -34,7 +34,7 @@ export const DashboardHeaderButton = styled(Button)<{
   font-size: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     background: ${({ hasBackground }) =>
       hasBackground ? "var(--mb-color-bg-medium)" : "transparent"};
   }
@@ -63,6 +63,6 @@ export const SectionMenuItem = styled(Menu.Item)`
   background-color: ${() => darken(color("bg-medium"), 0.1)};
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

@@ -21,7 +21,7 @@ export const PageMain = styled.main`
 `;
 
 export const PageTitle = styled.h1`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-size: 2.2rem;
 `;
 

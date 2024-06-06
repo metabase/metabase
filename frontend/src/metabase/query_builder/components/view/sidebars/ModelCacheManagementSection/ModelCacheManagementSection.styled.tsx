@@ -34,7 +34,7 @@ export const IconButton = styled.button`
 `;
 
 export const ErrorIcon = styled(Icon)`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   margin-top: 1px;
   margin-left: 4px;
 `;
