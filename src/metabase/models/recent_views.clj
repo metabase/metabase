@@ -9,7 +9,7 @@
        see: [[update-users-recent-views!]]
       This is almost always called from a published event handler.
   Fetching Recent Items:
-     `(recent-view/get-list <user-id>)`
+     `(recent-views/get-list <user-id>)`
        returns a sequence of [[Item]]
        see also: [[get-list]]
 
