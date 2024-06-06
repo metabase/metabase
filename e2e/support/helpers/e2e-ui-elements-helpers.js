@@ -228,3 +228,17 @@ export const undoToastList = () => {
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
+
+/**
+ * selects the global new button
+ * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
+ * @returns
+ */
+export function newButton(menuItem) {
+  if (menuItem) {
+    cy.findByTestId("app-bar").button("New").click();
+    return popover().findByText(menuItem);
+  }
+
+  return cy.findByTestId("app-bar").button("New");
+}

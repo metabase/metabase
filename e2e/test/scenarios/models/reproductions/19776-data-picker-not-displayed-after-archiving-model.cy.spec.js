@@ -1,4 +1,11 @@
-import { restore, popover, onlyOnOSS } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  onlyOnOSS,
+  entityPickerModalTab,
+  navigationSidebar,
+  entityPickerModal,
+} from "e2e/support/helpers";
 
 const modelName = "Orders Model";
 
@@ -11,25 +18,27 @@ describe("issue 19776", { tags: "@OSS" }, () => {
   });
 
   it("should show moved model in the data picker without refreshing (metabase#19776)", () => {
-    cy.visit("/collection/root");
+    cy.visit("/");
 
-    openEllipsisMenuFor(modelName);
+    cy.findByTestId("app-bar").button("New").click();
+    popover().findByText("Question").click();
+    entityPickerModalTab("Models").should("be.visible"); // now you see it
+    entityPickerModal().findByLabelText("Close").click();
+
+    // navigate without a page load
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    // archive the only model
+    cy.findByTestId("collection-table").within(() => {
+      openEllipsisMenuFor(modelName);
+    });
     popover().contains("Archive").click();
+    cy.findByTestId("undo-list").findByText("Archived model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Archived model");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sample Database");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Models").should("not.exist");
+    cy.findByTestId("app-bar").button("New").click();
+    popover().findByText("Question").click();
+    entityPickerModalTab("Models").should("not.exist"); // now you don't
   });
 });
 
