@@ -49,7 +49,7 @@ const LegacyChoropleth = ({
                 data-testid="choropleth-feature"
                 key={index}
                 d={geo(feature, index)}
-                stroke={getColor("bg-white")}
+                stroke="white"
                 strokeWidth={1}
                 fill={getColor(feature)}
                 onMouseMove={e =>
