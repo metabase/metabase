@@ -274,7 +274,7 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
   return cy
-    .findByRole("combobox")
+    .findAllByRole("combobox")
     .filter(filter)
     .get(`[value][index=${index}]`);
 }

@@ -563,7 +563,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           removeMultiAutocompleteValue(0);
           multiAutocompleteInput().type("Sallie");
         });
-        popover().findByText("Sallie Flatley").click();
+        popover().last().findByText("Sallie Flatley").click();
         popover().contains("Update filter").click();
         cy.button("Save").click();
 
@@ -653,12 +653,8 @@ describe("scenarios > dashboard > subscriptions", () => {
           .next("aside")
           .findByText("Corbin Mertz")
           .click();
-        popover()
-          .findByText("Corbin Mertz")
-          .closest("li")
-          .icon("close")
-          .click();
-        popover().find("input").type("Sallie");
+        removeMultiAutocompleteValue(0, ":eq(1)");
+        popover().within(() => multiAutocompleteInput().type("Sallie"));
         popover().findByText("Sallie Flatley").click();
         popover().contains("Update filter").click();
         cy.button("Save").click();
@@ -685,8 +681,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
-        popover().find("input").type("Bob");
-        popover().findByText("Bobby Kessler").click();
+        popover().within(() => multiAutocompleteInput().type("Bob"));
+        popover().last().findByText("Bobby Kessler").click();
         popover().contains("Update filter").click();
 
         cy.findAllByText("Text 1").last().click();
