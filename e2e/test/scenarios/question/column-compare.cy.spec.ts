@@ -145,50 +145,72 @@ describe("scenarios > question > column compare TODO", () => {
 
       it("shows correct shortcut label and popover title", () => {
         cy.log("chill mode - summarize sidebar");
-
-        cy.button("Summarize").click();
-        rightSidebar().button("Add aggregation").click();
-        popover().within(() => {
-          cy.findByText("Compare “Count” to previous period ...")
-            .should("exist")
-            .click();
-          cy.findByText("Compare “Count” to previous period").should("exist");
-          cy.findByText("periods ago based on grouping").should("exist");
+        checkSummarizeText({
+          itemName: "Compare “Count” to previous period ...",
+          title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
         });
 
-        cy.log("chill mode - column header drill");
-
-        tableHeaderClick("Count");
-        popover().within(() => {
-          cy.findByText("Compare “Count” to previous period")
-            .should("exist")
-            .click();
-          cy.findByText("Compare “Count” to previous period").should("exist");
-          cy.findByText("periods ago based on grouping").should("exist");
+        cy.log("chill mode - column drill");
+        checkColumnDrillText({
+          itemName: "Compare “Count” to previous period",
+          title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
         });
 
         cy.log("chill mode - plus button");
 
-        cy.button("Add column").click();
-        popover().within(() => {
-          cy.findByText("Compare “Count” to previous period")
-            .should("exist")
-            .click();
-          cy.findByText("Compare “Count” to previous period").should("exist");
-          cy.findByText("periods ago based on grouping").should("exist");
+        checkPlusButtonText({
+          itemName: "Compare “Count” to previous period",
+          title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
         });
 
         cy.log("notebook editor");
-
-        openNotebook();
-        startNewAggregation();
-        popover().within(() => {
-          cy.findByText("Compare “Count” to previous period ...")
-            .should("exist")
-            .click();
-          cy.findByText("Compare “Count” to previous period").should("exist");
-          cy.findByText("periods ago based on grouping").should("exist");
+        checkNotebookText({
+          itemName: "Compare “Count” to previous period ...",
+          title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
         });
+      });
+    });
+  });
+
+  describe("breakout on binned datetime column", () => {
+    beforeEach(() => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+    });
+
+    it("shows correct shortcut label and popover title", () => {
+      cy.log("chill mode - summarize sidebar");
+      checkSummarizeText({
+        itemName: "Compare “Count” to previous months ...",
+        title: "Compare “Count” to previous months",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      cy.log("chill mode - column drill");
+      checkColumnDrillText({
+        itemName: "Compare “Count” to previous months",
+        title: "Compare “Count” to previous months",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      cy.log("chill mode - plus button");
+      checkPlusButtonText({
+        itemName: "Compare “Count” to previous months",
+        title: "Compare “Count” to previous months",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      cy.log("notebook editor");
+      checkNotebookText({
+        itemName: "Compare “Count” to previous months ...",
+        title: "Compare “Count” to previous months",
+        offsetHelp: "months ago based on “Created At”",
       });
     });
   });
@@ -331,4 +353,48 @@ function assertNoColumnCompareShortcut() {
   popover()
     .findByText(/compare/)
     .should("not.exist");
+}
+
+type CheckTextOpts = {
+  itemName: string;
+  title: string;
+  offsetHelp: string;
+};
+
+function checkSummarizeText({ itemName, title, offsetHelp }: CheckTextOpts) {
+  cy.button("Summarize").click();
+  rightSidebar().button("Add aggregation").click();
+  popover().within(() => {
+    cy.findByText(itemName).should("exist").click();
+    cy.findByText(title).should("exist");
+    cy.findByText(offsetHelp).should("exist");
+  });
+}
+
+function checkColumnDrillText({ itemName, title, offsetHelp }: CheckTextOpts) {
+  tableHeaderClick("Count");
+  popover().within(() => {
+    cy.findByText(itemName).should("exist").click();
+    cy.findByText(title).should("exist");
+    cy.findByText(offsetHelp).should("exist");
+  });
+}
+
+function checkPlusButtonText({ itemName, title, offsetHelp }: CheckTextOpts) {
+  cy.button("Add column").click();
+  popover().within(() => {
+    cy.findByText(itemName).should("exist").click();
+    cy.findByText(title).should("exist");
+    cy.findByText(offsetHelp).should("exist");
+  });
+}
+
+function checkNotebookText({ itemName, title, offsetHelp }: CheckTextOpts) {
+  openNotebook();
+  startNewAggregation();
+  popover().within(() => {
+    cy.findByText(itemName).should("exist").click();
+    cy.findByText(title).should("exist");
+    cy.findByText(offsetHelp).should("exist");
+  });
 }
