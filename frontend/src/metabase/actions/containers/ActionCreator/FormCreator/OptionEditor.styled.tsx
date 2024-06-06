@@ -22,13 +22,13 @@ export const AddMorePrompt = styled.div<{ isVisible: boolean }>`
 export const ErrorMessage = styled.div`
   text-align: center;
   font-size: 0.875rem;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 export const TextArea = styled.textarea`
   resize: none;
   border: none;
-  outline: 1px solid ${color("border")};
+  outline: 1px solid var(--mb-color-border);
   width: 20rem;
   border-radius: ${space(1)};
   padding: ${space(1)};

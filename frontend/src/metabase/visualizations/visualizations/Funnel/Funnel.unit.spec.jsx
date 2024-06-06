@@ -1,4 +1,5 @@
 import { render, screen } from "__support__/ui";
+import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -45,14 +46,17 @@ const setup = (funnelProps, visualizationSettings = {}) => {
   });
 
   render(
-    <Funnel
-      series={[series]}
-      rawSeries={[series]}
-      settings={settings}
-      visualizationIsClickable={jest.fn()}
-      card={card}
-      {...funnelProps}
-    />,
+    <ThemeProvider>
+      <Funnel
+        series={[series]}
+        rawSeries={[series]}
+        settings={settings}
+        visualizationIsClickable={jest.fn()}
+        card={card}
+        {...funnelProps}
+      />
+      ,
+    </ThemeProvider>,
   );
 };
 

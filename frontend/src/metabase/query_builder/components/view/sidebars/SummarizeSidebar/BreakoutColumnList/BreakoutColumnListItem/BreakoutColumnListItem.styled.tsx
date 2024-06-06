@@ -102,11 +102,11 @@ const unselectedStyle = css`
     ${ColumnTypeIcon},
     ${AddButton} {
       color: ${color("summarize")};
-      background-color: ${color("bg-light")};
+      background-color: var(--mb-color-bg-light);
     }
 
     ${AddButton}:hover {
-      background-color: ${color("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
 
     ${BucketPickerPopover.TriggerButton} {

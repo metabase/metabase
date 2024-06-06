@@ -44,11 +44,11 @@ export const TableDraggable = styled(Draggable)<TableDraggableProps>`
 
 export const ResizeHandle = styled.div`
   &:active {
-    background-color: ${({ theme }) => theme.fn?.themeColor("brand")};
+    background-color: var(--mb-color-brand);
   }
 
   &:hover {
-    background-color: ${({ theme }) => theme.fn?.themeColor("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;
 
@@ -57,12 +57,12 @@ export const ExpandButton = styled(Button)`
     ${({ theme }) => lighten(theme.fn?.themeColor("brand"), 0.3)};
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  color: ${({ theme }) => theme.fn?.themeColor("brand")};
+  color: var(--mb-color-brand);
   margin-right: 0.5rem;
   margin-left: auto;
 
   &:hover {
     color: ${({ theme }) => theme.fn?.themeColor("text-white")};
-    background-color: ${({ theme }) => theme.fn?.themeColor("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

@@ -26,9 +26,9 @@ export const LogsContainer = styled(LoadingAndErrorWrapper)`
 `;
 
 export const LogsContent = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   font-family: "Lucida Console", Monaco, monospace;
   font-size: 14px;
   white-space: pre;
@@ -53,7 +53,7 @@ export const LogsContent = styled.div`
   }
 
   ${LOG_PREFIX}-inverse {
-    color: ${color("black")};
+    color: var(--mb-color-text-dark);
     background-color: ${color("white")};
   }
 

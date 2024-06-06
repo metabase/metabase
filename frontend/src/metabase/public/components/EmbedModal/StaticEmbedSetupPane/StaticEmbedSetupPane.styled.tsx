@@ -15,7 +15,7 @@ const SettingsAsideBlock = styled.div`
   flex-shrink: 0;
   width: 21.6rem;
   padding: 2rem;
-  border-right: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  border-right: 1px solid var(--mb-color-border);
   background-color: ${({ theme }) => theme.fn.themeColor("white")};
 
   height: 45.125rem;
@@ -35,7 +35,7 @@ const PreviewAreaBlock = styled.div`
   gap: 1rem;
 
   padding: 1rem 1.5rem 2rem 1rem;
-  background-color: ${({ theme }) => theme.fn.themeColor("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const SettingsTabLayout = ({

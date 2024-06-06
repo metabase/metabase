@@ -52,14 +52,14 @@ type IntervalAmount = number | "current" | "next" | "last";
 
 export function describeTemporalInterval(
   n: IntervalAmount,
-  unit?: string,
+  unit?: BucketName,
 ): string {
   return ML.describe_temporal_interval(n, unit);
 }
 
 export function describeRelativeDatetime(
   n: IntervalAmount,
-  unit?: string,
+  unit?: BucketName,
 ): string {
   return ML.describe_relative_datetime(n, unit);
 }
@@ -82,4 +82,8 @@ export function formatRelativeDateRange({
   return ML.format_relative_date_range(value, unit, offsetValue, offsetUnit, {
     "include-current": includeCurrent,
   });
+}
+
+export function availableTemporalUnits(): string[] {
+  return ML.available_temporal_units();
 }

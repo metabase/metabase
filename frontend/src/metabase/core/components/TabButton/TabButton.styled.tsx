@@ -71,7 +71,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     ${props =>
       !props.disabled &&
       css`
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       `}
   }
 `;
@@ -91,8 +91,8 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
     props.isOpen &&
     !props.disabled &&
     css`
-      color: ${color("brand")};
-      background-color: ${color("bg-medium")};
+      color: var(--mb-color-brand);
+      background-color: var(--mb-color-bg-medium);
     `}
   &:hover,:focus {
     ${props =>
@@ -101,8 +101,8 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
             color: ${color("text-dark")};
           `
         : css`
-            color: ${color("brand")};
-            background-color: ${color("bg-medium")};
+            color: var(--mb-color-brand);
+            background-color: var(--mb-color-bg-medium);
           `}
   }
 `;
@@ -124,7 +124,7 @@ export const MenuItem = styled.li`
   cursor: pointer;
   &:focus,
   :hover {
-    color: ${color("brand")};
-    background-color: ${color("bg-light")};
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-bg-light);
   }
 `;

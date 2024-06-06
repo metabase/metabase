@@ -18,14 +18,14 @@ export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
   align-items: center;
 
   &:not(:last-child) {
-    border-bottom: 1px solid ${color("bg-medium")};
+    border-bottom: 1px solid var(--mb-color-bg-medium);
   }
 `;
 
 const linkStyles = css`
   display: inline-flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const BillingInternalLink = styled(Link)(linkStyles);
@@ -38,7 +38,7 @@ export const BillingExternalLinkIcon = styled(Icon)`
 
 export const StoreButtonLink = styled(ExternalLink)`
   display: inline-flex;
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
   color: ${color("text-white")};
   align-items: center;
   font-weight: bold;

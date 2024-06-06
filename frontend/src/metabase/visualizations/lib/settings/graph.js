@@ -369,7 +369,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     props: {
       options: [
         { name: t`Total`, value: "total" },
-        { name: t`Insides`, value: "series" },
+        { name: t`Segments`, value: "series" },
         { name: t`Both`, value: "all" },
       ],
     },

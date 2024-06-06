@@ -1,11 +1,22 @@
 import { WebClient } from '@slack/web-api';
-import type { Issue } from './types';
-import { getGenericVersion } from "./version-helpers";
+
+import _githubSlackMap from "../github-slack-map.json";
+
+const githubSlackMap: Record<string, string> = _githubSlackMap;
+
 import { findMilestone } from "./github";
-import type { ReleaseProps } from "./types";
+import type { Issue , ReleaseProps } from './types';
+import { getGenericVersion } from "./version-helpers";
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 const SLACK_CHANNEL_NAME = process.env.SLACK_RELEASE_CHANNEL ?? "bot-testing";
+
+export function mentionUserByGithubLogin(githubLogin: string | null) {
+  if (githubLogin && githubLogin in githubSlackMap) {
+    return `<@${githubSlackMap[githubLogin]}>`;
+  }
+  return '@unassigned';
+}
 
 export function getChannelTopic(channelName: string) {
   return slack.conversations.list({
@@ -27,7 +38,7 @@ export async function sendPreReleaseStatus({
   milestoneId: number,
 }) {
   const blockerText = `* ${openIssues.length } Blockers*
-${openIssues.map(issue => `  • <${issue.html_url}|#${issue.number} - ${issue.title}> - @${issue.assignee?.login ?? 'unassigned'}`).join("\n")}`;
+    ${openIssues.map(issue => `  • <${issue.html_url}|#${issue.number} - ${issue.title}> - ${mentionUserByGithubLogin(issue.assignee?.login)}`).join("\n")}`;
 
   const blocks = [
     {

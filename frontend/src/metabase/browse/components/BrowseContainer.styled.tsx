@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import EmptyState from "metabase/components/EmptyState";
-import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -28,7 +27,7 @@ export const BrowseHeader = styled.header`
   display: flex;
   flex-direction: column;
   padding: 1rem 2.5rem 3rem 2.5rem;
-  color: ${color("dark")};
+  color: ${({ theme }) => theme.fn.themeColor("dark")};
 `;
 
 export const BrowseMain = styled.main`

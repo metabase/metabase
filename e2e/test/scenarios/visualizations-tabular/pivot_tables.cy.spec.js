@@ -1091,57 +1091,53 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     main().findByText("User → Address").should("be.visible");
   });
 
-  it(
-    "should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)",
-    { tags: "@flaky" },
-    () => {
-      const query = {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
+  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
+    const query = {
+      type: "query",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+          ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    visitQuestionAdhoc({
+      dataset_query: query,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
             ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
             ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
           ],
+          columns: [["field", "count", { "base-type": "type/Integer" }]],
+          values: [["aggregation", 0]],
         },
-        database: SAMPLE_DB_ID,
-      };
+      },
+    });
 
-      visitQuestionAdhoc({
-        dataset_query: query,
-        display: "pivot",
-        visualization_settings: {
-          "pivot_table.column_split": {
-            rows: [
-              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-              ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
-            ],
-            columns: [["field", "count", { "base-type": "type/Integer" }]],
-            values: [["aggregation", 0]],
-          },
-        },
-      });
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 205 rows",
+    );
 
-      cy.findByTestId("question-row-count").should(
-        "have.text",
-        "Showing 205 rows",
-      );
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    cy.findByTestId("save-question-modal").findByText("Save").click();
+    cy.wait("@createCard");
+    cy.url().should("include", "/question/");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+    cy.reload();
+    cy.wait("@cardPivotQuery");
 
-      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-      cy.findByTestId("save-question-modal").findByText("Save").click();
-      cy.wait("@createCard");
-      cy.url().should("include", "/question/");
-      cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
-      cy.reload();
-      cy.wait("@cardPivotQuery");
-
-      cy.findByTestId("question-row-count").should(
-        "have.text",
-        "Showing 205 rows",
-      );
-    },
-  );
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 205 rows",
+    );
+  });
 
   describe("issue 37380", () => {
     beforeEach(() => {

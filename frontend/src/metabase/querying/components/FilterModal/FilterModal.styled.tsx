@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 import type { BoxProps } from "metabase/ui";
 import { Box, Flex, Modal, Tabs } from "metabase/ui";
@@ -14,7 +13,7 @@ interface ColumnItemRootProps extends BoxProps {
 }
 
 export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding: 1rem 2rem;
   padding-left: 0;
 
@@ -24,12 +23,12 @@ export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
 
   &:hover,
   :focus-within {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
 export const ModalHeader = styled(Modal.Header)`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const ModalBody = styled(Modal.Body)`
@@ -41,7 +40,7 @@ export const ModalBody = styled(Modal.Body)`
 `;
 
 export const ModalFooter = styled(Flex)`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const TabsListSidebar = styled(Tabs.List)`

@@ -49,6 +49,8 @@ import { CHART_STYLE } from "../constants/style";
 import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
+import { getFormattingOptionsWithoutScaling } from "./util";
+
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
   hasMultipleCards: boolean,
@@ -286,12 +288,12 @@ export function getStackTotalValue(
   stackDataKeys: DataKey[],
   signKey: StackTotalDataKey,
 ): number | null {
-  let stackValue: number | null = null;
+  let stackValue: number | null = data[signKey] != null ? 0 : null;
   stackDataKeys.forEach(stackDataKey => {
     const seriesValue = data[stackDataKey];
     if (
       typeof seriesValue === "number" &&
-      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue > 0) ||
+      ((signKey === POSITIVE_STACK_TOTAL_DATA_KEY && seriesValue >= 0) ||
         (signKey === NEGATIVE_STACK_TOTAL_DATA_KEY && seriesValue < 0))
     ) {
       stackValue = (stackValue ?? 0) + seriesValue;
@@ -634,14 +636,18 @@ const createSeriesLabelsFormatter = (
 ) =>
   cachedFormatter((value: RowValue) => {
     if (typeof value !== "number") {
-      return " ";
+      return "";
     }
-    return renderingContext.formatValue(value, {
+
+    // since we already transformed the dataset values, we do not need to
+    // consider scaling anymore
+    const options = getFormattingOptionsWithoutScaling({
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: isCompact,
       ...formattingOptions,
     });
+    return renderingContext.formatValue(value, options);
   });
 
 const getSeriesLabelsFormattingInfo = (
@@ -738,6 +744,7 @@ export const getSeriesLabelsFormatters = (
     const barStackSeries = seriesModelsWithLabels.filter(seriesModel =>
       barStackSeriesKeys.has(seriesModel.dataKey),
     );
+
     const barSeriesLabelsFormattingInfo = getSeriesLabelsFormattingInfo(
       barStackSeries,
       dataset,

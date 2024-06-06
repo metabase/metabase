@@ -17,7 +17,7 @@ export const RadioLabelButton = styled(IconButtonWrapper)`
   font-weight: bold;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

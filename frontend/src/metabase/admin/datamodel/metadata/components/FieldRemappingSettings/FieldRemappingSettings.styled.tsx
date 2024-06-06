@@ -26,7 +26,7 @@ export const FieldSelectButton = styled(SelectButton)<FieldSelectButtonProps>`
 `;
 
 export const ForeignKeyList = styled(FieldList)`
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
 `;
 
 export const FieldValueMappingInput = styled(InputBlurChange)`

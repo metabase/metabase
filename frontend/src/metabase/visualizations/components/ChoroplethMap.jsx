@@ -3,14 +3,17 @@ import cx from "classnames";
 import Color from "color";
 import d3 from "d3";
 import { Component } from "react";
+import { connect } from "react-redux";
 import ss from "simple-statistics";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -99,7 +102,24 @@ function shouldUseCompactFormatting(groups, formatMetric) {
   return averageLength > AVERAGE_LENGTH_CUTOFF;
 }
 
-export default class ChoroplethMap extends Component {
+const mapStateToProps = state => ({
+  isSdk: getIsEmbeddingSdk(state),
+  sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
+});
+
+const connector = connect(mapStateToProps, null);
+
+function getMapUrl(details, props) {
+  if (details.builtin) {
+    if (props?.isSdk && props?.sdkMetabaseInstanceUrl) {
+      return new URL(details.url, props.sdkMetabaseInstanceUrl).href;
+    }
+    return details.url;
+  }
+  return "api/geojson/" + props.settings["map.region"];
+}
+
+class ChoroplethMapInner extends Component {
   static propTypes = {};
 
   static minSize = getMinSize("map");
@@ -139,13 +159,10 @@ export default class ChoroplethMap extends Component {
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     const details = this._getDetails(nextProps);
+
     if (details) {
-      let geoJsonPath;
-      if (details.builtin) {
-        geoJsonPath = details.url;
-      } else {
-        geoJsonPath = "api/geojson/" + nextProps.settings["map.region"];
-      }
+      const geoJsonPath = getMapUrl(details, nextProps);
+
       if (this.state.geoJsonPath !== geoJsonPath) {
         this.setState({
           geoJson: null,
@@ -386,3 +403,5 @@ export default class ChoroplethMap extends Component {
     );
   }
 }
+
+export default connector(ChoroplethMapInner);

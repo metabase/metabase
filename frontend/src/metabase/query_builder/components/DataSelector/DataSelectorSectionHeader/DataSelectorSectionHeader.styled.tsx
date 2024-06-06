@@ -5,7 +5,7 @@ import { space } from "metabase/styled-components/theme";
 
 export const DataSelectorSectionHeaderContainer = styled.div`
   align-items: center;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   display: flex;
   padding: ${space(2)};
 `;
