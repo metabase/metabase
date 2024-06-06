@@ -13,7 +13,7 @@ import {
   visitQuestion,
   setTokenFeatures,
   popover,
-  isEE,
+  onlyOnEE,
   setupSMTP,
   sidebar,
   modal,
@@ -371,7 +371,7 @@ describe("UI elements that make no sense for users without data permissions (met
   });
 
   it("should not show visualization or question settings to users with block data permissions", () => {
-    cy.onlyOn(isEE);
+    onlyOnEE();
 
     cy.signInAsAdmin();
     setTokenFeatures("all");

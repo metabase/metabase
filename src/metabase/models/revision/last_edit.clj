@@ -34,23 +34,36 @@
   [:map
    [:last-edit-info {:optional true} LastEditInfo]])
 
-(mu/defn with-last-edit-info :- MaybeAnnotated
+(mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
-  [{:keys [id] :as item} model :- [:enum :dashboard :card]]
-  (span/with-span!
-    {:name       "with-last-edit-info"
-     :attributes {:item/id id}}
-    (if-let [updated-info (t2/query-one {:select    [:u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                                         :from      [[:revision :r]]
-                                         :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                         :where     [:and
-                                                     [:= :r.most_recent true]
-                                                     [:= :r.model (model->db-model model)]
-                                                     [:= :r.model_id id]]})]
-      (assoc item :last-edit-info updated-info)
-      item)))
+  [items
+   model :- [:enum :dashboard :card]]
+  (let [ids (into #{} (map :id) items)]
+    (span/with-span!
+      {:name       "with-last-edit-info"
+       :attributes {:item/ids ids}}
+      (when (seq ids)
+        (let [id->updated-info
+              (reduce (fn [m card-updated-info]
+                        (assoc m
+                               (:model_id card-updated-info)
+                               (select-keys card-updated-info [:id :email :first_name :last_name :timestamp])))
+                      {}
+                      (t2/reducible-query
+                       {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                        :from      [[:revision :r]]
+                        :left-join [[:core_user :u] [:= :u.id :r.user_id]]
+                        :where     [:and
+                                    [:= :r.most_recent true]
+                                    [:= :r.model (model->db-model model)]
+                                    [:in :r.model_id ids]]}))]
+          (map (fn [item]
+                 (let [updated-info (-> item :id id->updated-info)]
+                   (cond-> item
+                     updated-info (assoc :last-edit-info updated-info))))
+               items))))))
 
 (mu/defn edit-information-for-user :- LastEditInfo
   "Construct the `:last-edit-info` map given a user. Useful for editing routes. Most edit info information comes from
