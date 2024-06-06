@@ -113,12 +113,13 @@
    {:keys [current-user-perms
            filter-items-in-personal-collection
            archived]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms
-                                                                                     {:include-archived :all
-                                                                                      :include-trash? true
-                                                                                      :permission-level (if archived
-                                                                                                          :write
-                                                                                                          :read)})
+  (let [visible-collections      (collection/permissions-set->visible-collection-ids
+                                  current-user-perms
+                                  {:include-archived-items :all
+                                   :include-trash-collection? true
+                                   :permission-level (if archived
+                                                       :write
+                                                       :read)})
         collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)

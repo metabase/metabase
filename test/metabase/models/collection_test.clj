@@ -284,7 +284,7 @@
   ;; let's just say all of the collections we're dealing with are:
   ;; - NOT the trash
   ;; - NOT archived
-  ;; - don't have a `trash_operation_id`
+  ;; - don't have a `archive_operation_id`
   (with-redefs [collection/is-trash? (constantly false)
                 collection/collection-id->collection
                 (constantly
@@ -292,7 +292,7 @@
                          (next (map (fn [id]
                                       {:id id
                                        :archived false
-                                       :trash_operation_id nil})
+                                       :archive_operation_id nil})
                                     (range 10)))))]
     (testing "Make sure we can look at the current user's permissions set and figure out which Collections they're allowed to see"
       (is (= #{8 9}
@@ -331,19 +331,19 @@
                 (constantly
                  {1 {:id 1
                      :archived false
-                     :trash_operation_id nil}
+                     :archive_operation_id nil}
                   2 {:id 2
                      :archived true
-                     :trash_operation_id "1234"}
+                     :archive_operation_id "1234"}
                   3 {:id 3
                      :archived true
-                     :trash_operation_id "1234"}
+                     :archive_operation_id "1234"}
                   4 {:id 4
                      :archived true
-                     :trash_operation_id "5678"}
+                     :archive_operation_id "5678"}
                   5 {:id 5
                      :archived false
-                     :trash_operation_id nil}})]
+                     :archive_operation_id nil}})]
     (let [permissions #{"/collection/1/" "/collection/2/"
                         "/collection/3/" "/collection/4/"
                         "/collection/5/"}]
@@ -353,31 +353,31 @@
                  (collection/permissions-set->visible-collection-ids permissions {}))))
         (testing "Only"
           (is (= #{2 3 4}
-                 (collection/permissions-set->visible-collection-ids permissions {:include-archived :only}))))
+                 (collection/permissions-set->visible-collection-ids permissions {:include-archived-items :only}))))
         (testing "Exclude"
           (is (= #{5}
-                 (collection/permissions-set->visible-collection-ids permissions {:include-archived :exclude}))))
+                 (collection/permissions-set->visible-collection-ids permissions {:include-archived-items :exclude}))))
         (testing "All"
           (is (= #{2 3 4 5}
-                 (collection/permissions-set->visible-collection-ids permissions {:include-archived :all})))))
+                 (collection/permissions-set->visible-collection-ids permissions {:include-archived-items :all})))))
       (testing "Include trash?"
         (testing "true"
           (is (= #{1 5}
-                 (collection/permissions-set->visible-collection-ids permissions {:include-trash? true}))))
+                 (collection/permissions-set->visible-collection-ids permissions {:include-trash-collection? true}))))
         (testing "false"
           (is (= #{5}
-                 (collection/permissions-set->visible-collection-ids permissions {:include-trash? false}))))
+                 (collection/permissions-set->visible-collection-ids permissions {:include-trash-collection? false}))))
         (testing "default"
           (is (= #{5}
                  (collection/permissions-set->visible-collection-ids permissions {})))))
       (testing "trash operation id"
         (testing "can filter down to a particular trash operation id"
           (is (= #{2 3}
-                 (collection/permissions-set->visible-collection-ids permissions {:trash-operation-id "1234"
-                                                                                  :include-archived :all})))
+                 (collection/permissions-set->visible-collection-ids permissions {:archive-operation-id "1234"
+                                                                                  :include-archived-items :all})))
           (is (= #{4}
-                 (collection/permissions-set->visible-collection-ids permissions {:trash-operation-id "5678"
-                                                                                  :include-archived :all}))))))))
+                 (collection/permissions-set->visible-collection-ids permissions {:archive-operation-id "5678"
+                                                                                  :include-archived-items :all}))))))))
 
 (deftest effective-location-path-test
   (with-redefs [collection/collection-id->collection (constantly
@@ -385,7 +385,7 @@
                                                               (next (map (fn [id]
                                                                            {:id id
                                                                             :archived false
-                                                                            :trash_operation_id nil})
+                                                                            :archive_operation_id nil})
                                                                          (map * (range 10) (repeat 10))))))]
     (testing "valid input"
       (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"

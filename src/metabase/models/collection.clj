@@ -336,9 +336,9 @@
          (filter has-permission?)
          (merge root-map))))
 
-(def ^:private IncludeArchived
+(def ^:private IncludeArchivedItems
   [:enum :only :exclude :all])
-(def ^:private IncludeTrash
+(def ^:private IncludeTrashCollection
   [:boolean])
 (def ^:private ArchiveOperationId
   [:maybe :string])
@@ -346,20 +346,20 @@
   [:enum :read :write])
 (def ^:private CollectionVisibilityConfig
   [:map
-   [:include-trash? {:optional true} IncludeTrash]
-   [:include-archived {:optional true} IncludeArchived]
+   [:include-trash-collection? {:optional true} IncludeTrashCollection]
+   [:include-archived-items {:optional true} IncludeArchivedItems]
    [:archive-operation-id {:optional true} ArchiveOperationId]
    [:permission-level {:optional true} PermissionLevel]])
 
-(defn- should-remove-for-archived? [include-archived collection]
-  (case include-archived
+(defn- should-remove-for-archived? [include-archived-items collection]
+  (case include-archived-items
     :all false
     :exclude (:archived collection)
     :only (not (or (:archived collection)
                    (is-trash? collection)))))
 
-(defn- should-remove-for-trash? [include-trash? collection]
-  (if include-trash?
+(defn- should-remove-for-trash? [include-trash-collection? collection]
+  (if include-trash-collection?
     false
     (is-trash? collection)))
 
@@ -371,24 +371,24 @@
   "There are four knobs we need to take into account when turning the permissions set into visible collection IDs.
   - permission-level: generally collections with `read` permission are visible. Sometimes we want to change this and only
     view collections with `write` permissions.
-  - include-archived: are archived collections currently visible, or not?
+  - include-archived-items: are archived collections currently visible, or not?
   - archive-operation-id: when looking at a archived collection, we want to restrict visible collections to those that share
   that operation ID.
-  - include-trash?: is the Trash Collection itself visible, or not? Sometimes we want to show the Trash but not the archived
-    items inside it."
+  - include-trash-collection?: is the Trash Collection itself visible, or not? Sometimes we want to show the Trash but
+    not the archived items inside it."
   ([permissions-set :- [:set :string]]
    (permissions-set->visible-collection-ids permissions-set {}))
   ([permissions-set :- [:set :string]
     visibility-config :- CollectionVisibilityConfig]
-   (let [visibility-config (merge {:include-archived :exclude
-                                   :include-trash? false
+   (let [visibility-config (merge {:include-archived-items :exclude
+                                   :include-trash-collection? false
                                    :archive-operation-id nil
                                    :permission-level :read}
                                   visibility-config)]
      (->> (permissions-set->collection-id->collection permissions-set (:permission-level visibility-config))
-          (remove #(should-remove-for-archived? (:include-archived visibility-config) (val %)))
+          (remove #(should-remove-for-archived? (:include-archived-items visibility-config) (val %)))
           (remove #(should-remove-for-archive-operation-id (:archive-operation-id visibility-config) (val %)))
-          (remove #(should-remove-for-trash? (:include-trash? visibility-config) (val %)))
+          (remove #(should-remove-for-trash? (:include-trash-collection? visibility-config) (val %)))
           (map key)
           (into #{})))))
 
@@ -463,12 +463,12 @@
                                  (:location collection))
                                (permissions-set->visible-collection-ids
                                 @*current-user-permissions-set*
-                                {:include-archived (if (:archived collection)
-                                                     :only
-                                                     :exclude)
-                                 :include-trash? true
-                                 :archive-operation-id (:archive_operation_id collection)
-                                 :permission-level :read}))))
+                                {:include-archived-items    (if (:archived collection)
+                                                              :only
+                                                              :exclude)
+                                 :include-trash-collection? true
+                                 :archive-operation-id      (:archive_operation_id collection)
+                                 :permission-level          :read}))))
   ([real-location-path     :- LocationPath
     allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
@@ -652,17 +652,18 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*
-                                                                        {:include-archived   (if (or (:archived collection)
-                                                                                                     (is-trash? collection))
-                                                                                               :only
-                                                                                               :exclude)
-                                                                         :include-trash?     true
-                                                                         :archive-operation-id (:archive_operation_id collection)
-                                                                         :permission-level   (if (or (:archived collection)
-                                                                                                     (is-trash? collection))
-                                                                                               :write
-                                                                                               :read)})]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids
+                                @*current-user-permissions-set*
+                                {:include-archived-items    (if (or (:archived collection)
+                                                                    (is-trash? collection))
+                                                              :only
+                                                              :exclude)
+                                 :include-trash-collection? true
+                                 :archive-operation-id      (:archive_operation_id collection)
+                                 :permission-level          (if (or (:archived collection)
+                                                                    (is-trash? collection))
+                                                              :write
+                                                              :read)})]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and

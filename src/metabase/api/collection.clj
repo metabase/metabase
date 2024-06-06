@@ -105,10 +105,10 @@
                         :id
                         (collection/permissions-set->visible-collection-ids
                          permissions-set
-                         {:include-archived (if archived
-                                              :only
-                                              :exclude)
-                          :include-trash? true
+                         {:include-archived-items (if archived
+                                                    :only
+                                                    :exclude)
+                          :include-trash-collection? true
                           :permission-level :read
                           :archive-operation-id nil}))]
                ;; Order NULL collection types first so that audit collections are last
@@ -118,7 +118,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -435,7 +435,7 @@
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived :all
+                                                                        {:include-archived-items :all
                                                                          :permission-level (if archived?
                                                                                              :write
                                                                                              :read)
@@ -562,7 +562,7 @@
                    (collection/visible-collection-ids->honeysql-filter-clause
                     :collection_id
                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived :all
+                                                                        {:include-archived-items :all
                                                                          :archive-operation-id nil
                                                                          :permission-level (if archived?
                                                                                              :write
@@ -636,7 +636,7 @@
 (defn- annotate-collections
   [parent-coll colls]
   (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                                   {:include-archived :all
+                                                                                   {:include-archived-items :all
                                                                                     :archive-operation-id nil
                                                                                     :permission-level :read})
 
