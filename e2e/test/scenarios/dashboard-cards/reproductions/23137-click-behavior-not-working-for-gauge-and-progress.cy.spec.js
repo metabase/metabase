@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  queryBuilderHeader,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -28,7 +29,7 @@ describe("issue 23137", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("should navigate to a target from a gauge card (metabase#23137)", () => {
@@ -57,9 +58,8 @@ describe("issue 23137", () => {
     });
 
     cy.findByTestId("gauge-arc-1").click();
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders");
+    cy.wait("@cardQuery");
+    queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
   });
 
   it("should navigate to a target from a progress card (metabase#23137)", () => {
@@ -88,8 +88,7 @@ describe("issue 23137", () => {
     });
 
     cy.findByTestId("progress-bar").click();
-    cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders");
+    cy.wait("@cardQuery");
+    queryBuilderHeader().findByDisplayValue("Orders").should("be.visible");
   });
 });

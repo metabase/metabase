@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";

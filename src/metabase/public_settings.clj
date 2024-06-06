@@ -322,7 +322,9 @@
   :visibility :internal
   :type       :string
   :feature    :whitelabel
-  :audit      :getter)
+  :audit      :getter
+  :doc "The base URL where dashboard notitification links will point to instead of the Metabase base URL.
+        Only applicable for users who utilize interactive embedding and subscriptions.")
 
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
@@ -709,7 +711,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :boolean
   :visibility :public
   :default    nil
-  :audit      :getter)
+  :audit      :getter
+  :doc "The user login session will always expire after the amount of time defined in MAX_SESSION_AGE (by default 2 weeks).
+        This overrides the “Remember me” checkbox when logging in.
+        Also see the Changing session expiration documentation page.")
 
 (defsetting version
   "Metabase's version info"
@@ -723,6 +728,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :setter     :none
   :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
+                      :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
                       :config_text_file               (premium-features/enable-config-text-file?)
@@ -893,7 +899,9 @@ See [fonts](../configuring-metabase/fonts.md).")
                 (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
                   (if-not (pos-int? value)
                     20
-                    value))))
+                    value)))
+  :doc "Range: 1-100. To limit the total number of rows included in the file attachment
+        for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.")
 
 ;; This is used by the embedding homepage
 (defsetting example-dashboard-id

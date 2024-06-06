@@ -594,6 +594,11 @@
    (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
 
+(defn ^:export available-temporal-units
+  "The temporal bucketing units for date type expressions."
+  []
+  (to-array (map clj->js (lib.core/available-temporal-units))))
+
 ;; # Manipulating Clauses
 ;;
 ;; These three functions work on any kind of clause - aggregations, filters, breakouts, custom expressions, order-by.
@@ -1950,6 +1955,18 @@
        "query"      a-query
        "stageIndex" stage-number
        "value"      (if (= value :null) nil value)})
+
+(defn ^:export aggregation-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.
+  The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].
+
+  The return value has the form:
+
+      aggregation: aggregation clause as returned by [[aggregation-clause]]
+
+  > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
+  [{:keys [aggregation] :as _aggregation-drill}]
+  #js {"aggregation" aggregation})
 
 (defn ^:export column-extract-drill-extractions
   "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.

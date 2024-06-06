@@ -11,6 +11,6 @@ export const AddAggregationButtonRoot = styled(Button)`
 
   &:hover {
     color: ${color("summarize")};
-    background-color: ${color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
 `;

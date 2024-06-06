@@ -23,6 +23,6 @@ export const PasswordFormLink = styled(Link)`
   color: ${color("text-dark")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

@@ -31,6 +31,8 @@
     :model/CloudMigration
     :model/DashboardFavorite
     :model/FieldUsage
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/Query
     :model/QueryCache
     :model/QueryExecution

@@ -29,16 +29,16 @@ export const OptionsRoot = styled.div`
 `;
 
 export const EducationalButton = styled(ExternalLink)`
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
   border-radius: 0.5rem;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   padding: 1em;
   transition: all 0.3s;
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;
 

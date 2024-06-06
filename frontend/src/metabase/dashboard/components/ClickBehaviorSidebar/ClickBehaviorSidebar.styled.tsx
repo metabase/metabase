@@ -18,11 +18,11 @@ export const SidebarContent = styled.div`
 
 export const SidebarContentBordered = styled(SidebarContent)`
   padding-bottom: 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const SidebarHeader = styled.div`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-left: 32px;
   padding-right: 36px;
   margin-bottom: 16px;

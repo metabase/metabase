@@ -27,7 +27,6 @@
 (doto :model/LegacyMetric
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 

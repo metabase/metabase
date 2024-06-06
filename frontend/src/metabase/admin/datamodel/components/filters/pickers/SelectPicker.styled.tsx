@@ -12,7 +12,7 @@ export const SelectPickerButton = styled.button<SelectPickerButtonProps>`
   font-weight: 700;
   width: 100%;
   height: 95px;
-  border: 1px solid ${color("filter")};
+  border: 1px solid var(--mb-color-filter);
   border-radius: 0.5rem;
   background-color: ${props =>
     props.isSelected ? color("filter") : color("white")};

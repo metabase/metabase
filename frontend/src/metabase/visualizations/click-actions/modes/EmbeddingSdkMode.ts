@@ -12,6 +12,7 @@ export const EmbeddingSdkMode: QueryClickActionsMode = {
   availableOnlyDrills: [
     "drill-thru/column-extract",
     "drill-thru/column-filter",
+    "drill-thru/compare-aggregations",
     "drill-thru/distribution",
     "drill-thru/fk-details",
     "drill-thru/fk-filter",

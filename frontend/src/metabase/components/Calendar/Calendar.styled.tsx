@@ -45,6 +45,6 @@ export const CalendarIconContainer = styled.div`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

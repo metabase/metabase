@@ -16,6 +16,7 @@
    [macaw.core :as macaw]
    [metabase.config :as config]
    [metabase.driver.util :as driver.u]
+   [metabase.native-query-analyzer.impl :as nqa.impl]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.public-settings :as public-settings]
@@ -79,6 +80,8 @@
     ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
     ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
     ;; unlikely to ever cause issues in practice.
+    ;;
+    ;; If we want 100% correctness, we can use the Macaw :case-insensitive option here to do the right thing.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
@@ -135,42 +138,6 @@
                                                     [:= :f.active true]
                                                     (into [:or] (map table-query tables))]}))))
 
-;; NOTE: In future we would want to replace [[considered-drivers]] and [[macaw-options]] with (a) driver method(s),
-;; but given that the interface with Macaw is still in a state of flux, and how simple the current configuration is,
-;; we defer extending the public interface and define the logic locally instead. Macaw itself is not battle tested
-;; outside this same narrow range of databases in any case.
-
-(def ^:private considered-drivers
-  "Since we are unable to ask basic questions of the driver hierarchy outside of that module, we need to repeat"
-  #{:mysql :sqlserver :h2 :sqlite :postgres :redshift})
-
-(defn- macaw-options
-  "Generate the options expected by Macaw based on the nature of the given driver."
-  [driver]
-  ;; If this isn't a driver we've considered, fallback to Macaw's conservative defaults.
-  (when (contains? considered-drivers driver)
-    ;; According to the SQL-92 specification, non-quoted identifiers should be case-insensitive, and the majority of
-    ;; engines are implemented this way.
-    ;;
-    ;; In practice there are exceptions, notably MySQL and SQL Server, where case sensitivity is a property of the
-    ;; underlying resource referenced by the identifier, and the case-sensitivity does not depend on whether the
-    ;; reference is quoted.
-    ;;
-    ;; For MySQL the case sensitivity of databases and tables depends on both the underlying
-    ;; file system, and a system variable used to initialize the database. For SQL Server it depends on the collation
-    ;; settings of the collection where the corresponding schema element is defined.
-    ;;
-    ;; For MySQL, columns and aliases can never be case-sensitive, and for SQL Server the default collation is case-
-    ;; insensitive too, so it makes sense to just treat all databases as case-insensitive as a whole.
-    ;;
-    ;; In future Macaw may support discriminating on the identifier type, in which case we could be more precise for
-    ;; these databases. Being 100% correct would require querying system variables and schema configuration however,
-    ;; which is likely a step too far in complexity.
-    {:case-insensitive?     true
-     ;; For both MySQL and SQL Server, whether identifiers are case-sensitive depends on database configuration only,
-     ;; and quoting has no effect on this, so we disable this option for consistency with `:case-insensitive?`.
-     :quotes-preserve-case? (not (#{:mysql :sqlserver} driver))}))
-
 (defn field-ids-for-sql
   "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
@@ -184,7 +151,7 @@
     (let [db-id        (:database query)
           sql-string   (:query (nqa.sub/replace-tags query))
           driver       (driver.u/database->driver db-id)
-          macaw-opts   (macaw-options driver)
+          macaw-opts   (nqa.impl/macaw-options driver)
           parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
           direct-ids   (direct-field-ids-for-query parsed-query db-id)
           indirect-ids (set/difference
