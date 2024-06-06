@@ -13,13 +13,6 @@
    [metabase.util.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
 
-(defmulti ^:private execute-payload
-  "Turn a notification into a payload that can be sent to a channel"
-  :payload_type)
-
-(defmulti notification->payload-info
-  :payload_type)
-
 (def ^:private Notification
   [:map
    [:payload_type [:enum :notification/alert :notification/dashboard-subscription]]
@@ -52,33 +45,6 @@
                                           [:dashboard-subscription :map]
                                           [:result                 [:sequential :map]]]]])
 
-(mu/defmethod notification->payload-info :notification/alert :- PayloadInfo
-  [notification :- Notification]
-  (let [alert (assoc (t2/select-one :model/Pulse (:payload_id notification))
-                     :card_id
-                     (t2/select-one-fn :card_id :model/PulseCard :pulse_id (:payload_id notification)))]
-    (assoc notification :alert alert)))
-
-(mu/defmethod notification->payload-info :notification/dashboard-subscription :- PayloadInfo
-  [notification :- Notification]
-  (let [dashboard-subscription (t2/hydrate (t2/select-one :model/Pulse (:payload_id notification)) :cards)]
-    (assoc notification :dashboard-subscription dashboard-subscription)))
-
-(mu/defmethod execute-payload :notification/alert :- Payload
-  [payload-info :- PayloadInfo]
-  (let [card (t2/select-one :model/Card :id (get-in payload-info [:alert :card_id]) :archived false)]
-    {:payload-type :notification/dashboard-subscription
-     :card         card
-     :alert        (:alert payload-info)
-     :result       (noti.execute/execute-card (:creator_id payload-info) card)}))
-
-(mu/defmethod execute-payload :notification/dashboard-subscription :- Payload
-  [{:keys [dashboard-subscription creator_id]} :- PayloadInfo]
-  {:payload-type           :notification/dashboard-subscription
-   :dashboard-subscription dashboard-subscription
-   :dashboard              (t2/select-one :model/Dashboard (:dashboard_id dashboard-subscription))
-   :result                 (noti.execute/execute-dashboard creator_id dashboard-subscription)})
-
 (defn notification->channel+recipients
   [notification pc-ids]
   (let [pcs (if (some? pc-ids)
@@ -108,13 +74,60 @@
                          [{:kind      :slack-channel
                            :recipient (get-in pc [:details :channel])}])}))))
 
+;; ------------------------------------------------------------------------------------------------;;
+;;                                        Multimethods                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defmulti ^:private execute-payload
+  "Turn a notification into a payload that can be sent to a channel"
+  :payload_type)
+
+(defmulti notification->payload-info
+  :payload_type)
+
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
   (fn [payload-info _payload] (:payload_type payload-info)))
 
-(defmethod should-send-notification? :default
+(defmethod ^:private should-send-notification? :default
   [_payload-info _payload]
   true)
+
+(defmulti ^:private send-notification!*
+  (fn [payload-info _channel+recipients] (:payload_type payload-info)))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Alerts                                                ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(mu/defmethod notification->payload-info :notification/alert :- PayloadInfo
+  [notification :- Notification]
+  (let [alert (assoc (t2/select-one :model/Pulse (:payload_id notification))
+                     :card_id
+                     (t2/select-one-fn :card_id :model/PulseCard :pulse_id (:payload_id notification)))]
+    (assoc notification :alert alert)))
+
+(mu/defmethod execute-payload :notification/alert :- Payload
+  [payload-info :- PayloadInfo]
+  (let [card (t2/select-one :model/Card :id (get-in payload-info [:alert :card_id]) :archived false)]
+    {:payload-type :notification/dashboard-subscription
+     :card         card
+     :alert        (:alert payload-info)
+     :result       (noti.execute/execute-card (:creator_id payload-info) card)}))
+
+(mu/defmethod notification->payload-info :notification/dashboard-subscription :- PayloadInfo
+  [notification :- Notification]
+  (let [dashboard-subscription (t2/hydrate (t2/select-one :model/Pulse (:payload_id notification)) :cards)]
+    (assoc notification :dashboard-subscription dashboard-subscription)))
+
+
+
+(mu/defmethod execute-payload :notification/dashboard-subscription :- Payload
+  [{:keys [dashboard-subscription creator_id]} :- PayloadInfo]
+  {:payload-type           :notification/dashboard-subscription
+   :dashboard-subscription dashboard-subscription
+   :dashboard              (t2/select-one :model/Dashboard (:dashboard_id dashboard-subscription))
+   :result                 (noti.execute/execute-dashboard creator_id dashboard-subscription)})
 
 (defn- is-card-empty?
   "Check if the card is empty"
@@ -162,15 +175,6 @@
       (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert-condition)]
         (throw (IllegalArgumentException. error-text))))))
 
-(defmethod should-send-notification? :notification/dashboard-subscription
-  [payload-info payload]
-  (if (:skip_if_empty (:dashboard-subscription payload-info))
-    (not (are-all-parts-empty? payload))
-    true))
-
-(defmulti send-notification!*
-  (fn [payload-info _channel+recipients] (:payload_type payload-info)))
-
 (defmethod send-notification!* :notification/alert
   [payload-info channel+recipients]
   (let [payload (execute-payload payload-info)
@@ -189,6 +193,16 @@
                           (:recipients channel)
                           nil)))))
 
+;; ------------------------------------------------------------------------------------------------;;
+;;                                    Dashboard Subscriptions                                      ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defmethod should-send-notification? :notification/dashboard-subscription
+  [payload-info payload]
+  (if (:skip_if_empty (:dashboard-subscription payload-info))
+    (not (are-all-parts-empty? payload))
+    true))
+
 (defmethod send-notification!* :notification/dashboard-subscription
   [payload-info channel+recipients]
   (let [payload                (execute-payload payload-info)
@@ -204,6 +218,10 @@
                           payload
                           (:recipients channel)
                           nil)))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                        Public Interface                                         ;;
+;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defn send-notification!
   "Send the notification."
@@ -241,17 +259,3 @@
    (send-notification! {:payload_type :dashboard-subscription
                         :payload_id   dash-sub-id
                         :creator_id   crowberto-id})))
-
-  ; nil
-
-;; call stack for alert
-;; pulse/send-pulse! -> pulse/pulse->notifications -> pulse.util/execute-card -> parts->notifications
-;; -> notificaiton(dispatch by channel type) : at this point we have the paylaods
-;; - :email : messages/render-alert-email -> email/send-message-or-throw!
-;; - :slack : create-slack-attachment-data -> slack/post-chat-message!
-
-;; call stack for dashbord subscription
-;; pulse/send-pulse! -> pulse/pulse->notifications -> pulse/execute-dashboard -> parts->notifications
-;; -> notificaiton(dispatch by channel type) : at this point we have the payloads
-;; - :email: messages/render-pulse-email -> email/send-message-or-throw!
-;; - :slack : create-slack-attachment-data -> slack/post-chat-message!
