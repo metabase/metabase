@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest with-temp-vals-in-db-test
-  (testing "let's make sure this acutally works right!"
+  (testing "let's make sure this actually works right!"
     (let [position #(t2/select-one-fn :position Field :id (data/id :venues :price))]
       (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
         (is (= -1

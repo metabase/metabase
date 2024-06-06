@@ -119,7 +119,7 @@
   "Create separate logger for a given namespace to fork out some logs."
   ^AutoCloseable [ns out & [{:keys [additive level]
                              :or   {additive true
-                                    level Level/INFO}}]]
+                                    level    Level/INFO}}]]
   (let [config        (configuration)
         parent-logger (effective-ns-logger ns)
         appender      (make-appender out (logger-name ns) (find-logger-layout parent-logger))

@@ -489,7 +489,6 @@
     "bigquery-cloud-sdk"
     "druid"
     "druid-jdbc"
-    "googleanalytics"
     "h2"
     "mongo"
     "mysql"

@@ -87,19 +87,8 @@
     {:error/message ":fields must be distinct"}
     #'lib.schema.util/distinct-refs?]])
 
-;;; this is just for enabling round-tripping filters with named segment references, i.e. Google Analytics segments.
-;;;
-;;; TODO -- we should just add this to the schema `:mbql.clause/segment`
-(mr/def ::named-segment-reference
-  [:tuple
-   #_tag  [:= :segment]
-   #_opts :map
-   #_name :string])
-
 (mr/def ::filterable
-  [:or
-   [:ref ::expression/boolean]
-   [:ref ::named-segment-reference]])
+  [:ref ::expression/boolean])
 
 (mr/def ::filters
   [:sequential {:min 1} ::filterable])

@@ -487,6 +487,19 @@
                                   []))))]
     (map annotate search-results)))
 
+(defn- add-collection-effective-location
+  "Batch-hydrates :effective_location and :effective_parent on collection search results. Keeps search results in
+  order."
+  [search-results]
+  (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
+        hydrated-colls (t2/hydrate collections :effective_parent)
+        idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
+    (map (fn [search-result]
+           (if (mi/instance-of? :model/Collection search-result)
+             (idx->coll (:id search-result))
+             (assoc search-result :effective_location nil)))
+         search-results)))
+
 (defn- add-can-write [row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
     (assoc row :can_write (mi/can-write? row))
@@ -509,9 +522,6 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
-                            (map #(if (t2/instance-of? :model/Collection %)
-                                    (t2/hydrate % :effective_location)
-                                    (assoc % :effective_location nil)))
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
@@ -524,9 +534,10 @@
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                              true hydrate-user-metadata
+                              true                           hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true (map scoring/serialize))
+                              true                           (add-collection-effective-location)
+                              true                           (map scoring/serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
