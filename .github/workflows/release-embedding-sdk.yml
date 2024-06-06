@@ -235,7 +235,7 @@ jobs:
         run: |
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish
+          npm publish --dry-run
 
   git-tag:
     needs: publish-npm
