@@ -184,7 +184,9 @@
                        ;; items may exist in an 'official' collection in enterprise
                        (if (official? model_object) official-wt 0)
                        ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
-                       (* (/ (- n-items recency-pos) n-items) recency-wt)
+                       (if (zero? n-items)
+                         0
+                         (* (/ (- n-items recency-pos) n-items) recency-wt))
                        ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
 
                        ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
