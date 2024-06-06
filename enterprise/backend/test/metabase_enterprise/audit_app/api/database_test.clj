@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-app.api.database-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.audit.audit-test :as audit-test]
+   [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase.audit :as audit]
    [metabase.test :as mt]))
 

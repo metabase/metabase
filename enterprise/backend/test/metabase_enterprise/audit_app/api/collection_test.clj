@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase-enterprise.audit.audit-test :as audit-test]
+   [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase.config :as config]
    [metabase.models :refer [Collection]]
    [metabase.models.collection :as collection]
