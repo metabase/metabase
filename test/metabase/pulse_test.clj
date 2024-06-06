@@ -105,24 +105,25 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                         :display (or display :line)}
-                                                        card)]
-        (with-pulse-for-card [{pulse-id :id}
-                              {:card       card-id
-                               :pulse      pulse
-                               :pulse-card pulse-card
-                               :channel    channel-type}]
-          (letfn [(thunk* []
-                    (f {:card-id card-id, :pulse-id pulse-id}
-                       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
-                  (thunk []
-                    (if fixture
-                      (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
-                      (thunk*)))]
-            (case channel-type
-              :email (pulse.test-util/email-test-setup (thunk))
-              :slack (pulse.test-util/slack-test-setup (thunk)))))))))
+      (testing (when (= :email channel-type) @mt/inbox)
+        (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                           :display (or display :line)}
+                                                          card)]
+          (with-pulse-for-card [{pulse-id :id}
+                                {:card       card-id
+                                 :pulse      pulse
+                                 :pulse-card pulse-card
+                                 :channel    channel-type}]
+            (letfn [(thunk* []
+                      (f {:card-id card-id, :pulse-id pulse-id}
+                         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
+                    (thunk []
+                      (if fixture
+                        (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
+                        (thunk*)))]
+              (case channel-type
+                :email (pulse.test-util/email-test-setup (thunk))
+                :slack (pulse.test-util/slack-test-setup (thunk))))))))))
 
 (defn- tests
   "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
@@ -394,16 +395,15 @@
       :assert
       {:email
        (fn [_ _]
-         (testing @mt/inbox
-           (is (= (into {} (map (fn [user-kwd]
-                                  (mt/email-to user-kwd {:subject "Pulse: Pulse Name"
-                                                         :bcc     #{"rasta@metabase.com" "crowberto@metabase.com"}
-                                                         :body    [{"Pulse Name" true}
-                                                                   pulse.test-util/png-attachment
-                                                                   pulse.test-util/png-attachment]
-                                                         :bcc?    true}))
-                                [:rasta :crowberto]))
-                  (mt/summarize-multipart-email #"Pulse Name")))))}})))
+         (is (= (into {} (map (fn [user-kwd]
+                                (mt/email-to user-kwd {:subject "Pulse: Pulse Name"
+                                                       :bcc     #{"rasta@metabase.com" "crowberto@metabase.com"}
+                                                       :body    [{"Pulse Name" true}
+                                                                 pulse.test-util/png-attachment
+                                                                 pulse.test-util/png-attachment]
+                                                       :bcc?    true}))
+                              [:rasta :crowberto]))
+                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest two-cards-in-one-pulse-test
   (testing "1 pulse that has 2 cards, should contain two query image attachments (as well as an icon attachment)"
@@ -619,10 +619,9 @@
        :assert
        {:email
         (fn [_ _]
-          (testing @mt/inbox
-            (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                      [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
-                   (mt/summarize-multipart-email test-card-regex)))))}})))
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
+                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
+                 (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
   (testing "Below goal alert"
