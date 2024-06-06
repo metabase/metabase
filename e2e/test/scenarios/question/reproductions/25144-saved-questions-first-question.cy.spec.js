@@ -1,8 +1,9 @@
-import { modal, popover, restore, describeOSS } from "e2e/support/helpers";
+import { modal, popover, restore, onlyOnOSS } from "e2e/support/helpers";
 
 // this is only testable in OSS because EE always has models from auditv2
-describeOSS("issue 25144", { tags: "@OSS" }, () => {
+describe("issue 25144", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    onlyOnOSS();
     restore("setup");
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/card").as("createCard");
