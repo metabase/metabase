@@ -8,6 +8,7 @@ import {
   echartsContainer,
   testPairedTooltipValues,
   multiAutocompleteInput,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 
 import {
@@ -98,6 +99,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
+        });
+
+      popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
@@ -171,6 +178,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
+        });
+
+      popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
@@ -217,6 +230,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
+        });
+
+      popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
@@ -259,6 +278,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
+        });
+
+      popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
@@ -298,6 +323,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.findByText("Kiana");
           cy.findByText("Anacoco").should("not.exist");
           cy.findByText("Anchorage").click();
+        });
+
+      popover()
+        .filter(":contains('Add filter')")
+        .within(() => {
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
@@ -346,7 +377,6 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Widget").should("not.exist");
-
         cy.button("Add filter").click();
       });
 
@@ -413,7 +443,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        popover().findByText("29").closest("li").find(".Icon-close").click();
+        popover().within(() => removeMultiAutocompleteValue(1));
+
         cy.button("Update filter").click();
 
         cy.findByTestId("table-row")
