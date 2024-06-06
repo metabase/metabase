@@ -1,7 +1,7 @@
 (ns metabase.channel.slack
   (:require
    [clojure.string :as str]
-   [metabase.channel.interface :as channel.interface]
+   [metabase.channel.core :as channel]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.public-settings :as public-settings]
@@ -13,6 +13,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
+
+(channel/register! :channel/slack)
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -90,7 +92,7 @@
             []
             attachments)))
 
-(defmethod channel.interface/deliver! [:slack :alert]
+(defmethod channel/deliver! [:channel/slack :alert]
   [_channel-details payload recipients _template]
   (doseq [{channel-id :recipient} recipients]
     (let [{:keys [card]} payload
@@ -151,7 +153,7 @@
           :when attachment]
       attachment)))
 
-(defmethod channel.interface/deliver! [:slack :dashboard-subscription]
+(defmethod channel/deliver! [:channel/slack :dashboard-subscription]
   [_channel-details payload recipients _template]
   (let [{:keys [dashboard
                 dashboard-subscription]} payload

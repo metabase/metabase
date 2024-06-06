@@ -78,9 +78,9 @@
 
 (defn- notification->channel+recipients
   [notification]
-  (let [pcs (t2/select :model/PulseChannel :pulse_id (:payload_id notification) :enabled true)]
+  (let [pcs #p (t2/select :model/PulseChannel :pulse_id (:payload_id notification) :enabled true)]
     (for [pc pcs]
-      (let [channel-type (:channel_type pc)]
+      (let [channel-type (keyword "channel" (name (:channel_type pc)))]
         {:channel_type channel-type
          :recipients   (if (= :email channel-type)
                          (concat (map (fn [user]
@@ -98,7 +98,7 @@
                                  ;; non-user-email
                                  (map (fn [email] {:recipient email
                                                    :kind      :external-email}) (get-in pc [:recipients :emails])))
-                         [{:kind :slack-channel
+                         [{:kind      :slack-channel
                            :recipient (get-in pc [:details :channel])}])}))))
 
 (mu/defn send-notification!
@@ -121,10 +121,10 @@
  (def alert-id 14)
  (def crowberto-id (t2/select-one-pk :model/User :email "crowberto@metabase.com"))
 
- (ngoc/with-tc
-   (execute-payload (notification->payload-info {:payload_type :alert
-                                                 :payload_id   alert-id
-                                                 :creator_id   crowberto-id})))
+ #_(ngoc/with-tc
+     (execute-payload (notification->payload-info {:payload_type :alert
+                                                   :payload_id   alert-id
+                                                   :creator_id   crowberto-id})))
 
 
  (ngoc/with-tc

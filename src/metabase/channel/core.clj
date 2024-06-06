@@ -1,8 +1,37 @@
 (ns metabase.channel.core
   (:require
-   [metabase.channel.interface :as channel.interface]
-   [potemkin :as p]))
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
-(p/import-vars
- [channel.interface
-  deliver!])
+;; ------------------------------------------------------------------------------------------------;;
+;;                                      Channels methods                                           ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defmulti deliver!
+  (fn [channel-details payload _recipients _template]
+    [(:channel_type channel-details) (:payload-type payload)]))
+
+(defmethod deliver! :default
+  [channel-details payload _recipients _template]
+  (throw (UnsupportedOperationException.
+          (tru "Unsupported deliver for channel {0} with payload {1}" (:channel_type channel-details) (:payload-type payload)))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                             Utils                                               ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn do-register!
+  "Impl of [[register!]]"
+  [channel]
+  (when-not *compile-files*
+    (assert (= (namespace channel) "channel") "Channel must be a namespaced keyword of :channel. E.g: :channel/slack")
+    (log/info (u/format-color :blue "Registered channel %s from namespace %s" channel (ns-name *ns*)))
+    (classloader/require (ns-name *ns*))
+    (derive channel :channel/*)))
+
+(defmacro register!
+  "Register a channel implementation."
+  [channel]
+  `(do-register! ~channel))

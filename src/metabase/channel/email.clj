@@ -1,16 +1,16 @@
 (ns metabase.channel.email
   (:require
-   [metabase.channel.interface :as channel.interface]
+   [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.pulse.markdown :as markdown]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
+
+(channel/register! :channel/slack)
 
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
@@ -63,7 +63,7 @@
 
     nil))
 
-(defmethod channel.interface/deliver! [:email :alert]
+(defmethod channel/deliver! [:channel/email :alert]
   [_channel-details payload recipients _template]
   (let [{:keys [card alert]} payload
         condition-kwd        (messages/pulse->alert-condition-kwd alert)
@@ -85,15 +85,15 @@
                                                       (messages/render-alert-email timezone alert {:needed-only-to-get-the-schedule 1
                                                                                                    :schedule_type :hourly} [(assoc payload :type :card)] (find-goal-value card) non-user-email)))]
     (send-emails! (if email-to-users
-                               (conj email-to-nonusers email-to-users)
-                               email-to-nonusers))))
+                    (conj email-to-nonusers email-to-users)
+                    email-to-nonusers))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 
-(defmethod channel.interface/deliver! [:email :dashboard-subscription]
+(defmethod channel/deliver! [:channel/email :dashboard-subscription]
   [_channel-details payload recipients _template]
   (let [{:keys [dashboard
                 dashboard-subscription
