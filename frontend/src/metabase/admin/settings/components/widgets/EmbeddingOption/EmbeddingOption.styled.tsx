@@ -21,10 +21,10 @@ export const Label = styled.span`
   border-radius: 0.25rem;
   text-transform: uppercase;
   color: ${color("white")};
-  background: ${color("brand")};
+  background: var(--mb-color-brand);
 `;
 
 export const BoldExternalLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
 `;

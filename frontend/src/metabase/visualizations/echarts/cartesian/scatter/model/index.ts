@@ -13,6 +13,7 @@ import {
   getCardsColumnByDataKeyMap,
   getDatasetExtents,
   getSortedSeriesModels,
+  scaleDataset,
   sortDataset,
 } from "../../model/dataset";
 import { getCardsSeriesModels, getDimensionModel } from "../../model/series";
@@ -82,11 +83,12 @@ export function getScatterPlotModel(
     settings["graph.x_axis.scale"],
     showWarning,
   );
+  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
     showWarning,
@@ -96,7 +98,7 @@ export function getScatterPlotModel(
   );
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
-    dataset,
+    scaledDataset,
     [],
     xAxisModel,
     seriesModels,
@@ -107,12 +109,13 @@ export function getScatterPlotModel(
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
     false,
     [],
-    [],
+    false,
     renderingContext,
   );
 
@@ -129,7 +132,7 @@ export function getScatterPlotModel(
 
   return {
     stackModels: [],
-    dataset,
+    dataset: scaledDataset,
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,

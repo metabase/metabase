@@ -12,21 +12,21 @@ export const ActionOptionListItem = styled.div<ActionOptionProps>`
   color: ${props =>
     props.isSelected ? color("text-white") : color("text-normal")};
   background-color: ${props =>
-    props.isSelected ? color("brand") : color("white")};
+    props.isSelected ? "var(--mb-color-brand)" : color("white")};
   cursor: pointer;
 
   display: flex;
   align-items: ${props => (props.hasDescription ? "flex-start" : "center")};
   gap: ${space(1)};
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
 
   padding: ${space(2)};
   margin: ${space(1)} ${space(0)};
 
   &:hover {
-    background-color: ${lighten("brand", 0.1)};
+    background-color: ${() => lighten("brand", 0.1)};
     color: ${color("text-white")};
   }
 `;

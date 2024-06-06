@@ -51,14 +51,14 @@ export const CardMenu = styled.span`
 
 const cardRootHoverStyles = css`
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
 
     ${CardIcon} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${CardTitle} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;
@@ -67,7 +67,7 @@ export const CardRoot = styled(Link)`
   display: flex;
   padding: 1.75rem;
   align-items: center;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   cursor: ${props => (props.to ? "pointer" : "default")};
 

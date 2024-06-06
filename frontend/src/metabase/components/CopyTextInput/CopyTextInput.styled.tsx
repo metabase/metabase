@@ -11,15 +11,15 @@ export const CopyWidgetButton = styled(CopyButton)`
   display: flex;
   align-items: center;
   padding: 0.5rem;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
   border-top-right-radius: 4px;
   border-bottom-right-radius: 4px;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   outline: none;
   cursor: pointer;
 
   &:hover {
     color: ${color("white")};
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

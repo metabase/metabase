@@ -3,6 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { ScatterPlot } from "./ScatterPlot";
@@ -27,11 +28,19 @@ const renderingContext: RenderingContext = {
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   fontFamily: "Lato",
+  theme: DEFAULT_VISUALIZATION_THEME,
 };
 
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.default as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const CustomYAxisRangeWithColumnScaling = Template.bind({});
+CustomYAxisRangeWithColumnScaling.args = {
+  rawSeries: data.customYAxisRangeWithColumnScaling as any,
   dashcardSettings: {},
   renderingContext,
 };

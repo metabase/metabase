@@ -18,8 +18,6 @@
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.util :as pu]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.parameters.parameters :as shared.params]
@@ -39,17 +37,6 @@
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
-(defn- is-card-empty?
-  "Check if the card is empty"
-  [card]
-  (if-let [result (:result card)]
-    (or (zero? (-> result :row_count))
-        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-        (= [[nil]]
-           (-> result :data :rows)))
-    ;; Text cards have no result; treat as empty
-    true))
-
 (defn- merge-default-values
   "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
   the parameter if none is specified. Normally the FE client will take `:default` and pass it in as `:value` if it
@@ -62,34 +49,6 @@
        {:value default-value})
      (dissoc parameter :default))))
 
-(defn- execute-dashboard-subscription-card
-  "Returns subscription result for a card.
-
-  This function should be executed under pulse's creator permissions."
-  [dashboard dashcard card-or-id parameters]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
-  (try
-    (let [card-id (u/the-id card-or-id)
-          card    (t2/select-one :model/Card :id card-id)
-          result  (qp.dashboard/process-query-for-dashcard
-                   :dashboard-id  (u/the-id dashboard)
-                   :card-id       card-id
-                   :dashcard-id   (u/the-id dashcard)
-                   :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                   :export-format :api
-                   :parameters    parameters
-                   :middleware    {:process-viz-settings? true
-                                   :js-int-to-string?     false}
-                   :run           (^:once fn* [query info]
-                                   (qp/process-query
-                                    (qp/userland-query-with-default-constraints query info))))]
-      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? (assoc card :result result)))
-        {:card     card
-         :dashcard dashcard
-         :result   result
-         :type     :card}))
-    (catch Throwable e
-      (log/warnf e "Error running query for Card %s" card-or-id))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -159,7 +118,7 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
-      (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
+      (pu/execute-dashboard-subscription-card dashcard parameters))
 
     ;; actions
     (virtual-card-of-type? dashcard "action")
@@ -361,7 +320,7 @@
 (defn- are-all-parts-empty?
   "Do none of the cards have any results?"
   [results]
-  (every? is-card-empty? results))
+  (every? pu/is-card-empty? results))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
   (let [goal-comparison      (if alert_above_goal >= <)

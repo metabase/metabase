@@ -34,7 +34,7 @@ export const ExplorePaidPlansContainer = styled.div<ExplorePaidPlansContainerPro
   display: flex;
   align-items: flex-start;
   justify-content: ${props => props.justifyContent ?? "space-between"};
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const SettingsLicenseContainer = styled.div`

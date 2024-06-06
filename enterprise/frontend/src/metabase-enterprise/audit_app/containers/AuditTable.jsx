@@ -7,7 +7,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -728,6 +728,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :public
   :setter     :none
   :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
+                      :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
                       :config_text_file               (premium-features/enable-config-text-file?)

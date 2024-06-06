@@ -6,7 +6,7 @@ import { usePrevious } from "react-use";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Group from "metabase/entities/groups";

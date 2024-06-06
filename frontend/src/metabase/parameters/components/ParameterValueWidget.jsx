@@ -31,6 +31,7 @@ import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source"
 import {
   isDateParameter,
   isNumberParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -40,6 +41,7 @@ import {
 import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import { TemporalUnitWidget } from "./widgets/TemporalUnitWidget";
 
 class ParameterValueWidget extends Component {
   static propTypes = {
@@ -318,6 +320,10 @@ function Widget({
         onClose={onPopoverClose}
       />
     );
+  }
+
+  if (isTemporalUnitParameter(parameter)) {
+    return <TemporalUnitWidget setValue={setValue} onClose={onPopoverClose} />;
   }
 
   if (isTextWidget(parameter)) {

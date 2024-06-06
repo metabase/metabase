@@ -4,20 +4,31 @@ import { usePalette } from "metabase/hooks/use-palette";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
+import { useMantineTheme } from "metabase/ui";
+import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-export const useBrowserRenderingContext = (
-  fontFamily: string,
-): RenderingContext => {
-  const palette = usePalette();
+interface RenderingOptions {
+  fontFamily: string;
+}
 
-  return useMemo(
-    () => ({
+export const useBrowserRenderingContext = (
+  options: RenderingOptions,
+): RenderingContext => {
+  const { fontFamily } = options;
+
+  const palette = usePalette();
+  const theme = useMantineTheme();
+
+  return useMemo(() => {
+    const style = getVisualizationTheme(theme.other);
+
+    return {
       getColor: name => color(name, palette),
       formatValue: (value, options) => String(formatValue(value, options)),
       measureText: measureTextWidth,
       fontFamily: `${fontFamily}, Arial, sans-serif`,
-    }),
-    [fontFamily, palette],
-  );
+      theme: style,
+    };
+  }, [fontFamily, palette, theme]);
 };

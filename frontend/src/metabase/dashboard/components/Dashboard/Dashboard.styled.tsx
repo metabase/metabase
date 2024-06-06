@@ -72,8 +72,8 @@ export const DashboardHeaderContainer = styled.header<{
   position: relative;
   z-index: 2;
 
-  background-color: ${color("bg-white")};
-  border-bottom: 1px solid ${color("border")};
+  background-color: var(--mb-color-bg-white);
+  border-bottom: 1px solid var(--mb-color-border);
 
   ${({ isFullscreen }) =>
     isFullscreen &&
@@ -126,7 +126,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     css`
       position: sticky;
       border-bottom: 1px solid
-        ${hasScroll ? color("border") : getParametersWidgetBgColor(isNightMode)};
+        ${hasScroll
+          ? "var(--mb-color-border)"
+          : getParametersWidgetBgColor(isNightMode)};
     `}
 `;
 
@@ -164,7 +166,7 @@ export const ParametersAndCardsContainer = styled.div<{
 
     ${DashCard.root} {
       box-shadow: none;
-      border: 1px solid ${color("border")};
+      border: 1px solid var(--mb-color-border);
     }
   }
 `;

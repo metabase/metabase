@@ -20,6 +20,7 @@ import {
   setupRecentViewsEndpoints,
   setupRecentSelectionsEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupAdhocQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -248,12 +249,12 @@ export const setup = async ({
   setupRecentViewsEndpoints([]);
   setupRecentSelectionsEndpoints([]);
 
+  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
+  setupAdhocQueryMetadataEndpoint(metadata);
+
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
-    setupCardQueryMetadataEndpoint(
-      card,
-      createMockCardQueryMetadata({ databases: [TEST_DB] }),
-    );
+    setupCardQueryMetadataEndpoint(card, metadata);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
