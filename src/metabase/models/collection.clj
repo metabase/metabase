@@ -810,11 +810,11 @@
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
-  (let [archive-operation-id    (str (random-uuid))
-        affected-collection-ids (cons (u/the-id collection)
-                                      (collection->descendant-ids collection
-                                                                  :archived [:not= true]))]
-    (t2/with-transaction [_conn]
+  (t2/with-transaction [_conn]
+    (let [archive-operation-id    (str (random-uuid))
+          affected-collection-ids (cons (u/the-id collection)
+                                        (collection->descendant-ids collection
+                                                                    :archived [:not= true]))]
       (t2/update! :model/Collection (u/the-id collection)
                   {:archive_operation_id archive-operation-id
                    :archived_directly    true
