@@ -37,7 +37,7 @@ export const SidebarHeader = styled.h2`
 `;
 
 export const XrayIcon = styled(Icon)`
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   margin-right: 1rem;
 `;
 

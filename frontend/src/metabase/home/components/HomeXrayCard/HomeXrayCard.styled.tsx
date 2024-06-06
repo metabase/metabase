@@ -7,7 +7,7 @@ import { Icon } from "metabase/ui";
 export const CardIcon = styled(Icon)`
   display: block;
   flex: 0 0 auto;
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   width: 1.25rem;
   height: 1.25rem;
 `;

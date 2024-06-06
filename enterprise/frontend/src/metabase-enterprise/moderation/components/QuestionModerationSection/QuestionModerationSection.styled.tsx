@@ -10,7 +10,7 @@ import {
 const { color: verifiedIconColor } = getStatusIcon(MODERATION_STATUS.verified);
 
 export const VerifyButton = styled(Button)`
-  color: ${color(verifiedIconColor)};
+  color: ${() => color(verifiedIconColor)};
   border: none;
   padding: 8px;
 

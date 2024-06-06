@@ -21,7 +21,7 @@ export const FunctionHelpCode = styled.div`
 `;
 
 export const FunctionHelpCodeArgument = styled.span`
-  color: ${color("accent3")};
+  color: ${() => color("accent3")};
 `;
 
 export const Divider = styled.div`
@@ -42,7 +42,7 @@ export const ArgumentsGrid = styled.div`
 `;
 
 export const ArgumentTitle = styled.div`
-  color: ${color("accent3")};
+  color: ${() => color("accent3")};
   font-family: ${monospaceFontFamily};
   font-size: 0.8125rem;
   text-align: right;

@@ -17,7 +17,7 @@ export const NoticeContent = styled.div`
 `;
 
 export const NoticeWarningIcon = styled(Icon)`
-  color: ${color("accent5")};
+  color: ${() => color("accent5")};
   width: 1.5rem;
   height: 1.5rem;
 `;

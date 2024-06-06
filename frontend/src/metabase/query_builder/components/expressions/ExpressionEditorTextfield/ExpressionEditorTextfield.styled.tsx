@@ -61,7 +61,7 @@ export const EditorContainer = styled.div<{
   }
 
   .ace-tm .ace_string {
-    color: ${color("accent5")};
+    color: ${() => color("accent5")};
   }
 
   .ace_cursor {

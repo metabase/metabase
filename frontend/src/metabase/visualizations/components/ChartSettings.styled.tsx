@@ -35,7 +35,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
 `;
 
 export const SectionWarnings = styled(Warnings)`
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   position: absolute;
   top: 2rem;
   right: 2rem;

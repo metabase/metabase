@@ -12,7 +12,7 @@ export const SettingContent = styled.div`
 `;
 
 export const SettingWarningMessage = styled.div`
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   font-weight: bold;
   padding-top: 0.5rem;
 `;
