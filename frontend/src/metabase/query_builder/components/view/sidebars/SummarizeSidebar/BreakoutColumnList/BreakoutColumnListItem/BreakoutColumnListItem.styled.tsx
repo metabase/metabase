@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
@@ -69,7 +69,7 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-const selectedStyle = css`
+const getSelectedStyle = (theme: Theme) => css`
   ${Content},
   ${ColumnTypeIcon} {
     background-color: var(--mb-color-summarize);
@@ -78,7 +78,7 @@ const selectedStyle = css`
 
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
-    color: ${() => alpha("text-white", 0.65)};
+    color: ${alpha(theme.fn.themeColor("text-white"), 0.65)};
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
@@ -128,5 +128,6 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
   position: relative;
 
-  ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
+  ${props =>
+    props.isSelected ? getSelectedStyle(props.theme) : unselectedStyle}
 `;
