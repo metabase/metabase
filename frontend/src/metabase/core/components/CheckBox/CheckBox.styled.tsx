@@ -40,7 +40,7 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
 
   ${CheckBoxInput}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   ${CheckBoxInput}:focus:not(:focus-visible) + & {
@@ -67,7 +67,7 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
     ${props => color(props.checked ? props.checkedColor : props.uncheckedColor)};
   border-radius: 0.25rem;
   background-color: ${props =>
-    color(props.checked ? props.checkedColor : "bg-white")};
+    props.checked ? color(props.checkedColor) : "var(--mb-color-bg-white)"};
 `;
 
 export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`

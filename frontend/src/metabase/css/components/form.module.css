@@ -16,7 +16,7 @@
 }
 
 .FormField.FormFieldError {
-  color: var(--color-error);
+  color: var(--mb-color-error);
 }
 
 .FormLabel {
@@ -40,7 +40,7 @@
 }
 
 .FormField.FormFieldError .FormInput {
-  border-color: var(--color-error);
+  border-color: var(--mb-color-error);
 }
 
 .noFocus:focus {

@@ -23,7 +23,7 @@ export const Row = styled.div`
 
 export const Button = styled(DefaultButton)`
   padding: 8px;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   border: none;
 `;

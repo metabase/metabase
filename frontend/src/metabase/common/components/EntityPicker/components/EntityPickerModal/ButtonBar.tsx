@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { Button, Flex, Text } from "metabase/ui";
 
 export const ButtonBar = ({
@@ -38,7 +37,7 @@ export const ButtonBar = ({
       align="center"
       p="md"
       style={{
-        borderTop: `1px solid ${color("border")}`,
+        borderTop: "1px solid var(--mb-color-border)",
       }}
     >
       <Flex gap="md">{actionButtons}</Flex>

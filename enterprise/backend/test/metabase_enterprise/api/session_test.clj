@@ -8,6 +8,7 @@
 
 (deftest properties-token-features-test
   (mt/with-premium-features #{:advanced-permissions
+                              :attached-dwh
                               :audit-app
                               :cache-granular-controls
                               :config-text-file
@@ -32,6 +33,7 @@
                               :upload_management
                               :whitelabel}
           (is (= {:advanced_permissions           true
+                  :attached_dwh                   true
                   :audit_app                      true
                   :cache_granular_controls        true
                   :config_text_file               true
