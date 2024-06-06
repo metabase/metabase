@@ -37,6 +37,7 @@
     mrkdwn))
 
 (def ^:private block-text-length-limit 3000)
+(def ^:private attachment-text-length-limit 2000)
 
 (defn- text->markdown-block
   [text]
@@ -92,7 +93,11 @@
             []
             attachments)))
 
-(defmethod channel/deliver! [:channel/slack :alert]
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Alerts                                                ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defmethod channel/deliver! [:channel/slack :notification/alert]
   [_channel-details payload recipients _template]
   (doseq [{channel-id :recipient} recipients]
     (let [{:keys [card]} payload
@@ -104,7 +109,9 @@
                           (payload->attachment-data (assoc payload :type :card) channel-id)]]
       (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments)))))
 
-(def ^:private attachment-text-length-limit 2000)
+;; ------------------------------------------------------------------------------------------------;;
+;;                                    Dashboard Subscriptions                                      ;;
+;; ------------------------------------------------------------------------------------------------;;
 
 (defn- filter-text
   [filter]
@@ -153,7 +160,7 @@
           :when attachment]
       attachment)))
 
-(defmethod channel/deliver! [:channel/slack :dashboard-subscription]
+(defmethod channel/deliver! [:channel/slack :notification/dashboard-subscription]
   [_channel-details payload recipients _template]
   (let [{:keys [dashboard
                 dashboard-subscription]} payload

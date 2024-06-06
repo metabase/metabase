@@ -340,7 +340,7 @@
           {:emailType                 "pulse"
            :title                     (:name pulse)
            :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
-           :dashboardDescription      (:description dashboard)
+           :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id
                                         (boolean (seq (t2/hydrate dashboard :tabs))))

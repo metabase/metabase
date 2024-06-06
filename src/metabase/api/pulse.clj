@@ -345,7 +345,7 @@
                    (= "placeholder" display))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
-    (pulse-channel/validate-email-domains channel))
+   (pulse-channel/validate-email-domains channel))
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 

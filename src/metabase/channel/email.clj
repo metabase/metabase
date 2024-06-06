@@ -3,7 +3,6 @@
    [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.pulse.markdown :as markdown]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
@@ -42,13 +41,11 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-
 (defn- alert-condition-type->description [condition-type]
   (case (keyword condition-type)
     :meets (trs "reached its goal")
     :below (trs "gone below its goal")
     :rows  (trs "results")))
-
 
 (defn- find-goal-value
   "The goal value can come from a progress goal or a graph goal_value depending on it's type"
@@ -63,37 +60,39 @@
 
     nil))
 
-(defmethod channel/deliver! [:channel/email :alert]
+(defmethod channel/deliver! [:channel/email :notification/alert]
   [_channel-details payload recipients _template]
   (let [{:keys [card alert]} payload
-        condition-kwd        (messages/pulse->alert-condition-kwd alert)
-        email-subject        (trs "Alert: {0} has {1}"
-                                  (get-in payload [:card :name])
-                                  (alert-condition-type->description condition-kwd))
+        condition-kwd             (messages/pulse->alert-condition-kwd alert)
+        email-subject             (trs "Alert: {0} has {1}"
+                                       (get-in payload [:card :name])
+                                       (alert-condition-type->description condition-kwd))
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
-        timezone             (defaulted-timezone card)
-        email-to-users       (when (> (count user-emails) 0)
-                               (construct-pulse-email email-subject user-emails
-                                                      (messages/render-alert-email timezone alert {:needed-only-to-get-the-schedule 1
-                                                                                                   :schedule_type :hourly}
-                                                                                   [(assoc payload :type :card)]
-                                                                                   (find-goal-value card)
-                                                                                   nil)))
-        email-to-nonusers    (for [non-user-email non-user-emails]
-                               (construct-pulse-email email-subject [non-user-email]
-                                                      (messages/render-alert-email timezone alert {:needed-only-to-get-the-schedule 1
-                                                                                                   :schedule_type :hourly} [(assoc payload :type :card)] (find-goal-value card) non-user-email)))]
-    (send-emails! (if email-to-users
-                    (conj email-to-nonusers email-to-users)
-                    email-to-nonusers))))
+        timezone                  (defaulted-timezone card)
+        pc                        (t2/select-one :model/PulseChannel :enabled true :pulse_id (:id alert))
+        goal                      (find-goal-value card)
+        email-to-users            (when (> (count user-emails) 0)
+                                    (construct-pulse-email email-subject user-emails
+                                                           (messages/render-alert-email timezone alert pc
+                                                                                        [(assoc payload :type :card)]
+                                                                                        goal
+                                                                                        nil)))
+        email-to-nonusers         (for [non-user-email non-user-emails]
+                                    (construct-pulse-email email-subject [non-user-email]
+                                                           (messages/render-alert-email timezone alert pc
+                                                                                        [(assoc payload :type :card)]
+                                                                                        goal
+                                                                                        non-user-email)))]
+    (send-emails! (filter some? (conj email-to-nonusers email-to-users)))))
+
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 
-(defmethod channel/deliver! [:channel/email :dashboard-subscription]
+(defmethod channel/deliver! [:channel/email :notification/dashboard-subscription]
   [_channel-details payload recipients _template]
   (let [{:keys [dashboard
                 dashboard-subscription
@@ -102,11 +101,8 @@
                 non-user-emails]} (recipients->emails recipients)
         timezone            (some->> result (some :card) defaulted-timezone)
         email-subject       (trs "Pulse: {0}" (:name dashboard))
-        dashboard           (update dashboard :description markdown/process-markdown :html)
         email-to-users      (when (seq user-emails)
                               (construct-pulse-email email-subject user-emails (messages/render-pulse-email timezone dashboard-subscription dashboard result nil)))
         email-to-nonusers   (for [non-user-email non-user-emails]
                               (construct-pulse-email email-subject [non-user-email] (messages/render-pulse-email timezone dashboard-subscription dashboard result non-user-email)))]
-    (send-emails! (if email-to-users
-                    (conj email-to-nonusers email-to-users)
-                    email-to-nonusers))))
+    (send-emails! (filter some? (conj email-to-nonusers email-to-users)))))
