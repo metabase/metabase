@@ -7,5 +7,5 @@ export const EmbedModalHeader = styled(ModalHeader)`
 
   color: ${({ theme }) => theme.fn.themeColor("text-medium")};
 
-  border-bottom: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;

@@ -45,7 +45,7 @@ export const LLMSuggestQuestionInfo = ({
     : t`Description generated. Click to auto-fill.`;
 
   const className = loading ? "llm-pulse-icon" : undefined;
-  const iconColor = loading ? color("text-medium") : color("brand");
+  const iconColor = loading ? color("text-medium") : "var(--mb-color-brand)";
 
   return (
     <Tooltip label={tooltip} position="top-end">

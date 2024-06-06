@@ -9,14 +9,14 @@ type ResultLinkProps = AnchorProps | TextProps;
 export const ResultLink = styled.a<ResultLinkProps>`
   line-height: unset;
 
-  ${({ theme, href }) => {
+  ${({ href }) => {
     return (
       href &&
       css`
         &:hover,
         &:focus,
         &:focus-within {
-          color: ${theme.fn.themeColor("brand")};
+          color: var(--mb-color-brand);
           outline: 0;
         }
       `

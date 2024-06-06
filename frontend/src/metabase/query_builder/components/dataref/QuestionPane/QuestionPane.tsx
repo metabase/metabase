@@ -133,8 +133,8 @@ export default _.compose(
   Tables.load({
     id: (_state: State, props: QuestionPaneProps) =>
       getQuestionVirtualTableId(props.question.id()),
-    fetchType: "fetchMetadata",
-    requestType: "fetchMetadata",
+    fetchType: "fetchMetadataDeprecated",
+    requestType: "fetchMetadataDeprecated",
   }),
   Collections.load({
     id: (_state: State, props: QuestionPaneProps) =>

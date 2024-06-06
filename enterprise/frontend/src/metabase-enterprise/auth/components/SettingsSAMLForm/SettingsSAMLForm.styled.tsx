@@ -10,7 +10,7 @@ export interface SAMLFormSectionProps {
 export const SAMLFormSection = styled.div<SAMLFormSectionProps>`
   padding: 1rem 2rem ${props => (props.isSSLSection ? "0.5rem" : "1rem")};
   margin-bottom: 1rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   // The section containing the GroupMappingsWidget needs to be wider
   width: ${props => (props.wide ? "780px" : "520px")};

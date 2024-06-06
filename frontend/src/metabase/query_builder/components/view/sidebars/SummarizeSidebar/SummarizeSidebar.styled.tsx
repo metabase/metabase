@@ -34,5 +34,5 @@ export const AggregationPicker = styled(BaseAggregationPicker)`
 `;
 
 export const ColumnListContainer = styled(Section)`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

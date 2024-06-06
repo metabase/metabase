@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 type VariantProp = { variant?: "default" | "form-field" };
@@ -57,7 +56,7 @@ export const Root = styled.div<{
     props.borderBottom &&
     css`
       padding-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
     `}
 
   input {
@@ -65,7 +64,7 @@ export const Root = styled.div<{
 
     &:hover {
       transition: border 0.3s;
-      border-color: ${color("brand")};
+      border-color: var(--mb-color-brand);
     }
   }
 `;
@@ -100,7 +99,7 @@ export const InfoIcon = styled(Icon)<VariantProp>`
       color: var(--mb-color-bg-dark);
 
       &:hover {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     `}
 `;

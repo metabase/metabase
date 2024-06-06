@@ -38,6 +38,13 @@ Default.args = {
   renderingContext,
 };
 
+export const CustomYAxisRangeWithColumnScaling = Template.bind({});
+CustomYAxisRangeWithColumnScaling.args = {
+  rawSeries: data.customYAxisRangeWithColumnScaling as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const MultiMetricSeries = Template.bind({});
 MultiMetricSeries.args = {
   rawSeries: data.multiMetricSeries as any,

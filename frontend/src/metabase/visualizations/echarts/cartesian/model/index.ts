@@ -8,13 +8,13 @@ import {
   getSortedSeriesModels,
   applyVisualizationSettingsDataTransformations,
   sortDataset,
+  scaleDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
   getComboChartDataDensity,
   getDimensionModel,
-  getSeriesLabelsFormatters,
-  getStackedLabelsFormatters,
+  getFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   CartesianChartModel,
@@ -110,11 +110,12 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
+  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
     showWarning,
@@ -126,7 +127,7 @@ export const getCartesianChartModel = (
   const stackModels = getStackModels(seriesModels, settings);
 
   const transformedDataset = applyVisualizationSettingsDataTransformations(
-    dataset,
+    scaledDataset,
     stackModels,
     xAxisModel,
     seriesModels,
@@ -135,23 +136,17 @@ export const getCartesianChartModel = (
     showWarning,
   );
 
-  const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
-    getSeriesLabelsFormatters(
-      seriesModels,
-      stackModels,
-      dataset,
-      settings,
-      renderingContext,
-    );
-
-  const { formatters: stackedLabelsFormatters, compactStackedSeriesDataKeys } =
-    getStackedLabelsFormatters(
-      seriesModels,
-      stackModels,
-      dataset,
-      settings,
-      renderingContext,
-    );
+  const {
+    seriesLabelsFormatters,
+    stackedLabelsFormatters,
+    isCompactFormatting,
+  } = getFormatters(
+    seriesModels,
+    stackModels,
+    scaledDataset,
+    settings,
+    renderingContext,
+  );
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,
@@ -171,7 +166,7 @@ export const getCartesianChartModel = (
     columnByDataKey,
     true,
     stackModels,
-    [...compactSeriesDataKeys, ...compactStackedSeriesDataKeys],
+    isCompactFormatting,
     renderingContext,
   );
 
@@ -188,7 +183,7 @@ export const getCartesianChartModel = (
 
   return {
     stackModels,
-    dataset,
+    dataset: scaledDataset,
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,
