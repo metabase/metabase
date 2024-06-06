@@ -93,6 +93,20 @@ const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT: StructuredQuery = {
   breakout: [BREAKOUT_NON_DATETIME],
 };
 
+const CUSTOM_EXPRESSIONS_USED = [
+  "offset",
+  "count",
+  "-",
+  "count",
+  "offset",
+  "count",
+  "-",
+  "/",
+  "count",
+  "offset",
+  "count",
+];
+
 describeWithSnowplow("scenarios > question > column compare TODO", () => {
   beforeEach(() => {
     restore();
@@ -169,7 +183,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: ["offset", "count"],
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -231,7 +245,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: ["offset", "count"],
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -297,7 +311,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: ["offset", "count"],
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -363,7 +377,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: ["offset", "count"],
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -392,15 +406,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
   });
 
   describe("multiple aggregations", () => {
-    const customExpressionsUsed = [
-      "offset",
-      "count",
-      "-",
-      "count",
-      "offset",
-      "count",
-    ];
-
     it("no breakout", () => {
       createQuestion(
         { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
@@ -440,7 +445,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: customExpressionsUsed,
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -505,7 +510,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: customExpressionsUsed,
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -574,7 +579,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: customExpressionsUsed,
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
@@ -643,7 +648,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
           event: "column_compare_via_shortcut",
-          custom_expressions_used: customExpressionsUsed,
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
