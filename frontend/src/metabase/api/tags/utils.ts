@@ -88,6 +88,16 @@ export function provideActivityItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
+export function provideAdhocQueryMetadataTags(
+  metadata: CardQueryMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
+  ];
+}
+
 export function provideAlertListTags(
   alerts: Alert[],
 ): TagDescription<TagType>[] {
@@ -137,16 +147,11 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
   ];
 }
 
-export function provideCardMetadataTags(
+export function provideCardQueryMetadataTags(
   id: CardId,
   metadata: CardQueryMetadata,
 ): TagDescription<TagType>[] {
-  return [
-    idTag("card", id),
-    ...provideDatabaseListTags(metadata.databases),
-    ...provideTableListTags(metadata.tables),
-    ...provideFieldListTags(metadata.fields),
-  ];
+  return [idTag("card", id), ...provideAdhocQueryMetadataTags(metadata)];
 }
 
 export function provideCloudMigrationTags(
@@ -241,7 +246,7 @@ export function provideDashboardTags(
   ];
 }
 
-export function provideDashboardMetadataTags(
+export function provideDashboardQueryMetadataTags(
   metadata: DashboardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [

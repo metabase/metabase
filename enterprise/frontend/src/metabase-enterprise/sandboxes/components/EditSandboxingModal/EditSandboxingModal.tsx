@@ -5,7 +5,7 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useGetCardQuery, skipToken } from "metabase/api";
+import { useGetCardQuery, skipToken, useGetTableQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -23,7 +23,11 @@ import type {
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  Table,
+  UserAttribute,
+} from "metabase-types/api";
 
 import AttributeMappingEditor, {
   AttributeOptionsEmptyState,
@@ -117,8 +121,11 @@ const EditSandboxingModal = ({
     (!_.isEqual(originalPolicy, normalizedPolicy) ||
       normalizedPolicy.id == null);
 
-  const { data: currentQuestion } = useGetCardQuery(
+  const { data: policyCard } = useGetCardQuery(
     policy.card_id != null ? { id: policy.card_id } : skipToken,
+  );
+  const { data: policyTable } = useGetTableQuery(
+    policy.table_id != null ? { id: policy.table_id } : skipToken,
   );
 
   return (
@@ -165,16 +172,16 @@ const EditSandboxingModal = ({
                 root: { "&:active": { transform: "none" } },
               }}
             >
-              {currentQuestion?.name ?? t`Select a question`}
+              {policyCard?.name ?? t`Select a question`}
             </Button>
             {showPickerModal && (
               <QuestionPickerModal
                 value={
-                  currentQuestion && policy.card_id != null
+                  policyCard && policy.card_id != null
                     ? {
                         id: policy.card_id,
                         model:
-                          currentQuestion.type === "model" ? "dataset" : "card",
+                          policyCard.type === "model" ? "dataset" : "card",
                       }
                     : undefined
                 }
@@ -197,6 +204,7 @@ const EditSandboxingModal = ({
               )}
               <AttributeMappingEditor
                 value={policy.attribute_remappings}
+                policyTable={policyTable}
                 onChange={attribute_remappings =>
                   setPolicy({ ...policy, attribute_remappings })
                 }
@@ -221,7 +229,10 @@ const EditSandboxingModal = ({
       <div className={CS.p3}>
         {isValid && (
           <div className={CS.pb1}>
-            <PolicySummary policy={normalizedPolicy} />
+            <PolicySummary
+              policy={normalizedPolicy}
+              policyTable={policyTable}
+            />
           </div>
         )}
 
@@ -267,9 +278,10 @@ const SummaryRow = ({ icon, content }: SummaryRowProps) => (
 
 interface PolicySummaryProps {
   policy: GroupTableAccessPolicy;
+  policyTable: Table | undefined;
 }
 
-const PolicySummary = ({ policy }: PolicySummaryProps) => {
+const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
   return (
     <div>
       <div className={cx(CS.px1, CS.pb2, CS.textUppercase, CS.textSmall)}>
@@ -314,14 +326,24 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
             content={
               index === 0
                 ? jt`where ${(
-                    <TargetName key="target" policy={policy} target={target} />
+                    <TargetName
+                      key="target"
+                      policy={policy}
+                      policyTable={policyTable}
+                      target={target}
+                    />
                   )} equals ${(
                     <span key="attr" className={CS.textCode}>
                       {attribute}
                     </span>
                   )}`
                 : jt`and ${(
-                    <TargetName key="target" policy={policy} target={target} />
+                    <TargetName
+                      key="target"
+                      policy={policy}
+                      policyTable={policyTable}
+                      target={target}
+                    />
                   )} equals ${(
                     <span key="attr" className={CS.textCode}>
                       {attribute}
@@ -337,10 +359,11 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
 
 interface TargetNameProps {
   policy: GroupTableAccessPolicy;
+  policyTable: Table | undefined;
   target: any[];
 }
 
-const TargetName = ({ policy, target }: TargetNameProps) => {
+const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
   if (Array.isArray(target)) {
     if (
       (target[0] === "variable" || target[0] === "dimension") &&
@@ -359,8 +382,8 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
           questionHash={undefined}
           questionId={policy.card_id}
           questionObject={
-            policy.card_id == null
-              ? getRawDataQuestionForTable(policy.table_id)
+            policy.card_id == null && policyTable
+              ? getRawDataQuestionForTable(policyTable)
               : null
           }
         >
