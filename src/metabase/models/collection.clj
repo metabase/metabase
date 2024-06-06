@@ -1624,6 +1624,7 @@
   [items]
   (when (seq items)
     (for [item items]
-      (assoc item :can_delete (if (= :model/Collection (t2/model item))
+      (assoc item :can_delete (if (or (= :model/Collection (t2/model item))
+                                      (collection.root/is-root-collection? item))
                                 false
                                 (mi/can-write? item))))))
