@@ -199,6 +199,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
+      tableHeaderClick("Created At: Month");
+      verifyNoColumnCompareShortcut();
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
@@ -251,6 +253,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
+      tableHeaderClick("Created At: Day");
+      verifyNoColumnCompareShortcut();
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
@@ -303,6 +307,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
+      tableHeaderClick("Category");
+      verifyNoColumnCompareShortcut();
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
@@ -432,6 +438,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
+      tableHeaderClick("Created At: Month");
+      verifyNoColumnCompareShortcut();
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
@@ -494,6 +502,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
+      tableHeaderClick("Created At: Day");
+      verifyNoColumnCompareShortcut();
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
@@ -556,6 +566,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       cy.log("chill mode - column drill");
+      tableHeaderClick("Category");
+      verifyNoColumnCompareShortcut();
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
