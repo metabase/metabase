@@ -252,6 +252,45 @@ describe("scenarios > question > column compare TODO", () => {
       });
     });
   });
+
+  describe("breakout on non-datetime column", () => {
+    beforeEach(() => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+    });
+
+    it("shows correct shortcut label and popover title", () => {
+      cy.log("chill mode - summarize sidebar");
+      checkSummarizeText({
+        itemName: "Compare “Count” to previous rows ...",
+        title: "Compare “Count” to previous rows",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      cy.log("chill mode - column drill");
+      checkColumnDrillText({
+        itemName: "Compare “Count” to previous rows",
+        title: "Compare “Count” to previous rows",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      cy.log("chill mode - plus button");
+      checkPlusButtonText({
+        itemName: "Compare “Count” to previous rows",
+        title: "Compare “Count” to previous rows",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      cy.log("notebook editor");
+      checkNotebookText({
+        itemName: "Compare “Count” to previous rows ...",
+        title: "Compare “Count” to previous rows",
+        offsetHelp: "rows above based on “Category”",
+      });
+    });
+  });
 });
 
 describeWithSnowplow("scenarios > question > column compare", () => {
