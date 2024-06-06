@@ -108,7 +108,7 @@
                                               :exclude)
                           :include-trash? true
                           :permission-level :read
-                          :trash-operation-id nil}))]
+                          :archive-operation-id nil}))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -397,7 +397,7 @@
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.collection_id
-                     :c.trashed_directly
+                     :c.archived_directly
                      :c.archived
                      :c.dataset_query
                      [(h2x/literal (case card-type
@@ -437,12 +437,12 @@
                                                                          :permission-level (if archived?
                                                                                              :write
                                                                                              :read)
-                                                                         :trash-operation-id nil}))
+                                                                         :archive-operation-id nil}))
                    (if (collection/is-trash? collection)
-                     [:= :c.trashed_directly true]
+                     [:= :c.archived_directly true]
                      [:and
                       [:= :collection_id (:id collection)]
-                      [:= :c.trashed_directly false]])
+                      [:= :c.archived_directly false]])
                    [:= :archived (boolean archived?)]
                    (case card-type
                      :model
@@ -526,7 +526,7 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (update :trashed_directly api/bit->boolean)
+      (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
@@ -542,7 +542,7 @@
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
                    :d.collection_id
-                   :d.trashed_directly
+                   :d.archived_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
                    :archived
@@ -561,15 +561,15 @@
                     :collection_id
                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
                                                                         {:include-archived :all
-                                                                         :trash-operation-id nil
+                                                                         :archive-operation-id nil
                                                                          :permission-level (if archived?
                                                                                              :write
                                                                                              :read)}))
                    (if (collection/is-trash? collection)
-                     [:= :d.trashed_directly true]
+                     [:= :d.archived_directly true]
                      [:and
                       [:= :collection_id (:id collection)]
-                      [:not= :d.trashed_directly true]])
+                      [:not= :d.archived_directly true]])
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
@@ -580,7 +580,7 @@
 (defn- post-process-dashboard [dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
       (update :archived api/bit->boolean)
-      (update :trashed_directly api/bit->boolean)
+      (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
@@ -620,7 +620,7 @@
                 :entity_id
                 :personal_owner_id
                 :location
-                :trashed_directly
+                :archived_directly
                 [:type :collection_type]
                 [(h2x/literal "collection") :model]
                 :authority_level])
@@ -635,7 +635,7 @@
   [parent-coll colls]
   (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
                                                                                    {:include-archived :all
-                                                                                    :trash-operation-id nil
+                                                                                    :archive-operation-id nil
                                                                                     :permission-level :read})
 
         descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
@@ -727,7 +727,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :trashed_directly))
+  (dissoc row :collection_type :model_ranking :archived_directly))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -751,7 +751,7 @@
                           (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
-       (map #(api/present-in-trash-if-trashed-directly % (collection/trash-collection-id)))
+       (map #(api/present-in-trash-if-archived-directly % (collection/trash-collection-id)))
        (map remove-unwanted-keys)
        (sort-by (comp ::index meta))))
 
@@ -773,7 +773,7 @@
   the correct column type."
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :collection_id
-   [:trashed_directly :boolean]
+   [:archived_directly :boolean]
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
@@ -1148,8 +1148,6 @@
   appropriate permissions checks and changes."
   [collection-before-update collection-updates]
   (condp #(api/column-will-change? %1 collection-before-update %2) collection-updates
-    ;; note that archiving includes a move. So if they include `archived` (with or without `parent_id`), that's an
-    ;; archive/unarchive. If they only include `parent_id`, that's a move.
     :archived (archive-collection! collection-before-update collection-updates)
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))

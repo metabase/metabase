@@ -1,8 +1,8 @@
 -- DASHBOARDS
--- Set `trashed_directly`.
+-- Set `archived_directly`.
 UPDATE report_dashboard
-SET trashed_directly = COALESCE(
-  -- If the collection is archived too, then it was not trashed directly
+SET archived_directly = COALESCE(
+  -- If the collection is archived too, then it was not archived directly
   (SELECT NOT archived FROM collection WHERE id = collection_id),
   false
   )
@@ -10,15 +10,15 @@ WHERE archived = true;
 
 -- CARDS
 UPDATE report_card
-SET trashed_directly = COALESCE(
-  -- If the collection is archived too, then it was not trashed directly
+SET archived_directly = COALESCE(
+  -- If the collection is archived too, then it was not archived directly
   (SELECT NOT archived FROM collection WHERE id = collection_id),
   false
   )
 WHERE archived = true;
 
 -- COLLECTIONS
--- Set `collection.trashed_directly`.
+-- Set `collection.archived_directly`.
 UPDATE collection AS child
 JOIN (
   SELECT
@@ -33,14 +33,14 @@ LEFT JOIN (
   SELECT id, archived
   FROM collection
 ) AS parent ON with_parent_id.parent_id = parent.id
-SET trashed_directly = (
+SET archived_directly = (
   (with_parent_id.parent_id IS NULL OR NOT parent.archived)
 )
 WHERE child.archived;
 
--- Set `collection.trash_operation_id` for collections that were trashed directly
+-- Set `collection.archive_operation_id` for collections that were archived directly
 UPDATE collection
-SET trash_operation_id =
+SET archive_operation_id =
 CASE
     WHEN LENGTH(CAST(id AS CHAR)) <= 12 THEN
         CONCAT('00000000-0000-0000-0000-', LPAD(CAST(id AS CHAR), 12, '0'))
@@ -62,22 +62,22 @@ CASE
         )
     ELSE '00000000-0000-0000-0000-000000000000'
 END
-WHERE archived AND trashed_directly;
+WHERE archived AND archived_directly;
 
--- Set `collection.trash_operation_id` for descendants of collections that were trashed directly
+-- Set `collection.archive_operation_id` for descendants of collections that were archived directly
 UPDATE collection
 JOIN (
   WITH RECURSIVE Ancestors AS (
   SELECT
     id,
     archived,
-    trashed_directly,
-    trash_operation_id,
+    archived_directly,
+    archive_operation_id,
     location
   FROM
     collection
   WHERE
-    trashed_directly = true
+    archived_directly = true
     AND archived = true
 
   UNION ALL
@@ -85,12 +85,12 @@ JOIN (
   SELECT
     collection.id,
     collection.archived,
-    collection.trashed_directly,
-    parent.trash_operation_id,
+    collection.archived_directly,
+    parent.archive_operation_id,
     collection.location
     FROM collection
     JOIN Ancestors parent ON collection.location = concat(parent.location, parent.id, '/')
   WHERE collection.archived = true
   ) SELECT * FROM Ancestors) AS ancestor ON collection.id = ancestor.id
-SET collection.trash_operation_id = ancestor.trash_operation_id, collection.trashed_directly = false
-WHERE collection.trash_operation_id IS NULL AND collection.archived = true;
+SET collection.archive_operation_id = ancestor.archive_operation_id, collection.archived_directly = false
+WHERE collection.archive_operation_id IS NULL AND collection.archived = true;

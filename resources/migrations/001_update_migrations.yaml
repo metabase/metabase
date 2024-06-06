@@ -7769,13 +7769,13 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:04:47
       author: johnswanson
-      comment: Add `report_dashboard.trashed_directly`
+      comment: Add `report_dashboard.archived_directly`
       changes:
         - addColumn:
             tableName: report_dashboard
             columns:
               - column:
-                  name: trashed_directly
+                  name: archived_directly
                   type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: "Was this thing trashed directly"
@@ -7785,13 +7785,13 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:04:53
       author: johnswanson
-      comment: Add `report_card.trashed_directly`
+      comment: Add `report_card.archived_directly`
       changes:
         - addColumn:
             tableName: report_card
             columns:
               - column:
-                  name: trashed_directly
+                  name: archived_directly
                   type: ${boolean.type}
                   remarks: "Was this thing trashed directly"
                   defaultValueBoolean: false
@@ -7801,13 +7801,13 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:04:58
       author: johnswanson
-      comment: Add `collection.trash_operation_id`
+      comment: Add `collection.archive_operation_id`
       changes:
         - addColumn:
             tableName: collection
             columns:
               - column:
-                  name: trash_operation_id
+                  name: archive_operation_id
                   type: char(36)
                   remarks: "The UUID of the trash operation. Each time you trash a collection subtree, you get a unique ID."
                   constraints:
@@ -7816,13 +7816,13 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:05:01
       author: johnswanson
-      comment: Add `collection.trashed_directly`
+      comment: Add `collection.archived_directly`
       changes:
         - addColumn:
             tableName: collection
             columns:
               - column:
-                  name: trashed_directly
+                  name: archived_directly
                   type: ${boolean.type}
                   remarks: "Whether the item was trashed independently or as a subcollection"
                   constraints:
@@ -7831,7 +7831,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:05:03
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id` (Postgres)
+      comment: Populate `archived_directly` and `archive_operation_id` (Postgres)
       changes:
         - sqlFile:
             dbms: postgresql
@@ -7842,7 +7842,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id` (H2)
+      comment: Populate `archived_directly` and `archive_operation_id` (H2)
       changes:
         - sqlFile:
             dbms: h2
@@ -7853,7 +7853,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id` (MySQL)
+      comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
       changes:
         - sqlFile:
             dbms: mysql
@@ -7864,7 +7864,7 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:15
       author: johnswanson
-      comment: Populate `trashed_directly` and `trash_operation_id` (MariaDB)
+      comment: Populate `archived_directly` and `archive_operation_id` (MariaDB)
       changes:
         - sqlFile:
             dbms: mariadb

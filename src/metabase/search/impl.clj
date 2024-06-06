@@ -533,7 +533,7 @@
   "Massage the raw result from the DB and match data into something more useful for the client"
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
                       collection_authority_level collection_type collection_effective_ancestors effective_parent
-                      trashed_directly model]}]
+                      archived_directly model]}]
   (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -545,7 +545,7 @@
                                     (empty?
                                      (remove matching-columns search.config/displayed-columns)))
                            (match-context-thunk))
-         :collection     (if (and trashed_directly (not= "collection" model))
+         :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
                                         [:id :name :authority_level :type])
                            (merge {:id              collection_id
@@ -570,7 +570,7 @@
          :collection_location
          :collection_name
          :collection_type
-         :trashed_directly
+         :archived_directly
          :display_name
          :effective_parent))))
 
@@ -604,7 +604,7 @@
                             (map t2.realize/realize)
                             (map to-toucan-instance)
                             (map #(if (and (t2/instance-of? :model/Collection %)
-                                           (:trashed_directly %))
+                                           (:archived_directly %))
                                     (assoc % :location (collection/trash-path))
                                     %))
                             (map #(cond-> %
@@ -614,7 +614,7 @@
                             ;; needed
                             (map #(update % :bookmark bit->boolean))
                             (map #(update % :archived bit->boolean))
-                            (map #(update % :trashed_directly bit->boolean))
+                            (map #(update % :archived_directly bit->boolean))
 
                             (filter (partial check-permissions-for-model search-ctx))
 

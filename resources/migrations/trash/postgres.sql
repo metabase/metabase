@@ -1,25 +1,25 @@
 -- DASHBOARDS
--- Next: set `trashed_directly`.
+-- Next: set `archived_directly`.
 UPDATE report_dashboard
-SET trashed_directly = COALESCE(
-  -- If the collection the dashboard is in is archived, then it was *not* trashed directly
+SET archived_directly = COALESCE(
+  -- If the collection the dashboard is in is archived, then it was *not* archived directly
   (SELECT NOT archived FROM collection WHERE id = collection_id),
   false
   )
 WHERE archived = true;
 
 -- CARDS
--- Set `trashed_directly`.
+-- Set `archived_directly`.
 UPDATE report_card
-SET trashed_directly = COALESCE(
-  -- If the collection the card is in is archived, then it was *not* trashed directly
+SET archived_directly = COALESCE(
+  -- If the collection the card is in is archived, then it was *not* archived directly
   (SELECT NOT archived FROM collection WHERE id = collection_id),
   false
   )
 WHERE archived = true;
 
 -- COLLECTIONS
--- Set `collection.trashed_directly`.
+-- Set `collection.archived_directly`.
 WITH CollectionWithParentID AS (
   SELECT
   id,
@@ -33,7 +33,7 @@ WITH CollectionWithParentID AS (
 )
 
 UPDATE collection c
-SET trashed_directly = (
+SET archived_directly = (
   cp.parent_id IS NULL
   OR NOT EXISTS (
     SELECT 1
@@ -46,10 +46,10 @@ FROM CollectionWithParentID cp
 WHERE c.id = cp.id
 AND cp.archived = true;
 
--- Set `collection.trash_operation_id` for collections that were trashed directly
+-- Set `collection.archive_operation_id` for collections that were archived directly
 
 UPDATE collection
-SET trash_operation_id =
+SET archive_operation_id =
 CASE
     WHEN LENGTH(id::text) <= 12 THEN
         CONCAT('00000000-0000-0000-0000-', LPAD(id::text, 12, '0'))
@@ -69,31 +69,31 @@ CASE
                LPAD(SUBSTRING(id::text, 13, 4), 4, '0'), '-',
                LPAD(SUBSTRING(id::text, 17, 12), 12, '0')
         )
-    -- If someone has >10^20 collections, they have bigger problems than a wrong `trash_operation_id`
+    -- If someone has >10^20 collections, they have bigger problems than a wrong `archive_operation_id`
     ELSE '00000000-0000-0000-0000-000000000000'
 END
-WHERE archived AND trashed_directly;
+WHERE archived AND archived_directly;
 
--- Set `collection.trash_operation_id` for descendants of collections that were trashed directly
-WITH Ancestors(id, archived, trashed_directly, trash_operation_id, location) AS (
+-- Set `collection.archive_operation_id` for descendants of collections that were archived directly
+WITH Ancestors(id, archived, archived_directly, archive_operation_id, location) AS (
     SELECT
     id,
     archived,
-    trashed_directly,
-    trash_operation_id,
+    archived_directly,
+    archive_operation_id,
     location
   FROM
     collection
   WHERE
-    trashed_directly = true
+    archived_directly = true
     AND archived = true
 )
 UPDATE collection
-SET trash_operation_id = (
-  SELECT a.trash_operation_id
+SET archive_operation_id = (
+  SELECT a.archive_operation_id
   FROM Ancestors a
   WHERE collection.location LIKE concat(a.location, a.id, '/%')
   ORDER BY LENGTH(a.location) DESC
   LIMIT 1
-), trashed_directly = false
-WHERE trash_operation_id IS NULL AND archived = true;
+), archived_directly = false
+WHERE archive_operation_id IS NULL AND archived = true;

@@ -658,14 +658,14 @@
     [(parse-fn xs)]))
 
 
-;;; ---------------------------------------- SET `trashed_directly` ---------------------------------
+;;; ---------------------------------------- SET `archived_directly` ---------------------------------
 
-(defn updates-with-trashed-directly
-  "Sets `trashed_directly` to `true` iff `:archived` is being set to `true`."
+(defn updates-with-archived-directly
+  "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
   [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)
-    (assoc :trashed_directly (boolean (:archived obj-updates)))))
+    (assoc :archived_directly (boolean (:archived obj-updates)))))
 
 
 ;; ----------------------------------------- PER-REQUEST MEMOIZATION ---------------------------------------------------
@@ -694,9 +694,9 @@
     (binding [*memoize-per-request-middleware* (atom {})]
       (handler request respond raise))))
 
-(defn present-in-trash-if-trashed-directly
-  "If `:trashed_directly` is `true`, set `:collection_id` to the trash collection ID."
+(defn present-in-trash-if-archived-directly
+  "If `:archived_directly` is `true`, set `:collection_id` to the trash collection ID."
   [item trash-collection-id]
   (cond-> item
-    (:trashed_directly item)
+    (:archived_directly item)
     (assoc :collection_id trash-collection-id)))

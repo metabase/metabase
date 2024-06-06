@@ -340,7 +340,7 @@
   [:enum :only :exclude :all])
 (def ^:private IncludeTrash
   [:boolean])
-(def ^:private TrashOperationId
+(def ^:private ArchiveOperationId
   [:maybe :string])
 (def ^:private PermissionLevel
   [:enum :read :write])
@@ -348,7 +348,7 @@
   [:map
    [:include-trash? {:optional true} IncludeTrash]
    [:include-archived {:optional true} IncludeArchived]
-   [:trash-operation-id {:optional true} TrashOperationId]
+   [:archive-operation-id {:optional true} ArchiveOperationId]
    [:permission-level {:optional true} PermissionLevel]])
 
 (defn- should-remove-for-archived? [include-archived collection]
@@ -363,16 +363,16 @@
     false
     (is-trash? collection)))
 
-(defn- should-remove-for-trash-operation-id [trash-operation-id collection]
-  (and (some? trash-operation-id)
-       (not= trash-operation-id (:trash_operation_id collection))))
+(defn- should-remove-for-archive-operation-id [archive-operation-id collection]
+  (and (some? archive-operation-id)
+       (not= archive-operation-id (:archive_operation_id collection))))
 
 (mu/defn permissions-set->visible-collection-ids :- VisibleCollections
   "There are three factors we need to take into account when turning the permissions set into visible collection IDs.
   - permission-level: generally collections with `read` permission are visible. Sometimes we want to change this and only
     view collections with `write` permissions.
   - archived: are archived collections currently visible, or not?
-  - trash_operation_id: when looking at a trashed collection, we want to restrict visible collections to those that share
+  - archive_operation_id: when looking at a archived collection, we want to restrict visible collections to those that share
   that operation ID."
   ([permissions-set :- [:set :string]]
    (permissions-set->visible-collection-ids permissions-set {}))
@@ -380,12 +380,12 @@
     visibility-config :- CollectionVisibilityConfig]
    (let [visibility-config (merge {:include-archived :exclude
                                    :include-trash? false
-                                   :trash-operation-id nil
+                                   :archive-operation-id nil
                                    :permission-level :read}
                                   visibility-config)]
      (->> (permissions-set->collection-id->collection permissions-set (:permission-level visibility-config))
           (remove #(should-remove-for-archived? (:include-archived visibility-config) (val %)))
-          (remove #(should-remove-for-trash-operation-id (:trash-operation-id visibility-config) (val %)))
+          (remove #(should-remove-for-archive-operation-id (:archive-operation-id visibility-config) (val %)))
           (remove #(should-remove-for-trash? (:include-trash? visibility-config) (val %)))
           (map key)
           (into #{})))))
@@ -431,8 +431,8 @@
     ;; the only direct descendants of the Trash are those that were trashed directly. TODO: theoretically if someone
     ;; Trashes collection A, which I don't have permissions on, and then trashes collection B, which I do - I should
     ;; see collection B in the Trash. But this is not something we can figure out here, because we need to look at
-    ;; whether a visible ancestor was `trashed_directly`.
-    [:= :trashed_directly true]
+    ;; whether a visible ancestor was `archived_directly`.
+    [:= :archived_directly true]
     (let [parent-id           (or (:id parent-collection) "")
           child-literal       (if (collection.root/is-root-collection? parent-collection)
                                 "/"
@@ -456,7 +456,7 @@
 (mu/defn ^:private effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
    (when-not (collection.root/is-root-collection? collection)
-     (effective-location-path* (if (:trashed_directly collection)
+     (effective-location-path* (if (:archived_directly collection)
                                  (trash-path)
                                  (:location collection))
                                (permissions-set->visible-collection-ids
@@ -465,7 +465,7 @@
                                                      :only
                                                      :exclude)
                                  :include-trash? true
-                                 :trash-operation-id (:trash_operation_id collection)
+                                 :archive-operation-id (:archive_operation_id collection)
                                  :permission-level :read}))))
   ([real-location-path     :- LocationPath
     allowed-collection-ids :- VisibleCollections]
@@ -656,7 +656,7 @@
                                                                                                :only
                                                                                                :exclude)
                                                                          :include-trash?     true
-                                                                         :trash-operation-id (:trash_operation_id collection)
+                                                                         :archive-operation-id (:archive_operation_id collection)
                                                                          :permission-level   (if (or (:archived collection)
                                                                                                      (is-trash? collection))
                                                                                                :write
@@ -669,9 +669,9 @@
        (if (is-trash? collection)
          [:= :archived true]
          [:like :location (h2x/literal (str (children-location collection) "%"))])
-       ;; when we're looking at a particular trashed collection, we only see the subtree that was trashed together.
-       (when (:trash_operation_id collection)
-         [:= :trash_operation_id (:trash_operation_id collection)])
+       ;; when we're looking at a particular archived collection, we only see the subtree that was archived together.
+       (when (:archive_operation_id collection)
+         [:= :archive_operation_id (:archive_operation_id collection)])
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A - e.g. a visible subcollection.
@@ -807,20 +807,20 @@
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
-  (let [trash-operation-id      (str (random-uuid))
+  (let [archive-operation-id    (str (random-uuid))
         affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection
                                                                   :archived [:not= true]))]
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:trash_operation_id trash-operation-id
-                   :trashed_directly   true
-                   :archived           true})
+                  {:archive_operation_id archive-operation-id
+                   :archived_directly    true
+                   :archived             true})
       (t2/query-one
        {:update :collection
-        :set    {:trash_operation_id trash-operation-id
-                 :trashed_directly   false
-                 :archived           true}
+        :set    {:archive_operation_id archive-operation-id
+                 :archived_directly    false
+                 :archived             true}
         :where  [:and
                  [:like :location (str (children-location collection) "%")]
                  [:not :archived]]})
@@ -829,7 +829,7 @@
                     {:archived true}))
       (doseq [model [:model/Card :model/Dashboard]]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
-                           :trashed_directly false}
+                           :archived_directly false}
                     {:archived true})))))
 
 (mu/defn unarchive-collection!
@@ -838,55 +838,54 @@
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (assert (:trash_operation_id collection))
+  (assert (:archive_operation_id collection))
   (when (not (contains? updates :parent_id))
     (api/check-400
      (:can_restore (t2/hydrate collection :can_restore))))
-  (let [trash-operation-id (:trash_operation_id collection)
-        current-parent-id (:parent_id (t2/hydrate collection :parent_id))
-        new-parent-id (if (contains? updates :parent_id)
-                        (:parent_id updates)
-                        current-parent-id)
-        new-parent (if new-parent-id
-                     (t2/select-one :model/Collection :id new-parent-id)
-                     root-collection)
-        new-location (children-location new-parent)
-        orig-children-location (children-location collection)
-        new-children-location (children-location (assoc collection :location new-location))
+  (let [archive-operation-id    (:archive_operation_id collection)
+        current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
+        new-parent-id           (if (contains? updates :parent_id)
+                                  (:parent_id updates)
+                                  current-parent-id)
+        new-parent              (if new-parent-id
+                                  (t2/select-one :model/Collection :id new-parent-id)
+                                  root-collection)
+        new-location            (children-location new-parent)
+        orig-children-location  (children-location collection)
+        new-children-location   (children-location (assoc collection :location new-location))
         affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection
-                                                                  :trash_operation_id [:= trash-operation-id]
+                                                                  :archive_operation_id [:= archive-operation-id]
                                                                   :archived [:= true]))]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
 
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:location              new-location
-                   :trash_operation_id    nil
-                   :trashed_directly      nil
-                   :archived              false})
+                  {:location             new-location
+                   :archive_operation_id nil
+                   :archived_directly    nil
+                   :archived             false})
       (t2/query-one
        {:update :collection
-        :set    {:location              [:replace :location orig-children-location new-children-location]
-                 :trash_operation_id    nil
-                 :trashed_directly      nil
-                 :archived              false}
+        :set    {:location             [:replace :location orig-children-location new-children-location]
+                 :archive_operation_id nil
+                 :archived_directly    nil
+                 :archived             false}
         :where  [:and
                  [:like :location (str orig-children-location "%")]
-                 [:= :trash_operation_id (:trash_operation_id collection)]
-                 [:not= :trashed_directly true]]})
+                 [:= :archive_operation_id (:archive_operation_id collection)]
+                 [:not= :archived_directly true]]})
       (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived false}))
       (doseq [model [:model/Card :model/Dashboard]]
-        (t2/update! model {:collection_id    [:in affected-collection-ids]
-                           :trashed_directly false}
+        (t2/update! model {:collection_id     [:in affected-collection-ids]
+                           :archived_directly false}
                     {:archived false})))))
 
 (mu/defn archive-or-unarchive-collection!
-  "Archive or un-archive a collection, moving it to the trash if necessary. Note that namespaced collections are never
-  moved to the trash."
+  "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."
   [collection :- CollectionWithLocationAndIDOrRoot
    ;; `updates` is a map *possibly* containing `parent_id`. This allows us to distinguish
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
@@ -901,8 +900,8 @@
   [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
-        will-be-trashed? (str/starts-with? new-location (trash-path))]
-    (when will-be-trashed?
+        will-be-in-trash? (str/starts-with? new-location (trash-path))]
+    (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
                        :new-location new-location})))
@@ -1252,17 +1251,14 @@
     (set (map vector (repeat "Collection") (location-path->ids location)))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
-  ;; the Trash collection has no descendants, for our purposes. This allows us to only include trashed items that were
-  ;; explicitly included in the export.
-  (when-not (is-trash? (t2/select-one :model/Collection :id id))
-    (let [location    (t2/select-one-fn :location Collection :id id)
-          child-colls (set (for [child-id (t2/select-pks-set :model/Collection {:where [:like :location (str location id "/%")]})]
-                             ["Collection" child-id]))
-          dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
-                             ["Dashboard" dash-id]))
-          cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
-                             ["Card" card-id]))]
-      (set/union child-colls dashboards cards))))
+  (let [location    (t2/select-one-fn :location Collection :id id)
+        child-colls (set (for [child-id (t2/select-pks-set :model/Collection {:where [:like :location (str location id "/%")]})]
+                           ["Collection" child-id]))
+        dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
+                           ["Dashboard" dash-id]))
+        cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
+                           ["Card" card-id]))]
+    (set/union child-colls dashboards cards)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
@@ -1573,7 +1569,7 @@
 
 (mi/define-batched-hydration-method can-restore
   :can_restore
-  "Efficiently hydrate the `:can_restore` of a sequence of items with a `trashed_directly` field."
+  "Efficiently hydrate the `:can_restore` of a sequence of items with a `archived_directly` field."
   [items]
   (for [{collection :collection
          :as item*} (t2/hydrate items :collection)
@@ -1581,13 +1577,13 @@
     (cond-> item
       (:archived item)
       (assoc :can_restore (and
-                           ;; the item is directly in the trash (it was moved to the trash independently, not as
+                           ;; the item is directly in the trash (it was archived independently, not as
                            ;; part of a collection)
-                           (:trashed_directly item)
+                           (:archived_directly item)
 
                            ;; EITHER:
                            (or
-                            ;; the item was trashed from the root collection
+                            ;; the item was archived from the root collection
                             (nil? (:collection_id item))
                             ;; or the collection we'll restore to actually exists.
                             (some? collection))
@@ -1612,10 +1608,10 @@
                                  (t2/select-pk->fn :archived :model/Collection :id [:in parent-ids]))]
       (for [coll colls
             :let [parent-id (coll-id->parent-id (:id coll))
-                  trashed-directly? (:trashed_directly coll)
+                  archived-directly? (:archived_directly coll)
                   parent-archived? (get parent-id->archived? parent-id false)]]
         (cond-> coll
-          (:archived coll) (assoc :can_restore (and trashed-directly?
+          (:archived coll) (assoc :can_restore (and archived-directly?
                                                     (not parent-archived?)
                                                     (perms/set-has-full-permissions-for-set?
                                                      @api/*current-user-permissions-set*
