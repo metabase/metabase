@@ -107,39 +107,30 @@ describe("scenarios > question > column compare TODO", () => {
       );
     });
 
-    describe("notebook editor", () => {
-      it("does not show column compare shortcut", () => {
-        openNotebook();
-        cy.button("Summarize").click();
+    it("does not show column compare shortcut", () => {
+      cy.log("chill mode - summarize sidebar");
 
-        assertNoColumnCompareShortcut();
-      });
-    });
+      cy.button("Summarize").click();
+      rightSidebar().button("Count").icon("close").click();
+      rightSidebar().button("Add aggregation").click();
+      assertNoColumnCompareShortcut();
 
-    describe("chill mode - summarize sidebar", () => {
-      it("does not show column compare shortcut", () => {
-        cy.button("Summarize").click();
-        rightSidebar().button("Count").icon("close").click();
-        rightSidebar().button("Add aggregation").click();
+      // TODO move this test and rename ?
+      // cy.log("chill mode - column header drill");
+      //
+      // tableHeaderClick("Title");
+      // assertNoColumnCompareShortcut();
 
-        assertNoColumnCompareShortcut();
-      });
-    });
+      cy.log("chill mode - plus button");
 
-    // TODO move this test and rename ?
-    describe.skip("chill mode - column header drill", () => {
-      it("does not show column compare shortcut", () => {
-        tableHeaderClick("Title");
-        assertNoColumnCompareShortcut();
-      });
-    });
+      cy.button("Add column").click();
+      assertNoColumnCompareShortcut();
 
-    describe("chill mode - plus button", () => {
-      it("does not show column compare shortcut", () => {
-        cy.button("Add column").click();
+      cy.log("notebook editor");
 
-        assertNoColumnCompareShortcut();
-      });
+      openNotebook();
+      cy.button("Summarize").click();
+      assertNoColumnCompareShortcut();
     });
   });
 
@@ -152,65 +143,55 @@ describe("scenarios > question > column compare TODO", () => {
         );
       });
 
-      describe("notebook editor", () => {
-        it("shows correct shortcut label and popover title", () => {
-          openNotebook();
-          startNewAggregation();
+      it("shows correct shortcut label and popover title", () => {
+        cy.log("chill mode - summarize sidebar");
 
-          popover().within(() => {
-            cy.findByText("Compare “Count” to previous period ...")
-              .should("exist")
-              .click();
+        cy.button("Summarize").click();
+        rightSidebar().button("Add aggregation").click();
+        popover().within(() => {
+          cy.findByText("Compare “Count” to previous period ...")
+            .should("exist")
+            .click();
 
-            cy.findByText("Compare “Count” to previous period").should("exist");
-            cy.findByText("periods ago based on grouping").should("exist");
-          });
+          cy.findByText("Compare “Count” to previous period").should("exist");
+          cy.findByText("periods ago based on grouping").should("exist");
         });
-      });
 
-      describe("chill mode - summarize sidebar", () => {
-        it("shows correct shortcut label and popover title", () => {
-          cy.button("Summarize").click();
-          rightSidebar().button("Add aggregation").click();
+        cy.log("chill mode - column header drill");
 
-          popover().within(() => {
-            cy.findByText("Compare “Count” to previous period ...")
-              .should("exist")
-              .click();
+        tableHeaderClick("Count");
+        popover().within(() => {
+          cy.findByText("Compare “Count” to previous period")
+            .should("exist")
+            .click();
 
-            cy.findByText("Compare “Count” to previous period").should("exist");
-            cy.findByText("periods ago based on grouping").should("exist");
-          });
+          cy.findByText("Compare “Count” to previous period").should("exist");
+          cy.findByText("periods ago based on grouping").should("exist");
         });
-      });
 
-      describe("chill mode - column header drill", () => {
-        it("shows correct shortcut label and popover title", () => {
-          tableHeaderClick("Count");
+        cy.log("chill mode - plus button");
 
-          popover().within(() => {
-            cy.findByText("Compare “Count” to previous period")
-              .should("exist")
-              .click();
+        cy.button("Add column").click();
+        popover().within(() => {
+          cy.findByText("Compare “Count” to previous period")
+            .should("exist")
+            .click();
 
-            cy.findByText("Compare “Count” to previous period").should("exist");
-            cy.findByText("periods ago based on grouping").should("exist");
-          });
+          cy.findByText("Compare “Count” to previous period").should("exist");
+          cy.findByText("periods ago based on grouping").should("exist");
         });
-      });
 
-      describe("chill mode - plus button", () => {
-        it("shows correct shortcut label and popover title", () => {
-          cy.button("Add column").click();
+        cy.log("notebook editor");
 
-          popover().within(() => {
-            cy.findByText("Compare “Count” to previous period")
-              .should("exist")
-              .click();
+        openNotebook();
+        startNewAggregation();
+        popover().within(() => {
+          cy.findByText("Compare “Count” to previous period ...")
+            .should("exist")
+            .click();
 
-            cy.findByText("Compare “Count” to previous period").should("exist");
-            cy.findByText("periods ago based on grouping").should("exist");
-          });
+          cy.findByText("Compare “Count” to previous period").should("exist");
+          cy.findByText("periods ago based on grouping").should("exist");
         });
       });
     });
