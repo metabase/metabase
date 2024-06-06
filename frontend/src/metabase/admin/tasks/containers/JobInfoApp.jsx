@@ -8,19 +8,14 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-
-import {
-  JobInfoHeader,
-  JobInfoRoot,
-  JobSchedulerInfo,
-} from "./JobInfoApp.styled";
+import { Box, Flex } from "metabase/ui";
 
 const renderSchedulerInfo = scheduler => {
   return (
     scheduler && (
-      <JobSchedulerInfo>
+      <Flex align="center">
         <pre>{scheduler.join("\n")}</pre>
-      </JobSchedulerInfo>
+      </Flex>
     )
   );
 };
@@ -69,17 +64,17 @@ export const JobInfoApp = ({ children }) => {
       loading={isFetching && !data?.scheduler}
       error={error}
     >
-      <JobInfoRoot>
-        <JobInfoHeader>
+      <Box pl="md">
+        <Flex align="center">
           <AdminHeader title={t`Scheduler Info`} />
-        </JobInfoHeader>
+        </Flex>
         {renderSchedulerInfo(data?.scheduler)}
         {renderJobsTable(data?.jobs)}
         {
           // render 'children' so that the invididual task modals show up
           children
         }
-      </JobInfoRoot>
+      </Box>
     </LoadingAndErrorWrapper>
   );
 };
