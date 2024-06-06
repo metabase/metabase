@@ -27,10 +27,10 @@ export const dashboardApi = Api.injectEndpoints({
       ListDashboardsResponse,
       ListDashboardsRequest | void
     >({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/dashboard",
-        body,
+        params,
       }),
       providesTags: dashboards =>
         dashboards ? provideDashboardListTags(dashboards) : [],
