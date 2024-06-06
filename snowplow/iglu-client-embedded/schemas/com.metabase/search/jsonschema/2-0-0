@@ -39,7 +39,7 @@
       "maxLength": 1024
     },
     "total_results": {
-      "description": "The total numebr of results that matched the query",
+      "description": "The total number of results that matched the query",
       "type": [
         "integer",
         "null"
@@ -48,7 +48,7 @@
       "maximum": 2147483647
     },
     "page_results": {
-      "description": "The numebr of results returned per page",
+      "description": "The number of results returned per page",
       "type": [
         "integer",
         "null"
@@ -57,7 +57,7 @@
       "maximum": 2147483647
     },
     "position": {
-      "description": "The position of the result in the list that was clicked",
+      "description": "The position of the result in the list that was clicked. Zero indexed",
       "type": [
         "integer",
         "null"
@@ -81,7 +81,7 @@
         "object",
         "null"
       ],
-      "description": "map of the filters used in the search query",
+      "description": "Map of the filters used in the search query",
       "properties": {
         "content_type": {
           "description": "Filter for entity types (question, database, model, etc.)",

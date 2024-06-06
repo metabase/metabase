@@ -80,21 +80,21 @@
     (search/search
       (search/search-context
         {:archived                            archived
-        :created-at                          created_at
-        :created-by                          (set created_by)
-        :current-user-id                     api/*current-user-id*
-        :current-user-perms                  @api/*current-user-permissions-set*
-        :filter-items-in-personal-collection filter_items_in_personal_collection
-        :last-edited-at                      last_edited_at
-        :last-edited-by                      (set last_edited_by)
-        :limit                               mw.offset-paging/*limit*
-        :model-ancestors?                    model_ancestors
-        :models                              models-set
-        :offset                              mw.offset-paging/*offset*
-        :search-native-query                 search_native_query
-        :search-string                       q
-        :table-db-id                         table_db_id
-        :verified                            verified}))))
+         :created-at                          created_at
+         :created-by                          (set created_by)
+         :current-user-id                     api/*current-user-id*
+         :current-user-perms                  @api/*current-user-permissions-set*
+         :filter-items-in-personal-collection filter_items_in_personal_collection
+         :last-edited-at                      last_edited_at
+         :last-edited-by                      (set last_edited_by)
+         :limit                               mw.offset-paging/*limit*
+         :model-ancestors?                    model_ancestors
+         :models                              models-set
+         :offset                              mw.offset-paging/*offset*
+         :search-native-query                 search_native_query
+         :search-string                       q
+         :table-db-id                         table_db_id
+         :verified                            verified}))))
 
 
 (api/define-routes)
