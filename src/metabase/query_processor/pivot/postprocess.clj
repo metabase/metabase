@@ -31,6 +31,8 @@
    [:column-titles  [:sequential [:string]]]
    [:pivot-rows     [:sequential [:int {:min 0}]]]
    [:pivot-cols     [:sequential [:int {:min 0}]]]
+   [:pivot-grouping-key {:optional true}
+    [:int {:min 0}]]
    [:pivot-measures {:optional true}
     [:sequential [:int {:min 0}]]]])
 
@@ -213,3 +215,11 @@
     (vec (concat
           (header-builder rows pivot-spec)
           (row-builder rows pivot-spec)))))
+
+(defn pivot-opts->pivot-spec
+  "Utility that adds :pivot-grouping-key to the pivot-opts map internal to the xlsx streaming response writer."
+  [pivot-opts column-titles]
+  (-> pivot-opts
+      (assoc :column-titles column-titles)
+      add-pivot-measures
+      (assoc :pivot-grouping-key (pivot-grouping-key column-titles))))
