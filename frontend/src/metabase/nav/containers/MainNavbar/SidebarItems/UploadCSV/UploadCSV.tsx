@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode, ReactElement } from "react";
+import type { ChangeEvent, ReactElement } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -7,25 +7,14 @@ import {
   type CollectionOrTableIdProps,
 } from "metabase/collections/components/ModelUploadModal";
 import type { OnFileUpload } from "metabase/collections/types";
-import Tooltip, {
-  TooltipContainer,
-  TooltipTitle,
-  TooltipSubtitle,
-} from "metabase/core/components/Tooltip";
+import { UploadInput, UploadTooltip } from "metabase/components/upload";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { PaddedSidebarLink } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { UploadFileProps } from "metabase/redux/uploads";
-import {
-  MAX_UPLOAD_STRING,
-  uploadFile as uploadFileAction,
-} from "metabase/redux/uploads";
-import type { Collection } from "metabase-types/api";
+import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 
-import { UploadInput } from "./UploadCSV.styled";
 import type { IUploadCSVProps } from "./types";
-
-const UPLOAD_FILE_TYPES = [".csv", ".tsv"];
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UploadCSV({
@@ -89,14 +78,7 @@ export default function UploadCSV({
         >
           {t`Upload CSV`}
         </PaddedSidebarLink>
-        <UploadInput
-          id="upload-csv"
-          ref={uploadInputRef}
-          type="file"
-          accept="text/csv,text/tab-separated-values"
-          onChange={handleFileUpload}
-          data-testid="upload-csv"
-        />
+        <UploadInput ref={uploadInputRef} onChange={handleFileUpload} />
       </UploadTooltip>
 
       <ModelUploadModal
@@ -108,25 +90,3 @@ export default function UploadCSV({
     </>
   );
 }
-
-const UploadTooltip = ({
-  collection,
-  children,
-}: {
-  collection: Collection;
-  children: ReactNode;
-}) => (
-  <Tooltip
-    tooltip={
-      <TooltipContainer>
-        <TooltipTitle>{t`Upload data to ${collection.name}`}</TooltipTitle>
-        <TooltipSubtitle>{t`${UPLOAD_FILE_TYPES.join(
-          ", ",
-        )} (${MAX_UPLOAD_STRING} MB max)`}</TooltipSubtitle>
-      </TooltipContainer>
-    }
-    placement="bottom"
-  >
-    {children}
-  </Tooltip>
-);
