@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
   createQuestion,
   editDashboard,
   filterWidget,
@@ -13,6 +14,7 @@ import {
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const singleBreakoutQuestionDetails = {
+  name: "Question 1",
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -22,6 +24,7 @@ const singleBreakoutQuestionDetails = {
 };
 
 const multiBreakoutQuestionDetails = {
+  name: "Question 2",
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -38,6 +41,7 @@ const multiBreakoutQuestionDetails = {
 };
 
 const noBreakoutQuestionDetails = {
+  name: "Question 3",
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -47,6 +51,7 @@ const noBreakoutQuestionDetails = {
 };
 
 const multiStageQuestionDetails = {
+  name: "Question 4",
   display: "table",
   query: {
     "source-query": {
@@ -180,12 +185,49 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should allow to map to multiple questions within on dashcard", () => {
-      createQuestion(singleBreakoutQuestionDetails);
-      createQuestion(multiBreakoutQuestionDetails);
       cy.createDashboard().then(({ body: dashboard }) => {
-        visitDashboard(dashboard.id);
+        createQuestion({
+          ...singleBreakoutQuestionDetails,
+          display: "line",
+        }).then(({ body: card1 }) => {
+          createQuestion({
+            ...multiStageQuestionDetails,
+            display: "line",
+          }).then(({ body: card2 }) => {
+            addOrUpdateDashboardCard({
+              card_id: card1.id,
+              dashboard_id: dashboard.id,
+              card: {
+                series: [
+                  {
+                    id: card2.id,
+                  },
+                ],
+              },
+            });
+            visitDashboard(dashboard.id);
+          });
+        });
       });
       editDashboard();
+      addTemporalUnitParameter();
+      getDashboardCard()
+        .findAllByText("Select…")
+        .should("have.length", 2)
+        .eq(0)
+        .click();
+      popover().findByText("Created At: Month").click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Month: Year").click();
+      saveDashboard();
+
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().within(() => {
+        cy.findByText(singleBreakoutQuestionDetails.name).should("be.visible");
+        cy.findByText(multiStageQuestionDetails.name).should("be.visible");
+        cy.findByText("Q1 2023").should("be.visible");
+      });
     });
   });
 });
