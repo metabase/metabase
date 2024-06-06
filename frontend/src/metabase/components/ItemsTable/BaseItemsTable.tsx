@@ -1,8 +1,4 @@
-import type {
-  MouseEvent,
-  type HTMLAttributes,
-  type PropsWithChildren,
-} from "react";
+import type { HTMLAttributes, PropsWithChildren, MouseEvent } from "react";
 import { useCallback, useContext, useMemo } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
