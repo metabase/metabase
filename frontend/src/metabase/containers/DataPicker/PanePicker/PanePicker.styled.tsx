@@ -25,7 +25,7 @@ export const LeftPaneContainer = styled.div<{ hasContent?: boolean }>`
     hasContent &&
     css`
       flex: 1;
-      border-right: 1px solid ${color("border")};
+      border-right: 1px solid var(--mb-color-border);
     `}
 
   ${Tree.Node.Root} {
@@ -44,7 +44,7 @@ export const BackButton = styled.button`
   padding-bottom: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

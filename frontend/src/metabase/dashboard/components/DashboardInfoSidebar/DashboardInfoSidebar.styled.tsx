@@ -11,7 +11,7 @@ export const DashboardInfoSidebarRoot = styled.aside`
   width: ${SIDEBAR_WIDTH}px;
   min-width: ${SIDEBAR_WIDTH}px;
   background: ${color("white")};
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
   align-self: stretch;
   // FIXME: ensure that removing this style is OK
   // overflow-y: auto;
@@ -24,7 +24,7 @@ export const DashboardInfoSidebarRoot = styled.aside`
     right: 0px;
     z-index: 2;
     height: auto;
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid var(--mb-color-border);
   }
 `;
 
@@ -34,7 +34,7 @@ export const HistoryHeader = styled.h3`
 
 export const ContentSection = styled.div`
   padding: 2rem 0;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 
   &:first-of-type {
     padding-top: 1.5rem;

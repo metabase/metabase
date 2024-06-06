@@ -9,7 +9,7 @@ export const PaletteFooter = () => {
       p=".5rem 1.5rem"
       gap="1.5rem"
       style={{
-        borderTop: `1px solid ${color("border")}`,
+        borderTop: "1px solid var(--mb-color-border)",
       }}
     >
       <Flex gap=".33rem" c={color("text-medium")} lh="1rem">

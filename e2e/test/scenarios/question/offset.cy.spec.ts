@@ -249,7 +249,7 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("aggregations", () => {
-    it("suggests and allows using offset()", () => {
+    it("suggests and allows using offset()", { tags: "@flaky" }, () => {
       const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);

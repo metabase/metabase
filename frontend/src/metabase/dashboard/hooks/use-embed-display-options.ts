@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useEmbedTheme } from "metabase/dashboard/hooks/use-embed-theme";
 import { isWithinIframe } from "metabase/lib/dom";
 
@@ -22,10 +23,12 @@ export const useEmbedDisplayOptions = (): EmbedDisplayControls => {
   const [hideDownloadButton, setHideDownloadButton] = useState(
     DEFAULT_EMBED_DISPLAY_OPTIONS.hideDownloadButton,
   );
-  const [font, setFont] = useState(DEFAULT_EMBED_DISPLAY_OPTIONS.font);
   const [hideParameters, setHideParameters] = useState(
     DEFAULT_EMBED_DISPLAY_OPTIONS.hideParameters,
   );
+
+  const { font, setFont } = useEmbedFont();
+
   const {
     hasNightModeToggle,
     isNightMode,

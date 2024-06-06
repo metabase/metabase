@@ -16,6 +16,10 @@ title: API changelog
   New endpoint that combines responses for `/api/field/:id`, `/api/database/:id`, and `/api/table/:id/query_metadata`.
   This should drastically cut down on the required number of requests to display a dashboard.
 
+- `/api/legacy-metric`
+
+   The `/api/legacy-metric` endpoints have been removed.
+
 ## Metabase 0.50.0
 
 - `GET /api/collection/tree` and `GET /api/collection/:id/items`

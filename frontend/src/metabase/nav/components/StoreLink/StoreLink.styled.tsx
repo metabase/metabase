@@ -22,7 +22,7 @@ export const StoreIconWrapper = styled.div`
 
   &:hover {
     color: ${color("white")};
-    background-color: ${darken(color("filter"))};
+    background-color: ${() => darken(color("filter"))};
   }
 
   @media (prefers-reduced-motion) {

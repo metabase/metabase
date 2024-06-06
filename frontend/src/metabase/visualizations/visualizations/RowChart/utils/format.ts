@@ -3,6 +3,7 @@ import type { NumberLike, StringLike } from "@visx/scale";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
+import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {
@@ -70,15 +71,13 @@ export const getLabelsFormatter = (
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;
+  const options = getFormattingOptionsWithoutScaling({
+    ...settings.column(column),
+    jsx: false,
+    compact: settings["graph.label_value_formatting"] === "compact",
+  });
 
-  const labelsFormatter = (value: any) =>
-    String(
-      formatValue(value, {
-        ...settings.column(column),
-        jsx: false,
-        compact: settings["graph.label_value_formatting"] === "compact",
-      }),
-    );
+  const labelsFormatter = (value: any) => String(formatValue(value, options));
 
   return labelsFormatter;
 };

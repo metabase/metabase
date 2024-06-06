@@ -521,7 +521,7 @@
                    {:type   :drill-thru/sort
                     :column {:name "count"}}
                    {:type   :drill-thru/compare-aggregations
-                    :column {:name "count"}}]
+                    :aggregation [:count {}]}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -539,7 +539,7 @@
                    {:type   :drill-thru/sort
                     :column {:display-name "Max of Discount"}}
                    {:type   :drill-thru/compare-aggregations
-                    :column {:display-name "Max of Discount"}}]
+                    :aggregation [:max {} [:field {} (meta/id :orders :discount)]]}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 

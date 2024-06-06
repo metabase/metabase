@@ -13,7 +13,7 @@ export const ItemLink = styled(Link)`
   display: block;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -45,5 +45,5 @@ export const SuggestionsSidebarWrapper = styled.div`
   min-height: 100vh;
   width: 346px;
   background-color: var(--mb-color-bg-light);
-  border-left: 2px solid ${color("border")};
+  border-left: 2px solid var(--mb-color-border);
 `;

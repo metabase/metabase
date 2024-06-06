@@ -101,6 +101,13 @@ LineCustomYAxisRangeEqualsExtents.args = {
   renderingContext,
 };
 
+export const CustomYAxisRangeWithColumnScaling = Template.bind({});
+CustomYAxisRangeWithColumnScaling.args = {
+  rawSeries: data.customYAxisRangeWithColumnScaling as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineFullyNullDimension37902 = Template.bind({});
 LineFullyNullDimension37902.args = {
   rawSeries: data.lineFullyNullDimension37902 as any,
@@ -751,6 +758,13 @@ BarStackedSeriesLabelsNormalizedAutoCompactness.args = {
 export const BarStackedLabelsNullVsZero = Template.bind({});
 BarStackedLabelsNullVsZero.args = {
   rawSeries: data.barStackedLabelsNullVsZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarMinHeightLimit = Template.bind({});
+BarMinHeightLimit.args = {
+  rawSeries: data.barMinHeightLimit as any,
   dashcardSettings: {},
   renderingContext,
 };

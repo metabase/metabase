@@ -45,7 +45,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { getBarSeriesDataLabelKey } from "./util";
+import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**
  * Sums two metric column values.
@@ -393,7 +393,7 @@ function getStackedValueTransformFunction(
   };
 }
 
-function getStackedValueTransfom(
+function getStackedValueTransform(
   settings: ComputedVisualizationSettings,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   stackModels: StackModel[],
@@ -441,16 +441,8 @@ function getStackedDataLabelTransform(
 }
 
 function getBarSeriesDataLabelTransform(
-  settings: ComputedVisualizationSettings,
-  seriesModels: SeriesModel[],
+  barSeriesModels: SeriesModel[],
 ): ConditionalTransform {
-  const barSeriesModels = seriesModels.filter(seriesModel => {
-    const seriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return seriesSettings.display === "bar";
-  });
-
   return {
     condition: barSeriesModels.length > 0,
     fn: (datum: Datum) => {
@@ -469,6 +461,27 @@ function getBarSeriesDataLabelTransform(
           transforedDatum[getBarSeriesDataLabelKey(dataKey, "-")] =
             -Number.MIN_VALUE;
         }
+      });
+
+      return transforedDatum;
+    },
+  };
+}
+
+/**
+ * Replaces zero values with nulls for bar series so that we can use minHeight ECharts option
+ * to set minimum bar height for all non-zero values because it applies to bars with zero values too.
+ */
+function getBarSeriesZeroToNullTransform(
+  barSeriesModels: SeriesModel[],
+): ConditionalTransform {
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
       });
 
       return transforedDatum;
@@ -615,6 +628,32 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+export function scaleDataset(
+  dataset: ChartDataset,
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+): ChartDataset {
+  const transformFn = (datum: Datum) => {
+    const transformedRecord = { ...datum };
+    for (const seriesModel of seriesModels) {
+      const scale = getColumnScaling(seriesModel.column, settings);
+
+      const key = seriesModel.dataKey;
+      if (key in datum) {
+        const scaledValue = Number.isFinite(datum[key])
+          ? (datum[key] as number) * scale
+          : null;
+        transformedRecord[key] = scaledValue;
+      }
+    }
+    return transformedRecord;
+  };
+
+  return dataset.map(datum => {
+    return transformFn(datum);
+  });
+}
+
 const getYAxisScaleTransforms = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
@@ -632,7 +671,7 @@ const getYAxisScaleTransforms = (
     nonStackedSeriesKeys,
     value => yAxisScaleTransforms.toEChartsAxisValue(value),
   );
-  const stackedTransforms = getStackedValueTransfom(
+  const stackedTransforms = getStackedValueTransform(
     settings,
     yAxisScaleTransforms,
     stackModels,
@@ -660,6 +699,12 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
+  const barSeriesModels = seriesModels.filter(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return seriesSettings.display === "bar";
+  });
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
@@ -714,7 +759,7 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     getStackedDataLabelTransform(settings, seriesDataKeys),
-    getBarSeriesDataLabelTransform(settings, seriesModels),
+    getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:
         settings["stackable.stack_type"] != null &&
@@ -725,6 +770,7 @@ export const applyVisualizationSettingsDataTransformations = (
           ?.seriesKeys ?? [],
       ),
     },
+    getBarSeriesZeroToNullTransform(barSeriesModels),
   ]);
 };
 

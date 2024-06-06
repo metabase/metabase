@@ -58,7 +58,7 @@ export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   margin: -0.5rem 0 -0.5rem -0.5rem;
 
   :hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -74,7 +74,7 @@ export const HeaderTextContainer = styled.div<{
     onClick &&
     css`
       &:hover > * {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
         cursor: pointer;
       }
     `}

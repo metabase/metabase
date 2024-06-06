@@ -5,6 +5,7 @@
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
   (:require
    [metabase.lib.schema :as-alias lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -180,9 +181,10 @@
 
 (mr/def ::drill-thru.compare-aggregations
   [:merge
-   ::drill-thru.common.with-column
+   ::drill-thru.common
    [:map
-    [:type         [:= :drill-thru/compare-aggregations]]]])
+    [:type         [:= :drill-thru/compare-aggregations]]
+    [:aggregation  [:ref ::lib.schema.aggregation/aggregation]]]])
 
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
 ;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema

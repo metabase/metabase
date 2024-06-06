@@ -6,7 +6,7 @@ export const ObjectDetailHeaderWrapper = styled.div`
   flex-shrink: 0;
   display: flex;
   position: relative;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const ObjectIdLabel = styled.span`
@@ -18,5 +18,5 @@ export const CloseButton = styled.div`
   display: flex;
   margin-left: 1rem;
   padding-left: 1rem;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
 `;

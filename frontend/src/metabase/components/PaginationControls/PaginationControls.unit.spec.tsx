@@ -1,8 +1,10 @@
-import { render, fireEvent, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import PaginationControls from "metabase/components/PaginationControls";
+import type { PaginationControlsProps } from "./PaginationControls";
+import { PaginationControls } from "./PaginationControls";
 
-const DEFAULT_PROPS = {
+const DEFAULT_PROPS: PaginationControlsProps = {
   page: 0,
   pageSize: 50,
   itemsLength: 25,
@@ -10,7 +12,7 @@ const DEFAULT_PROPS = {
   onPreviousPage: null,
 };
 
-const setup = props => {
+const setup = (props: Partial<PaginationControlsProps> = {}) => {
   const { container } = render(
     <PaginationControls {...DEFAULT_PROPS} {...props} />,
   );
@@ -70,7 +72,7 @@ describe("PaginationControls", () => {
     expect(container).toBeEmpty();
   });
 
-  it("should call pagination callbacks when buttons clicked", () => {
+  it("should call pagination callbacks when buttons clicked", async () => {
     const onNextPageSpy = jest.fn();
     const onPreviousPageSpy = jest.fn();
 
@@ -80,10 +82,14 @@ describe("PaginationControls", () => {
       onPreviousPage: onPreviousPageSpy,
     });
 
-    fireEvent.click(nextPageButton);
+    if (nextPageButton) {
+      await userEvent.click(nextPageButton);
+    }
     expect(onNextPageSpy).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(previousPageButton);
+    if (previousPageButton) {
+      await userEvent.click(previousPageButton);
+    }
     expect(onPreviousPageSpy).toHaveBeenCalledTimes(1);
   });
 
