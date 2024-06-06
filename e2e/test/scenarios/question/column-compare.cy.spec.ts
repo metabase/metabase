@@ -105,14 +105,12 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
   });
 
   describe("no aggregations", () => {
-    beforeEach(() => {
+    it("does not show column compare shortcut", () => {
       createQuestion(
         { query: QUERY_NO_AGGREGATION },
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
-    });
 
-    it("does not show column compare shortcut", () => {
       cy.log("chill mode - summarize sidebar");
       cy.button("Summarize").click();
       rightSidebar().button("Count").icon("close").click();
