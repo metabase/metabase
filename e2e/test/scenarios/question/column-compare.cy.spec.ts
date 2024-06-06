@@ -184,7 +184,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       verifyAggregations([
         { name: "Count (previous period)", expression: "Offset(Count, -1)" },
       ]);
-      verifyNoBreakoutError();
+      verifyBreakoutRequiredError();
     });
 
     it("breakout on binned datetime column", () => {
@@ -416,7 +416,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count - Offset(Count, -1)",
         },
       ]);
-      verifyNoBreakoutError();
+      verifyBreakoutRequiredError();
     });
 
     it("breakout on binned datetime column", () => {
@@ -728,7 +728,7 @@ function verifyColumns(names: string[]) {
   }
 }
 
-function verifyNoBreakoutError() {
+function verifyBreakoutRequiredError() {
   visualize();
 
   cy.get("main")
