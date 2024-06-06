@@ -23,17 +23,22 @@ export function getPieChartLegend(
   }
 
   const legendRows = calculateLegendRows({
-    items: chartModel.slices.map(s => ({
-      name:
-        settings["pie.percent_visibility"] === "legend"
-          ? `${s.key} - ${formatters.formatPercent(
-              s.normalizedPercentage,
-              "legend",
-            )}`
-          : s.key,
-      color: s.color,
-      key: s.key,
-    })),
+    items: chartModel.slices.map(s => {
+      const label =
+        s.key === "Other" ? s.key : formatters.formatDimension(s.key);
+
+      return {
+        name:
+          settings["pie.percent_visibility"] === "legend"
+            ? `${label} - ${formatters.formatPercent(
+                s.normalizedPercentage,
+                "legend",
+              )}`
+            : label,
+        color: s.color,
+        key: s.key,
+      };
+    }),
     width,
     lineHeight: FONT.lineHeight,
     fontSize: FONT.size,
