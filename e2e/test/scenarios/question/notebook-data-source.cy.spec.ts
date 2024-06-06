@@ -386,8 +386,7 @@ describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
     });
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findAllByRole("tab").should("have.length", 3);
-      entityPickerModalTab("Recents").should("be.visible");
+      cy.findAllByRole("tab").should("have.length", 2);
       entityPickerModalTab("Tables").should("be.visible");
       entityPickerModalTab("Models").should("be.visible");
       entityPickerModalTab("Saved questions").should("not.exist");
