@@ -12,7 +12,10 @@ import {
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   SAMPLE_DB_ID,
@@ -23,7 +26,10 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { AggregationPicker } from "./AggregationPicker";
 
@@ -129,6 +135,9 @@ function setup({
   state = createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
+    }),
+    qb: createMockQueryBuilderState({
+      card: createMockCard(),
     }),
   }),
   metadata = createMetadata(),
@@ -341,6 +350,9 @@ describe("AggregationPicker", () => {
                 ),
               },
             ],
+          }),
+          qb: createMockQueryBuilderState({
+            card: createMockCard(),
           }),
         }),
         metadata: createMetadata({ hasExpressionSupport: false }),
