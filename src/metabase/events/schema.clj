@@ -2,7 +2,6 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
-   [metabase.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 ;; collection events
@@ -37,7 +36,7 @@
 
 (let [view-only      (mc/schema
                       [:map {:closed true}
-                       [:context ::view-log/context]
+                       [:context [:enum :dashboard :question :collection]]
                        [:user-id [:maybe pos-int?]]
                        [:object-id [:maybe pos-int?]]])
       default-schema (mc/schema
