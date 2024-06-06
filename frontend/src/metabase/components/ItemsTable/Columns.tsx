@@ -13,7 +13,6 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
-import { Button } from "metabase/ui";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
@@ -23,6 +22,7 @@ import {
   ColumnHeader,
   DescriptionIcon,
   EntityIconCheckBox,
+  ItemButton,
   ItemCell,
   ItemLink,
   ItemNameCell,
@@ -140,9 +140,9 @@ export const Columns = {
     }) => {
       const ItemLinkComponent = onClick
         ? ({ children }: { children: ReactNode }) => (
-            <Button onClick={(e: MouseEvent) => onClick(item, e)}>
+            <ItemButton onClick={(e: MouseEvent) => onClick(item, e)}>
               {children}
-            </Button>
+            </ItemButton>
           )
         : ({ children }: { children: ReactNode }) => (
             <ItemLink to={item.getUrl()}>{children}</ItemLink>
