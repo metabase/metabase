@@ -74,7 +74,7 @@ const setup = ({
     rootCollection: EDITABLE_ROOT_COLLECTION,
   });
 
-  setupRecentViewsEndpoints([]);
+  setupRecentSelectionsEndpoints([]);
   setupAdhocQueryMetadataEndpoint(
     createMockCardQueryMetadata({ databases: [database] }),
   );
