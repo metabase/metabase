@@ -64,6 +64,13 @@
     ;; ...but if we do, return the Field <3
     field))
 
+(defn get-fields
+  "Get `Field`s with IDs in `ids`."
+  [ids]
+  (when (seq ids)
+    (-> (filter mi/can-read? (t2/select Field :id [:in ids]))
+        (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))))
+
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id include_editable_data_model]
