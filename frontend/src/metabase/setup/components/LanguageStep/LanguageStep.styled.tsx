@@ -46,7 +46,7 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

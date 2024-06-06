@@ -33,7 +33,7 @@ export const QueryErrorTitle = styled.div`
 
 export const QueryErrorIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("error")};
+  color: var(--mb-color-error);
   width: 1rem;
   height: 1rem;
   margin-right: 0.75rem;

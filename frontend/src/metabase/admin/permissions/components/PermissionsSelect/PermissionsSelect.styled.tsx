@@ -16,7 +16,7 @@ export const SelectedOption = styled(PermissionsSelectOption)`
   transition: color 200ms;
 
   &:hover {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;
 

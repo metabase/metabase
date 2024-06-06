@@ -11,7 +11,7 @@ export const GoogleButtonRoot = styled.div`
 `;
 
 export const AuthError = styled.div`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   text-align: center;
 `;
 

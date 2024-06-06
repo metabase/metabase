@@ -64,7 +64,7 @@ export const StatusContainer = styled.div<Props>`
   border: 0.25rem solid ${getBorderColor};
   border-radius: 50%;
   background-color: ${() => lighten("brand", 0.6)};
-  box-shadow: 0 1px 12px ${color("shadow")};
+  box-shadow: 0 1px 12px var(--mb-color-shadow);
 `;
 
 export const StatusIconContainer = styled.div`

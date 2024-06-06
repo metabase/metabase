@@ -29,7 +29,7 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
 
 export const ErrorSpan = styled.span`
   margin: 0 0.5rem;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 interface InputContainerProps {

@@ -55,7 +55,7 @@ export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
 `;
 
 export const FieldLabelError = styled.span`
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 export const FieldDescription = styled.div`

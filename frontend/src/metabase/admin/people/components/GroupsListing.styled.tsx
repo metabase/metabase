@@ -13,7 +13,7 @@ export const EditGroupButton = styled.li`
 `;
 
 export const DeleteModalTrigger = styled.li`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   cursor: pointer;
   padding: 0.5rem 1rem;
 

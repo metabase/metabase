@@ -19,17 +19,17 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
     }
   }
 
-  ${({ purple }) =>
+  ${({ purple, theme }) =>
     purple &&
     css`
       color: ${color("white")};
-      background-color: ${color("filter")};
-      border: 1px solid ${color("filter")};
+      background-color: var(--mb-color-filter);
+      border: 1px solid var(--mb-color-filter);
 
       &:hover {
         color: ${color("white")};
-        background-color: ${alpha("filter", 0.88)};
-        border-color: ${alpha("filter", 0.88)};
+        background-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
+        border-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
       }
     `}
 

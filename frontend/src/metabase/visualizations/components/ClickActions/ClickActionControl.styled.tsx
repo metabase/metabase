@@ -31,7 +31,7 @@ export const TokenFilterActionButton = styled(Button)`
   font-size: 1.25rem;
   line-height: 1rem;
   padding: 0.125rem 0.85rem 0.25rem;
-  border: 1px solid ${({ theme }) => theme.fn.themeColor("focus")};
+  border: 1px solid var(--mb-color-focus);
   border-radius: 100px;
 
   &:hover {

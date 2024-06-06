@@ -20,7 +20,7 @@ export const NodeListIcon = styled(Icon)`
 `;
 
 export const NodeListItemIcon = styled(Icon)`
-  color: ${color("focus")};
+  color: var(--mb-color-focus);
   margin-top: 1px;
   width: ${space(2)};
 `;
