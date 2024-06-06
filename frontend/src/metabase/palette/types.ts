@@ -17,7 +17,7 @@ interface PaletteActionExtras {
      */
     href?: LocationDescriptor | null;
     /** iconColor: Color of the icon in the  */
-    iconColor?: string
+    iconColor?: string;
   };
 }
 
