@@ -1,3 +1,12 @@
+## [0.1.8-test1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.7...embedding-sdk-0.1.8-test1) (2024-06-06)
+
+
+### Features
+
+* **sdk:** A placeholder for an actual feature in the changelog ([d13f951](https://github.com/metabase/metabase/commit/d13f95143b1afccfeabb8eda7e814739fd8544a7))
+
+
+
 ## [0.1.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.6...embedding-sdk-0.1.7) (2024-06-06)
 
 
