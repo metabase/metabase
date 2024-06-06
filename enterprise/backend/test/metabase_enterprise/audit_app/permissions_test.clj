@@ -2,9 +2,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
-   [metabase-enterprise.audit-db :as audit-db]
-   [metabase-enterprise.audit-db-test :as audit-db-test]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.core :as mbc]
@@ -35,7 +34,7 @@
 
 (deftest audit-db-basic-query-test
   (mt/test-drivers #{:postgres :h2 :mysql}
-    (audit-db-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration
       (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "A query using a saved audit model as the source table runs succesfully"
@@ -58,7 +57,7 @@
 
 (deftest audit-db-disallowed-queries-test
   (mt/test-drivers #{:postgres :h2 :mysql}
-    (audit-db-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration
       (mt/with-premium-features #{:audit-app}
         (mt/with-test-user :crowberto
           (testing "Native queries are not allowed to be run on audit DB views, even by admins"
@@ -105,7 +104,7 @@
                    Table            view-table        {:db_id database-id :name "v_users"}
                    Collection       collection        {}]
       (with-redefs [audit/audit-db-id                 database-id
-                    audit-db/default-audit-collection (constantly collection)]
+                    audit/default-audit-collection (constantly collection)]
         (testing "Updating permissions for the audit collection also updates audit DB permissions"
           ;; Audit DB starts with full data access but no query builder access
           (is (= :unrestricted (data-perms/table-permission-for-group group-id :perms/view-data database-id (:id view-table))))

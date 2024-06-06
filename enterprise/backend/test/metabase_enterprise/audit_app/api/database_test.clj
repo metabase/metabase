@@ -1,13 +1,13 @@
 (ns metabase-enterprise.audit-app.api.database-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.audit-db-test :as audit-db-test]
+   [metabase-enterprise.audit.audit-test :as audit-test]
    [metabase.audit :as audit]
    [metabase.test :as mt]))
 
 (deftest audit-db-unmodifiable-test
   (mt/with-premium-features #{:audit-app}
-    (audit-db-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration
       (testing "Neither admin nor regular users can modify the audit database"
         (doseq [[verb path] [[:post "database/%d/unpersist"]
                              [:put "database/%d"]

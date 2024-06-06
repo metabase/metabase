@@ -1,6 +1,5 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
-   [metabase-enterprise.audit.audit-db :refer [default-audit-collection]]
    [metabase.audit :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.data-permissions :as data-perms]
@@ -62,7 +61,7 @@
   But it's cleaner to keep the audit DB permission paths in the database consistent."
   :feature :audit-app
   [group-id changes]
-  (let [[change-id tyype] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
+  (let [[change-id tyype] (first (filter #(= (first %) (:id (audit/default-audit-collection))) changes))]
       (when change-id
         (let [create-queries-value (case tyype
                                      :read  :query-builder

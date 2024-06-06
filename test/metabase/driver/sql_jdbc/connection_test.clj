@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -206,7 +207,7 @@
       (t2/delete! 'Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
             audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
-            _ (is (= :metabase-enterprise.audit-db/installed status))
+            _ (is (= ::ee-audit/installed status))
             _ (is (= 13371337 audit-db-id))
             first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
             second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
@@ -304,24 +305,24 @@
               (mt/with-db db
                 (sync/sync-database! db)
                 (is (= {:cols [{:base_type    :type/Text
-                                  :effective_type :type/Text
-                                  :display_name "COL1"
-                                  :field_ref    [:field "COL1" {:base-type :type/Text}]
-                                  :name         "COL1"
-                                  :source       :native}
-                                 {:base_type    :type/Decimal
-                                  :effective_type :type/Decimal
-                                  :display_name "COL2"
-                                  :field_ref    [:field "COL2" {:base-type :type/Decimal}]
-                                  :name         "COL2"
-                                  :source       :native}]
-                          :rows [["First Row"  19.10M]
-                                 ["Second Row" 100.40M]
-                                 ["Third Row"  91884.10M]]}
-                         (-> {:query "SELECT col1, col2 FROM my_tbl;"}
-                             (mt/native-query)
-                             (qp/process-query)
-                             (qp.test-util/rows-and-cols))))))
+                                :effective_type :type/Text
+                                :display_name "COL1"
+                                :field_ref    [:field "COL1" {:base-type :type/Text}]
+                                :name         "COL1"
+                                :source       :native}
+                               {:base_type    :type/Decimal
+                                :effective_type :type/Decimal
+                                :display_name "COL2"
+                                :field_ref    [:field "COL2" {:base-type :type/Decimal}]
+                                :name         "COL2"
+                                :source       :native}]
+                        :rows [["First Row"  19.10M]
+                               ["Second Row" 100.40M]
+                               ["Third Row"  91884.10M]]}
+                       (-> {:query "SELECT col1, col2 FROM my_tbl;"}
+                           (mt/native-query)
+                           (qp/process-query)
+                           (qp.test-util/rows-and-cols))))))
             (finally (.stop ^Server server))))))))
 
 (deftest test-ssh-tunnel-reconnection-h2
