@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -35,7 +35,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   padding: 1rem;
   border: 1px solid var(--mb-color-bg-medium);
   border-radius: 0.375rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   cursor: pointer;
   outline: ${props => props.isActive && `2px solid var(--mb-color-focus)`};
 

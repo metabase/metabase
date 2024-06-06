@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import DateTime from "metabase/components/DateTime";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmptyStateRoot = styled.div`
@@ -34,7 +34,7 @@ export const EmptyStateTooltip = styled.div`
 
 export const EmptyStateTooltipIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 1rem;
   height: 1rem;
 `;
@@ -45,14 +45,14 @@ export const EmptyStateTooltipBody = styled.div`
 `;
 
 export const EmptyStateTooltipTitle = styled.div`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   font-weight: bold;
   margin-bottom: 0.25rem;
 `;
 
 export const EmptyStateTooltipDate = styled(DateTime)`
   display: block;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const EmptyStateThread = styled.div`
@@ -69,7 +69,7 @@ export const EmptyStateThreadLine = styled.div`
 `;
 
 export const EmptyStateThreadIcon = styled(Icon)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 1rem;
   height: 1rem;
 `;

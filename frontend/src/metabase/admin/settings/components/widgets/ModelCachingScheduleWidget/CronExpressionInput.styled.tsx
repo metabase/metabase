@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import { commonLabelStyle } from "./ModelCachingScheduleWidget.styled";
@@ -45,7 +45,7 @@ export const PopoverContent = styled.div`
   background-color: #222;
   padding: 18px;
 
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const PopoverTitle = styled.span`

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import SelectList from "metabase/components/SelectList";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -41,7 +40,7 @@ export const DataBucketListItemContainer = styled(SelectList.BaseItem as any)`
     ${DataBucketListItemIcon},
     ${DataBucketListItemTitle},
     ${DataBucketListItemDescription} {
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

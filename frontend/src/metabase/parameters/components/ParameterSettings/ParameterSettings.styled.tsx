@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 import ParameterValueWidget from "../ParameterValueWidget";
 
 export const SettingLabel = styled.label`
@@ -21,5 +19,5 @@ export const SettingValueWidget = styled(ParameterValueWidget)`
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 `;

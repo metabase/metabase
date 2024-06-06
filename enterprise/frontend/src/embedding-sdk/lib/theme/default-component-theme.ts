@@ -39,8 +39,8 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   pivotTable: {
     rowToggle: {
-      textColor: "white",
-      backgroundColor: "text-light",
+      textColor: "text-white",
+      backgroundColor: "text-light", // TODO: should it be "bg-dark" ?
     },
   },
   cartesian: {

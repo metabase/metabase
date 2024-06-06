@@ -49,7 +49,7 @@ const LeafletChoropleth = ({
         fillColor: getColor(feature),
         weight: 1,
         opacity: 1,
-        color: "white",
+        color: getColor("white"),
         fillOpacity: 1,
       });
 

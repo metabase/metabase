@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const NotificationCardRoot = styled.div`
@@ -9,7 +8,7 @@ export const NotificationCardRoot = styled.div`
   padding: 1rem 1.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 
   &:not(:last-child) {
     margin-bottom: 1.25rem;

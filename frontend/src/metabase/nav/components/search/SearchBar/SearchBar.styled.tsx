@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
@@ -37,7 +36,7 @@ export const SearchInputContainer = styled.div<{
       `;
     }
     return css`
-      background-color: ${color("white")};
+      background-color: var(--mb-color-bg-white);
 
       &:hover {
         background-color: var(--mb-color-bg-light);

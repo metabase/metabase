@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const MembershipSelectContainer = styled.ul`
   padding: 0.5rem 0;
   width: 300px;
@@ -19,7 +17,7 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
   justify-content: space-between;
   cursor: ${props => (props.isDisabled ? "unset" : "pointer")};
   padding: 0.5rem 1.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   color: var(--mb-color-text-medium);
   font-weight: 700;
 
@@ -27,11 +25,11 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
     !props.isDisabled &&
     css`
       &:hover {
-        color: ${color("white")};
+        color: var(--mb-color-text-white);
         background-color: var(--mb-color-filter);
 
         .Icon {
-          color: ${color("white")} !important;
+          color: var(--mb-color-text-white) !important;
         }
       }
     `}

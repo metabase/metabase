@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import FormInput from "metabase/core/components/FormInput";
 import { Form } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmailFormRoot = styled.div`
@@ -26,7 +25,7 @@ export const EmailFormLabelCard = styled.div`
   display: flex;
   padding: 0 1.5rem;
   color: var(--mb-color-text-medium);
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const EmailFormLabelIcon = styled(Icon)`
@@ -66,14 +65,14 @@ export const EmailFormSuccessContainer = styled.div`
 `;
 
 export const EmailFormSuccessIcon = styled(Icon)`
-  color: ${color("success")};
+  color: var(--mb-color-success);
   width: 1rem;
   height: 1rem;
   margin-right: 1rem;
 `;
 
 export const EmailFormSuccessText = styled.div`
-  color: ${color("success")};
+  color: var(--mb-color-success);
   font-size: 1rem;
   font-weight: bold;
 `;

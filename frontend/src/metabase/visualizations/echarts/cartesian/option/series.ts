@@ -275,7 +275,7 @@ export const buildEChartsLabelOptions = (
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize,
     color: renderingContext.getColor("text-dark"),
-    textBorderColor: renderingContext.getColor("white"),
+    textBorderColor: renderingContext.getColor("bg-white"),
     textBorderWidth: 3,
     formatter:
       formatter &&
@@ -407,7 +407,7 @@ function getDataLabelSeriesOption(
       fontWeight: CHART_STYLE.seriesLabels.weight,
       fontSize: CHART_STYLE.seriesLabels.size,
       color: renderingContext.getColor("text-dark"),
-      textBorderColor: renderingContext.getColor("white"),
+      textBorderColor: renderingContext.getColor("bg-white"),
       textBorderWidth: 3,
     },
     labelLayout: {

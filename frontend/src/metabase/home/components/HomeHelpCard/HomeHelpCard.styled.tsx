@@ -1,12 +1,11 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled(ExternalLink)`
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
   display: flex;
   align-items: center;
   padding: 1rem;

@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
 
-import { color } from "metabase/lib/colors";
-
 export const ActionLink = styled(Link)`
   display: block;
   padding: 0.5rem 1rem;
@@ -10,7 +8,7 @@ export const ActionLink = styled(Link)`
   text-decoration: none;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

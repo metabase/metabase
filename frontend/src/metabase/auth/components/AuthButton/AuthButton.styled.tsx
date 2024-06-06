@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 
 export const TextLink = styled(Link)`
   cursor: pointer;
@@ -17,7 +16,7 @@ export const CardLink = styled(TextLink)`
   justify-content: center;
   align-items: center;
   padding: 1.25rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   box-shadow: 0 3px 10px var(--mb-color-shadow);
   border-radius: 6px;
 `;

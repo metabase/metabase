@@ -6,18 +6,17 @@
  * .storybook/preview-head.html
  */
 :root {
-  --color-white: #fff;
+  --mb-color-text-white: #fff;
   --mb-color-brand: #509ee3;
   --mb-color-brand-light: #f9fbfc;
   --mb-color-brand-lighter: #eef6fc;
-  --color-success: #84bb4c;
+  --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
   --mb-color-error: #ed6e6e;
   --mb-color-danger: #ed6e6e;
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
-  --color-text-white: #fff;
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
@@ -40,7 +39,7 @@
 }
 
 .textSuccess {
-  color: var(--color-success);
+  color: var(--mb-color-success);
 }
 
 /* error */
@@ -92,7 +91,7 @@
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .textWhite,
 .textWhiteHover:hover {
-  color: var(--color-text-white);
+  color: var(--mb-color-text-white);
 }
 
 .bgWhite {

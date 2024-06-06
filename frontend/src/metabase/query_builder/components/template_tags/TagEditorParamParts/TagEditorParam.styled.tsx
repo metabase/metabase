@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 export const TagContainer = styled.div`
@@ -45,7 +44,7 @@ export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
   font-weight: 700;
   color: var(--mb-color-text-medium);
   border-radius: 0.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   border: 2px solid var(--mb-color-border);
 `;
 

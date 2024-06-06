@@ -82,7 +82,7 @@ export const HeaderButton = styled(Button)<{ active: boolean }>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
-  color: ${({ active }) => (active ? "white" : color("text-dark"))};
+  color: ${({ active }) => (active ? color("text-white") : color("text-dark"))};
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
@@ -213,6 +213,6 @@ export const ViewRunButtonWithTooltip = styled(
   color: var(--mb-color-text-dark);
 
   &:hover {
-    color: ${props => (props.isDirty ? color("white") : color("brand"))};
+    color: ${props => (props.isDirty ? color("text-white") : color("brand"))};
   }
 `;

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const PathContainer = styled.div`
   display: flex;
@@ -29,7 +28,7 @@ export const ExpandButton = styled(Button)`
   color: var(--mb-color-text-medium);
 
   &:hover {
-    color: ${color("text-white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

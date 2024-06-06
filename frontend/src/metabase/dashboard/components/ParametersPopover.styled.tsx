@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const OptionItemTitle = styled.div`
   color: var(--mb-color-brand);
 `;
@@ -15,11 +13,11 @@ export const OptionItemRoot = styled.li`
   cursor: pointer;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
 
     ${OptionItemTitle}, ${OptionItemDescription} {
-      color: ${color("white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

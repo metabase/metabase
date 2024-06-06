@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const ListRoot = styled.div`
@@ -59,7 +58,7 @@ const selectedStyles = css`
   background-color: var(--mb-color-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 
   ${CardIcon} {
@@ -67,8 +66,8 @@ const selectedStyles = css`
   }
 
   ${CardIconContainer} {
-    border-color: ${color("white")};
-    background-color: ${color("white")};
+    border-color: var(--mb-color-bg-white);
+    background-color: var(--mb-color-bg-white);
   }
 `;
 

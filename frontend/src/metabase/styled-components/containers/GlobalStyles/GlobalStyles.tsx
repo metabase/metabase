@@ -35,9 +35,12 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-error: ${color("error")};
       --mb-color-filter: ${color("filter")};
       --mb-color-shadow: ${color("shadow")};
+      --mb-color-success: ${color("success")};
+      --mb-color-summarize: ${color("summarize")};
       --mb-color-text-dark: ${color("text-dark")};
       --mb-color-text-light: ${color("text-light")};
       --mb-color-text-medium: ${color("text-medium")};
+      --mb-color-text-white: ${color("text-white")};
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}
