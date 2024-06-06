@@ -9,7 +9,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
-import { OTHER_SLICE_MIN_PERCENTAGE } from "../constants";
+import { OTHER_SLICE_MIN_PERCENTAGE as MIN_SLICE_PERCENTAGE } from "../constants";
 
 import type { PieColumnDescriptors, PieChartModel, PieSlice } from "./types";
 
@@ -106,25 +106,26 @@ export function getPieChartModel(
 
   // Only add "other" slice if there are slices below threshold with non-zero total
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
-  if (otherTotal === 0) {
-    return { slices, total, colDescs };
+  if (otherTotal > 0) {
+    slices.push({
+      key: t`Other`,
+      value: otherTotal,
+      tooltipDisplayValue: otherTotal,
+      normalizedPercentage: otherTotal / total,
+      color: renderingContext.getColor("text-light"),
+    });
   }
 
-  const otherSlice: PieSlice = {
-    key: t`Other`,
-    value: otherTotal,
-    tooltipDisplayValue: otherTotal,
-    normalizedPercentage: otherTotal / total,
-    color: renderingContext.getColor("text-light"),
-  };
-
-  // Increase "other" slice so it's barely visible
-  if (otherSlice.normalizedPercentage < OTHER_SLICE_MIN_PERCENTAGE) {
-    otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
-  }
+  slices.forEach(slice => {
+    // We increase the size of small slices, otherwise they will not be visible
+    // in echarts due to the border rendering over the tiny slice
+    if (slice.normalizedPercentage < MIN_SLICE_PERCENTAGE) {
+      slice.value = total * MIN_SLICE_PERCENTAGE;
+    }
+  });
 
   return {
-    slices: [...slices, otherSlice],
+    slices,
     total,
     colDescs,
   };
