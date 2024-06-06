@@ -167,7 +167,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on grouping",
       });
 
-      toggleColumnPickerItems(["Percentage difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -180,7 +180,18 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyAggregations([
-        { name: "Count (previous period)", expression: "Offset(Count, -1)" },
+        {
+          name: "Count (previous period)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous period)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous period)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
       verifyBreakoutRequiredError();
     });
@@ -221,7 +232,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "months ago based on “Created At”",
       });
 
-      toggleColumnPickerItems(["Percentage difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -234,9 +245,24 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyAggregations([
-        { name: "Count (previous month)", expression: "Offset(Count, -1)" },
+        {
+          name: "Count (previous month)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous month)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous month)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
-      verifyColumns(["Count (previous month)"]);
+      verifyColumns([
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
+      ]);
     });
 
     it("breakout on non-binned datetime column", () => {
@@ -275,7 +301,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      toggleColumnPickerItems(["Percentage difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -288,9 +314,24 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyAggregations([
-        { name: "Count (previous period)", expression: "Offset(Count, -1)" },
+        {
+          name: "Count (previous period)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous period)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous period)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
-      verifyColumns(["Count (previous period)"]);
+      verifyColumns([
+        "Count (previous period)",
+        "Count (vs previous period)",
+        "Count (% vs previous period)",
+      ]);
     });
 
     it("breakout on non-datetime column", () => {
@@ -329,7 +370,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "rows above based on “Category”",
       });
 
-      toggleColumnPickerItems(["Percentage difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -346,8 +387,20 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           name: "Count (previous value)",
           expression: "Offset(Count, -1)",
         },
+        {
+          name: "Count (vs previous value)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous value)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
-      verifyColumns(["Count (previous value)"]);
+      verifyColumns([
+        "Count (previous value)",
+        "Count (vs previous value)",
+        "Count (% vs previous value)",
+      ]);
     });
   });
 
@@ -398,7 +451,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on grouping",
       });
 
-      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -418,6 +471,10 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         {
           name: "Count (vs previous period)",
           expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous period)",
+          expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
       verifyBreakoutRequiredError();
@@ -462,7 +519,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "months ago based on “Created At”",
       });
 
-      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -483,8 +540,16 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
+        {
+          name: "Count (% vs previous month)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
-      verifyColumns(["Count (previous month)", "Count (vs previous month)"]);
+      verifyColumns([
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
+      ]);
     });
 
     it("breakout on non-binned datetime column", () => {
@@ -526,7 +591,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -547,8 +612,16 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           name: "Count (vs previous period)",
           expression: "Count - Offset(Count, -1)",
         },
+        {
+          name: "Count (% vs previous period)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
-      verifyColumns(["Count (previous period)", "Count (vs previous period)"]);
+      verifyColumns([
+        "Count (previous period)",
+        "Count (vs previous period)",
+        "Count (% vs previous period)",
+      ]);
     });
 
     it("breakout on non-datetime column", () => {
@@ -590,7 +663,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "rows above based on “Category”",
       });
 
-      toggleColumnPickerItems(["Percentage difference", "Value difference"]);
+      toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
 
       cy.get("@questionId").then(questionId => {
@@ -611,8 +684,16 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           name: "Count (vs previous value)",
           expression: "Count - Offset(Count, -1)",
         },
+        {
+          name: "Count (% vs previous value)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
       ]);
-      verifyColumns(["Count (previous value)", "Count (vs previous value)"]);
+      verifyColumns([
+        "Count (previous value)",
+        "Count (vs previous value)",
+        "Count (% vs previous value)",
+      ]);
     });
   });
 });
