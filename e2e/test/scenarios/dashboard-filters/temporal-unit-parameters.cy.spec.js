@@ -151,6 +151,32 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByText("Quarter").click();
       getDashboardCard().findByText("Created At: Quarter").should("be.visible");
     });
+
+    it("should allow to map to multiple breakout columns within one card", () => {
+      cy.createDashboardWithQuestions({
+        questions: [multiBreakoutQuestionDetails],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+
+      editDashboard();
+      addTemporalUnitParameter();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Month").click();
+      addTemporalUnitParameter();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Year").click();
+      saveDashboard();
+      filterWidget().eq(0).click();
+      popover().findByText("Quarter").click();
+      filterWidget().eq(1).click();
+      popover().findByText("Week").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("May 1, 2022").should("be.visible");
+      });
+    });
   });
 });
 
