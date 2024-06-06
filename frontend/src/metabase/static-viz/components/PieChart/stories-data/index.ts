@@ -11,6 +11,7 @@ import hideLegend from "./hide-legend.json";
 import hideTotal from "./hide-total.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
 import mixedPositiveNegative from "./mixed-positive-negative.json";
+import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
 import relativeDateDimension from "./relative-date-dimension.json";
 import showPercentagesOff from "./show-percentages-off.json";
@@ -18,6 +19,7 @@ import showPercentagesOnChart from "./show-percentages-on-chart.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import sortedMetricCol from "./sorted-metric-col.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
+import unaggregatedDimension from "./unaggregated-dimension.json";
 import zeroMinimumSlicePercentage from "./zero-min-slice-percentage.json";
 
 export const data = {
@@ -40,6 +42,8 @@ export const data = {
   binnedDimension,
   dateDimension,
   relativeDateDimension,
+  nullDimension,
+  unaggregatedDimension,
   sortedMetricCol,
   tinySlicesDisappear43766,
 };
