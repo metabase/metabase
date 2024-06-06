@@ -197,12 +197,13 @@
 (defn get-card
   "Get `Card` with ID."
   [id]
-  (let [raw-card (t2/select-one Card :id id)]
+  (let [with-last-edit-info #(first (last-edit/with-last-edit-info [%] :card))
+        raw-card (t2/select-one Card :id id)]
     (-> raw-card
         api/read-check
         hydrate-card-details
         ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
-        (last-edit/with-last-edit-info :card)
+        with-last-edit-info
         collection.root/hydrate-root-collection)))
 
 (api/defendpoint GET "/:id"
