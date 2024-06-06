@@ -15,7 +15,4 @@ export const SidebarCacheFormBody = styled(Group)`
   .strategy-form-box {
     border-bottom: 0 !important;
   }
-  .strategy-form-submit-button {
-    flex-grow: 1;
-  }
 `;
