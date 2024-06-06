@@ -8,7 +8,7 @@ import {
   popover,
   sidebar,
   mockSlackConfigured,
-  isOSS,
+  onlyOnOSS,
   visitDashboard,
   editDashboard,
   sendEmailAndAssert,
@@ -520,7 +520,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
-      cy.onlyOn(isOSS);
+      onlyOnOSS();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       setupSMTP();
     });
