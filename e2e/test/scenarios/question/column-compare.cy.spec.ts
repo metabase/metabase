@@ -12,15 +12,84 @@ import {
   restore,
   tableHeaderClick,
 } from "e2e/support/helpers";
-import type { FieldReference } from "metabase-types/api";
+import type { FieldReference, StructuredQuery } from "metabase-types/api";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const BREAKOUT_CREATED_AT_MONTH: FieldReference = [
+const PRICE_FIELD: FieldReference = [
+  "field",
+  PRODUCTS.PRICE,
+  { "base-type": "type/Float" },
+];
+
+const BINNED_DATETIME_BREAKOUT: FieldReference = [
   "field",
   PRODUCTS.CREATED_AT,
   { "base-type": "type/DateTime", "temporal-unit": "month" },
 ];
+
+const NON_BINNED_DATETIME_BREAKOUT: FieldReference = [
+  "field",
+  PRODUCTS.CREATED_AT,
+  { "base-type": "type/DateTime" },
+];
+
+const NON_DATETIME_BREAKOUT: FieldReference = [
+  "field",
+  PRODUCTS.CATEGORY,
+  { "base-type": "type/Text" },
+];
+
+const QUERY_NO_AGGREGATION: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+};
+
+const QUERY_SINGLE_AGGREGATION: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"], ["sum", PRICE_FIELD]],
+};
+
+const QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [BINNED_DATETIME_BREAKOUT],
+};
+
+const QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [NON_BINNED_DATETIME_BREAKOUT],
+};
+
+const QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [NON_DATETIME_BREAKOUT],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"], ["sum", PRICE_FIELD]],
+  breakout: [BINNED_DATETIME_BREAKOUT],
+};
+
+const QUERY_MULTIPLE_AGGREGATIONS_NON_BINNED_DATETIME_BREAKOUT: StructuredQuery =
+  {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"], ["sum", PRICE_FIELD]],
+    breakout: [NON_BINNED_DATETIME_BREAKOUT],
+  };
+
+const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"], ["sum", PRICE_FIELD]],
+  breakout: [NON_DATETIME_BREAKOUT],
+};
 
 describeWithSnowplow("scenarios > question > column compare", () => {
   beforeEach(() => {
@@ -29,13 +98,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
     cy.signInAsAdmin();
 
     createQuestion(
-      {
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [BREAKOUT_CREATED_AT_MONTH],
-        },
-      },
+      { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
       { visitQuestion: true, wrapId: true, idAlias: "questionId" },
     );
   });
