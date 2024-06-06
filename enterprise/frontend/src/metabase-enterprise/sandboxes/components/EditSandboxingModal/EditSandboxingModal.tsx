@@ -180,8 +180,7 @@ const EditSandboxingModal = ({
                   policyCard && policy.card_id != null
                     ? {
                         id: policy.card_id,
-                        model:
-                          policyCard.type === "model" ? "dataset" : "card",
+                        model: policyCard.type === "model" ? "dataset" : "card",
                       }
                     : undefined
                 }
