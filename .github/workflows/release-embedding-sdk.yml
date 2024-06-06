@@ -195,7 +195,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sdk-changelog-patch
-          path: ./changelog.patch
 
       - name: Apply changelog patch
         run: |
