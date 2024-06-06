@@ -45,12 +45,12 @@ const QUERY_NO_AGGREGATION: StructuredQuery = {
   "source-table": PRODUCTS_ID,
 };
 
-const QUERY_SINGLE_AGGREGATION: StructuredQuery = {
+const QUERY_SINGLE_AGGREGATION_NO_BREAKOUT: StructuredQuery = {
   "source-table": PRODUCTS_ID,
   aggregation: [["count"]],
 };
 
-const QUERY_MULTIPLE_AGGREGATIONS: StructuredQuery = {
+const QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT: StructuredQuery = {
   "source-table": PRODUCTS_ID,
   aggregation: [["count"], ["sum", PRICE_FIELD]],
 };
@@ -138,7 +138,7 @@ describe("scenarios > question > column compare TODO", () => {
     describe("no breakout", () => {
       beforeEach(() => {
         createQuestion(
-          { query: QUERY_SINGLE_AGGREGATION },
+          { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
         );
       });
@@ -147,28 +147,28 @@ describe("scenarios > question > column compare TODO", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
           itemName: "Compare “Count” to previous period ...",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on grouping",
         });
 
         cy.log("chill mode - column drill");
         checkColumnDrillText({
           itemName: "Compare “Count” to previous period",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on grouping",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
           itemName: "Compare “Count” to previous period",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on grouping",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
           itemName: "Compare “Count” to previous period ...",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on grouping",
         });
       });
@@ -186,28 +186,28 @@ describe("scenarios > question > column compare TODO", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
           itemName: "Compare “Count” to previous months ...",
-          title: "Compare “Count” to previous months",
+          step2Title: "Compare “Count” to previous months",
           offsetHelp: "months ago based on “Created At”",
         });
 
         cy.log("chill mode - column drill");
         checkColumnDrillText({
           itemName: "Compare “Count” to previous months",
-          title: "Compare “Count” to previous months",
+          step2Title: "Compare “Count” to previous months",
           offsetHelp: "months ago based on “Created At”",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
           itemName: "Compare “Count” to previous months",
-          title: "Compare “Count” to previous months",
+          step2Title: "Compare “Count” to previous months",
           offsetHelp: "months ago based on “Created At”",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
           itemName: "Compare “Count” to previous months ...",
-          title: "Compare “Count” to previous months",
+          step2Title: "Compare “Count” to previous months",
           offsetHelp: "months ago based on “Created At”",
         });
       });
@@ -225,28 +225,28 @@ describe("scenarios > question > column compare TODO", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
           itemName: "Compare “Count” to previous period ...",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
 
         cy.log("chill mode - column drill");
         checkColumnDrillText({
           itemName: "Compare “Count” to previous period",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
           itemName: "Compare “Count” to previous period",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
           itemName: "Compare “Count” to previous period ...",
-          title: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
           offsetHelp: "periods ago based on “Created At”",
         });
       });
@@ -264,28 +264,194 @@ describe("scenarios > question > column compare TODO", () => {
         cy.log("chill mode - summarize sidebar");
         checkSummarizeText({
           itemName: "Compare “Count” to previous rows ...",
-          title: "Compare “Count” to previous rows",
+          step2Title: "Compare “Count” to previous rows",
           offsetHelp: "rows above based on “Category”",
         });
 
         cy.log("chill mode - column drill");
         checkColumnDrillText({
           itemName: "Compare “Count” to previous rows",
-          title: "Compare “Count” to previous rows",
+          step2Title: "Compare “Count” to previous rows",
           offsetHelp: "rows above based on “Category”",
         });
 
         cy.log("chill mode - plus button");
         checkPlusButtonText({
           itemName: "Compare “Count” to previous rows",
-          title: "Compare “Count” to previous rows",
+          step2Title: "Compare “Count” to previous rows",
           offsetHelp: "rows above based on “Category”",
         });
 
         cy.log("notebook editor");
         checkNotebookText({
           itemName: "Compare “Count” to previous rows ...",
-          title: "Compare “Count” to previous rows",
+          step2Title: "Compare “Count” to previous rows",
+          offsetHelp: "rows above based on “Category”",
+        });
+      });
+    });
+  });
+
+  describe("multiple aggregations", () => {
+    describe.only("no breakout", () => {
+      beforeEach(() => {
+        createQuestion(
+          { query: QUERY_MULTIPLE_AGGREGATIONS_NO_BREAKOUT },
+          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        );
+      });
+
+      it("shows correct shortcut label and popover title", () => {
+        cy.log("chill mode - summarize sidebar");
+        checkSummarizeText({
+          itemName: "Compare to previous period ...",
+          step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
+        });
+
+        cy.log("chill mode - plus button");
+        checkPlusButtonText({
+          itemName: "Compare to previous period",
+          step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
+        });
+
+        cy.log("notebook editor");
+        checkNotebookText({
+          itemName: "Compare to previous period ...",
+          step1Title: "Compare one of these to the previous period",
+          step2Title: "Compare “Count” to previous period",
+          offsetHelp: "periods ago based on grouping",
+        });
+      });
+    });
+
+    describe("breakout on binned datetime column", () => {
+      beforeEach(() => {
+        createQuestion(
+          { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        );
+      });
+
+      it("shows correct shortcut label and popover title", () => {
+        cy.log("chill mode - summarize sidebar");
+        checkSummarizeText({
+          itemName: "Compare “Count” to previous months ...",
+          step2Title: "Compare “Count” to previous months",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "months ago based on “Created At”",
+        });
+
+        cy.log("chill mode - column drill");
+        checkColumnDrillText({
+          itemName: "Compare “Count” to previous months",
+          step2Title: "Compare “Count” to previous months",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "months ago based on “Created At”",
+        });
+
+        cy.log("chill mode - plus button");
+        checkPlusButtonText({
+          itemName: "Compare “Count” to previous months",
+          step2Title: "Compare “Count” to previous months",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "months ago based on “Created At”",
+        });
+
+        cy.log("notebook editor");
+        checkNotebookText({
+          itemName: "Compare “Count” to previous months ...",
+          step2Title: "Compare “Count” to previous months",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "months ago based on “Created At”",
+        });
+      });
+    });
+
+    describe("breakout on non-binned datetime column", () => {
+      beforeEach(() => {
+        createQuestion(
+          { query: QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT },
+          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        );
+      });
+
+      it("shows correct shortcut label and popover title", () => {
+        cy.log("chill mode - summarize sidebar");
+        checkSummarizeText({
+          itemName: "Compare “Count” to previous period ...",
+          step2Title: "Compare “Count” to previous period",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "periods ago based on “Created At”",
+        });
+
+        cy.log("chill mode - column drill");
+        checkColumnDrillText({
+          itemName: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "periods ago based on “Created At”",
+        });
+
+        cy.log("chill mode - plus button");
+        checkPlusButtonText({
+          itemName: "Compare “Count” to previous period",
+          step2Title: "Compare “Count” to previous period",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "periods ago based on “Created At”",
+        });
+
+        cy.log("notebook editor");
+        checkNotebookText({
+          itemName: "Compare “Count” to previous period ...",
+          step2Title: "Compare “Count” to previous period",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "periods ago based on “Created At”",
+        });
+      });
+    });
+
+    describe("breakout on non-datetime column", () => {
+      beforeEach(() => {
+        createQuestion(
+          { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
+          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        );
+      });
+
+      it("shows correct shortcut label and popover title", () => {
+        cy.log("chill mode - summarize sidebar");
+        checkSummarizeText({
+          itemName: "Compare “Count” to previous rows ...",
+          step2Title: "Compare “Count” to previous rows",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "rows above based on “Category”",
+        });
+
+        cy.log("chill mode - column drill");
+        checkColumnDrillText({
+          itemName: "Compare “Count” to previous rows",
+          step2Title: "Compare “Count” to previous rows",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "rows above based on “Category”",
+        });
+
+        cy.log("chill mode - plus button");
+        checkPlusButtonText({
+          itemName: "Compare “Count” to previous rows",
+          step2Title: "Compare “Count” to previous rows",
+          step1Title: "Compare one of these to the previous period",
+          offsetHelp: "rows above based on “Category”",
+        });
+
+        cy.log("notebook editor");
+        checkNotebookText({
+          itemName: "Compare “Count” to previous rows ...",
+          step2Title: "Compare “Count” to previous rows",
+          step1Title: "Compare one of these to the previous period",
           offsetHelp: "rows above based on “Category”",
         });
       });
@@ -434,44 +600,93 @@ function assertNoColumnCompareShortcut() {
 
 type CheckTextOpts = {
   itemName: string;
-  title: string;
+  step1Title?: string;
+  step2Title: string;
   offsetHelp: string;
 };
 
-function checkSummarizeText({ itemName, title, offsetHelp }: CheckTextOpts) {
+function checkSummarizeText({
+  itemName,
+  step1Title,
+  step2Title,
+  offsetHelp,
+}: CheckTextOpts) {
   cy.button("Summarize").click();
   rightSidebar().button("Add aggregation").click();
+
   popover().within(() => {
     cy.findByText(itemName).should("exist").click();
-    cy.findByText(title).should("exist");
+
+    if (step1Title) {
+      cy.findByText(step1Title).should("exist");
+      cy.findByText("Count").click();
+    }
+
+    cy.findByText(step2Title).should("exist");
     cy.findByText(offsetHelp).should("exist");
   });
 }
 
-function checkColumnDrillText({ itemName, title, offsetHelp }: CheckTextOpts) {
+function checkColumnDrillText({
+  itemName,
+  step1Title,
+  step2Title,
+  offsetHelp,
+}: CheckTextOpts) {
   tableHeaderClick("Count");
+
   popover().within(() => {
     cy.findByText(itemName).should("exist").click();
-    cy.findByText(title).should("exist");
+
+    if (step1Title) {
+      cy.findByText(step1Title).should("exist");
+      cy.findByText("Count").click();
+    }
+
+    cy.findByText(step2Title).should("exist");
     cy.findByText(offsetHelp).should("exist");
   });
 }
 
-function checkPlusButtonText({ itemName, title, offsetHelp }: CheckTextOpts) {
+function checkPlusButtonText({
+  itemName,
+  step1Title,
+  step2Title,
+  offsetHelp,
+}: CheckTextOpts) {
   cy.button("Add column").click();
+
   popover().within(() => {
     cy.findByText(itemName).should("exist").click();
-    cy.findByText(title).should("exist");
+
+    if (step1Title) {
+      cy.findByText(step1Title).should("exist");
+      cy.findByText("Count").click();
+    }
+
+    cy.findByText(step2Title).should("exist");
     cy.findByText(offsetHelp).should("exist");
   });
 }
 
-function checkNotebookText({ itemName, title, offsetHelp }: CheckTextOpts) {
+function checkNotebookText({
+  itemName,
+  step1Title,
+  step2Title,
+  offsetHelp,
+}: CheckTextOpts) {
   openNotebook();
   startNewAggregation();
+
   popover().within(() => {
     cy.findByText(itemName).should("exist").click();
-    cy.findByText(title).should("exist");
+
+    if (step1Title) {
+      cy.findByText(step1Title).should("exist");
+      cy.findByText("Count").click();
+    }
+
+    cy.findByText(step2Title).should("exist");
     cy.findByText(offsetHelp).should("exist");
   });
 }
