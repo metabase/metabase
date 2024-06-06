@@ -31,13 +31,28 @@ export const showAutoWireParametersToast =
     multipleTabs: boolean;
   }) =>
   (dispatch: Dispatch) => {
-    let msg = "";
+    let message = "";
 
     if (multipleTabs) {
-      msg = t`Auto-connect this filter to all questions containing “${fieldName}”, in the current tab?`;
+      message = t`Auto-connect this filter to all questions containing “${fieldName}”, in the current tab?`;
     } else {
-      msg = t`Auto-connect this filter to all questions containing “${fieldName}”?`;
+      message = t`Auto-connect this filter to all questions containing “${fieldName}”?`;
     }
+
+    dispatch(
+      addUndo({
+        id: AUTO_WIRE_TOAST_ID,
+        icon: null,
+        message,
+        actionLabel: t`Auto-connect`,
+        timeout: 12000,
+        undo: false,
+        action: () => {
+          connectAll();
+          showUndoToast();
+        },
+      }),
+    );
 
     function connectAll() {
       dispatch(
@@ -67,21 +82,6 @@ export const showAutoWireParametersToast =
         }),
       );
     }
-
-    dispatch(
-      addUndo({
-        id: AUTO_WIRE_TOAST_ID,
-        message: msg,
-        actionLabel: t`Auto-connect`,
-        timeout: 12000,
-        undo: false,
-        action: () => {
-          connectAll();
-
-          showUndoToast();
-        },
-      }),
-    );
   };
 
 export const showAddedCardAutoWireParametersToast =
@@ -97,6 +97,32 @@ export const showAddedCardAutoWireParametersToast =
     parameters: Parameter[];
   }) =>
   (dispatch: Dispatch) => {
+    let message = "";
+
+    if (parametersToAutoApply.length === 1) {
+      message = t`Auto-connect “${targetDashcard.card.name}” to “${parameters[0].name}”?`;
+    } else {
+      message = t`Auto-connect “${targetDashcard.card.name}” to ${parametersToAutoApply.length} filters with the same field?`;
+    }
+
+    const toastId = _.uniqueId();
+
+    dispatch(
+      addUndo({
+        id: toastId,
+        icon: null,
+        message,
+        actionLabel: t`Auto-connect`,
+        undo: true,
+        timeout: 12000,
+        action: () => {
+          closeAutoWireParameterToast(toastId);
+          autoWireParametersToNewCard();
+          showUndoToast();
+        },
+      }),
+    );
+
     function autoWireParametersToNewCard() {
       dispatch(
         setDashCardAttributes({
@@ -139,36 +165,10 @@ export const showAddedCardAutoWireParametersToast =
         }),
       );
     }
-
-    function hideAutoConnectToast(toastId: string) {
-      dispatch(dismissUndo(toastId, false));
-    }
-
-    let message = "";
-
-    if (parametersToAutoApply.length === 1) {
-      message = t`Auto-connect “${targetDashcard.card.name}” to “${parameters[0].name}”?`;
-    } else {
-      message = t`Auto-connect “${targetDashcard.card.name}” to ${parametersToAutoApply.length} filters with the same field?`;
-    }
-
-    const toastId = _.uniqueId();
-    dispatch(
-      addUndo({
-        id: toastId,
-        message,
-        actionLabel: t`Auto-connect`,
-        undo: true,
-        timeout: 12000,
-        action: () => {
-          hideAutoConnectToast(toastId);
-          autoWireParametersToNewCard();
-          showUndoToast();
-        },
-      }),
-    );
   };
 
-export const closeAutoWireParameterToast = () => (dispatch: Dispatch) => {
-  dispatch(dismissUndo(AUTO_WIRE_TOAST_ID, false));
-};
+export const closeAutoWireParameterToast =
+  (toastId: string = AUTO_WIRE_TOAST_ID) =>
+  (dispatch: Dispatch) => {
+    dispatch(dismissUndo(toastId, false));
+  };
