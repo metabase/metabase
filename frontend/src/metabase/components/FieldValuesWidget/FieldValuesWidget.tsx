@@ -437,6 +437,27 @@ export function FieldValuesWidgetInner({
     return res !== null;
   };
 
+  const renderStringOption = function (option: FieldValue): {
+    label: string;
+    value: string;
+  } {
+    const value = option[0];
+    const column = fields[0];
+    const label =
+      formatValue(value, {
+        ...formatOptions,
+        column,
+        remap: showRemapping(fields),
+        jsx: false,
+        maximumFractionDigits: 20,
+        // we know it is string | number because we are passing jsx: false
+      })?.toString() ?? "<null>";
+
+    // @ts-expect-error: the type of the FieldValuesWidget value is
+    // confusing: it accepts RowValue options but can only onChange(string[])
+    return { value, label };
+  };
+
   return (
     <ErrorBoundary>
       <div
@@ -474,25 +495,7 @@ export function FieldValuesWidgetInner({
             onSearchChange={onInputChange}
             onChange={onChange}
             value={value.filter(v => v !== null && v !== undefined)}
-            data={options
-              .map(function (option) {
-                if (!option) {
-                  return null;
-                }
-
-                const value = option[0];
-                const column = fields[0];
-                const label = formatValue(value, {
-                  ...formatOptions,
-                  column,
-                  remap: showRemapping(fields),
-                  jsx: false,
-                  maximumFractionDigits: 20,
-                });
-
-                return { value, label };
-              })
-              .filter((x): x is { label: string; value: string } => Boolean(x))}
+            data={options.map(renderStringOption)}
             renderValue={value => optionRenderer?.([value])}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
