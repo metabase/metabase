@@ -23,12 +23,7 @@ import * as Urls from "metabase/lib/urls";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type {
-  Bookmark,
-  Collection,
-  Database as DatabaseAPI,
-  User,
-} from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { NavbarErrorView } from "../NavbarErrorView";
@@ -60,7 +55,6 @@ interface Props extends MainNavbarProps {
   selectedItems: SelectedItem[];
   bookmarks: Bookmark[];
   collections: Collection[];
-  databases: DatabaseAPI[];
   rootCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
@@ -83,7 +77,6 @@ function MainNavbarContainer({
   currentUser,
   hasOwnDatabase,
   collections = [],
-  databases = [],
   rootCollection,
   hasDataAccess,
   location,
@@ -191,7 +184,6 @@ function MainNavbarContainer({
         isOpen={isOpen}
         currentUser={currentUser}
         collections={collectionTree}
-        databases={databases}
         hasOwnDatabase={hasOwnDatabase}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}

@@ -10,11 +10,13 @@ import CS from "metabase/css/core/index.css";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import UploadCSV from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
+import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Bookmark, Collection, Database, User } from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
   AddYourOwnDataLink,
@@ -44,7 +46,6 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
-  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -67,7 +68,6 @@ function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
-  databases,
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
@@ -95,13 +95,11 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
-  // TO BE REVIEWED
-  // upload CSVs
-  const databaseDWH = databases.find(
-    ({ name }) =>
-      name.includes("Cloud data warehouse") || name === "Sample Database",
+  // Can upload CSVs
+  const hasAttachedDWHFeature = useSelector(
+    state => getSetting(state, "token-features").attached_dwh,
   );
-  const collectionRoot = collections.find(
+  const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
 
@@ -118,8 +116,8 @@ function MainNavbarView({
             {t`Home`}
           </PaddedSidebarLink>
 
-          {databaseDWH && collectionRoot && (
-            <UploadCSV collection={collectionRoot} />
+          {hasAttachedDWHFeature && rootCollection && (
+            <UploadCSV collection={rootCollection} />
           )}
         </SidebarSection>
         <SidebarSection>
