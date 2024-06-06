@@ -27,6 +27,7 @@ import {
   getEmbedModalSharingPane,
   setFilter,
   multiAutocompleteInput,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -557,12 +558,9 @@ describe("scenarios > dashboard > subscriptions", () => {
           .findByText("Text")
           .click();
         cy.get("@subscriptionBar").findByText("Corbin Mertz").click();
-        popover()
-          .findByText("Corbin Mertz")
-          .closest("li")
-          .icon("close")
-          .click();
+
         popover().within(() => {
+          removeMultiAutocompleteValue(0);
           multiAutocompleteInput().type("Sallie");
         });
         popover().findByText("Sallie Flatley").click();
