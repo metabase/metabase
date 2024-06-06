@@ -98,10 +98,10 @@ function MainNavbarView({
   // TEMP
   // Can upload CSVs if
   // - properties.token_features.attached_dwh === true
-  // - retrieve collection using properties.upload-settings.db_id
+  // - retrieve collection using properties.uploads-settings.db_id
   const hasAttachedDWHFeature =
     useSelector(state => getSetting(state, "token-features").attached_dwh) ||
-    true;
+    true; // always visible atm
   const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
