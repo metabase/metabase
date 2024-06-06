@@ -95,10 +95,13 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
-  // Can upload CSVs
-  const hasAttachedDWHFeature = useSelector(
-    state => getSetting(state, "token-features").attached_dwh,
-  );
+  // TEMP
+  // Can upload CSVs if
+  // - properties.token_features.attached_dwh === true
+  // - retrieve collection using properties.upload-settings.db_id
+  const hasAttachedDWHFeature =
+    useSelector(state => getSetting(state, "token-features").attached_dwh) ||
+    true;
   const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
