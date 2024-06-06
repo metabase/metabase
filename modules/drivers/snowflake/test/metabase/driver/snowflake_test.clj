@@ -428,7 +428,7 @@
        ;; the [[metabase.driver.snowflake/maybe-add-role-to-spec-url]] for the details.
        (testing "Role is added to connection url, if url is present (#43600)"
          (is (str/includes?
-              (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :role "SOME_ROLE"))
+              (:connection-uri (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :role "SOME_ROLE")))
               "role=SOME_ROLE")))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
