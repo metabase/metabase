@@ -116,14 +116,10 @@ describe("scenarios > dashboard > filters > number", () => {
     saveDashboard();
     ensureDashboardCardHasText("37.65");
 
-    cy.log("HEREEE A");
-
     // Updates the filter value
     setFilterWidgetValue("5.27", "Enter a number");
-    cy.log("HEREEE B");
     ensureDashboardCardHasText("95.77");
 
-    cy.log("HEREEE C");
     // Resets the value back by clicking widget icon
     resetFilterWidgetToDefault();
     filterWidget().findByText("2.07");
