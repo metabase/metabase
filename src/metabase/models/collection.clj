@@ -301,8 +301,8 @@
 ;; breadcrumbing in the frontend.
 
 (def ^:private VisibleCollections
-  "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
-  represent the root collection."
+  "Includes the possible values for visible collections, possibly including `\"root\"` to represent the root
+  collection."
   [:set
    [:or [:= "root"] ms/PositiveInt]])
 
@@ -395,7 +395,7 @@
 (mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
   returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
-  function, including `:all` and `nil` Collection IDs (for the Root Collection).
+  function, including `root` Collection IDs (for the Root Collection).
 
   Guaranteed to always generate a valid HoneySQL form, so this can be used directly in a query without further checks.
 
@@ -408,22 +408,20 @@
 
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword] ;; `[:vector :keyword]` allows `[:coalesce :option-1 :option-2]`
     collection-ids      :- VisibleCollections]
-   (if (= collection-ids :all)
-     true
-     (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
-           non-root-clause                    (when (seq non-root-ids)
-                                                [:in collection-id-field non-root-ids])
-           root-clause                        (when (seq root-id)
-                                                [:= collection-id-field nil])]
-       (cond
-         (and root-clause non-root-clause)
-         [:or root-clause non-root-clause]
+   (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
+         non-root-clause                    (when (seq non-root-ids)
+                                              [:in collection-id-field non-root-ids])
+         root-clause                        (when (seq root-id)
+                                              [:= collection-id-field nil])]
+     (cond
+       (and root-clause non-root-clause)
+       [:or root-clause non-root-clause]
 
-         (or root-clause non-root-clause)
-         (or root-clause non-root-clause)
+       (or root-clause non-root-clause)
+       (or root-clause non-root-clause)
 
-         :else
-         false)))))
+       :else
+       false))))
 
 (mu/defn visible-collection-ids->direct-visible-descendant-clause
   "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
@@ -435,25 +433,15 @@
     ;; see collection B in the Trash. But this is not something we can figure out here, because we need to look at
     ;; whether a visible ancestor was `archived_directly`.
     [:= :archived_directly true]
-    (let [parent-id           (or (:id parent-collection) "")
-          child-literal       (if (collection.root/is-root-collection? parent-collection)
-                                "/"
-                                (format "%%/%s/" (str parent-id)))
-          collection-ids      (if (= collection-ids :all)
-                                (t2/select-pks-set :model/Collection :archived (:archived parent-collection))
-                                collection-ids)]
+    (let [parent-id (or (:id parent-collection) "")]
       (into
        ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
        ;; the (1 = 1) is to prevent this
        [:and [:= [:inline 1] [:inline 1]]]
-       (if (= collection-ids :all)
-         ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
-         ;; meaning, the effective children are always the direct children. So check for being a direct child.
-         [[:like :location (h2x/literal child-literal)]]
-         (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-               disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
-           (for [visible-collection-id disj-collection-ids]
-             [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))])))))))
+       (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+             disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
+         (for [visible-collection-id disj-collection-ids]
+           [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 (mu/defn ^:private effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
@@ -471,11 +459,9 @@
                                  :permission-level          :read}))))
   ([real-location-path     :- LocationPath
     allowed-collection-ids :- VisibleCollections]
-   (if (= allowed-collection-ids :all)
-     real-location-path
-     (apply location-path (for [id    (location-path->ids real-location-path)
-                                :when (contains? allowed-collection-ids id)]
-                            id)))))
+   (apply location-path (for [id    (location-path->ids real-location-path)
+                              :when (contains? allowed-collection-ids id)]
+                          id))))
 
 (mi/define-simple-hydration-method effective-location-path
   :effective_location
