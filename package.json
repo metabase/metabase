@@ -279,6 +279,7 @@
     "prettier": "^2.7.1",
     "promise-loader": "^1.0.0",
     "raf": "^3.4.0",
+    "react-docgen-typescript-plugin": "^1.0.6",
     "react-refresh": "^0.13.0",
     "reg-cli": "^0.17.7",
     "shadow-cljs": "2.27.4",
