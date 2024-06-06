@@ -111,6 +111,7 @@ describe("scenarios > question > column compare TODO", () => {
       it("does not show column compare shortcut", () => {
         openNotebook();
         cy.button("Summarize").click();
+
         assertNoColumnCompareShortcut();
       });
     });
@@ -120,6 +121,7 @@ describe("scenarios > question > column compare TODO", () => {
         cy.button("Summarize").click();
         rightSidebar().button("Count").icon("close").click();
         rightSidebar().button("Add aggregation").click();
+
         assertNoColumnCompareShortcut();
       });
     });
@@ -135,45 +137,82 @@ describe("scenarios > question > column compare TODO", () => {
     describe("chill mode - plus button", () => {
       it("does not show column compare shortcut", () => {
         cy.button("Add column").click();
+
         assertNoColumnCompareShortcut();
       });
     });
   });
 
   describe("single aggregation", () => {
-    beforeEach(() => {
-      createQuestion(
-        { query: QUERY_SINGLE_AGGREGATION },
-        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-      );
-    });
-
-    describe("notebook editor", () => {
-      it("shows correct label", () => {
-        openNotebook();
-        startNewAggregation();
-
-        popover()
-          .findByText("Compare “Count” to previous period ...")
-          .should("exist")
-          .click();
-
-        popover()
-          .findByText("Compare “Count” to previous period")
-          .should("exist");
+    describe("no breakout", () => {
+      beforeEach(() => {
+        createQuestion(
+          { query: QUERY_SINGLE_AGGREGATION },
+          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        );
       });
-    });
 
-    describe("chill mode - summarize sidebar", () => {
-      it("shows correct label", () => {});
-    });
+      describe("notebook editor", () => {
+        it("shows correct shortcut label and popover title", () => {
+          openNotebook();
+          startNewAggregation();
 
-    describe("chill mode - column header drill", () => {
-      it("shows correct label", () => {});
-    });
+          popover().within(() => {
+            cy.findByText("Compare “Count” to previous period ...")
+              .should("exist")
+              .click();
 
-    describe("chill mode - plus button", () => {
-      it("shows correct label", () => {});
+            cy.findByText("Compare “Count” to previous period").should("exist");
+            cy.findByText("periods ago based on grouping").should("exist");
+          });
+        });
+      });
+
+      describe("chill mode - summarize sidebar", () => {
+        it("shows correct shortcut label and popover title", () => {
+          cy.button("Summarize").click();
+          rightSidebar().button("Add aggregation").click();
+
+          popover().within(() => {
+            cy.findByText("Compare “Count” to previous period ...")
+              .should("exist")
+              .click();
+
+            cy.findByText("Compare “Count” to previous period").should("exist");
+            cy.findByText("periods ago based on grouping").should("exist");
+          });
+        });
+      });
+
+      describe("chill mode - column header drill", () => {
+        it("shows correct shortcut label and popover title", () => {
+          tableHeaderClick("Count");
+
+          popover().within(() => {
+            cy.findByText("Compare “Count” to previous period")
+              .should("exist")
+              .click();
+
+            cy.findByText("Compare “Count” to previous period").should("exist");
+            cy.findByText("periods ago based on grouping").should("exist");
+          });
+        });
+      });
+
+      describe("chill mode - plus button", () => {
+        it("shows correct shortcut label and popover title", () => {
+          cy.button("Add column").click();
+
+          popover().within(() => {
+            cy.findByText("Compare “Count” to previous period")
+              .should("exist")
+              .click();
+
+            cy.findByText("Compare “Count” to previous period").should("exist");
+            cy.findByText("periods ago based on grouping").should("exist");
+          });
+        });
+      });
     });
   });
 });
