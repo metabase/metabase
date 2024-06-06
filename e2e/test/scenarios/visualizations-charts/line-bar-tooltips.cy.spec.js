@@ -777,6 +777,11 @@ function setupDashboard(cardId, addedSeriesCardId) {
  */
 function showTooltipOutsideChart() {
   settings().realHover();
+  popover()
+    .last() // use last to select the settings tooltip, instead of the chart tooltip
+    .within(() => {
+      cy.findByText("Settings");
+    });
 }
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
