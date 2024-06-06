@@ -252,7 +252,7 @@
   (update-keys m ->snake_case_en))
 
 (defn deep-snake-keys
-  "Convert the keys in a map to `snake_case`."
+  "Recursively convert the keys in a map to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
 

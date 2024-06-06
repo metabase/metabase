@@ -84,6 +84,7 @@
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
                                               :where     [:and
+                                                          [:= :context "view"]
                                                           [:in :model #{"dashboard" "table"}]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
                                               :limit     views-limit
@@ -130,17 +131,17 @@
    (recent-views/get-recents *current-user-id* context)))
 
 (api/defendpoint POST "/recents"
-  "Adds a model to the list of recently viewed or selected items."
+  "Adds a model to the list of recently selected items."
   [:as {{:keys [model model_id context]} :body}]
-  {model (into [:enum] recent-views/models-of-interest)
+  {model (into [:enum] recent-views/rv-models)
    model_id ms/PositiveInt
    context [:enum :selection]}
-  (let [moi model ;;moi is model-of-interest
-        model-id model_id]
-    (when-not (t2/exists? (recent-views/moi->model moi) :id model-id)
-      (throw (ex-info "Model not found" {:model moi :model_id model-id})))
-    (api/read-check (t2/select-one (recent-views/moi->model moi) :id model-id))
-    (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context)))
+  (let [model-id model_id
+        model-type (recent-views/rv-model->model model)]
+    (when-not (t2/exists? model-type :id model-id)
+      (throw (ex-info "Model not found" {:model model :model_id model-id})))
+    (api/read-check (t2/select-one model-type :id model-id))
+    (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
@@ -181,9 +182,9 @@
                views-wt 4
                scores (remove nil?
                               [;; cards and dashboards? can be 'verified' in enterprise
-                               (if (verified? model_object) verified-wt 0)
+                               (when (verified? model_object) verified-wt)
                                ;; items may exist in an 'official' collection in enterprise
-                               (if (official? model_object) official-wt 0)
+                               (when (official? model_object) official-wt)
                                ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
                                (when-not (zero? n-items)
                                  (* (/ (- n-items recency-pos) n-items) recency-wt))

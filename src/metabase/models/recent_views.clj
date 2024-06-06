@@ -1,6 +1,6 @@
 (ns metabase.models.recent-views
   "The Recent Views table is used to track the most recent views of objects such as Cards, Models, Tables, Dashboards,
-  and Collections for each user. For an up to date list, see [[models-of-interest]].
+  and Collections for each user. For an up to date list, see [[rv-models]].
 
   It offers a simple API to add a recent view item, and fetch the list of recents.
 
@@ -17,10 +17,14 @@
   there are more than [[*recent-views-stored-per-user-per-model*]] (20 currently) of any entity type, the oldest
   one(s) will be deleted, so that the count stays at least 20.
 
-  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
+  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents.
+
+  [Metrics] TODO:
+  At some point in 2024, there was an attempt to add `metric` to the list of recent-view models. This
+  was never completed, and the code has not been hooked up. There is no query for metrics, despite there being a
+  `:metric` model in the `models-of-interest` list. This is a TODO to complete this work."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [colorize.core :as colorize]
    [java-time.api :as t]
    [malli.core :as mc]
@@ -66,23 +70,21 @@
        (map :id)
        set))
 
-(def models-of-interest
+(def rv-models
   "These are models for which we will retrieve recency."
-  [:card :model ;; note: these are both stored in recent_views as "card", and a join with report_card is needed to
-                ;;       distinguish between them.
+  [:card :model ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
+                ;; needed to distinguish between them.
    :dashboard :table :collection])
 
-(defn- moi->type
-  "Turns a model of interest into the base name of its table"
-  [moi]
-  (if (#{:model :card :metric} moi)
-    "card"
-    (name moi)))
-
-(mu/defn moi->model
-  "Given a model of interest, returns the model for it."
-  [moi :- (into [:enum] models-of-interest)]
-  (keyword "model" (str/capitalize (moi->type moi))))
+(mu/defn rv-model->model
+  "Given a rv-model, returns the toucan model identifier for it."
+  [rvm :- (into [:enum] rv-models)]
+  (get {:model      :model/Card
+        :card       :model/Card
+        :dashboard  :model/Dashboard
+        :table      :model/Table
+        :collection :model/Collection}
+       rvm))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
@@ -107,7 +109,7 @@
                      :offset *recent-views-stored-per-user-per-model*}))
 
 (defn- overflowing-model-buckets [user-id context]
-  (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) models-of-interest))
+  (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
 
 (defn ids-to-prune
   "Returns IDs to prune, which includes 2 things:
