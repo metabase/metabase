@@ -26,7 +26,7 @@ import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import { Help } from "metabase/admin/tasks/components/Help";
 import { Logs } from "metabase/admin/tasks/components/Logs";
-import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
+import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
 import {
   ModelCacheRefreshJobs,
