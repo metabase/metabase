@@ -27,9 +27,9 @@ function selectCombineColumns() {
   });
 }
 
-function selectColumn(table, name) {
+function selectColumn(index, table, name) {
   expressionEditorWidget().within(() => {
-    cy.findAllByText("Select a column...").first().click();
+    cy.findAllByTestId("column-input").eq(index).click();
   });
 
   popover()
@@ -251,11 +251,11 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
     addCustomColumn();
     selectCombineColumns();
 
-    selectColumn("Total");
+    selectColumn(0, "Total");
 
     expressionEditorWidget().findByText("Total").should("exist");
 
-    selectColumn("Product", "Rating");
+    selectColumn(1, "Product", "Rating");
 
     expressionEditorWidget().within(() => {
       cy.findByText("Product → Rating").should("exist");
@@ -291,8 +291,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
     addCustomColumn();
     selectCombineColumns();
 
-    selectColumn("Total");
-    selectColumn("Product", "Rating");
+    selectColumn(0, "Total");
+    selectColumn(1, "Product", "Rating");
 
     expressionEditorWidget().within(() => {
       // Click the back button, in the header
@@ -308,10 +308,10 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
     addCustomColumn();
     selectCombineColumns();
 
-    selectColumn("Total");
-    selectColumn("Product", "Rating");
+    selectColumn(0, "Total");
+    selectColumn(1, "Product", "Rating");
     addColumn();
-    selectColumn("User", "Email");
+    selectColumn(2, "User", "Email");
 
     cy.findByTestId("combine-example").should(
       "contain",
@@ -331,7 +331,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
     addCustomColumn();
     selectCombineColumns();
 
-    selectColumn("User", "Email");
+    selectColumn(0, "User", "Email");
 
     expressionEditorWidget().within(() => {
       cy.findByText("Separated by (empty)").should("exist");
@@ -351,7 +351,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
     addCustomColumn();
     selectCombineColumns();
 
-    selectColumn("User", "Email");
+    selectColumn(0, "User", "Email");
 
     expressionEditorWidget().within(() => {
       cy.findByText("Separated by (empty)").should("exist");
@@ -380,8 +380,8 @@ describeWithSnowplow(
       addCustomColumn();
       selectCombineColumns();
 
-      selectColumn("User", "Email");
-      selectColumn("User", "Email");
+      selectColumn(0, "User", "Email");
+      selectColumn(1, "User", "Email");
 
       expressionEditorWidget().button("Done").click();
 
