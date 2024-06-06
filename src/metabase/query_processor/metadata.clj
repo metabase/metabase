@@ -133,9 +133,7 @@
             (-> col
                 (dissoc :lib/type)
                 (update-keys u/->snake_case_en)))
-          ;; TODO -- not sure if this is needed or not, leaving commented out to see if tests pass; if they do then we
-          ;; can remove this entirely
-          #_(ensure-field-ref [col]
+          (ensure-field-ref [col]
             ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
             ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam
             (cond-> col
@@ -143,7 +141,7 @@
     (-> col
         ->legacy
         (add-extra-column-metadata ::legacy)
-        #_ensure-field-ref)))
+        ensure-field-ref)))
 
 (mu/defn legacy-result-metadata :- [:ref :metabase.analyze.query-results/ResultsMetadata]
   "Like [[result-metadata]], but return metadata in legacy format rather than MLv2 format. This should be considered
