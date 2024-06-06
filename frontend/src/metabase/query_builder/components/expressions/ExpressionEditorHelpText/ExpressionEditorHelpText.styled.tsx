@@ -26,7 +26,7 @@ export const FunctionHelpCodeArgument = styled.span`
 
 export const Divider = styled.div`
   height: 1px;
-  background-color: ${color("border")};
+  background-color: var(--mb-color-border);
   margin: 1.25rem -1rem 1rem -1rem;
 `;
 
@@ -70,7 +70,7 @@ export const DocumentationLink = styled(ExternalLink)`
   align-items: center;
   margin-top: 1rem;
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
 `;
 

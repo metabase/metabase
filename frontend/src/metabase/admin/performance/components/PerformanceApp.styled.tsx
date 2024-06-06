@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Tabs } from "metabase/ui";
 
 export const TabsList = styled(Tabs.List)`
@@ -17,7 +16,7 @@ export const Tab = styled(Tabs.Tab)`
   padding: 0.625rem 0px;
   margin-inline-end: 1.25rem;
   :hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     background-color: inherit;
     border-color: transparent;
   }

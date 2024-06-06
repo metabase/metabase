@@ -48,6 +48,7 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
   return (
     <MultiSelect
       data={COLUMN_OPTIONS}
+      data-testid="column-picker"
       disableSelectedItemFiltering
       itemComponent={Item}
       label={t`Columns to create`}
@@ -79,7 +80,7 @@ const Item = forwardRef<
   ItemType & ComponentPropsWithoutRef<"div"> & { selected: boolean }
 >(function Item({ example, label, selected, value, ...props }, ref) {
   return (
-    <div ref={ref} {...props}>
+    <div data-testid="column-picker-item" ref={ref} {...props}>
       <Flex align="center" gap="sm">
         <Checkbox checked={selected} readOnly />
 

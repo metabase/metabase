@@ -11,7 +11,6 @@ import {
   openNavigationSidebar,
   popover,
   restore,
-  describeOSS,
   modal,
   openNativeEditor,
   saveQuestion,
@@ -51,6 +50,7 @@ import {
   visualize,
   focusNativeEditor,
   tableHeaderClick,
+  onlyOnOSS,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -195,36 +195,39 @@ describe("issue 19737", () => {
 });
 
 // this is only testable in OSS because EE always has models from auditv2
-describeOSS("issue 19776", { tags: "@OSS" }, () => {
+describe("issue 19776", { tags: "@OSS" }, () => {
   const modelName = "Orders Model";
   function openEllipsisMenuFor(item) {
     cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
   }
   beforeEach(() => {
+    onlyOnOSS();
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should show moved model in the data picker without refreshing (metabase#19776)", () => {
-    cy.visit("/collection/root");
+  it("should reflect archived model in the data picker without refreshing (metabase#19776)", () => {
+    cy.visit("/");
 
-    openEllipsisMenuFor(modelName);
+    cy.findByTestId("app-bar").button("New").click();
+    popover().findByText("Question").click();
+    entityPickerModalTab("Models").should("be.visible"); // now you see it
+    entityPickerModal().findByLabelText("Close").click();
+
+    // navigate without a page load
+    cy.findByTestId("sidebar-toggle").click();
+    navigationSidebar().findByText("Our analytics").click();
+
+    // archive the only model
+    cy.findByTestId("collection-table").within(() => {
+      openEllipsisMenuFor(modelName);
+    });
     popover().contains("Move to trash").click();
+    cy.findByTestId("undo-list").findByText("Trashed model");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Archived model");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sample Database");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Models").should("not.exist");
+    cy.findByTestId("app-bar").button("New").click();
+    popover().findByText("Question").click();
+    entityPickerModalTab("Models").should("not.exist"); // now you don't
   });
 });
 

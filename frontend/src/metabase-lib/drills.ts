@@ -2,6 +2,7 @@ import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 import type {
+  AggregationDrillDetails,
   ClickObjectDataRow,
   ClickObjectDimension,
   ColumnMetadata,
@@ -43,6 +44,12 @@ export function drillThru(
 
 export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
   return ML.filter_drill_details(drillThru);
+}
+
+export function aggregationDrillDetails(
+  drillThru: DrillThru,
+): AggregationDrillDetails {
+  return ML.aggregation_drill_details(drillThru);
 }
 
 export function pivotTypes(drillThru: DrillThru): PivotType[] {

@@ -12,11 +12,11 @@ type OptionButtonProps = {
 
 export const OptionButton = styled(Button)<OptionButtonProps>`
   display: block;
-  color: ${({ primaryColor = color("brand"), selected }) =>
+  color: ${({ primaryColor = "var(--mb-color-brand)", selected }) =>
     selected ? primaryColor : undefined};
   border: none;
   &:hover {
-    color: ${props => props.primaryColor || color("brand")};
+    color: ${props => props.primaryColor || "var(--mb-color-brand)"};
     background: none;
   }
 `;

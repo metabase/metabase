@@ -23,16 +23,16 @@ export const Table = styled.table<{ isInDragLayer?: boolean }>`
 
   thead {
     th {
-      border-top: 1px solid ${color("border")};
+      border-top: 1px solid var(--mb-color-border);
 
       &:first-of-type {
         border-start-start-radius: 8px;
-        border-inline-start: 1px solid ${color("border")};
+        border-inline-start: 1px solid var(--mb-color-border);
       }
 
       &:last-child {
         border-start-end-radius: 8px;
-        border-inline-end: 1px solid ${color("border")};
+        border-inline-end: 1px solid var(--mb-color-border);
       }
     }
   }
@@ -87,7 +87,7 @@ const itemLinkStyle = css`
   align-items: center;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -107,7 +107,7 @@ export const ItemNameCell = styled.td`
 
   &:hover {
     ${ItemLink}, ${ItemButton} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     cursor: pointer;
@@ -173,14 +173,14 @@ export const TBody = styled.tbody`
     border: none;
     background-color: transparent;
 
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
 
     &:first-of-type {
-      border-inline-start: 1px solid ${color("border")};
+      border-inline-start: 1px solid var(--mb-color-border);
     }
 
     &:last-child {
-      border-inline-end: 1px solid ${color("border")};
+      border-inline-end: 1px solid var(--mb-color-border);
     }
   }
 
@@ -190,7 +190,7 @@ export const TBody = styled.tbody`
 
   tr:last-child {
     td {
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
 
       &:last-child {
         border-end-end-radius: 8px;

@@ -64,15 +64,6 @@ export interface PublicCard {
   dataset_query: PublicDatasetQuery;
 }
 
-export interface XrayCard {
-  id: string;
-  name: string;
-  description: string | null;
-  display: CardDisplayType;
-  visualization_settings: VisualizationSettings;
-  dataset_query: DatasetQuery;
-}
-
 export type CardDisplayType = string;
 
 export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {

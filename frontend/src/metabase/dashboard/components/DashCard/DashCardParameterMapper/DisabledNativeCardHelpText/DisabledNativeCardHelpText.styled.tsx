@@ -25,7 +25,7 @@ export const NativeCardText = styled.div`
 `;
 
 export const NativeCardLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   margin-top: 0.5rem;
 `;
