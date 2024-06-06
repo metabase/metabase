@@ -179,20 +179,21 @@
                official-wt 1
                recency-wt 2
                views-wt 4
-               scores [;; cards and dashboards? can be 'verified' in enterprise
-                       (if (verified? model_object) verified-wt 0)
-                       ;; items may exist in an 'official' collection in enterprise
-                       (if (official? model_object) official-wt 0)
-                       ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
-                       (if (zero? n-items)
-                         0
-                         (* (/ (- n-items recency-pos) n-items) recency-wt))
-                       ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
+               scores (remove nil?
+                              [;; cards and dashboards? can be 'verified' in enterprise
+                               (if (verified? model_object) verified-wt 0)
+                               ;; items may exist in an 'official' collection in enterprise
+                               (if (official? model_object) official-wt 0)
+                               ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
+                               (when-not (zero? n-items)
+                                 (* (/ (- n-items recency-pos) n-items) recency-wt))
+                               ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
 
-                       ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
-                       ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
-                       ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
-                       (* (/ cnt max-count) views-wt)]]
+                               ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
+                               ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
+                               ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
+                               (when-not (zero? max-count)
+                                 (* (/ cnt max-count) views-wt))])]
            (assoc item :score (double (reduce + scores))))) items))))
 
 (def ^:private model->precedence
