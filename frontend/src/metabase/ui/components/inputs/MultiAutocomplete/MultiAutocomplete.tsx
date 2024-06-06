@@ -205,7 +205,7 @@ export function MultiAutocomplete<ValueType extends Base>({
     (props: SelectItemProps) => {
       const customLabel =
         props.value !== undefined && renderValue?.(props.value as ValueType);
-      return <ItemWrapper {...props} label={customLabel} />;
+      return <ItemWrapper {...props} label={customLabel ?? props.label} />;
     },
     [renderValue],
   );
