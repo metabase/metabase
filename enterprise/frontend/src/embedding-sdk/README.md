@@ -39,12 +39,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC1
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC2
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC1/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC2/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 

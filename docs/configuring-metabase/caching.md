@@ -117,3 +117,7 @@ To clear the cache for a question or dashboard and refresh the results: click th
 If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
 
 If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States (as our Cloud service manages your application database for you.)
+
+## Further reading
+
+- [Model persistence](../data-modeling/model-persistence.md)

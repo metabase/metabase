@@ -33,6 +33,7 @@ import {
   getDefaultLegendIsReversed,
   getDefaultShowDataLabels,
   getDefaultDataLabelsFrequency,
+  getDefaultDataLabelsFormatting,
   getDefaultIsAutoSplitEnabled,
   getDefaultColumns,
   getDefaultDimensionFilter,
@@ -390,7 +391,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
         { name: t`Full`, value: "full" },
       ],
     },
-    default: "auto",
+    default: getDefaultDataLabelsFormatting(),
   },
 };
 
