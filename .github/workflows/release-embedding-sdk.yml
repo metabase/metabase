@@ -115,11 +115,16 @@ jobs:
           name: metabase-sdk
           path: ./resources/embedding-sdk
 
-      - name: Upload changelog
+      - name: Create changelog patch
+        run: |
+          git add enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          git diff --staged > changelog.patch
+
+      - name: Upload changelog patch
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-changelog
-          path: ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          name: sdk-changelog-patch
+          path: ./changelog.patch
 
   build-jar:
     needs: test
@@ -186,15 +191,15 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      - name: Retrieve SDK changelog
+      - name: Retrieve SDK changelog patch
         uses: actions/download-artifact@v4
         with:
-          name: sdk-changelog
+          name: sdk-changelog-patch
+          path: ./changelog.patch
 
-      # We need to do this because it's impossible to download an artifact to an existing location
-      - name: Move over the downloaded changelog
+      - name: Apply changelog patch
         run: |
-          mv CHANGELOG.md ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          git apply changelog.patch
 
       - name: Create a PR updating readme + published version, and changelog
         run: |
