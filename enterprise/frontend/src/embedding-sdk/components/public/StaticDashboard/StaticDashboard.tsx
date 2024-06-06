@@ -18,10 +18,10 @@ import type { DashboardId } from "metabase-types/api";
 
 type StaticDashboardProps = {
   dashboardId: DashboardId;
+  initialParameterValues?: Query;
   withTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
-  initialParameterValues?: Query;
 };
 
 const _StaticDashboard = ({
