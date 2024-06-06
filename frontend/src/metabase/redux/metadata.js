@@ -4,7 +4,6 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
 import Metrics from "metabase/entities/metrics";
-import Schemas from "metabase/entities/schemas";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
@@ -293,30 +292,3 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
     };
   },
 );
-
-export const loadMetadataForDependentItems =
-  (dependentItems, options) => dispatch => {
-    const uniqueDependentItems = _.uniq(
-      dependentItems,
-      false,
-      ({ type, id }) => type + id,
-    );
-    const promises = uniqueDependentItems.flatMap(({ type, id }) => {
-      switch (type) {
-        case "schema":
-          return [Schemas.actions.fetchList({ dbId: id }, options)];
-        case "table":
-          return [
-            Tables.actions.fetchMetadataAndForeignTables({ id }, options),
-          ];
-        case "field":
-          return [Fields.actions.fetch({ id }, options)];
-        default:
-          return [];
-      }
-    });
-
-    return Promise.all(promises.map(dispatch)).catch(e =>
-      console.error("Failed loading metadata", e),
-    );
-  };
