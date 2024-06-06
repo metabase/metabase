@@ -277,6 +277,28 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
   });
+
+  describe("query string parameters", () => {
+    it("should be able to parse the parameter value from the url", () => {
+      cy.createDashboardWithQuestions({
+        questions: [singleBreakoutQuestionDetails],
+      }).then(({ dashboard }) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+      cy.get("@dashboardId").then(visitDashboard);
+
+      editDashboard();
+      addTemporalUnitParameter();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Month").click();
+      saveDashboard();
+
+      cy.get("@dashboardId").then(dashboardId =>
+        visitDashboard(dashboardId, { params: { unit_of_time: "year" } }),
+      );
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+  });
 });
 
 function addTemporalUnitParameter() {
