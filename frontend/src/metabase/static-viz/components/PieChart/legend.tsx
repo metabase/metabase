@@ -26,7 +26,10 @@ export function getPieChartLegend(
     items: chartModel.slices.map(s => ({
       name:
         settings["pie.percent_visibility"] === "legend"
-          ? `${s.key} - ${formatters.formatPercent(s.normalizedPercentage)}`
+          ? `${s.key} - ${formatters.formatPercent(
+              s.normalizedPercentage,
+              "legend",
+            )}`
           : s.key,
       color: s.color,
       key: s.key,
