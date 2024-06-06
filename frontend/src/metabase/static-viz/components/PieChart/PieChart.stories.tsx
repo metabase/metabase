@@ -101,6 +101,13 @@ ShowPercentagesOnChart.args = {
   renderingContext,
 };
 
+export const ShowPercentagesOnChartDense = Template.bind({});
+ShowPercentagesOnChartDense.args = {
+  rawSeries: data.showPercentagesOnChartDense as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const AllNegative = Template.bind({});
 AllNegative.args = {
   rawSeries: data.allNegative as any,
