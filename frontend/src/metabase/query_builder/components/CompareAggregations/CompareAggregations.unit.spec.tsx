@@ -6,6 +6,17 @@ import { createQueryWithClauses } from "metabase-lib/test-helpers";
 
 import { CompareAggregations } from "./CompareAggregations";
 
+const queryWithCountAggregation = createQueryWithClauses({
+  aggregations: [{ operatorName: "count" }],
+});
+
+const queryWithCountAndSumAggregations = createQueryWithClauses({
+  aggregations: [
+    { operatorName: "count" },
+    { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
+  ],
+});
+
 interface SetupOpts {
   query: Lib.Query;
 }
@@ -32,7 +43,7 @@ const setup = ({ query }: SetupOpts) => {
 describe("CompareAggregations", () => {
   describe("single aggregation", () => {
     it("does not show step to pick aggregation", () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({ query: queryWithCountAggregation });
 
       expect(
         screen.getByText("Compare “Count” to previous period"),
@@ -43,7 +54,7 @@ describe("CompareAggregations", () => {
     });
 
     it("calls onClose when going back to previous step", async () => {
-      const { onClose } = setup({ query: createQueryWithCountAggregation() });
+      const { onClose } = setup({ query: queryWithCountAggregation });
 
       expect(
         screen.getByText("Compare “Count” to previous period"),
@@ -62,7 +73,7 @@ describe("CompareAggregations", () => {
 
   describe("multiple aggregations", () => {
     it("shows step to pick aggregation", async () => {
-      setup({ query: createQueryWithCountAndSumAggregations() });
+      setup({ query: queryWithCountAndSumAggregations });
 
       expect(
         screen.getByText("Compare one of these to the previous period"),
@@ -76,7 +87,7 @@ describe("CompareAggregations", () => {
 
     it("allows to go back and forth between steps", async () => {
       const { onClose } = setup({
-        query: createQueryWithCountAndSumAggregations(),
+        query: queryWithCountAndSumAggregations,
       });
 
       await userEvent.click(screen.getByText("Count"));
@@ -111,7 +122,7 @@ describe("CompareAggregations", () => {
 
   describe("offset input", () => {
     it("does not allow negative values", async () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({ query: queryWithCountAggregation });
 
       const input = screen.getByLabelText("Previous period");
 
@@ -123,7 +134,7 @@ describe("CompareAggregations", () => {
     });
 
     it("does not allow non-integer values", async () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({ query: queryWithCountAggregation });
 
       const input = screen.getByLabelText("Previous period");
 
@@ -137,7 +148,7 @@ describe("CompareAggregations", () => {
 
   describe("submit", () => {
     it("is submittable by default", () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({ query: queryWithCountAggregation });
 
       expect(screen.getByLabelText("Previous period")).toHaveValue(1);
       expect(screen.getByText("Previous value")).toBeInTheDocument();
@@ -147,7 +158,7 @@ describe("CompareAggregations", () => {
     });
 
     it("disables the submit button when offset input is empty", async () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({ query: queryWithCountAggregation });
 
       const input = screen.getByLabelText("Previous period");
 
@@ -157,7 +168,7 @@ describe("CompareAggregations", () => {
     });
 
     it("disables the submit button when no columns are selected", async () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({ query: queryWithCountAggregation });
 
       await userEvent.click(screen.getByLabelText("Columns to create"));
 
@@ -169,7 +180,7 @@ describe("CompareAggregations", () => {
     });
 
     it("calls 'onSubmit' with single aggregation", async () => {
-      const { onSubmit } = setup({ query: createQueryWithCountAggregation() });
+      const { onSubmit } = setup({ query: queryWithCountAggregation });
 
       await userEvent.click(screen.getByLabelText("Columns to create"));
 
@@ -183,7 +194,7 @@ describe("CompareAggregations", () => {
     });
 
     it("calls 'onSubmit' with multiple aggregations", async () => {
-      const { onSubmit } = setup({ query: createQueryWithCountAggregation() });
+      const { onSubmit } = setup({ query: queryWithCountAggregation });
 
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
@@ -193,18 +204,3 @@ describe("CompareAggregations", () => {
     });
   });
 });
-
-function createQueryWithCountAggregation() {
-  return createQueryWithClauses({
-    aggregations: [{ operatorName: "count" }],
-  });
-}
-
-function createQueryWithCountAndSumAggregations() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "count" },
-      { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
-    ],
-  });
-}
