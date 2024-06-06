@@ -140,7 +140,9 @@
     (when-not (t2/exists? (recent-views/moi->model moi) :id model-id)
       (throw (ex-info "Model not found" {:model moi :model_id model-id})))
     (api/read-check (t2/select-one (recent-views/moi->model moi) :id model-id))
-    (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context)))
+    (doseq [context [:selection :view]]
+      (recent-views/update-users-recent-views! *current-user-id* (recent-views/moi->model moi) model-id context))
+    api/generic-204-no-content))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
