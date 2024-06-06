@@ -370,8 +370,8 @@
         (testing "default"
           (is (= #{5}
                  (collection/permissions-set->visible-collection-ids permissions {})))))
-      (testing "trash operation id"
-        (testing "can filter down to a particular trash operation id"
+      (testing "archive operation id"
+        (testing "can filter down to a particular archive operation id"
           (is (= #{2 3}
                  (collection/permissions-set->visible-collection-ids permissions {:archive-operation-id "1234"
                                                                                   :include-archived-items :all})))

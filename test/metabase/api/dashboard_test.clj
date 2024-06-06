@@ -222,7 +222,7 @@
    :show_in_getting_started false
    :updated_at              true
    :view_count              0
-   :trashed_directly        false})
+   :archived_directly        false})
 
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
@@ -288,10 +288,10 @@
      :model/Dashboard {crowberto-dash-id :id
                        :as               crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
                                                              :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
-     :model/Dashboard {archived-dash-id :id} {:archived         true
-                                              :trashed_directly true
-                                              :collection_id    (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                                              :creator_id       (mt/user->id :crowberto)}]
+     :model/Dashboard {archived-dash-id :id} {:archived          true
+                                              :archived_directly true
+                                              :collection_id     (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                              :creator_id        (mt/user->id :crowberto)}]
     (testing "should include creator info and last edited info"
       (revision/push-revision!
        {:entity       :model/Dashboard

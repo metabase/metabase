@@ -2038,10 +2038,10 @@
                                                        :archived true
                                                        :location (collection/children-location (t2/select-one :model/Collection :id collection-id))})]
         (migrate!)
-        (is (:trashed_directly (t2/select-one :model/Collection :id collection-id)))
-        (is (not (:trashed_directly (t2/select-one :model/Collection :id subcollection-id))))
-        (is (= (:trash_operation_id (t2/select-one :model/Collection :id collection-id))
-               (:trash_operation_id (t2/select-one :model/Collection :id subcollection-id))))
+        (is (:archived_directly (t2/select-one :model/Collection :id collection-id)))
+        (is (not (:archived_directly (t2/select-one :model/Collection :id subcollection-id))))
+        (is (= (:archive_operation_id (t2/select-one :model/Collection :id collection-id))
+               (:archive_operation_id (t2/select-one :model/Collection :id subcollection-id))))
         (let [trash-collection-id (collection/trash-collection-id)]
           (testing "After a down-migration, the trash is removed entirely."
             (migrate! :down 49)
@@ -2050,13 +2050,13 @@
             (is (= (str "/" collection-id "/") (t2/select-one-fn :location :model/Collection :id subcollection-id))))
           (testing "we can migrate back up"
             (migrate!)
-            (is (:trashed_directly (t2/select-one :model/Collection :id collection-id)))
-            (is (not (:trashed_directly (t2/select-one :model/Collection :id subcollection-id))))
+            (is (:archived_directly (t2/select-one :model/Collection :id collection-id)))
+            (is (not (:archived_directly (t2/select-one :model/Collection :id subcollection-id))))
             (is (not= trash-collection-id (t2/select-one-pk :model/Collection :type "trash")))
             (is (= (str "/" collection-id "/")
                    (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
 
-(deftest trash-migrations-make-trash-operation-ids-correctly
+(deftest trash-migrations-make-archive-operation-ids-correctly
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [relevant-collection-ids (atom #{})
@@ -2082,19 +2082,19 @@
             h (make-collection! {:archived? false :in g})
             i (make-collection! {:archived? true :in h})]
         (migrate!)
-        (let [trash-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :trash_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
-          (is (= 4 (count trash-operation-id->collection-ids)))
-          (testing "Each contiguous subtree has its own trash_operation_id"
+        (let [archive-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :archive_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
+          (is (= 4 (count archive-operation-id->collection-ids)))
+          (testing "Each contiguous subtree has its own archive_operation_id"
             (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
                      #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
                      #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
-                     #{b h}} ;; => not archived at all, `trash_operation_id` is nil
-                   (set (vals trash-operation-id->collection-ids)))))
+                     #{b h}} ;; => not archived at all, `archive_operation_id` is nil
+                   (set (vals archive-operation-id->collection-ids)))))
           (testing "Trashed directly is correctly set"
             (is (= {true #{a c i}
                     false #{d e f g}
                     nil #{b h}}
-                   (m/map-vals #(into #{} (map :id %)) (group-by :trashed_directly (t2/select :model/Collection :id [:in @relevant-collection-ids])))))))
+                   (m/map-vals #(into #{} (map :id %)) (group-by :archived_directly (t2/select :model/Collection :id [:in @relevant-collection-ids])))))))
         ;; We can roll back. Nothing got moved around.
         (migrate! :down 49)
         (is (= nil (parent-id a)))
@@ -2107,14 +2107,14 @@
         (is (= g (parent-id h)))
         (is (= h (parent-id i)))
         (migrate!)
-        (let [trash-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :trash_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
-          (is (= 4 (count trash-operation-id->collection-ids)))
-          (doseq [id (keys trash-operation-id->collection-ids)]
+        (let [archive-operation-id->collection-ids (m/map-vals #(into #{} (map :id %)) (group-by :archive_operation_id (t2/select :model/Collection :id [:in @relevant-collection-ids])))]
+          (is (= 4 (count archive-operation-id->collection-ids)))
+          (doseq [id (keys archive-operation-id->collection-ids)]
             (when-not (nil? id)
               (is (uuid? (java.util.UUID/fromString id)))))
           (testing "Run the same test as above just to make sure that it survives the round trip"
             (is (= #{#{a} ;; => A is one subtree, none of its children are archived.
                      #{c d e f g} ;; => C/D/E/[F,G] is a big ol' subtree
                      #{i} ;; => I is the last archived subtree. It's a grandchild of G, but H isn't archived.
-                     #{b h}} ;; => not archived at all, `trash_operation_id` is nil
-                   (set (vals trash-operation-id->collection-ids))))))))))
+                     #{b h}} ;; => not archived at all, `archive_operation_id` is nil
+                   (set (vals archive-operation-id->collection-ids))))))))))

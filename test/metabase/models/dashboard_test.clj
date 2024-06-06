@@ -38,7 +38,7 @@
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
                              DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
       (is (= {:name                "Test Dashboard"
-              :trashed_directly    false
+              :archived_directly   false
               :auto_apply_filters  true
               :collection_id       nil
               :description         nil
@@ -282,9 +282,9 @@
                   (is (= 2 (t2/count Revision :model "Dashboard" :model_id (:id dashboard)))))
 
                 ;; we don't need a description for made_public_by_id because whenever this field changes public_uuid
-                ;; will changes and we had a description for it. Same is true for `trashed_directly` -
+                ;; will changes and we had a description for it. Same is true for `archived_directly` -
                 ;; `archived` will always change with it.
-                (when-not (#{:made_public_by_id :trashed_directly} col)
+                (when-not (#{:made_public_by_id :archived_directly} col)
                   (testing (format "we should have a revision description for %s" col)
                     (is (some? (u/build-sentence
                                  (revision/diff-strings
@@ -356,7 +356,7 @@
                                          :card_id (= card-id card_id)
                                          :series  (= [series-id-1 series-id-2] series))])
           empty-dashboard      {:name                "Revert Test"
-                                :trashed_directly    false
+                                :archived_directly   false
                                 :description         "something"
                                 :auto_apply_filters  true
                                 :collection_id       nil
@@ -372,7 +372,7 @@
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
       (testing "original state"
         (is (= {:name                "Test Dashboard"
-                :trashed_directly    false
+                :archived_directly   false
                 :description         nil
                 :cache_ttl           nil
                 :auto_apply_filters  true
@@ -410,7 +410,7 @@
       (testing "now do the reversion; state should return to original"
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name                "Test Dashboard"
-                :trashed_directly    false
+                :archived_directly   false
                 :description         nil
                 :cache_ttl           nil
                 :auto_apply_filters  true

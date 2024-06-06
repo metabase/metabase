@@ -21,25 +21,25 @@
    :creator_id             (mt/user->id :crowberto)})
 
 (defn- card->revision-object [card]
-  {:archived                   false
-   :collection_id              nil
-   :collection_position        nil
-   :collection_preview         true
-   :database_id                (mt/id)
-   :dataset_query              (:dataset_query card)
-   :type                       :question
-   :description                nil
-   :display                    :table
-   :enable_embedding           false
-   :embedding_params           nil
-   :name                       (:name card)
-   :parameters                 []
-   :parameter_mappings         []
-   :cache_ttl                  nil
-   :query_type                 :query
-   :table_id                   (mt/id :categories)
-   :visualization_settings     {}
-   :trashed_directly           (:trashed_directly card)})
+  {:archived               false
+   :collection_id          nil
+   :collection_position    nil
+   :collection_preview     true
+   :database_id            (mt/id)
+   :dataset_query          (:dataset_query card)
+   :type                   :question
+   :description            nil
+   :display                :table
+   :enable_embedding       false
+   :embedding_params       nil
+   :name                   (:name card)
+   :parameters             []
+   :parameter_mappings     []
+   :cache_ttl              nil
+   :query_type             :query
+   :table_id               (mt/id :categories)
+   :visualization_settings {}
+   :archived_directly      (:archived_directly card)})
 
 (defn- dashboard->revision-object [dashboard]
   {:collection_id       (:collection_id dashboard)
@@ -55,7 +55,7 @@
    :enable_embedding    false
    :embedding_params    nil
    :parameters          []
-   :trashed_directly    (:trashed_directly dashboard)})
+   :archived_directly   (:archived_directly dashboard)})
 
 (deftest card-create-test
   (testing :event/card-create
