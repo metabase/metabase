@@ -44,7 +44,7 @@ import {
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";
-import { getDashCardById, getDashcards } from "../selectors";
+import { getDashboardById, getDashCardById, getDashcards } from "../selectors";
 
 import type { AddCardToDashboardOpts } from "./cards-typed";
 import {
@@ -361,7 +361,10 @@ async function runAddCardToDashboard({
   })(store.dispatch, store.getState);
   const nextState = store.getState();
 
-  const tempDashCardId = -1;
+  const tempDashCardId =
+    getDashboardById(nextState, dashId).dashcards.find(
+      dashcardId => dashcardId < 0,
+    ) ?? -1;
 
   return {
     nextDashCard: getDashCardById(nextState, tempDashCardId),
