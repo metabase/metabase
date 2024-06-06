@@ -29,7 +29,7 @@ export const CellContent = styled.span<{
   ${props =>
     props.isHighlighted &&
     css`
-      color: ${props.theme.fn.themeColor("brand")};
+      color: var(--mb-color-brand);
     `};
 
   ${props =>
