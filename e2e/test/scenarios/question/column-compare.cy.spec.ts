@@ -152,7 +152,6 @@ describe("scenarios > question > column compare TODO", () => {
           cy.findByText("Compare “Count” to previous period ...")
             .should("exist")
             .click();
-
           cy.findByText("Compare “Count” to previous period").should("exist");
           cy.findByText("periods ago based on grouping").should("exist");
         });
@@ -164,7 +163,6 @@ describe("scenarios > question > column compare TODO", () => {
           cy.findByText("Compare “Count” to previous period")
             .should("exist")
             .click();
-
           cy.findByText("Compare “Count” to previous period").should("exist");
           cy.findByText("periods ago based on grouping").should("exist");
         });
@@ -176,7 +174,6 @@ describe("scenarios > question > column compare TODO", () => {
           cy.findByText("Compare “Count” to previous period")
             .should("exist")
             .click();
-
           cy.findByText("Compare “Count” to previous period").should("exist");
           cy.findByText("periods ago based on grouping").should("exist");
         });
@@ -189,7 +186,6 @@ describe("scenarios > question > column compare TODO", () => {
           cy.findByText("Compare “Count” to previous period ...")
             .should("exist")
             .click();
-
           cy.findByText("Compare “Count” to previous period").should("exist");
           cy.findByText("periods ago based on grouping").should("exist");
         });
