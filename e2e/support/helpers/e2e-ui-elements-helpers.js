@@ -45,6 +45,7 @@ export function entityPickerModalTab(name) {
 }
 
 export function tabsShouldBe(selected, tabs) {
+  cy.log(tabs);
   cy.findAllByRole("tab").should("have.length", tabs.length);
   tabs.forEach(tab => {
     if (tab === selected) {
