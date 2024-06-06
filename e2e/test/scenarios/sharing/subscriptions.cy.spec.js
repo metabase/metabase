@@ -662,8 +662,13 @@ describe("scenarios > dashboard > subscriptions", () => {
           .click();
         removeMultiAutocompleteValue(0, ":eq(1)");
         popover().within(() => multiAutocompleteInput().type("Sallie"));
-        popover().findByText("Sallie Flatley").click();
-        popover().contains("Update filter").click();
+        popover().last().findByText("Sallie Flatley").click();
+        popover()
+          .first()
+          .within(() => {
+            multiAutocompleteInput().blur();
+            cy.button("Update filter").click();
+          });
         cy.button("Save").click();
 
         // verify existing subscription shows new default in UI
