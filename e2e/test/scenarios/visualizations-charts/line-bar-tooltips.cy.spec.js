@@ -596,106 +596,112 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
   });
 
-  describe("> percent change across daylight savings time change", () => {
-    const SUM_OF_TOTAL_APRIL = {
-      name: "Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-        filter: [
-          "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
-          "2024-01-01",
-          "2024-05-30",
-        ],
-      },
-      display: "line",
-    };
+  describe(
+    "> percent change across daylight savings time change",
+    { tags: "@flaky" },
+    () => {
+      const SUM_OF_TOTAL_APRIL = {
+        name: "Q1",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          filter: [
+            "between",
+            ["field", 39, { "base-type": "type/DateTime" }],
+            "2024-01-01",
+            "2024-05-30",
+          ],
+        },
+        display: "line",
+      };
 
-    const APRIL_CHANGES = [null, "-10.89%", "+11.1%", "-2.89%"];
+      const APRIL_CHANGES = [null, "-10.89%", "+11.1%", "-2.89%"];
 
-    const SUM_OF_TOTAL_DST_WEEK = {
-      name: "Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: [
-          "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
-          "2024-03-01",
-          "2024-03-31",
-        ],
-      },
-      display: "line",
-    };
+      const SUM_OF_TOTAL_DST_WEEK = {
+        name: "Q1",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+          filter: [
+            "between",
+            ["field", 39, { "base-type": "type/DateTime" }],
+            "2024-03-01",
+            "2024-03-31",
+          ],
+        },
+        display: "line",
+      };
 
-    const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
+      const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
 
-    const SUM_OF_TOTAL_DST_DAY = {
-      name: "Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
-        filter: [
-          "between",
-          ["field", 39, { "base-type": "type/DateTime" }],
-          "2024-03-09",
-          "2024-03-12",
-        ],
-      },
-      display: "line",
-    };
+      const SUM_OF_TOTAL_DST_DAY = {
+        name: "Q1",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
+          filter: [
+            "between",
+            ["field", 39, { "base-type": "type/DateTime" }],
+            "2024-03-09",
+            "2024-03-12",
+          ],
+        },
+        display: "line",
+      };
 
-    const DST_DAY_CHANGES = [null, "+27.5%", "-26.16%"];
+      const DST_DAY_CHANGES = [null, "+27.5%", "-26.16%"];
 
-    it("should not omit percent change on April", () => {
-      setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
-        visitDashboard(dashboardId);
+      it("should not omit percent change on April", () => {
+        setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+        APRIL_CHANGES.forEach(change => {
+          showTooltipForCircleInSeries("#88BF4D");
+          if (change === null) {
+            testTooltipExcludesText("Compared to preivous");
+            return;
+          }
+          testPairedTooltipValues("Compared to previous month", change);
+        });
       });
 
-      APRIL_CHANGES.forEach(change => {
-        showTooltipForCircleInSeries("#88BF4D");
-        if (change === null) {
-          testTooltipExcludesText("Compared to preivous");
-          return;
-        }
-        testPairedTooltipValues("Compared to previous month", change);
-      });
-    });
+      it("should not omit percent change the week after DST begins", () => {
+        setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
 
-    it("should not omit percent change the week after DST begins", () => {
-      setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
-
-      DST_WEEK_CHANGES.forEach(change => {
-        showTooltipForCircleInSeries("#88BF4D");
-        if (change === null) {
-          testTooltipExcludesText("Compared to preivous");
-          return;
-        }
-        testPairedTooltipValues("Compared to previous week", change);
-      });
-    });
-
-    it("should not omit percent change the day after DST begins", () => {
-      setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
-        visitDashboard(dashboardId);
+        DST_WEEK_CHANGES.forEach(change => {
+          showTooltipForCircleInSeries("#88BF4D");
+          if (change === null) {
+            testTooltipExcludesText("Compared to preivous");
+            return;
+          }
+          testPairedTooltipValues("Compared to previous week", change);
+        });
       });
 
-      DST_DAY_CHANGES.forEach(change => {
-        showTooltipForCircleInSeries("#88BF4D");
-        if (change === null) {
-          testTooltipExcludesText("Compared to preivous");
-          return;
-        }
-        testPairedTooltipValues("Compared to previous day", change);
+      it("should not omit percent change the day after DST begins", () => {
+        setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+        DST_DAY_CHANGES.forEach(change => {
+          showTooltipForCircleInSeries("#88BF4D");
+          if (change === null) {
+            testTooltipExcludesText("Compared to preivous");
+            return;
+          }
+          testPairedTooltipValues("Compared to previous day", change);
+        });
       });
-    });
-  });
+    },
+  );
 });
 
 function setup({ question, addedSeriesQuestion }) {
