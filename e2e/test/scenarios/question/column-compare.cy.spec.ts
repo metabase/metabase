@@ -96,11 +96,6 @@ describeWithSnowplow("scenarios > question > column compare", () => {
     restore();
     resetSnowplow();
     cy.signInAsAdmin();
-
-    createQuestion(
-      { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
-      { visitQuestion: true, wrapId: true, idAlias: "questionId" },
-    );
   });
 
   afterEach(() => {
@@ -109,6 +104,11 @@ describeWithSnowplow("scenarios > question > column compare", () => {
 
   describe("notebook editor", () => {
     it("should create a snowplow event for the column compare action", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
       openNotebook();
       getNotebookStep("summarize")
         .findByTestId("aggregate-step")
@@ -134,6 +134,11 @@ describeWithSnowplow("scenarios > question > column compare", () => {
 
   describe("chill mode - summarize sidebar", () => {
     it("should create a snowplow event for the column compare action", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
       cy.button("Summarize").click();
       cy.button("Add aggregation").click();
 
@@ -156,6 +161,11 @@ describeWithSnowplow("scenarios > question > column compare", () => {
 
   describe("chill mode - column header drill", () => {
     it("should create a snowplow event for the column compare action", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
       tableHeaderClick("Count");
 
       popover().findByText("Compare “Count” to previous months").click();
@@ -177,6 +187,11 @@ describeWithSnowplow("scenarios > question > column compare", () => {
 
   describe("chill mode - plus button", () => {
     it("should create a snowplow event for the column compare action", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
       cy.button("Add column").click();
 
       popover().findByText("Compare “Count” to previous months").click();
