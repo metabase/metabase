@@ -51,10 +51,14 @@
    (fn [^java.sql.Connection conn]
      (into #{} (map :databasename) (jdbc/query {:connection conn} ["SHOW DATABASES;"])))))
 
+(comment
+  (existing-databases)
+  )
+
 (defmethod tx/create-db! :athena
   [driver {:keys [schema], :as db-def} & options]
   (let [schema (ddl.i/format-name driver schema)]
-    (if (contains? (existing-databases) schema)
+    (if (contains? #_#{} (existing-databases) schema)
       (log/infof "Databricks database %s already exists, skipping creation" (pr-str schema))
       (do
         (log/infof "Creating Databricks database %s" (pr-str schema))
@@ -99,3 +103,7 @@
 (defmethod sql.tx/drop-db-if-exists-sql :databricks-jdbc
   [driver {:keys [database-name]}]
   (format "DROP DATABASE IF EXISTS %s CASCADE" (sql.tx/qualify-and-quote driver database-name)))
+
+;; Should I borrow following from Spark?
+#_(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Time] [_ _]
+    (throw (UnsupportedOperationException. "SparkSQL does not have a TIME data type.")))

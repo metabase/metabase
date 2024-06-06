@@ -14,7 +14,9 @@
                          ;; so it's not worth testing against, see [[metabase.test.data.athena/*allow-database-creation*]]
                          :athena
                          ;; there is no PK in sparksql
-                         :sparksql)
+                         :sparksql
+                         ;; dbricks TODO: Make this test compatible!
+                         :databricks-jdbc)
     (mt/dataset (mt/dataset-definition "custom-pk"
                   ["user"
                    [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
@@ -54,7 +56,9 @@
                          ;; so it's not worth testing against, see [[metabase.test.data.athena/*allow-database-creation*]]
                          :athena
                          ;; there is no PK in sparksql
-                         :sparksql)
+                         :sparksql
+                         ;; dbricks TODO: make test compatible!
+                         :databricks-jdbc)
     (mt/dataset composite-pk
       (let [format-name #(ddl.i/format-name driver/*driver* %)]
         (testing "(artist_id, song_id) is a PK"

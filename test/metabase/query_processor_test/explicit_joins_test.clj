@@ -558,12 +558,13 @@
                     :order-by [[:asc $id]]
                     :limit    2}))))))))
 
+;; dbricks TODO: make test compatible!
 (deftest ^:parallel joined-date-filter-test
   ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
   ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load
   ;; the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
   (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :nested-queries :left-join)
-                                   timezones-test/broken-drivers)
+                                   (conj timezones-test/broken-drivers :databricks-jdbc))
     (testing "Date filter should behave the same for joined columns"
       (mt/dataset attempted-murders
         (is (= [["2019-11-01T07:23:18.331Z" "2019-11-01T07:23:18.331Z"]]

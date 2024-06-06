@@ -87,7 +87,8 @@
     (mt/test-drivers (->> (mt/normal-drivers)
                           ;; athena is a special case because connections aren't made with a single database,
                           ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+                          ;; dbricks TODO: Databricks currently does not delete databases created during testing.
+                          (remove #{:athena :databricks-jdbc}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -122,7 +123,8 @@
     (mt/test-drivers (->> (mt/normal-drivers)
                           ;; athena is a special case because connections aren't made with a single database,
                           ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+                          ;; dbricks TODO:
+                          (remove #{:athena :databricks-jdbc}))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef

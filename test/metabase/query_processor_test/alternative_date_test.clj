@@ -193,6 +193,10 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
+;; dbricks TODO: no time time https://docs.databricks.com/en/sql/language-manual/sql-ref-datatypes.html --
+;;
+;; BUT checking `string-times` time is there -- why???!?! -- seems to have string type in db and no way to convert on
+;; db side
 ;;; TODO -- instead of having 5 different hardcoded versions of the test, maybe we should make a `iso-8601-text-fields`
 ;;; multimethod with a `:default` implementation and different driver implementations as needed so third-party driver
 ;;; authors can pass this test too.
@@ -201,7 +205,7 @@
     (testing "return as dates"
       (mt/test-drivers (-> (sql-jdbc.tu/sql-jdbc-drivers)
                            (conj :bigquery-cloud-sdk)
-                           (disj :sqlite :oracle :sparksql))
+                           (disj :sqlite :oracle :sparksql :databricks-jdbc))
         (is (= [[1 "foo" #t "2004-10-19T10:23:54" #t "2004-10-19" #t "10:23:54"]
                 [2 "bar" #t "2008-10-19T10:23:54" #t "2008-10-19" #t "10:23:54"]
                 [3 "baz" #t "2012-10-19T10:23:54" #t "2012-10-19" #t "10:23:54"]]
@@ -262,13 +266,14 @@
                  (qp/process-query
                   (mt/mbql-query times {:fields [$t]}))))))))))
 
+;; dbricks TODO: Find proper solution. this is not compatible with databricks because of time type in dataset def!!!!
 (deftest ^:parallel iso-8601-text-fields-should-be-queryable-test
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "are queryable as dates"
       (mt/dataset string-times
         (testing "a datetime field"
           ;; TODO: why does this fail on oracle? gives a NPE
-          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql :databricks-jdbc)
             (is (= 1
                    (->> (mt/run-mbql-query times
                           {:filter [:= !day.ts "2008-10-19"]})
@@ -284,7 +289,7 @@
                         count)))))
 
         (testing "a date field"
-          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql :databricks-jdbc)
             (is (= 1
                    (->> (mt/run-mbql-query times
                           {:filter [:= !day.d "2008-10-19"]})

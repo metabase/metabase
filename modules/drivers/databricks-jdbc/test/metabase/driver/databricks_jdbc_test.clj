@@ -20,3 +20,13 @@
    (mt/dataset
     test-data
     (mt/db))))
+
+#_(comment
+
+  ;; does not remove app db reference
+  (metabase.test.data.interface/destroy-db!
+   :databricks-jdbc
+   (metabase.test.data.interface/get-dataset-definition metabase.test.data.dataset-definitions/test-data))
+
+
+  )

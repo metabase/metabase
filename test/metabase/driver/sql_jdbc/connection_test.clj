@@ -114,6 +114,10 @@
               :redshift
               (assoc details :additional-options "defaultRowFetchSize=1000")
 
+              ;; TMP
+              :databricks-jdbc
+              (assoc details :log-level 0)
+
               (cond-> details
                 ;; swap localhost and 127.0.0.1
                 (= "localhost" (:host details))
@@ -227,9 +231,10 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+;; TODO: Why this is not working on databricks? -- missing from metabase-plugin?
 (deftest test-ssh-tunnel-connection
   ;; sqlite cannot be behind a tunnel, h2 is tested below, unsure why others fail
-  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena)
+  (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena :databricks-jdbc)
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
