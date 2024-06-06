@@ -368,12 +368,14 @@
        (not= archive-operation-id (:archive_operation_id collection))))
 
 (mu/defn permissions-set->visible-collection-ids :- VisibleCollections
-  "There are three factors we need to take into account when turning the permissions set into visible collection IDs.
+  "There are four knobs we need to take into account when turning the permissions set into visible collection IDs.
   - permission-level: generally collections with `read` permission are visible. Sometimes we want to change this and only
     view collections with `write` permissions.
-  - archived: are archived collections currently visible, or not?
-  - archive_operation_id: when looking at a archived collection, we want to restrict visible collections to those that share
-  that operation ID."
+  - include-archived: are archived collections currently visible, or not?
+  - archive-operation-id: when looking at a archived collection, we want to restrict visible collections to those that share
+  that operation ID.
+  - include-trash?: is the Trash Collection itself visible, or not? Sometimes we want to show the Trash but not the archived
+    items inside it."
   ([permissions-set :- [:set :string]]
    (permissions-set->visible-collection-ids permissions-set {}))
   ([permissions-set :- [:set :string]

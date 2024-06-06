@@ -75,8 +75,10 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we can either include everthing (when archived is `nil`), only archived (when `archived` is true),
-  or only non-archived (when `archived` is false).
+  For archived, we can either include only archived items (when archived is truthy) or exclude archived items (when
+  archived is falsey).
+
+  The Trash Collection itself (the container for archived items) is *always* included.
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
