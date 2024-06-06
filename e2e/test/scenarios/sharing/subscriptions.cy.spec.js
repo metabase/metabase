@@ -797,7 +797,7 @@ function addParametersToDashboard() {
 
   popover().last().findByText("Corbin Mertz").click();
 
-  popover().first().contains("Add filter").click();
+  popover().first().contains("Add filter").click({ force: true });
 
   setFilter("Text or Category", "Is");
 
