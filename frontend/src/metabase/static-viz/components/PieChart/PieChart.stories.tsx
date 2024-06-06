@@ -164,6 +164,20 @@ RelativeDateDimension.args = {
   renderingContext,
 };
 
+export const NullDimension = Template.bind({});
+NullDimension.args = {
+  rawSeries: data.nullDimension as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const UnaggregatedDimension = Template.bind({});
+UnaggregatedDimension.args = {
+  rawSeries: data.unaggregatedDimension as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SortedMetricCol = Template.bind({});
 SortedMetricCol.args = {
   rawSeries: data.sortedMetricCol as any,
