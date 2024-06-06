@@ -1,10 +1,10 @@
 [
   {
     "card": {
-      "original_card_id": 341,
+      "original_card_id": 342,
       "public_uuid": null,
       "parameter_usage_count": 0,
-      "created_at": "2024-06-03T20:19:27.364945Z",
+      "created_at": "2024-06-03T23:27:20.959347Z",
       "parameters": [],
       "metabase_version": "v0.1.5-SNAPSHOT (43a9dca)",
       "collection": {
@@ -24,19 +24,54 @@
         "is_personal": false,
         "created_at": "2024-06-03T19:59:20.91934Z"
       },
-      "visualization_settings": {},
+      "visualization_settings": {
+        "pie.show_legend": false,
+        "pie.show_total": false,
+        "pie.percent_visibility": "inside",
+        "pie.slice_threshold": 5,
+        "pie.colors": {
+          "Normal": "#F9D45C",
+          "Psychic": "#999AC4",
+          "Steel": "#F7CBA9",
+          "Fairy": "#A7D07C",
+          "Ghost": "#8A5EB0",
+          "Fighting": "#F9D45C",
+          "Dragon": "#227FD2",
+          "Grass": "#EF8C8C",
+          "Dark": "#87BCEC",
+          "Fire": "#E75454",
+          "Poison": "#8A5EB0",
+          "Flying": "#C8B4DA",
+          "Ground": "#C7EAEA",
+          "Bug": "#509EE3",
+          "Ice": "#E75454",
+          "Water": "#999AC4",
+          "Rock": "#F2A86F",
+          "Electric": "#E75454"
+        },
+        "column_settings": {
+          "[\"name\",\"count\"]": {
+            "number_separators": ".",
+            "number_style": "currency",
+            "prefix": "some",
+            "scale": 2,
+            "decimals": 5,
+            "suffix": "things"
+          }
+        }
+      },
       "last-edit-info": {
         "id": 1,
         "email": "emmad@metabase.com",
         "first_name": "Emmad",
         "last_name": "Usmani",
-        "timestamp": "2024-06-05T22:56:47.547508Z"
+        "timestamp": "2024-06-05T22:56:30.001435Z"
       },
       "collection_preview": true,
-      "entity_id": "GveRuWsLZ79pFLTeC0qKG",
+      "entity_id": "MbW6Xzg9SllXubdpbRd3P",
       "display": "pie",
       "parameter_mappings": [],
-      "id": 341,
+      "id": 342,
       "dataset_query": {
         "database": 2,
         "type": "query",
@@ -57,15 +92,15 @@
       "cache_ttl": null,
       "embedding_params": null,
       "made_public_by_id": null,
-      "updated_at": "2024-06-06T00:03:45.710282Z",
+      "updated_at": "2024-06-06T00:05:43.571356Z",
       "moderation_reviews": [],
       "creator_id": 1,
-      "average_query_time": 1184.695238095238,
+      "average_query_time": 1110.5744680851064,
       "type": "question",
-      "last_used_at": "2024-06-06T00:03:45.710282Z",
-      "dashboard_count": 3,
-      "last_query_start": "2024-06-06T00:03:44.618091Z",
-      "name": "Pie - Default Settings - Poke Count by Type 1",
+      "last_used_at": "2024-06-06T00:05:43.571356Z",
+      "dashboard_count": 2,
+      "last_query_start": "2024-06-06T00:05:42.314295Z",
+      "name": "Pie - All Settings Changed - Poke Count by Type 1",
       "query_type": "query",
       "collection_id": 23,
       "enable_embedding": false,
@@ -144,7 +179,7 @@
       "can_run_adhoc_query": true,
       "table_id": 156,
       "collection_position": null,
-      "view_count": 64,
+      "view_count": 38,
       "archived": false,
       "description": null,
       "cache_invalidated_at": null,

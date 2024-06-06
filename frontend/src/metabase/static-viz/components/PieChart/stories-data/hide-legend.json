@@ -1,0 +1,398 @@
+[
+  {
+    "card": {
+      "original_card_id": 343,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T22:55:28.912884Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.dimension": "state_name",
+        "pie.metric": "count",
+        "pie.show_legend": false
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-05T22:55:29.214919Z"
+      },
+      "collection_preview": true,
+      "entity_id": "s-lGr7rvZ5t8Sm9cIk-_D",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 343,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            ["count"],
+            [
+              "avg",
+              [
+                "field",
+                "population",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "state_name",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "source-table": "card__70"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:10:12.026085Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 457.8235294117647,
+      "type": "question",
+      "last_used_at": "2024-06-06T00:10:12.026085Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-06T00:10:11.213994Z",
+      "name": "Pie - No Legend - US Cities by State",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": null,
+          "name": "state_name",
+          "field_ref": [
+            "field",
+            "state_name",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1269,
+          "visibility_type": "normal",
+          "display_name": "State Name",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 52,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0.9893,
+                "average-length": 8.3657
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 52,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 306,
+                "q3": 755.5,
+                "max": 1837,
+                "sd": 428.43112721793545,
+                "avg": 593.1538461538462
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Population",
+          "field_ref": ["aggregation", 1],
+          "name": "avg",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 52,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1469.695652173913,
+                "q1": 4635.603814865031,
+                "q3": 15640.643861237744,
+                "max": 4810669,
+                "sd": 665398.3543574953,
+                "avg": 105569.92900821511
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 136,
+      "collection_position": null,
+      "view_count": 14,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["Alabama", 591, 7324.446700507614],
+        ["Alaska", 355, 2118.6619718309857],
+        ["Arizona", 461, 20972.780911062906],
+        ["Arkansas", 621, 4331.070853462158],
+        ["California", 1591, 36660.23444374607],
+        ["Colorado", 478, 15526.217573221757],
+        ["Connecticut", 184, 23164.08152173913],
+        ["Delaware", 79, 6455.645569620253],
+        ["District of Columbia", 1, 4810669],
+        ["Florida", 943, 32636.52598091198],
+        ["Georgia", 670, 15755.070149253732],
+        ["Hawaii", 158, 12135.955696202533],
+        ["Idaho", 237, 7248.670886075949],
+        ["Illinois", 1461, 12395.868583162219],
+        ["Indiana", 695, 8899.09928057554],
+        ["Iowa", 1027, 3166.0282375852],
+        ["Kansas", 738, 3501.2953929539294],
+        ["Kentucky", 552, 5733.771739130435],
+        ["Louisiana", 488, 9620.713114754099],
+        ["Maine", 66, 9011.757575757576],
+        ["Maryland", 532, 13805.005639097744],
+        ["Massachusetts", 127, 63651.97637795276],
+        ["Michigan", 740, 13750.144594594594],
+        ["Minnesota", 903, 8023.276854928018],
+        ["Mississippi", 427, 4761.023419203747],
+        ["Missouri", 1081, 6923.745605920444],
+        ["Montana", 495, 1590.468686868687],
+        ["Nebraska", 590, 3201.250847457627],
+        ["Nevada", 133, 34925.466165413534],
+        ["New Hampshire", 41, 19640.29268292683],
+        ["New Jersey", 656, 9410.996951219513],
+        ["New Mexico", 520, 3961.4576923076925],
+        ["New York", 971, 38256.10710607621],
+        ["North Carolina", 771, 11867.249027237354],
+        ["North Dakota", 401, 1779.8079800498754],
+        ["Ohio", 1254, 10879.444976076555],
+        ["Oklahoma", 836, 4510.184210526316],
+        ["Oregon", 425, 12075.094117647059],
+        ["Pennsylvania", 1772, 8389.247742663656],
+        ["Puerto Rico", 281, 15109.562277580071],
+        ["Rhode Island", 31, 55470.967741935485],
+        ["South Carolina", 473, 9975.099365750528],
+        ["South Dakota", 483, 1469.695652173913],
+        ["Tennessee", 501, 12237.281437125748],
+        ["Texas", 1837, 18169.85628742515],
+        ["Utah", 331, 15363.383685800603],
+        ["Vermont", 106, 2362.7169811320755],
+        ["Virginia", 664, 12451.81626506024],
+        ["Washington", 633, 15833.259083728279],
+        ["West Virginia", 439, 2792.9020501138953],
+        ["Wisconsin", 790, 7361.449367088608],
+        ["Wyoming", 204, 2309.1813725490197]
+      ],
+      "cols": [
+        {
+          "database_type": "varchar",
+          "semantic_type": "type/State",
+          "table_id": 136,
+          "name": "state_name",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "state_name",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1269,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "State Name",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 52,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0.9893,
+                "average-length": 8.3657
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "base_type": "type/Decimal",
+          "name": "avg",
+          "display_name": "Average of Population",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"state_name\" AS \"state_name\", COUNT(*) AS \"count\", AVG(\"source\".\"population\") AS \"avg\" FROM (SELECT \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"city\" AS \"city\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"city_ascii\" AS \"city_ascii\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"state_id\" AS \"state_id\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"state_name\" AS \"state_name\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"county_fips\" AS \"county_fips\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"county_name\" AS \"county_name\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"lat\" AS \"lat\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"lng\" AS \"lng\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"population\" AS \"population\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"density\" AS \"density\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"source\" AS \"source\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"military\" AS \"military\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"incorporated\" AS \"incorporated\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"timezone\" AS \"timezone\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"ranking\" AS \"ranking\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"zips\" AS \"zips\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"id\" AS \"id\" FROM \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\") AS \"source\" GROUP BY \"source\".\"state_name\" ORDER BY \"source\".\"state_name\" ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/State",
+            "name": "state_name",
+            "field_ref": [
+              "field",
+              "state_name",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 1269,
+            "visibility_type": "normal",
+            "display_name": "State Name",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 52,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0.9893,
+                  "average-length": 8.3657
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 52,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 306,
+                  "q3": 755.5,
+                  "max": 1837,
+                  "sd": 428.43112721793545,
+                  "avg": 593.1538461538462
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Population",
+            "field_ref": ["aggregation", 1],
+            "name": "avg",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 52,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1469.695652173913,
+                  "q1": 4635.603814865031,
+                  "q3": 15640.643861237744,
+                  "max": 4810669,
+                  "sd": 665398.3543574953,
+                  "avg": 105569.92900821511
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]
