@@ -7,6 +7,7 @@
    "ca"
    "cs"
    "de"
+   "da"
    "en"
    "es"
    "fa"
