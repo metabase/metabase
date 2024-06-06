@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { createQueryWithClauses } from "metabase-lib/test-helpers";
 
 import { CompareAggregations } from "./CompareAggregations";
@@ -14,9 +14,11 @@ const setup = ({ query }: SetupOpts) => {
   const stageIndex = -1;
   const onClose = jest.fn();
   const onSubmit = jest.fn();
+  const aggregations = Lib.aggregations(query, stageIndex);
 
   renderWithProviders(
     <CompareAggregations
+      aggregations={aggregations}
       query={query}
       stageIndex={stageIndex}
       onClose={onClose}
