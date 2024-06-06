@@ -7,7 +7,7 @@ export const FileInput = styled.input`
     padding: 0.75rem 1rem;
     margin-right: 1rem;
     border-radius: 4px;
-    border: 1px solid ${color("border")};
+    border: 1px solid var(--mb-color-border);
     background-color: var(--mb-color-bg-white);
     color: ${color("text-dark")};
     transition: 200ms;
@@ -16,7 +16,7 @@ export const FileInput = styled.input`
   }
 
   &::file-selector-button:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     background-color: var(--mb-color-bg-light);
   }
 `;

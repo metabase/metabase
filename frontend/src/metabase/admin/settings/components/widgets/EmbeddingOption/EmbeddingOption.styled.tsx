@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const StyledCard = styled(Card)`
@@ -21,10 +20,10 @@ export const Label = styled.span`
   border-radius: 0.25rem;
   text-transform: uppercase;
   color: var(--mb-color-text-white);
-  background: ${color("brand")};
+  background: var(--mb-color-brand);
 `;
 
 export const BoldExternalLink = styled(ExternalLink)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
 `;

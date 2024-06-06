@@ -6,13 +6,12 @@ import {
   hideResponsively,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import { color } from "metabase/lib/colors";
 import { breakpoints } from "metabase/ui/theme";
 
 export const ModelTableRow = styled.tr`
   cursor: pointer;
   :outline {
-    outline: 2px solid ${color("brand")};
+    outline: 2px solid var(--mb-color-brand);
   }
 `;
 

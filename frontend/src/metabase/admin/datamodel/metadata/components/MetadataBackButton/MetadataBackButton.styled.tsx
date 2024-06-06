@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
 
-import { color } from "metabase/lib/colors";
-
 export const BackButtonLink = styled(Link)`
   display: flex;
   justify-content: center;
@@ -13,6 +11,6 @@ export const BackButtonLink = styled(Link)`
   background-color: var(--mb-color-bg-dark);
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

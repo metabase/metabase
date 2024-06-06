@@ -31,7 +31,7 @@ export const BaseSidebarItemRoot = styled.div<{
   ${({ padded = true }) => padded && sidebarItemPaddingStyle}
 
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;
 
@@ -71,5 +71,5 @@ export const CloseIconContainer = styled.span`
   align-items: center;
   margin-left: auto;
   padding: 1rem;
-  border-left: 1px solid ${darken("brand", 0.2)};
+  border-left: 1px solid ${() => darken("brand", 0.2)};
 `;

@@ -25,7 +25,7 @@ export const FilterButton = styled(Button, {
 
   &:hover {
     color: var(--mb-color-text-white);
-    background-color: ${color("filter")};
+    background-color: var(--mb-color-filter);
   }
 
   @media (prefers-reduced-motion) {

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
@@ -16,6 +16,7 @@ import type { ColumnType } from "./types";
 import { canSubmit, getAggregations, getTitle } from "./utils";
 
 interface Props {
+  aggregations: Lib.AggregationClause[];
   query: Lib.Query;
   stageIndex: number;
   onClose: () => void;
@@ -28,14 +29,12 @@ const STEP_1_WIDTH = 378;
 const STEP_2_WIDTH = 472;
 
 export const CompareAggregations = ({
+  aggregations,
   query,
   stageIndex,
   onClose,
   onSubmit,
 }: Props) => {
-  const aggregations = useMemo(() => {
-    return Lib.aggregations(query, stageIndex);
-  }, [query, stageIndex]);
   const hasManyAggregations = aggregations.length > 1;
   const [aggregation, setAggregation] = useState<
     Lib.AggregationClause | Lib.ExpressionClause | undefined

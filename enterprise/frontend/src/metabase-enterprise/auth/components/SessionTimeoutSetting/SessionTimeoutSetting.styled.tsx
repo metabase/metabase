@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
 
 export const SessionTimeoutSettingRoot = styled.div`
   margin: 0.5rem 0;
@@ -31,5 +30,5 @@ export const SessionTimeoutInput = styled(Input)<SessionTimeoutInputProps>`
 export const ErrorMessage = styled.div`
   text-align: right;
   margin-top: 0.5rem;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;

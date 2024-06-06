@@ -28,7 +28,7 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
     css`
       &:hover {
         color: var(--mb-color-text-white);
-        background-color: ${color("filter")};
+        background-color: var(--mb-color-filter);
 
         .Icon {
           color: var(--mb-color-text-white) !important;
@@ -41,7 +41,7 @@ export const MembershipSelectHeader = styled.li`
   padding: 0.75rem 1.5rem 0.5rem 1.5rem;
   font-size: 12px;
   font-weight: 800;
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
 `;
 
 export const MembershipActionsContainer = styled.div`

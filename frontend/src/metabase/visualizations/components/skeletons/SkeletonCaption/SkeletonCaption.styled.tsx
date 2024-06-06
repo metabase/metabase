@@ -31,7 +31,7 @@ export const SkeletonPlaceholder = styled.div`
   width: 40%;
   height: 1.0625rem;
   border-radius: 1rem;
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
 `;
 
 export const SkeletonCaptionDescription = styled(Icon)`

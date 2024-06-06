@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 export const List = styled(SelectList)`
   ${SelectList.BaseItem.Root} {
     &:hover {
-      background-color: ${color("brand")};
+      background-color: var(--mb-color-brand);
     }
   }
 `;

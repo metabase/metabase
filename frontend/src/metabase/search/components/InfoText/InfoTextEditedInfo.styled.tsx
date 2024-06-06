@@ -14,7 +14,7 @@ export const LastEditedInfoText = styled(LastEditInfoLabel)`
       cursor: pointer;
 
       &:hover {
-        color: ${theme.fn.themeColor("brand")};
+        color: var(--mb-color-brand);
       }
     `;
   }}

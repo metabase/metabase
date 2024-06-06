@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import { color } from "metabase/lib/colors";
 import { SyncedParametersList } from "metabase/parameters/components/ParametersList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
@@ -56,7 +55,7 @@ export const QueryBuilderMain = styled.main<{ isSidebarOpen: boolean }>`
 const headerHeight = "4rem";
 
 export const BorderedViewTitleHeader = styled(ViewTitleHeader)`
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding-top: 8px;
   padding-bottom: 8px;
   min-height: ${headerHeight};
@@ -71,7 +70,7 @@ export const QueryBuilderViewHeaderContainer = styled.div`
 
 export const NativeQueryEditorContainer = styled.div`
   margin-bottom: 1rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   z-index: 2;
 `;
 

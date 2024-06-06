@@ -9,7 +9,7 @@ interface Props {
 
 export const StepRoot = styled.section<Props>`
   position: relative;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
@@ -18,8 +18,7 @@ export const StepRoot = styled.section<Props>`
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${props =>
-    props.isCompleted ? "var(--mb-color-success)" : color("brand")};
+  color: ${props => (props.isCompleted ? color("success") : color("brand"))};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -36,15 +35,14 @@ export const StepLabel = styled.div<Props>`
   width: 2.625rem;
   height: 2.625rem;
   border: 1px solid
-    ${props =>
-      props.isCompleted ? "var(--mb-color-success)" : color("border")};
+    ${props => (props.isCompleted ? color("success") : color("border"))};
   border-radius: 50%;
   background-color: ${props =>
-    props.isCompleted ? "var(--mb-color-success)" : color("bg-white")};
+    props.isCompleted ? color("success") : color("bg-white")};
 `;
 
 export const StepLabelText = styled.span`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 `;

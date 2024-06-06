@@ -45,7 +45,7 @@ export const MenuIcon = styled(Icon)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -89,7 +89,7 @@ export const ImplicitActionCardContentRoot = styled.div`
   align-items: center;
 
   color: ${color("text-medium")};
-  background-color: ${color("bg-medium")};
+  background-color: var(--mb-color-bg-medium);
 
   font-weight: 400;
 `;

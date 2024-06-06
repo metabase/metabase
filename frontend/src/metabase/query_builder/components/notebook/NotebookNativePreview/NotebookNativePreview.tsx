@@ -60,7 +60,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = `1px solid ${color("border")}`;
+  const borderStyle = "1px solid var(--mb-color-border)";
 
   return (
     <Box

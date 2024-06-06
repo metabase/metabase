@@ -7,19 +7,27 @@
  */
 :root {
   --mb-color-text-white: #fff;
+  --mb-color-brand: #509ee3;
+  --mb-color-brand-light: #f9fbfc;
+  --mb-color-brand-lighter: #eef6fc;
   --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
-  --color-error: #ed6e6e;
+  --mb-color-error: #ed6e6e;
+  --mb-color-danger: #ed6e6e;
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
-  --color-bg-medium: #edf2f5;
+  --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
   --mb-color-bg-white: #fff;
+  --mb-color-bg-error: #ed6e6e55;
+  --mb-color-bg-night: #42484e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
+  --mb-color-filter: #7172ad;
+  --mb-color-focus: #cbe2f7;
 }
 
 .textDefault {
@@ -38,11 +46,11 @@
 
 .textError,
 .textErrorHover {
-  color: var(--color-error);
+  color: var(--mb-color-error);
 }
 
 .bgErrorHover:hover {
-  background-color: var(--color-error);
+  background-color: var(--mb-color-error);
 }
 
 .bgErrorInput {
@@ -77,7 +85,7 @@
 }
 
 .bgMedium {
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */

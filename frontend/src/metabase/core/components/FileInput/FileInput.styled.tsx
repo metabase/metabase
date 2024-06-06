@@ -30,7 +30,7 @@ export const InputField = styled.input<InputFieldProps>`
 `;
 
 export const InputButton = styled.span`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   box-sizing: border-box;
   color: ${color("text-dark")};
@@ -44,7 +44,7 @@ export const InputButton = styled.span`
   user-select: none;
 
   ${InputField}:focus + & {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid var(--mb-color-focus);
   }
 
   ${InputField}:not(:focus-visible) + & {

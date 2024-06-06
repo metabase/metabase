@@ -19,14 +19,14 @@ export const ActionOptionListItem = styled.div<ActionOptionProps>`
   align-items: ${props => (props.hasDescription ? "flex-start" : "center")};
   gap: ${space(1)};
 
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
 
   padding: ${space(2)};
   margin: ${space(1)} ${space(0)};
 
   &:hover {
-    background-color: ${lighten("brand", 0.1)};
+    background-color: ${() => lighten("brand", 0.1)};
     color: var(--mb-color-text-white);
   }
 `;

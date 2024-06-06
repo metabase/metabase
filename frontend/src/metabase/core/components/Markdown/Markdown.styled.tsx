@@ -47,7 +47,8 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
   hr {
     border: none;
     border-bottom: 1px solid
-      ${props => (props.dark ? "var(--mb-color-bg-dark)" : color("border"))};
+      ${props =>
+        props.dark ? "var(--mb-color-bg-dark)" : "var(--mb-color-border)"};
   }
 `;
 

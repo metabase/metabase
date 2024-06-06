@@ -13,7 +13,7 @@ export const Container = styled.div`
   justify-content: space-between;
   width: 100%;
   background-color: var(--mb-color-bg-white);
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   padding: ${space(2)} ${space(3)};
 `;
 

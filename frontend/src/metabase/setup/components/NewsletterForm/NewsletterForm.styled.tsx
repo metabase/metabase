@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 export const EmailFormRoot = styled.div`
   position: relative;
   padding: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
 `;
 

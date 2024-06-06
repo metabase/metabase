@@ -14,7 +14,7 @@ export const Link = styled(ExternalLink)`
   align-items: center;
   color: var(--mb-color-text-white);
   font-weight: bold;
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
   padding: 12px 18px;
   border-radius: 6px;
 

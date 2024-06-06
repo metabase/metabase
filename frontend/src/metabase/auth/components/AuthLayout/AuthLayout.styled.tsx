@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, hueRotate } from "metabase/lib/colors";
+import { hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const LayoutRoot = styled.div`
@@ -24,7 +24,7 @@ export const LayoutCard = styled.div`
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
   background-color: var(--mb-color-bg-white);
-  box-shadow: 0 1px 15px ${color("shadow")};
+  box-shadow: 0 1px 15px var(--mb-color-shadow);
   border-radius: 6px;
 
   ${breakpointMinSmall} {

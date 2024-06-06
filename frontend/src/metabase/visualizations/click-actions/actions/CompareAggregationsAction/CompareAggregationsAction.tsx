@@ -4,6 +4,7 @@ import {
   CompareAggregations,
   getTitle,
 } from "metabase/query_builder/components/CompareAggregations";
+import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
@@ -47,6 +48,13 @@ export const CompareAggregationsAction: LegacyDrill = ({
       const nextQuestion = question.setQuery(nextQuery);
       const nextCard = nextQuestion.card();
 
+      trackColumnCompareViaPlusModal(
+        nextQuery,
+        stageIndex,
+        aggregations,
+        nextQuestion.id(),
+      );
+
       dispatch(setUIControls({ scrollToLastColumn: true }));
       onChangeCardAndRun({ nextCard });
       onClose();
@@ -54,10 +62,11 @@ export const CompareAggregationsAction: LegacyDrill = ({
 
     return (
       <CompareAggregations
+        aggregations={aggregations}
         query={query}
         stageIndex={stageIndex}
-        onSubmit={handleSubmit}
         onClose={onClose}
+        onSubmit={handleSubmit}
       />
     );
   };

@@ -51,6 +51,7 @@ import comboHistogram from "./combo-histogram.json";
 import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normalized.json";
 import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
+import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column-scaling.json";
 import dataLabelsUnderTrendGoalLines41280 from "./data-labels-under-trend-goal-lines-41280.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
@@ -113,6 +114,7 @@ export const data = {
   lineShowDotsOn,
   lineShowDotsOff,
   lineCustomYAxisRangeEqualsExtents,
+  customYAxisRangeWithColumnScaling,
   lineFullyNullDimension37902,
   areaFullyNullDimension37902,
   barCorrectWidthWhenTwoYAxes,

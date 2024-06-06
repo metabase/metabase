@@ -20,7 +20,7 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
       cursor: pointer;
 
       &:hover {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     `}
 `;

@@ -1,5 +1,6 @@
 import autoYAxisExcludeZeroWithGoal from "./auto-y-axis-exclude-zero-with-goal.json";
 import bubbleSize from "./bubble-size.json";
+import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column-scaling.json";
 import customYAxisRange from "./custom-y-axis-range.json";
 import defaultData from "./default.json";
 import goalLine from "./goal-line.json";
@@ -17,6 +18,7 @@ import timeseriesXScale from "./timeseries-x-scale.json";
 
 export const data = {
   default: defaultData,
+  customYAxisRangeWithColumnScaling,
   multiMetricSeries,
   multiDimensionBreakout,
   bubbleSize,

@@ -16,7 +16,7 @@ export const ItemIcon = styled(Icon)<{ color?: string | null }>`
 `;
 
 const activeItemCss = css`
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 
   ${ItemIcon},
   ${ItemTitle} {

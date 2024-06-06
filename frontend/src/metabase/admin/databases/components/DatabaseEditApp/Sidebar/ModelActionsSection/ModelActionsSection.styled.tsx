@@ -25,7 +25,7 @@ export const Description = styled.p`
 `;
 
 export const Error = styled(Description)`
-  color: ${color("error")};
-  border-left: 3px solid ${color("error")};
+  color: var(--mb-color-error);
+  border-left: 3px solid var(--mb-color-error);
   padding-left: 12px;
 `;

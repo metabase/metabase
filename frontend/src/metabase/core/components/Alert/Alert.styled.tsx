@@ -13,7 +13,7 @@ export interface AlertRootProps {
 
 const colorsByVariant = {
   border: {
-    info: color("bg-medium"),
+    info: "var(--mb-color-bg-medium)",
     error: color("error"),
     warning: color("warning"),
   },
@@ -56,7 +56,7 @@ export const AlertIcon = styled(Icon)<AlertIconProps>`
 `;
 
 export const AlertLink = styled.a`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   cursor: pointer;
   font-weight: bold;
 `;

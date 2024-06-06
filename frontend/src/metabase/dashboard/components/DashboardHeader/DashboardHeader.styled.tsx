@@ -11,7 +11,7 @@ export const DashboardHeaderActionDivider = styled.div`
   padding-left: 0.5rem;
   margin-left: 0.5rem;
   width: 0px;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
 `;
 
 export const DashboardHeaderButton = styled(Button)<{
@@ -34,9 +34,9 @@ export const DashboardHeaderButton = styled(Button)<{
   font-size: 1rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     background: ${({ hasBackground }) =>
-      hasBackground ? color("bg-medium") : "transparent"};
+      hasBackground ? "var(--mb-color-bg-medium)" : "transparent"};
   }
 
   svg {
@@ -60,9 +60,9 @@ DashboardHeaderButton.defaultProps = {
 };
 
 export const SectionMenuItem = styled(Menu.Item)`
-  background-color: ${darken(color("bg-medium"), 0.1)};
+  background-color: ${() => darken(color("bg-medium"), 0.1)};
 
   &:hover {
-    background-color: ${color("brand")};
+    background-color: var(--mb-color-brand);
   }
 `;

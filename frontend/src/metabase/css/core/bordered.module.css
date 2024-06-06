@@ -48,7 +48,7 @@
 }
 
 .borderError {
-  border-color: var(--color-error) !important;
+  border-color: var(--mb-color-error) !important;
 }
 
 .borderSuccess {

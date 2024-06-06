@@ -55,7 +55,7 @@ export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
 `;
 
 export const FieldLabelError = styled.span`
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 export const FieldDescription = styled.div`
@@ -70,7 +70,7 @@ export const FieldInfoIcon = styled(Icon)`
   height: 0.75rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
