@@ -170,3 +170,10 @@ SortedMetricCol.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const TinySlicesDisappear43766 = Template.bind({});
+TinySlicesDisappear43766.args = {
+  rawSeries: data.tinySlicesDisappear43766 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
