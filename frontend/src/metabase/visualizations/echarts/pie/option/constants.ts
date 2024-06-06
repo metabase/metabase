@@ -13,6 +13,9 @@ export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
     fontSize: 20,
     fontWeight: 700,
   },
+  labelLayout: {
+    hideOverlap: true,
+  },
   itemStyle: {
     borderWidth: DIMENSIONS.slice.borderWidth,
   },
