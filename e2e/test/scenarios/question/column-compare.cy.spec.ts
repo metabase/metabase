@@ -605,22 +605,14 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
   });
 });
 
-function toggleColumnPickerItems(items: string[]) {
-  toggleColumnPicker();
+function toggleColumnPickerItems(names: string[]) {
+  cy.findByTestId("column-picker").click({ force: true });
 
-  for (const item of items) {
-    toggleColumnPickerItem(item);
+  for (const name of names) {
+    cy.findAllByTestId("column-picker-item").contains(name).click();
   }
 
-  toggleColumnPicker();
-}
-
-function toggleColumnPicker() {
   cy.findByTestId("column-picker").click({ force: true });
-}
-
-function toggleColumnPickerItem(name: string) {
-  cy.findAllByTestId("column-picker-item").contains(name).click();
 }
 
 function verifyNoColumnCompareShortcut() {
