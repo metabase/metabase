@@ -445,7 +445,10 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       );
 
       openNotebook();
-      startNewAggregation();
+      getNotebookStep("summarize")
+        .findByTestId("aggregate-step")
+        .icon("add")
+        .click();
 
       popover().findByText("Compare “Count” to previous months ...").click();
       toggleColumnPicker();
@@ -552,13 +555,6 @@ function toggleColumnPickerItem(name: string) {
   cy.findAllByTestId("column-picker-item").contains(name).click();
 }
 
-function startNewAggregation() {
-  getNotebookStep("summarize")
-    .findByTestId("aggregate-step")
-    .icon("add")
-    .click();
-}
-
 function assertNoColumnCompareShortcut() {
   popover()
     .findByText(/compare/)
@@ -572,82 +568,66 @@ type CheckTextOpts = {
   offsetHelp: string;
 };
 
-function checkSummarizeText({
-  itemName,
-  step1Title,
-  step2Title,
-  offsetHelp,
-}: CheckTextOpts) {
+function checkSummarizeText(options: CheckTextOpts) {
   cy.button("Summarize").click();
   rightSidebar().button("Add aggregation").click();
 
   popover().within(() => {
-    cy.findByText(itemName).should("exist").click();
+    cy.findByText(options.itemName).should("exist").click();
 
-    if (step1Title) {
-      cy.findByText(step1Title).should("exist");
+    if (options.step1Title) {
+      cy.findByText(options.step1Title).should("exist");
       cy.findByText("Count").click();
     }
 
-    cy.findByText(step2Title).should("exist");
-    cy.findByText(offsetHelp).should("exist");
+    cy.findByText(options.step2Title).should("exist");
+    cy.findByText(options.offsetHelp).should("exist");
   });
 }
 
-function checkColumnDrillText({
-  itemName,
-  step2Title,
-  offsetHelp,
-}: Omit<CheckTextOpts, "step1Title">) {
+function checkColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
   tableHeaderClick("Count");
 
   popover().within(() => {
-    cy.findByText(itemName).should("exist").click();
-    cy.findByText(step2Title).should("exist");
-    cy.findByText(offsetHelp).should("exist");
+    cy.findByText(options.itemName).should("exist").click();
+    cy.findByText(options.step2Title).should("exist");
+    cy.findByText(options.offsetHelp).should("exist");
   });
 }
 
-function checkPlusButtonText({
-  itemName,
-  step1Title,
-  step2Title,
-  offsetHelp,
-}: CheckTextOpts) {
+function checkPlusButtonText(options: CheckTextOpts) {
   cy.button("Add column").click();
 
   popover().within(() => {
-    cy.findByText(itemName).should("exist").click();
+    cy.findByText(options.itemName).should("exist").click();
 
-    if (step1Title) {
-      cy.findByText(step1Title).should("exist");
+    if (options.step1Title) {
+      cy.findByText(options.step1Title).should("exist");
       cy.findByText("Count").click();
     }
 
-    cy.findByText(step2Title).should("exist");
-    cy.findByText(offsetHelp).should("exist");
+    cy.findByText(options.step2Title).should("exist");
+    cy.findByText(options.offsetHelp).should("exist");
   });
 }
 
-function checkNotebookText({
-  itemName,
-  step1Title,
-  step2Title,
-  offsetHelp,
-}: CheckTextOpts) {
+function checkNotebookText(options: CheckTextOpts) {
   openNotebook();
-  startNewAggregation();
+  getNotebookStep("summarize")
+    .findByTestId("aggregate-step")
+    .icon("add")
+    .click();
 
   popover().within(() => {
-    cy.findByText(itemName).should("exist").click();
+    cy.findByText(options.itemName).should("exist").click();
 
-    if (step1Title) {
-      cy.findByText(step1Title).should("exist");
+    if (options.step1Title) {
+      cy.findByText(options.step1Title).should("exist");
       cy.findByText("Sum of Price").should("exist");
       cy.findByText("Count").should("exist").click();
     }
 
-    cy.findByText(step2Title).should("exist");
-    cy.findByText(offsetHelp).should("exist");
+    cy.findByText(options.step2Title).should("exist");
+    cy.findByText(options.offsetHelp).should("exist");
   });
 }
