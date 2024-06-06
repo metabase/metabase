@@ -15,6 +15,7 @@ import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
 import relativeDateDimension from "./relative-date-dimension.json";
 import showPercentagesOff from "./show-percentages-off.json";
+import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json";
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import sortedMetricCol from "./sorted-metric-col.json";
@@ -33,6 +34,7 @@ export const data = {
   zeroMinimumSlicePercentage,
   showPercentagesOff,
   showPercentagesOnChart,
+  showPercentagesOnChartDense,
   allNegative,
   mixedPositiveNegative,
   columnFormatting,
