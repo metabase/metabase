@@ -37,7 +37,7 @@ function getTotalGraphicOption(
     child.style.fontFamily = renderingContext.fontFamily;
   });
 
-  graphicOption.children[0].style.text = formatMetric(Math.round(total));
+  graphicOption.children[0].style.text = formatMetric(total);
   graphicOption.children[0].style.fill = renderingContext.getColor("text-dark");
 
   graphicOption.children[1].style.fill =
