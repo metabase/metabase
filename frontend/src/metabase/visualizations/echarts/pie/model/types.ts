@@ -6,9 +6,9 @@ export interface PieColumnDescriptors {
 }
 
 export interface PieSlice {
-  key: string;
+  key: string | number | boolean; // dimension value
   value: number; // size of the slice used for rendering
-  tooltipDisplayValue: number; // real value of the slice displayed in tooltip
+  tooltipDisplayValue: number; // real metric value of the slice displayed in tooltip
   normalizedPercentage: number;
   rowIndex?: number;
   color: string;

@@ -5,12 +5,6 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
-const FONT = {
-  lineHeight: 20,
-  size: 14,
-  weight: 700,
-};
-
 export function getPieChartLegend(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
@@ -36,13 +30,10 @@ export function getPieChartLegend(
               )}`
             : label,
         color: s.color,
-        key: s.key,
+        key: String(s.key),
       };
     }),
     width,
-    lineHeight: FONT.lineHeight,
-    fontSize: FONT.size,
-    fontWeight: FONT.weight,
   });
   if (!legendRows) {
     throw Error("Error calculating legend rows");
@@ -52,13 +43,6 @@ export function getPieChartLegend(
 
   return {
     legendHeight,
-    Legend: () => (
-      <Legend
-        items={items}
-        top={top}
-        fontSize={FONT.size}
-        fontWeight={FONT.weight}
-      />
-    ),
+    Legend: () => <Legend items={items} top={top} />,
   };
 }

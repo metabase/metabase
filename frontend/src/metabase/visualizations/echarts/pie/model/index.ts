@@ -50,8 +50,7 @@ function getColDescs(
 export function getRowValues(row: RowValue[], colDescs: PieColumnDescriptors) {
   const { dimensionDesc, metricDesc } = colDescs;
 
-  // dimension val needs to be string to use as key for objects, such as "pie.colors" setting
-  const dimensionValue = String(row[dimensionDesc.index] ?? NULL_DISPLAY_VALUE);
+  const dimensionValue = row[dimensionDesc.index] ?? NULL_DISPLAY_VALUE;
 
   const metricValue = row[metricDesc.index] ?? 0;
   if (typeof metricValue !== "number") {
@@ -94,7 +93,7 @@ export function getPieChartModel(
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
-        color: settings["pie.colors"][dimensionValue],
+        color: settings["pie.colors"][String(dimensionValue)],
       };
     })
     .partition(
