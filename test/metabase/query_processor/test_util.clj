@@ -41,7 +41,7 @@
 ;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
 (def abnormal-drivers
   "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :druid-jdbc :googleanalytics})
+  #{:druid :druid-jdbc})
 
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
@@ -67,15 +67,14 @@
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-without-feature
-  "Return a set of all non-timeseries engines (e.g., everything except Druid and Google Analytics) that DO NOT support
-  `feature`."
+  "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
   (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
 
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
 (defn normal-drivers-except
-  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+  "Return the set of all drivers except Druid and those in `excluded-drivers`."
   [excluded-drivers]
   (set/difference (normal-drivers) (set excluded-drivers)))
 

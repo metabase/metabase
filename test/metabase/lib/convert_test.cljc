@@ -276,9 +276,7 @@
     {:database 282
      :type :query
      :query {:source-table 661
-             :aggregation [[:metric "ga:totalEvents"]]
              :filter [:and
-                      [:segment "gaid::-4"]
                       [:segment 42]
                       [:= [:field 1972 nil] "Run Query"]
                       [:time-interval [:field 1974 nil] -30 :day]
