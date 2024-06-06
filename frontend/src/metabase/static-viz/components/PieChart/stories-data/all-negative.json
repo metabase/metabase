@@ -1,0 +1,308 @@
+[
+  {
+    "card": {
+      "original_card_id": 345,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T23:02:18.244657Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {},
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-05T23:02:18.537098Z"
+      },
+      "collection_preview": true,
+      "entity_id": "xkUcDNbSIx2bNgpBpAoBU",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 345,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                "Total Accident Inverted",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "quarter"
+              }
+            ]
+          ],
+          "source-table": "card__101"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:12:21.117384Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 229.6,
+      "type": "question",
+      "last_used_at": "2024-06-06T00:12:21.117384Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-06T00:12:20.759765Z",
+      "name": "Pie - All Negatives - UK Accidents sum of Total Inverted by Quarter",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/CreationDate",
+          "unit": "quarter",
+          "name": "date",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 1417,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Sum of Total Accident Inverted",
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 16,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -38732,
+                "q1": -36130,
+                "q3": -32981,
+                "max": -31693,
+                "sd": 1989.9964059850292,
+                "avg": -34561.3125
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 154,
+      "collection_position": null,
+      "view_count": 12,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2014-01-01T00:00:00-08:00", -34781],
+        ["2014-04-01T00:00:00-07:00", -35843],
+        ["2014-07-01T00:00:00-07:00", -36966],
+        ["2014-10-01T00:00:00-07:00", -38732],
+        ["2015-01-01T00:00:00-08:00", -32824],
+        ["2015-04-01T00:00:00-07:00", -34373],
+        ["2015-07-01T00:00:00-07:00", -36442],
+        ["2015-10-01T00:00:00-07:00", -36417],
+        ["2016-01-01T00:00:00-08:00", -33181],
+        ["2016-04-01T00:00:00-07:00", -33120],
+        ["2016-07-01T00:00:00-07:00", -34809],
+        ["2016-10-01T00:00:00-07:00", -35511],
+        ["2017-01-01T00:00:00-08:00", -31693],
+        ["2017-04-01T00:00:00-07:00", -31825],
+        ["2017-07-01T00:00:00-07:00", -32842],
+        ["2017-10-01T00:00:00-07:00", -33622]
+      ],
+      "cols": [
+        {
+          "database_type": "date",
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "unit": "quarter",
+          "name": "date",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/Decimal",
+          "name": "sum",
+          "display_name": "Sum of Total Accident Inverted",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('quarter', CAST(\"source\".\"date\" AS timestamp)) AS \"date\", SUM(\"source\".\"Total Accident Inverted\") AS \"sum\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\", 0 - \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"Total Accident Inverted\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" GROUP BY DATE_TRUNC('quarter', CAST(\"source\".\"date\" AS timestamp)) ORDER BY DATE_TRUNC('quarter', CAST(\"source\".\"date\" AS timestamp)) ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/CreationDate",
+            "unit": "quarter",
+            "name": "date",
+            "field_ref": [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 1417,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1460,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2014-01-01",
+                  "latest": "2017-12-31"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Total Accident Inverted",
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 16,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -38732,
+                  "q1": -36130,
+                  "q3": -32981,
+                  "max": -31693,
+                  "sd": 1989.9964059850292,
+                  "avg": -34561.3125
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": -32842,
+          "unit": "quarter",
+          "offset": -80068.14674587105,
+          "last-change": -0.023199095830111236,
+          "col": "sum",
+          "slope": 2.7159763380009982,
+          "last-value": -33622,
+          "best-fit": ["+", -80068.14674587105, ["*", 2.7159763380009982, "x"]]
+        }
+      ]
+    }
+  }
+]
