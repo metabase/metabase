@@ -43,6 +43,11 @@
    {:error/message (str "an instance of the root Collection")}
    #'collection.root/is-root-collection?])
 
+(def ^:private ^:const archived-directly-models #{:model/Card :model/Dashboard})
+(def ^:private ^:const collectable-models
+  (set/union archived-directly-models
+             #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
+
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
   510)
@@ -813,10 +818,10 @@
         :where  [:and
                  [:like :location (str (children-location collection) "%")]
                  [:not :archived]]})
-      (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
+      (doseq [model (apply disj collectable-models archived-directly-models)]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived true}))
-      (doseq [model [:model/Card :model/Dashboard]]
+      (doseq [model archived-directly-models]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
                     {:archived true})))))
@@ -865,10 +870,10 @@
                  [:like :location (str orig-children-location "%")]
                  [:= :archive_operation_id (:archive_operation_id collection)]
                  [:not= :archived_directly true]]})
-      (doseq [model [:model/NativeQuerySnippet :model/Pulse :model/Timeline]]
+      (doseq [model (apply disj collectable-models archived-directly-models)]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived false}))
-      (doseq [model [:model/Card :model/Dashboard]]
+      (doseq [model archived-directly-models]
         (t2/update! model {:collection_id     [:in affected-collection-ids]
                            :archived_directly false}
                     {:archived false})))))
