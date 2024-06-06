@@ -469,7 +469,8 @@ describeEE("issue 24223", () => {
     cy.findByLabelText("subscriptions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
-    multiAutocompleteInput()
+    cy.findByPlaceholderText("Enter user names or email addresses")
+      .click()
       .type(`${admin.first_name} ${admin.last_name}{enter}`)
       .blur(); // blur is needed to close the popover
 
