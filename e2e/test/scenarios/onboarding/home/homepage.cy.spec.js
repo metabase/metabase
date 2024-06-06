@@ -30,7 +30,9 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
     cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
-    cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
+    cy.intercept("GET", "/api/activity/recents?context=views").as(
+      "getRecentItems",
+    );
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
     cy.intercept("POST", "/api/card/*/query").as("getQuestionQuery");
@@ -151,7 +153,7 @@ describe("scenarios > home > homepage", () => {
       });
     });
 
-    it("should show pinned questions in recent items when viewed in a collection", () => {
+    it("should not show pinned questions in recent items when viewed in a collection", () => {
       cy.signInAsAdmin();
 
       visitDashboard(ORDERS_DASHBOARD_ID);
@@ -169,7 +171,7 @@ describe("scenarios > home > homepage", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").should("exist");
+      cy.findByText("Orders, Count").should("not.exist");
     });
   });
 });
