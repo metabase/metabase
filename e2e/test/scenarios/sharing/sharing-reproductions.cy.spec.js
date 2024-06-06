@@ -31,6 +31,7 @@ import {
   dashboardHeader,
   filterWidget,
   getFullName,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -468,8 +469,7 @@ describeEE("issue 24223", () => {
     cy.findByLabelText("subscriptions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
-    cy.findByPlaceholderText("Enter user names or email addresses")
-      .click()
+    multiAutocompleteInput()
       .type(`${admin.first_name} ${admin.last_name}{enter}`)
       .blur(); // blur is needed to close the popover
 
