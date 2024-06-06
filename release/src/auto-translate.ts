@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import 'zx/globals';
 $.verbose = false;
 
@@ -28,6 +29,7 @@ const aliases: Record<string, string> = {
 
 // alias from poeditor's language codes to deepl or google's language codes
 const providerAliases: Record<string, string> = {
+  'ar-SA': 'ar', // google
   'he': 'iw', // google
   "zh-CN": "zh", // deepl
   "zh-HK": "zh", // deepl
@@ -35,6 +37,8 @@ const providerAliases: Record<string, string> = {
   "zh-Hans": "zh", // deepl
 };
 
+// for this to work you have to manually "copy terms to translations" in the english poeditor language
+// this also requires translations credits. it's like $34 every 6 months or so
 // https://poeditor.com/docs/api#translations_automatic
 const autoTranslate = async (language: string) => {
   if (language in aliases) {
