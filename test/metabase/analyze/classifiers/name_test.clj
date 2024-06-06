@@ -59,7 +59,7 @@
 
 (deftest ^:parallel infer-semantic-type-test
   (let [infer (fn infer [column-name & [base-type]]
-                (classifiers.name/infer-semantic-type
+                (classifiers.name/infer-semantic-type-by-name
                   {:name column-name, :base_type (or base-type :type/Text)}))]
     (testing "standard checks"
       ;; not exhausting but a place for edge cases in the future
@@ -70,7 +70,7 @@
     (testing "name and type matches"
       (testing "matches \"updated at\" style columns"
         (let [classify (fn [table-name table-type] (-> (mi/instance Table {:name table-name :base_type table-type})
-                                                       classifiers.name/infer-semantic-type))]
+                                                       classifiers.name/infer-semantic-type-by-name))]
           (doseq [[col-type expected] [[:type/Date :type/UpdatedDate]
                                        [:type/DateTime :type/UpdatedTimestamp]
                                        [:type/Time :type/UpdatedTime]]]

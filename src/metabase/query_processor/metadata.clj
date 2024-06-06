@@ -72,26 +72,38 @@
         driver (driver.u/database->driver (:database query))]
     (driver/query-result-metadata driver query)))
 
-(defn- add-extra-column-metadata [col]
-  (letfn [(ensure-display-name [col]
-            (cond-> col
-              ;; I'm trying to disable nice display name humanization because it breads like 100 Cypress tests and I
-              ;; can't be bothered to go in and fix all of them even if this is objectively a better display name.
-              ;; Seeing if this fixes things. -- Cam
-              (not (:display-name col)) (assoc :display-name (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
-          (infer-semantic-type-by-name [col]
-            (let [legacy-col                     (update-keys col u/->snake_case_en)
-                  {semantic-type :semantic_type} (analyze/infer-and-assoc-semantic-type-by-name legacy-col nil)]
-              (assoc col :semantic-type semantic-type)))]
-    (-> col
-        ensure-display-name
-        infer-semantic-type-by-name)))
+(mu/defn ^:private add-extra-column-metadata :- :map
+  [col            :- :map
+   legacy-or-mlv2 :- [:enum ::legacy ::mlv2]]
+  (let [display-name-key (case legacy-or-mlv2
+                           ::legacy :display_name
+                           ::mlv2   :display-name)
+        semantic-type-key (case legacy-or-mlv2
+                            ::legacy :semantic_type
+                            ::mlv2   :semantic-type)]
+    (letfn [(ensure-display-name [col]
+              (cond-> col
+                ;; I'm trying to disable nice display name humanization because it breads like 100 Cypress tests and I
+                ;; can't be bothered to go in and fix all of them even if this is objectively a better display name.
+                ;; Seeing if this fixes things. -- Cam
+                (not (display-name-key col))
+                (assoc display-name-key (:name col) #_(u.humanization/name->human-readable-name :simple (:name col)))))
+            (infer-semantic-type-by-name [col]
+              (let [legacy-col    (cond-> col
+                                    (= legacy-or-mlv2 ::mlv2)
+                                    (update-keys u/->snake_case_en))
+                    semantic-type (analyze/infer-semantic-type-by-name legacy-col)]
+                (merge col
+                       (when semantic-type
+                         {semantic-type-key semantic-type}))))]
+      (-> col
+          ensure-display-name
+          infer-semantic-type-by-name))))
 
 (mu/defn ^:private result-metadata* :- [:sequential :map]
   [query current-user-id]
-  (let [cols (or (metadata-from-preprocessing query)
-                 (metadata-from-driver query current-user-id))]
-    (mapv add-extra-column-metadata cols)))
+  (or (metadata-from-preprocessing query)
+      (metadata-from-driver query current-user-id)))
 
 (mu/defn result-metadata :- [:sequential ::lib.schema.metadata/column]
   "Get result metadata for a query, hopefully without actually having to run the query itself. For MBQL queries we can
@@ -109,7 +121,10 @@
   ([query           :- [:map [:database ::lib.schema.id/database]]
     current-user-id :- [:maybe ::lib.schema.id/user]]
    (mapv
-    #(lib.metadata.jvm/instance->metadata % :metadata/column)
+    (fn [col]
+      (-> col
+          (lib.metadata.jvm/instance->metadata :metadata/column)
+          (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 
 (mu/defn ^:private ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
@@ -117,9 +132,18 @@
   (letfn [(->legacy [col]
             (-> col
                 (dissoc :lib/type)
-                (update-keys u/->snake_case_en)))]
-    (cond-> col
-      (:lib/type col) ->legacy)))
+                (update-keys u/->snake_case_en)))
+          ;; TODO -- not sure if this is needed or not, leaving commented out to see if tests pass; if they do then we
+          ;; can remove this entirely
+          #_(ensure-field-ref [col]
+            ;; HACK for backward compatibility with FE stuff -- ideally we would be able to remove this entirely but
+            ;; if we do some e2e tests fail that I don't really have the energy to spend all day debugging -- Cam
+            (cond-> col
+              (not (:field_ref col)) (assoc :field_ref [:field (:name col) {:base-type (or (:base_type col) :type/*)}])))]
+    (-> col
+        ->legacy
+        (add-extra-column-metadata ::legacy)
+        #_ensure-field-ref)))
 
 (mu/defn legacy-result-metadata :- [:ref :metabase.analyze.query-results/ResultsMetadata]
   "Like [[result-metadata]], but return metadata in legacy format rather than MLv2 format. This should be considered

@@ -459,11 +459,14 @@
                  (set (map :id (#'interesting/matching-fields context (dimensions "CreateTimestamp"))))))
           ;; This does not match any of our fabricated context fields (even (mt/id :people :latitude)) because the
           ;; context is fabricated and needs additional data (:table). See above test for a working example with a match
-          (is (= #{} (set (map :id (#'interesting/matching-fields context (dimensions "Lat"))))))))))
+          (is (= #{} (set (map :id (#'interesting/matching-fields context (dimensions "Lat")))))))))))
+
+(deftest field-candidate-matching-test-2
   (testing "Verify dimension selection works for dimension definitions with 2-element [tablespec fieldspec] definitions."
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
-        ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension definitions.
+        ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension
+        ;; definitions.
         (let [source-query {:database (mt/id)
                             :type     :query
                             :query    (mt/$ids
@@ -484,10 +487,8 @@
              Card       card                {:table_id        (mt/id :products)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (mt/with-test-user
-                                                                :rasta
-                                                                (result-metadata-for-query
-                                                                 source-query))
+                                             :result_metadata (mt/with-test-user :rasta
+                                                                (result-metadata-for-query source-query))
                                              :type            :model}]
             (let [base-context (#'magic/make-base-context (#'magic/->root card))
                   dimensions   {"GenericCategoryMedium" {:field_type [:entity/GenericTable :type/Category] :max_cardinality 10}

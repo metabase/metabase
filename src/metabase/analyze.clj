@@ -24,8 +24,8 @@
   [metabase.analyze.classifiers.core
    run-classifiers]
   [metabase.analyze.classifiers.name
-   infer-and-assoc-semantic-type-by-name
-   infer-entity-type-by-name]
+   infer-entity-type-by-name
+   infer-semantic-type-by-name]
   [metabase.analyze.fingerprint.fingerprinters
    col-wise
    constant-fingerprinter
