@@ -552,8 +552,8 @@
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}
-                                  (when effective_parent
-                                    effective_parent)
+                                  ;; for  non-root collections, override :collection with the values for its effective parent
+                                  effective_parent
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          all-scores)
