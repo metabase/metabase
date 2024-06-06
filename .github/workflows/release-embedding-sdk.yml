@@ -196,7 +196,7 @@ jobs:
         run: |
           mv CHANGELOG.md ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
-      - name: Create a PR updating readme + published version, and changelog
+      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
@@ -214,11 +214,21 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
-      - name: Edit PR adding useful information
+      - name: Edit PR adding useful information (using Metabase bot app)
         run: |
           gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Auto approve PR (using GitHub Actions account)
+        run: |
+          gh pr review --approve
+
+      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        run: |
+          gh pr merge --auto
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
