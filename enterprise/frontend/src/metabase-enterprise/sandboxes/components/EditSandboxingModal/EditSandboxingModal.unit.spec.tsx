@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
@@ -73,6 +74,9 @@ const setup = ({
     rootCollection: EDITABLE_ROOT_COLLECTION,
   });
   setupRecentViewsEndpoints([]);
+  setupAdhocQueryMetadataEndpoint(
+    createMockCardQueryMetadata({ databases: [database] }),
+  );
 
   fetchMock.post("path:/api/mt/gtap/validate", 204);
   fetchMock.get("path:/api/permissions/group/1", {});
@@ -125,7 +129,7 @@ describe("EditSandboxingModal", () => {
 
         expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-        await userEvent.click(screen.getByText("Pick a column"));
+        await userEvent.click(await screen.findByText("Pick a column"));
         await userEvent.click(await screen.findByText("ID"));
 
         await userEvent.click(screen.getByText("Pick a user attribute"));
