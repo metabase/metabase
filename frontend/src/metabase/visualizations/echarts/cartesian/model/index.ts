@@ -143,7 +143,7 @@ export const getCartesianChartModel = (
   } = getFormatters(
     seriesModels,
     stackModels,
-    dataset,
+    scaledDataset,
     settings,
     renderingContext,
   );
