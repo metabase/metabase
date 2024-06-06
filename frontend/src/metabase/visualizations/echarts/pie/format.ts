@@ -8,7 +8,7 @@ import type { PieChartModel } from "./model/types";
 
 export interface PieChartFormatters {
   formatMetric: (value: unknown) => string;
-  formatPercent: (value: unknown) => string;
+  formatPercent: (value: unknown, location: "legend" | "chart") => string;
 }
 
 export function getPieChartFormatters(
@@ -29,16 +29,17 @@ export function getPieChartFormatters(
       ...metricColSettings,
     });
 
-  const formatPercent = (value: unknown) =>
+  const formatPercent = (value: unknown, location: "legend" | "chart") =>
     renderingContext.formatValue(value, {
       column: metricColSettings.column,
       number_separators: metricColSettings.number_separators as string,
       number_style: "percent",
+      majorWidth: 0,
       decimals: computeMaxDecimalsForValues(
         chartModel.slices.map(s => s.normalizedPercentage),
         {
           style: "percent",
-          maximumSignificantDigits: 2,
+          maximumSignificantDigits: location === "legend" ? 3 : 2,
         },
       ),
     });
