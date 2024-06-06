@@ -10,6 +10,7 @@ import { formatCoordinate } from "metabase/lib/formatting/geography";
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatTime } from "metabase/lib/formatting/time";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {
@@ -168,16 +169,15 @@ export const getLabelsStaticFormatter = (
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;
   const columnSettings = settings.column_settings?.[getColumnKey(column)];
+  const options = getFormattingOptionsWithoutScaling({
+    column,
+    ...columnSettings,
+    jsx: false,
+    compact: settings["graph.label_value_formatting"] === "compact",
+  });
 
   const labelsFormatter = (value: any) =>
-    String(
-      formatStaticValue(value, {
-        column,
-        ...columnSettings,
-        jsx: false,
-        compact: settings["graph.label_value_formatting"] === "compact",
-      }),
-    );
+    String(formatStaticValue(value, options));
 
   return labelsFormatter;
 };

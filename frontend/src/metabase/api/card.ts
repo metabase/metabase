@@ -15,7 +15,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideCardMetadataTags,
+  provideCardQueryMetadataTags,
 } from "./tags";
 
 export const cardApi = Api.injectEndpoints({
@@ -43,7 +43,7 @@ export const cardApi = Api.injectEndpoints({
         url: `/api/card/${id}/query_metadata`,
       }),
       providesTags: (metadata, error, id) =>
-        metadata ? provideCardMetadataTags(id, metadata) : [],
+        metadata ? provideCardQueryMetadataTags(id, metadata) : [],
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({

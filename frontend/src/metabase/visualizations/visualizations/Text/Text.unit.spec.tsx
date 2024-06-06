@@ -112,7 +112,7 @@ describe("Text", () => {
           "You can use Markdown here, and include variables {{like_this}}",
         );
         expect(screen.getByTestId("editing-dashboard-text-container"))
-          .toHaveStyle(`border: 1px solid ${color("brand")};
+          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
                         color: ${color("text-light")};`);
       });
 

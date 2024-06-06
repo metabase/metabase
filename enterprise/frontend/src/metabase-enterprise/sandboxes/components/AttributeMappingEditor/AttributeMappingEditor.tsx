@@ -8,13 +8,18 @@ import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
-import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  Table,
+  UserAttribute,
+} from "metabase-types/api";
 
 import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
 import { MappingEditor } from "../MappingEditor";
 
 interface AttributeMappingEditorProps {
   value: any;
+  policyTable: Table | undefined;
   onChange: (value: any) => void;
   shouldUseSavedQuestion: boolean;
   attributesOptions: UserAttribute[];
@@ -23,6 +28,7 @@ interface AttributeMappingEditorProps {
 
 const AttributeMappingEditor = ({
   value,
+  policyTable,
   onChange,
   shouldUseSavedQuestion,
   attributesOptions,
@@ -64,7 +70,9 @@ const AttributeMappingEditor = ({
       !shouldUseSavedQuestion && policy.table_id != null ? (
         <div style={{ minWidth: 200 }}>
           <QuestionParameterTargetWidget
-            questionObject={getRawDataQuestionForTable(policy.table_id)}
+            questionObject={
+              policyTable ? getRawDataQuestionForTable(policyTable) : null
+            }
             target={value}
             onChange={onChange}
             placeholder={t`Pick a column`}

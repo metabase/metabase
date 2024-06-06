@@ -368,7 +368,7 @@ export const buildEChartsStackLabelOptions = (
       const value = datum[seriesModel.dataKey];
 
       if (typeof value !== "number") {
-        return " ";
+        return "";
       }
       return formatter(value);
     },

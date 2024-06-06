@@ -51,4 +51,5 @@ export interface HoveredObject {
   element?: Element;
   event?: MouseEvent;
   stackedTooltipModel?: StackedTooltipModel;
+  isAlreadyScaled?: boolean;
 }

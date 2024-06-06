@@ -1,4 +1,3 @@
-import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
@@ -23,9 +22,9 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
   }
 `;
 
-const selectedStyles = ({ theme }: { theme: Theme }) => css`
-  color: ${theme.fn.themeColor("brand")};
-  background-color: ${theme.fn.themeColor("brand-lighter")};
+const selectedStyles = css`
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-lighter);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 `;
@@ -33,10 +32,10 @@ const selectedStyles = ({ theme }: { theme: Theme }) => css`
 export const SearchDropdownFooter = styled(Group, {
   shouldForwardProp: propName => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
-  border-top: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
+  border-top: 1px solid var(--mb-color-border);
 
-  ${({ theme, isSelected }) => isSelected && selectedStyles({ theme })}
+  ${({ isSelected }) => isSelected && selectedStyles}
   &:hover {
-    ${({ theme }) => selectedStyles({ theme })}
+    ${selectedStyles}
   }
 `;

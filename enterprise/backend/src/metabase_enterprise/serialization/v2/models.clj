@@ -4,7 +4,6 @@
   "Schema model types"
   ["Database"
    "Field"
-   "LegacyMetric"
    "Segment"
    "Table"])
 
@@ -54,6 +53,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "LegacyMetric"
    "LegacyMetricImportantField"
    "ModelIndex"
    "ModelIndexValue"

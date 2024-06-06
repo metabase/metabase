@@ -7,6 +7,6 @@ export const DeleteMappingButton = styled(IconButtonWrapper)`
   color: ${color("text-dark")};
 
   &:hover {
-    color: ${color("danger")};
+    color: var(--mb-color-danger);
   }
 `;
