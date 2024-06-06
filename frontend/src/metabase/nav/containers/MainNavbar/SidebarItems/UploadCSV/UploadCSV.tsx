@@ -9,6 +9,7 @@ import {
 import type { OnFileUpload } from "metabase/collections/types";
 import { UploadInput, UploadTooltip } from "metabase/components/upload";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { trackSchemaEvent } from "metabase/lib/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import { PaddedSidebarLink } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { UploadFileProps } from "metabase/redux/uploads";
@@ -52,6 +53,8 @@ export default function UploadCSV({
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    trackSchemaEvent("csv_upload_clicked", "left_nav");
+
     const file = event.target.files?.[0];
     if (file !== undefined) {
       setUploadedFile(file);
