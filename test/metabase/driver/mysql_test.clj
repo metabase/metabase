@@ -361,6 +361,19 @@
                    (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
 
+(deftest enums-test
+  (testing "ENUM columns are synced with the correct base and semantic types"
+    (mt/test-driver :mysql
+      (mt/with-empty-db
+        (let [spec (sql-jdbc.conn/connection-details->spec :mysql (:details (mt/db)))]
+          (doseq [sql ["CREATE TABLE birds (bird_type ENUM('toucan', 'pigeon', 'turkey'));"
+                       "INSERT INTO birds (bird_type) VALUES ('toucan');"]]
+            (jdbc/execute! spec sql))
+          (sync/sync-database! (mt/db))
+          (is (=? {:base_type     :type/MySQLEnum
+                   :semantic_type :type/Category}
+                  (t2/select-one :model/Field :name "bird_type"))))))))
+
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
     (testing "can group on TIME columns (#12846)"
