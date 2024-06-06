@@ -5878,7 +5878,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v49.2024-05-29T09:26:20
-      author: SakuragiYoshimasa
+      author: johnswanson
       comment: >-
         Modify type of report_card.dataset to ${boolean.type} on mysql,mariadb
       dbms: mysql,mariadb
@@ -5900,7 +5900,8 @@ databaseChangeLog:
 
   - changeSet:
       id: v49.2024-05-29T09:27:15
-      author: SakuragiYoshimasa
+      author: johnswanson
+      dbms: mysql,mariadb
       comment: Add NOT NULL constraint to report_card.dataset
       changes:
         - addNotNullConstraint:
@@ -5915,7 +5916,8 @@ databaseChangeLog:
 
   - changeSet:
       id: v49.2024-05-29T09:28:25
-      author: SakuragiYoshimasa
+      author: johnswanson
+      dbms: mysql,mariadb
       comment: Add default value to report_card.dataset
       changes:
         - addDefaultValue:
