@@ -17,6 +17,7 @@ import showPercentagesOff from "./show-percentages-off.json";
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import sortedMetricCol from "./sorted-metric-col.json";
+import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
 import zeroMinimumSlicePercentage from "./zero-min-slice-percentage.json";
 
 export const data = {
@@ -40,4 +41,5 @@ export const data = {
   dateDimension,
   relativeDateDimension,
   sortedMetricCol,
+  tinySlicesDisappear43766,
 };
