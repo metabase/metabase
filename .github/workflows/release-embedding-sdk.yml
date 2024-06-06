@@ -101,7 +101,7 @@ jobs:
 
       - name: Update changelog
         run: |
-          yarn embedding-sdk:generate-changelog
+          yarn embedding-sdk:generate-changelog -o changelog-diff
 
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
@@ -115,16 +115,11 @@ jobs:
           name: metabase-sdk
           path: ./resources/embedding-sdk
 
-      - name: Create changelog patch
-        run: |
-          git add enterprise/frontend/src/embedding-sdk/CHANGELOG.md
-          git diff --staged > changelog.patch
-
-      - name: Upload changelog patch
+      - name: Upload changelog diff
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-changelog-patch
-          path: ./changelog.patch
+          name: sdk-changelog-diff
+          path: ./changelog-diff
 
   # build-jar:
   #   needs: test
@@ -191,14 +186,15 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      - name: Retrieve SDK changelog patch
+      - name: Retrieve SDK changelog diff
         uses: actions/download-artifact@v4
         with:
-          name: sdk-changelog-patch
+          name: sdk-changelog-diff
 
-      - name: Apply changelog patch
+      - name: Update changelog
         run: |
-          git apply changelog.patch
+          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog
         run: |
