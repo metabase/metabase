@@ -6,9 +6,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
 
-(def ^:private default-search-ctx
-  {:search-string       nil
-   :archived?           false
+(def default-search-ctx
+  {:search-string      nil
    :models             search.config/all-models
    :model-ancestors?   false
    :current-user-id    1
@@ -23,10 +22,10 @@
       (is (= #{}
              (search.filter/search-context->applicable-models
               (assoc default-search-ctx :models #{}))))
-      (is (= search.config/all-models
+      (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:archived? true})))))))
+                     {:archived true})))))))
 
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
@@ -129,14 +128,7 @@
   (testing "archived filters"
     (is (= [:= :card.archived false]
            (:where (search.filter/build-filters
-                    base-search-query "card" default-search-ctx))))
-
-    (is (= [:and
-            [:= :table.active true]
-            [:= :table.visibility_type nil]
-            [:not [:= :table.db_id perms/audit-db-id]]]
-           (:where (search.filter/build-filters
-                    base-search-query "table"  default-search-ctx))))))
+                    base-search-query "card" default-search-ctx))))))
 
 (deftest ^:parallel build-table-filter-always-ignores-audit-tables
   (is (contains?

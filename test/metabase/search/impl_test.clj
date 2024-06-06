@@ -7,7 +7,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.models.permissions :as perms]
    [metabase.search.config :as search.config]
+   [metabase.search.filter-test :as search.filter-test]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -58,7 +60,7 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [do-search (fn []
                           (search.impl/search {:search-string      search-string
-                                               :archived?          false
+                                               :archived           false
                                                :models             search.config/all-models
                                                :current-user-id    (mt/user->id :crowberto)
                                                :current-user-perms #{"/"}
@@ -264,3 +266,11 @@
     (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
                   search.impl/serialize
                   :dataset_query)))))
+
+(deftest ^:parallel active-table-search-test
+  (testing "Only active, visible, and non audit DB tables should be included"
+    (is (= [:and
+            [:not [:= :table.db_id perms/audit-db-id]]
+            [:= :table.active true]
+            [:= :table.visibility_type nil]]
+           (:where (#'search.impl/search-query-for-model "table" search.filter-test/default-search-ctx))))))
