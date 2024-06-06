@@ -54,18 +54,14 @@ export default function UploadCSV({
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file !== undefined) {
-      saveFile(file);
+      setUploadedFile(file);
+      openModelUploadModal();
 
       // reset the input so that the same file can be uploaded again
       if (uploadInputRef.current) {
         uploadInputRef.current.value = "";
       }
     }
-  };
-
-  const saveFile = (file: File) => {
-    setUploadedFile(file);
-    openModelUploadModal();
   };
 
   return (
