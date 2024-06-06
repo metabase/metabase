@@ -8,6 +8,7 @@ import {
   filterWidget,
   getDashboardCard,
   popover,
+  queryBuilderHeader,
   resetFilterWidgetToDefault,
   restore,
   saveDashboard,
@@ -83,6 +84,30 @@ const multiStageQuestionDetails = {
   },
 };
 
+const parameterDetails = {
+  id: "1",
+  name: "Unit of Time",
+  slug: "unit_of_time",
+  type: "temporal-unit",
+  sectionId: "temporal-unit",
+};
+
+const getParameterMapping = card => ({
+  card_id: card.id,
+  parameter_id: parameterDetails.id,
+  target: [
+    "dimension",
+    [
+      "field",
+      ORDERS.CREATED_AT,
+      {
+        "base-type": "type/DateTime",
+        "temporal-unit": "month",
+      },
+    ],
+  ],
+});
+
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
@@ -90,7 +115,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("mapping targets", () => {
-    it("should add a temporal unit parameter and connect it to a card", () => {
+    it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
       cy.createDashboardWithQuestions({
         questions: [singleBreakoutQuestionDetails],
       }).then(({ dashboard }) => {
@@ -106,7 +131,14 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       filterWidget().click();
       popover().findByText("Year").click();
-      getDashboardCard().findByText("Created At: Year").should("be.visible");
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+
+      queryBuilderHeader()
+        .findByText("Count by Created At: Year")
+        .should("be.visible");
     });
 
     it("should allow to map to a question with multiple breakouts", () => {
@@ -297,6 +329,39 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         visitDashboard(dashboardId, { params: { unit_of_time: "year" } }),
       );
       getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+  });
+
+  describe("permissions", () => {
+    it("should add a temporal unit parameter and connect it to a card and drill thru", () => {
+      createQuestion(singleBreakoutQuestionDetails).then(({ body: card }) => {
+        cy.createDashboard({ parameters: [parameterDetails] }).then(
+          ({ body: dashboard }) => {
+            addOrUpdateDashboardCard({
+              dashboard_id: dashboard.id,
+              card_id: card.id,
+              card: {
+                parameter_mappings: [getParameterMapping(card)],
+              },
+            });
+            cy.wrap(dashboard.id).as("dashboardId");
+          },
+        );
+      });
+
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.signIn("nodata");
+        visitDashboard(dashboardId);
+      });
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+      cy.findByTestId("TableInteractive-root")
+        .findByText("Created At: Year")
+        .should("be.visible");
     });
   });
 });
