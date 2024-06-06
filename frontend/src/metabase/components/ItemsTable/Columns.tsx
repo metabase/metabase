@@ -15,20 +15,20 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable";
-import { SortableColumnHeader } from "./BaseItemsTable";
+import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 import {
-  BulkSelectWrapper,
   ColumnHeader,
-  DescriptionIcon,
+  BulkSelectWrapper,
+  ItemCell,
   EntityIconCheckBox,
   ItemButton,
-  ItemCell,
   ItemLink,
   ItemNameCell,
-  ModelDetailLink,
-  RowActionsContainer,
+  DescriptionIcon,
   TableColumn,
+  RowActionsContainer,
+  ModelDetailLink,
 } from "./BaseItemsTable.styled";
 
 type HeaderProps = Omit<SortableColumnHeaderProps, "name">;

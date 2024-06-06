@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EntityItem from "metabase/components/EntityItem";
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable/BaseItemsTable";
 import {
   ItemLink,
   ItemNameCell,

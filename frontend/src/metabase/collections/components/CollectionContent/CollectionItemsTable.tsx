@@ -23,6 +23,7 @@ import type {
   CollectionItemModel,
 } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { Dispatch } from "metabase-types/store";
 
 import {
   CollectionEmptyContent,
@@ -38,6 +39,21 @@ const ALL_MODELS: CollectionItemModel[] = [
   "snippet",
   "collection",
 ];
+
+const wrapCollectionItemList = (
+  itemList: CollectionItem[],
+  dispatch: Dispatch,
+) => {
+  return (itemList ?? []).map(object => {
+    const entity = entityForObject(object);
+    if (entity) {
+      return entity.wrapEntity(object, dispatch);
+    } else {
+      console.warn("Couldn't find entity for object", object);
+      return object;
+    }
+  });
+};
 
 export type CollectionItemsTableProps = {
   collectionId: CollectionId;
@@ -126,30 +142,23 @@ export const CollectionItemsTable = ({
 
   const dispatch = useDispatch();
 
-  const unpinnedItems = (data ?? []).map(object => {
-    const entity = entityForObject(object);
-    if (entity) {
-      return entity.wrapEntity(object, dispatch);
-    } else {
-      console.warn("Couldn't find entity for object", object);
-      return object;
-    }
-  });
+  const collectionItemList = wrapCollectionItemList(data, dispatch);
 
   const total = metadata?.total ?? 0;
-  const hasPagination: boolean = total > PAGE_SIZE;
+  const hasPagination = total > PAGE_SIZE;
 
   const unselected = getIsSelected
-    ? unpinnedItems.filter(item => !getIsSelected(item))
-    : unpinnedItems;
+    ? collectionItemList.filter(item => !getIsSelected(item))
+    : collectionItemList;
   const hasUnselected = unselected.length > 0;
 
   const handleSelectAll = () => {
-    selectOnlyTheseItems?.(unpinnedItems);
+    selectOnlyTheseItems?.(collectionItemList);
   };
 
   const loading = loadingPinnedItems || loadingUnpinnedItems;
-  const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
+  const isEmpty =
+    !loading && !hasPinnedItems && collectionItemList.length === 0;
 
   if (isEmpty && !loadingUnpinnedItems) {
     return (
@@ -160,43 +169,41 @@ export const CollectionItemsTable = ({
   }
 
   return (
-    <>
-      <CollectionTable data-testid="collection-table">
-        <ItemsTable
-          databases={databases}
-          bookmarks={bookmarks}
-          createBookmark={createBookmark}
-          deleteBookmark={deleteBookmark}
-          items={unpinnedItems}
-          collection={collection}
-          sortingOptions={unpinnedItemsSorting}
-          onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-          selectedItems={selected}
-          hasUnselected={hasUnselected}
-          getIsSelected={getIsSelected}
-          onToggleSelected={toggleItem}
-          onDrop={clear}
-          onMove={handleMove}
-          onCopy={handleCopy}
-          onSelectAll={handleSelectAll}
-          onSelectNone={clear}
-          onClick={onClick ? (item, event) => onClick(item, event) : undefined}
-          isLoading={!hasPinnedItems && loadingUnpinnedItems}
-        />
-        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-          {hasPagination && (
-            <PaginationControls
-              showTotal
-              page={page}
-              pageSize={PAGE_SIZE}
-              total={total}
-              itemsLength={unpinnedItems.length}
-              onNextPage={handleNextPage}
-              onPreviousPage={handlePreviousPage}
-            />
-          )}
-        </div>
-      </CollectionTable>
-    </>
+    <CollectionTable data-testid="collection-table">
+      <ItemsTable
+        databases={databases}
+        bookmarks={bookmarks}
+        createBookmark={createBookmark}
+        deleteBookmark={deleteBookmark}
+        items={collectionItemList}
+        collection={collection}
+        sortingOptions={unpinnedItemsSorting}
+        onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+        selectedItems={selected}
+        hasUnselected={hasUnselected}
+        getIsSelected={getIsSelected}
+        onToggleSelected={toggleItem}
+        onDrop={clear}
+        onMove={handleMove}
+        onCopy={handleCopy}
+        onSelectAll={handleSelectAll}
+        onSelectNone={clear}
+        onClick={onClick ? (item, event) => onClick(item, event) : undefined}
+        isLoading={!hasPinnedItems && loadingUnpinnedItems}
+      />
+      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+        {hasPagination && (
+          <PaginationControls
+            showTotal
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            itemsLength={collectionItemList.length}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
+          />
+        )}
+      </div>
+    </CollectionTable>
   );
 };
