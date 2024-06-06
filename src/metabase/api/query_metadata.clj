@@ -24,12 +24,8 @@
 
 (defn- partition-table-ids
   [ids]
-  (reduce (fn [acc id]
-            (if-let [card-id (lib.util/legacy-string-table-id->card-id id)]
-              (update acc :card-ids conj card-id)
-              (update acc :table-ids conj id)))
-          {:card-ids [] :table-ids []}
-          ids))
+  {:card-ids  (keep lib.util/legacy-string-table-id->card-id ids)
+   :table-ids (remove lib.util/legacy-string-table-id->card-id ids)})
 
 (defn- metadata-for-table-dependents
   [table-dependents]
@@ -106,7 +102,7 @@
                                :creator
                                :dashboard_count
                                :can_write
-                               #_:can_run_adhoc_query
+                               :can_run_adhoc_query
                                :average_query_time
                                :last_query_start
                                :parameter_usage_count

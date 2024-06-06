@@ -60,9 +60,7 @@
                                     [:= :r.model (model->db-model model)]
                                     [:in :r.model_id ids]]}))]
           (map (fn [item]
-                 (let [updated-info (-> item :id id->updated-info)]
-                   (cond-> item
-                     updated-info (assoc :last-edit-info updated-info))))
+                 (m/assoc-some item :last-edit-info (-> item :id id->updated-info)))
                items))))))
 
 (mu/defn edit-information-for-user :- LastEditInfo
