@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createQuestion,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -176,6 +177,15 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByText("April 24, 2022").should("be.visible");
         cy.findByText("May 1, 2022").should("be.visible");
       });
+    });
+
+    it("should allow to map to multiple questions within on dashcard", () => {
+      createQuestion(singleBreakoutQuestionDetails);
+      createQuestion(multiBreakoutQuestionDetails);
+      cy.createDashboard().then(({ body: dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+      editDashboard();
     });
   });
 });
