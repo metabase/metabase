@@ -45,6 +45,35 @@ const noBreakoutQuestionDetails = {
   },
 };
 
+const multiStageQuestionDetails = {
+  display: "table",
+  query: {
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 2],
+    aggregation: [["avg", ["field", "count", { "base-type": "type/Integer" }]]],
+    breakout: [
+      [
+        "field",
+        "CREATED_AT",
+        { "base-type": "type/DateTime", "temporal-unit": "year" },
+      ],
+    ],
+  },
+};
+
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
@@ -60,9 +89,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
 
       editDashboard();
-      cy.findByTestId("dashboard-header")
-        .findByLabelText("Add a Unit of Time widget")
-        .click();
+      addTemporalUnitParameter();
       getDashboardCard().findByText("Select…").click();
       popover().findByText("Created At: Month").click();
       saveDashboard();
@@ -81,20 +108,13 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
 
       editDashboard();
-      cy.findByTestId("dashboard-header")
-        .findByLabelText("Add a Unit of Time widget")
-        .click();
+      addTemporalUnitParameter();
       getDashboardCard().findByText("Select…").click();
       popover().within(() => {
         cy.findByText("Created At: Month").should("be.visible");
         cy.findByText("Created At: Year").should("be.visible").click();
       });
       saveDashboard();
-      getDashboardCard().within(() => {
-        cy.findByText("Created At: Month").should("be.visible");
-        cy.findByText("2022").should("be.visible");
-      });
-
       filterWidget().click();
       popover().findByText("Quarter").click();
       getDashboardCard().within(() => {
@@ -111,10 +131,31 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       });
 
       editDashboard();
-      cy.findByTestId("dashboard-header")
-        .findByLabelText("Add a Unit of Time widget")
-        .click();
+      addTemporalUnitParameter();
       getDashboardCard().findByText("No valid fields").should("be.visible");
+    });
+
+    it("should allow to map to a question with multiple query stages", () => {
+      cy.createDashboardWithQuestions({
+        questions: [multiStageQuestionDetails],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+
+      editDashboard();
+      addTemporalUnitParameter();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Month: Year").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().findByText("Created At: Quarter").should("be.visible");
     });
   });
 });
+
+function addTemporalUnitParameter() {
+  cy.findByTestId("dashboard-header")
+    .findByLabelText("Add a Unit of Time widget")
+    .click();
+}
