@@ -480,23 +480,19 @@ export function FieldValuesWidgetInner({
                   return null;
                 }
 
-                if (Array.isArray(option)) {
-                  const value = option[0];
-                  const column = fields[0];
-                  const label = formatValue(value, {
-                    ...formatOptions,
-                    column,
-                    remap: showRemapping(fields),
-                    jsx: false,
-                    maximumFractionDigits: 20,
-                  });
+                const value = option[0];
+                const column = fields[0];
+                const label = formatValue(value, {
+                  ...formatOptions,
+                  column,
+                  remap: showRemapping(fields),
+                  jsx: false,
+                  maximumFractionDigits: 20,
+                });
 
-                  return { value, label };
-                }
-
-                return option;
+                return { value, label };
               })
-              .filter(Boolean)}
+              .filter((x): x is { label: string; value: string } => Boolean(x))}
             renderValue={value => optionRenderer?.([value])}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
