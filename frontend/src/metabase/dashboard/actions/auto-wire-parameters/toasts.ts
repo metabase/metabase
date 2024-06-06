@@ -22,22 +22,18 @@ export const showAutoWireParametersToast =
   ({
     dashcardAttributes,
     originalDashcardAttributes,
-    fieldName,
-    multipleTabs,
+    columnName,
+    hasMultipleTabs,
   }: {
     dashcardAttributes: SetMultipleDashCardAttributesOpts;
     originalDashcardAttributes: SetMultipleDashCardAttributesOpts;
-    fieldName: string;
-    multipleTabs: boolean;
+    columnName: string;
+    hasMultipleTabs: boolean;
   }) =>
   (dispatch: Dispatch) => {
-    let message = "";
-
-    if (multipleTabs) {
-      message = t`Auto-connect this filter to all questions containing “${fieldName}”, in the current tab?`;
-    } else {
-      message = t`Auto-connect this filter to all questions containing “${fieldName}”?`;
-    }
+    const message = hasMultipleTabs
+      ? t`Auto-connect this filter to all questions containing “${columnName}”, in the current tab?`
+      : t`Auto-connect this filter to all questions containing “${columnName}”?`;
 
     dispatch(
       addUndo({
@@ -74,7 +70,7 @@ export const showAutoWireParametersToast =
       dispatch(
         addUndo({
           id: AUTO_WIRE_UNDO_TOAST_ID,
-          message: t`The filter was auto-connected to all questions containing “${fieldName}”.`,
+          message: t`The filter was auto-connected to all questions containing “${columnName}”.`,
           actionLabel: t`Undo`,
           timeout: 12000,
           undo: true,
@@ -88,22 +84,19 @@ export const showAddedCardAutoWireParametersToast =
   ({
     targetDashcard,
     dashcard_id,
-    parametersToAutoApply,
-    parameters,
+    parametersMappingsToApply,
+    parametersToMap,
   }: {
     targetDashcard: QuestionDashboardCard;
     dashcard_id: DashCardId;
-    parametersToAutoApply: DashboardParameterMapping[];
-    parameters: Parameter[];
+    parametersMappingsToApply: DashboardParameterMapping[];
+    parametersToMap: Parameter[];
   }) =>
   (dispatch: Dispatch) => {
-    let message = "";
-
-    if (parametersToAutoApply.length === 1) {
-      message = t`Auto-connect “${targetDashcard.card.name}” to “${parameters[0].name}”?`;
-    } else {
-      message = t`Auto-connect “${targetDashcard.card.name}” to ${parametersToAutoApply.length} filters with the same field?`;
-    }
+    const shouldShowParameterName = parametersMappingsToApply.length === 1;
+    const message = shouldShowParameterName
+      ? t`Auto-connect “${targetDashcard.card.name}” to “${parametersToMap[0].name}”?`
+      : t`Auto-connect “${targetDashcard.card.name}” to ${parametersMappingsToApply.length} filters with the same field?`;
 
     const toastId = _.uniqueId();
 
@@ -128,7 +121,7 @@ export const showAddedCardAutoWireParametersToast =
         setDashCardAttributes({
           id: dashcard_id,
           attributes: {
-            parameter_mappings: parametersToAutoApply,
+            parameter_mappings: parametersMappingsToApply,
           },
         }),
       );
@@ -146,13 +139,9 @@ export const showAddedCardAutoWireParametersToast =
     }
 
     function showUndoToast() {
-      let message = "";
-
-      if (parametersToAutoApply.length === 1) {
-        message = t`“${targetDashcard.card.name}” was auto-connected to “${parameters[0].name}”.`;
-      } else {
-        message = t`“${targetDashcard.card.name}” was auto-connected to ${parametersToAutoApply.length} filters.`;
-      }
+      const message = shouldShowParameterName
+        ? t`“${targetDashcard.card.name}” was auto-connected to “${parametersToMap[0].name}”.`
+        : t`“${targetDashcard.card.name}” was auto-connected to ${parametersToMap.length} filters.`;
 
       dispatch(
         addUndo({

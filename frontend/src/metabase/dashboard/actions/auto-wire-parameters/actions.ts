@@ -92,14 +92,14 @@ export function showAutoWireToast(
       showAutoWireParametersToast({
         dashcardAttributes,
         originalDashcardAttributes,
-        fieldName: formatMappingOption(mappingOption),
-        multipleTabs: tabs.length > 1,
+        columnName: formatMappingOption(mappingOption),
+        hasMultipleTabs: tabs.length > 1,
       }),
     );
   };
 }
 
-export function autoWireParametersToNewCard({
+export function showAutoWireToastNewCard({
   dashcard_id,
 }: {
   dashcard_id: DashCardId;
@@ -151,7 +151,7 @@ export function autoWireParametersToNewCard({
       targetDashcard,
     );
 
-    const parametersToAutoApply: DashboardParameterMapping[] = [];
+    const parametersMappingsToApply: DashboardParameterMapping[] = [];
     const processedParameterIds = new Set();
 
     for (const dashcard of dashcards) {
@@ -168,7 +168,7 @@ export function autoWireParametersToNewCard({
           targetDashcard.card_id &&
           !processedParameterIds.has(mapping.parameter_id)
         ) {
-          parametersToAutoApply.push(
+          parametersMappingsToApply.push(
             ...(getParameterMappings(
               targetDashcard,
               mapping.parameter_id,
@@ -181,11 +181,11 @@ export function autoWireParametersToNewCard({
       }
     }
 
-    if (parametersToAutoApply.length === 0) {
+    if (parametersMappingsToApply.length === 0) {
       return;
     }
 
-    const parameters = dashboard.parameters.filter(p =>
+    const parametersToMap = dashboard.parameters.filter(p =>
       processedParameterIds.has(p.id),
     );
 
@@ -193,8 +193,8 @@ export function autoWireParametersToNewCard({
       showAddedCardAutoWireParametersToast({
         targetDashcard,
         dashcard_id,
-        parametersToAutoApply,
-        parameters,
+        parametersMappingsToApply,
+        parametersToMap,
       }),
     );
   };
