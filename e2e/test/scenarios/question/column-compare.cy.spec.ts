@@ -139,28 +139,24 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
-      cy.log("chill mode - column drill");
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
@@ -202,30 +198,27 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare “Count” to previous months ...",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
-      cy.log("chill mode - column drill");
       tableHeaderClick("Created At: Month");
       verifyNoColumnCompareShortcut();
+
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare “Count” to previous months ...",
         step2Title: "Compare “Count” to previous months",
@@ -271,30 +264,27 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      cy.log("chill mode - column drill");
       tableHeaderClick("Created At: Day");
       verifyNoColumnCompareShortcut();
+
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare “Count” to previous period ...",
         step2Title: "Compare “Count” to previous period",
@@ -340,30 +330,27 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare “Count” to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
-      cy.log("chill mode - column drill");
       tableHeaderClick("Category");
       verifyNoColumnCompareShortcut();
+
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare “Count” to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
@@ -420,7 +407,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
@@ -428,14 +414,12 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on grouping",
       });
 
-      cy.log("chill mode - column drill");
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare to previous period",
         step1Title: "Compare one of these to the previous period",
@@ -443,7 +427,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on grouping",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
@@ -486,7 +469,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare to previous months ...",
         step1Title: "Compare one of these to the previous months",
@@ -494,16 +476,15 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "months ago based on “Created At”",
       });
 
-      cy.log("chill mode - column drill");
       tableHeaderClick("Created At: Month");
       verifyNoColumnCompareShortcut();
+
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare to previous months",
         step1Title: "Compare one of these to the previous months",
@@ -511,7 +492,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "months ago based on “Created At”",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare to previous months ...",
         step1Title: "Compare one of these to the previous months",
@@ -558,7 +538,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
@@ -566,16 +545,15 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      cy.log("chill mode - column drill");
       tableHeaderClick("Created At: Day");
       verifyNoColumnCompareShortcut();
+
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare to previous period",
         step1Title: "Compare one of these to the previous period",
@@ -583,7 +561,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "periods ago based on “Created At”",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare to previous period ...",
         step1Title: "Compare one of these to the previous period",
@@ -630,7 +607,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      cy.log("chill mode - summarize sidebar");
       verifySummarizeText({
         itemName: "Compare to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
@@ -638,16 +614,15 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "rows above based on “Category”",
       });
 
-      cy.log("chill mode - column drill");
       tableHeaderClick("Category");
       verifyNoColumnCompareShortcut();
+
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
 
-      cy.log("chill mode - plus button");
       verifyPlusButtonText({
         itemName: "Compare to previous rows",
         step2Title: "Compare “Count” to previous rows",
@@ -655,7 +630,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "rows above based on “Category”",
       });
 
-      cy.log("notebook editor");
       verifyNotebookText({
         itemName: "Compare to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
