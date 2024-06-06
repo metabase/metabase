@@ -1556,10 +1556,30 @@
                         (original-position coll-id))))))
      (annotate-collections child-type->parent-ids collections))))
 
-(mi/define-batched-hydration-method can-restore
-  :can_restore
-  "Efficiently hydrate the `:can_restore` of a sequence of items with a `archived_directly` field."
-  [items]
+(defmulti hydrate-can-restore
+  "Can these items be restored?"
+  (fn [model _] model))
+
+(defmethod hydrate-can-restore :model/Collection [_model colls]
+  (when (seq colls)
+    (let [coll-id->parent-id (into {} (map (fn [{:keys [id parent_id]}]
+                                             [id parent_id])
+                                           (t2/hydrate (filter :archived colls) :parent_id)))
+          parent-ids (keep val coll-id->parent-id)
+          parent-id->archived? (when (seq parent-ids)
+                                 (t2/select-pk->fn :archived :model/Collection :id [:in parent-ids]))]
+      (for [coll colls
+            :let [parent-id (coll-id->parent-id (:id coll))
+                  archived-directly? (:archived_directly coll)
+                  parent-archived? (get parent-id->archived? parent-id false)]]
+        (cond-> coll
+          (:archived coll) (assoc :can_restore (and archived-directly?
+                                                    (not parent-archived?)
+                                                    (perms/set-has-full-permissions-for-set?
+                                                     @api/*current-user-permissions-set*
+                                                     (perms-for-archiving coll)))))))))
+
+(defmethod hydrate-can-restore :default [_model items]
   (for [{collection :collection
          :as item*} (t2/hydrate items :collection)
         :let [item (dissoc item* :collection)]]
@@ -1583,28 +1603,15 @@
                            ;; we have perms on the collection
                            (mi/can-write? (or collection root-collection)))))))
 
-(mi/define-batched-hydration-method collection-can-restore
-  :collection/can_restore
-  "Efficiently hydrate the `:can_restore` property of a sequence of
-  Collections."
-  [colls]
-  (when (seq colls)
-    (let [coll-id->parent-id (into {} (map (fn [{:keys [id parent_id]}]
-                                             [id parent_id])
-                                           (t2/hydrate (filter :archived colls) :parent_id)))
-          parent-ids (keep val coll-id->parent-id)
-          parent-id->archived? (when (seq parent-ids)
-                                 (t2/select-pk->fn :archived :model/Collection :id [:in parent-ids]))]
-      (for [coll colls
-            :let [parent-id (coll-id->parent-id (:id coll))
-                  archived-directly? (:archived_directly coll)
-                  parent-archived? (get parent-id->archived? parent-id false)]]
-        (cond-> coll
-          (:archived coll) (assoc :can_restore (and archived-directly?
-                                                    (not parent-archived?)
-                                                    (perms/set-has-full-permissions-for-set?
-                                                     @api/*current-user-permissions-set*
-                                                     (perms-for-archiving coll)))))))))
+(mi/define-batched-hydration-method can-restore
+  :can_restore
+  "Efficiently hydrate the `:can_restore` of a sequence of items with a `archived_directly` field."
+  [items]
+  (->> (map-indexed (fn [i item] (vary-meta item assoc ::i i)) items)
+       (group-by t2/model)
+       (mapcat (fn [[model items]]
+                 (hydrate-can-restore model items)))
+       (sort-by (comp ::i meta))))
 
 (mi/define-batched-hydration-method can-delete
   :can_delete
@@ -1612,11 +1619,6 @@
   [items]
   (when (seq items)
     (for [item items]
-      (assoc item :can_delete (mi/can-write? item)))))
-
-(mi/define-batched-hydration-method collection-can-delete
-  :collection/can_delete
-  "Right now, you can never permanently delete collections. This is a placeholder in case that changes."
-  [items]
-  (for [item items]
-    (assoc item :can_delete false)))
+      (assoc item :can_delete (if (= :model/Collection (t2/model item))
+                                false
+                                (mi/can-write? item))))))

@@ -150,7 +150,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write :is_personal :collection/can_delete)
+    (t2/hydrate collections :can_write :is_personal :can_delete)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -706,7 +706,7 @@
       (-> (t2/instance :model/Collection row)
           collection/maybe-localize-trash-name
           (update :archived api/bit->boolean)
-          (t2/hydrate :can_write :effective_location :collection/can_restore :collection/can_delete)
+          (t2/hydrate :can_write :effective_location :can_restore :can_delete)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
@@ -935,8 +935,8 @@
                   [:effective_ancestors :can_write]
                   :can_write
                   :is_personal
-                  :collection/can_restore
-                  :collection/can_delete)))
+                  :can_restore
+                  :can_delete)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
