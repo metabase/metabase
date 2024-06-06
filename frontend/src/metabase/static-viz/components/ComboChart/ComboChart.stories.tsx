@@ -767,6 +767,24 @@ BarMinHeightLimit.args = {
   renderingContext,
 };
 
+export const ComboDataLabelsAutoCompactnessPropagatesFromLine = Template.bind(
+  {},
+);
+ComboDataLabelsAutoCompactnessPropagatesFromLine.args = {
+  rawSeries: data.comboDataLabelsAutoCompactnessPropagatesFromLine as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboDataLabelsAutoCompactnessPropagatesFromTotals = Template.bind(
+  {},
+);
+ComboDataLabelsAutoCompactnessPropagatesFromTotals.args = {
+  rawSeries: data.comboDataLabelsAutoCompactnessPropagatesFromTotals as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
