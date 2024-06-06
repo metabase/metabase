@@ -20,8 +20,17 @@ export const CellRoot = styled.td<{
   background-color: ${props => props.backgroundColor ?? "unset"};
 `;
 
-export const CellContent = styled.span<{ isClickable: boolean }>`
+export const CellContent = styled.span<{
+  isClickable: boolean;
+  isHighlighted: boolean;
+}>`
   display: inline-block;
+
+  ${props =>
+    props.isHighlighted &&
+    css`
+      color: ${props.theme.fn.themeColor("brand")};
+    `};
 
   ${props =>
     props.isClickable &&
