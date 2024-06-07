@@ -2,8 +2,23 @@ import { useEffect } from "react";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { buildSearchString } from "metabase/lib/urls";
+import type { Location } from "history";
+import { useDispatch } from "react-redux";
+import { isEqual } from "underscore";
+import _ from "underscore";
+import {
+  isNotNull,
+  isNullOrUndefined,
+  removeNullAndUndefinedValues,
+} from "metabase/lib/types";
+import { replace } from "react-router-redux";
 
-export function useSyncedQueryString(object: Record<string, any>) {
+export function useSyncedQueryString(
+  object: Record<string, any>,
+  location: Location,
+) {
+  const dispatch = useDispatch();
+
   useEffect(() => {
     /**
      * We don't want to sync the query string to the URL because when previewing,
@@ -14,35 +29,31 @@ export function useSyncedQueryString(object: Record<string, any>) {
     if (IS_EMBED_PREVIEW) {
       return;
     }
-    const searchString = buildSearchString({
-      object,
-      filterFn: containsAllowedParams,
-    });
 
-    if (searchString !== window.location.search) {
-      history.replaceState(
-        null,
-        document.title,
-        window.location.pathname + searchString + window.location.hash,
+    const pickValidValues = obj =>
+      _.mapObject(
+        _.pick(obj, val => !(isNullOrUndefined(val) || val === "")),
+        value => (_.isArray(value) && value.length === 1 ? value[0] : value),
+      );
+
+    const locationQueryParams = _.pick(
+      pickValidValues(location.query),
+      Object.keys(object),
+    );
+    const objectParams = _.pick(pickValidValues(object), Object.keys(object));
+
+    if (!isEqual(locationQueryParams, objectParams)) {
+      dispatch(
+        replace({
+          ...location,
+          query: pickValidValues({
+            ..._.omit(location.query, Object.keys(object)),
+            ...objectParams,
+          }),
+        }),
       );
     }
-
-    return () => {
-      // Remove every previously-synced keys from the query string when the component is unmounted.
-      // This is a workaround to clear the parameter list state when [SyncedParametersList] unmounts.
-      const searchString = buildSearchString({
-        filterFn: key => !(key in object),
-      });
-
-      if (searchString !== window.location.search) {
-        history.replaceState(
-          null,
-          document.title,
-          window.location.pathname + searchString + window.location.hash,
-        );
-      }
-    };
-  }, [object]);
+  }, [dispatch, location, object]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];

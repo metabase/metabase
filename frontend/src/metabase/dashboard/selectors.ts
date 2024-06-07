@@ -446,9 +446,9 @@ export const getTabs = createSelector([getDashboard], dashboard => {
 });
 
 export const getSelectedTabId = createSelector(
-  [getDashboard, state => state.dashboard.selectedTabId],
-  (dashboard, selectedTabId) => {
-    if (dashboard && selectedTabId === null) {
+  [getDashboard, getTabs, state => state.dashboard.selectedTabId],
+  (dashboard, dashboardTabs, selectedTabId) => {
+    if (dashboard && dashboardTabs.length > 0 && selectedTabId === null) {
       return getInitialSelectedTabId(dashboard);
     }
 
