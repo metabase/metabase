@@ -127,7 +127,7 @@ async function getRecentlyClosedFlakeIssues({github, owner, repo}: GithubProps) 
   const issues = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
-    since: dayjs().subtract(3, 'day').toISOString(),
+    since: dayjs().subtract(7, 'day').toISOString(), // is 1 week too long?
     labels: 'flaky-test-fix',
     state: 'closed',
   });
