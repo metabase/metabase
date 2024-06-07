@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
@@ -56,7 +57,7 @@
        :model/Segment   _              {:table_id table-id
                                         :name     (str "segment 3 " search-string)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (binding [api/*memoize-per-request-middleware* (atom nil)]
+        (binding [config/*request-id* (random-uuid)]
           (let [do-search (fn []
                             (search.impl/search {:search-string      search-string
                                                  :archived?          false

@@ -11,6 +11,7 @@
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.audit :as audit]
+   [metabase.config :refer [*request-id*]]
    [metabase.db :as mdb]
    [metabase.events :as events]
    [metabase.models.collection.root :as collection.root]
@@ -311,10 +312,20 @@
   [:set
    [:or [:= "root"] ms/PositiveInt]])
 
-(def ^:private collection-id->collection
-  (api/memoize-for-request
-   (fn []
-     (into {} (t2/select-fn-vec (juxt :id identity) :model/Collection)))))
+(def ^:private ^{:arglists '([])} collection-id->collection
+  "Cached function to fetch *all* collections, as a map of, well, `collection-id->collection`."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [& _]
+                         ;; If this is running in the context of a request, cache it for the duration of that request.
+                         ;; Otherwise, don't cache the results at all.)
+                         (if-let [req-id *request-id*]
+                           [req-id]
+                           [(random-uuid)]))}
+   (fn collection-id->collection*
+     []
+     (into {} (t2/select-fn-vec (juxt :id identity) :model/Collection)))
+   ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
+   :ttl/threshold (* 10 1000)))
 
 (defn- permissions-set->collection-id->collection
   [permissions-set & [read-or-write]]
