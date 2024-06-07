@@ -20,6 +20,11 @@ import type {
   ParameterId,
   ParameterTarget,
   Parameter,
+  DashboardTabId,
+  DashboardCard,
+  DashboardParameterMapping,
+  ActionParametersMapping,
+  VirtualDashCardParameterMapping,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 
@@ -30,18 +35,21 @@ export function getAllDashboardCardsWithUnmappedParameters({
   dashcards,
   dashboardId,
   parameterId,
+  selectedTabId,
   excludeDashcardIds = [],
 }: {
   dashboards: DashboardState["dashboards"];
   dashcards: DashboardState["dashcards"];
   dashboardId: DashboardId;
   parameterId: ParameterId;
+  selectedTabId: DashboardTabId;
   excludeDashcardIds?: DashCardId[];
 }): QuestionDashboardCard[] {
   const existingDashcards = getExistingDashCards(
     dashboards,
     dashcards,
     dashboardId,
+    selectedTabId,
   );
 
   return existingDashcards.filter(
@@ -118,9 +126,10 @@ export function getAutoWiredMappingsForDashcards(
   }
   return targetDashcardMappings;
 }
-
+// TODO: this function should automatically calculate return type based on the
+// type of dashcard
 export function getParameterMappings(
-  dashcard: QuestionDashboardCard,
+  dashcard: DashboardCard,
   parameter_id: ParameterId,
   card_id: CardId,
   target: ParameterTarget | null,
@@ -128,12 +137,18 @@ export function getParameterMappings(
   const isVirtual = isVirtualDashCard(dashcard);
   const isAction = isActionDashCard(dashcard);
 
-  let parameter_mappings = dashcard.parameter_mappings || [];
+  let parameter_mappings: (
+    | DashboardParameterMapping
+    | ActionParametersMapping
+    | VirtualDashCardParameterMapping
+  )[] = dashcard.parameter_mappings || [];
 
   // allow mapping the same parameter to multiple action targets
   if (!isAction) {
     parameter_mappings = parameter_mappings.filter(
-      m => m.card_id !== card_id || m.parameter_id !== parameter_id,
+      m =>
+        ("card_id" in m && m.card_id !== card_id) ||
+        m.parameter_id !== parameter_id,
     );
   }
 

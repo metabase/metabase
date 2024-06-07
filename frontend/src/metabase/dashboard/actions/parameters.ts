@@ -2,7 +2,7 @@ import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { autoWireDashcardsWithMatchingParameters } from "metabase/dashboard/actions/auto-wire-parameters/actions";
+import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
@@ -28,7 +28,6 @@ import type {
   ParameterId,
   ParameterMappingOptions,
   ParameterTarget,
-  QuestionDashboardCard,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -52,6 +51,7 @@ import {
   getParameters,
   getParameterValues,
   getParameterMappingsBeforeEditing,
+  getSelectedTabId,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -178,12 +178,10 @@ export const setParameterMapping = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcardId);
 
       if (target !== null && isQuestionDashCard(dashcard)) {
+        const selectedTabId = getSelectedTabId(getState());
+
         dispatch(
-          autoWireDashcardsWithMatchingParameters(
-            parameterId,
-            dashcard,
-            target,
-          ),
+          showAutoWireToast(parameterId, dashcard, target, selectedTabId),
         );
       }
 
@@ -192,8 +190,7 @@ export const setParameterMapping = createThunkAction(
           id: dashcardId,
           attributes: {
             parameter_mappings: getParameterMappings(
-              // TODO remove type casting when getParameterMappings is fixed
-              dashcard as QuestionDashboardCard,
+              dashcard,
               parameterId,
               cardId,
               target,
