@@ -65,7 +65,7 @@ export function getUrlWithParameters(
       questionWithParameters =
         question.type() !== "question"
           ? question.composeQuestionAdhoc().setParameters(parameters)
-          : question;
+          : questionWithParameters;
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
