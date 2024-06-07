@@ -134,7 +134,7 @@ describe("scenarios > admin > people", () => {
       cy.findByText("A group is only as good as its members.");
     });
 
-    it("should allow admin to create new users", () => {
+    it("should allow admin to create new users", { tags: "@smoke" }, () => {
       const { first_name, last_name, email } = TEST_USER;
       const FULL_NAME = `${first_name} ${last_name}`;
       cy.visit("/admin/people");

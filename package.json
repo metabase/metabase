@@ -357,7 +357,7 @@
     "docs-lint-links": "find docs -type f -name '*.md' -print0 | xargs -0 markdown-link-check --quiet --config .mlc_config.json",
     "embedding-sdk:fixup-types-imports": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
-    "embedding-sdk:generate-changelog": "yarn conventional-changelog -p angular --pkg enterprise/frontend/src/embedding-sdk/package.template.json --config enterprise/frontend/src/embedding-sdk/conventional-changelog-config.js --tagPrefix embedding-sdk- -i enterprise/frontend/src/embedding-sdk/CHANGELOG.md -s",
+    "embedding-sdk:generate-changelog": "yarn conventional-changelog -p angular --pkg enterprise/frontend/src/embedding-sdk/package.template.json --config enterprise/frontend/src/embedding-sdk/conventional-changelog-config.js --tagPrefix embedding-sdk-",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "eslint-fix": "yarn lint-eslint --fix",

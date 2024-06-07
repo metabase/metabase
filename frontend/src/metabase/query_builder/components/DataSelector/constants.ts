@@ -1,12 +1,6 @@
 import { t } from "ttag";
 
-import type {
-  DataPickerDataType,
-  DataPickerFilters,
-  DataTypeInfoItem,
-} from "./types";
-
-export const MIN_SEARCH_LENGTH = 2;
+import type { DataPickerDataType, DataTypeInfoItem } from "./types";
 
 export const DATA_BUCKET: Record<string, DataPickerDataType> = {
   MODELS: "models",
@@ -14,13 +8,6 @@ export const DATA_BUCKET: Record<string, DataPickerDataType> = {
   SAVED_QUESTIONS: "questions",
   METRICS: "metrics",
 } as const;
-
-export const DEFAULT_DATA_PICKER_FILTERS: DataPickerFilters = {
-  types: () => true,
-  databases: () => true,
-  schemas: () => true,
-  tables: () => true,
-};
 
 export const MODELS_INFO_ITEM: DataTypeInfoItem = {
   id: DATA_BUCKET.MODELS,
