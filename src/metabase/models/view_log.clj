@@ -23,7 +23,7 @@
   [:maybe [:enum :dashboard :question]])
 
 (mu/defn ^:private validate
-  [_log-entry :- [:map [:context ::context]]]
+  [_log-entry :- [:map [:context {:optional true} ::context]]]
   :no-op)
 
 (t2/define-before-insert :model/ViewLog
