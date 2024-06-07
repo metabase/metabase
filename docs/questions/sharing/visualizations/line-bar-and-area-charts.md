@@ -135,8 +135,9 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 - Show label (the legend label for the axis).
 - Rename the axis
 - Split y-axis when necessary
-- Auto y-axis range
-- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero.
+- Auto y-axis range. When not toggled on, you can set the y-axis range (it's min and max values).
+- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
+![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
 - Scale: Linear, power, or log.
 - Show lines and marks
 
