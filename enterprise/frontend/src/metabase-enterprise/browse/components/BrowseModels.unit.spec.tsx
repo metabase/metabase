@@ -1,5 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -19,6 +20,7 @@ const setup = (modelCount: number) => {
   setupSearchEndpoints(models);
   setupSettingsEndpoints([]);
   setupEnterprisePlugins();
+  setupRecentViewsEndpoints([]);
   return renderWithProviders(<BrowseModels />, {
     storeInitialState: {
       setup: createMockSetupState({
