@@ -447,6 +447,11 @@ class ExpressionEditorTextfield extends React.Component<
   };
 
   handleInputBlur = (e: React.FocusEvent) => {
+    // Ensure there is no active popup menu before we blur
+    if (this.popupMenuTarget?.current) {
+      return;
+    }
+
     this.setState({ isFocused: false });
 
     // Switching to another window also triggers the blur event.
