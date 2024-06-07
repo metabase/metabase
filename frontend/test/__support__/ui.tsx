@@ -1,10 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
-import type {
-  ByRoleMatcher,
-  type waitForOptions,
-} from "@testing-library/react";
+import type { ByRoleMatcher, waitForOptions } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";

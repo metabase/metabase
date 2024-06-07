@@ -16,6 +16,7 @@ import {
   waitFor,
   mockGetBoundingClientRect,
   mockScrollBy,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
@@ -378,8 +379,9 @@ describe("AddToDashSelectDashModal", () => {
       console.log("dashboardCollection", dashboardCollection);
 
       await screen.findByText(/add this model to a dashboard/i);
-
+      await waitForLoaderToBeRemoved();
       await assertPath([dashboardCollection]);
+
       expect(await findPickerItem(DASHBOARD.name)).toHaveAttribute(
         "data-active",
         "true",
