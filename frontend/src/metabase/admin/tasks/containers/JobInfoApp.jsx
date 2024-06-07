@@ -60,10 +60,7 @@ export const JobInfoApp = ({ children }) => {
   const { data, error, isFetching } = useGetTasksInfoQuery();
 
   return (
-    <LoadingAndErrorWrapper
-      loading={isFetching && !data?.scheduler}
-      error={error}
-    >
+    <LoadingAndErrorWrapper loading={isFetching} error={error}>
       <Box pl="md">
         <Flex align="center">
           <AdminHeader title={t`Scheduler Info`} />

@@ -64,10 +64,7 @@ export const JobTriggersModal = props => {
       title={t`Triggers for ${jobKey}`}
       onClose={() => dispatch(goBack())}
     >
-      <LoadingAndErrorWrapper
-        loading={isFetching && !job?.triggers}
-        error={error}
-      >
+      <LoadingAndErrorWrapper loading={isFetching} error={error}>
         {() => renderTriggersTable(job?.triggers)}
       </LoadingAndErrorWrapper>
     </ModalContent>
