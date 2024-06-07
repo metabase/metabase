@@ -18,7 +18,9 @@
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -145,14 +147,20 @@
    :id
    {:default 0}))
 
+(defn- source-card-id
+  [query]
+  (let [query-type (lib/normalized-query-type query)]
+    (case query-type
+      :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+      :mbql/query (-> query lib/normalize lib.util/source-card-id)
+      nil)))
+
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
-  (let [dataset-cards (keep (comp not-empty :dataset_query) cards)
+  (let [dataset-cards (filter (comp seq :dataset_query) cards)
         source-card-ids (into #{}
-                              (keep (comp qp.util/query->source-card-id
-                                          mbql.normalize/normalize
-                                          :dataset_query))
+                              (keep (comp source-card-id :dataset_query))
                               dataset-cards)]
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
