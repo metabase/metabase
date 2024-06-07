@@ -20,7 +20,7 @@
   (derive ::mi/write-policy.always-allow))
 
 (mr/def ::context
-  [:enum :dashboard :question])
+  [:maybe [:enum :dashboard :question]])
 
 (mu/defn ^:private validate
   [_log-entry :- [:map [:context ::context]]]
