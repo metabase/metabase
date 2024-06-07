@@ -8055,7 +8055,7 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: v50.2024-06-07T12:37:36
+      id: v51.2024-06-07T12:37:36
       author: crisptrutski
       comment: Rename query_field.direct_reference to query_field.indirect_reference
       changes:
