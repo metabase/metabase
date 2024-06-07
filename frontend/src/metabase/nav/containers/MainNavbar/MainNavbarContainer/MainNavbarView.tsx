@@ -1,4 +1,6 @@
+import type { MouseEvent } from "react";
 import { useCallback } from "react";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,8 +12,10 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getCustomHomePageDashboardId } from "metabase/selectors/app";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -71,6 +75,18 @@ function MainNavbarView({
   handleCreateNewCollection,
   handleCloseNavbar,
 }: Props) {
+  const location = useLocation();
+  const homepageDashboardId = useSelector(getCustomHomePageDashboardId);
+
+  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
+    "expand-bookmarks-in-nav",
+  );
+
+  const isAtHomepageDashboard = Boolean(
+    homepageDashboardId &&
+      location.pathname?.startsWith(`/dashboard/${homepageDashboardId}`),
+  );
+
   const {
     card: cardItem,
     collection: collectionItem,
@@ -84,8 +100,16 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
-    "expand-bookmarks-in-nav",
+  const handleHomeClick = useCallback(
+    (event: MouseEvent) => {
+      // Prevent navigating to the dashboard homepage when a user is already there
+      // https://github.com/metabase/metabase/issues/43800
+      if (isAtHomepageDashboard) {
+        event.preventDefault();
+      }
+      onItemSelect();
+    },
+    [isAtHomepageDashboard, onItemSelect],
   );
 
   return (
@@ -95,7 +119,7 @@ function MainNavbarView({
           <PaddedSidebarLink
             isSelected={nonEntityItem?.url === "/"}
             icon="home"
-            onClick={onItemSelect}
+            onClick={handleHomeClick}
             url="/"
           >
             {t`Home`}
