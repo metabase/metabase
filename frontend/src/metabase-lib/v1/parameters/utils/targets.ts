@@ -156,7 +156,9 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   const stageIndex = -1;
   const availableColumns =
     parameter && isTemporalUnitParameter(parameter)
-      ? Lib.returnedColumns(query, stageIndex)
+      ? Lib.breakouts(query, stageIndex).map(breakout =>
+          Lib.breakoutColumn(query, stageIndex, breakout),
+        )
       : Lib.filterableColumns(query, stageIndex);
   const filteredColumns = parameter
     ? availableColumns.filter(
