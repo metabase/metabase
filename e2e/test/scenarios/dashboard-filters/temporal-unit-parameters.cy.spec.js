@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
   clearFilterWidget,
+  createNativeQuestion,
   createQuestion,
   dashboardParametersDoneButton,
   dashboardParameterSidebar,
@@ -18,7 +19,7 @@ import {
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const singleBreakoutQuestionDetails = {
-  name: "Question 1",
+  name: "Single breakout",
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -28,7 +29,7 @@ const singleBreakoutQuestionDetails = {
 };
 
 const multiBreakoutQuestionDetails = {
-  name: "Question 2",
+  name: "Multiple breakouts",
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -45,7 +46,7 @@ const multiBreakoutQuestionDetails = {
 };
 
 const noBreakoutQuestionDetails = {
-  name: "Question 3",
+  name: "No breakouts",
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -55,7 +56,7 @@ const noBreakoutQuestionDetails = {
 };
 
 const multiStageQuestionDetails = {
-  name: "Question 4",
+  name: "Multiple stages",
   display: "table",
   query: {
     "source-query": {
@@ -81,6 +82,58 @@ const multiStageQuestionDetails = {
         { "base-type": "type/DateTime", "temporal-unit": "year" },
       ],
     ],
+  },
+};
+
+const expressionBreakoutQuestionDetails = {
+  name: "Breakout by expression",
+  display: "table",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    expressions: {
+      Date: [
+        "datetime-add",
+        ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+        1,
+        "day",
+      ],
+    },
+    breakout: [["expression", "Date", { "base-type": "type/DateTime" }]],
+  },
+};
+
+const binningBreakoutQuestionDetails = {
+  name: "Breakout by a column with a binning strategy",
+  display: "table",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.TOTAL,
+        { binning: { strategy: "num-bins", "num-bins": 100 } },
+      ],
+    ],
+  },
+};
+
+const nativeQuestionDetails = {
+  name: "SQL query",
+  display: "table",
+  native: {
+    query: "SELECT * FROM ORDERS WHERE {{date}}",
+    "template-tags": {
+      date: {
+        id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
+        name: "date",
+        "display-name": "Date",
+        type: "dimension",
+        dimension: ["field", ORDERS.CREATED_AT, null],
+        "widget-type": "date/all-options",
+      },
+    },
   },
 };
 
@@ -120,24 +173,20 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       createQuestion(singleBreakoutQuestionDetails);
       createQuestion(multiBreakoutQuestionDetails);
       createQuestion(multiStageQuestionDetails);
+      createQuestion(expressionBreakoutQuestionDetails);
+      createQuestion(binningBreakoutQuestionDetails);
+      createNativeQuestion(nativeQuestionDetails);
       cy.createDashboard().then(({ body: dashboard }) =>
         visitDashboard(dashboard.id),
       );
       editDashboard();
       addTemporalUnitParameter();
 
-      cy.log("no breakout");
-      addQuestion(noBreakoutQuestionDetails.name);
-      editParameter(parameterDetails.name);
-      getDashboardCard().findByText("No valid fields").should("be.visible");
-      dashboardParametersDoneButton().click();
-      removeQuestion();
-
       cy.log("single breakout");
       addQuestion(singleBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
       getDashboardCard().findByText("Select…").click();
-      popover().findByText("Created At: Month").click();
+      popover().findByText("Created At").click();
       saveDashboard();
       filterWidget().click();
       popover().findByText("Year").click();
@@ -146,6 +195,62 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       removeQuestion();
 
       cy.log("multiple breakouts");
+      addQuestion(multiBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("Select…").click();
+      popover()
+        .findAllByText("Created At")
+        .should("have.length", 2)
+        .eq(0)
+        .click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().findByText("Q2 2022").should("be.visible");
+      editDashboard();
+      removeQuestion();
+
+      cy.log("multiple stages");
+      addQuestion(multiStageQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Month").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().findByText("Created At: Quarter").should("be.visible");
+      editDashboard();
+      removeQuestion();
+
+      cy.log("no breakout");
+      addQuestion(noBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("No valid fields").should("be.visible");
+      dashboardParametersDoneButton().click();
+      removeQuestion();
+
+      cy.log("breakout by expression");
+      addQuestion(expressionBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("No valid fields").should("be.visible");
+      dashboardParametersDoneButton().click();
+      removeQuestion();
+
+      cy.log("breakout by a column with a binning strategy");
+      addQuestion(binningBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("No valid fields").should("be.visible");
+      dashboardParametersDoneButton().click();
+      removeQuestion();
+
+      cy.log("native query");
+      addQuestion(nativeQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard()
+        .findByText(/Add a variable to this question/)
+        .should("be.visible");
+      dashboardParametersDoneButton().click();
+      removeQuestion();
     });
 
     it("should allow to map to multiple questions within on dashcard", () => {
@@ -182,7 +287,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .click();
       popover().findByText("Created At: Month").click();
       getDashboardCard().findByText("Select…").click();
-      popover().findByText("Created At: Month: Year").click();
+      popover().findByText("Created At: Month").click();
       saveDashboard();
 
       filterWidget().click();

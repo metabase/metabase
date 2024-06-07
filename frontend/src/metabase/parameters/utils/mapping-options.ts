@@ -164,7 +164,9 @@ export function getParameterMappingOptions(
     const stageIndex = -1;
     const availableColumns =
       parameter && isTemporalUnitParameter(parameter)
-        ? Lib.returnedColumns(query, stageIndex)
+        ? Lib.breakouts(query, stageIndex).map(breakout =>
+            Lib.breakoutColumn(query, stageIndex, breakout),
+          )
         : Lib.filterableColumns(query, stageIndex);
     const parameterColumns = parameter
       ? availableColumns.filter(
