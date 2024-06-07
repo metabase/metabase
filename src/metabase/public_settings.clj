@@ -829,7 +829,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting ^{:deprecated "0.50.0"} uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
-  :deprecated true
+  :deprecated "0.50.0"
   :visibility :authenticated
   :export?    false
   :type       :boolean
@@ -839,7 +839,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting ^{:deprecated "0.50.0"} uploads-database-id
   (deferred-tru "Database ID for uploads")
-  :deprecated true
+  :deprecated "0.50.0"
   :visibility :internal
   :export?    false
   :type       :integer
@@ -848,7 +848,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting ^{:deprecated "0.50.0"} uploads-schema-name
   (deferred-tru "Schema name for uploads")
-  :deprecated true
+  :deprecated "0.50.0"
   :visibility :internal
   :export?    false
   :type       :string
@@ -857,7 +857,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting ^{:deprecated "0.50.0"} uploads-table-prefix
   (deferred-tru "Prefix for upload table names")
-  :deprecated true
+  :deprecated "0.50.0"
   :visibility :internal
   :export?    false
   :type       :string
