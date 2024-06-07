@@ -2,10 +2,10 @@ import { parse } from "csv-parse/browser/esm/sync";
 
 import type { Base } from "./types";
 
-export function parseValues<ValueType extends Base>(
+export function parseValues<TValue extends Base>(
   str: string,
-  parser: (str: string) => ValueType | null = defaultParser,
-): ValueType[] {
+  parser: (str: string) => TValue | null = defaultParser,
+): TValue[] {
   try {
     const strings = parse(str, {
       delimiter: [",", "\t", "\n"],
@@ -23,13 +23,11 @@ export function parseValues<ValueType extends Base>(
   }
 }
 
-function defaultParser<ValueType extends Base>(str: string): ValueType | null {
+function defaultParser<TValue extends Base>(str: string): TValue | null {
   // @ts-expect-error: for the default case we ignore the type
   return str;
 }
 
-export function unique<ValueType extends Base>(
-  values: ValueType[],
-): ValueType[] {
+export function unique<TValue extends Base>(values: TValue[]): TValue[] {
   return Array.from(new Set(values));
 }

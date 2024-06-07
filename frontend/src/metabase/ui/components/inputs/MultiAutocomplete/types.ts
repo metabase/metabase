@@ -1,12 +1,12 @@
 export type Base = string | number;
 
-export type SelectItem<ValueType extends Base> = {
+export type SelectItem<TValue extends Base> = {
   label?: string;
-  value: ValueType;
+  value: TValue;
 };
 
-export type FilterFn<ValueType extends Base> = (
+export type FilterFn<TValue extends Base> = (
   query: string,
   selected: boolean,
-  item: SelectItem<ValueType>,
+  item: SelectItem<TValue>,
 ) => boolean;
