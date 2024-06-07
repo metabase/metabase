@@ -228,7 +228,7 @@ jobs:
 
       - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
         run: |
-          gh pr merge --auto
+          gh pr merge --auto --squash
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
