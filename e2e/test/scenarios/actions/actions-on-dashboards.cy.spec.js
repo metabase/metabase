@@ -792,11 +792,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("JSON").should("not.exist");
             cy.findByPlaceholderText("JSONB").should("not.exist");
             cy.findByPlaceholderText("Binary").should("not.exist");
-
-            if (dialect === "mysql") {
-              // we only have enums in postgres as of Feb 2023
-              cy.findByPlaceholderText("Enum").should("not.exist");
-            }
+            cy.findByPlaceholderText("Enum").should("exist");
           });
         });
 
