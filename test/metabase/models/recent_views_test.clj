@@ -16,8 +16,6 @@
   (log/infof "Clearing %s's recent views" (pr-str :rasta))
   (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta)))
 
-;; use fixtures, each:
-;; call clear-test-user-recent-views
 (use-fixtures
   :each (fn [f]
           (clear-test-user-recent-views)
@@ -499,3 +497,18 @@
                    (frequencies (map :model
                                      (mt/with-test-user :rasta
                                        (recent-views (mt/user->id :rasta)))))))))))))
+
+(deftest dedupe-context-test
+  (mt/with-temp
+    [:model/Card       {card-id         :id} {:type "question"}
+     :model/Card       {card-id-2         :id} {:type "question"}]
+    (doseq [ctx [:view :selection]]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id ctx))
+    (is (= 1 (count
+              (mt/with-test-user :rasta
+                (:recents (recent-views/get-recents (mt/user->id :rasta) [:selections :views]))))))
+    (doseq [ctx [:view :selection]]
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-2 ctx))
+    (is (= 2 (count
+              (mt/with-test-user :rasta
+                (:recents (recent-views/get-recents (mt/user->id :rasta) [:selections :views]))))))))
