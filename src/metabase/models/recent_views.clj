@@ -492,8 +492,8 @@
          entity->id->data (get-entity->id->data recent-items)
          view-items (into []
                           (comp
-                           (m/distinct-by #(dissoc % :timestamp))
                            (keep (partial post-process entity->id->data))
-                           (keep error-avoider))
+                           (keep error-avoider)
+                           (m/distinct-by (juxt :id :model)))
                           recent-items)]
      {:recents view-items})))
