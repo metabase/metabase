@@ -457,10 +457,6 @@ export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
 
-export const TaskApi = {
-  getJobsInfo: GET("/api/task/info"),
-};
-
 export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
