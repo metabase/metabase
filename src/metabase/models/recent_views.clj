@@ -479,8 +479,7 @@
 (mu/defn get-recents
   "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[models-of-interest]], per context.
 
-             [:recent-views {:optional true} [:sequential Item]]
-             [:recent-selections {:optional true} [:sequential Item]]]
+  Returns: [:map [:recents [:sequential Item]]]
 
   [[do-query]] can return nils, and we remove them here becuase there can be recent views for deleted entities, and we
   don't want to show those in the recent views.

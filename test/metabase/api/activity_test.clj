@@ -194,7 +194,7 @@
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]
                                    [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id metric) :context :question}]]]
               (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
-            (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+            (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
               (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
                       {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
