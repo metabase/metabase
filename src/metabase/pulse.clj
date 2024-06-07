@@ -13,14 +13,12 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
-   [metabase.notification.core :as notification]
+   [metabase.notification.core :as noti]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.util :as pu]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.parameters.parameters :as shared.params]
@@ -40,16 +38,6 @@
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
-#_(defn- is-card-empty?
-   "Check if the card is empty"
-   [card]
-   (if-let [result (:result card)]
-     (or (zero? (-> result :row_count))
-         ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-         (= [[nil]]
-            (-> result :data :rows)))
-     ;; Text cards have no result; treat as empty
-     true))
 
 #_(defn- merge-default-values
    "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
@@ -62,35 +50,6 @@
       (when default-value
         {:value default-value})
       (dissoc parameter :default))))
-
-#_(defn- execute-dashboard-subscription-card
-   "Returns subscription result for a card.
-
-  This function should be executed under pulse's creator permissions."
-   [dashboard dashcard card-or-id parameters]
-   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
-   (try
-     (let [card-id (u/the-id card-or-id)
-           card    (t2/select-one :model/Card :id card-id)
-           result  (qp.dashboard/process-query-for-dashcard
-                    :dashboard-id  (u/the-id dashboard)
-                    :card-id       card-id
-                    :dashcard-id   (u/the-id dashcard)
-                    :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                    :export-format :api
-                    :parameters    parameters
-                    :middleware    {:process-viz-settings? true
-                                    :js-int-to-string?     false}
-                    :run           (^:once fn* [query info]
-                                    (qp/process-query
-                                     (qp/userland-query-with-default-constraints query info))))]
-       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? (assoc card :result result)))
-         {:card     card
-          :dashcard dashcard
-          :result   result
-          :type     :card}))
-     (catch Throwable e
-       (log/warnf e "Error running query for Card %s" card-or-id))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -159,22 +118,22 @@ There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"p
    (cond
      (:card_id dashcard)
      (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
-       (execute-dashboard-subscription-card dashboard dashcard (:card_id dashcard) parameters))
+       (pu/execute-dashboard-subscription-card dashcard parameters))
 
-     ;; actions
+      ;; actions
      (virtual-card-of-type? dashcard "action")
      nil
 
-     ;; link cards
+      ;; link cards
      (virtual-card-of-type? dashcard "link")
      (dashcard-link-card->part dashcard)
 
-     ;; placeholder cards aren't displayed
+      ;; placeholder cards aren't displayed
      (virtual-card-of-type? dashcard "placeholder")
      nil
 
-     ;; text cards have existed for a while and I'm not sure if all existing text cards
-     ;; will have virtual_card.display = "text", so assume everything else is a text card
+      ;; text cards have existed for a while and I'm not sure if all existing text cards
+      ;; will have virtual_card.display = "text", so assume everything else is a text card
      :else
      (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
        (some-> dashcard
@@ -358,10 +317,10 @@ There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"p
               []
               attachments))))
 
-#_(defn- are-all-parts-empty?
-   "Do none of the cards have any results?"
-   [results]
-   (every? is-card-empty? results))
+(defn- are-all-parts-empty?
+  "Do none of the cards have any results?"
+  [results]
+  (every? pu/is-card-empty? results))
 
 #_(defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
    (let [goal-comparison      (if alert_above_goal >= <)
@@ -603,8 +562,8 @@ There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"p
                                       :notification/dashboard-subscription)
                       :creator_id   (:creator_id pulse)}]
     ;; TODO before merge, handles retrying and check if dashboard is archvied
-    (notification/send-notification!
-     (notification/notification->payload-info notification)
+    (noti/send-notification!
+     (noti/notification->payload-info notification)
      (if-let [channels (seq (:channels pulse))]
        (fix-channels channels)
-       (notification/notification->channel+recipients notification channel-ids)))))
+       (noti/notification->channel+recipients notification channel-ids)))))

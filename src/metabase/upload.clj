@@ -120,9 +120,9 @@
   (update-vals col->upload-type (partial defaulting-database-type driver)))
 
 (defn current-database
-  "The database being used for uploads (as per the `uploads-database-id` setting)."
+  "The database being used for uploads."
   []
-  (t2/select-one Database :id (public-settings/uploads-database-id)))
+  (t2/select-one Database :uploads_enabled true))
 
 (mu/defn table-identifier
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
@@ -231,7 +231,7 @@
   "Returns true if there should be an auto-incrementing primary key column in any table created or updated from an
    upload."
   [driver db]
-  (driver/database-supports? driver :upload-with-auto-pk db))
+  (driver.u/supports? driver :upload-with-auto-pk db))
 
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
@@ -284,13 +284,16 @@
     :synchronous (sync/sync-table! table)
     :never nil))
 
+(defn- uploads-enabled? []
+  (some? (:db_id (public-settings/uploads-settings))))
+
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
   entry points. Returns nil otherwise."
   [db]
   (let [driver (driver.u/database->driver db)]
     (cond
-      (not (public-settings/uploads-enabled))
+      (not (uploads-enabled?))
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 
@@ -298,17 +301,19 @@
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
-      (not (driver/database-supports? driver :uploads db))
+      (not (driver.u/supports? driver :uploads db))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422}))))
 
 (defn- can-create-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db schema-name]
-  (or (can-use-uploads-error db)
-      (cond
+  (or (cond
+        (not (:uploads_enabled db))
+        (ex-info (tru "Uploads are not enabled.")
+                 {:status-code 422})
         (and (str/blank? schema-name)
-             (driver/database-supports? (driver.u/database->driver db) :schemas db))
+             (driver.u/supports? (driver.u/database->driver db) :schemas db))
         (ex-info (tru "A schema has not been set.")
                  {:status-code 422})
         (not
@@ -328,7 +333,8 @@
         (and (some? schema-name)
              (not (driver.s/include-schema? db schema-name)))
         (ex-info (tru "The schema {0} is not syncable." schema-name)
-                 {:status-code 422}))))
+                 {:status-code 422}))
+   (can-use-uploads-error db)))
 
 (defn- check-can-create-upload
   "Throws an error if the user cannot upload to the given database and schema."
@@ -784,8 +790,11 @@
     - the query is a GUI query, and does not have any joins
     - the base table of the card is based on an upload
     - the user has permissions to upload to the table
-    - uploads are enabled
-  Otherwise based_on_upload is nil."
+    - uploads are enabled for at least one database (users can append/replace an upload table as long as uploads are
+      enabled for a database, even if the table is not in a database for which uploads are enabled.)
+  Otherwise based_on_upload is nil.
+  Excluding checking the users write permissions for the card, `:based_on_upload` reflects the user's
+  ability to upload to the underlying table through the card."
   [cards]
   (let [id->model         (m/index-by :id (model-hydrate-based-on-upload (filter #(= (:type %) :model) cards)))
         card->maybe-model (comp id->model :id)]

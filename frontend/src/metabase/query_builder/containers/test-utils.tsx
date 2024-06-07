@@ -18,6 +18,8 @@ import {
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupAdhocQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -34,6 +36,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockCollection,
   createMockColumn,
   createMockDataset,
@@ -57,7 +60,7 @@ import type { RequestState, State } from "metabase-types/store";
 
 import QueryBuilder from "./QueryBuilder";
 
-const TEST_DB = createSampleDatabase();
+export const TEST_DB = createSampleDatabase();
 
 export const TEST_CARD = createMockCard({
   id: 1,
@@ -244,8 +247,12 @@ export const setup = async ({
   );
   setupRecentViewsEndpoints([]);
 
+  const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
+  setupAdhocQueryMetadataEndpoint(metadata);
+
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
+    setupCardQueryMetadataEndpoint(card, metadata);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
@@ -323,7 +330,7 @@ export const startNewNotebookModel = async () => {
 
   const modal = await screen.findByTestId("entity-picker-modal");
   await waitForLoaderToBeRemoved();
-  await userEvent.click(within(modal).getByText("Orders"));
+  await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
@@ -365,7 +372,7 @@ export const triggerVisualizationQueryChange = async () => {
 };
 
 export const triggerNotebookQueryChange = async () => {
-  await userEvent.click(screen.getByText("Row limit"));
+  await userEvent.click(await screen.findByText("Row limit"));
 
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),

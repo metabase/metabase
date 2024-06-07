@@ -221,7 +221,8 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :feature :sso-jwt
   :audit   :getter
   :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings)
-                 (partial mu/validate-throw validate-group-mappings)))
+                 (partial mu/validate-throw validate-group-mappings))
+  :doc "JSON object containing JWT to Metabase group mappings, where keys are JWT groups and values are lists of Metabase groups IDs.")
 
 (defsetting jwt-configured
   (deferred-tru "Are the mandatory JWT settings configured?")
@@ -242,7 +243,9 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :getter  (fn []
              (if (jwt-configured)
                (setting/get-value-of-type :boolean :jwt-enabled)
-               false)))
+               false))
+  :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
+        This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
 
 (define-multi-setting-impl integrations.common/send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))

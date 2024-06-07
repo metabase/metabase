@@ -49,7 +49,7 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   text-align: ${props => props.direction};
   color: ${color("text-light")};
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
   ${props => props.direction}: 0;
   background: linear-gradient(

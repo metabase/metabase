@@ -1,3 +1,6 @@
+import { assoc } from "icepick";
+import _ from "underscore";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -46,6 +49,8 @@ import {
   setFilter,
   commandPaletteButton,
   commandPalette,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -173,6 +178,10 @@ describe("scenarios > dashboard", () => {
             .should("have.text", "Our analytics")
             .click();
         });
+
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         entityPickerModal()
           .findByText("Create a new collection")
           .click({ force: true });
@@ -873,16 +882,17 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
-            "loadDashboard",
-          );
+          cy.intercept(
+            "GET",
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+          ).as("queryMetadata");
         });
       },
     );
     cy.signInAsNormalUser();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.wait("@loadDashboard");
+    cy.wait("@queryMetadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1173,3 +1183,215 @@ function assertScrollBarExists() {
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
 }
+
+describe("LOCAL TESTING ONLY > dashboard", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  /**
+   * WARNING:
+   *    https://github.com/metabase/metabase/issues/15656
+   *    - We are currently not able to test translations in CI
+   *    - DO NOT unskip this test even after the issue is fixed
+   *    - To be used for local testing only
+   *    - Make sure you have translation resources built first.
+   *        - Run `./bin/i18n/build-translation-resources`
+   *        - Then start the server and Cypress tests
+   */
+
+  it.skip("dashboard filter should not show placeholder for translated languages (metabase#15694)", () => {
+    cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
+      cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
+    });
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: "15694",
+        query: { "source-table": PEOPLE_ID },
+      },
+      dashboardDetails: {
+        parameters: [
+          {
+            name: "Location",
+            slug: "location",
+            id: "5aefc725",
+            type: "string/=",
+            sectionId: "location",
+          },
+        ],
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          parameter_mappings: [
+            {
+              parameter_id: "5aefc725",
+              card_id,
+              target: ["dimension", ["field", PEOPLE.STATE, null]],
+            },
+          ],
+        },
+      });
+
+      cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
+      filterWidget().contains(/\{0\}/).should("not.exist");
+    });
+  });
+});
+
+describeEE("scenarios > dashboard > caching", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
+  });
+
+  /**
+   * @note There is a similar test for the cache config form that appears in the question sidebar.
+   * It's in the Cypress describe block labeled "scenarios > question > caching"
+   */
+  it("can configure cache for a dashboard, on an enterprise instance", () => {
+    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    toggleDashboardInfoSidebar();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Caching policy/).within(() => {
+        cy.findByText(/Use default/).click();
+      });
+      cy.findByRole("heading", { name: /Caching settings/ }).click();
+      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByLabelText("Cache results for this many hours").type("48");
+      cy.findByRole("button", { name: /Save/ }).click();
+      cy.wait("@putCacheConfig");
+      cy.findByText(/Caching policy/).within(() => {
+        cy.log(
+          "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
+        );
+        const durationButton = cy.findByRole("button", { name: /Duration/ });
+        durationButton.should("be.visible");
+        cy.log("Open the cache invalidation policy configuration form again");
+        durationButton.click();
+      });
+      cy.findByRole("radio", { name: /Adaptive/ }).click();
+      cy.findByLabelText(/Minimum query duration/).type("999");
+      cy.findByRole("button", { name: /Save/ }).click();
+      cy.wait("@putCacheConfig");
+      cy.findByText(/Caching policy/).within(() => {
+        cy.log(
+          "Check that the newly chosen cache invalidation policy - Adaptive - is now visible in the sidebar",
+        );
+        const policyToken = cy.findByRole("button", { name: /Adaptive/ });
+        policyToken.should("be.visible");
+      });
+    });
+  });
+});
+
+describe("scenarios > dashboard > permissions", () => {
+  let dashboardId;
+
+  beforeEach(() => {
+    restore();
+    // This first test creates a dashboard with two questions.
+    // One is in Our Analytics the other is in a more locked down collection.
+    cy.signInAsAdmin();
+
+    // The setup is a bunch of nested API calls to create the questions, dashboard, dashcards, collections and link them all up together.
+    let firstQuestionId, secondQuestionId;
+
+    cy.request("POST", "/api/collection", {
+      name: "locked down collection",
+      parent_id: null,
+    }).then(({ body: { id: collection_id } }) => {
+      cy.request("GET", "/api/collection/graph").then(
+        ({ body: { revision, groups } }) => {
+          // update the perms for the just-created collection
+          cy.request("PUT", "/api/collection/graph", {
+            revision,
+            groups: _.mapObject(groups, (groupPerms, groupId) =>
+              assoc(
+                groupPerms,
+                collection_id,
+                // 2 is admins, so leave that as "write"
+                groupId === "2" ? "write" : "none",
+              ),
+            ),
+          });
+        },
+      );
+
+      cy.request("POST", "/api/card", {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "native",
+          native: { query: "select 'foo'" },
+        },
+        display: "table",
+        visualization_settings: {},
+        name: "First Question",
+        collection_id,
+      }).then(({ body: { id } }) => (firstQuestionId = id));
+
+      cy.request("POST", "/api/card", {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "native",
+          native: { query: "select 'bar'" },
+        },
+        display: "table",
+        visualization_settings: {},
+        name: "Second Question",
+        collection_id: null,
+      }).then(({ body: { id } }) => (secondQuestionId = id));
+    });
+
+    cy.createDashboard().then(({ body: { id: dashId } }) => {
+      dashboardId = dashId;
+
+      updateDashboardCards({
+        dashboard_id: dashId,
+        cards: [
+          { card_id: firstQuestionId, row: 0, col: 0, size_x: 8, size_y: 6 },
+          { card_id: secondQuestionId, row: 0, col: 6, size_x: 8, size_y: 6 },
+        ],
+      });
+    });
+  });
+
+  it("should let admins view all cards in a dashboard", () => {
+    visitDashboard(dashboardId);
+    // Admin can see both questions
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("First Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("bar");
+  });
+
+  it("should display dashboards with some cards locked down", () => {
+    cy.signIn("nodata");
+    visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Sorry, you don't have permission to see this card.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("bar");
+  });
+
+  it("should display an error if they don't have perms for the dashboard", () => {
+    cy.signIn("nocollection");
+    visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Sorry, you don’t have permission to see that.");
+  });
+});

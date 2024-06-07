@@ -32,15 +32,27 @@ export const ToastCard = styled(Card)`
 export const BulkActionButton = styled(Button)`
   color: ${color("white")};
 
-  border-color: ${alpha(color("bg-white"), 0)};
-  background-color: ${alpha(color("bg-white"), 0.1)};
+  border-color: ${({ theme }) => alpha(theme.fn.themeColor("bg-white"), 0)};
+  background-color: ${({ theme }) =>
+    alpha(theme.fn.themeColor("bg-white"), 0.1)};
   :hover {
     color: ${color("white")};
-    border-color: ${alpha(color("bg-white"), 0)};
-    background-color: ${alpha(color("bg-white"), 0.3)};
+    border-color: ${({ theme }) => alpha(theme.fn.themeColor("bg-white"), 0)};
+    background-color: ${({ theme }) =>
+      alpha(theme.fn.themeColor("bg-white"), 0.3)};
   }
   :disabled {
-    border-color: ${alpha(color("bg-white"), 0)};
-    background-color: ${alpha(color("bg-white"), 0.1)};
+    border-color: ${({ theme }) => alpha(theme.fn.themeColor("bg-white"), 0)};
+    background-color: ${({ theme }) =>
+      alpha(theme.fn.themeColor("bg-white"), 0.1)};
+  }
+` as unknown as typeof Button;
+
+export const BulkActionDangerButton = styled(BulkActionButton)`
+  color: var(--mb-color-danger);
+
+  :hover {
+    color: ${color("white")};
+    background-color: var(--mb-color-bg-error);
   }
 ` as unknown as typeof Button;

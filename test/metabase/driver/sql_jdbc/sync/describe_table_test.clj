@@ -27,11 +27,11 @@
 
 (defn- uses-default-describe-table? [driver]
   (and (identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table driver))
-       (not (driver/database-supports? driver :describe-fields nil))))
+       (not (driver.u/supports? driver :describe-fields nil))))
 
 (defn- uses-default-describe-fields? [driver]
   (and (identical? (get-method driver/describe-fields :sql-jdbc) (get-method driver/describe-fields driver))
-       (driver/database-supports? driver :describe-fields nil)))
+       (driver.u/supports? driver :describe-fields nil)))
 
 (defn- sql-jdbc-drivers-using-default-describe-table-or-fields-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`, or `describe-fields`."
@@ -46,7 +46,7 @@
 (deftest ^:parallel describe-fields-nested-field-columns-test
   (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
                 "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver/database-supports? % :describe-fields nil)
+    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
                         (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
@@ -141,7 +141,7 @@
 (defn- describe-fields-for-table [db table]
   (let [driver (driver.u/database->driver db)]
     (sort-by :database-position
-             (if (driver/database-supports? driver :describe-fields db)
+             (if (driver.u/supports? driver :describe-fields db)
                (vec (driver/describe-fields driver
                                             db
                                             :schema-names [(:schema table)]

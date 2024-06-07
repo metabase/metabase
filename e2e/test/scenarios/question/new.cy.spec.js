@@ -16,8 +16,6 @@ import {
   saveQuestion,
   getPersonalCollectionName,
   visitCollection,
-  setTokenFeatures,
-  describeOSS,
   queryBuilderHeader,
   entityPickerModal,
   entityPickerModalItem,
@@ -26,6 +24,9 @@ import {
   modal,
   pickEntity,
   visitQuestion,
+  tableHeaderClick,
+  onlyOnOSS,
+  createQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -60,12 +61,13 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 3);
-        entityPickerModalTab("Models").should(
+        cy.findAllByRole("tab").should("have.length", 4);
+        entityPickerModalTab("Recents").should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        entityPickerModalTab("Models").should("exist");
         entityPickerModalTab("Tables").should("exist");
         entityPickerModalTab("Saved questions").should("exist");
         entityPickerModalTab("Search").should("not.exist");
@@ -94,11 +96,15 @@ describe("scenarios > question > new", () => {
         // Discarding the search query should take us back to the original tab
         cy.findByPlaceholderText("Search…").clear().blur();
         entityPickerModalTab("Search").should("not.exist");
-        entityPickerModalTab("Models").should(
+        entityPickerModalTab("Recents").should(
           "have.attr",
           "aria-selected",
           "true",
         );
+        entityPickerModalTab("Models").should("exist");
+        entityPickerModalTab("Tables").should("exist");
+        entityPickerModalTab("Saved questions").should("exist");
+
         entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders, Count").click();
       });
@@ -210,8 +216,10 @@ describe("scenarios > question > new", () => {
 
     cy.get(".test-TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
       .eq(1) // first table body cell
-      .should("contain", "2") // quantity for order ID#1
-      .click();
+      .should("contain", "2"); // quantity for order ID#1
+
+    // Test was flaky due to long chain.
+    cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(1).click();
     cy.wait("@dataset");
 
     cy.get(
@@ -299,6 +307,11 @@ describe("scenarios > question > new", () => {
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Which collection/)
       .click();
+
+    entityPickerModal()
+      .findByRole("tab", { name: /Collections/ })
+      .click();
+
     entityPickerModal().findByText("Create a new collection").click();
 
     const NEW_COLLECTION = "Foo";
@@ -336,7 +349,7 @@ describe("scenarios > question > new", () => {
     cy.findByDisplayValue(originalQuestionName).should("exist");
 
     cy.log("Change anything about this question to make it dirty");
-    cy.findByTestId("header-cell").should("have.text", "Count").click();
+    tableHeaderClick("Count");
     popover().icon("arrow_down").click();
 
     cy.findByTestId("qb-header-action-panel").button("Save").click();
@@ -441,28 +454,29 @@ describe("scenarios > question > new", () => {
 // the data picker has different behavior if there are no models in the instance
 // the default instance image has a model in it, so we need to separately test the
 // model-less behavior
-describeOSS(
+describe(
   "scenarios > question > new > data picker > without models",
   { tags: "@OSS" },
   () => {
     beforeEach(() => {
+      onlyOnOSS();
       restore("without-models");
       cy.signInAsAdmin();
-      setTokenFeatures("none");
     });
 
     it("can create a question from the sample database", () => {
       cy.visit("/question/new");
 
-      cy.get("#DataPopover").within(() => {
-        cy.findByText("Saved Questions").should("be.visible");
-        cy.findByText("Models").should("not.exist");
-        cy.findByText("Sample Database").click();
-        cy.findByText("Products").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").should("be.visible");
+        entityPickerModalTab("Models").should("not.exist");
+        entityPickerModalTab("Tables").click();
+
+        entityPickerModalItem(2, "Products").click();
       });
-      cy.get("main")
-        .findByText(/Doing Science/)
-        .should("not.exist");
+
+      // strange: we get different behavior when we go to question/new
+      cy.findAllByTestId("run-button").first().click();
 
       cy.findByTestId("TableInteractive-root").within(() => {
         cy.findByText("Rustic Paper Wallet").should("be.visible");
@@ -472,14 +486,13 @@ describeOSS(
     it("can create a question from a saved question", () => {
       cy.visit("/question/new");
 
-      cy.get("#DataPopover").within(() => {
-        cy.findByText("Saved Questions").click();
-        cy.findByText("Models").should("not.exist");
-        cy.findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        entityPickerModalItem(1, "Orders").click();
       });
-      cy.get("main")
-        .findByText(/Doing Science/)
-        .should("not.exist");
+
+      // strange: we get different behavior when we go to question/new
+      cy.findAllByTestId("run-button").first().click();
 
       cy.findByTestId("TableInteractive-root").within(() => {
         cy.findByText(39.72).should("be.visible");
@@ -487,7 +500,7 @@ describeOSS(
     });
 
     it("shows models and raw data options after creating a model", () => {
-      cy.createQuestion({
+      createQuestion({
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
         type: "model",
@@ -495,10 +508,10 @@ describeOSS(
 
       cy.visit("/question/new");
 
-      cy.get("#DataPopover").within(() => {
-        cy.findByText("Raw Data").should("be.visible");
-        cy.findByText("Saved Questions").should("be.visible");
-        cy.findByText("Models").should("be.visible");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").should("be.visible");
+        entityPickerModalTab("Models").should("be.visible");
+        entityPickerModalTab("Tables").should("be.visible");
       });
     });
   },

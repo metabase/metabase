@@ -6,33 +6,52 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
-  createQuery,
   columnFinder,
+  createQuery,
+  createQueryWithClauses,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
+  COMMON_DATABASE_FEATURES,
+  createMockCard,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
-  ORDERS,
-  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { AggregationPicker } from "./AggregationPicker";
 
 function createQueryWithCountAggregation({
   metadata,
 }: { metadata?: Metadata } = {}) {
-  const initialQuery = createQuery({ metadata });
-  const count = findAggregationOperator(initialQuery, "count");
-  const clause = Lib.aggregationClause(count);
-  return Lib.aggregate(initialQuery, 0, clause);
+  return createQueryWithClauses({
+    query: createQuery({ metadata }),
+    aggregations: [{ operatorName: "count" }],
+  });
+}
+
+function createQueryWithCountAndSumAggregations({
+  metadata,
+}: { metadata?: Metadata } = {}) {
+  return createQueryWithClauses({
+    query: createQuery({ metadata }),
+    aggregations: [
+      { operatorName: "count" },
+      { operatorName: "sum", columnName: "PRICE", tableName: "PRODUCTS" },
+    ],
+  });
 }
 
 function createQueryWithMaxAggregation({
@@ -117,6 +136,9 @@ function setup({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
     }),
+    qb: createMockQueryBuilderState({
+      card: createMockCard(),
+    }),
   }),
   metadata = createMetadata(),
   query = createQuery({ metadata }),
@@ -131,6 +153,7 @@ function setup({
     : baseOperators;
 
   const onSelect = jest.fn();
+  const onAdd = jest.fn();
 
   renderWithProviders(
     <AggregationPicker
@@ -139,6 +162,7 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
+      onAdd={onAdd}
       onSelect={onSelect}
     />,
     { storeInitialState: state },
@@ -159,6 +183,7 @@ function setup({
     query,
     stageIndex,
     getRecentClauseInfo,
+    onAdd,
     onSelect,
   };
 }
@@ -326,6 +351,9 @@ describe("AggregationPicker", () => {
               },
             ],
           }),
+          qb: createMockQueryBuilderState({
+            card: createMockCard(),
+          }),
         }),
         metadata: createMetadata({ hasExpressionSupport: false }),
       });
@@ -345,6 +373,51 @@ describe("AggregationPicker", () => {
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+    });
+  });
+
+  describe("column compare shortcut", () => {
+    it("does not display the shortcut if there are no aggregations", () => {
+      setup();
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
+    it("displays the shortcut with correct label if there is 1 aggregation", () => {
+      setup({ query: createQueryWithCountAggregation() });
+
+      expect(
+        screen.getByText("Compare “Count” to previous period ..."),
+      ).toBeInTheDocument();
+    });
+
+    it("displays the shortcut with correct label if there are multiple aggregation", () => {
+      setup({ query: createQueryWithCountAndSumAggregations() });
+
+      expect(
+        screen.getByText("Compare to previous period ..."),
+      ).toBeInTheDocument();
+    });
+
+    it("calls 'onAdd' on submit", async () => {
+      const { onAdd } = setup({ query: createQueryWithCountAggregation() });
+
+      await userEvent.click(
+        screen.getByText("Compare “Count” to previous period ..."),
+      );
+      await userEvent.click(screen.getByText("Done"));
+
+      expect(onAdd).toHaveBeenCalled();
+    });
+
+    it("does not call 'onSelect' on submit", async () => {
+      const { onSelect } = setup({ query: createQueryWithCountAggregation() });
+
+      await userEvent.click(
+        screen.getByText("Compare “Count” to previous period ..."),
+      );
+      await userEvent.click(screen.getByText("Done"));
+
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 });

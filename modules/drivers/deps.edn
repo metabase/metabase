@@ -11,7 +11,6 @@
   metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
   metabase/druid              {:local/root "druid"}
   metabase/druid-jdbc         {:local/root "druid-jdbc"}
-  metabase/googleanalytics    {:local/root "googleanalytics"}
   metabase/mongo              {:local/root "mongo"}
   metabase/oracle             {:local/root "oracle"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}

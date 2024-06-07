@@ -3,7 +3,26 @@ name: Loki Visual Regression Testing
 on: [pull_request]
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
+      frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+      frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   visual-test:
+    needs: files-changed
+    if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
     runs-on: ubuntu-latest
     services:
       docker:
@@ -19,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend

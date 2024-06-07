@@ -118,7 +118,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <ModalRoute path="reset" modal={UserPasswordResetModal} />
             <ModalRoute path="deactivate" modal={UserActivationModal} />
             <ModalRoute path="reactivate" modal={UserActivationModal} />
-            {PLUGIN_ADMIN_USER_MENU_ROUTES.map(getRoutes => getRoutes(store))}
+            {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
+              <Fragment key={index}>{getRoutes(store)}</Fragment>
+            ))}
           </Route>
         </Route>
       </Route>

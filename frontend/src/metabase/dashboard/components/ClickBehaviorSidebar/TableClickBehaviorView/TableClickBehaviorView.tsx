@@ -24,7 +24,7 @@ type ColumnGroup = [
   ClickBehaviorType,
   {
     column: DatasetColumn;
-    clickBehavior: ClickBehavior | undefined;
+    clickBehavior: ClickBehavior;
   }[],
 ];
 
@@ -76,7 +76,13 @@ export function TableClickBehaviorView({
   }, [columns, getClickBehaviorForColumn]) as unknown as ColumnGroup[]; // _.groupby swallows the ClickAction type
 
   const renderColumn = useCallback(
-    ({ column, clickBehavior }, index: number) => {
+    (
+      {
+        column,
+        clickBehavior,
+      }: { column: DatasetColumn; clickBehavior: ClickBehavior },
+      index: number,
+    ) => {
       return (
         <Column
           key={index}

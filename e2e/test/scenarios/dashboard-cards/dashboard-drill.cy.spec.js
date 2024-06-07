@@ -63,9 +63,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
           parseSpecialCharSequences: false,
         });
-        cy.get("input").last().type("column value: {{my_number}}", {
-          parseSpecialCharSequences: false,
-        });
+        cy.get("input")
+          .last()
+          .type("column value: {{my_number}}", {
+            parseSpecialCharSequences: false,
+          })
+          .blur();
         cy.findByText("Done").click();
       });
 
@@ -299,7 +302,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input")
           .first()
           .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`);
-        cy.get("input").last().type("Click behavior");
+        cy.get("input").last().type("Click behavior").blur();
         cy.findByText("Done").click();
       });
 
@@ -900,123 +903,119 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
   });
 
-  describe(
-    "should preserve dashboard filter and apply it to the question on a drill-through (metabase#11503)",
-    { tags: "@flaky" },
-    () => {
-      const ordersIdFilter = {
-        name: "Orders ID",
-        slug: "orders_id",
-        id: "82a5a271",
-        type: "id",
-        sectionId: "id",
-      };
+  describe("should preserve dashboard filter and apply it to the question on a drill-through (metabase#11503)", () => {
+    const ordersIdFilter = {
+      name: "Orders ID",
+      slug: "orders_id",
+      id: "82a5a271",
+      type: "id",
+      sectionId: "id",
+    };
 
-      const productsIdFilter = {
-        name: "Products ID",
-        slug: "products_id",
-        id: "a4dc1976",
-        type: "id",
-        sectionId: "id",
-      };
+    const productsIdFilter = {
+      name: "Products ID",
+      slug: "products_id",
+      id: "a4dc1976",
+      type: "id",
+      sectionId: "id",
+    };
 
-      const parameters = [ordersIdFilter, productsIdFilter];
+    const parameters = [ordersIdFilter, productsIdFilter];
 
-      beforeEach(() => {
-        // Add filters to the dashboard
-        cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-          parameters,
-        });
+    beforeEach(() => {
+      // Add filters to the dashboard
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        parameters,
+      });
 
-        // Connect those filters to the existing dashboard card
-        cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-          dashcards: [
-            {
-              id: ORDERS_DASHBOARD_DASHCARD_ID,
-              card_id: ORDERS_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 16,
-              size_y: 8,
-              series: [],
-              visualization_settings: {},
-              parameter_mappings: [
-                {
-                  parameter_id: ordersIdFilter.id,
-                  card_id: ORDERS_QUESTION_ID,
-                  target: ["dimension", ["field", ORDERS.ID, null]],
-                },
-                {
-                  parameter_id: productsIdFilter.id,
-                  card_id: ORDERS_QUESTION_ID,
-                  target: [
-                    "dimension",
-                    [
-                      "field",
-                      PRODUCTS.ID,
-                      {
-                        "source-field": ORDERS.PRODUCT_ID,
-                      },
-                    ],
+      // Connect those filters to the existing dashboard card
+      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+        dashcards: [
+          {
+            id: ORDERS_DASHBOARD_DASHCARD_ID,
+            card_id: ORDERS_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 8,
+            series: [],
+            visualization_settings: {},
+            parameter_mappings: [
+              {
+                parameter_id: ordersIdFilter.id,
+                card_id: ORDERS_QUESTION_ID,
+                target: ["dimension", ["field", ORDERS.ID, null]],
+              },
+              {
+                parameter_id: productsIdFilter.id,
+                card_id: ORDERS_QUESTION_ID,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    PRODUCTS.ID,
+                    {
+                      "source-field": ORDERS.PRODUCT_ID,
+                    },
                   ],
-                },
-              ],
-            },
-          ],
-        });
-
-        visitDashboard(ORDERS_DASHBOARD_ID);
+                ],
+              },
+            ],
+          },
+        ],
       });
 
-      it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {
-        setFilterValue(ordersIdFilter.name);
+      visitDashboard(ORDERS_DASHBOARD_ID);
+    });
 
-        drillThroughCardTitle("Orders");
+    it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {
+      setFilterValue(ordersIdFilter.name);
 
-        queryBuilderMain().within(() => {
-          cy.findByText("37.65").should("be.visible");
-          cy.findByText("110.93").should("be.visible");
-          cy.findByText("52.72").should("not.exist");
-        });
+      drillThroughCardTitle("Orders");
 
-        assertQueryBuilderRowCount(2);
-
-        postDrillAssertion("ID is 2 selections");
+      queryBuilderMain().within(() => {
+        cy.findByText("37.65").should("be.visible");
+        cy.findByText("110.93").should("be.visible");
+        cy.findByText("52.72").should("not.exist");
       });
 
-      it("should correctly drill-through on Products filter (metabase#11503-2)", () => {
-        setFilterValue(productsIdFilter.name);
+      assertQueryBuilderRowCount(2);
 
-        drillThroughCardTitle("Orders");
-        queryBuilderMain().within(() => {
-          cy.findByText("37.65").should("not.exist");
-          cy.findAllByText("105.12").should("have.length", 17);
-        });
+      postDrillAssertion("ID is 2 selections");
+    });
 
-        assertQueryBuilderRowCount(191);
+    it("should correctly drill-through on Products filter (metabase#11503-2)", () => {
+      setFilterValue(productsIdFilter.name);
 
-        postDrillAssertion("Product → ID is 2 selections");
+      drillThroughCardTitle("Orders");
+      queryBuilderMain().within(() => {
+        cy.findByText("37.65").should("not.exist");
+        cy.findAllByText("105.12").should("have.length", 17);
       });
 
-      function setFilterValue(filterName) {
-        filterWidget().contains(filterName).click();
-        cy.findByPlaceholderText("Enter an ID").type("1,2,");
-        cy.button("Add filter").click();
-        cy.findByText("2 selections");
-      }
+      assertQueryBuilderRowCount(191);
 
-      function postDrillAssertion(filterName) {
-        cy.findByTestId("qb-filters-panel").findByText(filterName).click();
-        popover().within(() => {
-          cy.findAllByRole("combobox")
-            .last()
-            .should("contain", "1")
-            .and("contain", "2");
-          cy.button("Update filter").should("be.visible");
-        });
-      }
-    },
-  );
+      postDrillAssertion("Product → ID is 2 selections");
+    });
+
+    function setFilterValue(filterName) {
+      filterWidget().contains(filterName).click();
+      cy.findByPlaceholderText("Enter an ID").type("1,2,");
+      cy.button("Add filter").click();
+      cy.findByText("2 selections");
+    }
+
+    function postDrillAssertion(filterName) {
+      cy.findByTestId("qb-filters-panel").findByText(filterName).click();
+      popover().within(() => {
+        cy.findAllByRole("combobox")
+          .last()
+          .should("contain", "1")
+          .and("contain", "2");
+        cy.button("Update filter").should("be.visible");
+      });
+    }
+  });
 });
 
 function createDashboardWithQuestion(

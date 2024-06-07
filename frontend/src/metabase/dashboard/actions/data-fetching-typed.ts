@@ -1,25 +1,22 @@
 import { denormalize, normalize, schema } from "normalizr";
 
-import { loadMetadataForDashboard } from "metabase/dashboard/actions/metadata";
 import {
   getDashboardById,
   getDashCardById,
   getParameterValues,
-  getQuestions,
 } from "metabase/dashboard/selectors";
 import {
   expandInlineDashboard,
   getDashboardType,
 } from "metabase/dashboard/utils";
+import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addFields, addParamValues } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
-import type { DashboardCard } from "metabase-types/api";
+import type { DashboardCard, DashboardId } from "metabase-types/api";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -37,7 +34,7 @@ export const fetchDashboard = createAsyncThunk(
       queryParams,
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
-      dashId: string;
+      dashId: DashboardId;
       queryParams: Record<string, any>;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
@@ -93,15 +90,19 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "transient") {
-        const subPath = dashId.split("/").slice(3).join("/");
-        result = await AutoApi.dashboard(
-          { subPath },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const subPath = String(dashId).split("/").slice(3).join("/");
+        const [entity, entityId] = subPath.split(/[/?]/);
+        const [response] = await Promise.all([
+          AutoApi.dashboard(
+            { subPath },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          dispatch(Dashboards.actions.fetchXrayMetadata({ entity, entityId })),
+        ]);
         result = {
-          ...result,
+          ...response,
           id: dashId,
-          dashcards: result.dashcards.map((dc: DashboardCard) => ({
+          dashcards: response.dashcards.map((dc: DashboardCard) => ({
             ...dc,
             dashboard_id: dashId,
           })),
@@ -116,17 +117,17 @@ export const fetchDashboard = createAsyncThunk(
         result = expandInlineDashboard(dashId);
         dashId = result.id = String(dashId);
       } else {
-        result = await DashboardApi.get(
-          { dashId: dashId },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const [response] = await Promise.all([
+          DashboardApi.get(
+            { dashId: dashId },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          dispatch(Dashboards.actions.fetchMetadata({ id: dashId })),
+        ]);
+        result = response;
       }
 
       fetchDashboardCancellation = null;
-
-      if (dashboardType === "normal" || dashboardType === "transient") {
-        await dispatch(loadMetadataForDashboard(result.dashcards));
-      }
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
@@ -142,27 +143,18 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_values) {
-        dispatch(addParamValues(result.param_values));
+        await dispatch(addParamValues(result.param_values));
       }
       if (result.param_fields) {
-        dispatch(addFields(result.param_fields));
+        await dispatch(addFields(result.param_fields));
       }
-
-      const metadata = getMetadata(getState());
-      const questions = getQuestions(getState());
-      const parameters = getDashboardUiParameters(
-        result.dashcards,
-        result.parameters,
-        metadata,
-        questions,
-      );
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
         : getParameterValuesByIdFromQueryParams(
-            parameters,
+            result.parameters ?? [],
             queryParams,
             lastUsedParametersValues,
           );

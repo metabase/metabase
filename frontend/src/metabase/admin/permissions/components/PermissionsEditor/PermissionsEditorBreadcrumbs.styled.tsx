@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 
 export const BreadcrumbsSeparator = styled.div`
   display: inline-block;
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   position: relative;
   margin: 0 6px;
   top: 2px;
@@ -12,7 +12,7 @@ export const BreadcrumbsSeparator = styled.div`
 
 export const BreadcrumbsLink = styled.a`
   cursor: pointer;
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
   transition: color 200ms;
 
   &:hover {

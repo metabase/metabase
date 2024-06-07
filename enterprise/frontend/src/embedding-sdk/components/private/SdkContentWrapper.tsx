@@ -2,10 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import type { EmbeddingTheme } from "embedding-sdk/types/theme/private";
 import { getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { alpha } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getFontFiles } from "metabase/styled-components/selectors";
@@ -35,7 +34,13 @@ const SdkContentWrapperInner = styled.div<
   }
 >`
   --mb-default-font-family: "${({ theme }) => theme.fontFamily}";
+  --mb-color-bg-light: ${({ theme }) => theme.fn.themeColor("bg-light")};
+  --mb-color-bg-dark: ${({ theme }) => theme.fn.themeColor("bg-dark")};
   --mb-color-brand: ${({ theme }) => theme.fn.themeColor("brand")};
+  --mb-color-brand-light: ${({ theme }) =>
+    lighten(theme.fn.themeColor("brand"), 0.532)};
+  --mb-color-brand-lighter: ${({ theme }) =>
+    lighten(theme.fn.themeColor("brand"), 0.598)};
   --mb-color-brand-alpha-04: ${({ theme }) =>
     alpha(theme.fn.themeColor("brand"), 0.04)};
   --mb-color-brand-alpha-88: ${({ theme }) =>
@@ -48,11 +53,18 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-dark: ${({ theme }) => theme.fn.themeColor("text-dark")};
   --mb-color-text-medium: ${({ theme }) => theme.fn.themeColor("text-medium")};
   --mb-color-text-light: ${({ theme }) => theme.fn.themeColor("text-light")};
+  --mb-color-danger: ${({ theme }) => theme.fn.themeColor("danger")};
+  --mb-color-error: ${({ theme }) => theme.fn.themeColor("error")};
+  --mb-color-filter: ${({ theme }) => theme.fn.themeColor("filter")};
+  --mb-color-bg-error: ${() => color("bg-error")};
+  --mb-color-bg-medium: ${({ theme }) => theme.fn.themeColor("bg-medium")};
+  --mb-color-bg-night: ${() => color("bg-night")};
+
+  font-size: ${({ theme }) => theme.other.fontSize};
 
   ${aceEditorStyles}
   ${saveDomImageStyles}
   ${({ theme }) => getRootStyle(theme)}
-  ${({ theme }) => getWrapperStyle(theme)}
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
   ${({ fontFiles }) =>
@@ -71,8 +83,4 @@ const SdkContentWrapperInner = styled.div<
   :where(svg) {
     display: inline;
   }
-`;
-
-const getWrapperStyle = (theme: EmbeddingTheme) => css`
-  font-size: ${theme.other.fontSize ?? "0.875em"};
 `;

@@ -8,6 +8,7 @@ import {
 import {
   getCardSeriesModels,
   getDimensionModel,
+  getWaterfallChartDataDensity,
   getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
@@ -78,7 +79,7 @@ export const getWaterfallChartModel = (
   const transformedDataset = getWaterfallDataset(
     dataset,
     yAxisScaleTransforms,
-    seriesModel.dataKey,
+    seriesModel,
     settings,
     xAxisModel,
   );
@@ -90,6 +91,13 @@ export const getWaterfallChartModel = (
       settings,
       renderingContext,
     );
+
+  const dataDensity = getWaterfallChartDataDensity(
+    transformedDataset,
+    waterfallLabelFormatter,
+    settings,
+    renderingContext,
+  );
 
   // Pass waterfall dataset and keys for correct extent computation
   const leftAxisModel = getYAxisModel(
@@ -130,5 +138,7 @@ export const getWaterfallChartModel = (
       [WATERFALL_TOTAL_KEY]: seriesModel.dataKey,
     },
     waterfallLabelFormatter,
+    dataDensity,
+    seriesLabelsFormatters: {},
   };
 };

@@ -105,9 +105,29 @@ const Tables = createEntity({
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
+      withNormalize(TableSchema),
+    )(
+      ({ id, ...params }, options = {}) =>
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...params, ...options.params },
+            dispatch,
+            tableApi.endpoints.getTableQueryMetadata,
+            { forceRefetch: false },
+          ),
+    ),
+
+    // fetches table metadata with the request state & caching managed by the entity framework
+    // data is not properly cached & invalidated this way, prefer fetchMetadata instead
+    // used only to support legacy entity framework loader HoCs
+    fetchMetadataDeprecated: compose(
+      withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
+        ({ id }) => [
+          ...Tables.getObjectStatePath(id),
+          "fetchMetadataDeprecated",
+        ],
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
@@ -117,7 +137,7 @@ const Tables = createEntity({
           entityCompatibleQuery(
             { id, ...params, ...options.params },
             dispatch,
-            tableApi.endpoints.getTableMetadata,
+            tableApi.endpoints.getTableQueryMetadata,
           ),
     ),
 

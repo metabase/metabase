@@ -11,13 +11,17 @@ export const Content = styled.div`
   flex: auto;
   align-items: center;
   border-radius: 6px;
+
+  ${BucketPickerPopover.TriggerButton} {
+    height: 100%;
+  }
 `;
 
 export const TitleContainer = styled.div`
   display: flex;
   align-items: center;
   margin-left: 0.5rem;
-  padding: 0;
+  padding: 0.5rem 0;
   flex-grow: 1;
 `;
 
@@ -98,11 +102,11 @@ const unselectedStyle = css`
     ${ColumnTypeIcon},
     ${AddButton} {
       color: ${color("summarize")};
-      background-color: ${color("bg-light")};
+      background-color: var(--mb-color-bg-light);
     }
 
     ${AddButton}:hover {
-      background-color: ${color("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
 
     ${BucketPickerPopover.TriggerButton} {

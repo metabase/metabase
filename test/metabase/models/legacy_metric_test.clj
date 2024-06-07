@@ -1,7 +1,7 @@
 (ns metabase.models.legacy-metric-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Database Segment Table]]
+   [metabase.models :refer [Database Table]]
    [metabase.models.legacy-metric :as metric :refer [LegacyMetric]]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -125,44 +125,3 @@
         (is (= "a2318866"
                (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
                (serdes/identity-hash metric)))))))
-
-(deftest definition-description-missing-definition-test
-  (testing ":definition_description should hydrate to nil if :definition is missing"
-    (t2.with-temp/with-temp [LegacyMetric metric {:name     "Metric A"
-                                                  :table_id (mt/id :users)}]
-      (is (= nil
-             (:definition_description (t2/hydrate metric :definition_description)))))))
-
-(deftest definition-description-test
-  (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Checkins with ID = 1"
-                                                     :table_id   (mt/id :checkins)
-                                                     :definition (:query (mt/mbql-query checkins
-                                                                           {:filter [:= $id 1]}))}
-                           LegacyMetric metric {:name       "Metric B"
-                                                :table_id   (mt/id :venues)
-                                                :definition (:query (mt/mbql-query venues
-                                                                      {:aggregation [[:sum $category_id->categories.id]]
-                                                                       :filter      [:and
-                                                                                     [:= $price 4]
-                                                                                     [:segment segment-id]]}))}]
-    (is (= "Venues, Sum of Category → ID, Filtered by Price is equal to 4 and Checkins with ID = 1"
-           (:definition_description (t2/hydrate metric :definition_description))))))
-
-(deftest definition-description-missing-source-table-test
-  (testing "Should work if `:definition` does not include `:source-table`"
-    (t2.with-temp/with-temp [LegacyMetric metric {:name       "Metric B"
-                                                  :table_id   (mt/id :venues)
-                                                  :definition (mt/$ids venues
-                                                                {:aggregation [[:sum $category_id->categories.id]]
-                                                                 :filter      [:= $price 4]})}]
-      (is (= "Venues, Sum of Category → ID, Filtered by Price is equal to 4"
-             (:definition_description (t2/hydrate metric :definition_description)))))))
-
-(deftest definition-description-invalid-query-test
-  (testing "Should return `nil` if query is invalid"
-    (t2.with-temp/with-temp [LegacyMetric metric {:name       "Metric B"
-                                                  :table_id   (mt/id :venues)
-                                                  :definition (mt/$ids venues
-                                                                {:aggregation [[:sum $category_id->categories.name]]
-                                                                 :filter      [:= [:field Integer/MAX_VALUE nil] 4]})}]
-      (is (nil? (:definition_description (t2/hydrate metric :definition_description)))))))

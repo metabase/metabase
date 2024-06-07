@@ -39,16 +39,15 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,
-  DashCardDataMap,
   DashCardId,
   Dashboard,
   DashboardTabId,
   DashboardCard,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -63,6 +62,7 @@ import {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 } from "../actions";
+import { getDashcardDataMap } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
@@ -100,6 +100,10 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
+const mapStateToProps = (state: State) => ({
+  dashcardData: getDashcardDataMap(state),
+});
+
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
@@ -114,25 +118,23 @@ const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   fetchCardData,
 };
-const connector = connect(null, mapDispatchToProps);
+const connector = connect(mapStateToProps, mapDispatchToProps);
 
 type DashboardGridReduxProps = ConnectedProps<typeof connector>;
 
 type OwnProps = {
   dashboard: Dashboard;
-  dashcardData: DashCardDataMap;
   selectedTabId: DashboardTabId | null;
   slowCards: Record<DashCardId, boolean>;
   isEditing: boolean;
   isEditingParameter: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
   isXray?: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   mode?: Mode;
-  // TODO: only passed down, remove it
-  metadata: Metadata;
   // public dashboard passes it explicitly
   width?: number;
   // public dashboard passes it as noop
@@ -342,7 +344,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   getRowHeight() {
     const { width } = this.props;
 
-    const contentViewportElement = this.context;
+    const contentViewportElement = this.context as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
@@ -494,7 +496,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isFullscreen={this.props.isFullscreen}
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
-        isPublic={this.props.isPublic}
+        isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
         onRemove={this.onDashCardRemove}
         onAddSeries={this.onDashCardAddSeries}
@@ -510,8 +512,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           this.props.navigateToNewCardFromDashboard
         }
         onChangeLocation={this.props.onChangeLocation}
-        // TODO: get metadata in dashcard
-        metadata={this.props.metadata}
         dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}

@@ -13,12 +13,16 @@ import {
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
-import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
+import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
+import {
+  getDashCardById,
+  getParameters,
+  getQuestions,
+} from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import { compareMappingOptionTargets } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
   DashCardId,
@@ -36,8 +40,11 @@ export function autoWireDashcardsWithMatchingParameters(
     const metadata = getMetadata(getState());
     const dashboard_state = getState().dashboard;
     const questions = getQuestions(getState());
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameter_id,
+    );
 
-    if (!dashboard_state.dashboardId) {
+    if (!dashboard_state.dashboardId || !parameter) {
       return;
     }
 
@@ -49,9 +56,9 @@ export function autoWireDashcardsWithMatchingParameters(
     });
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
+      parameter,
       dashcard,
       dashcardsToAutoApply,
-      parameter_id,
       target,
       metadata,
       questions,
@@ -99,20 +106,13 @@ export function autoWireParametersToNewCard({
     }
 
     const questions = getQuestions(getState());
+    const parameters = getParameters(getState());
 
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
       dashboardState.dashcards,
       dashboardId,
     );
-
-    const dashcardWithQuestions: Array<[StoreDashcard, Question]> =
-      dashcards.map(dashcard => [
-        dashcard,
-        isQuestionDashCard(dashcard)
-          ? questions[dashcard.card.id] ?? new Question(dashcard.card, metadata)
-          : new Question(dashcard.card, metadata),
-      ]);
 
     const targetDashcard: StoreDashcard = getDashCardById(
       getState(),
@@ -123,14 +123,6 @@ export function autoWireParametersToNewCard({
       return;
     }
 
-    const dashcardMappingOptions = getParameterMappingOptions(
-      questions[targetDashcard.card.id] ??
-        new Question(targetDashcard.card, metadata),
-      null,
-      targetDashcard.card,
-      targetDashcard,
-    );
-
     const targetQuestion =
       questions[targetDashcard.card.id] ??
       new Question(targetDashcard.card, metadata);
@@ -138,31 +130,38 @@ export function autoWireParametersToNewCard({
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
-    for (const opt of dashcardMappingOptions) {
-      for (const [dashcard, question] of dashcardWithQuestions) {
-        const param = dashcard.parameter_mappings?.find(mapping =>
-          compareMappingOptionTargets(
-            mapping.target,
-            opt.target,
-            question,
-            targetQuestion,
-          ),
-        );
+    for (const parameter of parameters) {
+      const dashcardMappingOptions = getParameterMappingOptions(
+        targetQuestion,
+        parameter,
+        targetDashcard.card,
+        targetDashcard,
+      );
 
-        if (
-          targetDashcard.card_id &&
-          param &&
-          !processedParameterIds.has(param.parameter_id)
-        ) {
-          parametersToAutoApply.push(
-            ...getParameterMappings(
-              targetDashcard,
-              param.parameter_id,
-              targetDashcard.card_id,
-              opt.target,
-            ),
+      for (const dashcard of dashcards) {
+        for (const mapping of dashcard.parameter_mappings ?? []) {
+          const option = getMappingOptionByTarget(
+            dashcardMappingOptions,
+            targetDashcard,
+            mapping.target,
+            targetQuestion,
           );
-          processedParameterIds.add(param.parameter_id);
+
+          if (
+            option &&
+            targetDashcard.card_id &&
+            !processedParameterIds.has(parameter.id)
+          ) {
+            parametersToAutoApply.push(
+              ...getParameterMappings(
+                targetDashcard,
+                parameter.id,
+                targetDashcard.card_id,
+                option.target,
+              ),
+            );
+            processedParameterIds.add(parameter.id);
+          }
         }
       }
     }

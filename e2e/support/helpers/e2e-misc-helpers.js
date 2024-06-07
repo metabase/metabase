@@ -306,7 +306,7 @@ export function saveQuestion(
   { wrapId = false, idAlias = "questionId" } = {},
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
-  cy.findByText("Save").click();
+  cy.findByTestId("qb-header").button("Save").click();
 
   cy.findByTestId("save-question-modal").within(modal => {
     if (name) {
@@ -322,7 +322,8 @@ export function saveQuestion(
   });
 
   cy.get("#QuestionSavedModal").within(() => {
-    cy.button("Not now").click();
+    cy.findByText(/add this to a dashboard/i);
+    cy.findByText("Not now").click();
   });
 }
 

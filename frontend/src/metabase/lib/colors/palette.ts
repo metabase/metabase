@@ -1,11 +1,17 @@
 import Color from "color";
 
+import type { ColorGetter } from "metabase/visualizations/types";
+
 import type { ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
+// NOTE: KEEP SYNCRONIZED WITH:
+// frontend/src/metabase/css/core/colors.module.css
+// frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
+// enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
+// .storybook/preview-head.html
 export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
@@ -20,7 +26,6 @@ export const colors = {
   accent7: "#7172AD",
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
-  black: "#2E353B",
   success: "#84BB4C",
   danger: "#ED6E6E",
   error: "#ED6E6E",
@@ -58,7 +63,7 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
 
-  "brand-light": palette => lighten(color("brand", palette), 0.532),
+  "brand-light": palette => lighten(color("brand", palette), 0.532), // #F9FBFC
   "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),
 
@@ -137,24 +142,39 @@ export const isDark = (c: string) => {
   return Color(color(c)).isDark();
 };
 
+/**
+ * Lighten or darken the color, based on whether it's dark or light.
+ * Can be used for deriving hover or highlight colors.
+ **/
+export const adjustBrightness = (
+  c: string,
+  lightenBy?: number,
+  darkenBy?: number,
+) => {
+  return isDark(c) ? lighten(c, lightenBy) : darken(c, darkenBy);
+};
+
 export const getFocusColor = (
   colorName: string,
   palette: ColorPalette = colors,
-) => lighten(color(colorName, palette), 0.465);
+) => lighten(color(colorName, palette), 0.465); // #cbe2f7
 
 // We intentionally want to return white text color more frequently
 // https://www.notion.so/Maz-notes-on-viz-settings-67aed0e4ddcc4d4a83028992c4301820?d=513f4f7fa9c143cb874c7e4525dfb1e9#277d6b3eeb464eac86088abd144fde9e
 const whiteTextColorPriorityFactor = 3;
 
-export const getTextColorForBackground = (backgroundColor: string) => {
+export const getTextColorForBackground = (
+  backgroundColor: string,
+  getColor: ColorGetter = color,
+) => {
   const whiteTextContrast =
-    Color(color(backgroundColor)).contrast(Color(color("white"))) *
+    Color(getColor(backgroundColor)).contrast(Color(getColor("white"))) *
     whiteTextColorPriorityFactor;
-  const darkTextContrast = Color(color(backgroundColor)).contrast(
-    Color(color("text-dark")),
+  const darkTextContrast = Color(getColor(backgroundColor)).contrast(
+    Color(getColor("text-dark")),
   );
 
   return whiteTextContrast > darkTextContrast
-    ? color("white")
-    : color("text-dark");
+    ? getColor("white")
+    : getColor("text-dark");
 };

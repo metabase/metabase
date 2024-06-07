@@ -9,19 +9,21 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
   getDocsUrl,
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import type { IconName } from "metabase/ui";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -161,8 +163,9 @@ export const useCommandPalette = ({
             name: t`View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
-            icon: "link" as const,
+            icon: "link" as IconName,
             perform: () => {
+              trackSearchClick("view_more", 0, "command-palette");
               dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
@@ -171,17 +174,18 @@ export const useCommandPalette = ({
             },
           },
         ].concat(
-          searchResults.data.map(result => {
+          searchResults.data.map((result, index) => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
             return {
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
               subtitle: result.description || "",
-              icon: wrappedResult.getIcon().name,
+              icon: getIcon(result).name,
               section: "search",
               keywords: debouncedSearchText,
               priority: Priority.NORMAL,
               perform: () => {
+                trackSearchClick("item", index, "command-palette");
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
@@ -221,7 +225,7 @@ export const useCommandPalette = ({
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
       filterRecentItems(recentItems ?? []).map(item => ({
-        id: `recent-item-${getName(item)}`,
+        id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
         name: getName(item),
         icon: getIcon(item).name,
         section: "recent",

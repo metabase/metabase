@@ -94,6 +94,16 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
+export type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "order-by"
+  | "limit";
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
@@ -255,6 +265,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 export type ExpressionOperatorName =
   | "+"
+  | "-"
+  | "*"
+  | "/"
   | "="
   | "!="
   | ">"
@@ -275,7 +288,8 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment";
+  | "segment"
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -434,6 +448,7 @@ export type DrillThruType =
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
   | "drill-thru/combine-columns"
+  | "drill-thru/compare-aggregations"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -466,6 +481,9 @@ export type ColumnExtractDrillThruInfo =
     displayName: string;
     extractions: ColumnExtractionInfo[];
   };
+
+export type CompareAggregationsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
 
 export type CombineColumnsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/combine-columns">;
@@ -536,6 +554,7 @@ export type ZoomTimeseriesDrillThruInfo =
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
+  | CompareAggregationsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -554,6 +573,10 @@ export type FilterDrillDetails = {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
+};
+
+export type AggregationDrillDetails = {
+  aggregation: AggregationClause;
 };
 
 export type PivotType = "category" | "location" | "time";

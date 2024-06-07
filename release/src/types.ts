@@ -39,6 +39,7 @@ export type Issue = {
   number: number;
   title: string;
   html_url: string;
-  labels: { name: string }[];
-  assignee: { login: string };
+  labels: string | { name?: string }[];
+  assignee: null |  { login: string };
+  created_at: string;
 };

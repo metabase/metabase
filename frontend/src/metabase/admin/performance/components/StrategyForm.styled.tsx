@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { Form } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import type { BoxProps } from "metabase/ui";
 import { Box, FixedSizeIcon, Loader } from "metabase/ui";
 
@@ -27,8 +26,22 @@ export const StyledForm = styled(Form)`
   flex-grow: 1;
 `;
 
-export const FormBox = styled(Box)<BoxProps>`
-  border-bottom: 1px solid ${color("border")};
+export const FormBox = styled(Box)<
+  BoxProps & {
+    isInSidebar?: boolean;
+  }
+>`
+  border-bottom: 1px solid var(--mb-color-border);
   overflow: auto;
   flex-grow: 1;
+  padding-bottom: 2.5rem;
+  ${({ isInSidebar }) =>
+    isInSidebar
+      ? `
+  padding-inline-start: 2rem;
+  padding-inline-end: 1rem;
+  `
+      : `
+  padding-inline: 2.5rem;
+`}
 `;

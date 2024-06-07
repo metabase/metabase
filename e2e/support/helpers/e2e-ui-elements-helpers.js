@@ -44,6 +44,17 @@ export function entityPickerModalTab(name) {
   return cy.findAllByRole("tab").filter(`:contains(${name})`);
 }
 
+export function tabsShouldBe(selected, tabs) {
+  cy.findAllByRole("tab").should("have.length", tabs.length);
+  tabs.forEach(tab => {
+    if (tab === selected) {
+      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
+    } else {
+      entityPickerModalTab(tab).should("exist");
+    }
+  });
+}
+
 export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
@@ -227,4 +238,27 @@ export const undoToastList = () => {
 
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
+}
+
+export function tableHeaderClick(headerString) {
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
+}
+/**
+ * selects the global new button
+ * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
+ * @returns
+ */
+export function newButton(menuItem) {
+  if (menuItem) {
+    cy.findByTestId("app-bar").button("New").click();
+    return popover().findByText(menuItem);
+  }
+
+  return cy.findByTestId("app-bar").button("New");
 }

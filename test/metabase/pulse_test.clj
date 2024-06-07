@@ -105,24 +105,25 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                         :display (or display :line)}
-                                                        card)]
-        (with-pulse-for-card [{pulse-id :id}
-                              {:card       card-id
-                               :pulse      pulse
-                               :pulse-card pulse-card
-                               :channel    channel-type}]
-          (letfn [(thunk* []
-                    (f {:card-id card-id, :pulse-id pulse-id}
-                       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
-                  (thunk []
-                    (if fixture
-                      (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
-                      (thunk*)))]
-            (case channel-type
-              :email (pulse.test-util/email-test-setup (thunk))
-              :slack (pulse.test-util/slack-test-setup (thunk)))))))))
+      (testing (when (= :email channel-type) @mt/inbox)
+        (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                           :display (or display :line)}
+                                                          card)]
+          (with-pulse-for-card [{pulse-id :id}
+                                {:card       card-id
+                                 :pulse      pulse
+                                 :pulse-card pulse-card
+                                 :channel    channel-type}]
+            (letfn [(thunk* []
+                      (f {:card-id card-id, :pulse-id pulse-id}
+                         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
+                    (thunk []
+                      (if fixture
+                        (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
+                        (thunk*)))]
+              (case channel-type
+                :email (pulse.test-util/email-test-setup (thunk))
+                :slack (pulse.test-util/slack-test-setup (thunk))))))))))
 
 (defn- tests
   "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`

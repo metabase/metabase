@@ -12,6 +12,8 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   getValueLabels,
+  createQuestion,
+  chartPathsWithFillColors,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -560,5 +562,65 @@ describe("scenarios > visualizations > bar chart", () => {
           .and("contain", "19");
         cy.get(".axis.yr").should("not.exist");
       });
+  });
+
+  it("should correctly handle bar sizes and tool-tips for multiple y-axis metrics with column scaling  (#43536)", () => {
+    cy.signInAsAdmin();
+
+    const column_settings = { '["name","sum"]': { scale: 0.5 } };
+    const multiMetric = {
+      name: "Should split",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL]],
+          ["sum", ["field", ORDERS.TOTAL]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "bar",
+      visualization_settings: {
+        column_settings,
+        "graph.show_values": true,
+        "graph.stackable.stack_type": "stacked",
+        series_settings: {
+          sum_2: {
+            axis: "left",
+          },
+          sum: {
+            axis: "left",
+          },
+        },
+      },
+    };
+
+    createQuestion(multiMetric, { visitQuestion: true });
+
+    const [firstMetric, secondMetric] = chartPathsWithFillColors([
+      "#88BF4D",
+      "#98D9D9",
+    ]);
+    firstMetric.then($metricOne => {
+      const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
+      secondMetric.then($metricTwo => {
+        const { height: heightMetricTwo } =
+          $metricTwo[0].getBoundingClientRect();
+
+        // since the first metric is scaled to be half of the second metric
+        // the first bar should be half the size of the first bar
+        // within a given tolerance
+        expect(heightMetricOne - heightMetricTwo / 2).to.be.lessThan(0.1);
+      });
+    });
+
+    chartPathWithFillColor("#88BF4D").first().realHover();
+    popover().within(() => {
+      cy.contains("Sum of Total");
+      // half of the unscaled metric
+      cy.contains("21,078.43");
+      // full value of the unscale metric
+      cy.contains("42,156.87");
+    });
   });
 });

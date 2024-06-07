@@ -31,9 +31,14 @@
                                                       :collection_id (:id col1)}
                          :model/Card          card3  {:name "card3"}]
 
-            (testing "No access from regular users"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 "cache/"))))
+            (testing "Access from regular users"
+              (testing "No general access"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 "cache/"))))
+              (testing "But have access to a separate (accessible to them) entities"
+                (is (= {:data []}
+                       (mt/user-http-request :rasta :get 200 "cache/"
+                                             :model "question" :id (:id card1))))))
 
             (testing "Can configure root"
               (is (mt/user-http-request :crowberto :put 200 "cache/"

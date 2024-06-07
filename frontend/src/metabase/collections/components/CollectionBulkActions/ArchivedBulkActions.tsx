@@ -8,11 +8,12 @@ import {
   canMoveItem,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { BulkActionButton } from "metabase/components/BulkActionBar";
-import { color } from "metabase/lib/colors";
+import {
+  BulkActionButton,
+  BulkActionDangerButton,
+} from "metabase/components/BulkActionBar";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
@@ -108,12 +109,12 @@ export const ArchivedBulkActions = ({
       <BulkActionButton onClick={handleBulkMoveStart} disabled={!canMove}>
         {t`Move`}
       </BulkActionButton>
-      <BulkActionButton
+      <BulkActionDangerButton
         onClick={handleBulkDeletePermanentlyStart}
         disabled={!canDelete}
       >
-        <Box c={color("danger")}>{t`Delete permanently`}</Box>
-      </BulkActionButton>
+        {t`Delete permanently`}
+      </BulkActionDangerButton>
 
       {hasSelectedItems && selectedAction === "delete" && (
         <BulkDeleteConfirmModal

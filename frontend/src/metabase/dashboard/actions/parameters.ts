@@ -15,6 +15,7 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -100,7 +101,7 @@ function updateParameters(
 }
 
 export const setEditingParameter =
-  (parameterId: ParameterId) => (dispatch: Dispatch) => {
+  (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
     if (parameterId != null) {
       dispatch(
         setSidebar({
@@ -137,6 +138,15 @@ export const addParameter = createThunkAction(
         }),
       );
     }
+  },
+);
+
+export const ADD_TEMPORAL_UNIT_PARAMETER =
+  "metabase/dashboard/ADD_TEMPORAL_UNIT_PARAMETER";
+export const addTemporalUnitParameter = createThunkAction(
+  ADD_TEMPORAL_UNIT_PARAMETER,
+  () => async dispatch => {
+    await dispatch(addParameter(buildTemporalUnitOption()));
   },
 );
 

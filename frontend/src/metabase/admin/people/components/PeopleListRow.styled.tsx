@@ -8,6 +8,6 @@ export const RefreshLink = styled(Link)`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

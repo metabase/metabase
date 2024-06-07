@@ -1,4 +1,7 @@
+import { push } from "react-router-redux";
+
 import { createAction } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -6,7 +9,7 @@ import type {
   DashboardCard,
   DashboardId,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 export const initialize = createAction(INITIALIZE);
@@ -15,9 +18,21 @@ export const RESET = "metabase/dashboard/RESET";
 export const reset = createAction(RESET);
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-export const setEditingDashboard = createAction<Dashboard | null>(
-  SET_EDITING_DASHBOARD,
-);
+export const setEditingDashboard = (dashboard: Dashboard | null) => {
+  return (dispatch: Dispatch, getState: GetState) => {
+    if (dashboard === null) {
+      const location = getLocation(getState());
+      const locationWithoutEditHash = { ...location, hash: "" };
+
+      dispatch(push(locationWithoutEditHash));
+    }
+
+    dispatch({
+      type: SET_EDITING_DASHBOARD,
+      payload: dashboard,
+    });
+  };
+};
 
 export const CANCEL_EDITING_DASHBOARD =
   "metabase/dashboard/CANCEL_EDITING_DASHBOARD";

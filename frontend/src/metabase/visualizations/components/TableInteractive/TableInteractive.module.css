@@ -5,7 +5,6 @@
 
 .TableInteractiveHeaderCellData .cellData {
   font-weight: 900;
-  font-size: 10px;
   border: 1px solid transparent;
   padding: 0.25em 0.65em;
   border-radius: 6px;
@@ -56,7 +55,6 @@
   text-overflow: ellipsis;
   overflow-x: hidden;
   font-weight: 700;
-  font-size: 12.5px;
 }
 
 /* pivot */
@@ -97,13 +95,14 @@
 
 .shortcutsWrapper {
   position: absolute;
-  top: 0;
-  right: 0;
   z-index: 50;
+  top: 0;
   background: var(--mb-color-bg-white);
-  padding: 0 0.5em;
-  box-sizing: border-box;
-  border-left: 1px solid var(--mb-color-border);
   display: flex;
+  justify-content: center;
   align-items: center;
+}
+
+.isOverflowing {
+  border-left: 1px solid var(--mb-color-border);
 }

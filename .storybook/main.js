@@ -1,3 +1,4 @@
+const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../webpack.config");
 
@@ -15,9 +16,18 @@ module.exports = {
     "@storybook/addon-a11y",
   ],
   babel: () => {},
+  typescript: {
+    reactDocgen: "react-docgen-typescript-plugin",
+  },
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
-    plugins: [...storybookConfig.plugins, new MiniCssExtractPlugin()],
+    plugins: [
+      ...storybookConfig.plugins,
+      new MiniCssExtractPlugin(),
+      new webpack.ProvidePlugin({
+        Buffer: ["buffer", "Buffer"],
+      }),
+    ],
     module: {
       ...storybookConfig.module,
       rules: [

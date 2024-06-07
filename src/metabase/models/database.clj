@@ -256,6 +256,13 @@
                          (partial handle-db-details-secret-prop! database))]
     (assoc database :details updated-details)))
 
+(defn- handle-uploads-enabled!
+  "This function maintains the invariant that only one database can have uploads_enabled=true."
+  [db]
+  (when (:uploads_enabled db)
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+  db)
+
 (t2/define-before-update :model/Database
   [database]
   (let [changes                              (t2/changes database)
@@ -275,7 +282,7 @@
       (u/prog1 (cond-> database
                  ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
                  (and (some? (:details changes))
-                      (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                      (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
                  (update :details dissoc :json_unfolding)
 
                  (or
@@ -288,11 +295,14 @@
                  infer-db-schedules
 
                  (some? (:details changes))
-                 handle-secrets-changes)
+                 handle-secrets-changes
+
+                 (:uploads_enabled changes)
+                 handle-uploads-enabled!)
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
-                   (not (driver/database-supports? (or new-engine existing-engine) :actions database)))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine
@@ -311,6 +321,7 @@
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       handle-secrets-changes
+      handle-uploads-enabled!
       infer-db-schedules))
 
 (defmethod serdes/hash-fields :model/Database

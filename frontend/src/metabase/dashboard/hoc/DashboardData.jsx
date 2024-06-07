@@ -110,7 +110,6 @@ export const DashboardData = ComposedComponent =>
 
         if (!_.isEqual(nextProps.selectedTabId, this.props.selectedTabId)) {
           this.props.fetchDashboardCardData();
-          this.props.fetchDashboardCardMetadata();
           return;
         }
       }

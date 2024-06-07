@@ -26,6 +26,7 @@ import {
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -144,7 +145,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     },
   );
 
-  it("sidebar should be resizable", () => {
+  it("sidebar should be resizable", { tags: "@flaky" }, () => {
     const borderWidth = 1;
     const sidebarMargin = 4;
     const minNotebookWidth = 640;
@@ -281,8 +282,8 @@ describe(
 
     it("should work for both simple and nested questions based on previously converted GUI query", () => {
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText(MONGO_DB_NAME).click();
         cy.findByText("Products").click();
       });

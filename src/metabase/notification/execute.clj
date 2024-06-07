@@ -67,33 +67,41 @@
     ;; Text cards have no result; treat as empty
     true))
 
-(defn- execute-dashboard-subscription-card
+(defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
   This function should be executed under pulse's creator permissions."
-  [dashboard-id dashcard card-id parameters]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  [dashcard parameters]
   (try
-    (let [card    (t2/select-one :model/Card :id card-id)
-          result  (qp.dashboard/process-query-for-dashcard
-                   :dashboard-id  dashboard-id
-                   :card-id       card-id
-                   :dashcard-id   (:id dashcard)
-                   :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                   :export-format :api
-                   :parameters    parameters
-                   :middleware    {:process-viz-settings? true
-                                   :js-int-to-string?     false}
-                   :run           (^:once fn* [query info]
-                                   (qp/process-query
-                                    (qp/userland-query-with-default-constraints query info))))]
-      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? (assoc card :result result)))
-        {:card     card
-         :dashcard dashcard
-         :result   result
-         :type     :card}))
+    (let [{card-id      :card_id
+           dashboard-id :dashboard_id} dashcard
+          card                         (t2/select-one :model/Card :id card-id)
+          multi-cards                  (dashboard-card/dashcard->multi-cards dashcard)
+          result-fn                    (fn [card-id]
+                                         {:card     (if (= card-id (:id card))
+                                                      card
+                                                      (t2/select-one :model/Card :id card-id))
+                                          :dashcard dashcard
+                                          :type     :card
+                                          :result   (qp.dashboard/process-query-for-dashcard
+                                                     :dashboard-id  dashboard-id
+                                                     :card-id       card-id
+                                                     :dashcard-id   (:id dashcard)
+                                                     :context       :dashboard-subscription
+                                                     :export-format :api
+                                                     :parameters    parameters
+                                                     :middleware    {:process-viz-settings? true
+                                                                     :js-int-to-string?     false}
+                                                     :run           (^:once fn* [query info]
+                                                                     (qp/process-query
+                                                                      (qp/userland-query-with-default-constraints query info))))})
+          result                       (result-fn card-id)
+          series-results               (map (comp result-fn :id) multi-cards)]
+      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                     (is-card-empty? (assoc card :result (:result result))))
+        (update result :dashcard assoc :series-results series-results)))
     (catch Throwable e
-      (log/warnf e "Error running query for Card %s" card-id))))
+      (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))
 
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
@@ -163,7 +171,7 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
-      (execute-dashboard-subscription-card (:id dashboard) dashcard (:card_id dashcard) parameters))
+      (execute-dashboard-subscription-card dashcard parameters))
 
     ;; actions
     (virtual-card-of-type? dashcard "action")

@@ -68,7 +68,40 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("custom columns", () => {
-    it("suggests and allows using offset()", () => {
+    // This test contradicts the next 2 skipped ones.
+    // Remove it once we enable offset() in custom columns.
+    it("does not suggest or allow using offset()", () => {
+      const expression = "Offset([Total], -1)";
+      const prefixLength = 3;
+      const prefix = expression.substring(0, prefixLength);
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        fields: [ORDERS_ID_FIELD_REF, ORDERS_TOTAL_FIELD_REF],
+        limit: 5,
+        "order-by": [["asc", ORDERS_TOTAL_FIELD_REF]],
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+      openNotebook();
+      cy.button("Custom column").click();
+      enterCustomColumnDetails({ formula: prefix });
+
+      cy.log("does not suggest offset() in custom columns");
+      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+
+      enterCustomColumnDetails({ formula: expression });
+      cy.realPress("Tab");
+
+      popover().within(() => {
+        cy.button("Done").should("be.disabled");
+        cy.findByText("OFFSET is not supported in custom expressions").should(
+          "exist",
+        );
+      });
+    });
+
+    // Skipped because we want to disable offset() in custom columns for now
+    it.skip("suggests and allows using offset()", () => {
       const expression = "Offset([Total], -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);
@@ -127,7 +160,8 @@ describe("scenarios > question > offset", () => {
       ]);
     });
 
-    it("does not allow to use offset-based column in other clauses (metabase#42764)", () => {
+    // Skipped because we want to disable offset() in custom columns for now
+    it.skip("does not allow to use offset-based column in other clauses (metabase#42764)", () => {
       const offsettedColumnName = "xyz";
       const expression = `Offset([${offsettedColumnName}], -1)`;
       const prefixLength = "Offset([x".length;
@@ -215,7 +249,7 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("aggregations", () => {
-    it("suggests and allows using offset()", () => {
+    it("suggests and allows using offset()", { tags: "@flaky" }, () => {
       const expression = "Offset(Sum([Total]), -1)";
       const prefixLength = 3;
       const prefix = expression.substring(0, prefixLength);

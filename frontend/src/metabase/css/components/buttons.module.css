@@ -19,7 +19,7 @@
 .Button:hover {
   color: var(--mb-color-brand);
   border-color: color-mod(var(--mb-color-border) blackness(12%));
-  background: var(--color-bg-light);
+  background: var(--mb-color-bg-light);
   transition: all 200ms linear;
   transition-property: color, border-color, background-color;
 }
@@ -74,14 +74,14 @@
 
 .ButtonWarning {
   color: var(--color-text-white);
-  background: var(--color-error);
-  border: 1px solid var(--color-error);
+  background: var(--mb-color-error);
+  border: 1px solid var(--mb-color-error);
 }
 
 .ButtonWarning:hover {
   color: var(--color-text-white);
-  border-color: var(--color-error);
-  background-color: var(--color-error);
+  border-color: var(--mb-color-error);
+  background-color: var(--mb-color-error);
 }
 
 .ButtonCancel {
@@ -146,7 +146,7 @@
 .ButtonGroupBrand .Button {
   border-color: white;
   color: var(--mb-color-brand);
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 .ButtonGroupBrand .ButtonActive {
@@ -160,15 +160,15 @@
 }
 
 .ButtonDanger {
-  background-color: var(--color-error);
-  border-color: var(--color-error);
+  background-color: var(--mb-color-error);
+  border-color: var(--mb-color-error);
   color: var(--color-text-white);
 }
 
 .ButtonDanger:hover {
   color: white;
-  background-color: var(--color-error);
-  border-color: var(--color-error);
+  background-color: var(--mb-color-error);
+  border-color: var(--mb-color-error);
 }
 
 .ButtonSuccess {

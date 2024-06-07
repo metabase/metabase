@@ -19,7 +19,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: IconName | IconProps | React.ReactElement;
+  icon?: IconName | IconProps;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: React.ReactNode;
@@ -31,9 +31,7 @@ type ContentProps = {
   children: React.ReactNode;
 };
 
-function isIconPropsObject(
-  icon: string | IconProps | React.ReactNode,
-): icon is IconProps {
+function isIconPropsObject(icon: string | IconProps): icon is IconProps {
   return _.isObject(icon);
 }
 

@@ -2,7 +2,8 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
-import ReactDOM from "react-dom";
+import { findDOMNode } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -24,6 +25,7 @@ import {
   getRowIndexToPKMap,
   getQueryBuilderMode,
   getUiControls,
+  getIsShowingRawTable,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -86,6 +88,7 @@ const mapStateToProps = state => ({
   rowIndexToPkMap: getRowIndexToPKMap(state),
   isEmbeddingSdk: getIsEmbeddingSdk(state),
   scrollToLastColumn: getUiControls(state).scrollToLastColumn,
+  isRawTable: getIsShowingRawTable(state),
 });
 
 const mapDispatchToProps = dispatch => ({
@@ -118,9 +121,19 @@ class TableInteractive extends Component {
   static defaultProps = {
     isPivoted: false,
     hasMetadataPopovers: true,
-    renderTableHeaderWrapper: children => {
+
+    // NOTE: the column and index arguments are used in the DatasetEditor,
+    //       which renders table header differently.
+    renderTableHeaderWrapper: (children, _column, _index, theme) => {
+      const cellTheme = theme.other?.table?.cell;
+
       return (
-        <Box className={TableS.cellData} data-testid="cell-data" c="brand">
+        <Box
+          className={TableS.cellData}
+          data-testid="cell-data"
+          c="brand"
+          fz={cellTheme?.fontSize}
+        >
           {children}
         </Box>
       );
@@ -142,6 +155,7 @@ class TableInteractive extends Component {
         c={cellTheme.color}
         bg={cellTheme.background}
         style={{ border: cellTheme.border }}
+        fz={cellTheme.fontSize}
       >
         {children}
       </Box>
@@ -156,6 +170,7 @@ class TableInteractive extends Component {
     this._div.style.position = "absolute";
     this._div.style.visibility = "hidden";
     this._div.style.zIndex = "-1";
+    this._root = undefined;
 
     if (this.props.isEmbeddingSdk) {
       const rootElement = document.getElementById(
@@ -315,9 +330,11 @@ class TableInteractive extends Component {
       data: { cols, rows },
     } = this.props;
 
-    ReactDOM.render(
+    this._root = createRoot(this._div);
+
+    this._root.render(
       <EmotionCacheProvider>
-        <div style={{ display: "flex" }}>
+        <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
           {cols.map((column, columnIndex) => (
             <div className="fake-column" key={"column-" + columnIndex}>
               {this.tableHeaderRenderer({
@@ -339,42 +356,47 @@ class TableInteractive extends Component {
           ))}
         </div>
       </EmotionCacheProvider>,
-      this._div,
-      () => {
-        const contentWidths = [].map.call(
-          this._div.getElementsByClassName("fake-column"),
-          columnElement => columnElement.offsetWidth,
-        );
-
-        const columnWidths = cols.map((col, index) => {
-          if (this.columnNeedsResize) {
-            if (
-              this.columnNeedsResize[index] &&
-              !this.columnHasResized[index]
-            ) {
-              this.columnHasResized[index] = true;
-              return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-            } else if (this.state.columnWidths[index]) {
-              return this.state.columnWidths[index];
-            } else {
-              return 0;
-            }
-          } else {
-            return contentWidths[index] + 1;
-          }
-        });
-
-        // Doing this on next tick makes sure it actually gets removed on initial measure
-        setTimeout(() => {
-          ReactDOM.unmountComponentAtNode(this._div);
-        }, 0);
-
-        delete this.columnNeedsResize;
-
-        this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
-      },
     );
   }
+
+  onMeasureHeaderRender = div => {
+    const {
+      data: { cols },
+    } = this.props;
+
+    if (div === null) {
+      return;
+    }
+
+    const contentWidths = [].map.call(
+      div.getElementsByClassName("fake-column"),
+      columnElement => columnElement.offsetWidth,
+    );
+
+    const columnWidths = cols.map((col, index) => {
+      if (this.columnNeedsResize) {
+        if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
+          this.columnHasResized[index] = true;
+          return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+        } else if (this.state.columnWidths[index]) {
+          return this.state.columnWidths[index];
+        } else {
+          return 0;
+        }
+      } else {
+        return contentWidths[index] + 1;
+      }
+    });
+
+    // Doing this on next tick makes sure it actually gets removed on initial measure
+    setTimeout(() => {
+      this._root.unmount();
+    }, 0);
+
+    delete this.columnNeedsResize;
+
+    this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
+  };
 
   recomputeGridSize = () => {
     if (this.header && this.grid) {
@@ -760,6 +782,7 @@ class TableInteractive extends Component {
       renderTableHeaderWrapper,
       question,
       mode,
+      theme,
     } = this.props;
 
     const { dragColIndex, showDetailShortcut } = this.state;
@@ -910,6 +933,7 @@ class TableInteractive extends Component {
               </Ellipsified>,
               column,
               columnIndex,
+              theme,
             )}
           </QueryColumnInfoPopover>
           <TableDraggable
@@ -1009,7 +1033,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = ReactDOM.findDOMNode(this.grid)?.scrollTop || 0;
+    const scrollOffset = findDOMNode(this.grid)?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1049,6 +1073,31 @@ class TableInteractive extends Component {
     document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
   };
 
+  _shouldShowShorcutButton() {
+    const { question, mode, isRawTable } = this.props;
+
+    if (!question || !mode?.clickActions) {
+      return false;
+    }
+
+    for (const action of mode.clickActions) {
+      const res = action({
+        question,
+        clicked: {
+          columnShortcuts: true,
+          extraData: {
+            isRawTable,
+          },
+        },
+      });
+      if (res?.length > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   render() {
     const {
       width,
@@ -1058,7 +1107,6 @@ class TableInteractive extends Component {
       scrollToColumn,
       scrollToLastColumn,
       theme,
-      question,
     } = this.props;
 
     if (!width || !height) {
@@ -1067,12 +1115,16 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
-    const shortcutColumn = Number(!question?.isArchived());
-    const query = question?.query();
-    const info = query && Lib.queryDisplayInfo(query);
+    const shortcutColumn = this._shouldShowShorcutButton();
 
     const tableTheme = theme?.other?.table;
     const backgroundColor = tableTheme?.cell?.backgroundColor;
+
+    const totalWidth =
+      this.state.columnWidths?.reduce(
+        (sum, _c, index) => sum + this.getColumnWidth({ index }),
+        0,
+      ) + (gutterColumn ? SIDEBAR_WIDTH : 0);
 
     return (
       <DelayGroup>
@@ -1146,7 +1198,8 @@ class TableInteractive extends Component {
                 {shortcutColumn && (
                   <ColumnShortcut
                     height={headerHeight - 1}
-                    isEditable={info?.isEditable}
+                    pageWidth={width}
+                    totalWidth={totalWidth}
                     onClick={evt => {
                       this.onVisualizationClick(
                         { columnShortcuts: true },
@@ -1247,7 +1300,7 @@ class TableInteractive extends Component {
   }
 
   _benchmark() {
-    const grid = ReactDOM.findDOMNode(this.grid);
+    const grid = findDOMNode(this.grid);
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();
@@ -1321,15 +1374,31 @@ const DetailShortcut = forwardRef((_props, ref) => (
 
 DetailShortcut.displayName = "DetailShortcut";
 
-function ColumnShortcut({ height, onClick, isEditable }) {
-  if (!isEditable) {
+const COLUMN_SHORTCUT_PADDING = 4;
+
+function ColumnShortcut({ height, pageWidth, totalWidth, onClick }) {
+  if (!totalWidth) {
     return null;
   }
 
+  const isOverflowing = totalWidth > pageWidth;
+  const width = HEADER_HEIGHT + (isOverflowing ? COLUMN_SHORTCUT_PADDING : 0);
+
   return (
-    <div className={TableS.shortcutsWrapper} style={{ height }}>
+    <div
+      className={cx(
+        TableS.shortcutsWrapper,
+        isOverflowing && TableS.isOverflowing,
+      )}
+      style={{
+        height,
+        width,
+        left: isOverflowing ? undefined : totalWidth,
+        right: isOverflowing ? 0 : undefined,
+      }}
+    >
       <UIButton
-        variant="filled"
+        variant="outline"
         compact
         leftIcon={<Icon name="add" />}
         title={t`Add column`}

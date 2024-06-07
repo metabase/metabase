@@ -33,6 +33,7 @@ import {
   entityPickerModal,
   questionInfoButton,
   entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 import {
@@ -104,12 +105,8 @@ describe("scenarios > models", () => {
         .findAllByText("Our analytics")
         .first()
         .click();
-      getCollectionItemCard("Products Model").within(() => {
-        cy.icon("model");
-      });
-      getCollectionItemRow("Q1").within(() => {
-        cy.icon("table");
-      });
+      getCollectionItemCard("Products Model").icon("model");
+      getCollectionItemRow("Q1").icon("table2");
 
       cy.url().should("not.include", "/question/" + id);
     });
@@ -160,9 +157,7 @@ describe("scenarios > models", () => {
     getCollectionItemCard("Product Model").within(() => {
       cy.icon("model");
     });
-    getCollectionItemRow("Q1").within(() => {
-      cy.icon("table");
-    });
+    getCollectionItemRow("Q1").icon("table2");
 
     cy.location("pathname").should("eq", "/collection/root");
   });
@@ -397,8 +392,7 @@ describe("scenarios > models", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subtotal").click();
+      tableHeaderClick("Subtotal");
       selectFromDropdown("Sum over time");
 
       assertQuestionIsBasedOnModel({

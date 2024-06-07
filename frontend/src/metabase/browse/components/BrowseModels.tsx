@@ -2,14 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useSearchQuery } from "metabase/api";
+import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import type { ModelResult, SearchRequest } from "metabase-types/api";
+import type { ModelResult } from "metabase-types/api";
 
-import type { ActualModelFilters } from "../utils";
 import { filterModels } from "../utils";
 
 import {
@@ -28,6 +27,24 @@ const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
 export const BrowseModels = () => {
   const [actualModelFilters, setActualModelFilters] = useModelFilterSettings();
 
+  const result = useFetchModels({ model_ancestors: true });
+
+  const { allModels, doVerifiedModelsExist } = useMemo(() => {
+    const allModels = (result.data?.data as ModelResult[] | undefined) ?? [];
+    const doVerifiedModelsExist = allModels.some(
+      model => model.moderated_status === "verified",
+    );
+    return { allModels, doVerifiedModelsExist };
+  }, [result]);
+
+  const { filteredModels } = useMemo(() => {
+    // If no models are verified, don't filter them
+    const filteredModels = doVerifiedModelsExist
+      ? filterModels(allModels, actualModelFilters, availableModelFilters)
+      : allModels;
+    return { filteredModels };
+  }, [allModels, actualModelFilters, doVerifiedModelsExist]);
+
   return (
     <BrowseContainer>
       <BrowseHeader>
@@ -45,16 +62,18 @@ export const BrowseModels = () => {
                 {t`Models`}
               </Group>
             </Title>
-            <ModelFilterControls
-              actualModelFilters={actualModelFilters}
-              setActualModelFilters={setActualModelFilters}
-            />
+            {doVerifiedModelsExist && (
+              <ModelFilterControls
+                actualModelFilters={actualModelFilters}
+                setActualModelFilters={setActualModelFilters}
+              />
+            )}
           </Flex>
         </BrowseSection>
       </BrowseHeader>
       <BrowseMain>
         <BrowseSection>
-          <BrowseModelsBody actualModelFilters={actualModelFilters} />
+          <BrowseModelsBody result={result} models={filteredModels} />
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>
@@ -62,44 +81,27 @@ export const BrowseModels = () => {
 };
 
 export const BrowseModelsBody = ({
-  actualModelFilters,
+  models,
+  result,
 }: {
-  /** Mapping of filter names to true if the filter is active
-   * or false if it is inactive */
-  actualModelFilters: ActualModelFilters;
+  models: ModelResult[];
+  result: { error?: any; isLoading: boolean };
 }) => {
-  const query: SearchRequest = {
-    models: ["dataset"], // 'model' in the sense of 'type of thing'
-    model_ancestors: true,
-    filter_items_in_personal_collection: "exclude",
-  };
-  const { data, error, isLoading } = useSearchQuery(query);
-
-  const filteredModels = useMemo(() => {
-    const unfilteredModels = (data?.data as ModelResult[]) ?? [];
-    const filteredModels = filterModels(
-      unfilteredModels,
-      actualModelFilters,
-      availableModelFilters,
-    );
-    return filteredModels;
-  }, [data, actualModelFilters]);
-
-  if (error || isLoading) {
+  if (result.error || result.isLoading) {
     return (
       <LoadingAndErrorWrapper
-        error={error}
-        loading={isLoading}
+        error={result.error}
+        loading={result.isLoading}
         style={{ flex: 1 }}
       />
     );
   }
 
-  if (filteredModels.length) {
+  if (models.length) {
     return (
       <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
-        <ModelsTable models={filteredModels} />
+        <ModelsTable models={models} />
       </Stack>
     );
   }

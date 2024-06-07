@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.util :as driver.u]
    [metabase.models.field :as field]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
@@ -90,7 +91,7 @@
   support connection impersonation, or for non-EE instances."
   :feature :advanced-permissions
   [driver ^Connection conn database]
-  (when (driver/database-supports? driver :connection-impersonation database)
+  (when (driver.u/supports? driver :connection-impersonation database)
     (try
       (let [enabled?           (impersonation-enabled-for-db? database)
             default-role       (driver.sql/default-database-role driver database)

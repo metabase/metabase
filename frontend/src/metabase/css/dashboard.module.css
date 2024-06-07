@@ -83,7 +83,7 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--color-bg-medium) !important;
+  background-color: var(--mb-color-bg-medium) !important;
   border: 1px solid var(--mb-color-brand);
 }
 
@@ -147,7 +147,7 @@
 /* .react-grid-placeholder is a global class from `react-grid-layout` */
 .DashEditing :global(.react-grid-placeholder) {
   z-index: 0;
-  background-color: var(--color-bg-light) !important;
+  background-color: var(--mb-color-bg-light) !important;
   transition: all 0.15s linear;
 }
 

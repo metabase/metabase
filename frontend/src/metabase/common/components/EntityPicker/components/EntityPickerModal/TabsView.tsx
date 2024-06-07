@@ -52,6 +52,7 @@ export const TabsView = <
   selectedItem,
   initialValue,
   defaultToRecentTab,
+  setShowActionButtons,
 }: {
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
@@ -61,6 +62,7 @@ export const TabsView = <
   initialValue?: Partial<Item>;
   searchParams?: Partial<SearchRequest>;
   defaultToRecentTab: boolean;
+  setShowActionButtons: (showActionButtons: boolean) => void;
 }) => {
   const hasSearchTab = !!searchQuery;
   const hasRecentsTab = tabs.some(tab => tab.model === "recents");
@@ -86,6 +88,15 @@ export const TabsView = <
       setSelectedTab(defaultTab.model);
     }
   }, [searchQuery, defaultTab.model]);
+
+  useEffect(() => {
+    // we don't want to show bonus actions on recents or search tabs
+    if (["search", "recents"].includes(selectedTab)) {
+      setShowActionButtons(false);
+    } else {
+      setShowActionButtons(true);
+    }
+  }, [selectedTab, setShowActionButtons]);
 
   return (
     <Tabs

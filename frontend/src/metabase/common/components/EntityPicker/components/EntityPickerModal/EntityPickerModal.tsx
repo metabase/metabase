@@ -98,6 +98,10 @@ export function EntityPickerModal<
     null,
   );
 
+  const [showActionButtons, setShowActionButtons] = useState<boolean>(
+    !!actionButtons.length,
+  );
+
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
     [options],
@@ -206,6 +210,7 @@ export function EntityPickerModal<
                 selectedItem={selectedItem}
                 initialValue={initialValue}
                 defaultToRecentTab={defaultToRecentTab}
+                setShowActionButtons={setShowActionButtons}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
@@ -215,7 +220,7 @@ export function EntityPickerModal<
                 onConfirm={onConfirm}
                 onCancel={onClose}
                 canConfirm={canSelectItem}
-                actionButtons={actionButtons}
+                actionButtons={showActionButtons ? actionButtons : []}
                 confirmButtonText={options?.confirmButtonText}
                 cancelButtonText={options?.cancelButtonText}
               />

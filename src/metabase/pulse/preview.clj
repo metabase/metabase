@@ -9,6 +9,8 @@
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
    [metabase.email.messages :as messages]
+   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
+   [metabase.notification.execute :as noti.execute]
    [metabase.pulse :as pulse]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render :as render]
@@ -78,7 +80,7 @@
          (markdown/process-markdown (:text dashboard-result) :html)])
        (cellfn nil)])))
 
-(def ^:private execute-dashboard #'pulse/execute-dashboard)
+(def ^:private execute-dashboard #'noti.execute/execute-dashboard)
 
 (defn render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."

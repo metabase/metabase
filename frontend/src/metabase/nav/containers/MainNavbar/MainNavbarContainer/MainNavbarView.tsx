@@ -1,12 +1,10 @@
 import { useCallback } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
-import CollapseSection from "metabase/components/CollapseSection";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
-import CS from "metabase/css/core/index.css";
 import {
   getCollectionIcon,
   PERSONAL_COLLECTIONS,
@@ -32,6 +30,7 @@ import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
+import { BrowseNavSection } from "./BrowseNavSection";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
@@ -57,8 +56,6 @@ type Props = {
     oldIndex: number;
   }) => void;
 };
-const BROWSE_MODELS_URL = "/browse/models";
-const BROWSE_DATA_URL = "/browse/databases";
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
@@ -87,9 +84,6 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const [expandBrowse = true, setExpandBrowse] = useUserSetting(
-    "expand-browse-in-nav",
-  );
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
@@ -108,38 +102,11 @@ function MainNavbarView({
           </PaddedSidebarLink>
         </SidebarSection>
         <SidebarSection>
-          <CollapseSection
-            header={
-              <SidebarHeading>{c("A verb, shown in the sidebar")
-                .t`Browse`}</SidebarHeading>
-            }
-            initialState={expandBrowse ? "expanded" : "collapsed"}
-            iconPosition="right"
-            iconSize={8}
-            headerClass={CS.mb1}
-            onToggle={setExpandBrowse}
-          >
-            <PaddedSidebarLink
-              icon="model"
-              url={BROWSE_MODELS_URL}
-              isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-              onClick={onItemSelect}
-              aria-label={t`Browse models`}
-            >
-              {t`Models`}
-            </PaddedSidebarLink>
-            {hasDataAccess && (
-              <PaddedSidebarLink
-                icon="database"
-                url={BROWSE_DATA_URL}
-                isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
-                onClick={onItemSelect}
-                aria-label={t`Browse databases`}
-              >
-                {t`Databases`}
-              </PaddedSidebarLink>
-            )}
-          </CollapseSection>
+          <BrowseNavSection
+            nonEntityItem={nonEntityItem}
+            onItemSelect={onItemSelect}
+            hasDataAccess={hasDataAccess}
+          />
           {hasDataAccess && (
             <>
               {!hasOwnDatabase && isAdmin && (
@@ -199,7 +166,7 @@ function CollectionSectionHeading({
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ closePopover }) => (
+    ({ closePopover }: { closePopover: () => void }) => (
       <CollectionMenuList>
         <SidebarLink
           icon="add"

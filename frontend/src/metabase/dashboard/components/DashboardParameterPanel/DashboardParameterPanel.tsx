@@ -55,7 +55,7 @@ export function DashboardParameterPanel({
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          {<DashboardParameterList isFullscreen={isFullscreen} />}
+          <DashboardParameterList isFullscreen={isFullscreen} />
         </FixedWidthContainer>
       </ParametersWidgetContainer>
     );
@@ -73,7 +73,7 @@ export function DashboardParameterPanel({
         isFixedWidth={dashboard?.width === "fixed"}
         data-testid="fixed-width-filters"
       >
-        {<DashboardParameterList isFullscreen={isFullscreen} />}
+        <DashboardParameterList isFullscreen={isFullscreen} />
 
         <FilterApplyButton />
       </ParametersFixedWidthContainer>

@@ -1,8 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import type { ParameterValues } from "metabase-types/api";
+import type { CardQueryMetadata, ParameterValues } from "metabase-types/api";
 import type { MockDatasetOpts } from "metabase-types/api/mocks";
 import { createMockDataset } from "metabase-types/api/mocks";
+
+export function setupAdhocQueryMetadataEndpoint(metadata: CardQueryMetadata) {
+  fetchMock.post(`path:/api/dataset/query_metadata`, metadata);
+}
 
 export function setupParameterValuesEndpoints(
   parameterValues: ParameterValues,
