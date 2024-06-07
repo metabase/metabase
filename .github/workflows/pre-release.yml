@@ -166,7 +166,6 @@ jobs:
             --env grepTags="@smoke",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
             --browser 'replay-chromium'
-
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: failure()
