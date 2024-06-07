@@ -27,7 +27,7 @@ export const TabRoot = styled.button<TabProps>`
   border-radius: ${space(0)};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   ${focusOutlineStyle("brand")};

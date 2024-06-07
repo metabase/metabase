@@ -51,14 +51,14 @@ export const CardMenu = styled.span`
 
 const cardRootHoverStyles = css`
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
 
     ${CardIcon} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${CardTitle} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   }
 `;

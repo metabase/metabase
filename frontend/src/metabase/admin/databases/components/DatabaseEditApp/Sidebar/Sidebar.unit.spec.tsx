@@ -245,10 +245,10 @@ describe("DatabaseEditApp/Sidebar", () => {
       setup({ isModelPersistenceEnabled: false });
 
       expect(
-        screen.queryByText(/Turn model caching on/i),
+        screen.queryByText(/Turn model persistence on/i),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText(/Turn model caching off/i),
+        screen.queryByText(/Turn model persistence off/i),
       ).not.toBeInTheDocument();
     });
 
@@ -261,18 +261,20 @@ describe("DatabaseEditApp/Sidebar", () => {
       });
 
       expect(
-        screen.queryByText(/Turn model caching on/i),
+        screen.queryByText(/Turn model persistence on/i),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText(/Turn model caching off/i),
+        screen.queryByText(/Turn model persistence off/i),
       ).not.toBeInTheDocument();
     });
 
     it("offers to enable caching when it's enabled on the instance and supported by a database", () => {
       setup({ isModelPersistenceEnabled: true });
-      expect(screen.getByText(/Turn model caching on/i)).toBeInTheDocument();
       expect(
-        screen.queryByText(/Turn model caching off/i),
+        screen.getByText(/Turn model persistence on/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Turn model persistence off/i),
       ).not.toBeInTheDocument();
     });
 
@@ -283,9 +285,11 @@ describe("DatabaseEditApp/Sidebar", () => {
           features: [...COMMON_DATABASE_FEATURES, "persist-models-enabled"],
         }),
       });
-      expect(screen.getByText(/Turn model caching off/i)).toBeInTheDocument();
       expect(
-        screen.queryByText(/Turn model caching on/i),
+        screen.getByText(/Turn model persistence off/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Turn model persistence on/i),
       ).not.toBeInTheDocument();
     });
   });

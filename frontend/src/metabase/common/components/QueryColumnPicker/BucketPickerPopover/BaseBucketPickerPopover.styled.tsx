@@ -79,7 +79,7 @@ export const MoreButton = styled(Button)`
   }
 
   &:hover {
-    background-color: ${color("brand-lighter")};
+    background-color: var(--mb-color-brand-lighter);
   }
 `;
 

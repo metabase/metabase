@@ -25,12 +25,11 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
 
   &:focus,
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
     transition: border 300ms ease-in-out;
   }
-  ${css`
-    ${focusOutlineStyle("brand")}
-  `};
+
+  ${focusOutlineStyle("brand")};
 
   &:disabled {
     pointer-events: none;
@@ -40,7 +39,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   ${props =>
     props.hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: var(--mb-color-error);
     `};
 
   ${props =>

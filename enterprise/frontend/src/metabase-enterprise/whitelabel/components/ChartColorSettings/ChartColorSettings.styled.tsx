@@ -24,12 +24,12 @@ export const TableTitle = styled.div`
 
 export const TableLink = styled.div`
   display: inline-block;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   cursor: pointer;
 
   &:hover {
-    color: ${darken("brand", 0.12)};
+    color: ${() => darken("brand", 0.12)};
   }
 `;
 

@@ -8,6 +8,6 @@ export const CopyButtonContainer = styled.div`
   z-index: 2;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-brand);
   }
 `;

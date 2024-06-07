@@ -15,9 +15,9 @@ export const SqlButton = styled(IconButtonWrapper)<SqlButtonProps>`
   width: 2rem;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     background-color: var(--mb-color-bg-medium);
-    border: 1px solid ${color("brand")};
+    border: 1px solid var(--mb-color-brand);
     transition: all 200ms linear;
   }
 `;

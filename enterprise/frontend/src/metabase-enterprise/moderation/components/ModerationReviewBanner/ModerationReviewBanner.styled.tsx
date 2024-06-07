@@ -38,6 +38,6 @@ export const IconButton = styled(Button)`
 
   &:hover {
     background-color: transparent;
-    color: ${color("danger")};
+    color: var(--mb-color-danger);
   }
 `;

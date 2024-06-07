@@ -52,6 +52,13 @@ YAxisFullWithDataLabels.args = {
   renderingContext,
 };
 
+export const CustomYAxisRangeWithColumnScaling = Template.bind({});
+CustomYAxisRangeWithColumnScaling.args = {
+  rawSeries: data.customYAxisRangeWithColumnScaling as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const TimeseriesXScale = Template.bind({});
 TimeseriesXScale.args = {
   rawSeries: data.timeseriesXScale as any,

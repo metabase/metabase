@@ -75,7 +75,7 @@ export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

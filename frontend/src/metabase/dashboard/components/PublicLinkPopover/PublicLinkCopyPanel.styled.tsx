@@ -10,7 +10,7 @@ export const PublicLinkCopyButton = styled(CopyButton)`
   cursor: pointer;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

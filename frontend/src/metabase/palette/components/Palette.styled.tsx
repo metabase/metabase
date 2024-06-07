@@ -14,6 +14,6 @@ export const PaletteInput = styled(KBarSearch)`
   line-height: 1rem;
 
   &:focus {
-    outline: 1px solid ${color("brand")};
+    outline: 1px solid var(--mb-color-brand);
   }
 `;

@@ -6,7 +6,7 @@ import { ResizableBox } from "react-resizable";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { color, darken } from "metabase/lib/colors";
 
-const aceEditorStyle = css`
+const getAceEditorStyles = () => css`
   .ace_editor {
     height: 100%;
     background-color: var(--mb-color-bg-light);
@@ -31,7 +31,7 @@ const aceEditorStyle = css`
 
   .ace_nomatch {
     border-radius: 5px;
-    outline: 1px solid ${color("error")};
+    outline: 1px solid var(--mb-color-error);
   }
 
   .ace_searchbtn {
@@ -61,7 +61,7 @@ const aceEditorStyle = css`
   }
 
   .ace_editor .ace_templateTag {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .react-resizable {
@@ -108,13 +108,13 @@ export const aceEditorStyles = css`
 
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line,
   .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
     border: none;
     outline: none;
   }
 
   .ace_completion-highlight {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   .ace_editor.ace_autocomplete .ace_line {
@@ -131,7 +131,7 @@ export const NativeQueryEditorRoot = styled.div`
   width: 100%;
   background-color: var(--mb-color-bg-light);
 
-  ${aceEditorStyle}
+  ${() => getAceEditorStyles()}
 
   .${QueryBuilderS.GuiBuilderData} {
     border-right: none;

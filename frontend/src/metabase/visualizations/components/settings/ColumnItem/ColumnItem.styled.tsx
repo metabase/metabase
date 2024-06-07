@@ -32,7 +32,7 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     cursor: grab;
     &:hover {
       ${ColumnItemDragHandle} {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     }
     `}

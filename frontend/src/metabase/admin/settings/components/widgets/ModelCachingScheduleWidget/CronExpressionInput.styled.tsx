@@ -16,7 +16,7 @@ export const CustomScheduleLabel = styled.span`
 `;
 
 export const ErrorMessage = styled.span`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   margin-top: 4px;
 `;
 
@@ -37,7 +37,7 @@ export const InfoIcon = styled(Icon)`
   color: ${color("text-medium")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

@@ -49,10 +49,10 @@ export const BulkActionButton = styled(Button)`
 ` as unknown as typeof Button;
 
 export const BulkActionDangerButton = styled(BulkActionButton)`
-  color: ${color("danger")};
+  color: var(--mb-color-danger);
 
   :hover {
     color: ${color("white")};
-    background-color: ${color("danger")};
+    background-color: var(--mb-color-bg-error);
   }
 ` as unknown as typeof Button;

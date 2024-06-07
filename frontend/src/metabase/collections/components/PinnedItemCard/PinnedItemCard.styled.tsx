@@ -14,7 +14,7 @@ export const ItemLink = styled(Link)`
 `;
 
 export const ItemIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   height: 1.5rem;
   width: 1.5rem;
 `;
@@ -50,7 +50,7 @@ export const Body = styled.div`
 
   &:hover {
     ${Title} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
 
     ${ActionsContainer} {

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
-import { color } from "metabase/lib/colors";
 
 export type PinDropTargetProps = {
   variant: "pin" | "unpin";
@@ -39,7 +38,7 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   right: 0;
   border-left: ${props =>
     `4px solid ${
-      props.hovered ? color("brand") : "var(--mb-color-bg-medium)"
+      props.hovered ? "var(--mb-color-brand)" : "var(--mb-color-bg-medium)"
     }`};
   display: ${props => !(props.hovered || props.highlighted) && "none"};
   min-height: 2rem;

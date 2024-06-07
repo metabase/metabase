@@ -8,7 +8,7 @@ export const TextEditorRoot = styled.div`
 
   .ace_gutter {
     background: rgb(220, 236, 249);
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     font-weight: bold;
   }
   .ace_keyword {

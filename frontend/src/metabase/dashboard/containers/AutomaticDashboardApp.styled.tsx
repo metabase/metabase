@@ -13,7 +13,7 @@ export const ItemLink = styled(Link)`
   display: block;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
