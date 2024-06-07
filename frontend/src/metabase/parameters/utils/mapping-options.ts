@@ -18,6 +18,7 @@ import {
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
+  getParameterColumns,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -156,23 +157,11 @@ export function getParameterMappingOptions(
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isQuestion = question.type() === "question";
   if (!isNative || !isQuestion) {
-    // treat the dataset/model question like it is already composed so that we can apply
-    // dataset/model-specific metadata to the underlying dimension options
-    const query = !isQuestion
-      ? question.composeQuestionAdhoc().query()
-      : question.query();
-    const stageIndex = -1;
-    const availableColumns =
-      parameter && isTemporalUnitParameter(parameter)
-        ? Lib.returnedColumns(query, stageIndex)
-        : Lib.filterableColumns(query, stageIndex);
-    const parameterColumns = parameter
-      ? availableColumns.filter(
-          columnFilterForParameter(query, stageIndex, parameter),
-        )
-      : availableColumns;
-    const columnGroups = Lib.groupColumns(parameterColumns);
+    const columns = getParameterColumns(question, parameter ?? undefined);
+    const columnGroups = Lib.groupColumns(columns);
 
+    const query = question.query();
+    const stageIndex = -1;
     const options = columnGroups.flatMap(group =>
       buildStructuredQuerySectionOptions(query, stageIndex, group),
     );

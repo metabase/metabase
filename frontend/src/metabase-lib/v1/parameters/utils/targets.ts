@@ -9,12 +9,16 @@ import type {
   ConcreteFieldReference,
   FieldReference,
   NativeParameterDimensionTarget,
+  Parameter,
   ParameterTarget,
   ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
+
+import { columnFilterForParameter } from "./filters";
+import { isTemporalUnitParameter } from "./parameter-type";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,
@@ -40,8 +44,9 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
 // returns only real DB fields and not all mapped columns
 // for columns, use getMappingOptionByTarget
 export function getParameterTargetField(
-  target: ParameterTarget,
   question: Question,
+  parameter: Parameter,
+  target: ParameterTarget,
 ) {
   if (!isDimensionTarget(target)) {
     return null;
@@ -69,30 +74,17 @@ export function getParameterTargetField(
       return fields.find(field => field.id === fieldIdOrName);
     }
 
-    const fieldsWithName = fields.filter(
-      field => typeof field.id === "number" && field.name === fieldIdOrName,
-    );
-    if (fieldsWithName.length === 0) {
-      // performance optimization:
-      // if there are no matching fields, do not call MBQL lib
-      return null;
-    }
-    if (fieldsWithName.length === 1) {
-      // performance optimization:
-      // if there is exactly 1 field, assume that it's related to this query and do not call MBQL lib
-      return fieldsWithName[0];
+    const columns = getParameterColumns(question, parameter);
+    if (columns.length === 0) {
+      // query and metadata are not available: 1) no data permissions 2) embedding
+      // there is no way to find the correct field so pick the first one matching by name
+      return fields.find(
+        field => typeof field.id === "number" && field.name === fieldIdOrName,
+      );
     }
 
     const query = question.query();
     const stageIndex = -1;
-    const columns = Lib.visibleColumns(query, stageIndex);
-
-    if (columns.length === 0) {
-      // query and metadata are not available: 1) no data permissions 2) embedding
-      // there is no way to find the correct field so pick the first one matching by name
-      return fieldsWithName[0];
-    }
-
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
@@ -144,4 +136,23 @@ export function buildTemplateTagVariableTarget(
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
+}
+
+export function getParameterColumns(question: Question, parameter?: Parameter) {
+  // treat the dataset/model question like it is already composed so that we can apply
+  // dataset/model-specific metadata to the underlying dimension options
+  const query =
+    question.type() !== "question"
+      ? question.composeQuestionAdhoc().query()
+      : question.query();
+  const stageIndex = -1;
+  const availableColumns =
+    parameter && isTemporalUnitParameter(parameter)
+      ? Lib.returnedColumns(query, stageIndex)
+      : Lib.filterableColumns(query, stageIndex);
+  return parameter
+    ? availableColumns.filter(
+        columnFilterForParameter(query, stageIndex, parameter),
+      )
+    : availableColumns;
 }
