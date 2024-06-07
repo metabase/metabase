@@ -479,7 +479,6 @@
 (mu/defn get-recents
   "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[models-of-interest]], per context.
 
-  Returns: [:map
              [:recent-views {:optional true} [:sequential Item]]
              [:recent-selections {:optional true} [:sequential Item]]]
 
