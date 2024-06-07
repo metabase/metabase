@@ -141,8 +141,9 @@ export function getParameterMappings(
   // allow mapping the same parameter to multiple action targets
   if (!isAction) {
     parameter_mappings = parameter_mappings.filter(
-      // @ts-expect-error action and virtual dashcards do not have card_id
-      m => m.card_id !== card_id || m.parameter_id !== parameter_id,
+      m =>
+        ("card_id" in m && m.card_id !== card_id) ||
+        m.parameter_id !== parameter_id,
     );
   }
 
