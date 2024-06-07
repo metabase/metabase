@@ -223,6 +223,8 @@ jobs:
       - name: Auto approve PR (using GitHub Actions account)
         run: |
           gh pr review --approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
       #   run: |
