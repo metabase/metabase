@@ -7,6 +7,8 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
+   [clojure.string :as str]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -216,10 +218,25 @@
           (header-builder rows pivot-spec)
           (row-builder rows pivot-spec)))))
 
+(defn- col->aggregation-function-key
+  [{:keys [name source]}]
+  (when (= :aggregation source)
+    (let [name (u/lower-case-en name)]
+      (cond
+        (str/starts-with? name "sum")    :sum
+        (str/starts-with? name "avg")    :avg
+        (str/starts-with? name "min")    :min
+        (str/starts-with? name "max")    :max
+        (str/starts-with? name "count")  :count
+        (str/starts-with? name "stddev") :stddev))))
+
 (defn pivot-opts->pivot-spec
   "Utility that adds :pivot-grouping-key to the pivot-opts map internal to the xlsx streaming response writer."
-  [pivot-opts column-titles]
-  (-> pivot-opts
-      (assoc :column-titles column-titles)
-      add-pivot-measures
-      (assoc :pivot-grouping-key (pivot-grouping-key column-titles))))
+  [pivot-opts cols]
+  (let [titles  (mapv :display_name cols)
+        agg-fns (mapv col->aggregation-function-key cols)]
+    (-> pivot-opts
+        (assoc :column-titles titles)
+        add-pivot-measures
+        (assoc :aggregation-functions agg-fns)
+        (assoc :pivot-grouping-key (pivot-grouping-key titles)))))
