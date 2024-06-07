@@ -227,38 +227,37 @@ describe("scenarios > dashboard > title drill", () => {
       restore();
       cy.signInAsAdmin();
 
-      cy.createQuestionAndDashboard({
-        questionDetails,
-        dashboardDetails,
-      }).then(({ body: dashboardCard, questionId }) => {
-        const { card_id, dashboard_id } = dashboardCard;
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: dashboardCard, questionId }) => {
+          const { card_id, dashboard_id } = dashboardCard;
 
-        cy.wrap(questionId).as("questionId");
+          cy.wrap(questionId).as("questionId");
 
-        const mapFiltersToCard = {
-          parameter_mappings: [
-            {
-              parameter_id: filterWithDefaultValue.id,
-              card_id,
-              target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-            },
-            {
-              parameter_id: filter.id,
-              card_id,
-              target: ["dimension", ["field", PRODUCTS.ID, null]],
-            },
-          ],
-        };
+          const mapFiltersToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: filterWithDefaultValue.id,
+                card_id,
+                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+              },
+              {
+                parameter_id: filter.id,
+                card_id,
+                target: ["dimension", ["field", PRODUCTS.ID, null]],
+              },
+            ],
+          };
 
-        cy.editDashboardCard(dashboardCard, mapFiltersToCard);
+          cy.editDashboardCard(dashboardCard, mapFiltersToCard);
 
-        cy.intercept(
-          "POST",
-          `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
-        ).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
+          ).as("cardQuery");
 
-        visitDashboard(dashboard_id);
-      });
+          visitDashboard(dashboard_id);
+        },
+      );
     });
 
     describe("as a user with access to underlying data", () => {
