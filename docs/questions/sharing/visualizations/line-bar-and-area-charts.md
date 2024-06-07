@@ -111,9 +111,9 @@ As well as stack them as a percentage:
 
 ### Values on data points
 
-Put numbers on your charts. You can show some values (Metabase will pick some values so the chart is more legible) or all values.
+You can show some values (Metabase will pick some values to make the chart more legible), all values, or no values.
 
-If you toggle this on, you can toggle numbers for individual series on the [Data](#data-settings). For example, if you have four series, and only want to display numbers for one of the series.
+If you toggle on values on data points, you can toggle values for individual series on the [Data](#data-settings) tab of the chart's settings. For example, if you have four series, and only want to display values for one of the series.
 
 ### Autoformatting
 
