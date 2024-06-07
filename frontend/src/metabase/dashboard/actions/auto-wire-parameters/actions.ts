@@ -176,12 +176,12 @@ export function showAutoWireToastNewCard({
             !processedParameterIds.has(parameter.id)
           ) {
             parametersMappingsToApply.push(
-              ...(getParameterMappings(
+              ...getParameterMappings(
                 targetDashcard,
                 parameter.id,
                 targetDashcard.card_id,
                 option.target,
-              ) as DashboardParameterMapping[]),
+              ),
             );
             processedParameterIds.add(parameter.id);
           }
