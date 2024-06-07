@@ -13,11 +13,11 @@ on:
         type: string
         required: true
 
-concurrency:
-  # We want to ensure only one job is running at a time because
-  # there could be a conflict when updating the readme file.
-  group: ${{ github.workflow }}
-  cancel-in-progress: true
+# concurrency:
+#   # We want to ensure only one job is running at a time because
+#   # there could be a conflict when updating the readme file.
+#   group: ${{ github.workflow }}
+#   cancel-in-progress: true
 
 jobs:
   check-git-tag:
