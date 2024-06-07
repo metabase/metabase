@@ -623,9 +623,7 @@ function renderValue({
   fields,
   formatOptions,
   value,
-}: // autoLoad,
-// compact,
-{
+}: {
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
@@ -636,11 +634,9 @@ function renderValue({
     <ValueComponent
       value={value}
       column={fields[0]}
-      // maximumFractionDigits={20}
+      maximumFractionDigits={20}
       remap={showRemapping(fields)}
       {...formatOptions}
-      // autoLoad={autoLoad}
-      // compact={compact}
     />
   );
 }
