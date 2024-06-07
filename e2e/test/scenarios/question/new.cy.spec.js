@@ -281,51 +281,55 @@ describe("scenarios > question > new", () => {
     });
   });
 
-  it("should be able to save a question to a collection created on the go", () => {
-    visitCollection(THIRD_COLLECTION_ID);
+  it(
+    "should be able to save a question to a collection created on the go",
+    { tags: "@smoke" },
+    () => {
+      visitCollection(THIRD_COLLECTION_ID);
 
-    cy.findByLabelText("Navigation bar").findByText("New").click();
-    popover().findByText("Question").click();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
-    });
-    cy.findByTestId("qb-header").findByText("Save").click();
+      cy.findByLabelText("Navigation bar").findByText("New").click();
+      popover().findByText("Question").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cy.findByTestId("qb-header").findByText("Save").click();
 
-    cy.log("should be able to tab through fields (metabase#41683)");
-    cy.realPress("Tab").realPress("Tab");
-    cy.findByLabelText("Description").should("be.focused");
+      cy.log("should be able to tab through fields (metabase#41683)");
+      cy.realPress("Tab").realPress("Tab");
+      cy.findByLabelText("Description").should("be.focused");
 
-    cy.findByTestId("save-question-modal")
-      .findByLabelText(/Which collection/)
-      .click();
+      cy.findByTestId("save-question-modal")
+        .findByLabelText(/Which collection/)
+        .click();
 
-    entityPickerModal()
-      .findByRole("tab", { name: /Collections/ })
-      .click();
+      entityPickerModal()
+        .findByRole("tab", { name: /Collections/ })
+        .click();
 
-    entityPickerModal().findByText("Create a new collection").click();
+      entityPickerModal().findByText("Create a new collection").click();
 
-    const NEW_COLLECTION = "Foo";
-    collectionOnTheGoModal().within(() => {
-      cy.findByLabelText(/Give it a name/).type(NEW_COLLECTION);
-      cy.findByText("Create").click();
-    });
-    entityPickerModal().within(() => {
-      cy.findByText("Foo").click();
-      cy.findByText("Select").click();
-    });
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByText("Save new question");
-      cy.findByLabelText(/Which collection/).should(
-        "have.text",
-        NEW_COLLECTION,
-      );
-      cy.findByText("Save").click();
-    });
+      const NEW_COLLECTION = "Foo";
+      collectionOnTheGoModal().within(() => {
+        cy.findByLabelText(/Give it a name/).type(NEW_COLLECTION);
+        cy.findByText("Create").click();
+      });
+      entityPickerModal().within(() => {
+        cy.findByText("Foo").click();
+        cy.findByText("Select").click();
+      });
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByText("Save new question");
+        cy.findByLabelText(/Which collection/).should(
+          "have.text",
+          NEW_COLLECTION,
+        );
+        cy.findByText("Save").click();
+      });
 
-    cy.get("header").findByText(NEW_COLLECTION);
-  });
+      cy.get("header").findByText(NEW_COLLECTION);
+    },
+  );
 
   it("should preserve the original question name (metabase#41196)", () => {
     const originalQuestionName = "Foo";
@@ -448,7 +452,7 @@ describe("scenarios > question > new", () => {
 // model-less behavior
 describe(
   "scenarios > question > new > data picker > without models",
-  { tags: "@OSS" },
+  { tags: ["@OSS", "@smoke"] },
   () => {
     beforeEach(() => {
       onlyOnOSS();
