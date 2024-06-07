@@ -1,3 +1,4 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
@@ -123,7 +124,7 @@ export const logout = createAsyncThunk(
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
         trackLogout();
-        dispatch(push(Urls.login()));
+        dispatch(push(Urls.login()) as UnknownAction);
         reload(); // clears redux state and browser caches
       }
     } catch (error) {

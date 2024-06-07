@@ -33,26 +33,16 @@ const setup = async ({ user = createMockUser() }: SetupOpts = {}) => {
 };
 
 describe("HomeRecentSection", () => {
-  beforeEach(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-    jest.setSystemTime(new Date(2020, 0, 4));
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
-  });
-
   describe("new installers", () => {
     it("should show a help link for new installers", async () => {
       await setup({
         user: createMockUser({
           is_installer: true,
-          first_login: "2020-01-05T00:00:00Z",
+          first_login: new Date().toISOString(),
         }),
       });
 
-      expect(screen.getByText("Metabase tips")).toBeInTheDocument();
+      expect(await screen.findByText("Metabase tips")).toBeInTheDocument();
     });
 
     it("should not show a help link for regular users", async () => {

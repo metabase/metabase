@@ -1,7 +1,10 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
-import type { ByRoleMatcher } from "@testing-library/react";
+import type {
+  ByRoleMatcher,
+  type waitForOptions,
+} from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
@@ -303,10 +306,10 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  * @see https://github.com/metabase/metabase/pull/34272#discussion_r1342527087
  * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
  */
-export const waitForLoaderToBeRemoved = async () => {
+export const waitForLoaderToBeRemoved = async (options?: waitForOptions) => {
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  }, options);
 };
 
 /**

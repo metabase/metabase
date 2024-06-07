@@ -5,7 +5,6 @@ import {
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
-  act,
   createMockClipboardData,
   renderWithProviders,
   screen,
@@ -115,14 +114,6 @@ describe("StringFilterValuePicker", () => {
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, availableColumns);
-
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
 
   describe("list values", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
@@ -414,7 +405,6 @@ describe("StringFilterValuePicker", () => {
       ).not.toBeInTheDocument();
 
       await userEvent.type(input, "g");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("Gizmo"));
       expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
     });
@@ -438,7 +428,6 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
@@ -460,7 +449,6 @@ describe("StringFilterValuePicker", () => {
       expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith([
@@ -484,7 +472,6 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
@@ -546,7 +533,6 @@ describe("StringFilterValuePicker", () => {
       });
 
       await userEvent.type(screen.getByLabelText("Filter value"), "a@b");
-      act(() => jest.advanceTimersByTime(1000));
       expect(screen.getByText("a@b.com")).toBeInTheDocument();
       expect(screen.queryByText("a@b")).not.toBeInTheDocument();
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com", "a@b"]);
@@ -681,14 +667,6 @@ describe("NumberFilterValuePicker", () => {
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, availableColumns);
-
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
 
   describe("list values", () => {
     const column = findColumn("ORDERS", "QUANTITY");

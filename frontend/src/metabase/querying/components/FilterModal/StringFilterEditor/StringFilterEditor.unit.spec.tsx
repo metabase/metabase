@@ -4,7 +4,7 @@ import {
   setupFieldSearchValuesEndpoints,
   setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type { GetFieldValuesResponse } from "metabase-types/api";
@@ -72,14 +72,6 @@ describe("StringFilterEditor", () => {
   const findColumn = columnFinder(query, availableColumns);
   const column = findColumn("PRODUCTS", "CATEGORY");
 
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
-
   describe("new filter", () => {
     it("should handle list values", async () => {
       const { getNextFilterName } = setup({
@@ -109,7 +101,6 @@ describe("StringFilterEditor", () => {
       await userEvent.click(screen.getByText("contains"));
       await userEvent.click(screen.getByText("Is"));
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(getNextFilterName()).toBe("Email is a@metabase.test");
@@ -233,7 +224,6 @@ describe("StringFilterEditor", () => {
       expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
 
       await userEvent.type(screen.getByLabelText("Filter value"), "b");
-      act(() => jest.advanceTimersByTime(1000));
       await userEvent.click(await screen.findByText("b@metabase.test"));
       expect(getNextFilterName()).toBe("Email is 2 selections");
       expect(screen.getByText("a@metabase.test")).toBeInTheDocument();

@@ -233,7 +233,7 @@ describe("nav > containers > MainNavbar", () => {
   describe("browse models link", () => {
     it("should render when there are models", async () => {
       await setup({ models: [createMockModelResult()] });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = await screen.findByRole("listitem", {
         name: /Browse models/i,
       });
       const link = within(listItem).getByRole("link");
@@ -253,7 +253,7 @@ describe("nav > containers > MainNavbar", () => {
         models: [createMockModelResult()],
         pathname: "/browse/models",
       });
-      const listItem = screen.getByRole("listitem", {
+      const listItem = await screen.findByRole("listitem", {
         name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");

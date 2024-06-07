@@ -1,4 +1,5 @@
 import type { Action } from "@reduxjs/toolkit";
+import { useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -59,7 +60,10 @@ export const useEntityQuery = <TId, TItem, TQuery = never>(
     requestType,
   }: UseEntityOwnProps<TId, TItem>,
 ): UseEntityQueryResult<TItem> => {
-  const options = { entityId, requestType };
+  const options = useMemo(
+    () => ({ entityId, requestType }),
+    [entityId, requestType],
+  );
   const data = useSelector(state => getObject(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
   const isActive = entityId != null && enabled;

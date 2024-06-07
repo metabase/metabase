@@ -227,7 +227,7 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
 
-    expect(within(modal).getByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
     expect(within(modal).getByText("People")).toBeInTheDocument();
     expect(within(modal).getByText("Reviews")).toBeInTheDocument();
   });
