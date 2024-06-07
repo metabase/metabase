@@ -161,15 +161,16 @@
 (def equality-comparable-types
   "Set of base types that can be compared with equality."
   ;; TODO: Adding :type/* here was necessary to prevent type errors for queries where a field's type in the DB could not
-  ;; be determined better than :type/*. See #36841, where a MySQL enum field gets `:base-type :type/*`, and this check
+  ;; be determined better than :type/*. See #36841, where a MySQL enum field used to get `:base-type :type/*`, and this check
   ;; would fail on `[:= {} [:field ...] "enum-str"]` without `:type/*` here.
   ;; This typing of each input should be replaced with an alternative scheme that checks that it's plausible to compare
   ;; all the args to an `:=` clause. Eg. comparing `:type/*` and `:type/String` is cool. Comparing `:type/IPAddress` to
   ;; `:type/Boolean` should fail; we can prove it's the wrong thing to do.
-  #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MongoBSONID :type/Array :type/*})
+  #{:type/Boolean :type/Text :type/Number :type/Temporal :type/IPAddress :type/MySQLEnum :type/MongoBSONID :type/Array :type/*})
 
 (derive :type/Text        ::emptyable)
 (derive :type/MongoBSONID ::emptyable)
+(derive :type/MySQLEnum   ::emptyable)
 
 (mr/def ::emptyable
   (expression-schema ::emptyable "expression returning something emptyable (e.g. a string or BSON ID)"))
