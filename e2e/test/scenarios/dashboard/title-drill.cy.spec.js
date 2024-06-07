@@ -66,22 +66,23 @@ describe("scenarios > dashboard > title drill", () => {
       });
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
-        // wait for qustion to load
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
+        cy.get("@questionId").then(questionId => {
+          cy.findByTestId("loading-spinner").should("not.exist");
 
-        // drill through title
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Q1").click();
+          getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
+          cy.get("@title")
+            .should("have.attr", "href")
+            .and("include", `/question/${questionId}`);
+          cy.get("@title").click();
 
-        // check that we're in the QB now
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("This question is written in SQL.");
+          queryBuilderMain().within(() => {
+            cy.findByText("This question is written in SQL.").should("exist");
+            cy.findByText("foo").should("exist");
+            cy.findByText("bar").should("exist");
+          });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("foo");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("bar");
+          cy.location("pathname").should("eq", `/question/${questionId}-q1`);
+        });
       });
     });
   });
