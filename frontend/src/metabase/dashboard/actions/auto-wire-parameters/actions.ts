@@ -21,8 +21,6 @@ import {
 } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/v1/Question";
 import type {
   QuestionDashboardCard,
   DashCardId,
@@ -112,7 +110,6 @@ export function showAutoWireToastNewCard({
   return function (dispatch: Dispatch, getState: GetState) {
     dispatch(closeAutoWireParameterToast());
 
-    const metadata = getMetadata(getState());
     const dashboardState = getState().dashboard;
     const dashboardId = dashboardState.dashboardId;
 
@@ -145,10 +142,7 @@ export function showAutoWireToastNewCard({
       return;
     }
 
-    // TODO: Drop new Question?
-    const targetQuestion =
-      questions[targetDashcard.card.id] ??
-      new Question(targetDashcard.card, metadata);
+    const targetQuestion = questions[targetDashcard.card.id];
 
     const parametersMappingsToApply: DashboardParameterMapping[] = [];
     const processedParameterIds = new Set();
