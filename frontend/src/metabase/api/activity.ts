@@ -19,10 +19,14 @@ export const activityApi = Api.injectEndpoints({
   endpoints: builder => ({
     listRecents: builder.query<RecentItem[], RecentsRequest | void>({
       query: ({ context } = { context: ["views"] }) => {
-        const contextParam = [...context].sort().join(",");
+        const contextParam = [...context]
+          .sort()
+          .map(ctx => `context=${ctx}`)
+          .join("&");
+
         return {
           method: "GET",
-          url: `/api/activity/recents?context=${contextParam}`,
+          url: `/api/activity/recents?${contextParam}`,
         };
       },
       transformResponse: (response: RecentsResponse) => response?.recents,

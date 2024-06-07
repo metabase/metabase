@@ -14,7 +14,8 @@ export function setupRecentSelectionsEndpoints(
   recentlySelectedItems: RecentItem[],
 ) {
   fetchMock.get(
-    url => url.endsWith("/api/activity/recents?context=selections,views"),
+    url =>
+      url.endsWith("/api/activity/recents?context=selections&context=views"),
     {
       recents: recentlySelectedItems,
     },
