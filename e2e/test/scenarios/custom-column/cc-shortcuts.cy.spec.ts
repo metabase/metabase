@@ -27,7 +27,7 @@ function selectCombineColumns() {
   });
 }
 
-function selectColumn(index, table, name) {
+function selectColumn(index: number, table: string, name?: string) {
   expressionEditorWidget().within(() => {
     cy.findAllByTestId("column-input").eq(index).click();
   });
