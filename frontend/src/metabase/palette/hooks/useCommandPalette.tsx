@@ -16,6 +16,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
   getDocsUrl,
@@ -164,6 +165,7 @@ export const useCommandPalette = ({
             keywords: debouncedSearchText,
             icon: "link" as const,
             perform: () => {
+              trackSearchClick("view_more", 0, "command-palette");
               dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
@@ -172,7 +174,7 @@ export const useCommandPalette = ({
             },
           },
         ].concat(
-          searchResults.data.map(result => {
+          searchResults.data.map((result, index) => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
             return {
               id: `search-result-${result.model}-${result.id}`,
@@ -183,6 +185,7 @@ export const useCommandPalette = ({
               keywords: debouncedSearchText,
               priority: Priority.NORMAL,
               perform: () => {
+                trackSearchClick("item", index, "command-palette");
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
