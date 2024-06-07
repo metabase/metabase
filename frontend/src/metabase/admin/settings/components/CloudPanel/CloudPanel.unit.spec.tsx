@@ -78,7 +78,6 @@ describe("CloudPanel", () => {
       UNINITIALIZED_RESPONSE,
       INIT_RESPONSE,
       SETUP_RESPONSE,
-      CANCELED_RESPONSE,
     ]);
 
     await expectProgressState(metabaseStoreLink);
@@ -103,6 +102,10 @@ describe("CloudPanel", () => {
       ).toBeTruthy();
     });
     expect((store.getState() as any).undo).toHaveLength(1);
+
+    fetchMockCloudMigrationGetSequence([CANCELED_RESPONSE]);
+
+    await expectInitState();
   });
 
   it("should show user error if something fails", async () => {
