@@ -148,18 +148,25 @@
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
-  (mi/instances-with-hydrated-data
-   cards :can_run_adhoc_query
-   (fn []
-     (into {}
-           (comp
-            (filter (comp seq :dataset_query))
-            (map
-             (fn [{card-id :id :keys [dataset_query]}]
-               [card-id (query-perms/can-run-query? dataset_query)])))
-           cards))
-   :id
-   {:default false}))
+  (let [dataset-cards (keep (comp not-empty :dataset_query) cards)
+        source-card-ids (into #{}
+                              (keep (comp qp.util/query->source-card-id
+                                          mbql.normalize/normalize
+                                          :dataset_query))
+                              dataset-cards)]
+    (binding [query-perms/*card-instances*
+              (when (seq source-card-ids)
+                (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
+      (mi/instances-with-hydrated-data
+       cards :can_run_adhoc_query
+       (fn []
+         (into {}
+               (map
+                (fn [{card-id :id :keys [dataset_query]}]
+                  [card-id (query-perms/can-run-query? dataset_query)]))
+               dataset-cards))
+       :id
+       {:default false}))))
 
 (mi/define-batched-hydration-method add-can-run-adhoc-query
   :can_run_adhoc_query
