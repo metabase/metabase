@@ -8053,7 +8053,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
 
-
   - changeSet:
       id: v51.2024-06-07T12:37:36
       author: crisptrutski
@@ -8064,6 +8063,7 @@ databaseChangeLog:
             columnDataType: ${boolean.type}
             oldColumnName: direct_reference
             newColumnName: explicit_reference
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

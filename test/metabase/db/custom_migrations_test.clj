@@ -1761,7 +1761,7 @@
           (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
         (testing "the init-send-pulse-triggers job should be re-run after migrate up"
           (migrate!)
-          ;; we need to redef this so quarzt trigger that run on a different thread use the same db connection as this test
+          ;; we need to redef this so quartz trigger that run on a different thread use the same db connection as this test
           (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
             ;; simulate starting MB after migrate up, which will trigger this function
             (task/init! ::task.send-pulses/SendPulses)

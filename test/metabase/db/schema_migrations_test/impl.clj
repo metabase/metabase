@@ -200,8 +200,8 @@
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
   (with-temp-empty-app-db [conn driver]
     ;; sanity check: make sure the DB is actually empty
-    (let [metadata (.getMetaData conn)
-          schema (when (= :h2 driver) "PUBLIC")]
+    (let [metadata  (.getMetaData conn)
+          schema    (when (= :h2 driver) "PUBLIC")]
       (with-open [rs (.getTables metadata nil schema "%" (into-array String ["TABLE"]))]
         (let [tables (jdbc/result-set-seq rs)]
           (assert (zero? (count tables))
@@ -209,24 +209,33 @@
                        (u/pprint-to-str tables))))))
     (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false})
-    (letfn [(migrate
-              ([]
-               (migrate :up nil))
-              ([direction]
-               (migrate direction nil))
+    (let [has-migrated-down? (atom false)]
+      (letfn [(migrate
+                ([]
+                 (migrate :up nil))
+                ([direction]
+                 (migrate direction nil))
 
-              ([direction version]
-               (case direction
-                 :up
-                 (do
-                  (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-                  (run-migrations-in-range! conn [start-id end-id]))
+                ([direction version]
+                 (case direction
+                   :up
+                   (do
+                     (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+                     (if-not @has-migrated-down?
+                       (run-migrations-in-range! conn [start-id end-id])
+                       ;; Since we may have rolled back earlier migrations, it's no longer safe to resume from start-id.
+                       ;; Unfortunately this may run migrations after `end-id` however, as it completes the entire
+                       ;; version it comes from.
+                       ;; TODO: calculate the current-id somehow, and only run migrations in the range to end-id.
+                       (mdb/migrate! (mdb/data-source) :up (when end-id (migration->number end-id)))))
 
-                 :down
-                 (do
-                  (assert (int? version), "Downgrade requires a version")
-                  (mdb/migrate! (mdb/data-source) :down version)))))]
-     (f migrate)))
+                   :down
+                   (do
+                     (assert (int? version), "Downgrade requires a version")
+                     (mdb/migrate! (mdb/data-source) :down version)
+                     ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
+                     (reset! has-migrated-down? true)))))]
+        (f migrate))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations!
