@@ -10,13 +10,13 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [malli.core :as mc]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -30,11 +30,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +96,7 @@
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (if (= perms/audit-db-id database-id)
+    (if (= audit/audit-db-id database-id)
       (do
         (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
@@ -306,7 +302,7 @@
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf Database)]
-  (if (= perms/audit-db-id (:id database))
+  (if (= audit/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
     (doseq [task all-tasks]
       (update-db-trigger-if-needed! database task))))
