@@ -92,13 +92,6 @@ jobs:
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      # TODO: Remove this step after the build utils script is merged to master
-      - name: Upload release utils script, so it can be used later on when checking out `master` branch
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-util
-          path: ./bin/embedding-sdk/release_utils.bash
-
       - name: Update changelog
         run: |
           yarn embedding-sdk:generate-changelog
@@ -170,13 +163,6 @@ jobs:
         run: |
           git config --global user.email "github-automation@metabase.com"
           git config --global user.name "Metabase Automation"
-
-      # TODO: Remove this step after the build utils script is merged to master
-      - name: Download release utils script
-        uses: actions/download-artifact@v4
-        with:
-          name: release-util
-          path: ./bin/embedding-sdk/
 
       - name: Update readme
         run: |
