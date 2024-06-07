@@ -5,7 +5,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -553,7 +553,7 @@
                                        (when perm-type [:= :perm_type (u/qualified-name perm-type)])
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
-                                       (when-not audit? [:not= :db_id config/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type
