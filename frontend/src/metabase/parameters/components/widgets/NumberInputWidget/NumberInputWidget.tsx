@@ -71,7 +71,7 @@ export function NumberInputWidget({
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" ? (
+      {arity === "n" || arity === 1 ? (
         <TokenFieldWrapper>
           <MultiAutocomplete<number>
             onChange={setUnsavedArrayValue}
