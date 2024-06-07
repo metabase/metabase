@@ -317,10 +317,10 @@ There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"p
               []
               attachments))))
 
-(defn- are-all-parts-empty?
-  "Do none of the cards have any results?"
-  [results]
-  (every? pu/is-card-empty? results))
+#_(defn- are-all-parts-empty?
+    "Do none of the cards have any results?"
+    [results]
+    (every? pu/is-card-empty? results))
 
 #_(defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
    (let [goal-comparison      (if alert_above_goal >= <)
@@ -557,13 +557,13 @@ There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"p
   [pulse & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [notification {:payload_id   (:id pulse)
-                      :payload_type (if (:alert_condition pulse)
-                                      :notification/alert
-                                      :notification/dashboard-subscription)
+                      :payload_type (if (:dashboard_id pulse)
+                                      :notification/dashboard-subscription
+                                      :notification/alert)
                       :creator_id   (:creator_id pulse)}]
     ;; TODO before merge, handles retrying and check if dashboard is archvied
     (noti/send-notification!
-     (noti/notification->payload-info notification)
+     (noti/notification->payload-info #p notification)
      (if-let [channels (seq (:channels pulse))]
        (fix-channels channels)
        (noti/notification->channel+recipients notification channel-ids)))))

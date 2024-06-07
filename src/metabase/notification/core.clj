@@ -110,7 +110,7 @@
 (mu/defmethod execute-payload :notification/alert :- Payload
   [payload-info :- PayloadInfo]
   (let [card (t2/select-one :model/Card :id (get-in payload-info [:alert :card_id]) :archived false)]
-    {:payload-type :notification/dashboard-subscription
+    {:payload-type :notification/alert
      :card         card
      :alert        (:alert payload-info)
      :result       (noti.execute/execute-card (:creator_id payload-info) card)}))
@@ -119,8 +119,6 @@
   [notification :- Notification]
   (let [dashboard-subscription (t2/hydrate (t2/select-one :model/Pulse (:payload_id notification)) :cards)]
     (assoc notification :dashboard-subscription dashboard-subscription)))
-
-
 
 (mu/defmethod execute-payload :notification/dashboard-subscription :- Payload
   [{:keys [dashboard-subscription creator_id]} :- PayloadInfo]
@@ -163,10 +161,10 @@
 (defmethod should-send-notification? :notification/alert
   [payload-info payload]
   (let [alert           (:alert payload-info)
-        alert-condition (get payload-info [:alert :alert_condition])]
+        alert-condition (:alert_condition alert)]
     (cond
       (= "rows" alert-condition)
-      (not (are-all-parts-empty? payload))
+      (not (is-card-empty? payload))
 
       (= "goal" alert-condition)
       (goal-met? alert payload)
@@ -179,19 +177,21 @@
   [payload-info channel+recipients]
   (let [payload (execute-payload payload-info)
         alert   (:alert payload-info)]
-    (when (should-send-notification? payload-info payload)
-      (events/publish-event! :event/alert-send {:id      (:payload_id payload-info)
-                                                :user-id (:creator_id payload-info)
-                                                :object  {:recipients (map :recipients channel+recipients)
-                                                          :filters    (:parameters alert)}})
-      (when (:alert_first_only alert)
-        (t2/delete! :model/Pulse (:id alert)))
-      (doseq [channel channel+recipients]
-        (log/infof "Sending notification %s to channel %s" (dissoc payload-info :alert) channel)
-        (channel/deliver! {:channel_type (:channel_type channel)}
-                          payload
-                          (:recipients channel)
-                          nil)))))
+    (if (should-send-notification? payload-info payload)
+      (do
+       (events/publish-event! :event/alert-send {:id      (:payload_id payload-info)
+                                                 :user-id (:creator_id payload-info)
+                                                 :object  {:recipients (map :recipients channel+recipients)
+                                                           :filters    (:parameters alert)}})
+       (when (:alert_first_only alert)
+         (t2/delete! :model/Pulse (:id alert)))
+       (doseq [channel channel+recipients]
+         (log/infof "Sending notification %s to channel %s" (dissoc payload-info :alert) channel)
+         (channel/deliver! {:channel_type (:channel_type channel)}
+                           payload
+                           (:recipients channel)
+                           nil)))
+      (log/infof "Skipping notification %s" payload-info))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
