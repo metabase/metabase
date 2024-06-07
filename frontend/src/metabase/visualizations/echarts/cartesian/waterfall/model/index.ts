@@ -79,7 +79,7 @@ export const getWaterfallChartModel = (
   const transformedDataset = getWaterfallDataset(
     dataset,
     yAxisScaleTransforms,
-    seriesModel.dataKey,
+    seriesModel,
     settings,
     xAxisModel,
   );
