@@ -60,6 +60,22 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-bg-medium: ${({ theme }) => theme.fn.themeColor("bg-medium")};
   --mb-color-bg-night: ${() => color("bg-night")};
 
+  /**
+    Theming-specific CSS variables.
+    Keep in sync with [GlobalStyles.tsx] and [.storybook/preview-head.html].
+
+    Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
+
+    These CSS variables are not part of the core design system colors.
+    Do NOT add them to [palette.ts] and [colors.ts].
+  */
+  --mb-color-bg-dashboard: ${({ theme }) =>
+    theme.other.dashboard.backgroundColor};
+  --mb-color-bg-dashboard-card: ${({ theme }) =>
+    theme.other.dashboard.card.backgroundColor};
+  --mb-color-bg-question: ${({ theme }) =>
+    theme.other.question.backgroundColor};
+
   font-size: ${({ theme }) => theme.other.fontSize};
 
   ${aceEditorStyles}

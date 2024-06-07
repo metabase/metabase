@@ -10,26 +10,17 @@ import type { PaletteActionImpl } from "../types";
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
   active: boolean;
-  togglePalette: () => void;
 }
 
-export const PaletteResultItem = ({
-  item,
-  active,
-  togglePalette,
-}: PaletteResultItemProps) => {
+export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   const iconColor = active ? color("brand-light") : color("text-light");
 
   const parentName =
     item.extra?.parentCollection || item.extra?.database || null;
 
-  const handleLinkClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      togglePalette();
-    },
-    [togglePalette],
-  );
+  const handleLinkClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
 
   const content = (
     <Flex

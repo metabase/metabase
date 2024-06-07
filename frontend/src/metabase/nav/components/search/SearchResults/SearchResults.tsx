@@ -166,6 +166,8 @@ export const SearchResults = ({
                 showDescription={true}
                 isSelected={cursorIndex === index}
                 onClick={onClick}
+                index={index}
+                context="search-bar"
               />
             </li>
           );
