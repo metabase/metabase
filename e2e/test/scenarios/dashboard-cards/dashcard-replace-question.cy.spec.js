@@ -188,11 +188,8 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
       columnName: "Discount",
     });
 
-    entityPickerModal().within(() => {
-      cy.findByText("First collection").click();
-    });
     replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Next question",
+      nextQuestionName: "Orders",
     });
 
     // There're two toasts: "Undo replace" and "Undo parameters auto-wiring"
