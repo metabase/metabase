@@ -32,6 +32,7 @@ import {
   openQuestionsSidebar,
   visitEmbeddedPage,
   createQuestion,
+  assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -2481,6 +2482,7 @@ describe("issue 43154", () => {
 
 describe("issue 43799", () => {
   const modelDetails = {
+    name: "43799",
     type: "model",
     query: {
       "source-table": ORDERS_ID,
@@ -2568,6 +2570,14 @@ describe("issue 43799", () => {
     popover().findByText("People - User → Source").click();
     saveDashboard();
     filterWidget().click();
-    popover().findByText("Google").click();
+    popover().within(() => {
+      cy.findByText("Google").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().findByText("43799").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("People - User → Source is Google")
+      .should("be.visible");
+    assertQueryBuilderRowCount(4);
   });
 });

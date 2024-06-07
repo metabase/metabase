@@ -60,6 +60,12 @@ export function getUrlWithParameters(
     let questionWithParameters = question.setParameters(parameters);
 
     if (isEditable) {
+      // treat the dataset/model question like it is already composed so that we can apply
+      // dataset/model-specific metadata to the underlying dimension options
+      questionWithParameters =
+        question.type() !== "question"
+          ? question.composeQuestionAdhoc().setParameters(parameters)
+          : question;
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
