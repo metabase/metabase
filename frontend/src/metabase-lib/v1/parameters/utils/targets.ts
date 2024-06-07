@@ -74,13 +74,20 @@ export function getParameterTargetField(
       return fields.find(field => field.id === fieldIdOrName);
     }
 
+    const fieldsWithName = fields.filter(
+      field => typeof field.id === "number" && field.name === fieldIdOrName,
+    );
+    if (fieldsWithName.length === 1) {
+      // performance optimization:
+      // if there is exactly 1 field, assume that it's related to this query and do not call MBQL lib
+      return fieldsWithName[0];
+    }
+
     const columns = getParameterColumns(question, parameter);
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
       // there is no way to find the correct field so pick the first one matching by name
-      return fields.find(
-        field => typeof field.id === "number" && field.name === fieldIdOrName,
-      );
+      return fieldsWithName[0];
     }
 
     const query = question.query();
