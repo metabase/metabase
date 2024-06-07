@@ -12,15 +12,15 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { updateUserSetting } from "metabase/redux/settings";
 import { addUndo } from "metabase/redux/undo";
+import {
+  getCustomHomePageDashboardId,
+  getHasDismissedCustomHomePageToast,
+} from "metabase/selectors/app";
 import { getSettingsLoading } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem, DashboardId } from "metabase-types/api";
 
-import {
-  getCustomHomePageDashboardId,
-  getHasDismissedCustomHomePageToast,
-  getIsMetabotEnabled,
-} from "../../selectors";
+import { getIsMetabotEnabled } from "../../selectors";
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
 
