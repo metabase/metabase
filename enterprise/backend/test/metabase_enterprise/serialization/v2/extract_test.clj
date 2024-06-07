@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models
     :refer [Action
@@ -1660,15 +1660,15 @@
                        Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
                        Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
                        Table      {schema-id      :id}        {:name        "Schema'd Table"
-                                                              :db_id       db-id
-                                                              :schema      "PUBLIC"}
+                                                               :db_id       db-id
+                                                               :schema      "PUBLIC"}
                        Field      {other-field-id :id}        {:name "Other Field" :table_id schema-id}
                        Field      {fk-id          :id}        {:name     "Foreign Key"
-                                                              :table_id schema-id
-                                                              :fk_target_field_id some-field-id}
+                                                               :table_id schema-id
+                                                               :fk_target_field_id some-field-id}
                        Field      {nested-id      :id}        {:name "Nested Field"
-                                                              :table_id schema-id
-                                                              :parent_id other-field-id}]
+                                                               :table_id schema-id
+                                                               :parent_id other-field-id}]
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
@@ -1738,8 +1738,8 @@
     (mt/with-empty-h2-app-db
       (mbc/ensure-audit-db-installed!)
       (testing "sanity check that the audit collection exists"
-        (is (some? (audit-db/default-audit-collection)))
-        (is (some? (audit-db/default-custom-reports-collection))))
+        (is (some? (audit/default-audit-collection)))
+        (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
         (is (= #{} (by-model "Collection" ser)))))))

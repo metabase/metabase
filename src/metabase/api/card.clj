@@ -373,12 +373,12 @@
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]
-   (when-not (supported-series-display-type card-display)
-             (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
-                             {:display         card-display
-                              :allowed-display (map name supported-series-display-type)
-                              :status-code     400})))
-   (fetch-compatible-series
+    (when-not (supported-series-display-type card-display)
+      (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
+                      {:display         card-display
+                       :allowed-display (map name supported-series-display-type)
+                       :status-code     400})))
+    (fetch-compatible-series
      card
      {:exclude-ids exclude_ids
       :query       query
