@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
@@ -28,10 +27,9 @@
   "Return the name of the metric or name by describing it."
   [[op & args :as metric]]
   (cond
-    (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
-    (magic.util/adhoc-metric? metric)     (-> op qp.util/normalize-token op->name)
-    (magic.util/saved-metric? metric)     (->> args first (t2/select-one :model/LegacyMetric :id) :name)
-    :else                                 (second args)))
+    (magic.util/adhoc-metric? metric) (-> op qp.util/normalize-token op->name)
+    (magic.util/saved-metric? metric) (->> args first (t2/select-one :model/LegacyMetric :id) :name)
+    :else                             (second args)))
 
 (defn- join-enumeration
   "Join a sequence as [1 2 3 4] to \"1, 2, 3 and 4\""

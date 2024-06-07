@@ -5,6 +5,7 @@
   (:require
    [metabase.analyze.query-results :as qr]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -31,7 +32,7 @@
     ;; if its DB doesn't support nested queries in the first place
     (when (and metadata
                driver/*driver*
-               (driver/database-supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+               (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))

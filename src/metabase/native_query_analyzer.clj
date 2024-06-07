@@ -15,6 +15,8 @@
    [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.config :as config]
+   [metabase.driver.util :as driver.u]
+   [metabase.native-query-analyzer.impl :as nqa.impl]
    [metabase.native-query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.native-query-analyzer.replacement :as nqa.replacement]
    [metabase.public-settings :as public-settings]
@@ -78,6 +80,8 @@
     ;; MySQL, by contrast, is truly case-insensitive, and as the lowest common denominator it's what we cater for.
     ;; In general, it's a huge anti-pattern to have any identifiers that differ only by case, so this extra leniency is
     ;; unlikely to ever cause issues in practice.
+    ;;
+    ;; If we want 100% correctness, we can use the Macaw :case-insensitive option here to do the right thing.
     [:= [:lower field] (u/lower-case-en value)]))
 
 (defn- table-query
@@ -146,7 +150,9 @@
              (:native query))
     (let [db-id        (:database query)
           sql-string   (:query (nqa.sub/replace-tags query))
-          parsed-query (macaw/query->components (macaw/parsed-query sql-string))
+          driver       (driver.u/database->driver db-id)
+          macaw-opts   (nqa.impl/macaw-options driver)
+          parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
           direct-ids   (direct-field-ids-for-query parsed-query db-id)
           indirect-ids (set/difference
                         (indirect-field-ids-for-query parsed-query db-id)

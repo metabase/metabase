@@ -10,11 +10,71 @@ The **Table** option is good for looking at tabular data (duh), or for lists of 
 
 Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
 
-To manage these columns, including columns from linked tables, just click **add or remove columns**. Check the boxes next to the columns you want to show in the **visible section**, or uncheck to hide them. 
+To manage these columns, including columns from linked tables, just click **add or remove columns**. Check the boxes next to the columns you want to show in the **visible section**, or uncheck to hide them.
 
 To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
 
 > Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](../../../dashboards/start.md).
+
+## Column heading options for filtering and summarizing
+
+Click on a column heading and Metabase will present quick options for filtering and summarizing the data. The options for the column depend on the column's data type (ID, Text, Number, Date).
+
+### Filter by this column
+
+You can enter a value and filter the column  value:
+
+Text filters:
+
+- Is / Is not
+- Contains / Does not contain
+- Starts with / Ends with
+- Is empty / Not empty
+
+Number filters:
+
+- Between
+- Greater than / Less than
+- Greater than or equal to / Less than or equal to
+- Equal to / Not equal to
+- Is empty / Not empty
+
+### Distribution
+
+Clicking on Distribution will summarize the data by counting the rows and grouping the counts by the values in the column.
+
+### Distinct values
+
+Get a count of unique values.
+
+### Combine columns
+
+You can combine one or more text columns. For example, a first name column with a last name column.
+
+You can tell Metabase how to combine the columns by specifying a separator, like a space, or comma, or the word "Danger".
+
+### Extract day, month...
+
+From a datetime, you can grab:
+
+- **Hour of day**: 0, 1, 2...
+- **Day of month**: 0, 1, 2...
+- **Day of week**: Monday, Tuesday...
+- **Month of year**: Jan, Feb...
+- **Quarter of year**: Q1, Q2...
+- **Year**: 2024, 2025...
+
+### Extract domain, host
+
+Grab the domain or host from a URL or email. So if you have `https://www.example.com`:
+
+- Host: `example.com`
+- Domain: `example`
+- Subdomain: `www`
+
+### Sum over time
+
+Add up all the values and group by a time period, generally by month.
 
 ## Column formatting options
 
