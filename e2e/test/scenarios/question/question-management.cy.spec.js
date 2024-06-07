@@ -268,7 +268,7 @@ describe(
                     openQuestionActions();
                     cy.findByTestId("add-to-dashboard-button").click();
 
-                    findActivePickerItem("Orders in a dashboard");
+                    findSelectedPickerItem("Orders in a dashboard");
                   });
 
                   it("should handle lost access", () => {
@@ -457,6 +457,12 @@ function findPickerItem(name) {
 function findActivePickerItem(name) {
   return findPickerItem(name).then($button => {
     expect($button).to.have.attr("data-active", "true");
+  });
+}
+
+function findSelectedPickerItem(name) {
+  return findPickerItem(name).then($button => {
+    expect($button).to.have.attr("aria-selected", "true");
   });
 }
 
