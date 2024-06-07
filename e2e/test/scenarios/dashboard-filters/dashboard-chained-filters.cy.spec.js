@@ -113,15 +113,15 @@ describe("scenarios > dashboard > chained filter", () => {
         .first()
         .within(() => {
           if (has_field_values === "search") {
-            multiAutocompleteInput().type("{backspace}{backspace}");
+            multiAutocompleteInput()
+              .type("{backspace}{backspace}")
+              // close the suggestion list
+              .blur();
           }
           if (has_field_values === "list") {
             cy.findByPlaceholderText("Search the list").clear();
           }
         });
-
-      // close the suggestion list
-      popover().first().click({ force: true });
 
       filterWidget().contains("AK").click();
       popover()
@@ -151,8 +151,14 @@ describe("scenarios > dashboard > chained filter", () => {
           cy.findByText("Anchorage").should("not.exist");
         });
 
-      // close the suggestion list
-      popover().first().click({ force: true });
+      if (has_field_values === "search") {
+        popover()
+          .first()
+          .within(() => {
+            // close the suggestion list
+            multiAutocompleteInput().blur();
+          });
+      }
 
       filterWidget().contains("GA").click();
       popover()

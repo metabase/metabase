@@ -322,7 +322,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       popover().last().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
-      popover().first().click({ force: true });
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
 
@@ -334,7 +338,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       popover().last().contains("Alycia McCullough");
 
       // close the suggestions popover
-      popover().first().click({ force: true });
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should show values for PEOPLE.SOURCE");
 
@@ -351,7 +359,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
       popover().last().contains("Alycia McCullough - 2016");
 
       // close the suggestions popover
-      popover().first().click({ force: true });
+      popover()
+        .first()
+        .within(() => {
+          multiAutocompleteInput().blur();
+        });
 
       cy.log("should accept url parameters");
 
