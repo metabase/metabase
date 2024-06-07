@@ -83,15 +83,16 @@ export function getParameterTargetField(
       return fieldsWithName[0];
     }
 
-    const columns = getParameterColumns(question, parameter);
+    const { query, stageIndex, columns } = getParameterColumns(
+      question,
+      parameter,
+    );
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
       // there is no way to find the correct field so pick the first one matching by name
       return fieldsWithName[0];
     }
 
-    const query = question.query();
-    const stageIndex = -1;
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
@@ -157,9 +158,15 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     parameter && isTemporalUnitParameter(parameter)
       ? Lib.returnedColumns(query, stageIndex)
       : Lib.filterableColumns(query, stageIndex);
-  return parameter
+  const filteredColumns = parameter
     ? availableColumns.filter(
         columnFilterForParameter(query, stageIndex, parameter),
       )
     : availableColumns;
+
+  return {
+    query,
+    stageIndex,
+    columns: filteredColumns,
+  };
 }

@@ -8,11 +8,9 @@ import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
 import type Question from "metabase-lib/v1/Question";
 import {
-  columnFilterForParameter,
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/v1/parameters/utils/filters";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   buildColumnTarget,
   buildDimensionTarget,
@@ -157,11 +155,12 @@ export function getParameterMappingOptions(
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isQuestion = question.type() === "question";
   if (!isNative || !isQuestion) {
-    const columns = getParameterColumns(question, parameter ?? undefined);
+    const { query, stageIndex, columns } = getParameterColumns(
+      question,
+      parameter ?? undefined,
+    );
     const columnGroups = Lib.groupColumns(columns);
 
-    const query = question.query();
-    const stageIndex = -1;
     const options = columnGroups.flatMap(group =>
       buildStructuredQuerySectionOptions(query, stageIndex, group),
     );
