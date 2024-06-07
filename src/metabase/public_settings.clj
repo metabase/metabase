@@ -829,7 +829,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting ^{:deprecated "0.50.0"} uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
-  :visibility :authenticated
+  :visibility :internal
   :export?    false
   :type       :boolean
   :default    false
