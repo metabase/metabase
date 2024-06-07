@@ -45,7 +45,7 @@ describeWithSnowplow(
       popover().findByText("Combine columns").click();
 
       popover().within(() => {
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "contain",
           "email@example.com12345",
         );
@@ -57,25 +57,25 @@ describeWithSnowplow(
       popover().within(() => {
         cy.findByText("Separated by (empty)").click();
         cy.findByLabelText("Separator").type("__");
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text",
         );
 
         cy.findByText("Add column").click();
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text__12345",
         );
 
         cy.findAllByRole("textbox").last().clear();
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text12345",
         );
 
         cy.findAllByRole("textbox").last().clear().type("+");
-        cy.findByTestId("combine-column-example").should(
+        cy.findByTestId("combine-example").should(
           "have.text",
           "email@example.com__text+12345",
         );
@@ -85,7 +85,7 @@ describeWithSnowplow(
 
       cy.findAllByTestId("header-cell")
         .last()
-        .should("have.text", "Email Name ID");
+        .should("have.text", "Combined Email, Name, ID");
 
       expectGoodSnowplowEvent({
         event: "column_combine_via_column_header",
@@ -119,8 +119,12 @@ describeWithSnowplow(
       popover().findByText("Combine columns").click();
       popover().findByText("Done").click();
 
-      cy.findAllByTestId("header-cell").contains("Email ID").should("exist");
-      cy.findAllByTestId("header-cell").contains("Email ID_2").should("exist");
+      cy.findAllByTestId("header-cell")
+        .contains("Combined Email, ID")
+        .should("exist");
+      cy.findAllByTestId("header-cell")
+        .contains("Combined Email, ID_2")
+        .should("exist");
     });
   },
 );
