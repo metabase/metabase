@@ -1,10 +1,10 @@
 import type { MouseEvent } from "react";
 import { useCallback } from "react";
-import { useLocation } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
+import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import {
@@ -12,10 +12,8 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { getCustomHomePageDashboardId } from "metabase/selectors/app";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -75,17 +73,11 @@ function MainNavbarView({
   handleCreateNewCollection,
   handleCloseNavbar,
 }: Props) {
-  const location = useLocation();
-  const homepageDashboardId = useSelector(getCustomHomePageDashboardId);
-
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
 
-  const isAtHomepageDashboard = Boolean(
-    homepageDashboardId &&
-      location.pathname?.startsWith(`/dashboard/${homepageDashboardId}`),
-  );
+  const { canNavigateHome } = useHomepageDashboard();
 
   const {
     card: cardItem,
@@ -104,12 +96,12 @@ function MainNavbarView({
     (event: MouseEvent) => {
       // Prevent navigating to the dashboard homepage when a user is already there
       // https://github.com/metabase/metabase/issues/43800
-      if (isAtHomepageDashboard) {
+      if (!canNavigateHome) {
         event.preventDefault();
       }
       onItemSelect();
     },
-    [isAtHomepageDashboard, onItemSelect],
+    [canNavigateHome, onItemSelect],
   );
 
   return (
