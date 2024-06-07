@@ -582,6 +582,7 @@ const buildEChartsLineAreaSeries = (
       focus: hasMultipleSeries ? "series" : "self",
       itemStyle: {
         color: seriesModel.color,
+        opacity: 1,
       },
     },
     blur: {
