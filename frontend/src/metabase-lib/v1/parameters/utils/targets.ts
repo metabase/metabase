@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -66,7 +68,7 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const [_, fieldIdOrName] = fieldRef;
+    const [_type, fieldIdOrName] = fieldRef;
     const fields = metadata.fieldsList();
     if (typeof fieldIdOrName === "number") {
       // performance optimization:
