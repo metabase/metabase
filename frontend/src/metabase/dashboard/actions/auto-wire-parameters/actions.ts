@@ -14,7 +14,11 @@ import {
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { getMappingOptionByTarget } from "metabase/dashboard/components/DashCard/utils";
-import { getDashCardById, getQuestions } from "metabase/dashboard/selectors";
+import {
+  getDashCardById,
+  getParameters,
+  getQuestions,
+} from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -36,8 +40,11 @@ export function autoWireDashcardsWithMatchingParameters(
     const metadata = getMetadata(getState());
     const dashboard_state = getState().dashboard;
     const questions = getQuestions(getState());
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameter_id,
+    );
 
-    if (!dashboard_state.dashboardId) {
+    if (!dashboard_state.dashboardId || !parameter) {
       return;
     }
 
@@ -49,9 +56,9 @@ export function autoWireDashcardsWithMatchingParameters(
     });
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
+      parameter,
       dashcard,
       dashcardsToAutoApply,
-      parameter_id,
       target,
       metadata,
       questions,
@@ -99,6 +106,7 @@ export function autoWireParametersToNewCard({
     }
 
     const questions = getQuestions(getState());
+    const parameters = getParameters(getState());
 
     const dashcards = getExistingDashCards(
       dashboardState.dashboards,
@@ -119,39 +127,42 @@ export function autoWireParametersToNewCard({
       questions[targetDashcard.card.id] ??
       new Question(targetDashcard.card, metadata);
 
-    const dashcardMappingOptions = getParameterMappingOptions(
-      targetQuestion,
-      null,
-      targetDashcard.card,
-      targetDashcard,
-    );
-
     const parametersToAutoApply = [];
     const processedParameterIds = new Set();
 
-    for (const dashcard of dashcards) {
-      for (const mapping of dashcard.parameter_mappings ?? []) {
-        const option = getMappingOptionByTarget(
-          dashcardMappingOptions,
-          targetDashcard,
-          mapping.target,
-          targetQuestion,
-        );
+    for (const parameter of parameters) {
+      const dashcardMappingOptions = getParameterMappingOptions(
+        targetQuestion,
+        parameter,
+        targetDashcard.card,
+        targetDashcard,
+      );
 
-        if (
-          option &&
-          targetDashcard.card_id &&
-          !processedParameterIds.has(mapping.parameter_id)
-        ) {
-          parametersToAutoApply.push(
-            ...getParameterMappings(
-              targetDashcard,
-              mapping.parameter_id,
-              targetDashcard.card_id,
-              option.target,
-            ),
+      for (const dashcard of dashcards) {
+        for (const mapping of dashcard.parameter_mappings ?? []) {
+          const option = getMappingOptionByTarget(
+            dashcardMappingOptions,
+            targetDashcard,
+            mapping.target,
+            targetQuestion,
+            parameter,
           );
-          processedParameterIds.add(mapping.parameter_id);
+
+          if (
+            option &&
+            targetDashcard.card_id &&
+            !processedParameterIds.has(parameter.id)
+          ) {
+            parametersToAutoApply.push(
+              ...getParameterMappings(
+                targetDashcard,
+                parameter.id,
+                targetDashcard.card_id,
+                option.target,
+              ),
+            );
+            processedParameterIds.add(parameter.id);
+          }
         }
       }
     }
