@@ -16,7 +16,22 @@ import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { FileUploadState } from "./upload";
 
-type modalName = null | "collection" | "dashboard" | "action";
+type ModalName = null | "collection" | "dashboard" | "action";
+
+// TODO: convert redux/undo and UndoListing.jsx to TS and update type
+type UndoState = {
+  id: string | number;
+  type?: string;
+  action?: () => void;
+  actions?: (() => void)[];
+  icon?: string;
+  toastColor?: string;
+  actionLabel?: string;
+  canDismiss?: boolean;
+  dismissIconColor?: string;
+  _domId?: string | number;
+}[];
+
 export interface State {
   admin: AdminState;
   app: AppState;
@@ -33,7 +48,8 @@ export interface State {
   settings: SettingsState;
   setup: SetupState;
   upload: FileUploadState;
-  modal: modalName;
+  modal: ModalName;
+  undo: UndoState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

@@ -13,7 +13,7 @@ import type {
   DashboardParameterMapping,
   Parameter,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();
 const AUTO_WIRE_UNDO_TOAST_ID = _.uniqueId();
@@ -42,7 +42,6 @@ export const showAutoWireParametersToast =
         message,
         actionLabel: t`Auto-connect`,
         timeout: 12000,
-        undo: false,
         action: () => {
           connectAll();
           showUndoToast();
@@ -73,7 +72,7 @@ export const showAutoWireParametersToast =
           message: t`The filter was auto-connected to all questions containing “${columnName}”.`,
           actionLabel: t`Undo`,
           timeout: 12000,
-          undo: true,
+          type: "filterAutoConnect",
           action: revertConnectAll,
         }),
       );
@@ -104,9 +103,9 @@ export const showAddedCardAutoWireParametersToast =
       addUndo({
         id: toastId,
         icon: null,
+        type: "filterAutoConnect",
         message,
         actionLabel: t`Auto-connect`,
-        undo: true,
         timeout: 12000,
         action: () => {
           closeAutoWireParameterToast(toastId);
@@ -145,11 +144,9 @@ export const showAddedCardAutoWireParametersToast =
 
       dispatch(
         addUndo({
-          id: _.uniqueId(),
           message,
-          actionLabel: t`Undo`,
           timeout: 12000,
-          undo: true,
+          type: "filterAutoConnect",
           action: revertAutoWireParametersToNewCard,
         }),
       );
@@ -160,4 +157,15 @@ export const closeAutoWireParameterToast =
   (toastId: string = AUTO_WIRE_TOAST_ID) =>
   (dispatch: Dispatch) => {
     dispatch(dismissUndo(toastId, false));
+  };
+
+export const closeAddCardAutoWireToasts =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const undos = getState().undo;
+
+    for (const undo of undos) {
+      if (undo.type === "filterAutoConnect") {
+        dispatch(dismissUndo(undo.id, false));
+      }
+    }
   };

@@ -3,7 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { closeAutoWireParameterToast } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
+import {
+  closeAutoWireParameterToast,
+  closeAddCardAutoWireToasts,
+} from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -154,6 +157,8 @@ export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
+    dispatch(closeAddCardAutoWireToasts());
+
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );

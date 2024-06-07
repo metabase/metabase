@@ -24,6 +24,8 @@ import {
   openQuestionActions,
   entityPickerModal,
   findDashCardAction,
+  removeDashboardCard,
+  sidebar,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -593,6 +595,56 @@ describe("dashboard filters auto-wiring", () => {
       });
     });
   });
+
+  describe("dismiss toasts", () => {
+    it("should dismiss auto-wire toasts on filter removal", () => {
+      createDashboardWithCards({ cards }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+
+      selectDashboardFilter(getDashboardCard(0), "Name");
+
+      undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      addCardToDashboard();
+
+      undoToastList()
+        .contains("Auto-connect “Orders Model” to “Text”?")
+        .should("be.visible");
+
+      removeFilterFromDashboard();
+
+      undoToast().should("not.exist");
+    });
+
+    it("should dismiss auto-wire toasts on card removal", () => {
+      createDashboardWithCards({ cards }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      editDashboard();
+      setFilter("Text or Category", "Is");
+
+      selectDashboardFilter(getDashboardCard(0), "Name");
+
+      undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      addCardToDashboard();
+
+      undoToastList()
+        .contains("Auto-connect “Orders Model” to “Text”?")
+        .should("be.visible");
+
+      removeDashboardCard(2);
+
+      undoToastList()
+        .should("have.length", 1)
+        .should("contain", "Removed card");
+    });
+  });
 });
 
 function createDashboardWithCards({
@@ -618,6 +670,12 @@ function addCardToDashboard(dashcardNames = "Orders Model") {
   for (const dashcardName of dashcardsToSelect) {
     cy.findByTestId("add-card-sidebar").findByText(dashcardName).click();
   }
+}
+
+function removeFilterFromDashboard(filterName = "Text") {
+  goToFilterMapping(filterName);
+
+  sidebar().findByRole("button", { name: "Remove" }).click();
 }
 
 function goToFilterMapping(name = "Text") {

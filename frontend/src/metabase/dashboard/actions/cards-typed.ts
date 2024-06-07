@@ -33,6 +33,7 @@ import {
 } from "../utils";
 
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
+import { closeAddCardAutoWireToasts } from "./auto-wire-parameters/toasts";
 import {
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
@@ -249,6 +250,8 @@ export const removeCardFromDashboard = createThunkAction(
       cardId: DashboardCard["card_id"];
     }) =>
     dispatch => {
+      dispatch(closeAddCardAutoWireToasts());
+
       // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
       dispatch(cancelFetchCardData(cardId, dashcardId));
       return { dashcardId };
