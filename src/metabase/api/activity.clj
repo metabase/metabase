@@ -11,7 +11,6 @@
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.recent-views :as recent-views]
    [metabase.models.table :refer [Table]]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -119,8 +118,7 @@
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  (u/snake-keys
-   (recent-views/get-recents *current-user-id* :views)))
+  {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
 (api/defendpoint GET "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
@@ -128,8 +126,7 @@
   [:as {{:keys [context]} :params}]
   {context (ms/QueryVectorOf [:enum :selections :views])}
   (when-not (seq context) (throw (ex-info "context is required." {})))
-  (u/snake-keys
-   (recent-views/get-recents *current-user-id* context)))
+  (recent-views/get-recents *current-user-id* context))
 
 (api/defendpoint POST "/recents"
   "Adds a model to the list of recently selected items."

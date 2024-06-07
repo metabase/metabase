@@ -133,7 +133,7 @@
                             {:model "card" :id (u/the-id card1) :name "rand-name"}
                             {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
                   recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))
-                  recent-views-2 (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+                  recent-views-2 (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
               (is (= expected (map #(select-keys % [:model :id :name]) recent-views)))
               (is (= expected (map #(select-keys % [:model :id :name]) recent-views-2))))))
         (mt/with-test-user :rasta
@@ -238,21 +238,20 @@
                                                :database_id            db-id}]
         (testing "recent_views endpoint shows the current user's recently viewed items."
           (clear-recent-views-for-user :crowberto)
-          ;; [:map {:closed true} [:card-id pos-int?] [:user-id [:maybe pos-int?]] [:context {:optional true} :any]]
           (testing (str "> EVENT: " :event/card-query " does create recent views.")
-            (doseq [[topic event] [[:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id dataset)}]
-                                   [:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id dataset)}]
-                                   [:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
-                                   [:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
+            (doseq [[topic event] [[:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id dataset)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id dataset)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
                                    [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
-                                   [:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
                                    [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object table1}]
-                                   [:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id archived)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id archived)}]
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]
-                                   [:event/card-query      {:user-id (mt/user->id :crowberto) :card-id (u/the-id metric)}]]]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id metric)}]]]
               (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
-            (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+            (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
               (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
                       {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
@@ -366,15 +365,14 @@
 
 (deftest recents-endpoint-context-test
   (testing "Context query param is required"
-    (is (= {:context "enum of :views, :selections, :all"}
+    (is (= {:context "vector of enum of :selections, :views"}
            (:errors (mt/user-http-request :crowberto :get 400 "activity/recents")))))
-  (testing "Context query param controls return values: views"
+  (testing "recent_views endpoint remains unchanged"
     (is (= {:recent_views []}
+           (mt/user-http-request :crowberto :get 200 "activity/recent_views"))))
+  (testing "Context query param controls return values: views"
+    (is (= {:recents []}
            (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))
   (testing "Context query param controls return values: selections"
-    (is (= {:recent_selections []}
-           (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections"))))
-  (testing "Context query param controls return values: selections"
-    (is (= {:recent_selections []
-            :recent_views []}
-           (mt/user-http-request :crowberto :get 200 "activity/recents?context=all")))))
+    (is (= {:recents []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections")))))

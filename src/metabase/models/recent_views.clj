@@ -5,17 +5,21 @@
   It offers a simple API to add a recent view item, and fetch the list of recents.
 
   Adding Recent Items:
-     `(recent-views/update-users-recent-views! <user-id> <model> <model-id>)`
+     `(recent-views/update-users-recent-views! <user-id> <model> <model-id> <context>)`
        see: [[update-users-recent-views!]]
       This is almost always called from a published event handler.
   Fetching Recent Items:
-     `(recent-views/get-list <user-id>)`
-       returns a sequence of [[Item]]
-       see also: [[get-list]]
+     `(recent-views/get-recents <user-id> <context>)`
+       returns a map like {:recents [Item]}
+       see also: [[get-recents]]
 
-  The recent items are partition into model buckets. So, when adding a recent item, duplicates will be removed, and if
-  there are more than [[*recent-views-stored-per-user-per-model*]] (20 currently) of any entity type, the oldest
-  one(s) will be deleted, so that the count stays at least 20.
+  The recent items are partitioned into model and context buckets. So, when adding a recent item, duplicates will be
+  removed, and if there are more than [[*recent-views-stored-per-user-per-model*]] (20 currently) of any entity type,
+  the oldest one(s) will be deleted, so that the count stays at least 20.
+
+  Context:
+  We want to keep track of recents in multiple contexts. e.g. when selecting a value from the data-picker, that should
+  log a recent_view row with context=`selection`. At this time there are only `view` and `selection` contexts.
 
   E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents.
 
@@ -44,6 +48,9 @@
 
 (doto :model/RecentViews (derive :metabase/model))
 
+(t2/deftransforms :model/RecentViews
+  {:context mi/transform-keyword})
+
 (methodical/defmethod t2/table-name :model/RecentViews [_model] :recent_views)
 
 (t2/define-before-insert :model/RecentViews
@@ -62,7 +69,7 @@
   [user-id context]
   (->> (t2/select :model/RecentViews
                   :user_id user-id
-                  :context (name context)
+                  :context context
                   {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
