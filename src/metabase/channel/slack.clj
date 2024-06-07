@@ -1,7 +1,7 @@
 (ns metabase.channel.slack
   (:require
    [clojure.string :as str]
-   [metabase.channel.core :as channel]
+   [send-notification! :as channel]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.public-settings :as public-settings]
@@ -93,21 +93,35 @@
             []
             attachments)))
 
+(def ^:private SlackMessage
+  [:map {:closed true}
+   [:channel_id :string]
+   ;; TODO: tighten this payload schema
+   [:payload :any]
+   [:maybe [:message :string]]])
+
+(mu/defmethod channel/send! :channel/slack
+  [_channel-details message :- SlackMessage]
+  (let [{:keys [channel-id payload]} message]
+   (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! payload))))
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmethod channel/deliver! [:channel/slack :notification/alert]
+(defmethod channel/render-notification [:channel/slack :notification/alert]
   [_channel-details payload recipients _template]
-  (doseq [{channel-id :recipient} recipients]
+  (for [{channel-id :recipient} recipients]
     (let [{:keys [card]} payload
           channel-id     (str/replace channel-id "#" "")
           attachments    [{:blocks [{:type "header"
                                      :text {:type "plain_text"
                                             :text (str "🔔 " (:name card))
                                             :emoji true}}]}
+                          ;; TODO: do we really need to generate attachments for each channel?
                           (payload->attachment-data (assoc payload :type :card) channel-id)]]
-      (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments)))))
+      {:channel-id channel-id
+       :payload    (create-and-upload-slack-attachments! attachments)})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
@@ -160,7 +174,7 @@
           :when attachment]
       attachment)))
 
-(defmethod channel/deliver! [:channel/slack :notification/dashboard-subscription]
+(defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription]
   [_channel-details payload recipients _template]
   (let [{:keys [dashboard
                 dashboard-subscription]} payload
@@ -169,5 +183,6 @@
                                                            (create-slack-attachment-data (:result payload))
                                                            (when dashboard (slack-dashboard-footer dashboard-subscription dashboard))]))
         uploaded-attachments             (create-and-upload-slack-attachments! attachments)]
-    (doseq [{channel-id :recipient} recipients]
-      (slack/post-chat-message! channel-id nil uploaded-attachments))))
+    (for [{channel-id :recipient} recipients]
+      {:channel-id channel-id
+       :payload    uploaded-attachments})))

@@ -106,15 +106,16 @@
                                        :pulse-card pulse-card
                                        :channel    channel-type}]
           (letfn [(thunk* []
-                    (f {:dashboard-id dashboard-id,
-                        :card-id card-id,
-                        :pulse-id pulse-id}
+                    (f {:dashboard-id dashboard-id
+                        :card-id      card-id
+                        :pulse-id     pulse-id}
                        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
-                      (fixture {:dashboard-id dashboard-id,
-                                :card-id card-id,
-                                :pulse-id pulse-id} thunk*)
+                      (fixture {:dashboard-id dashboard-id
+                                :card-id      card-id
+                                :pulse-id      pulse-id}
+                               thunk*)
                       (thunk*)))]
             (case channel-type
               :email (pulse.test-util/email-test-setup (thunk))

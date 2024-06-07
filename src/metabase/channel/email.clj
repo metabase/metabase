@@ -60,7 +60,7 @@
 
     nil))
 
-(defmethod channel/deliver! [:channel/email :notification/alert]
+(defmethod channel/send-notification! [:channel/email :notification/alert]
   [_channel-details payload recipients _template]
   (let [{:keys [card alert]} payload
         condition-kwd             (messages/pulse->alert-condition-kwd alert)
@@ -86,13 +86,11 @@
                                                                                         non-user-email)))]
     (send-emails! (filter some? (conj email-to-nonusers email-to-users)))))
 
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-
-(defmethod channel/deliver! [:channel/email :notification/dashboard-subscription]
+(defmethod channel/send-notification! [:channel/email :notification/dashboard-subscription]
   [_channel-details payload recipients _template]
   (let [{:keys [dashboard
                 dashboard-subscription
@@ -100,7 +98,7 @@
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone            (some->> result (some :card) defaulted-timezone)
-        email-subject       (trs "Pulse: {0}" (:name dashboard))
+        email-subject       (:name dashboard)
         email-to-users      (when (seq user-emails)
                               (construct-pulse-email email-subject user-emails (messages/render-pulse-email timezone dashboard-subscription dashboard result nil)))
         email-to-nonusers   (for [non-user-email non-user-emails]

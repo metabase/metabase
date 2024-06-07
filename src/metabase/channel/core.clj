@@ -9,14 +9,13 @@
 ;;                                      Channels methods                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti deliver!
+(defmulti render-notification
   (fn [channel-details payload _recipients _template]
     [(:channel_type channel-details) (:payload-type payload)]))
 
-(defmethod deliver! :default
-  [channel-details payload _recipients _template]
-  (throw (UnsupportedOperationException.
-          (tru "Unsupported deliver for channel {0} with payload {1}" (:channel_type channel-details) (:payload-type payload)))))
+(defmulti send!
+  (fn [channel-details _message]
+    [(:channel_type channel-details)]))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                             Utils                                               ;;

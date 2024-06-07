@@ -563,7 +563,7 @@ There are currently 4 types of virtual card: \"text\", \"action\", \"link\", \"p
                       :creator_id   (:creator_id pulse)}]
     ;; TODO before merge, handles retrying and check if dashboard is archvied
     (noti/send-notification!
-     (noti/notification->payload-info #p notification)
+     (noti/notification->payload-info notification)
      (if-let [channels (seq (:channels pulse))]
        (fix-channels channels)
        (noti/notification->channel+recipients notification channel-ids)))))
