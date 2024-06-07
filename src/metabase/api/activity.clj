@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [GET]]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.db.query :as mdb.query]
@@ -123,12 +124,18 @@
    (recent-views/get-recents *current-user-id* :views)))
 
 (api/defendpoint GET "/recents"
-  "Get a list of recent items the current user has been viewing most recently.
-  Allows for filtering by context, either view or selection"
+  "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
+  Allows for filtering by context, either views or selections"
   [:as {{:keys [context]} :params}]
-  {context [:enum :views :selections :all]}
-  (u/snake-keys
-   (recent-views/get-recents *current-user-id* context)))
+  ;; multiple qps of context
+  {context :string}
+  (let [context (if (str/blank? context)
+                  (throw (ex-info "Context required" {:context context}))
+                  (mapv keyword (str/split context #",")))]
+    (when-not (mc/validate [:sequential [:enum :selections :views]] context)
+      (throw (ex-info "Invalid context" {:context context})))
+    (u/snake-keys
+     (recent-views/get-recents *current-user-id* context))))
 
 (api/defendpoint POST "/recents"
   "Adds a model to the list of recently selected items."

@@ -412,20 +412,24 @@
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))
 
+(def ^:private query-context->recent-context
+  {:views      "view"
+   :selections "selection"})
+
 (defn ^:private do-query [user-id context]
-  (t2/select :model/RecentViews {:select [:rv.* [:rc.type :card_type]]
-                                 :from [[:recent_views :rv]]
-                                 :where [:and
-                                         [:= :rv.user_id user-id]
-                                         (cond (= context :all) nil
-                                               (= context :views) [:= :rv.context "view"]
-                                               (= context :selections) [:= :rv.context "selection"])]
+  (when-not (seq context)
+    (throw (ex-info "context must be non-empty" {:context context})))
+  (t2/select :model/RecentViews {:select    [:rv.* [:rc.type :card_type]]
+                                 :from      [[:recent_views :rv]]
+                                 :where     (into [:and
+                                                   [:= :rv.user_id user-id]
+                                                   [:in :rv.context (map query-context->recent-context context)]])
                                  :left-join [[:report_card :rc]
                                              [:and
                                               ;; only want to join on card_type if it's a card
                                               [:= :rv.model "card"]
                                               [:= :rc.id :rv.model_id]]]
-                                 :order-by [[:rv.timestamp :desc]]}))
+                                 :order-by  [[:rv.timestamp :desc]]}))
 
 (mu/defn ^:private model->return-model [model :- :keyword]
   (if (= :question model) :card model))
@@ -478,16 +482,14 @@
 
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
   sequence, so there's no need to do it twice."
-  ([user-id] (get-recents user-id :all))
-  ([user-id context :- [:enum :all :views :selections]]
+  ([user-id] (get-recents user-id [:views :selections]))
+  ([user-id context :- [:sequential [:enum :views :selections]]]
    (let [recent-items (do-query user-id context)
          entity->id->data (get-entity->id->data recent-items)
          view-items (into []
                           (comp
+                           (distinct)
                            (keep (partial post-process entity->id->data))
                            (keep error-avoider))
-                          recent-items)
-         {:keys [selection view]} (group-by (comp keyword ::context) view-items)]
-     (merge
-      (when (#{:all :views} context) {:recent-views (mapv #(dissoc % ::context) view)})
-      (when (#{:all :selections} context) {:recent-selections (mapv #(dissoc % ::context) selection)})))))
+                          recent-items)]
+     {:recents view-items})))

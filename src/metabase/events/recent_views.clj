@@ -63,9 +63,9 @@
 (m/defmethod events/publish-event! ::legacy-card-event
   "Handle recent-view processing for card reads"
   [topic {:keys [object-id user-id context]}]
+  ;; Cards can be read indirectly, either through a pinned collection, or in a dashboard.
+  ;; We only want to count direct views of cards, so we skip processing for indirect views here:
   (when (= context :question)
-    ;; GET /api/card/:id will trigger a card-read event. We don't want to count _pinned collection views_ as recent-views,
-    ;; so a collection with pinned questions will send a request with context==:collection, which we skip below:
     (try
       (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)
       (catch Throwable e
