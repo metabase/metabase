@@ -27,7 +27,7 @@ export function AppBarLogo({
     return null;
   }
 
-  const isAtDashboardHomepage = Boolean(
+  const isAtHomepageDashboard = Boolean(
     homepageDashboardId &&
       location.pathname?.startsWith(`/dashboard/${homepageDashboardId}`),
   );
@@ -35,7 +35,7 @@ export function AppBarLogo({
   const handleClick = (event: MouseEvent) => {
     // Prevent navigating to the dashboard homepage when a user is already there
     // https://github.com/metabase/metabase/issues/43800
-    if (isAtDashboardHomepage) {
+    if (isAtHomepageDashboard) {
       event.preventDefault();
     }
     onLogoClick?.();
