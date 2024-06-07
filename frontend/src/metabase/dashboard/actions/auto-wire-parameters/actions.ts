@@ -37,7 +37,6 @@ export function autoWireDashcardsWithMatchingParameters(
   target: ParameterTarget,
 ) {
   return function (dispatch: Dispatch, getState: GetState) {
-    const metadata = getMetadata(getState());
     const dashboardState = getState().dashboard;
     const questions = getQuestions(getState());
     const parameter = getParameters(getState()).find(
@@ -58,10 +57,8 @@ export function autoWireDashcardsWithMatchingParameters(
 
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       parameter,
-      dashcard,
       dashcardsToAutoApply,
       target,
-      metadata,
       questions,
     );
 

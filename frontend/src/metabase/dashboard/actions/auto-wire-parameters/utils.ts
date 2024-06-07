@@ -7,9 +7,11 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import {
+  getParameterMappingOptions,
+  type ParameterMappingOption,
+} from "metabase/parameters/utils/mapping-options";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   QuestionDashboardCard,
@@ -56,12 +58,8 @@ export function getMatchingParameterOption(
   parameter: Parameter,
   targetDashcard: QuestionDashboardCard,
   targetDimension: ParameterTarget,
-  sourceDashcard: QuestionDashboardCard,
-  metadata: Metadata,
   questions: Record<CardId, Question>,
-): {
-  target: ParameterTarget;
-} | null {
+): ParameterMappingOption | null | undefined {
   if (!targetDashcard) {
     return null;
   }
@@ -86,10 +84,8 @@ export function getMatchingParameterOption(
 
 export function getAutoWiredMappingsForDashcards(
   parameter: Parameter,
-  sourceDashcard: QuestionDashboardCard,
   targetDashcards: QuestionDashboardCard[],
   target: ParameterTarget,
-  metadata: Metadata,
   questions: Record<CardId, Question>,
 ): SetMultipleDashCardAttributesOpts {
   if (targetDashcards.length === 0) {
@@ -99,14 +95,10 @@ export function getAutoWiredMappingsForDashcards(
   const targetDashcardMappings: SetMultipleDashCardAttributesOpts = [];
 
   for (const targetDashcard of targetDashcards) {
-    const selectedMappingOption: {
-      target: ParameterTarget;
-    } | null = getMatchingParameterOption(
+    const selectedMappingOption = getMatchingParameterOption(
       parameter,
       targetDashcard,
       target,
-      sourceDashcard,
-      metadata,
       questions,
     );
 
