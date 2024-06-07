@@ -8053,6 +8053,18 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
 
+
+  - changeSet:
+      id: v50.2024-06-07T12:37:36
+      author: crisptrutski
+      comment: Rename query_field.direct_reference to query_field.indirect_reference
+      changes:
+        - renameColumn:
+            tableName: query_field
+            columnDataType: ${boolean.type}
+            oldColumnName: direct_reference
+            newColumnName: explicit_reference
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
