@@ -4,7 +4,7 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 export type ColumnAndSeparator = {
-  separator: string;
+  separator: string | null;
   column: Lib.ColumnMetadata | null;
 };
 
@@ -59,7 +59,12 @@ export const formatSeparator = (separator: string) => {
   return separator;
 };
 
-export const getDefaultSeparator = (column: Lib.ColumnMetadata): string => {
+export const getDefaultSeparator = (
+  column: Lib.ColumnMetadata | undefined,
+): string => {
+  if (!column) {
+    return " ";
+  }
   if (Lib.isEmail(column)) {
     return "";
   }
@@ -80,11 +85,24 @@ export const getExpressionName = (
     .map(({ column }) => column)
     .filter(isNotNull);
 
+  const allColumnNames = Lib.returnedColumns(query, stageIndex).map(
+    column => Lib.displayInfo(query, stageIndex, column).displayName,
+  );
+
   const names = columns.map(
     column => Lib.displayInfo(query, stageIndex, column).displayName,
   );
-  return t`Combined ${names.join(", ")}`;
+
+  return getNextName(allColumnNames, t`Combined ${names.join(", ")}`, 1);
 };
+
+function getNextName(names: string[], name: string, index: number): string {
+  const suffixed = index === 1 ? name : `${name}_${index}`;
+  if (!names.includes(suffixed)) {
+    return suffixed;
+  }
+  return getNextName(names, name, index + 1);
+}
 
 export const flatten = (
   columnsAndSeparators: ColumnAndSeparator[],
@@ -93,7 +111,8 @@ export const flatten = (
     .flatMap(({ column, separator }) => [separator, column])
     .slice(1)
     .filter(
-      (element): element is string | Lib.ColumnMetadata => element !== "",
+      (element): element is string | Lib.ColumnMetadata =>
+        element !== null && element !== "",
     );
 };
 
@@ -159,3 +178,19 @@ const getColumnExample = (
 export function hasCombinations(query: Lib.Query, stageIndex: number) {
   return Lib.expressionableColumns(query, stageIndex).length > 0;
 }
+
+export const getNextColumnAndSeparator = (
+  expressionableColumns: Lib.ColumnMetadata[],
+  defaultSeparator: string,
+  columnsAndSeparators: ColumnAndSeparator[],
+): ColumnAndSeparator => {
+  const lastSeparator = columnsAndSeparators.at(-1)?.separator;
+  const separator = lastSeparator ?? defaultSeparator;
+
+  const nextUnusedColumn = expressionableColumns.find(candidate =>
+    columnsAndSeparators.every(({ column }) => candidate !== column),
+  );
+
+  const result = nextUnusedColumn ?? expressionableColumns[0];
+  return { column: result, separator };
+};

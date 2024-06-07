@@ -13,10 +13,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.audit :as audit]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config
+    :as search.config
+    :refer [SearchableModel SearchContext]]
    [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -329,4 +331,4 @@
 
       (= "table" model)
       (sql.helpers/where
-       [:not [:= (search.config/column-with-model-alias "table" :db_id) perms/audit-db-id]]))))
+       [:not [:= (search.config/column-with-model-alias "table" :db_id) audit/audit-db-id]]))))

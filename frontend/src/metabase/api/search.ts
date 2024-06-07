@@ -1,3 +1,4 @@
+import { trackSearchRequest } from "metabase/search/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -14,6 +15,15 @@ export const searchApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),
+      onQueryStarted: (args, { queryFulfilled }) => {
+        if (args.context) {
+          const start = Date.now();
+          queryFulfilled.then(({ data }) => {
+            const duration = Date.now() - start;
+            trackSearchRequest(args, data, duration);
+          });
+        }
+      },
     }),
   }),
 });
