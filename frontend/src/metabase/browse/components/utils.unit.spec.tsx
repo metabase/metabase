@@ -1,10 +1,14 @@
 import { SortDirection } from "metabase/components/ItemsTable/Columns";
-import type { ModelResult } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { createMockModelResult } from "../test-utils";
+import type { ModelResult } from "../types";
 
-import { getCollectionPathString, sortModels } from "./utils";
+import {
+  getCollectionPathString,
+  sortModels,
+  getMaxRecentModelCount,
+} from "./utils";
 
 describe("getCollectionPathString", () => {
   it("should return path for collection without ancestors", () => {
@@ -147,6 +151,24 @@ describe("sortModels", () => {
         modelMap["model named Bz, with collection path D / E / F"],
         modelMap["model named B, with collection path D / E / F"],
       ]);
+    });
+  });
+
+  describe("getMaxRecentModelCount", () => {
+    it("returns 8 for modelCount greater than 20", () => {
+      expect(getMaxRecentModelCount(21)).toBe(8);
+      expect(getMaxRecentModelCount(100)).toBe(8);
+    });
+
+    it("returns 4 for modelCount greater than 9 and less than or equal to 20", () => {
+      expect(getMaxRecentModelCount(10)).toBe(4);
+      expect(getMaxRecentModelCount(20)).toBe(4);
+    });
+
+    it("returns 0 for modelCount of 9 or less", () => {
+      expect(getMaxRecentModelCount(0)).toBe(0);
+      expect(getMaxRecentModelCount(5)).toBe(0);
+      expect(getMaxRecentModelCount(9)).toBe(0);
     });
   });
 });

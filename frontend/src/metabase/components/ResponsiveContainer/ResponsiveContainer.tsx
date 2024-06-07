@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import type { RefProp } from "metabase/browse/components/types";
+import type { RefProp } from "metabase/browse/types";
 import { Box, type BoxProps } from "metabase/ui";
 
 const doNotForwardProps = (...propNamesToBlock: string[]) => ({
