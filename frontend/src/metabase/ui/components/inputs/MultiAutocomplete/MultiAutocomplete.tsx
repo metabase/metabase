@@ -2,7 +2,7 @@ import type { MultiSelectProps, SelectItemProps } from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent, ReactNode } from "react";
-import { useMemo, useState, useCallback, forwardRef } from "react";
+import { useMemo, useState, forwardRef } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -189,12 +189,22 @@ export function MultiAutocomplete<TValue extends Base>({
     <span />
   );
 
-  const CustomItemComponent = useCallback(
-    (props: SelectItemProps) => {
-      const customLabel =
-        props.value !== undefined && renderValue?.(props.value as TValue);
-      return <ItemWrapper {...props} label={customLabel ?? props.label} />;
-    },
+  const CustomItemComponent = useMemo(
+    () =>
+      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
+        props,
+        ref,
+      ) {
+        const customLabel =
+          props.value !== undefined && renderValue?.(props.value as TValue);
+        return (
+          <ItemWrapper
+            ref={ref}
+            {...props}
+            label={customLabel ?? props.label}
+          />
+        );
+      }),
     [renderValue],
   );
 
