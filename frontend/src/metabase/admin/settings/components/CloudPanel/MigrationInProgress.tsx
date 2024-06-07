@@ -44,10 +44,10 @@ export const MigrationInProgress = ({
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
-  const [cancelCloudMigration] = useCancelCloudMigrationMutation();
+  const [cancelCloudMigration, { isLoading }] =
+    useCancelCloudMigrationMutation();
 
   const handleCancelMigration = async () => {
-    closeModal();
     await cancelCloudMigration();
     dispatch(
       addUndo({
@@ -56,6 +56,7 @@ export const MigrationInProgress = ({
         undo: false,
       }),
     );
+    closeModal();
   };
 
   return (
@@ -129,6 +130,7 @@ export const MigrationInProgress = ({
                 variant="filled"
                 color="error"
                 onClick={handleCancelMigration}
+                disabled={isLoading}
               >{t`Cancel migration`}</Button>
             </Flex>
           </Modal.Body>
