@@ -22,9 +22,6 @@ import type {
   Parameter,
   DashboardTabId,
   DashboardCard,
-  DashboardParameterMapping,
-  ActionParametersMapping,
-  VirtualDashCardParameterMapping,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 
@@ -126,22 +123,17 @@ export function getAutoWiredMappingsForDashcards(
   }
   return targetDashcardMappings;
 }
-// TODO: this function should automatically calculate return type based on the
-// type of dashcard
-export function getParameterMappings(
-  dashcard: DashboardCard,
+export function getParameterMappings<DC extends DashboardCard>(
+  dashcard: DC,
   parameter_id: ParameterId,
   card_id: CardId,
   target: ParameterTarget | null,
-) {
+): NonNullable<DC["parameter_mappings"]> {
   const isVirtual = isVirtualDashCard(dashcard);
   const isAction = isActionDashCard(dashcard);
 
-  let parameter_mappings: (
-    | DashboardParameterMapping
-    | ActionParametersMapping
-    | VirtualDashCardParameterMapping
-  )[] = dashcard.parameter_mappings || [];
+  let parameter_mappings: NonNullable<DC["parameter_mappings"]> =
+    dashcard.parameter_mappings ?? [];
 
   // allow mapping the same parameter to multiple action targets
   if (!isAction) {
@@ -160,11 +152,15 @@ export function getParameterMappings(
         m => !_.isEqual(m.target, target),
       );
     }
-    parameter_mappings = parameter_mappings.concat({
-      parameter_id,
-      card_id,
-      target,
-    });
+
+    return [
+      ...parameter_mappings,
+      {
+        parameter_id,
+        card_id,
+        target,
+      },
+    ];
   }
 
   return parameter_mappings;
