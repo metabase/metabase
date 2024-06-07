@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useCallback,
+  forwardRef,
   type ReactNode,
   type MouseEvent,
 } from "react";
@@ -48,121 +49,130 @@ type WithIndex<T> = T & {
   index: number;
 };
 
-export function ExpressionEditorSuggestions({
-  query,
-  stageIndex,
-  suggestions = [],
-  onSuggestionMouseDown,
-  open,
-  highlightedIndex,
-  onHighlightSuggestion,
-  children,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  suggestions?: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
-  onSuggestionMouseDown: (index: number) => void;
-  open: boolean;
-  highlightedIndex: number;
-  onHighlightSuggestion: (index: number) => void;
-  children: ReactNode;
-}) {
-  const ref = useRef(null);
-
-  const withIndex = suggestions.map((suggestion, index) => ({
-    ...suggestion,
-    index,
-  }));
-
-  const items = withIndex.filter(
-    (suggestion): suggestion is WithIndex<Suggestion> =>
-      !("footer" in suggestion),
-  );
-
-  const footers = withIndex.filter(
-    (suggestion): suggestion is WithIndex<SuggestionFooter> =>
-      "footer" in suggestion,
-  );
-
-  const groups = group(items);
-
-  function handleMouseDown(evt: MouseEvent) {
-    if (evt.target === ref.current) {
-      evt.preventDefault();
-      evt.stopPropagation();
-    }
+export const ExpressionEditorSuggestions = forwardRef<
+  HTMLDivElement,
+  {
+    query: Lib.Query;
+    stageIndex: number;
+    suggestions?: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
+    onSuggestionMouseDown: (index: number) => void;
+    open: boolean;
+    highlightedIndex: number;
+    onHighlightSuggestion: (index: number) => void;
+    children: ReactNode;
   }
+>(
+  (
+    {
+      query,
+      stageIndex,
+      suggestions = [],
+      onSuggestionMouseDown,
+      open,
+      highlightedIndex,
+      onHighlightSuggestion,
+      children,
+    },
+    ref,
+  ) => {
+    const listRef = useRef(null);
+    const withIndex = suggestions.map((suggestion, index) => ({
+      ...suggestion,
+      index,
+    }));
 
-  return (
-    <Popover
-      position="bottom-start"
-      opened={open && suggestions.length > 0}
-      radius="xs"
-      withinPortal
-      zIndex={DEFAULT_POPOVER_Z_INDEX}
-      middlewares={{
-        flip: false,
-        shift: false,
-        inline: false,
-      }}
-    >
-      <Popover.Target>{children}</Popover.Target>
-      <Popover.Dropdown>
-        <DelayGroup>
-          <ExpressionList
-            data-testid="expression-suggestions-list"
-            ref={ref}
-            onMouseDownCapture={handleMouseDown}
-          >
-            <ExpressionEditorSuggestionsListGroup
-              suggestions={groups._none}
-              query={query}
-              stageIndex={stageIndex}
-              highlightedIndex={highlightedIndex}
-              onSuggestionMouseDown={onSuggestionMouseDown}
-              onHighlightSuggestion={onHighlightSuggestion}
-            />
-            <ExpressionEditorSuggestionsListGroup
-              name="popularAggregations"
-              suggestions={groups.popularAggregations}
-              query={query}
-              stageIndex={stageIndex}
-              highlightedIndex={highlightedIndex}
-              onSuggestionMouseDown={onSuggestionMouseDown}
-              onHighlightSuggestion={onHighlightSuggestion}
-            />
-            <ExpressionEditorSuggestionsListGroup
-              name="popularExpressions"
-              suggestions={groups.popularExpressions}
-              query={query}
-              stageIndex={stageIndex}
-              highlightedIndex={highlightedIndex}
-              onSuggestionMouseDown={onSuggestionMouseDown}
-              onHighlightSuggestion={onHighlightSuggestion}
-            />
-            <ExpressionEditorSuggestionsListGroup
-              name="shortcuts"
-              suggestions={groups.shortcuts}
-              query={query}
-              stageIndex={stageIndex}
-              highlightedIndex={highlightedIndex}
-              onSuggestionMouseDown={onSuggestionMouseDown}
-              onHighlightSuggestion={onHighlightSuggestion}
-            />
-          </ExpressionList>
-          {footers.map(suggestion => (
-            <Footer
-              key={suggestion.index}
-              suggestion={suggestion}
-              highlightedIndex={highlightedIndex}
-              onHighlightSuggestion={onHighlightSuggestion}
-            />
-          ))}
-        </DelayGroup>
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
+    const items = withIndex.filter(
+      (suggestion): suggestion is WithIndex<Suggestion> =>
+        !("footer" in suggestion),
+    );
+
+    const footers = withIndex.filter(
+      (suggestion): suggestion is WithIndex<SuggestionFooter> =>
+        "footer" in suggestion,
+    );
+
+    const groups = group(items);
+
+    function handleMouseDown(evt: MouseEvent) {
+      if (evt.target === listRef.current) {
+        evt.preventDefault();
+        evt.stopPropagation();
+      }
+    }
+
+    return (
+      <Popover
+        position="bottom-start"
+        opened={open && suggestions.length > 0}
+        radius="xs"
+        withinPortal
+        zIndex={DEFAULT_POPOVER_Z_INDEX}
+        middlewares={{
+          flip: false,
+          shift: false,
+          inline: false,
+        }}
+      >
+        <Popover.Target>{children}</Popover.Target>
+        <Popover.Dropdown>
+          <DelayGroup>
+            <div ref={ref}>
+              <ExpressionList
+                data-testid="expression-suggestions-list"
+                ref={listRef}
+                onMouseDownCapture={handleMouseDown}
+              >
+                <ExpressionEditorSuggestionsListGroup
+                  suggestions={groups._none}
+                  query={query}
+                  stageIndex={stageIndex}
+                  highlightedIndex={highlightedIndex}
+                  onSuggestionMouseDown={onSuggestionMouseDown}
+                  onHighlightSuggestion={onHighlightSuggestion}
+                />
+                <ExpressionEditorSuggestionsListGroup
+                  name="popularAggregations"
+                  suggestions={groups.popularAggregations}
+                  query={query}
+                  stageIndex={stageIndex}
+                  highlightedIndex={highlightedIndex}
+                  onSuggestionMouseDown={onSuggestionMouseDown}
+                  onHighlightSuggestion={onHighlightSuggestion}
+                />
+                <ExpressionEditorSuggestionsListGroup
+                  name="popularExpressions"
+                  suggestions={groups.popularExpressions}
+                  query={query}
+                  stageIndex={stageIndex}
+                  highlightedIndex={highlightedIndex}
+                  onSuggestionMouseDown={onSuggestionMouseDown}
+                  onHighlightSuggestion={onHighlightSuggestion}
+                />
+                <ExpressionEditorSuggestionsListGroup
+                  name="shortcuts"
+                  suggestions={groups.shortcuts}
+                  query={query}
+                  stageIndex={stageIndex}
+                  highlightedIndex={highlightedIndex}
+                  onSuggestionMouseDown={onSuggestionMouseDown}
+                  onHighlightSuggestion={onHighlightSuggestion}
+                />
+              </ExpressionList>
+              {footers.map(suggestion => (
+                <Footer
+                  key={suggestion.index}
+                  suggestion={suggestion}
+                  highlightedIndex={highlightedIndex}
+                  onHighlightSuggestion={onHighlightSuggestion}
+                />
+              ))}
+            </div>
+          </DelayGroup>
+        </Popover.Dropdown>
+      </Popover>
+    );
+  },
+);
 
 function ExpressionEditorSuggestionsListGroup({
   name,
