@@ -217,7 +217,7 @@
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
-             "t"]))) ))
+             "t"])))))
 
 (deftest ^:parallel filterable-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -651,8 +651,8 @@
                  (lib/expression-clause :+
                                         [created-at
                                          (lib/expression-clause :interval [1 :month] nil)] nil)
-                  (lib/expression-clause :relative-datetime [-1 :month] nil)
-                  (lib/expression-clause :relative-datetime [0 :month] nil)],
+                 (lib/expression-clause :relative-datetime [-1 :month] nil)
+                 (lib/expression-clause :relative-datetime [0 :month] nil)],
         :name "Created At is in the previous month, starting 1 month ago"}
        {:clause [:time-interval created-at :current :day], :name "Created At is today"}
        {:clause [:time-interval created-at :current :week], :name "Created At is this week"}

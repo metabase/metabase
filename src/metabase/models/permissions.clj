@@ -169,14 +169,13 @@
     /                                               ; full root perms"
   (:require
    [clojure.string :as str]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -424,20 +423,6 @@
 
 ; Audit Permissions helper fns
 
-(def audit-db-id
-  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
-  13371337)
-
-(defenterprise default-audit-collection
-  "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
-  version."
-  metabase-enterprise.audit-db [] nil)
-
-(defenterprise default-custom-reports-collection
-  "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS
-  version."
-  metabase-enterprise.audit-db [] ::noop)
-
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions in application monitoring permissions."
@@ -446,7 +431,7 @@
                          vals
                          (map keys)
                          (apply concat))]
-    (when (some #{audit-db-id} changes-ids)
+    (when (some #{audit/audit-db-id} changes-ids)
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
@@ -458,24 +443,13 @@
     [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
     [:= namespace-keyword namespace-val]))
 
-(defn is-collection-id-audit?
-  "Check if an id is one of the audit collection ids."
-  [id]
-  (contains? (set [(:id (default-audit-collection)) (:id (default-custom-reports-collection))]) id))
-
-(defn is-parent-collection-audit?
-  "Check if an instance's parent collection is the audit collection."
-  [instance]
-  (let [parent-id (:collection_id instance)]
-    (and (some? parent-id) (is-collection-id-audit? parent-id))))
-
 (defn can-read-audit-helper
-  "Audit instances should only be fetched if audit app is enabled."
+  "Audit instances should only be readable if audit app is enabled."
   [model instance]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
-             :model/Collection (is-collection-id-audit? (:id instance))
-             (is-parent-collection-audit? instance)))
+             :model/Collection (audit/is-collection-id-audit? (:id instance))
+             (audit/is-parent-collection-audit? instance)))
     false
     (case model
       :model/Collection (mi/current-user-has-full-permissions? :read instance)
