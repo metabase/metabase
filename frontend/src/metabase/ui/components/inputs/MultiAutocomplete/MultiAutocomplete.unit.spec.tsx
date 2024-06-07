@@ -373,4 +373,30 @@ describe("MultiAutocomplete", () => {
       expect(input).toHaveValue("");
     });
   });
+
+  it("should be possible to customize the way a value renders", async () => {
+    const { input } = setup<string>({
+      data: EXAMPLE_DATA,
+      renderValue: (value: string) => `__${value.toUpperCase()}__`,
+    });
+
+    await userEvent.type(input, "Fo", {
+      pointerEventsCheck: 0,
+    });
+
+    expect(screen.getByText("__FOO__")).toBeInTheDocument();
+  });
+
+  it("should be possible to customize what values get filtered", async () => {
+    const { input } = setup<string>({
+      data: EXAMPLE_DATA,
+      filter: (_query, _selected, item) => !item.label?.endsWith(")"),
+    });
+
+    await userEvent.type(input, "Ba", {
+      pointerEventsCheck: 0,
+    });
+
+    expect(screen.queryByText("Bar (2)")).not.toBeInTheDocument();
+  });
 });
