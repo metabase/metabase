@@ -1,10 +1,10 @@
 import type {
   RecentItem,
   CreateRecentRequest,
-  RecentSelectionsResponse,
+  RecentsResponse,
   PopularItem,
-  RecentItemsResponse,
   PopularItemsResponse,
+  RecentsRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -17,22 +17,15 @@ import {
 
 export const activityApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listRecentViews: builder.query<RecentItem[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/activity/recents?context=views",
-      }),
-      transformResponse: (response: RecentItemsResponse) =>
-        response?.recent_views,
-      providesTags: items => provideActivityItemListTags(items ?? []),
-    }),
-    listRecentSelections: builder.query<RecentItem[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/activity/recents?context=selections",
-      }),
-      transformResponse: (response: RecentSelectionsResponse) =>
-        response?.recent_selections,
+    listRecents: builder.query<RecentItem[], RecentsRequest | void>({
+      query: ({ context } = { context: ["views"] }) => {
+        const contextParam = [...context].sort().join(",");
+        return {
+          method: "GET",
+          url: `/api/activity/recents?context=${contextParam}`,
+        };
+      },
+      transformResponse: (response: RecentsResponse) => response?.recents,
       providesTags: items => provideActivityItemListTags(items ?? []),
     }),
     listPopularItems: builder.query<PopularItem[], void>({
@@ -65,8 +58,7 @@ export const activityApi = Api.injectEndpoints({
 });
 
 export const {
-  useListRecentViewsQuery,
-  useListRecentSelectionsQuery,
+  useListRecentsQuery,
   useListPopularItemsQuery,
   useLogRecentItemMutation,
 } = activityApi;

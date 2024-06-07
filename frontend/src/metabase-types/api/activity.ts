@@ -59,8 +59,14 @@ export interface RecentItemsResponse {
   recent_views: RecentItem[];
 }
 
-export interface RecentSelectionsResponse {
-  recent_selections: RecentItem[];
+export type RecentContexts = "selections" | "views";
+
+export interface RecentsRequest {
+  context: RecentContexts[];
+}
+
+export interface RecentsResponse {
+  recents: RecentItem[];
 }
 
 export type PopularItem = RecentItem;

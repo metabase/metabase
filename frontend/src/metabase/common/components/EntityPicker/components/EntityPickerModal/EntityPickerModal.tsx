@@ -3,10 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  useLogRecentItemMutation,
-  useListRecentSelectionsQuery,
-} from "metabase/api";
+import { useLogRecentItemMutation, useListRecentsQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
@@ -97,9 +94,12 @@ export function EntityPickerModal<
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
-    useListRecentSelectionsQuery(undefined, {
-      refetchOnMountOrArgChange: true,
-    });
+    useListRecentsQuery(
+      { context: ["views", "selections"] },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
