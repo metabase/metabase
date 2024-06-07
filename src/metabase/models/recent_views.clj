@@ -442,8 +442,7 @@
         (some-> (assoc recent-view :model_object model-object)
                 fill-recent-view-info
                 (dissoc :card_type)
-                (update :model model->return-model)
-                (assoc ::context (:context recent-view)))))))
+                (update :model model->return-model))))))
 
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card

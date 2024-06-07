@@ -29,7 +29,7 @@
       (update :timestamp type)))
 
 (defn recent-views [user-id]
-  (:recent-views (recent-views/get-recents user-id :views)))
+  (:recents (recent-views/get-recents user-id [:views])))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
