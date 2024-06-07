@@ -38,7 +38,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       .findByLabelText("Add a Unit of Time widget")
       .click();
     getDashboardCard().findByText("Select…").click();
-    popover().findByText("Created At: Month").click();
+    popover().findByText("Created At").click();
     saveDashboard();
     getDashboardCard().findByText("Created At: Month").should("be.visible");
 
