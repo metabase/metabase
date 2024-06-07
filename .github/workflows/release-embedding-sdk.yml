@@ -224,11 +224,11 @@ jobs:
         run: |
           gh pr review --approve
 
-      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        run: |
-          gh pr merge --auto
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+      #   run: |
+      #     gh pr merge --auto
+      #   env:
+      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
