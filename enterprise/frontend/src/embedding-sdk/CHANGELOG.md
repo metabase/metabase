@@ -1,3 +1,7 @@
+## [0.1.8-test2](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.7...embedding-sdk-0.1.8-test2) (2024-06-07)
+
+
+
 ## [0.1.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.6...embedding-sdk-0.1.7) (2024-06-06)
 
 
