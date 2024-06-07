@@ -50,7 +50,7 @@ function getColDescs(
 export function getRowValues(row: RowValue[], colDescs: PieColumnDescriptors) {
   const { dimensionDesc, metricDesc } = colDescs;
 
-  const dimensionValue = row[dimensionDesc.index] ?? NULL_DISPLAY_VALUE;
+  const dimensionValue = row[dimensionDesc.index];
 
   const metricValue = row[metricDesc.index] ?? 0;
   if (typeof metricValue !== "number") {
@@ -88,7 +88,7 @@ export function getPieChartModel(
       }
 
       return {
-        key: dimensionValue,
+        key: dimensionValue ?? NULL_DISPLAY_VALUE,
         value: metricValue,
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
