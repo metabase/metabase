@@ -14,23 +14,10 @@ import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
 import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
+import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
 
 type ModalName = null | "collection" | "dashboard" | "action";
-
-// TODO: convert redux/undo and UndoListing.jsx to TS and update type
-type UndoState = {
-  id: string | number;
-  type?: string;
-  action?: () => void;
-  actions?: (() => void)[];
-  icon?: string;
-  toastColor?: string;
-  actionLabel?: string;
-  canDismiss?: boolean;
-  dismissIconColor?: string;
-  _domId?: string | number;
-}[];
 
 export interface State {
   admin: AdminState;
