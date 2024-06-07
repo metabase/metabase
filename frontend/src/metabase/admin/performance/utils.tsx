@@ -162,6 +162,7 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   typeof error === "object" &&
   error !== null &&
   "data" in error &&
+  typeof (error as { data: any }).data === "object" &&
   "message" in (error as { data: any }).data &&
   typeof (error as { data: { message: any } }).data.message === "string";
 
