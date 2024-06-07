@@ -220,11 +220,11 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
-      # - name: Auto approve PR (using GitHub Actions account)
-      #   run: |
-      #     gh pr review --approve
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Auto approve PR (using GitHub Actions account)
+        run: |
+          gh pr review --approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
         run: |
