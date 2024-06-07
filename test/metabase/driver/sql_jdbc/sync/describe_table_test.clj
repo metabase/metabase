@@ -192,14 +192,21 @@
   (testing "array rows ignored properly in JSON row->types (#21752)"
     (let [arr-row   {:bob (json/encode [:bob :cob :dob 123 "blob"])}
           obj-row   {:zlob (json/encode {:blob Long/MAX_VALUE})}]
-      (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
+      (is (= {[:bob] clojure.lang.PersistentVector} (#'sql-jdbc.describe-table/json-map->types arr-row)))
       (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
   (testing "JSON json-map->types handles bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (inc (bigint Long/MAX_VALUE))})}
           float-row {:zlob "{\"blob\": 12345678901234567890.12345678901234567890}"}]
       (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/json-map->types int-row)))
       ;; no idea how to force it to use BigDecimal here
-      (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row))))))
+      (is (= {[:zlob "blob"] Double} (#'sql-jdbc.describe-table/json-map->types float-row)))))
+  (testing "JSON unfolding supports naked values"
+    (let [string-row {:naked (json/encode "string")}
+          arr-row    {:naked (json/encode [1 2])}]
+      (is (= {[:naked] String}
+             (#'sql-jdbc.describe-table/json-map->types string-row)))
+      (is (= {[:naked] clojure.lang.PersistentVector}
+             (#'sql-jdbc.describe-table/json-map->types arr-row))))))
 
 (deftest ^:parallel key-limit-test
   (testing "we don't read too many keys even from long jsons"
