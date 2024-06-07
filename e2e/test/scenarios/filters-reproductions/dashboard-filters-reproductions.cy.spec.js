@@ -1205,7 +1205,7 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     filterWidget().click();
-    cy.findByPlaceholderText("Enter some text").type("Gizmo{enter}");
+    popover().findByText("Gizmo").click();
     cy.button("Add filter").click();
 
     cy.findAllByText("Gizmo");
@@ -2025,7 +2025,7 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter some text").type("Gizmo").blur();
+    popover().findByText("Gizmo").click();
     cy.button("Add filter").click();
 
     cy.findAllByText("Doohickey").should("not.exist");
