@@ -5,7 +5,10 @@ import NoResults from "assets/img/no_results.svg";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_CONTENT_VERIFICATION,
+} from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
 import type { ModelResult } from "metabase-types/api";
 
@@ -37,13 +40,18 @@ export const BrowseModels = () => {
     return { allModels, doVerifiedModelsExist };
   }, [result]);
 
+  const models = useMemo(
+    () => PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(allModels),
+    [allModels],
+  );
+
   const { filteredModels } = useMemo(() => {
     // If no models are verified, don't filter them
     const filteredModels = doVerifiedModelsExist
-      ? filterModels(allModels, actualModelFilters, availableModelFilters)
-      : allModels;
+      ? filterModels(models, actualModelFilters, availableModelFilters)
+      : models;
     return { filteredModels };
-  }, [allModels, actualModelFilters, doVerifiedModelsExist]);
+  }, [actualModelFilters, doVerifiedModelsExist, models]);
 
   return (
     <BrowseContainer>
