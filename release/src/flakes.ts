@@ -1,9 +1,13 @@
 // note: this file really isn't release-related, but the build tooling here is helpful for it
 import { Octokit } from '@octokit/rest';
+import dayjs from 'dayjs';
 import { match, P } from 'ts-pattern';
 import _ from 'underscore';
 import "dotenv/config";
 import "zx/globals";
+
+import { sendFlakeStatusReport, slackLink } from './slack';
+import type { Issue } from './types';
 
 interface GithubProps {
   owner: string;
@@ -37,18 +41,25 @@ export async function checkFlakes({
   github
 }: GithubProps) {
   const flakeData = await getFlakeData();
-  const flakeIssues = await getFlakeIssues({ github, owner, repo });
+  const flakeIssues = await getOpenFlakeIssues({ github, owner, repo });
+  const recentlyClosedFlakeIssues = await getRecentlyClosedFlakeIssues({ github, owner, repo });
 
   for (const flake of flakeData) { // use a for loop to avoid rate limiting
-    const issue = checkIfFlakeIssueExists({ test: flake, flakeIssues });
-    // TODO check if issue recently closed
+    const flakeIssue = checkIfFlakeIssueExists({ test: flake, flakeIssues });
+    const flakeIssueRecentlyClosed = checkIfFlakeIssueRecentlyClosed({ test: flake, flakeIssues: recentlyClosedFlakeIssues });
 
-    if (!issue) {
-      await createFlakeIssue({ test: flake, github, owner, repo });
-    } else {
-      console.log(`🤫 Flake issue already exists for\n    ${flake.test_name}`);
-      // maybe comment that it's still flaky?
+    if (flakeIssueRecentlyClosed) {
+      console.log(`🙈 Flake issue was recently closed for\n    ${flake.test_name}`);
+      continue;
     }
+
+    if (flakeIssue) {
+      console.log(`🤫 Flake issue already exists for\n    ${flake.test_name}`);
+      await updateFlakeIssue({ test: flake, issue: flakeIssue, github, owner, repo });
+      continue;
+    }
+
+    await createFlakeIssue({ test: flake, github, owner, repo });
   }
 }
 
@@ -75,25 +86,54 @@ async function getCardData(cardId: number): Promise<FlakeData[]> {
 }
 
 async function getFlakeData() {
-  const flakiestTests = await getCardData(flakiestTestsQuestionId);
+  console.log('🔍 Fetching flake data');
+  const flakiestTests = await getCardData(flakiestTestsQuestionId).catch((err) => { console.error(err); return [] });
   const flakiestTestsOnMaster = await getCardData(flakiestTestsOnMasterQuestionId);
 
-  return _.uniq([...flakiestTests, ...flakiestTestsOnMaster], false, (test) => test.test_name);
+  const flakyTests = _.uniq([...flakiestTests, ...flakiestTestsOnMaster], false, (test) => test.test_name);
+  console.log(`  Found ${flakyTests.length} flaky tests`)
+  return flakyTests;
 }
 
-function checkIfFlakeIssueExists({ flakeIssues, test }:  { flakeIssues: { title: string; }[], test: FlakeData }) {
+function checkIfFlakeIssueExists({ flakeIssues, test }:  { flakeIssues: Issue[], test: FlakeData }) {
   const expectedTitle = getFlakeIssueTitle(test.test_name);
-  return flakeIssues.some((issue) => issue.title === expectedTitle);
+  return flakeIssues.find((issue) => issue.title === expectedTitle);
 }
 
-async function getFlakeIssues({github, owner, repo}: GithubProps) {
-  const title = getFlakeIssueTitle('');
-  const { data: { items } } = await github.rest.search.issuesAndPullRequests({
-    q: `repo:${owner}/${repo} type:issue is:open in:title ${title}`,
-    per_page: 100,
+function checkIfFlakeIssueRecentlyClosed({ flakeIssues, test }:  { flakeIssues: Issue[], test: FlakeData }) {
+  const expectedTitle = getFlakeIssueTitle(test.test_name);
+  return flakeIssues.find((issue) => issue.title === expectedTitle);
+}
+
+async function getOpenFlakeIssues({github, owner, repo}: GithubProps) {
+  console.log(`🔍 Fetching flake issues`);
+
+  // we have to use paginate function or the issues will be truncated to 100
+  const issues = await github.paginate(github.rest.issues.listForRepo, {
+    owner,
+    repo,
+    labels: 'flaky-test-fix',
+    state: 'open',
   });
 
-  return items.filter((issue) => issue.title.includes(title));
+  console.log(`    Found ${issues.length} flake issues`);
+  return issues as Issue[];
+}
+
+async function getRecentlyClosedFlakeIssues({github, owner, repo}: GithubProps) {
+  console.log(`🔍 Fetching recently closed flake issues`);
+
+  //we have to use paginate function or the issues will be truncated to 100
+  const issues = await github.paginate(github.rest.issues.listForRepo, {
+    owner,
+    repo,
+    since: dayjs().subtract(3, 'day').toISOString(),
+    labels: 'flaky-test-fix',
+    state: 'closed',
+  });
+
+  console.log(`    Found ${issues.length} recently closed flake issues`);
+  return issues as Issue[];
 }
 
 function createFlakeIssue({ test, github, owner, repo }: GithubProps & { test: FlakeData }) {
@@ -106,8 +146,28 @@ function createFlakeIssue({ test, github, owner, repo }: GithubProps & { test: F
     repo,
     title: getFlakeIssueTitle(test.test_name),
     labels: ['flaky-test-fix', teamTag],
-    body: `Last Flake: ${test.max}\nLast Flake Time: ${test.max_2}\nFlakes in the last day: ${test.count_1d}\nFlakes in the last 3d: ${test.count_3d}\nFlakes in the last 7d: ${test.count}`
+    body: getFlakeInfoString({ test }),
   });
+}
+
+function updateFlakeIssue({ test, issue, github, owner, repo }: GithubProps & { test: FlakeData, issue: Issue }) {
+  if (test.count_1d === 0) {
+    return;
+  }
+  const teamTag = assignToTeam(test);
+
+  console.log(`💁 Updating flake issue for${teamTag}\n    ${test.test_name}`);
+
+  return github.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: issue.number,
+    body: `This test is still flaky\n\n${getFlakeInfoString({ test })}`,
+  });
+}
+
+function getFlakeInfoString({ test }: { test: FlakeData }) {
+  return `Last Flake: ${test.max}\nLast Flake Time: ${test.max_2}\nFlakes in the last day: ${test.count_1d}\nFlakes in the last 3d: ${test.count_3d}\nFlakes in the last 7d: ${test.count}`
 }
 
 const vizRegex = /dash|\bviz\b|visualization|chart/i;
@@ -130,5 +190,62 @@ export function assignToTeam(test: FlakeData): string {
     .otherwise(() => '.Team/AdminWebapp');
 }
 
+const summarizeOpenFlakes = async ({ owner, repo, github }: GithubProps) => {
+  const flakeIssues = await getOpenFlakeIssues({ github, owner, repo });
+
+  const flakeIssuesByTeam = _.groupBy(flakeIssues, (issue) => {
+    const teamTag = issue.labels.find((label) => label.name.startsWith('.Team/'));
+    return teamTag?.name || '.Team/Unknown Team';
+  });
+
+  return Object.entries(flakeIssuesByTeam)
+    .map(([team, issues]) => [team, issues.length])
+    .sort((a: [string, number], b: [string, number]) => b[1] - a[1])
+    .map(([team, issueCount]) => (
+      `${issueCount} flake issues open for ${flakyTestListLink(team)}`)
+    )
+    .filter(m => !m.includes('Unknown'))
+    .join('\n');
+}
+
+const summarizeClosedFlakes = async ({ owner, repo, github }: GithubProps) => {
+  const flakeIssues = await getRecentlyClosedFlakeIssues({ github, owner, repo });
+
+  const flakeIssuesByTeam = _.groupBy(flakeIssues, (issue) => {
+    const teamTag = issue.labels.find((label) => label.name.startsWith('.Team/'));
+    return teamTag?.name || '.Team/Unknown Team';
+  });
+
+  return Object.entries(flakeIssuesByTeam)
+    .map(([team, issues]) => [team, issues.length])
+    .sort((a, b) => b[1] - a[1])
+    .map(([team, issueCount]) => (
+      `${issueCount} flake issues closed by ${team.replace('.Team/', '')}`)
+    )
+    .filter(m => !m.includes('Unknown'))
+    .join('\n');
+}
+
+function flakyTestListLink(teamTag: string) {
+  const teamName = teamTag.replace('.Team/', '');
+  return slackLink(
+    teamName,
+    `https://github.com/metabase/metabase/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc+label%3Aflaky-test-fix+label%3A.Team%2F${teamName}`
+  );
+}
+
+export async function summarizeFlakes({ owner, repo, github, channelName }: GithubProps & { channelName: string}) {
+  const openFlakeInfo = await summarizeOpenFlakes({ owner, repo, github });
+  const closedFlakeInfo = await summarizeClosedFlakes({ owner, repo, github });
+
+  await sendFlakeStatusReport({
+    channelName,
+    openFlakeInfo,
+    closedFlakeInfo,
+  });
+}
+
 // Test Code
 // checkFlakes({ owner: 'metabase', repo: 'metabase', github })
+// summarizeFlakes({ owner: 'metabase', repo: 'metabase', github, channelName: 'bot-testing' })
+
