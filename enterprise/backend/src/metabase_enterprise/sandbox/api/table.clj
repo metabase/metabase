@@ -67,6 +67,22 @@
            (thunk))))
       (thunk))))
 
+(defenterprise batch-fetch-table-query-metadatas
+  "Returns the query metadata used to power the Query Builder for the tables specified by`ids`."
+  :feature :none
+  [ids]
+  (for [table (api.table/batch-fetch-query-metadatas* ids)]
+    (let [sandboxed-perms? (only-sandboxed-perms? table)]
+      ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see
+      ;; the metadata
+      (if sandboxed-perms?
+        (maybe-filter-fields
+         table
+         (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+           (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+             table)))
+        table))))
+
 (api/defendpoint GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be

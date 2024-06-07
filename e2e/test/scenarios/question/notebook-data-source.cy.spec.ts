@@ -1,7 +1,3 @@
-// TypeScript doesn't recognize `onlyOn` on the `cy` object.
-// Hence, we have to import it as a standalone helper.
-import { onlyOn } from "@cypress/skip-test";
-
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -12,13 +8,10 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import {
   createQuestion,
-  describeOSS,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalLevel,
   entityPickerModalTab,
-  isEE,
-  isOSS,
   openNotebook,
   openQuestionActions,
   openReviewsTable,
@@ -27,6 +20,8 @@ import {
   restore,
   resyncDatabase,
   saveQuestion,
+  onlyOnOSS,
+  onlyOnEE,
   startNewQuestion,
   visitModel,
   visitQuestion,
@@ -47,7 +42,7 @@ describe("scenarios > notebook > data source", () => {
       "should display tables from the only existing database by default",
       { tags: "@OSS" },
       () => {
-        onlyOn(isOSS);
+        onlyOnOSS();
         cy.visit("/");
         cy.findByTestId("app-bar").findByText("New").click();
         popover().findByTextEnsureVisible("Question").click();
@@ -78,7 +73,7 @@ describe("scenarios > notebook > data source", () => {
     );
 
     it.skip("should display tables from the only existing database by default on an enterprise instance without token activation (metabase#40223)", () => {
-      onlyOn(isEE);
+      onlyOnEE();
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByTextEnsureVisible("Question").click();
@@ -418,8 +413,9 @@ describe("scenarios > notebook > data source", () => {
   });
 });
 
-describeOSS("scenarios > notebook > data source", { tags: "@OSS" }, () => {
+describe("scenarios > notebook > data source", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    onlyOnOSS();
     restore("setup");
     cy.signInAsAdmin();
   });

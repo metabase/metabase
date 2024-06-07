@@ -45,6 +45,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { getColumnScaling } from "./util";
 
 /**
  * Sums two metric column values.
@@ -390,7 +391,7 @@ function getStackedValueTransformFunction(
   };
 }
 
-function getStackedValueTransfom(
+function getStackedValueTransform(
   settings: ComputedVisualizationSettings,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   stackModels: StackModel[],
@@ -571,6 +572,32 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+export function scaleDataset(
+  dataset: ChartDataset,
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+): ChartDataset {
+  const transformFn = (datum: Datum) => {
+    const transformedRecord = { ...datum };
+    for (const seriesModel of seriesModels) {
+      const scale = getColumnScaling(seriesModel.column, settings);
+
+      const key = seriesModel.dataKey;
+      if (key in datum) {
+        const scaledValue = Number.isFinite(datum[key])
+          ? (datum[key] as number) * scale
+          : null;
+        transformedRecord[key] = scaledValue;
+      }
+    }
+    return transformedRecord;
+  };
+
+  return dataset.map(datum => {
+    return transformFn(datum);
+  });
+}
+
 const getYAxisScaleTransforms = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
@@ -588,7 +615,7 @@ const getYAxisScaleTransforms = (
     nonStackedSeriesKeys,
     value => yAxisScaleTransforms.toEChartsAxisValue(value),
   );
-  const stackedTransforms = getStackedValueTransfom(
+  const stackedTransforms = getStackedValueTransform(
     settings,
     yAxisScaleTransforms,
     stackModels,

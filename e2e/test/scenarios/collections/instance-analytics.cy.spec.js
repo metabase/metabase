@@ -11,7 +11,8 @@ import {
   visitDashboard,
   visitModel,
   visitQuestion,
-  describeOSS,
+  onlyOnOSS,
+  onlyOnEE,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -262,6 +263,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 describe("question and dashboard links", () => {
   describeEE("ee", () => {
     beforeEach(() => {
+      onlyOnEE();
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
@@ -340,8 +342,9 @@ describe("question and dashboard links", () => {
       popover().findByText("Usage insights").should("not.exist");
     });
   });
-  describeOSS("oss", { tags: "@OSS" }, () => {
+  describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
+      onlyOnOSS();
       restore();
       cy.signInAsAdmin();
     });

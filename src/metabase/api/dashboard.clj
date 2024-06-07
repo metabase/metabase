@@ -418,7 +418,7 @@
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (u/prog1 (last-edit/with-last-edit-info dashboard :dashboard)
+    (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
       (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*}))))
 
 (defn- check-allowed-to-change-embedding
