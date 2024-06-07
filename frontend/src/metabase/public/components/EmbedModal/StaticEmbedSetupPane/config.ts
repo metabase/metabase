@@ -9,5 +9,6 @@ export function getDefaultDisplayOptions(
     bordered: true,
     titled: true,
     hide_download_button: shouldShownDownloadData ? false : null,
+    downloads: null,
   };
 }
