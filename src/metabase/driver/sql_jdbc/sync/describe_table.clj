@@ -390,7 +390,8 @@
     (loop [path (or path [])
            key  nil
            res  (transient {})]
-      (let [token (.nextToken p)]
+      (let [token     (.nextToken p)
+            next-path (cond-> path key (conj key))]
         (cond
           (nil? token)
           (persistent! res)
@@ -404,21 +405,18 @@
 
           :else
           (u/case-enum token
-            JsonToken/VALUE_NUMBER_INT   (recur path key (assoc! res (conj path key) (number-type (.getNumberType p))))
-            JsonToken/VALUE_NUMBER_FLOAT (recur path key (assoc! res (conj path key) (number-type (.getNumberType p))))
-            JsonToken/VALUE_TRUE         (recur path key (assoc! res (conj path key) Boolean))
-            JsonToken/VALUE_FALSE        (recur path key (assoc! res (conj path key) Boolean))
-            JsonToken/VALUE_NULL         (recur path key (assoc! res (conj path key) nil))
-            JsonToken/VALUE_STRING       (recur path key (assoc! res (conj path key)
-                                                                 (type-by-parsing-string (.getText p))))
+            JsonToken/VALUE_NUMBER_INT   (recur path key (assoc! res next-path (number-type (.getNumberType p))))
+            JsonToken/VALUE_NUMBER_FLOAT (recur path key (assoc! res next-path (number-type (.getNumberType p))))
+            JsonToken/VALUE_TRUE         (recur path key (assoc! res next-path Boolean))
+            JsonToken/VALUE_FALSE        (recur path key (assoc! res next-path Boolean))
+            JsonToken/VALUE_NULL         (recur path key (assoc! res next-path nil))
+            JsonToken/VALUE_STRING       (recur path key (assoc! res next-path (type-by-parsing-string (.getText p))))
             JsonToken/FIELD_NAME         (recur path (.getText p) res)
-            JsonToken/START_OBJECT       (recur (cond-> path key (conj key)) key res)
+            JsonToken/START_OBJECT       (recur next-path key res)
             JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) key res)
             ;; We put top-level array row type semantics on JSON roadmap but skip for now
             JsonToken/START_ARRAY        (do (.skipChildren p)
-                                             (if key
-                                               (recur path key (assoc! res (conj path key) clojure.lang.PersistentVector))
-                                               (recur path key res)))
+                                             (recur path key (assoc! res next-path clojure.lang.PersistentVector)))
             JsonToken/END_ARRAY          (recur path key res)))))))
 
 (defn- json-map->types [json-map]
