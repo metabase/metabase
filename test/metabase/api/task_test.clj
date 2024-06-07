@@ -44,11 +44,19 @@
                           :when  (contains? task-names (:task result))]
                       (mt/boolean-ids-and-timestamps result)))))))))
 
-(deftest sort-by-ended-at-test
-  (testing (str "Multiple results should be sorted via `:ended_at`. Below creates two tasks, the second one has a "
-                "later `:ended_at` date and should be returned first")
-    (let [[task-hist-1 task-hist-2 :as task-histories] (generate-tasks 2)
-          task-names                                   (set (map :task task-histories))]
+(deftest sort-by-started-at-test
+  (testing (str "Multiple results should be sorted via `:started_at`. Below creates two tasks, the second one has a "
+                "later `:started_at` date and should be returned first")
+    (let [now             (t/zoned-date-time)
+          now-1s          (t/minus now (t/seconds 1))
+          now-2s          (t/minus now (t/seconds 2))
+          task-hist-1     {:task (mt/random-name)
+                           :started_at now-2s
+                           :ended_at   now}
+          task-hist-2     {:task (mt/random-name)
+                           :started_at now-1s
+                           :ended_at   now-1s}
+          task-names      (set (map :task [task-hist-1 task-hist-2]))]
       (mt/with-temp [TaskHistory _ task-hist-1
                      TaskHistory _ task-hist-2]
         (is (= (map (fn [{:keys [task]}]
