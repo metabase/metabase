@@ -1,6 +1,6 @@
 import { push } from "react-router-redux";
 
-import { useListRecentViewsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { getName } from "metabase/lib/name";
 import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
@@ -15,8 +15,10 @@ type RecentsListProps = {
 };
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
-  const { data = [], isLoading: isRecentsListLoading } =
-    useListRecentViewsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data = [], isLoading: isRecentsListLoading } = useListRecentsQuery(
+    undefined,
+    { refetchOnMountOrArgChange: true },
+  );
 
   const dispatch = useDispatch();
 
