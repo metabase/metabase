@@ -8,20 +8,8 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
+import type { Base, SelectItem, FilterFn } from "./types";
 import { parseValues, unique } from "./utils";
-
-type Base = string | number;
-
-type SelectItem<ValueType extends Base> = {
-  label?: string;
-  value: ValueType;
-};
-
-type FilterFn<ValueType extends Base> = (
-  query: string,
-  selected: boolean,
-  item: SelectItem<ValueType>,
-) => boolean;
 
 export type MultiAutocompleteProps<ValueType extends Base> = Omit<
   MultiSelectProps,
