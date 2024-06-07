@@ -70,7 +70,6 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
 }
 
 export interface IFieldValuesWidgetProps {
-  color?: "brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
