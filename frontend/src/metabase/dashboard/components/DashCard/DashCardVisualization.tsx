@@ -70,6 +70,7 @@ interface DashCardVisualizationProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
+  withTitle?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -111,6 +112,7 @@ export function DashCardVisualization({
   isFullscreen = false,
   isMobile = false,
   isEditingParameter,
+  withTitle = true,
   onChangeCardAndRun,
   showClickBehaviorSidebar,
   onChangeLocation,
@@ -247,7 +249,7 @@ export function DashCardVisualization({
       expectedDuration={expectedDuration}
       error={error?.message}
       errorIcon={error?.icon}
-      showTitle
+      showTitle={withTitle}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}

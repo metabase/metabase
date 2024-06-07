@@ -133,6 +133,7 @@ type OwnProps = {
   isXray?: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
+  withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   mode?: Mode;
   // public dashboard passes it explicitly
@@ -498,6 +499,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isMobile={isMobile}
         isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
+        withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
         onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}

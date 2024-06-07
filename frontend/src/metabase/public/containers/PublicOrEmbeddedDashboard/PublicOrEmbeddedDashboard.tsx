@@ -274,6 +274,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   isXray={false}
                   isFullscreen={isFullscreen}
                   isNightMode={isNightMode}
+                  withCardTitle={this.props.cardTitled}
                   clickBehaviorSidebarDashcard={null}
                   width={0}
                 />

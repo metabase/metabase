@@ -64,6 +64,7 @@ export interface DashCardProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
+  withTitle?: boolean;
 
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
@@ -99,6 +100,7 @@ function DashCardInner({
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
+  withTitle = true,
   onAddSeries,
   onReplaceCard,
   onRemove,
@@ -341,6 +343,7 @@ function DashCardInner({
           isNightMode={isNightMode}
           isMobile={isMobile}
           isPublicOrEmbedded={isPublicOrEmbedded}
+          withTitle={withTitle}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={changeCardAndRunHandler}
