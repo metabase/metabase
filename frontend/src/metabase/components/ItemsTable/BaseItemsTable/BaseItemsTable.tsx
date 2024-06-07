@@ -1,4 +1,4 @@
-import type { HTMLAttributes, MouseEvent, PropsWithChildren } from "react";
+import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
 import type {
