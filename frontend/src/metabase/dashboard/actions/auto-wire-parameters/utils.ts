@@ -24,22 +24,25 @@ import type { DashboardState } from "metabase-types/store";
 import type { SetMultipleDashCardAttributesOpts } from "../core";
 
 export function getAllDashboardCardsWithUnmappedParameters({
-  dashboardState,
+  dashboards,
+  dashcards,
   dashboardId,
   parameterId,
   excludeDashcardIds = [],
 }: {
-  dashboardState: DashboardState;
+  dashboards: DashboardState["dashboards"];
+  dashcards: DashboardState["dashcards"];
   dashboardId: DashboardId;
   parameterId: ParameterId;
   excludeDashcardIds?: DashCardId[];
 }): QuestionDashboardCard[] {
-  const dashCards = getExistingDashCards(
-    dashboardState.dashboards,
-    dashboardState.dashcards,
+  const existingDashcards = getExistingDashCards(
+    dashboards,
+    dashcards,
     dashboardId,
   );
-  return dashCards.filter(
+
+  return existingDashcards.filter(
     (dashcard): dashcard is QuestionDashboardCard =>
       isQuestionDashCard(dashcard) &&
       !excludeDashcardIds.includes(dashcard.id) &&

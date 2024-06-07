@@ -38,19 +38,20 @@ export function autoWireDashcardsWithMatchingParameters(
 ) {
   return function (dispatch: Dispatch, getState: GetState) {
     const metadata = getMetadata(getState());
-    const dashboard_state = getState().dashboard;
+    const dashboardState = getState().dashboard;
     const questions = getQuestions(getState());
     const parameter = getParameters(getState()).find(
       ({ id }) => id === parameter_id,
     );
 
-    if (!dashboard_state.dashboardId || !parameter) {
+    if (!dashboardState.dashboardId || !parameter) {
       return;
     }
 
     const dashcardsToAutoApply = getAllDashboardCardsWithUnmappedParameters({
-      dashboardState: dashboard_state,
-      dashboardId: dashboard_state.dashboardId,
+      dashboards: dashboardState.dashboards,
+      dashcards: dashboardState.dashcards,
+      dashboardId: dashboardState.dashboardId,
       parameterId: parameter_id,
       excludeDashcardIds: [dashcard.id],
     });
