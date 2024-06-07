@@ -115,7 +115,7 @@ export type BaseItemsTableProps = {
   isInDragLayer?: boolean;
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
-  onClick?: (item: CollectionItem, event: MouseEvent) => void;
+  onClick?: (item: CollectionItem) => void;
   isLoading?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 

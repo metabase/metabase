@@ -74,7 +74,7 @@ export type CollectionItemsTableProps = {
   selectOnlyTheseItems: (items: CollectionItem[]) => void;
   selected: CollectionItem[];
   toggleItem: (item: CollectionItem) => void;
-  onClick: (item: CollectionItem, event: any) => void;
+  onClick: (item: CollectionItem) => void;
 }>;
 
 export const CollectionItemsTable = ({
@@ -120,14 +120,14 @@ export const CollectionItemsTable = ({
     [setPage],
   );
 
+  const showAllItems = !collection || isRootTrashCollection(collection);
+
   const unpinnedQuery = {
     collection: collectionId,
     models,
     limit: pageSize,
     offset: pageSize * page,
-    ...(isRootTrashCollection(collection)
-      ? {}
-      : { pinned_state: "is_not_pinned" }),
+    ...(showAllItems ? {} : { pinned_state: "is_not_pinned" }),
     ...unpinnedItemsSorting,
   };
 
@@ -188,7 +188,7 @@ export const CollectionItemsTable = ({
         onCopy={handleCopy}
         onSelectAll={handleSelectAll}
         onSelectNone={clear}
-        onClick={onClick ? (item, event) => onClick(item, event) : undefined}
+        onClick={onClick ? (item: CollectionItem) => onClick(item) : undefined}
         isLoading={!hasPinnedItems && loadingUnpinnedItems}
       />
       <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>

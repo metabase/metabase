@@ -8,7 +8,7 @@ export const CollectionBrowser = withPublicComponentWrapper(
     onClick,
   }: {
     collectionId: CollectionId;
-    onClick?: (item: CollectionItem, event: any) => void;
+    onClick?: (item: CollectionItem) => void;
   }) => {
     return (
       <CollectionItemsTable collectionId={collectionId} onClick={onClick} />
