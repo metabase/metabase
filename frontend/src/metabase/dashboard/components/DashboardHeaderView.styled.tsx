@@ -4,6 +4,7 @@ import styled from "@emotion/styled";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import EditableText from "metabase/core/components/EditableText";
 import { color } from "metabase/lib/colors";
+import { DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS } from "metabase/lib/constants";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
   breakpointMaxSmall,
@@ -12,7 +13,6 @@ import {
 } from "metabase/styled-components/theme";
 
 import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
-import { SIDEBAR_WIDTH } from "./Sidebar";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;
@@ -48,7 +48,7 @@ export const HeaderContainer = styled.div<{
     props.isFixedWidth &&
     props.isSidebarOpen &&
     css`
-      margin-right: ${SIDEBAR_WIDTH}px;
+      margin-right: ${DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS}px;
     `}
 
   ${breakpointMaxMedium} {

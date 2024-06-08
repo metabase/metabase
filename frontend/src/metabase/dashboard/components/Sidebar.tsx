@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS } from "metabase/lib/constants";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import {
@@ -19,7 +20,6 @@ interface SidebarProps {
   "data-testid"?: string;
 }
 
-export const SIDEBAR_WIDTH = 384;
 export function Sidebar({
   isCloseDisabled,
   children,
@@ -30,7 +30,10 @@ export function Sidebar({
   "data-testid": dataTestId,
 }: SidebarProps) {
   return (
-    <SidebarAside data-testid={dataTestId} $width={SIDEBAR_WIDTH}>
+    <SidebarAside
+      data-testid={dataTestId}
+      $width={DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS}
+    >
       <ChildrenContainer>{children}</ChildrenContainer>
       {(onClose || onCancel || onRemove) && (
         <ButtonContainer spaceBetween>

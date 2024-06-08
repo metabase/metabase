@@ -1,3 +1,5 @@
+import { DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS } from "metabase/lib/constants";
+
 export const MODAL_TYPES = {
   SAVE: "save",
   ADD_TO_DASHBOARD: "add-to-dashboard",
@@ -20,7 +22,7 @@ export const MODAL_TYPES = {
 } as const;
 
 export const SIDEBAR_SIZES = {
-  NORMAL: 355,
+  NORMAL: DEFAULT_SIDEBAR_WIDTH_FOR_QUESTIONS_AND_DASHBOARDS,
   TIMELINE: 300,
 };
 
