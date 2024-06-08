@@ -26,6 +26,20 @@ export function findColumnIndexesFromLegacyRefs(
   columns: ColumnMetadata[],
   fieldRefs: DimensionReference[],
 ): number[] {
+  // FIXME hack to fix #43799
+  const columnIndexByLegacyRef = new Map(
+    columns.map((column, columnIndex) => [
+      JSON.stringify(ML.legacy_ref(query, stageIndex, column)),
+      columnIndex,
+    ]),
+  );
+  const columnIndexes = fieldRefs.map(
+    fieldRef => columnIndexByLegacyRef.get(JSON.stringify(fieldRef)) ?? -1,
+  );
+  if (columnIndexes.every(columnIndex => columnIndex >= 0)) {
+    return columnIndexes;
+  }
+
   return ML.find_column_indexes_from_legacy_refs(
     query,
     stageIndex,

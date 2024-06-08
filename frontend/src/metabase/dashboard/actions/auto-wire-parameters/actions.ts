@@ -162,6 +162,7 @@ export function showAutoWireToastNewCard({
             targetDashcard,
             mapping.target,
             targetQuestion,
+            parameter,
           );
 
           if (
