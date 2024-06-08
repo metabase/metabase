@@ -77,9 +77,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
     selectDashboardFilter(getDashboardCard(1), "Category");
 
-    // finish editing filter and save dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Save").click();
+    saveDashboard();
 
     // wait for saving to finish
     cy.wait("@dashboard");
