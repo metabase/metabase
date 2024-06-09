@@ -222,8 +222,6 @@ export const useCommandPalette = ({
     isSearchTypeaheadEnabled,
   ]);
 
-  console.log(searchResultActions);
-
   useRegisterActions(searchResultActions, [searchResultActions]);
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
