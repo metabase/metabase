@@ -69,7 +69,6 @@ export const getIcon = (item: ObjectWithModel): IconData => {
   if (item.model === "dataset" && item.moderated_status === "verified") {
     return {
       name: "model_with_badge",
-      color: OFFICIAL_COLLECTION.color,
     };
   }
 

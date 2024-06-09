@@ -88,7 +88,7 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official model", () => {
         expect(
           getIcon({ model: "dataset", moderated_status: "verified" }),
-        ).toEqual({ name: "model_with_badge", color: "saturated-yellow" });
+        ).toEqual({ name: "model_with_badge" });
       });
     });
   });
