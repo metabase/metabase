@@ -721,7 +721,7 @@ const TITLE_LOCALES_BN = {
     'bn' : 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণীকক্ষবিশিষ্ট বিদ্যালয়'
   },
   'admin.dashboard.ppe.school.classroom.condition.wise' : {
-    'en' : 'Condition of pre-primary room',
+    'en' : 'Condition of Pre-Primary Room',
     'bn' : 'প্রাক-প্রাথমিক কক্ষের অবস্থা'
   },
 }
