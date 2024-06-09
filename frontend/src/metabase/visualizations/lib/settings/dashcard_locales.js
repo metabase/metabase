@@ -720,6 +720,10 @@ const TITLE_LOCALES_BN = {
     'en' : 'Pre-primary specific Schools with classrooms',
     'bn' : 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণীকক্ষবিশিষ্ট বিদ্যালয়'
   },
+  'admin.dashboard.ppe.school.classroom.condition.wise' : {
+    'en' : 'Condition of pre-primary room',
+    'bn' : 'প্রাক-প্রাথমিক কক্ষের অবস্থা'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
