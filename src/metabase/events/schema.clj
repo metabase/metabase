@@ -2,6 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
+   [metabase.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 ;; collection events
