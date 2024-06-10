@@ -6,7 +6,10 @@ import {
   getTemplateTagFromTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type { ParameterDimensionTarget } from "metabase-types/api";
-import { createMockTemplateTag } from "metabase-types/api/mocks";
+import {
+  createMockParameter,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PRODUCTS,
@@ -81,12 +84,13 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
+      const parameter = createMockParameter();
 
       expect(
-        getParameterTargetField(
-          ["variable", ["template-tag", "foo"]],
-          question,
-        ),
+        getParameterTargetField(question, parameter, [
+          "variable",
+          ["template-tag", "foo"],
+        ]),
       ).toBe(null);
     });
 
@@ -104,8 +108,9 @@ describe("parameters/utils/targets", () => {
           }),
         },
       });
+      const parameter = createMockParameter();
 
-      expect(getParameterTargetField(target, question)).toEqual(
+      expect(getParameterTargetField(question, parameter, target)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),
@@ -113,14 +118,15 @@ describe("parameters/utils/targets", () => {
     });
 
     it("should return the target field", () => {
+      const question = db.question({
+        "source-table": PRODUCTS_ID,
+      });
+      const parameter = createMockParameter();
       const target: ParameterDimensionTarget = [
         "dimension",
         ["field", PRODUCTS.CATEGORY, null],
       ];
-      const question = db.question({
-        "source-table": PRODUCTS_ID,
-      });
-      expect(getParameterTargetField(target, question)).toEqual(
+      expect(getParameterTargetField(question, parameter, target)).toEqual(
         expect.objectContaining({
           id: PRODUCTS.CATEGORY,
         }),

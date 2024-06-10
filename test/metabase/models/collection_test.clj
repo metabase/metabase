@@ -6,9 +6,16 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.models
-    :refer [Card Collection Dashboard NativeQuerySnippet Permissions
-            PermissionsGroup Pulse User]]
+    :refer [Card
+            Collection
+            Dashboard
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            Pulse
+            User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -748,7 +755,7 @@
 
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (t2.with-temp/with-temp [Collection cr-collection {}]
-      (with-redefs [perms/default-custom-reports-collection (constantly cr-collection)]
+      (with-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot archive the Custom Reports Collection."
@@ -1672,8 +1679,8 @@
                              Collection cr-collection    {}
                              Card       cr-card          {:collection_id (:id cr-collection)}
                              Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (with-redefs [perms/default-audit-collection          (constantly audit-collection)
-                    perms/default-custom-reports-collection (constantly cr-collection)]
+      (with-redefs [audit/default-audit-collection          (constantly audit-collection)
+                    audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))

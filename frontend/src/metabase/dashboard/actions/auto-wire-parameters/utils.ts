@@ -77,6 +77,7 @@ export function getMatchingParameterOption(
     targetDashcard,
     targetDimension,
     targetQuestion,
+    parameter,
   );
   return matchedOption ?? null;
 }

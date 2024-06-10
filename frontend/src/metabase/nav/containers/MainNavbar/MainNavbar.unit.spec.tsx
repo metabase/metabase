@@ -15,15 +15,10 @@ import {
   within,
 } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/test-utils";
+import type { ModelResult } from "metabase/browse/types";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
-import type {
-  Card,
-  Dashboard,
-  DashboardId,
-  ModelResult,
-  User,
-} from "metabase-types/api";
+import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
