@@ -1,4 +1,3 @@
-import allNegative from "./all-negative.json";
 import allSettings from "./all-settings.json";
 import binnedDimension from "./binned-dimension.json";
 import booleanDimension from "./boolean-dimension.json";
@@ -10,7 +9,6 @@ import defaultSettings from "./default-settings.json";
 import hideLegend from "./hide-legend.json";
 import hideTotal from "./hide-total.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
-import mixedPositiveNegative from "./mixed-positive-negative.json";
 import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
 import relativeDateDimension from "./relative-date-dimension.json";
@@ -35,8 +33,6 @@ export const data = {
   showPercentagesOff,
   showPercentagesOnChart,
   showPercentagesOnChartDense,
-  allNegative,
-  mixedPositiveNegative,
   columnFormatting,
   columnFormattingPercentagesOnChart,
   booleanDimension,

@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { PieChartNegativeError } from "metabase/visualizations/lib/errors";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -82,6 +83,10 @@ export function getPieChartModel(
   const [slices, others] = _.chain(rows)
     .map((row, index): PieSlice => {
       const { dimensionValue, metricValue } = getRowValues(row, colDescs);
+
+      if (metricValue < 0) {
+        throw new PieChartNegativeError();
+      }
 
       if (!settings["pie.colors"]) {
         throw Error(`"pie.colors" setting is not defined`);
