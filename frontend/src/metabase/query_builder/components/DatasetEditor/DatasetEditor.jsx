@@ -7,7 +7,8 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useModelIndexesListQuery } from "metabase/common/hooks";
+// import { useModelIndexesListQuery } from "metabase/common/hooks";
+import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
@@ -224,10 +225,14 @@ function DatasetEditor(props) {
     [question, resultsMetadata],
   );
 
-  const { data: modelIndexes } = useModelIndexesListQuery({
-    query: { model_id: question.id() },
-    enabled: question.isSaved() && question.type() === "model",
-  });
+  const { data: modelIndexes } = useListModelIndexesQuery(
+    {
+      model_id: question.id(),
+    },
+    {
+      skip: !question.isSaved() || question.type() !== "model",
+    },
+  );
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";

@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -280,7 +280,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
-      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+      await dispatch(updateModelIndexes(question));
     }
 
     const metadataOptions = { reload: isModel || isMetric };

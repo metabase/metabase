@@ -1,7 +1,9 @@
 import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
 
+import { getStore } from "__support__/entities-store";
 import { setupModelIndexEndpoints } from "__support__/server-mocks";
+import { Api, listModelIndexes } from "metabase/api";
 import Question from "metabase-lib/v1/Question";
 import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
 import {
@@ -21,6 +23,10 @@ const createModelWithResultMetadata = (fields: Field[]) => {
   return new Question(
     createMockCard({ result_metadata: fields, type: "model" }),
   );
+};
+
+const setup = () => {
+  return getStore({ [Api.reducerPath]: Api.reducer }, {}, [Api.middleware]);
 };
 
 describe("Entities > model-indexes > actions", () => {
@@ -79,14 +85,15 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(model.id(), []);
 
-      const mockDispatch = jest.fn();
-      const mockGetState = jest.fn(() => ({
-        entities: { modelIndexes: {}, modelIndexes_list: {} },
-      }));
-      await updateModelIndexes(model)(mockDispatch, mockGetState);
+      const store = setup();
 
-      expect(mockDispatch).toHaveBeenCalled();
-      expect(mockGetState).toHaveBeenCalled();
+      const dispatchSpy = jest.spyOn(store, "dispatch");
+      const getStateSpy = jest.spyOn(store, "getState");
+
+      await updateModelIndexes(model)(store.dispatch, store.getState);
+
+      expect(dispatchSpy).toHaveBeenCalled();
+      expect(getStateSpy).toHaveBeenCalled();
 
       const [, options] = (await fetchMock.lastCall()) as MockCall;
 
@@ -116,24 +123,23 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(1, [existingModelIndex]);
 
-      const mockDispatch = jest.fn();
-      const mockGetState = jest.fn(() => ({
-        entities: {
-          modelIndexes: { 99: existingModelIndex },
-          modelIndexes_list: {
-            '{"model_id":1}': {
-              list: [99],
-              metadata: {},
-            },
-          },
-        },
-      }));
-      await updateModelIndexes(model)(mockDispatch, mockGetState);
+      const store = setup();
+      const { dispatch } = store;
 
-      expect(mockDispatch).toHaveBeenCalled();
-      expect(mockGetState).toHaveBeenCalled();
+      await dispatch(listModelIndexes.initiate({ model_id: 1 }));
 
-      const [url, options] = (await fetchMock.lastCall()) as MockCall;
+      const dispatchSpy = jest.spyOn(store, "dispatch");
+      const getStateSpy = jest.spyOn(store, "getState");
+
+      await updateModelIndexes(model)(store.dispatch, store.getState);
+
+      expect(dispatchSpy).toHaveBeenCalled();
+      expect(getStateSpy).toHaveBeenCalled();
+
+      const [url, options] = (await fetchMock.lastCall(
+        undefined,
+        "DELETE",
+      )) as MockCall;
 
       expect(url).toContain("/api/model-index/99");
       expect(options?.method).toBe("DELETE");
@@ -191,14 +197,15 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(model.id(), []);
 
-      const mockDispatch = jest.fn();
-      const mockGetState = jest.fn(() => ({
-        entities: { modelIndexes: {}, modelIndexes_list: {} },
-      }));
-      await updateModelIndexes(model)(mockDispatch, mockGetState);
+      const store = setup();
 
-      expect(mockDispatch).toHaveBeenCalled();
-      expect(mockGetState).toHaveBeenCalled();
+      const dispatchSpy = jest.spyOn(store, "dispatch");
+      const getStateSpy = jest.spyOn(store, "getState");
+
+      await updateModelIndexes(model)(store.dispatch, store.getState);
+
+      expect(dispatchSpy).not.toHaveBeenCalled();
+      expect(getStateSpy).toHaveBeenCalled();
 
       const response = await fetchMock.lastCall();
 

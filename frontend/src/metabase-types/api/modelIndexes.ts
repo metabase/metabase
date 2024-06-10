@@ -29,3 +29,12 @@ export type IndexedEntity = {
 export type ModelIndexesListQuery = {
   model_id: CardId | null;
 };
+
+export type ModelIndexCreateQuery = Pick<
+  ModelIndex,
+  "model_id" | "pk_ref" | "value_ref"
+>;
+
+export type ModelIndexDeleteQuery = {
+  id: number;
+};
