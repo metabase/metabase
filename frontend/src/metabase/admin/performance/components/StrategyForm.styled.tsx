@@ -50,7 +50,7 @@ export const FormBox = styled(Box)<
 export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-block: 1rem;
   gap: 1rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: ${color("bg-white")};
   border-top: 1px solid ${color("border")};
   ${({ isInSidebar }) =>
     isInSidebar
