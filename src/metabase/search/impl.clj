@@ -107,13 +107,16 @@
     (into
      [:or]
      (for [wildcarded-token (wildcarded-tokens (:search-string search-ctx))
-           [alias? column]  (cond-> (for [x (search.config/searchable-columns-for-model model)]
-                                      [true x])
-                              (:search-native-query search-ctx)
-                              (concat (for [x (search.config/native-query-columns model)]
-                                        [false x])))]
+           [native? column] (cond-> (for [x (search.config/searchable-columns-for-model model)]
+                                      [false x])
+                                 (:search-native-query search-ctx)
+                                 (concat (for [x (search.config/native-query-columns model)]
+                                           [true x])))]
        [:like
-        [:lower (cond->> column alias? (search.config/column-with-alias model))]
+        [:lower (if (and native? (= model "action"))
+                  ;; unfortunately we have to hardcode this for now because we don't have a way to specify which columns are from which table
+                  :query_action.dataset_query
+                  (search.config/column-with-alias model column))]
         wildcarded-token]))))
 
 (mu/defn ^:private base-query-for-model :- [:map {:closed true}

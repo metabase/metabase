@@ -1266,12 +1266,12 @@
 (deftest search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
-      [:model/Card {mbql-card :id}             {:name search-term}
-       :model/Card {native-card-in-name :id}   {:name search-term}
-       :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
-       :model/Card {mbql-model :id}            {:name search-term :type :model}
-       :model/Card {native-model-in-name :id}  {:name search-term :type :model}
-       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
+      [:model/Card {mbql-card :id}             {:query_type :query,  :name search-term}
+       :model/Card {native-card-in-name :id}   {:query_type :native, :name search-term}
+       :model/Card {native-card-in-query :id}  {:query_type :native, :dataset_query (mt/native-query {:query (format "select %s" search-term)})}
+       :model/Card {mbql-model :id}            {:query_type :query,  :name search-term, :type :model}
+       :model/Card {native-model-in-name :id}  {:query_type :native, :name search-term, :type :model}
+       :model/Card {native-model-in-query :id} {:query_type :native, :dataset_query (mt/native-query {:query (format "select %s" search-term)}), :type :model}]
       (mt/with-actions
         [_                         {:type :model :dataset_query (mt/mbql-query venues)}
          {http-action :action-id}  {:type :http :name search-term}
@@ -1286,11 +1286,8 @@
                       :data
                       (map (juxt :model :id))
                       set))))
-
         (testing "if search-native-query is true, search both dataset_query and the name"
-          (is (= #{["card" mbql-card]
-                   ["card" native-card-in-name]
-                   ["dataset" mbql-model]
+          (is (= #{["card" native-card-in-name]
                    ["dataset" native-model-in-name]
                    ["action" http-action]
 
