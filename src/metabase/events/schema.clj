@@ -34,20 +34,20 @@
 
 ;; card events
 
-(let [view-only      (mc/schema
-                      [:map {:closed true}
-                       [:context [:enum :dashboard :question :collection]]
-                       [:user-id [:maybe pos-int?]]
-                       [:object-id [:maybe pos-int?]]])
-      default-schema (mc/schema
+(let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  [:maybe pos-int?]]
                        [:object   [:fn #(t2/instance-of? :model/Card %)]]])]
   (def ^:private card-events-schemas
     {:event/card-create default-schema
-     :event/card-read   view-only
      :event/card-update default-schema
      :event/card-delete default-schema
+     :event/card-read   (mc/schema
+                         [:map {:closed true}
+                          ;; context is deliberately coupled to view-log's context
+                          [:context [:and :some ::view-log/context]]
+                          [:user-id [:maybe pos-int?]]
+                          [:object-id [:maybe pos-int?]]])
      :event/card-query  [:map {:closed true}
                          [:card-id pos-int?]
                          [:user-id [:maybe pos-int?]]
