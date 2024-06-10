@@ -141,21 +141,33 @@
 
 (deftest run-sync-operation-record-failed-task-history-test
   (let [process-name (mt/random-name)
-        step-name    (mt/random-name)
+        step-name-1  (mt/random-name)
+        step-name-2  (mt/random-name)
         mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
-        sync-steps   [(sync-util/create-sync-step step-name
-                                                  (fn [_] (ex-info "Sorry" {})))]]
+        sync-steps   [(sync-util/create-sync-step step-name-1
+                                                  (fn [_]
+                                                    (throw (ex-info "Sorry" {}))))
+                      (sync-util/create-sync-step step-name-2
+                                                  (fn [_]
+                                                    (sync-util/with-error-handling "fail"
+                                                      (throw (ex-info "Sorry" {})))))]]
     (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
     (testing "operation history"
       (is (= (merge default-task-history {:task process-name, :task_details nil})
              (fetch-task-history-row process-name))))
     (testing "step history should has status is failed"
       (is (=? (merge default-task-history
-                     {:task step-name
+                     {:task step-name-1
                       :task_details {:exception (mt/malli=? :string)
                                      :stacktrace (mt/malli=? [:sequential :string])}
                       :status :failed})
-             (fetch-task-history-row step-name))))))
+              (fetch-task-history-row step-name-1)))
+      (is (=? (merge default-task-history
+                     {:task step-name-2
+                      :task_details {:exception (mt/malli=? :string)
+                                     :stacktrace (mt/malli=? [:sequential :string])}
+                      :status :failed})
+              (fetch-task-history-row step-name-2))))))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]
   (let [start (t/zoned-date-time)]

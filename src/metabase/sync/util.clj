@@ -464,7 +464,9 @@
                          (task-history/with-task-history {:task            step-name
                                                           :db_id           (u/the-id database)
                                                           :on-success-info (fn [result]
-                                                                             {:task_details (dissoc result :start-time :end-time :log-summary-fn)})}
+                                                                             (if (instance? Throwable result)
+                                                                               (throw result)
+                                                                               {:task_details (dissoc result :start-time :end-time :log-summary-fn)}))}
                            (apply sync-fn database args))
                          (catch Throwable e
                            (if *log-exceptions-and-continue?*
