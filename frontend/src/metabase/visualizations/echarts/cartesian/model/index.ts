@@ -14,8 +14,7 @@ import {
   getCardsSeriesModels,
   getComboChartDataDensity,
   getDimensionModel,
-  getSeriesLabelsFormatters,
-  getStackedLabelsFormatters,
+  getFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   CartesianChartModel,
@@ -137,28 +136,22 @@ export const getCartesianChartModel = (
     showWarning,
   );
 
-  const { formatters: seriesLabelsFormatters, compactSeriesDataKeys } =
-    getSeriesLabelsFormatters(
-      seriesModels,
-      stackModels,
-      scaledDataset,
-      settings,
-      renderingContext,
-    );
-
-  const { formatters: stackedLabelsFormatters, compactStackedSeriesDataKeys } =
-    getStackedLabelsFormatters(
-      seriesModels,
-      stackModels,
-      scaledDataset,
-      settings,
-      renderingContext,
-    );
+  const {
+    seriesLabelsFormatters,
+    stackedLabelsFormatters,
+    isCompactFormatting,
+  } = getFormatters(
+    seriesModels,
+    stackModels,
+    scaledDataset,
+    settings,
+    renderingContext,
+  );
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,
     stackModels,
-    transformedDataset,
+    dataset,
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     settings,
@@ -167,12 +160,13 @@ export const getCartesianChartModel = (
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
     seriesModels,
+    dataset,
     transformedDataset,
     settings,
     columnByDataKey,
     true,
     stackModels,
-    [...compactSeriesDataKeys, ...compactStackedSeriesDataKeys],
+    isCompactFormatting,
     renderingContext,
   );
 

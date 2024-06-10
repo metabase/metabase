@@ -7,6 +7,7 @@ import {
   saveDashboard,
   sidebar,
   getDashboardCard,
+  popover,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -97,7 +98,7 @@ describe("issue 22788", () => {
 
 function addFilterAndAssert() {
   filterWidget().click();
-  cy.findByPlaceholderText("Enter some text").type("Gizmo{enter}");
+  popover().findByText("Gizmo").click();
   cy.button("Add filter").click();
 
   cy.findAllByText("Gizmo");
