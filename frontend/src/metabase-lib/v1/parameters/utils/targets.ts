@@ -9,12 +9,15 @@ import type {
   ConcreteFieldReference,
   FieldReference,
   NativeParameterDimensionTarget,
+  Parameter,
   ParameterTarget,
   ParameterTextTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
+
+import { columnFilterForParameter } from "./filters";
 
 export function isParameterVariableTarget(
   target: ParameterTarget,
@@ -40,8 +43,9 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
 // returns only real DB fields and not all mapped columns
 // for columns, use getMappingOptionByTarget
 export function getParameterTargetField(
-  target: ParameterTarget,
   question: Question,
+  parameter: Parameter,
+  target: ParameterTarget,
 ) {
   if (!isDimensionTarget(target)) {
     return null;
@@ -61,7 +65,7 @@ export function getParameterTargetField(
   }
 
   if (isConcreteFieldReference(fieldRef)) {
-    const [_, fieldIdOrName] = fieldRef;
+    const [_type, fieldIdOrName] = fieldRef;
     const fields = metadata.fieldsList();
     if (typeof fieldIdOrName === "number") {
       // performance optimization:
@@ -69,28 +73,16 @@ export function getParameterTargetField(
       return fields.find(field => field.id === fieldIdOrName);
     }
 
-    const fieldsWithName = fields.filter(
-      field => typeof field.id === "number" && field.name === fieldIdOrName,
+    const { query, stageIndex, columns } = getParameterColumns(
+      question,
+      parameter,
     );
-    if (fieldsWithName.length === 0) {
-      // performance optimization:
-      // if there are no matching fields, do not call MBQL lib
-      return null;
-    }
-    if (fieldsWithName.length === 1) {
-      // performance optimization:
-      // if there is exactly 1 field, assume that it's related to this query and do not call MBQL lib
-      return fieldsWithName[0];
-    }
-
-    const query = question.query();
-    const stageIndex = -1;
-    const columns = Lib.visibleColumns(query, stageIndex);
-
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
       // there is no way to find the correct field so pick the first one matching by name
-      return fieldsWithName[0];
+      return fields.find(
+        field => typeof field.id === "number" && field.name === fieldIdOrName,
+      );
     }
 
     const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
@@ -144,4 +136,24 @@ export function buildTemplateTagVariableTarget(
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
+}
+
+export function getParameterColumns(question: Question, parameter?: Parameter) {
+  // treat the dataset/model question like it is already composed so that we can apply
+  // dataset/model-specific metadata to the underlying dimension options
+  const query =
+    question.type() !== "question"
+      ? question.composeQuestionAdhoc().query()
+      : question.query();
+  const stageIndex = -1;
+  const availableColumns = Lib.filterableColumns(query, stageIndex);
+  const filteredColumns = parameter
+    ? availableColumns.filter(columnFilterForParameter(parameter))
+    : availableColumns;
+
+  return {
+    query,
+    stageIndex,
+    columns: filteredColumns,
+  };
 }

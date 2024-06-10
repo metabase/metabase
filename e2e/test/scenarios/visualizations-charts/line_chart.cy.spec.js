@@ -99,6 +99,24 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  it("should reset series settings when switching to line chart", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "area",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    openSeriesSettings("Count");
+    cy.icon("bar").click();
+
+    cy.findByTestId("viz-type-button").click();
+
+    cy.icon("line").click();
+
+    // should be a line chart
+    cartesianChartCircleWithColor("#509EE3");
+  });
+
   it("should be able to format data point values style independently on multi-series chart (metabase#13095)", () => {
     visitQuestionAdhoc({
       dataset_query: {

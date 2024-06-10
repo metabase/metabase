@@ -175,6 +175,8 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 You can only use the **URL** option for [custom destinations](..//dashboards/interactive.md#custom-destinations) on dashboards with static embedding. External URLs will open in a new tab or window.
 
+You can propagate filter values into the external URL, unless the filter is locked.
+
 ## Further reading
 
 - [Parameters for static embeds](./static-embedding-parameters.md).

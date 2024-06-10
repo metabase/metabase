@@ -107,7 +107,7 @@ const ChartTypeSidebar = ({
           const updatedSettings = visualization.onDisplayUpdate(
             newQuestion.settings(),
           );
-          newQuestion = newQuestion.updateSettings(updatedSettings);
+          newQuestion = newQuestion.setSettings(updatedSettings);
         }
 
         updateQuestion(newQuestion, {
