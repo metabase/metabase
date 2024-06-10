@@ -26,7 +26,7 @@ jobs:
             const match = pullRequestTitle.match(conventionalCommitRegex)
             if (match) {
               const { type, scope } = match.groups
-              return ['feat', 'fix', 'perf'].includes(type) && scope === 'sdk'
+              return ['feat', 'fix', 'perf', 'docs', 'style', 'refactor', 'test', 'build', 'ci'].includes(type) && scope === 'sdk'
             }
 
       - name: Checkout repository so `gh` CLI works
