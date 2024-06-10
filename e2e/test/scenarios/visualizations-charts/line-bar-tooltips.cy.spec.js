@@ -763,15 +763,15 @@ function setupDashboard(cardId, addedSeriesCardId) {
 }
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
-  cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
+  cartesianChartCircleWithColor(seriesColor).eq(index).trigger("mousemove");
 }
 
 function showTooltipForFirstBarInSeries(seriesColor) {
-  chartPathWithFillColor(seriesColor).realHover();
+  chartPathWithFillColor(seriesColor).trigger("mousemove");
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
-  chartPathWithFillColor(seriesColor).eq(index).realHover();
+  chartPathWithFillColor(seriesColor).eq(index).trigger("mousemove");
 }
 
 function testTooltipExcludesText(text) {
