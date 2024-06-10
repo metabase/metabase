@@ -221,9 +221,8 @@
     metabase.shared                #{metabase.shared.dashboards.constants
                                      metabase.shared.formatting.constants
                                      metabase.shared.formatting.date
-                                     metaba
-                                     metab(mt/with-test-helpers-set-global-values!
-                                            a)se.shared.models.visualization-settings
+                                     metabase.shared.formatting.number
+                                     metabase.shared.models.visualization-settings
                                      metabase.shared.parameters.parameters
                                      metabase.shared.util.currency
                                      metabase.shared.util.i18n
@@ -304,7 +303,7 @@
     metabase.util                  :any
     metabase.xrays                 :any}
 
-   ;; namespaces matching these patterns metabase.shared.f{:optional true}ormatting.numbers are excluded from the module linter. Since regex literals
+   ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
    ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.
    ;;
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
