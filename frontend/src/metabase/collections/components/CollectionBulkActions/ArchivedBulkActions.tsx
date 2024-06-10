@@ -3,10 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { BulkDeleteConfirmModal } from "metabase/archive/components/BulkDeleteConfirmModal";
-import {
-  canMoveItem,
-  isRootTrashCollection,
-} from "metabase/collections/utils";
+import { canMoveItem, isRootTrashCollection } from "metabase/collections/utils";
 import {
   BulkActionButton,
   BulkActionDangerButton,
