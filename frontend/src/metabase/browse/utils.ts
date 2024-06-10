@@ -9,7 +9,9 @@ import {
 } from "metabase/collections/utils";
 import { entityForObject } from "metabase/lib/schema";
 import type { IconName } from "metabase/ui";
-import type { CollectionEssentials, ModelResult } from "metabase-types/api";
+import type { CollectionEssentials } from "metabase-types/api";
+
+import type { FilterableModel } from "./types";
 
 export const getCollectionName = (collection: CollectionEssentials) => {
   if (isRootCollection(collection)) {
@@ -27,7 +29,7 @@ export const getCollectionIdForSorting = (collection: CollectionEssentials) => {
 export type AvailableModelFilters = Record<
   string,
   {
-    predicate: (value: ModelResult) => boolean;
+    predicate: (value: FilterableModel) => boolean;
     activeByDefault: boolean;
   }
 >;
@@ -41,18 +43,18 @@ export type ModelFilterControlsProps = {
  * or false if it is inactive */
 export type ActualModelFilters = Record<string, boolean>;
 
-export const filterModels = (
-  unfilteredModels: ModelResult[],
+export const filterModels = <T extends FilterableModel>(
+  unfilteredModels: T[] | undefined,
   actualModelFilters: ActualModelFilters,
   availableModelFilters: AvailableModelFilters,
-) => {
+): T[] => {
   return _.reduce(
     actualModelFilters,
     (acc, shouldFilterBeActive, filterName) =>
       shouldFilterBeActive
         ? acc.filter(availableModelFilters[filterName].predicate)
         : acc,
-    unfilteredModels,
+    unfilteredModels || [],
   );
 };
 

@@ -374,8 +374,8 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
     cy.findByLabelText("Add column").click();
 
     popover().findByText("Combine columns").click();
-    for (const column of columns) {
-      selectColumn(column);
+    for (const [index, column] of columns.entries()) {
+      selectColumn(index, column);
     }
 
     if (example) {
@@ -396,8 +396,8 @@ describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
     }
   }
 
-  function selectColumn(name: string) {
-    popover().findAllByText("Select a column...").first().click();
+  function selectColumn(index: number, name: string) {
+    popover().findAllByTestId("column-input").eq(index).click();
     popover().last().findByText(name).click();
   }
 

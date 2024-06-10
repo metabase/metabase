@@ -3,13 +3,13 @@ body {
 }
 
 .EmbedFrame {
-  background-color: white;
+  background-color: var(--mb-color-bg-dashboard);
 }
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-dark);
-  background-color: white;
+  background-color: var(--mb-color-bg-dashboard);
 }
 
 .ThemeNight.EmbedFrame {

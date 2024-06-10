@@ -25,10 +25,13 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
+export type TemporalUnitParameterType = "temporal-unit";
+
 export type ParameterType =
   | StringParameterType
   | NumberParameterType
-  | DateParameterType;
+  | DateParameterType
+  | TemporalUnitParameterType;
 
 export type ParameterId = string;
 

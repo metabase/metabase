@@ -39,6 +39,13 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-success: ${color("success")};
       --mb-color-summarize: ${color("summarize")};
       --mb-color-text-white: ${color("text-white")};
+
+      /*
+        Theming-specific CSS variables.
+        These CSS variables are not part of the core design system colors.
+      **/
+      --mb-color-bg-dashboard: var(--mb-color-bg-white);
+      --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}

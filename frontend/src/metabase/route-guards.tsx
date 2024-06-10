@@ -47,7 +47,8 @@ const UserIsNotAuthenticated = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsNotAuthenticated",
   redirectPath: () => getRedirectUrl(),
   allowRedirectBack: false,
-  authenticatingSelector: state => state.auth.loginPending,
+  authenticatingSelector: state =>
+    state.auth.loginPending || !state.auth.redirect,
   authenticatedSelector: state => !state.currentUser,
   redirectAction: routerActions.replace,
 });
