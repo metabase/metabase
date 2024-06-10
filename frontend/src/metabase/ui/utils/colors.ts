@@ -43,6 +43,7 @@ const CUSTOM_COLORS = [
   "text-light",
   "text-medium",
   "text-white",
+  "warning",
   "white",
 ];
 

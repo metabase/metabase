@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const FormContainer = styled.div`
@@ -24,7 +24,7 @@ export const FieldSettingsButtonsContainer = styled.div`
 
 export const WarningBanner = styled.div`
   padding: ${space(2)};
-  border: 1px solid ${() => color("warning")};
+  border: 1px solid var(--mb-color-warning);
   border-radius: ${space(1)};
   background: ${() => alpha("warning", 0.1)};
   line-height: 1.25rem;

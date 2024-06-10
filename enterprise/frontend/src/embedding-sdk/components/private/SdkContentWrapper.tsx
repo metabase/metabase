@@ -62,6 +62,7 @@ const SdkContentWrapperInner = styled.div<
   --mb-color-text-white: ${({ theme }) => theme.fn.themeColor("text-white")};
   --mb-color-success: ${({ theme }) => theme.fn.themeColor("success")};
   --mb-color-summarize: ${({ theme }) => theme.fn.themeColor("summarize")};
+  --mb-color-warning: ${({ theme }) => theme.fn.themeColor("warning")};
 
   /**
     Theming-specific CSS variables.

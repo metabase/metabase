@@ -39,6 +39,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-success: ${color("success")};
       --mb-color-summarize: ${color("summarize")};
       --mb-color-text-white: ${color("text-white")};
+      --mb-color-warning: ${color("warning")};
 
       /*
         Theming-specific CSS variables.
