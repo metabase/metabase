@@ -189,7 +189,13 @@ module.exports = {
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
-        "@typescript-eslint/consistent-type-imports": "error",
+        "@typescript-eslint/consistent-type-imports": [
+          "error",
+          {
+            fixStyle: "inline-type-imports",
+          },
+        ],
+        "@typescript-eslint/no-import-type-side-effects": "error",
         "@typescript-eslint/no-unused-vars": [
           "error",
           {

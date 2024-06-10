@@ -92,13 +92,6 @@ jobs:
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      # TODO: Remove this step after the build utils script is merged to master
-      - name: Upload release utils script, so it can be used later on when checking out `master` branch
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-util
-          path: ./bin/embedding-sdk/release_utils.bash
-
       - name: Update changelog
         run: |
           yarn embedding-sdk:generate-changelog -o changelog-diff
@@ -171,13 +164,6 @@ jobs:
           git config --global user.email "github-automation@metabase.com"
           git config --global user.name "Metabase Automation"
 
-      # TODO: Remove this step after the build utils script is merged to master
-      - name: Download release utils script
-        uses: actions/download-artifact@v4
-        with:
-          name: release-util
-          path: ./bin/embedding-sdk/
-
       - name: Update readme
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
@@ -196,7 +182,7 @@ jobs:
           cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
           mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
-      - name: Create a PR updating readme + published version, and changelog
+      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
@@ -214,11 +200,23 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
-      - name: Edit PR adding useful information
+      - name: Edit PR adding useful information (using Metabase bot app)
         run: |
           gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Auto approve PR (using GitHub Actions account)
+        run: |
+          gh pr review --approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        run: |
+          gh pr merge --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4

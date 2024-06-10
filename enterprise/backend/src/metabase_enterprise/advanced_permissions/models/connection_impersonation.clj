@@ -3,7 +3,7 @@
   certain permission groups when running queries."
   (:require
    [medley.core :as m]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.log :as log]
@@ -28,7 +28,7 @@
                                    {:where [:and
                                             (when db-id [:= :db_id db-id])
                                             (when group-id [:= :group_id group-id])
-                                            (when-not audit-db? [:not [:= :db_id config/audit-db-id]])]})]
+                                            (when-not audit-db? [:not [:= :db_id audit/audit-db-id]])]})]
      (reduce (fn [acc {:keys [db_id group_id]}]
                 (assoc-in acc [group_id db_id :view-data] :impersonated))
              {}
