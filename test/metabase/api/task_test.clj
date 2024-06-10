@@ -86,13 +86,13 @@
         (is (= {:total 4, :limit 2, :offset 0
                 :data  (map (fn [{:keys [task]}]
                               (assoc default-task-history :task task))
-                            [task-hist-4 task-hist-3])}
+                            [task-hist-1 task-hist-2])}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 "task/" :limit 2 :offset 0))))
         (is (= {:total 4, :limit 2, :offset 2
                 :data  (map (fn [{:keys [task]}]
                               (assoc default-task-history :task task))
-                            [task-hist-2 task-hist-1])}
+                            [task-hist-3 task-hist-4])}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 "task/" :limit 2 :offset 2))))))))
 
