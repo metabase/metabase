@@ -829,11 +829,11 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting uploads-enabled
   (deferred-tru "Whether or not uploads are enabled")
   :deprecated "0.50.0"
-  :visibility :authenticated
+  :visibility :internal
   :export?    false
   :type       :boolean
   :default    false
-  :getter     (fn []  (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead"))
+  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-database-id
@@ -842,7 +842,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    false
   :type       :integer
-  :getter     (fn []  (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead"))
+  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-schema-name
@@ -851,7 +851,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    false
   :type       :string
-  :getter     (fn []  (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead"))
+  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
 
 (defsetting uploads-table-prefix
@@ -860,7 +860,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    false
   :type       :string
-  :getter     (fn []  (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead"))
+  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
   :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
