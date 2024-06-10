@@ -107,7 +107,7 @@
   (mt/with-temp
     [:model/Collection {coll-id-a :id} {:name "great grandparent coll"}
      :model/Collection {coll-id-b :id} {:name "grandparent coll" :location (->location coll-id-a)}
-     :model/Collection {coll-id-c :id} {:name "parent coll" :location (->location coll-id-a coll-id-b)}
+     :model/Collection {coll-id-c :id} {:name "parent coll" :location (->location coll-id-a coll-id-b) :authority_level :official}
      :model/Collection {coll-id-d :id} {:name "record scratch, yep that's me coll" :location (->location coll-id-a coll-id-b coll-id-c)}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection coll-id-d :view)
     (is (= [{:id coll-id-d
@@ -115,7 +115,7 @@
              :can_write true
              :name "record scratch, yep that's me coll"
              :effective_location (->location coll-id-a coll-id-b coll-id-c)
-             :parent_collection {:id coll-id-c, :name "parent coll", :authority_level nil}
+             :parent_collection {:id coll-id-c, :name "parent coll", :authority_level :official}
              :timestamp String
              :authority_level nil
              :model :collection}]

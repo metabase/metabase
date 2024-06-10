@@ -155,18 +155,11 @@
                [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
     :order-by [[:id :desc]]}))
 
-(defn- str-or-kw-enum [& kw-or-strs]
-  (let [values (mapcat #(cond (keyword? %) [% (u/qualified-name %)]
-                              string? [(keyword %) %]
-                              :else (throw (ex-info "Expected string or keyword" {:value %})))
-                       kw-or-strs)]
-    (into [:enum] values)))
-
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
   (mc/schema
-   [:and {:registry {::official [:maybe (str-or-kw-enum "official")]
-                     ::verified [:maybe (str-or-kw-enum "verified")]
+   [:and {:registry {::official [:maybe [:enum :official "official"]]
+                     ::verified [:maybe [:enum :verified "verified"]]
                      ::pc [:map
                            [:id [:or [:int {:min 1}] [:= "root"]]]
                            [:name :string]
