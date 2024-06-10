@@ -854,8 +854,9 @@ export function formatDateTimeRangeWithUnit(
   }
 
   const formatDate = (date: Moment, formatStr: string) => {
-    const separator = options.date_separator as string;
-    formatStr = formatStr.replace(",", separator);
+    if (options.date_separator) {
+      formatStr = formatStr.replace(",", options.date_separator);
+    }
     // month format is configurable, so we need to insert it after lookup
     return date.format(
       formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat),
