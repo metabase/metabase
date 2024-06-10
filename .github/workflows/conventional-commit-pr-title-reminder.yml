@@ -29,10 +29,15 @@ jobs:
               return ['feat', 'fix', 'perf'].includes(type) && scope === 'sdk'
             }
 
+      - name: Checkout repository so `gh` CLI works
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
       - name: Remind PR authors to use conventional commit in the title
         if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
         run: |
-          gh pr pr comment -b '@${{ github.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
+          gh pr comment -b '@${{ github.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 
           Here are all the supported types that will be shown in the changelog:
           - feat
@@ -45,3 +50,5 @@ jobs:
           - `feat(sdk): Add interactive dashboard component`
           - `feat(sdk): Support theming pie chart`
           - `fix(sdk): Fix static dashboard crash`'
+        env:
+          GH_TOKEN: ${{ github.token }}
