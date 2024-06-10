@@ -8,6 +8,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
+import { DIMENSIONS } from "../constants";
 import type { PieChartFormatters } from "../format";
 import type { PieChartModel, PieSlice } from "../model/types";
 
@@ -46,11 +47,19 @@ function getTotalGraphicOption(
   return graphicOption;
 }
 
+function getRadiusOption(sideLength: number) {
+  const outerRadius = sideLength / 2;
+  const innerRadius = outerRadius * DIMENSIONS.slice.innerRadiusRatio;
+
+  return [innerRadius, outerRadius];
+}
+
 export function getPieChartOption(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  sideLength: number,
 ): EChartsOption {
   // "Show total" setting
   const graphicOption = settings["pie.show_total"]
@@ -76,6 +85,21 @@ export function getPieChartOption(
       "chart",
     );
   };
+
+  // Sizing
+  const innerSideLength = Math.min(
+    sideLength - DIMENSIONS.padding.side,
+    DIMENSIONS.maxSideLength,
+  );
+  seriesOption.radius = getRadiusOption(innerSideLength);
+  seriesOption.itemStyle = {
+    borderWidth:
+      (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion,
+  };
+  seriesOption.label.fontSize = Math.max(
+    DIMENSIONS.slice.maxFontSize * (innerSideLength / DIMENSIONS.maxSideLength),
+    DIMENSIONS.slice.minFontSize,
+  );
 
   return {
     animation: false, // TODO when implementing the dynamic pie chart, use animations for opacity transitions, but disable initial animation

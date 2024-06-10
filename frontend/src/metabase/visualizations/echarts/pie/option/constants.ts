@@ -1,12 +1,9 @@
 import type { RegisteredSeriesOption } from "echarts";
 import { t } from "ttag";
 
-import { DIMENSIONS } from "../constants";
-
 export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   type: "sunburst",
   sort: undefined,
-  radius: [DIMENSIONS.innerRadius, DIMENSIONS.outerRadius],
   label: {
     rotate: 0,
     overflow: "none",
@@ -15,9 +12,6 @@ export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   },
   labelLayout: {
     hideOverlap: true,
-  },
-  itemStyle: {
-    borderWidth: DIMENSIONS.slice.borderWidth,
   },
 };
 
