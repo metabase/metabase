@@ -14,9 +14,24 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Check if the PR title is already following Conventional Commits style
+        uses: actions/github-script@v7
+        id: is-conventional-commit
+        with:
+          result-encoding: string
+          script: | # js
+            const pullRequestTitle = context.payload.pull_request.title
+            const conventionalCommitRegex = /^(?<type>\w+)\((?<scope>\w+)\):/
+            const match = pullRequestTitle.match(conventionalCommitRegex)
+            if (match) {
+              const { type, scope } = match.groups
+              return ['feat', 'fix', 'perf'].includes(type) && scope === 'sdk'
+            }
+
       - name: Remind PR authors to use conventional commit in the title
+        if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
         run: |
-          gh pr pr comment -b '@{{ github.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
+          gh pr pr comment -b '@${{ github.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 
           Here are all the supported types that will be shown in the changelog:
           - feat
