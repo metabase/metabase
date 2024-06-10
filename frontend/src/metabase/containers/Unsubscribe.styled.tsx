@@ -30,7 +30,6 @@ export const LayoutIllustration = styled.div<{
   left: 0;
   width: 100%;
   height: 100%;
-  background-size: ;
   filter: ${({ isDefault }) =>
     isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
   background-image: ${({ backgroundImageSrc }) =>
@@ -45,8 +44,8 @@ export const LayoutCard = styled.div`
   width: 100%;
   margin-top: 1.5rem;
   padding: 2.5rem 1.5rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 15px ${color("shadow")};
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 1px 15px var(--mb-color-shadow);
   border-radius: 6px;
   min-height: 20rem;
   min-width: 35rem;
@@ -64,6 +63,6 @@ export const LayoutCard = styled.div`
 export const CheckmarkIcon = styled(Icon)`
   border-radius: 100%;
   padding: 1rem;
-  color: ${color("brand")};
-  background: ${alpha(color("brand"), 0.3)};
+  color: var(--mb-color-brand);
+  background: ${() => alpha(color("brand"), 0.3)};
 `;

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -368,7 +369,7 @@
     (when (seq current-user-perms)
       (-> (base-query-for-model model search-ctx)
           (sql.helpers/where [:and
-                              [:not [:= (table-column :db_id) perms/audit-db-id]]
+                              [:not [:= (table-column :db_id) audit/audit-db-id]]
                               [:= (table-column :active) true]
                               [:= (table-column :visibility_type) nil]])
           (add-table-db-id-clause table-db-id)

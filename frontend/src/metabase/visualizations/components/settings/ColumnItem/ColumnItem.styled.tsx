@@ -15,9 +15,9 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
   overflow: hidden;
   display: flex;
   align-items: center;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
 
   &.dragging {
     cursor: grabbing;
@@ -32,7 +32,7 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     cursor: grab;
     &:hover {
       ${ColumnItemDragHandle} {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     }
     `}

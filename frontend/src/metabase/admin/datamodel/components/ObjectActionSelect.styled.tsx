@@ -10,8 +10,8 @@ export const ActionLink = styled(Link)`
   text-decoration: none;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
   }
 `;
 
@@ -19,6 +19,6 @@ export const TriggerIconContainer = styled.span`
   color: ${color("text-light")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

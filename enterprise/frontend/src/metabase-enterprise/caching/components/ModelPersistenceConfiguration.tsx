@@ -4,6 +4,7 @@ import { c, t } from "ttag";
 
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
 import { useSetting } from "metabase/common/hooks";
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,14 +17,46 @@ import {
 import { PersistedModelsApi } from "metabase/services";
 import { Stack, Switch, Text } from "metabase/ui";
 
+const modelCachingOptions = [
+  {
+    value: "0 0 0/1 * * ? *",
+    name: t`Hour`,
+  },
+  {
+    value: "0 0 0/2 * * ? *",
+    name: t`2 hours`,
+  },
+  {
+    value: "0 0 0/3 * * ? *",
+    name: t`3 hours`,
+  },
+  {
+    value: "0 0 0/6 * * ? *",
+    name: t`6 hours`,
+  },
+  {
+    value: "0 0 0/12 * * ? *",
+    name: t`12 hours`,
+  },
+  {
+    value: "0 0 0 ? * * *",
+    name: t`24 hours`,
+  },
+  {
+    value: "custom",
+    name: t`Custom…`,
+  },
+];
+
 export const ModelPersistenceConfiguration = () => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const persistenceEnabledInAPI = useSetting("persisted-models-enabled");
 
-  const [persistenceEnabled, setPersistenceEnabled] = useState(false);
+  const modelPersistenceEnabledInAPI = useSetting("persisted-models-enabled");
+
+  const [modelPersistenceEnabled, setModelPersistenceEnabled] = useState(false);
   useEffect(() => {
-    setPersistenceEnabled(persistenceEnabledInAPI);
-  }, [persistenceEnabledInAPI]);
+    setModelPersistenceEnabled(modelPersistenceEnabledInAPI);
+  }, [modelPersistenceEnabledInAPI]);
 
   const modelCachingSchedule = useSetting(
     "persisted-model-refresh-cron-schedule",
@@ -31,36 +64,7 @@ export const ModelPersistenceConfiguration = () => {
 
   const modelCachingSetting = {
     value: modelCachingSchedule,
-    options: [
-      {
-        value: "0 0 0/1 * * ? *",
-        name: t`Hour`,
-      },
-      {
-        value: "0 0 0/2 * * ? *",
-        name: t`2 hours`,
-      },
-      {
-        value: "0 0 0/3 * * ? *",
-        name: t`3 hours`,
-      },
-      {
-        value: "0 0 0/6 * * ? *",
-        name: t`6 hours`,
-      },
-      {
-        value: "0 0 0/12 * * ? *",
-        name: t`12 hours`,
-      },
-      {
-        value: "0 0 0 ? * * *",
-        name: t`24 hours`,
-      },
-      {
-        value: "custom",
-        name: t`Custom…`,
-      },
-    ],
+    options: modelCachingOptions,
   };
   const dispatch = useDispatch();
 
@@ -118,13 +122,14 @@ export const ModelPersistenceConfiguration = () => {
   const onSwitchChanged = useCallback<ChangeEventHandler<HTMLInputElement>>(
     async e => {
       const shouldEnable = e.target.checked;
-      setPersistenceEnabled(shouldEnable);
+      setModelPersistenceEnabled(shouldEnable);
       const promise = shouldEnable
         ? PersistedModelsApi.enablePersistence()
         : PersistedModelsApi.disablePersistence();
       await resolveWithToasts([promise]);
+      dispatch(refreshSiteSettings({}));
     },
-    [resolveWithToasts, setPersistenceEnabled],
+    [resolveWithToasts, setModelPersistenceEnabled, dispatch],
   );
 
   return (
@@ -144,23 +149,30 @@ export const ModelPersistenceConfiguration = () => {
               {" "}
               <ExternalLink
                 key="model-caching-link"
-                href={MetabaseSettings.docsUrl("data-modeling/models")}
+                href={MetabaseSettings.docsUrl(
+                  "data-modeling/model-persistence",
+                )}
               >{t`Learn more`}</ExternalLink>
             </>
           )}
         </p>
-        <Switch
-          mt="sm"
-          label={
-            <Text fw="bold">
-              {persistenceEnabled ? t`Enabled` : t`Disabled`}
-            </Text>
-          }
-          onChange={onSwitchChanged}
-          checked={persistenceEnabled}
-        />
+        <DelayedLoadingAndErrorWrapper
+          error={null}
+          loading={modelPersistenceEnabled === undefined}
+        >
+          <Switch
+            mt="sm"
+            label={
+              <Text fw="bold">
+                {modelPersistenceEnabled ? t`Enabled` : t`Disabled`}
+              </Text>
+            }
+            onChange={onSwitchChanged}
+            checked={modelPersistenceEnabled}
+          />
+        </DelayedLoadingAndErrorWrapper>
       </div>
-      {persistenceEnabled && (
+      {modelPersistenceEnabled && (
         <div>
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}

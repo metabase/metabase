@@ -124,7 +124,10 @@
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
                 3000
-                10000))
+                10000)
+  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
+        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
+        as the connections via tunnels have more overhead than connections without.")
 
 (defn- connection-error? [^Throwable throwable]
   (and (some? throwable)

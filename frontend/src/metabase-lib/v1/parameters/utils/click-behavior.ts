@@ -16,6 +16,7 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/v1/parameters/utils/filters";
+import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -142,11 +143,9 @@ export function getTargetsForQuestion(question: Question): Target[] {
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
-  const query = question.query();
-  const stageIndex = -1;
-  const visibleColumns = Lib.visibleColumns(query, stageIndex);
+  const { query, stageIndex, columns } = getParameterColumns(question);
 
-  return visibleColumns.map(targetColumn => {
+  return columns.map(targetColumn => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
       Lib.legacyRef(query, stageIndex, targetColumn),
@@ -168,7 +167,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
           );
         },
         parameter: parameter =>
-          columnFilterForParameter(parameter)(targetColumn),
+          columnFilterForParameter(query, stageIndex, parameter)(targetColumn),
         userAttribute: () => Lib.isString(targetColumn),
       },
     };

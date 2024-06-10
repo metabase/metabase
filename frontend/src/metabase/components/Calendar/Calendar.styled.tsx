@@ -35,7 +35,7 @@ export const CalendarDay = styled.div<CalendarDayProps>`
   ${({ primaryColor, isSelectedStart, isSelectedEnd }) =>
     (isSelectedStart || isSelectedEnd) &&
     css`
-      color: ${color("white")} !important;
+      color: var(--mb-color-text-white) !important;
       background-color: ${primaryColor};
       z-index: 1;
     `}
@@ -45,6 +45,6 @@ export const CalendarIconContainer = styled.div`
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

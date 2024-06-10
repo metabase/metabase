@@ -8,7 +8,7 @@ export const TextLink = styled(Link)`
   color: ${color("text-dark")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -17,8 +17,8 @@ export const CardLink = styled(TextLink)`
   justify-content: center;
   align-items: center;
   padding: 1.25rem;
-  background-color: ${color("white")};
-  box-shadow: 0 3px 10px ${color("shadow")};
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 3px 10px var(--mb-color-shadow);
   border-radius: 6px;
 `;
 

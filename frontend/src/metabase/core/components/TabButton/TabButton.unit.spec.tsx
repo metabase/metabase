@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon } from "__support__/ui";
+import { getIcon, renderWithProviders } from "__support__/ui";
 
 import { TabRow } from "../TabRow";
 
@@ -13,7 +13,7 @@ function setup(props?: Partial<RenameableTabButtonProps>) {
   const onRename = jest.fn();
   const value = "some_value";
 
-  render(
+  renderWithProviders(
     <TabRow>
       <TabButton.Renameable
         label="Tab 1"

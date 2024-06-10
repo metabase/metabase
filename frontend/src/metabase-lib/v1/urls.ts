@@ -15,14 +15,12 @@ type UrlBuilderOpts = {
   query?: Record<string, any>;
   includeDisplayIsLocked?: boolean;
   creationType?: string;
-  clean?: boolean;
 };
 
 export function getUrl(
   question: Question,
   {
     originalQuestion,
-    clean = true,
     query,
     includeDisplayIsLocked,
     creationType,
@@ -36,7 +34,6 @@ export function getUrl(
   ) {
     return Urls.question(null, {
       hash: question._serializeForUrl({
-        clean,
         includeDisplayIsLocked,
         creationType,
       }),
@@ -51,23 +48,29 @@ export function getUrlWithParameters(
   question: Question,
   parameters: ParameterWithTarget[],
   parameterValues: Record<ParameterId, ParameterValue>,
-  { objectId, clean }: { objectId?: string | number; clean?: boolean } = {},
+  { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  if (parameters.length === 0 && objectId == null) {
+    return getUrl(question, { includeDisplayIsLocked });
+  }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
     let questionWithParameters = question.setParameters(parameters);
 
     if (isEditable) {
+      // treat the dataset/model question like it is already composed so that we can apply
+      // dataset/model-specific metadata to the underlying dimension options
+      questionWithParameters =
+        question.type() !== "question"
+          ? question.composeQuestionAdhoc().setParameters(parameters)
+          : questionWithParameters;
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
 
       return getUrl(questionWithParameters, {
-        clean,
         originalQuestion: question,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },
@@ -76,7 +79,6 @@ export function getUrlWithParameters(
 
     const query = getParameterValuesBySlug(parameters, parameterValues);
     return getUrl(questionWithParameters.markDirty(), {
-      clean,
       query,
       includeDisplayIsLocked,
     });
@@ -84,7 +86,6 @@ export function getUrlWithParameters(
 
   const query = question.legacyQuery() as NativeQuery;
   return getUrl(question, {
-    clean,
     query: remapParameterValuesToTemplateTags(
       query.templateTags(),
       parameters,

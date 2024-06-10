@@ -33,6 +33,7 @@ import {
   getDefaultLegendIsReversed,
   getDefaultShowDataLabels,
   getDefaultDataLabelsFrequency,
+  getDefaultDataLabelsFormatting,
   getDefaultIsAutoSplitEnabled,
   getDefaultColumns,
   getDefaultDimensionFilter,
@@ -369,7 +370,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     props: {
       options: [
         { name: t`Total`, value: "total" },
-        { name: t`Insides`, value: "series" },
+        { name: t`Segments`, value: "series" },
         { name: t`Both`, value: "all" },
       ],
     },
@@ -390,7 +391,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
         { name: t`Full`, value: "full" },
       ],
     },
-    default: "auto",
+    default: getDefaultDataLabelsFormatting(),
   },
 };
 

@@ -9,7 +9,7 @@ export const Container = styled.div`
   flex-wrap: no-wrap;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
   padding: ${space(1)} ${space(2)} ${space(2)} ${space(2)};
 `;
 
@@ -26,7 +26,7 @@ export const ToggleButton = styled(Button)<ToggleButtonProps>`
   font-weight: normal;
 
   &:hover {
-    color: ${props => `${props.primaryColor || color("brand")}`};
+    color: ${props => `${props.primaryColor || "var(--mb-color-brand)"}`};
     background: none;
   }
 `;

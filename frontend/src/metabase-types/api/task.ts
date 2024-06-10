@@ -15,3 +15,35 @@ export interface Task {
 export type ListTasksRequest = PaginationRequest;
 
 export type ListTasksResponse = { data: Task[] } & PaginationResponse;
+
+type Trigger = {
+  description: string | null;
+  schedule: string;
+  timezone: string;
+  key: string;
+  "previous-fire-time": string | null;
+  "start-time": string;
+  "misfire-instruction": string;
+  "end-time": string | null;
+  state: string;
+  priority: number;
+  "next-fire-time": string;
+  "may-fire-again?": boolean;
+  "final-fire-time": string | null;
+  data: Record<string, unknown>;
+};
+
+type Job = {
+  key: string;
+  class: string;
+  description: string;
+  "concurrent-execution-disallowed?": boolean;
+  "durable?": boolean;
+  "requests-recovery?": boolean;
+  triggers: Trigger[];
+};
+
+export type TaskInfo = {
+  scheduler: string[];
+  jobs: Job[];
+};

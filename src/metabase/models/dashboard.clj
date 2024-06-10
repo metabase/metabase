@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
@@ -59,9 +60,9 @@
    (if (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (perms/default-audit-collection)))
+        (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (perms/default-audit-collection))))
+        (= (:collection_id instance) (:id (audit/default-audit-collection))))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
@@ -478,14 +479,15 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        Card
-                        (-> card
-                            (update :result_metadata #(or % (-> card
-                                                                :dataset_query
-                                                                result-metadata-for-query)))
-                            (dissoc :id))))]
+                       Card
+                       (-> card
+                           (update :result_metadata #(or % (-> card
+                                                               :dataset_query
+                                                               result-metadata-for-query)))
+                            ;; Xrays populate this in their transient cards
+                           (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]

@@ -54,5 +54,5 @@ export const SkeletonTooltipIconContainer = styled.div`
   bottom: -0.5rem;
   padding: 0.125rem;
   border-radius: 0.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 `;

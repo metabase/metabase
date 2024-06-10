@@ -18,7 +18,7 @@ export const EmptyStateBody = styled.div`
 `;
 
 export const EmptyStateChart = styled.div`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   margin-bottom: -1rem;
 `;
 
@@ -34,7 +34,7 @@ export const EmptyStateTooltip = styled.div`
 
 export const EmptyStateTooltipIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 1rem;
   height: 1rem;
 `;
@@ -45,14 +45,14 @@ export const EmptyStateTooltipBody = styled.div`
 `;
 
 export const EmptyStateTooltipTitle = styled.div`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   font-weight: bold;
   margin-bottom: 0.25rem;
 `;
 
 export const EmptyStateTooltipDate = styled(DateTime)`
   display: block;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const EmptyStateThread = styled.div`
@@ -65,11 +65,11 @@ export const EmptyStateThreadLine = styled.div`
   margin: 0 0.5rem;
   width: 11.75rem;
   height: 1px;
-  background-color: ${alpha("brand", 0.2)};
+  background-color: ${() => alpha("brand", 0.2)};
 `;
 
 export const EmptyStateThreadIcon = styled(Icon)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 1rem;
   height: 1rem;
 `;
@@ -81,7 +81,7 @@ export const EmptyStateThreadIconContainer = styled.div`
   width: 2rem;
   height: 2rem;
   border-radius: 1rem;
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;
 
 export const EmptyStateMessage = styled.div`

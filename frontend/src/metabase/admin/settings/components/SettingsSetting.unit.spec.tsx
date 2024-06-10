@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { SettingsSetting } from "./SettingsSetting";
 
@@ -9,7 +9,7 @@ const SETTING = {
 };
 
 const setup = () => {
-  render(<SettingsSetting setting={SETTING} />);
+  renderWithProviders(<SettingsSetting setting={SETTING} />);
 };
 
 describe("SettingsSetting", () => {
@@ -24,7 +24,7 @@ describe("SettingsSetting", () => {
     setup();
 
     expect(screen.getByTestId("site-name-setting")).toHaveStyle(
-      "box-shadow: 0 0 0 1px #509EE3",
+      "box-shadow: 0 0 0 1px var(--mb-color-brand)",
     );
     window.location.hash = "";
   });

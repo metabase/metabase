@@ -21,10 +21,10 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
-import { Icon, Flex, type IconProps } from "metabase/ui";
-import type { ModelResult } from "metabase-types/api";
+import { Flex, Icon, type IconProps } from "metabase/ui";
 
 import { trackModelClick } from "../analytics";
+import type { ModelResult } from "../types";
 import { getCollectionName, getIcon } from "../utils";
 
 import {
@@ -245,8 +245,12 @@ const NameCell = ({
   icon: IconProps;
 }) => {
   const { id, name } = model;
+  const headingId = `model-${id}-heading`;
   return (
-    <ItemNameCell data-testid={`${testIdPrefix}-name`}>
+    <ItemNameCell
+      data-testid={`${testIdPrefix}-name`}
+      aria-labelledby={headingId}
+    >
       <ItemLink
         to={Urls.model({ id, name })}
         onClick={onClick}
@@ -262,7 +266,7 @@ const NameCell = ({
           color={color("brand")}
           style={{ flexShrink: 0 }}
         />
-        <EntityItem.Name name={model.name} variant="list" />
+        <EntityItem.Name name={model.name} variant="list" id={headingId} />
       </ItemLink>
     </ItemNameCell>
   );
@@ -272,7 +276,7 @@ const TableLoader = () => (
   <tr>
     <td colSpan={4}>
       <Flex justify="center" color="text-light">
-        {t`Loading...`}
+        {t`Loading…`}
       </Flex>
     </td>
   </tr>

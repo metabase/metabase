@@ -41,7 +41,7 @@ export const DataBucketListItemContainer = styled(SelectList.BaseItem as any)`
     ${DataBucketListItemIcon},
     ${DataBucketListItemTitle},
     ${DataBucketListItemDescription} {
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

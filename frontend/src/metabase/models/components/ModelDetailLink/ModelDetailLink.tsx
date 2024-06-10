@@ -4,7 +4,11 @@ import type { ButtonProps } from "metabase/core/components/Button";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
-import type { Card, CollectionItem } from "metabase-types/api";
+import type {
+  Card,
+  CollectionItem,
+  RecentCollectionItem,
+} from "metabase-types/api";
 
 type ModelCard = Card & { type: "model" };
 
@@ -21,7 +25,7 @@ type ModelCollectionItem = Omit<
 >;
 
 interface Props extends ButtonProps {
-  model: ModelCard | ModelCollectionItem;
+  model: ModelCard | ModelCollectionItem | RecentCollectionItem;
 }
 
 function ModelDetailLink({ model, ...props }: Props) {

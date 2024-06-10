@@ -34,6 +34,7 @@ import {
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
   isShowStackValuesValid,
+  getDefaultDataLabelsFormatting,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
@@ -200,6 +201,12 @@ export const computeStaticComboChartSettings = (
     "graph.show_stack_values",
     getDefaultShowStackValues(settings),
     isShowStackValuesValid(seriesDisplays, settings),
+  );
+
+  fillWithDefaultValue(
+    settings,
+    "graph.label_value_formatting",
+    getDefaultDataLabelsFormatting(),
   );
 
   fillWithDefaultValue(

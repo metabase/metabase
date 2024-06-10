@@ -48,11 +48,11 @@
 }
 
 .borderError {
-  border-color: var(--color-error) !important;
+  border-color: var(--mb-color-error) !important;
 }
 
 .borderSuccess {
-  border-color: var(--color-success) !important;
+  border-color: var(--mb-color-success) !important;
 }
 
 .borderBrand {

@@ -15,7 +15,7 @@ export const DangerZone = styled.div`
   ${Button.Root} {
     opacity: 0.4;
     background: var(--mb-color-bg-light);
-    border: 1px solid ${color("border")};
+    border: 1px solid var(--mb-color-border);
     color: ${color("text-dark")};
     transition: none;
   }
@@ -28,7 +28,7 @@ export const DangerZone = styled.div`
       opacity: 1;
       background-color: ${color("accent3")};
       border-color: ${color("accent3")};
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     }
   }
 `;

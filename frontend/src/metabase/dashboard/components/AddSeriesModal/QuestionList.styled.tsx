@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
 
 export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
   flex: 1;
@@ -19,7 +18,7 @@ export const QuestionListContainer = styled.ul`
 
 export const LoadMoreButton = styled.button`
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   cursor: pointer;
   display: flex;
   font-family: var(--mb-default-font-family);
@@ -43,7 +42,7 @@ export const SearchContainer = styled.div`
   flex-direction: row;
   align-items: center;
   flex: 0;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const SearchInput = styled(Input)`

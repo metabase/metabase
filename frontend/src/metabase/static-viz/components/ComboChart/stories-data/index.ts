@@ -25,6 +25,7 @@ import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
+import barMinHeightLimit from "./bar-min-height-limit.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
@@ -46,10 +47,13 @@ import barTwoDaysOfWeek from "./bar-two-days-of-week.json";
 import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 import breakoutNullAndEmptyString from "./breakout-null-and-empty-string.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
+import comboDataLabelsAutoCompactnessPropagatesFromLine from "./combo-data-labels-auto-compactness-propagates-from-line.json";
+import comboDataLabelsAutoCompactnessPropagatesFromTotals from "./combo-data-labels-auto-compactness-propagates-from-totals.json";
 import comboHistogram from "./combo-histogram.json";
 import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normalized.json";
 import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
+import customYAxisRangeWithColumnScaling from "./custom-y-axis-range-with-column-scaling.json";
 import dataLabelsUnderTrendGoalLines41280 from "./data-labels-under-trend-goal-lines-41280.json";
 import goalBetweenExtentAndChartBound from "./goal-between-extent-and-chart-bound.json";
 import goalLineDisabled from "./goal-line-disabled.json";
@@ -112,6 +116,7 @@ export const data = {
   lineShowDotsOn,
   lineShowDotsOff,
   lineCustomYAxisRangeEqualsExtents,
+  customYAxisRangeWithColumnScaling,
   lineFullyNullDimension37902,
   areaFullyNullDimension37902,
   barCorrectWidthWhenTwoYAxes,
@@ -208,4 +213,7 @@ export const data = {
   barStackedSeriesLabelsAndTotalsOrdinal,
   barStackedSeriesLabelsNormalizedAutoCompactness,
   barStackedLabelsNullVsZero,
+  barMinHeightLimit,
+  comboDataLabelsAutoCompactnessPropagatesFromLine,
+  comboDataLabelsAutoCompactnessPropagatesFromTotals,
 };

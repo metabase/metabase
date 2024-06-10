@@ -6,7 +6,6 @@ import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
-import { Box, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Config } from "metabase-types/api";
 
@@ -14,6 +13,10 @@ import { useResetToDefaultForm } from "../hooks/useResetToDefaultForm";
 
 import { ResetButtonContainer } from "./ResetButtonContainer";
 import { StrategyFormLauncher } from "./StrategyFormLauncher";
+import {
+  StrategyFormLauncherPanelBox,
+  StrategyFormLauncherPanelStack,
+} from "./StrategyFormLauncherPanel.styled";
 
 export const StrategyFormLauncherPanel = ({
   configs,
@@ -46,7 +49,7 @@ export const StrategyFormLauncherPanel = ({
 
   return (
     <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
-      <Box p="lg" style={{ borderBottom: `1px solid ${color("border")}` }}>
+      <StrategyFormLauncherPanelBox>
         <StrategyFormLauncher
           forId={rootId}
           title={t`Default policy`}
@@ -55,8 +58,8 @@ export const StrategyFormLauncherPanel = ({
           updateTargetId={updateTargetId}
           isFormDirty={isStrategyFormDirty}
         />
-      </Box>
-      <Stack p="lg" spacing="md">
+      </StrategyFormLauncherPanelBox>
+      <StrategyFormLauncherPanelStack>
         {databases?.map(db => (
           <StrategyFormLauncher
             forId={db.id}
@@ -68,7 +71,7 @@ export const StrategyFormLauncherPanel = ({
             key={`database_${db.id}`}
           />
         ))}
-      </Stack>
+      </StrategyFormLauncherPanelStack>
       <FormProvider
         initialValues={{}}
         onSubmit={resetAllToDefault}

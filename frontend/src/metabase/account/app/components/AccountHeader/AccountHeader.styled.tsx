@@ -14,8 +14,8 @@ export const AccountHeaderRoot = styled.div`
   justify-content: center;
   align-items: center;
   padding-top: ${space(1)};
-  border-bottom: 1px solid ${color("border")};
-  background-color: ${color("white")};
+  border-bottom: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-bg-white);
 
   ${breakpointMinSmall} {
     padding-top: ${space(2)};

@@ -34,7 +34,7 @@ export const getDarkAccentColors = (palette?: ColorPalette) => {
 
 export const getStatusColorRanges = () => {
   return [
-    [color("error"), color("white"), color("success")],
+    [color("error"), color("bg-white"), color("success")],
     [color("error"), color("warning"), color("success")],
   ];
 };

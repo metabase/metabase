@@ -9,7 +9,7 @@ interface PublicEmbedIconRootProps {
 
 export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
   ${({ theme, disabled }) => css`
-    color: ${theme.fn.themeColor("bg-medium")};
+    color: var(--mb-color-bg-medium);
 
     .innerFill {
       stroke: ${disabled
@@ -19,14 +19,14 @@ export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
     }
   `}
 
-  ${({ disabled, theme }) =>
+  ${({ disabled }) =>
     !disabled &&
     css`
       ${SharingPaneButtonContent}:hover & {
         color: var(--mb-color-bg-dark);
 
         .innerFill {
-          stroke: ${theme.fn.themeColor("brand")};
+          stroke: var(--mb-color-brand);
         }
       }
     `}

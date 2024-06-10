@@ -15,11 +15,11 @@ interface ChartSettingFieldPickerRootProps {
 export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRootProps>`
   display: flex;
   align-items: center;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   padding-right: 1rem;
   padding-left: 0.5rem;
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
 
   ${Triggerable.Trigger} {
     flex: 1;
@@ -51,7 +51,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   }
 
   ${SelectButton.Root}:disabled {
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
   }
 `;
 
@@ -75,7 +75,7 @@ export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

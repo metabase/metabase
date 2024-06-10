@@ -6,11 +6,11 @@ import { breakpointMinLarge } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled(ExternalLink)`
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
   display: flex;
   align-items: center;
   padding: 1rem;
-  border: 1px solid ${color("focus")};
+  border: 1px solid var(--mb-color-focus);
   border-radius: 0.5rem;
 
   ${breakpointMinLarge} {

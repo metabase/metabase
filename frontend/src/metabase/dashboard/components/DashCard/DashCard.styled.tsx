@@ -11,8 +11,8 @@ export interface DashCardRootProps {
 }
 
 const rootNightModeStyle = css`
-  border-color: ${color("bg-night")};
-  background-color: ${color("bg-night")};
+  border-color: var(--mb-color-bg-night);
+  background-color: var(--mb-color-bg-night);
 `;
 
 const rootSlowCardStyle = css`
@@ -31,7 +31,7 @@ const hiddenBackgroundStyle = css`
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-dashboard-card);
 
   ${({ isNightMode }) => isNightMode && rootNightModeStyle}
   ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}

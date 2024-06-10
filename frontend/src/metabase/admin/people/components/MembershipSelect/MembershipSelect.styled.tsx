@@ -19,7 +19,7 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
   justify-content: space-between;
   cursor: ${props => (props.isDisabled ? "unset" : "pointer")};
   padding: 0.5rem 1.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   color: ${color("text-medium")};
   font-weight: 700;
 
@@ -27,11 +27,11 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
     !props.isDisabled &&
     css`
       &:hover {
-        color: ${color("white")};
-        background-color: ${color("filter")};
+        color: var(--mb-color-text-white);
+        background-color: var(--mb-color-filter);
 
         .Icon {
-          color: ${color("white")} !important;
+          color: var(--mb-color-text-white) !important;
         }
       }
     `}
@@ -41,7 +41,7 @@ export const MembershipSelectHeader = styled.li`
   padding: 0.75rem 1.5rem 0.5rem 1.5rem;
   font-size: 12px;
   font-weight: 800;
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
 `;
 
 export const MembershipActionsContainer = styled.div`

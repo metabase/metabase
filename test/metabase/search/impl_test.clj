@@ -7,7 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.models.permissions :as perms]
+   [metabase.audit :as audit]
    [metabase.search.config :as search.config]
    [metabase.search.filter-test :as search.filter-test]
    [metabase.search.impl :as search.impl]
@@ -267,7 +267,7 @@
 (deftest ^:parallel active-table-search-test
   (testing "Only active, visible, and non audit DB tables should be included"
     (is (= [:and
-            [:not [:= :table.db_id perms/audit-db-id]]
+            [:not [:= :table.db_id audit/audit-db-id]]
             [:= :table.active true]
             [:= :table.visibility_type nil]]
            (:where (#'search.impl/search-query-for-model "table" search.filter-test/default-search-ctx))))))

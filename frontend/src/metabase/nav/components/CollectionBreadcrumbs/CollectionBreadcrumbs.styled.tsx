@@ -29,7 +29,7 @@ export const ExpandButton = styled(Button)`
   color: ${color("text-medium")};
 
   &:hover {
-    color: ${color("text-white")};
-    background-color: ${color("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
   }
 `;

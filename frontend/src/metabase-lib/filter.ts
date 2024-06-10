@@ -379,8 +379,14 @@ export function relativeDateFilterClause({
       columnWithoutBucket,
       expressionClause("interval", [-offsetValue, offsetBucket]),
     ]),
-    expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
-    expressionClause("relative-datetime", [value > 0 ? value : 0, bucket]),
+    expressionClause("relative-datetime", [
+      value !== "current" && value < 0 ? value : 0,
+      bucket,
+    ]),
+    expressionClause("relative-datetime", [
+      value !== "current" && value > 0 ? value : 0,
+      bucket,
+    ]),
   ]);
 }
 

@@ -9,11 +9,11 @@ export const LINE_SIZE: Record<LineSize, number> = {
 export const Z_INDEXES = {
   // Note: timeline events use echarts' markline option, which has a fixed z
   // value of 5.
-  dataLabels: 3,
-  goalLine: 2,
-  trendLine: 2,
-  lineAreaSeries: 2,
-  series: 1, // Bars needs to have a lower z value than line/area series, see issue #40209
+  dataLabels: 8,
+  goalLine: 7,
+  trendLine: 7,
+  lineAreaSeries: 7,
+  series: 6, // Bars needs to have a lower z value than line/area series, see issue #40209
 };
 
 export const CHART_STYLE = {
@@ -24,7 +24,6 @@ export const CHART_STYLE = {
   axisTicksMarginX: 5,
   axisTicksMarginY: 10,
   axisTicks: {
-    size: 12,
     weight: 700,
   },
   seriesLabels: {
@@ -34,7 +33,6 @@ export const CHART_STYLE = {
     stackedPadding: 2,
   },
   axisName: {
-    size: 12,
     weight: 700,
   },
   axisNameMargin: 12,

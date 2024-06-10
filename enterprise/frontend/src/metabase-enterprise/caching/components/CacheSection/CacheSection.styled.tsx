@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
 
 export const CacheSectionRoot = styled.div`
   ${Button.Root} {
@@ -40,7 +39,7 @@ export const CachePopover = styled.div`
     padding: 0.625rem;
     margin: 0 0.5rem;
 
-    border: 1px solid ${color("border")};
+    border: 1px solid var(--mb-color-border);
   }
 
   ${Button.Root} {

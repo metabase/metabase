@@ -1,3 +1,4 @@
+import type { Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";
@@ -5,16 +6,19 @@ import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-const tableBorder = `1px solid ${alpha(color("border"), 0.5)}`;
+const getTableBorder = (theme: Theme) =>
+  `1px solid ${alpha(theme.fn.themeColor("border"), 0.5)}`;
 
 // background with 1px of border color at the bottom
 // to work properly with sticky positioning
-const headerBackground = `linear-gradient(to top, ${alpha(
-  color("border"),
-  0.5,
-)}, ${alpha(color("border"), 0.5)} 1px, ${color("white")} 1px, ${color(
-  "white",
-)} 100%)`;
+const getHeaderBackground = (theme: Theme) =>
+  `linear-gradient(to top, ${alpha(
+    theme.fn.themeColor("border"),
+    0.5,
+  )}, ${alpha(
+    theme.fn.themeColor("border"),
+    0.5,
+  )} 1px, var(--mb-color-bg-white) 1px, var(--mb-color-bg-white) 100%)`;
 
 export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
@@ -44,7 +48,7 @@ export const PermissionsTableCell = styled.td`
       right: 0;
       top: 0;
       height: 100%;
-      border-right: ${tableBorder};
+      border-right: ${({ theme }) => getTableBorder(theme)};
       content: " ";
     }
   }
@@ -56,11 +60,11 @@ export const PermissionTableHeaderCell = styled(
   position: sticky;
   top: 0;
   border: none;
-  background: ${headerBackground};
+  background: ${({ theme }) => getHeaderBackground(theme)};
   z-index: 1;
 
   &:first-of-type {
-    background: ${headerBackground};
+    background: ${({ theme }) => getHeaderBackground(theme)};
     z-index: 2;
     &:after {
       display: none;
@@ -69,7 +73,7 @@ export const PermissionTableHeaderCell = styled(
 `;
 
 export const PermissionsTableRow = styled.tr`
-  border-bottom: ${tableBorder};
+  border-bottom: ${({ theme }) => getTableBorder(theme)};
 `;
 
 export const EntityName = styled.span`
@@ -80,7 +84,7 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: ${color("admin-navbar")};
+  color: ${() => color("admin-navbar")};
 `;
 
 export const HintIcon = styled(Icon)`

@@ -1,7 +1,8 @@
 import type { QueryClickActionsMode } from "../../types";
 import { CombineColumnsAction } from "../actions/CombineColumnsAction";
+import { CompareAggregationsAction } from "../actions/CompareAggregationsAction";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
-import { ExtractColumnAction } from "../actions/ExtractColumn";
+import { ExtractColumnAction } from "../actions/ExtractColumnAction";
 import { HideColumnAction } from "../actions/HideColumnAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 
@@ -11,6 +12,7 @@ export const EmbeddingSdkMode: QueryClickActionsMode = {
   availableOnlyDrills: [
     "drill-thru/column-extract",
     "drill-thru/column-filter",
+    "drill-thru/compare-aggregations",
     "drill-thru/distribution",
     "drill-thru/fk-details",
     "drill-thru/fk-filter",
@@ -30,6 +32,7 @@ export const EmbeddingSdkMode: QueryClickActionsMode = {
     DashboardClickAction,
     ExtractColumnAction,
     CombineColumnsAction,
+    CompareAggregationsAction,
   ],
   fallback: NativeQueryClickFallback,
 };

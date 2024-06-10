@@ -16,6 +16,8 @@ interface PaletteActionExtras {
      * browser interactions to open items in new tabs/windows
      */
     href?: LocationDescriptor | null;
+    /** iconColor: Color of the icon in the  */
+    iconColor?: string;
   };
 }
 

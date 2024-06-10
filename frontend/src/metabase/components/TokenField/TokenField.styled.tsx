@@ -13,11 +13,11 @@ export const TokenFieldContainer = styled.ul`
 
   max-height: 130px;
 
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   overflow-x: auto;
   overflow-y: auto;
   border-radius: ${space(1)};
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
 `;
 
 export const TokenInputItem = styled.li`

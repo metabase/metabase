@@ -721,7 +721,8 @@
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]
-        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))
+        (when item
+          (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
 
 (defmulti exclude-internal-content-hsql
   "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally

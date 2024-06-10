@@ -40,8 +40,10 @@ function svgToImageUri(svgString: string) {
 export const getTimelineEventsSeries = (
   timelineEventsModel: TimelineEventsModel,
   selectedEventsIds: TimelineEventId[],
-  { fontFamily, getColor }: RenderingContext,
+  { fontFamily, getColor, theme }: RenderingContext,
 ): LineSeriesOption | null => {
+  const { fontSize } = theme?.cartesian?.label ?? {};
+
   if (timelineEventsModel.length === 0) {
     return null;
   }
@@ -74,7 +76,7 @@ export const getTimelineEventsSeries = (
           padding: [0, 0, 0, 24],
           hideOverlap: true,
           color,
-          fontSize: CHART_STYLE.axisTicks.size,
+          fontSize,
           fontWeight: CHART_STYLE.axisTicks.weight,
           fontFamily,
         },

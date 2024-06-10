@@ -35,7 +35,7 @@ jobs:
 
       - name: check tags
         run: |
-          if [ $(git tag -l | grep $tag) ]
+          if [ $(git tag -l | grep $tag$) ]
           then
             echo "::error::Tag '${{ env.tag }}' already exists. If you expect to run this workflow with the same tag, please remove the tag first and rerun this workflow again."
             exit 1
@@ -92,16 +92,9 @@ jobs:
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      # TODO: Remove this step after the build utils script is merged to master
-      - name: Upload release utils script, so it can be used later on when checking out `master` branch
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-util
-          path: ./bin/embedding-sdk/release_utils.bash
-
       - name: Update changelog
         run: |
-          yarn embedding-sdk:generate-changelog
+          yarn embedding-sdk:generate-changelog -o changelog-diff
 
       - name: Build SDK bundle
         run: yarn run build-embedding-sdk
@@ -115,11 +108,11 @@ jobs:
           name: metabase-sdk
           path: ./resources/embedding-sdk
 
-      - name: Upload changelog
+      - name: Upload changelog diff
         uses: actions/upload-artifact@v4
         with:
-          name: sdk-changelog
-          path: ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          name: sdk-changelog-diff
+          path: ./changelog-diff
 
   build-jar:
     needs: test
@@ -168,15 +161,8 @@ jobs:
 
       - name: Setup git user
         run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
-
-      # TODO: Remove this step after the build utils script is merged to master
-      - name: Download release utils script
-        uses: actions/download-artifact@v4
-        with:
-          name: release-util
-          path: ./bin/embedding-sdk/
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
 
       - name: Update readme
         run: |
@@ -186,23 +172,17 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 
-      - name: Retrieve SDK changelog
+      - name: Retrieve SDK changelog diff
         uses: actions/download-artifact@v4
         with:
-          name: sdk-changelog
+          name: sdk-changelog-diff
 
-      # We need to do this because it's impossible to download an artifact to an existing location
-      - name: Move over the downloaded changelog
+      - name: Update changelog
         run: |
-          mv CHANGELOG.md ./enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
 
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
-      - name: Create a PR updating readme + published version, and changelog
+      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ inputs.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ inputs.sdk_version }}'
@@ -211,9 +191,32 @@ jobs:
                        --assignee "${GITHUB_ACTOR}"\
                        --title "Update SDK version to ${{ inputs.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ inputs.sdk_version }}"
-          gh pr edit --add-reviewer @metabase/embedding
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Edit PR adding useful information (using Metabase bot app)
+        run: |
+          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Auto approve PR (using GitHub Actions account)
+        run: |
+          gh pr review --approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        run: |
+          gh pr merge --auto --squash
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
@@ -239,11 +242,7 @@ jobs:
         with:
           ref: ${{ inputs.git_ref }}
 
-      - name: Setup git user
-        run: |
-          git config --global user.email "metabase-bot@metabase.com"
-          git config --global user.name "Metabase bot"
-
+      # Lightweight tags don't need committer name and email
       - name: Create a new git tag
         run: |
           git tag ${{ env.tag }}

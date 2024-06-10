@@ -145,10 +145,6 @@
   (when-let [user-json (env/env :mb-user-defaults)]
     (json/parse-string user-json true)))
 
-(def ^:const audit-db-id
-  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
-  13371337)
-
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."

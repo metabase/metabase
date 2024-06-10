@@ -594,6 +594,11 @@
    (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
 
+(defn ^:export available-temporal-units
+  "The temporal bucketing units for date type expressions."
+  []
+  (to-array (map clj->js (lib.core/available-temporal-units))))
+
 ;; # Manipulating Clauses
 ;;
 ;; These three functions work on any kind of clause - aggregations, filters, breakouts, custom expressions, order-by.
@@ -1247,10 +1252,24 @@
   ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (let [haystack (mapv ->column-or-ref legacy-columns)
-          needles  (map legacy-ref->pMBQL legacy-refs)]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
+    (let [haystack      (mapv ->column-or-ref legacy-columns)
+          needles       (map legacy-ref->pMBQL legacy-refs)
+          column-refs   (into {} (keep-indexed (fn [i col]
+                                                 [(-> col
+                                                      lib.core/ref
+                                                      lib.convert/->legacy-MBQL
+                                                      normalize-legacy-ref)
+                                                  i]))
+                              legacy-columns)
+          exact-matches (map #(-> %
+                                  (js->clj :keywordize-keys true)
+                                  (update 0 keyword)
+                                  column-refs)
+                             legacy-refs)]
+      (if (every? #(and % (>= % 0)) exact-matches)
+        (to-array exact-matches)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
 (defn ^:export source-table-or-card-id
   "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
@@ -1950,6 +1969,18 @@
        "query"      a-query
        "stageIndex" stage-number
        "value"      (if (= value :null) nil value)})
+
+(defn ^:export aggregation-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.
+  The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].
+
+  The return value has the form:
+
+      aggregation: aggregation clause as returned by [[aggregation-clause]]
+
+  > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
+  [{:keys [aggregation] :as _aggregation-drill}]
+  #js {"aggregation" aggregation})
 
 (defn ^:export column-extract-drill-extractions
   "Returns a JS array of the possible column *extractions* offered by `column-extract-drill`.

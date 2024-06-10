@@ -60,7 +60,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = `1px solid ${color("border")}`;
+  const borderStyle = "1px solid var(--mb-color-border)";
 
   return (
     <Box
@@ -68,7 +68,7 @@ export const NotebookNativePreview = (): JSX.Element => {
       data-testid="native-query-preview-sidebar"
       w="100%"
       h="100%"
-      bg={color("white")}
+      bg="bg-white"
       display="flex"
       style={{ flexDirection: "column" }}
     >

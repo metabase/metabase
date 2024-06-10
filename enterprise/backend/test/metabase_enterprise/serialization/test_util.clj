@@ -7,7 +7,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                            Field LegacyMetric NativeQuerySnippet Pulse PulseCard Segment Table User]]
+                            Field NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
@@ -160,10 +160,6 @@
                                                         "Deeply Nested Personal Collection"
                                                         :location
                                                         (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
-                  LegacyMetric {metric-id :id} {:name "My Metric"
-                                                :table_id table-id
-                                                :definition {:source-table table-id
-                                                             :aggregation [:sum [:field numeric-field-id nil]]}}
                   Segment    {segment-id :id} {:name "My Segment"
                                                :table_id table-id
                                                :definition {:source-table table-id
@@ -440,7 +436,6 @@
         :last-login-field-id          last-login-field-id
         :latitude-field-id            latitude-field-id
         :longitude-field-id           longitude-field-id
-        :metric-id                    metric-id
         :name-field-id                name-field-id
         :nested-snippet-id            nested-snippet-id
         :numeric-field-id             numeric-field-id
@@ -500,7 +495,6 @@
                    last-login-field-id
                    latitude-field-id
                    longitude-field-id
-                   metric-id
                    name-field-id
                    nested-snippet-id
                    numeric-field-id

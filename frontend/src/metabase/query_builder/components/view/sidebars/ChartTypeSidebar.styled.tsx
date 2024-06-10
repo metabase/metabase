@@ -9,7 +9,7 @@ export interface OptionRootProps {
 
 const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
   if (isSelected) {
-    return color("white");
+    return color("text-white");
   } else {
     return color("brand");
   }
@@ -25,14 +25,14 @@ export const OptionRoot = styled.div<OptionRootProps>`
     `
     ${OptionIconContainer} {
       &, &:hover {
-      background-color: ${color("brand")};
+      background-color: var(--mb-color-brand);
       color: ${getOptionIconColor(props)};
       border: 1px solid transparent;
       }
     }
 
     ${OptionText} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   `}
 `;
@@ -53,10 +53,10 @@ export const SettingsButton = styled(Button)`
   top: -0.5rem;
   right: -0.75rem;
   padding: 0.375rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
 
   border-radius: 50px;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   opacity: 0;
 `;
 
@@ -69,12 +69,12 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   color: ${getOptionIconColor};
   background-color: ${props => props.isSelected && color("brand")};
   border-radius: 100%;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   cursor: pointer;
   padding: 0.875rem;
   &:hover {
-    color: ${color("brand")};
-    background-color: ${alpha("brand", 0.15)};
+    color: var(--mb-color-brand);
+    background-color: ${() => alpha("brand", 0.15)};
     border: 1px solid transparent;
 
     ${SettingsButton} {

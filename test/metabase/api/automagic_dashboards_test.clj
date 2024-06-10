@@ -267,6 +267,13 @@
                                        :dataset_query
                                        qp/process-query))))))))))))
 
+(deftest cards-have-can-run-adhoc-query-test
+  (api-call! "table/%s" [(mt/id :venues)]
+             (constantly true)
+             (fn [dashboard]
+               (is (every? #(get-in % [:card :can_run_adhoc_query])
+                           (filter :card (:dashcards dashboard)))))))
+
 ;;; ------------------- Index Entities Xrays -------------------
 
 (deftest add-source-model-link-auto-width-test

@@ -30,7 +30,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
 `;
 
 export const ToasterMessage = styled.p`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 250px;
   line-height: 24px;
   font-size: 14px;
@@ -40,9 +40,9 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha(color("bg-white"), 0.1)};
   border-radius: 6px;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 90px;
   height: fit-content;
   font-size: 14px;
@@ -51,7 +51,7 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha(color("bg-white"), 0.3)};
   }
 `;
 

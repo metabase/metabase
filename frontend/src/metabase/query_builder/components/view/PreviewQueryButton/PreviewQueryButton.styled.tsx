@@ -9,7 +9,7 @@ export const PreviewButton = styled(IconButtonWrapper)`
   color: ${color("text-dark")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

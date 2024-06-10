@@ -12,8 +12,8 @@ export const Container = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background-color: ${color("white")};
-  border-bottom: 1px solid ${color("border")};
+  background-color: var(--mb-color-bg-white);
+  border-bottom: 1px solid var(--mb-color-border);
   padding: ${space(2)} ${space(3)};
 `;
 

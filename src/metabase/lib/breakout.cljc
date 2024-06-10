@@ -141,8 +141,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    breakout-ref :- ::lib.schema.ref/ref]
-  (->> (lib.util/query-stage query stage-number)
-       (lib.metadata.calculation/visible-columns query stage-number)
+  (->> (breakoutable-columns query stage-number)
        (lib.equality/find-matching-column breakout-ref)))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query

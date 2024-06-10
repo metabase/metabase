@@ -6,13 +6,13 @@ import ParameterValueWidget from "metabase/parameters/components/ParameterValueW
 export const TagContainer = styled.div`
   padding: 1.5rem 1.5rem 0 1.5rem;
   margin-bottom: 1.5rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 export const TagName = styled.h3`
   font-weight: 900;
   margin-bottom: 2rem;
   align-self: flex-end;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 interface ContainerLabelProps {
@@ -29,7 +29,7 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
 
 export const ErrorSpan = styled.span`
   margin: 0 0.5rem;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;
 
 interface InputContainerProps {
@@ -45,8 +45,8 @@ export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
   font-weight: 700;
   color: ${color("text-medium")};
   border-radius: 0.5rem;
-  background-color: ${color("white")};
-  border: 2px solid ${color("border")};
+  background-color: var(--mb-color-bg-white);
+  border: 2px solid var(--mb-color-border);
 `;
 
 export const ToggleContainer = styled.div`

@@ -8,9 +8,9 @@ export const StepRoot = styled.section`
   align-items: center;
   padding: 2rem;
   margin-bottom: 1.75rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const StepTitle = styled.div`

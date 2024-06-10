@@ -146,6 +146,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   );
 
   it("sidebar should be resizable", () => {
+    const toleranceDelta = 0.5;
+
     const borderWidth = 1;
     const sidebarMargin = 4;
     const minNotebookWidth = 640;
@@ -156,22 +158,26 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       borderWidth -
       sidebarMargin;
 
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
+    cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
+    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/setting/notebook-native-preview-shown").as(
       "updatePreviewState",
     );
 
     openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.wait("@metadata");
     cy.findByLabelText("View the SQL").click();
-    cy.wait("@updatePreviewState");
-    cy.wait("@nativeDataset");
+    cy.wait(["@updatePreviewState", "@sessionProperties"]);
 
     cy.log(
       "It should not be possible to shrink the sidebar below its min (initial) width",
     );
     resizeSidebar(200, (initialSidebarWidth, sidebarWidth) => {
-      expect(initialSidebarWidth).to.eq(minSidebarWidth);
-      expect(sidebarWidth).to.eq(initialSidebarWidth);
+      expect(initialSidebarWidth).to.be.closeTo(
+        minSidebarWidth,
+        toleranceDelta,
+      );
+      expect(sidebarWidth).to.be.closeTo(initialSidebarWidth, toleranceDelta);
     });
 
     cy.log(
@@ -179,7 +185,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     );
     resizeSidebar(-500, (initialSidebarWidth, sidebarWidth) => {
       expect(sidebarWidth).to.be.gt(initialSidebarWidth);
-      expect(sidebarWidth).to.eq(maxSidebarWidth);
+      expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
     });
 
     cy.log("User preferences should be preserved across sessions");
@@ -191,7 +197,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       .should("be.visible")
       .then($sidebar => {
         const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
-        expect(sidebarWidth).to.eq(maxSidebarWidth);
+        expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
       });
 
     cy.log("Preferences should not be shared across users");
@@ -206,7 +212,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       .should("be.visible")
       .then($sidebar => {
         const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
-        expect(sidebarWidth).to.eq(minSidebarWidth);
+        expect(sidebarWidth).to.be.closeTo(minSidebarWidth, toleranceDelta);
       });
   });
 });
@@ -442,21 +448,27 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
   cy.intercept("PUT", "/api/setting/notebook-native-preview-sidebar-width").as(
     "updateSidebarWidth",
   );
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
   cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
     const initialSidebarWidth = $sidebar[0].getBoundingClientRect().width;
 
     const options = {
       pointer: "mouse" as const,
-      position: "center" as const,
       button: "left" as const,
     };
 
-    cy.findByTestId("notebook-native-preview-resize-handle")
-      .realMouseDown(options)
-      .realMouseMove(amountX, 0, options)
-      .realMouseUp(options);
+    // It is crucial to not chain the `realMouse` events here. We need to find
+    // the up-to-date handle every single time because it gets re-rendered.
+    cy.findByTestId("notebook-native-preview-resize-handle").realMouseDown(
+      options,
+    );
+    cy.findByTestId("notebook-native-preview-resize-handle").realMouseMove(
+      amountX,
+      0,
+    );
+    cy.findByTestId("notebook-native-preview-resize-handle").realMouseUp(
+      options,
+    );
 
     cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
 

@@ -17,6 +17,7 @@
    :collection
    :map-tiles
    :pulse
+   :dashboard-subscription
    :dashboard
    :question
    :csv-download

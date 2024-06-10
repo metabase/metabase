@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import { SIDEBAR_WIDTH } from "../Sidebar";
@@ -10,8 +9,8 @@ import { SIDEBAR_WIDTH } from "../Sidebar";
 export const DashboardInfoSidebarRoot = styled.aside`
   width: ${SIDEBAR_WIDTH}px;
   min-width: ${SIDEBAR_WIDTH}px;
-  background: ${color("white")};
-  border-left: 1px solid ${color("border")};
+  background: var(--mb-color-bg-white);
+  border-left: 1px solid var(--mb-color-border);
   align-self: stretch;
   // FIXME: ensure that removing this style is OK
   // overflow-y: auto;
@@ -24,7 +23,7 @@ export const DashboardInfoSidebarRoot = styled.aside`
     right: 0px;
     z-index: 2;
     height: auto;
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid var(--mb-color-border);
   }
 `;
 
@@ -34,7 +33,7 @@ export const HistoryHeader = styled.h3`
 
 export const ContentSection = styled.div`
   padding: 2rem 0;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 
   &:first-of-type {
     padding-top: 1.5rem;

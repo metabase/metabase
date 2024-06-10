@@ -24,7 +24,7 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   transition: opacity 0.25s linear;
 
   &:hover {
-    color: ${({ onMouseEnter }) => (onMouseEnter ? color("brand") : "")};
+    color: ${({ onMouseEnter }) => onMouseEnter && "var(--mb-color-brand)"};
   }
 `;
 
@@ -38,7 +38,7 @@ export const LegendItemDot = styled.div`
 `;
 
 export const LegendItemTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   font-size: 12px;
   margin-left: 4px;
