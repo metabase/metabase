@@ -114,6 +114,7 @@ export const getCartesianChartDefinition = (
 };
 
 export const COMBO_CHARTS_SETTINGS_DEFINITIONS = {
+  ...STACKABLE_SETTINGS,
   ...LINE_SETTINGS,
   ...GRAPH_GOAL_SETTINGS,
   ...GRAPH_TREND_SETTINGS,
@@ -122,6 +123,5 @@ export const COMBO_CHARTS_SETTINGS_DEFINITIONS = {
   ...GRAPH_DISPLAY_VALUES_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
   ...TOOLTIP_SETTINGS,
-  ...STACKABLE_SETTINGS,
   ...LEGEND_SETTINGS,
 } as any as VisualizationSettingsDefinitions;
