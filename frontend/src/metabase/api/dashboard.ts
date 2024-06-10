@@ -17,7 +17,7 @@ import {
   invalidateTags,
   listTag,
   provideDashboardListTags,
-  provideDashboardMetadataTags,
+  provideDashboardQueryMetadataTags,
   provideDashboardTags,
 } from "./tags";
 
@@ -27,10 +27,10 @@ export const dashboardApi = Api.injectEndpoints({
       ListDashboardsResponse,
       ListDashboardsRequest | void
     >({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/dashboard",
-        body,
+        params,
       }),
       providesTags: dashboards =>
         dashboards ? provideDashboardListTags(dashboards) : [],
@@ -53,7 +53,7 @@ export const dashboardApi = Api.injectEndpoints({
         url: `/api/dashboard/${id}/query_metadata`,
       }),
       providesTags: metadata =>
-        metadata ? provideDashboardMetadataTags(metadata) : [],
+        metadata ? provideDashboardQueryMetadataTags(metadata) : [],
     }),
     createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
       query: body => ({

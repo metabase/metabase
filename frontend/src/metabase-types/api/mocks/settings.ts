@@ -199,6 +199,7 @@ export const createMockSettings = (
   "other-sso-enabled?": null,
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
+  "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
   "premium-embedding-token": null,
   "read-only-mode": false,
   "report-timezone-short": "UTC",

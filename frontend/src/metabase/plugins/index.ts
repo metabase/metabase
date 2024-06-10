@@ -246,6 +246,8 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
+export type ItemWithCollection = { collection: CollectionEssentials };
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -269,6 +271,9 @@ export const PLUGIN_COLLECTIONS = {
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): AuthorityLevelMenuItem[] => [],
   getIcon: getIconBase,
+  filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
+    items: Item[],
+  ) => items as Item[],
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
@@ -363,6 +368,8 @@ export const PLUGIN_CACHING = {
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
+  ModelPersistenceTab: PluginPlaceholder as any,
+  ModelPersistenceConfiguration: PluginPlaceholder as any,
 };
 
 export const PLUGIN_REDUCERS: {

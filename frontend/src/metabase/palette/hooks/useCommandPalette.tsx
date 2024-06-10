@@ -16,6 +16,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
   getDocsUrl,
@@ -162,8 +163,9 @@ export const useCommandPalette = ({
             name: t`View and filter all ${searchResults?.total} results`,
             section: "search",
             keywords: debouncedSearchText,
-            icon: "link" as const,
+            icon: "link" as IconName,
             perform: () => {
+              trackSearchClick("view_more", 0, "command-palette");
               dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
@@ -172,17 +174,19 @@ export const useCommandPalette = ({
             },
           },
         ].concat(
-          searchResults.data.map(result => {
+          searchResults.data.map((result, index) => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
+            const icon = getIcon(wrappedResult);
             return {
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
               subtitle: result.description || "",
-              icon: wrappedResult.getIcon().name,
+              icon: icon.name,
               section: "search",
               keywords: debouncedSearchText,
               priority: Priority.NORMAL,
               perform: () => {
+                trackSearchClick("item", index, "command-palette");
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
@@ -190,6 +194,7 @@ export const useCommandPalette = ({
                 isVerified: result.moderated_status === "verified",
                 database: result.database_name,
                 href: wrappedResult.getUrl(),
+                iconColor: icon.color,
               },
             };
           }),
@@ -221,33 +226,38 @@ export const useCommandPalette = ({
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
     return (
-      filterRecentItems(recentItems ?? []).map(item => ({
-        id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
-        name: getName(item),
-        icon: getIcon(item).name,
-        section: "recent",
-        perform: () => {
-          // Need to keep this logic here for when user selects via keyboard
-          const href = Urls.modelToUrl(item);
-          if (href) {
-            dispatch(push(href));
-          }
-        },
-        extra:
-          item.model === "table"
-            ? {
-                database: item.database.name,
-                href: Urls.modelToUrl(item),
-              }
-            : {
-                parentCollection:
-                  item.parent_collection.id === null
-                    ? ROOT_COLLECTION.name
-                    : item.parent_collection.name,
-                isVerified: item.moderated_status === "verified",
-                href: Urls.modelToUrl(item),
-              },
-      })) || []
+      filterRecentItems(recentItems ?? []).map(item => {
+        const icon = getIcon(item);
+        return {
+          id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
+          name: getName(item),
+          icon: icon.name,
+          section: "recent",
+          perform: () => {
+            // Need to keep this logic here for when user selects via keyboard
+            const href = Urls.modelToUrl(item);
+            if (href) {
+              dispatch(push(href));
+            }
+          },
+          extra:
+            item.model === "table"
+              ? {
+                  database: item.database.name,
+                  href: Urls.modelToUrl(item),
+                  iconColor: icon.color,
+                }
+              : {
+                  parentCollection:
+                    item.parent_collection.id === null
+                      ? ROOT_COLLECTION.name
+                      : item.parent_collection.name,
+                  isVerified: item.moderated_status === "verified",
+                  href: Urls.modelToUrl(item),
+                  iconColor: icon.color,
+                },
+        };
+      }) || []
     );
   }, [dispatch, recentItems]);
 

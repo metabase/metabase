@@ -65,6 +65,10 @@ The email address users should be referred to if they encounter a problem.
 
 Maximum number of rows to return for aggregated queries via the API.
 
+Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+  This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+  See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
@@ -79,6 +83,10 @@ Enable the collection of anonymous usage data in order to help Metabase improve.
 - Default: `null`
 
 When set, this API key is required for all API requests.
+
+Middleware that enforces validation of the client via the request header X-Metabase-Apikey.
+        If the header is available, then it’s validated against MB_API_KEY.
+        When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.
 
 ### `MB_APPLICATION_COLORS`
 
@@ -197,7 +205,10 @@ Replace the word “Metabase” wherever it appears.
 - Type: positive-integer
 - Default: `20`
 
-Maximum number of rows to render in an alert or subscription image. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
+Maximum number of rows to render in an alert or subscription image.
+
+Range: 1-100. To limit the total number of rows included in the file attachment
+        for an email dashboard subscription, use MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_BCC_ENABLED`
 
@@ -282,6 +293,10 @@ ID of dashboard to use as a homepage.
 Consider metabase.driver/can-connect? / can-connect-with-details? to have failed if they were not able to
   successfully connect after this many milliseconds. By default, this is 10 seconds.
 
+Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
+        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
+        as the connections via tunnels have more overhead than connections without.
+
 ### `MB_EE_AI_FEATURES_ENABLED`
 
 - Type: boolean
@@ -289,6 +304,8 @@ Consider metabase.driver/can-connect? / can-connect-with-details? to have failed
 - [Configuration file name](./config-file.md): `ee-ai-features-enabled`
 
 Enable AI features.
+
+This feature is experimental.
 
 ### `MB_EE_OPENAI_API_KEY`
 
@@ -298,6 +315,8 @@ Enable AI features.
 
 The OpenAI API Key used in Metabase Enterprise.
 
+This feature is experimental.
+
 ### `MB_EE_OPENAI_MODEL`
 
 - Type: string
@@ -305,6 +324,8 @@ The OpenAI API Key used in Metabase Enterprise.
 - [Configuration file name](./config-file.md): `ee-openai-model`
 
 The OpenAI Model (e.g. gpt-4, gpt-3.5-turbo).
+
+This feature is experimental.
 
 ### `MB_EMAIL_FROM_ADDRESS`
 
@@ -595,6 +616,9 @@ Key to retrieve the JWT users last name.
 
 Is JWT authentication configured and enabled?
 
+When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
+        This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
+
 ### `MB_JWT_GROUP_MAPPINGS`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -604,6 +628,8 @@ Is JWT authentication configured and enabled?
 - [Configuration file name](./config-file.md): `jwt-group-mappings`
 
 JSON containing JWT to Metabase group mappings.
+
+JSON object containing JWT to Metabase group mappings, where keys are JWT groups and values are lists of Metabase groups IDs.
 
 ### `MB_JWT_GROUP_SYNC`
 
@@ -955,6 +981,9 @@ The custom illustration for when there are no results after searching.
 
 By default "Site Url" is used in notification links, but can be overridden.
 
+The base URL where dashboard notitification links will point to instead of the Metabase base URL.
+        Only applicable for users who utilize interactive embedding and subscriptions.
+
 ### `MB_NUM_METABOT_CHOICES`
 
 - Type: integer
@@ -1270,8 +1299,9 @@ Should new email notifications be sent to admins, for all new SSO users?
 
 Value for the session cookies `SameSite` directive.
 
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain). Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md). Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
-
+See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ### `MB_SESSION_COOKIES`
 
@@ -1279,11 +1309,11 @@ See [Embedding Metabase in a different domain](../embedding/interactive-embeddin
 - Default: `null`
 - [Configuration file name](./config-file.md): `session-cookies`
 
-When set to `true`, the user login session will expire when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
+When set, enforces the use of session cookies for all users which expire when the browser is closed.
 
-This overrides the "Remember me" checkbox when logging in.
-
-Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
+The user login session will always expire after the amount of time defined in MAX_SESSION_AGE (by default 2 weeks).
+        This overrides the “Remember me” checkbox when logging in.
+        Also see the Changing session expiration documentation page.
 
 ### `MB_SESSION_TIMEOUT`
 
@@ -1483,27 +1513,9 @@ Enable or disable surveys.
 
 Maximum number of rows to return specifically on :rows type queries via the API.
 
-### `MB_UPLOADS_DATABASE_ID`
-
-- Type: integer
-- Default: `null`
-
-Database ID for uploads.
-
-### `MB_UPLOADS_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `uploads-enabled`
-
-Whether or not uploads are enabled.
-
-### `MB_UPLOADS_SCHEMA_NAME`
-
-- Type: string
-- Default: `null`
-
-Schema name for uploads.
+Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT.
+        This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+        See also MB_AGGREGATED_QUERY_ROW_LIMIT.
 
 ### `MB_UPLOADS_SETTINGS`
 
@@ -1512,13 +1524,6 @@ Schema name for uploads.
 - [Configuration file name](./config-file.md): `uploads-settings`
 
 Upload settings.
-
-### `MB_UPLOADS_TABLE_PREFIX`
-
-- Type: string
-- Default: `null`
-
-Prefix for upload table names.
 
 ### `MB_USER_VISIBILITY`
 
@@ -1568,13 +1573,6 @@ Default: `50`<br>
 Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
-
-### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
-
-Type: integer<br>
-Default: `20`<br>
-
-Limits the number of rows Metabase will display in tables sent with dashboard subscriptions and alerts. Range: 1-100. To limit the total number of rows included in the file attachment for an email dashboard subscription, use [MB_UNAGGREGATED_QUERY_ROW_LIMIT](#mb_unaggregated_query_row_limit).
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
@@ -1789,13 +1787,6 @@ Default: `200000`
 
 Maximum idle time for a connection, in milliseconds.
 
-### `MB_JETTY_MAXQUEUED`
-
-Type: integer<br>
-Default: _"FIX ME"_
-
-Maximum number of requests to be queued when all threads are busy.
-
 ### `MB_JETTY_MAXTHREADS`
 
 Type: integer<br>
@@ -2001,29 +1992,6 @@ Type: boolean<br>
 Default: `true`
 
 Send email notifications to users in Admin group, when a new SSO users is created on Metabase.
-
-### `MB_SESSION_COOKIE_SAMESITE`
-
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
-Type: string (`"none"`, `"lax"`, `"strict"`)<br>
-Default: `"lax"`
-
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-
-Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
-
-Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
-
-### `MB_SESSION_COOKIES`
-
-Type: boolean<br>
-Default: `null`
-
-When set to `true`, the user login session will expire when the browser is closed. The user login session will always expire after the amount of time defined in [MAX_SESSION_AGE](#max_session_age) (by default 2 weeks).
-
-This overrides the "Remember me" checkbox when logging in.
-
-Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_SETUP_TOKEN`
 
