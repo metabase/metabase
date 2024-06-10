@@ -7,7 +7,6 @@
    [malli.error :as me]
    [metabase.config :as config]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
@@ -154,27 +153,16 @@
                                                   [{:keys [value message]}]
                                                   (str message ", got: " (pr-str value)))})
             details   (merge
-                        {:type      error-type
-                         :error     error
-                         :humanized humanized
-                         :schema    schema
-                         :value     value}
-                        error-context)]
-        (if (or config/is-dev?
-              config/is-test?)
-          ;; In dev and test, throw an exception.
-          (throw (ex-info (case error-type
-                            ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                            ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
-                          details))
-          ;; In prod, log a warning.
-          (log/warn
-            (case error-type
-              ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
-                                         (pr-str humanized))
-              ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
-                                         (pr-str humanized)))
-            details))))))
+                       {:type      error-type
+                        :error     error
+                        :humanized humanized
+                        :schema    schema
+                        :value     value}
+                       error-context)]
+        (throw (ex-info (case error-type
+                          ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                          ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                        details))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
