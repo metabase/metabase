@@ -179,7 +179,7 @@ const getParameterMapping = card => ({
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
   describe("mapping targets", () => {
@@ -473,6 +473,28 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("be.visible");
     });
   });
+
+  describe("embedding", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    });
+
+    it("should be able to use temporal unit parameters in a public dashboard", () => {
+      createDashboardWithCard().then(dashboard => {
+        cy.request("POST", `/api/dashboard/${dashboard.id}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.signOut();
+            cy.visit(`/public/dashboard/${uuid}`);
+          },
+        );
+      });
+
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+  });
 });
 
 function backToDashboard() {
@@ -491,7 +513,7 @@ function addQuestion(name) {
 }
 
 function removeQuestion() {
-  getDashboardCard().realHover().icon("close").click();
+  getDashboardCard().icon("close").click({ force: true });
 }
 
 function editParameter(name) {
