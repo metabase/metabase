@@ -178,9 +178,9 @@
   [_filter model query last-edited-at]
   (cond-> query
     last-edited-at
-    (sql.helpers/where query (date-range-filter-clause
-                              (search.config/column-with-alias model :updated_at)
-                              last-edited-at))))
+    (sql.helpers/where (date-range-filter-clause
+                        (search.config/column-with-alias model :updated_at)
+                        last-edited-at))))
 
 (defn- optional-filters->supported-models []
   (->> (dissoc (methods build-filter) :default)
@@ -220,15 +220,15 @@
                 models
                 search-native-query
                 verified]}        search-context
-        feature->supported-models (feature->supported-models)]
+        feature->models (feature->supported-models)]
     (cond-> models
-      (some? archived)            (set/intersection (:archived feature->supported-models))
-      (some? created-at)          (set/intersection (:created-at feature->supported-models))
-      (some? created-by)          (set/intersection (:created-by feature->supported-models))
-      (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
-      (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
-      (true? verified)            (set/intersection (:verified feature->supported-models))
-      (true? search-native-query) (set/intersection (:search-native-query feature->supported-models)))))
+      (some? archived)            (set/intersection (:archived feature->models))
+      (some? created-at)          (set/intersection (:created-at feature->models))
+      (some? created-by)          (set/intersection (:created-by feature->models))
+      (some? last-edited-at)      (set/intersection (:last-edited-at feature->models))
+      (some? last-edited-by)      (set/intersection (:last-edited-by feature->models))
+      (true? verified)            (set/intersection (:verified feature->models))
+      (true? search-native-query) (set/intersection (:search-native-query feature->models)))))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."

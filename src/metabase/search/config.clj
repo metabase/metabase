@@ -195,7 +195,7 @@
 (defmethod native-query-columns "card"     [_] [:dataset_query])
 (defmethod native-query-columns "dataset"  [_] (native-query-columns "card"))
 (defmethod native-query-columns "metric"   [_] (native-query-columns "card"))
-(defmethod native-query-columns "action"   [_] [:dataset_query])
+(defmethod native-query-columns "action"   [_] [:query_action.dataset_query]) ; Unfortunately this is coupled to query_action's alias
 
 (defmulti searchable-columns-for-model
   "The columns that will be searched for the query."

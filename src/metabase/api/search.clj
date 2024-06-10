@@ -15,7 +15,7 @@
   "Get the set of models that a search query will return"
   [q archived table-db-id created_at created_by last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
-  {archived            [:maybe ms/BooleanValue]
+  {archived            [:maybe true?]
    table-db-id         [:maybe ms/PositiveInt]
    created_at          [:maybe ms/NonBlankString]
    created_by          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
