@@ -53,6 +53,9 @@
   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/legacy-metric`, or
   `:metadata/segment`.")
 
+  (metadatas-for-tables [metadata-provider metadata-type table-ids]
+    "As [[metadatas-for-table]], but for multiple tables and returning a lazy sequence instead of a vector.")
+
   (setting [metadata-provider setting-key]
     "Return the value of the given Metabase setting with keyword `setting-name`."))
 

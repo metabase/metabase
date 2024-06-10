@@ -55,6 +55,14 @@
          (m/distinct-by :id))
         metadata-providers))
 
+(defn- metadatas-for-tables [metadata-type table-ids metadata-providers]
+  (sequence
+   (comp
+    (mapcat (fn [provider]
+              (metadata.protocols/metadatas-for-tables provider metadata-type table-ids)))
+    (m/distinct-by :id))
+   metadata-providers))
+
 (defn- setting [metadata-providers setting-key]
   (some (fn [provider]
           (metadata.protocols/setting provider setting-key))
@@ -70,6 +78,8 @@
     (tables metadata-providers))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-type table-id metadata-providers))
+  (metadatas-for-tables [_this metadata-type table-ids]
+    (metadatas-for-tables metadata-type table-ids metadata-providers))
   (setting [_this setting-key]
     (setting metadata-providers setting-key))
 

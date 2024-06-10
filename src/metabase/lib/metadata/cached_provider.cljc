@@ -89,6 +89,19 @@
                   objects))]
     (get-in-cache-or-fetch cache [k table-id] thunk)))
 
+(defn- metadatas-for-tables [metadata-provider cache metadata-type table-ids]
+  (let [k        (case metadata-type
+                   :metadata/column  ::table-fields
+                   :metadata/legacy-metric  ::table-metrics
+                   :metadata/segment ::table-segments)
+        uncached (filter #(nil? (get-in-cache cache [k %])) table-ids)
+        objects  (lib.metadata.protocols/metadatas-for-tables metadata-provider metadata-type uncached)]
+    (doseq [metadata objects]
+      (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
+    (doseq [[table-id table-metadatas] (group-by :table-id objects)]
+      (store-in-cache! cache [k table-id] table-metadatas))
+    (mapcat #(get-in-cache cache [k %]) table-ids)))
+
 (defn- setting [metadata-provider cache setting-key]
   (get-in-cache-or-fetch cache [::setting (keyword setting-key)] #(lib.metadata.protocols/setting metadata-provider setting-key)))
 
@@ -103,6 +116,8 @@
     (get-in-cache-or-fetch cache [::database-tables] #(tables metadata-provider cache)))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-provider cache metadata-type table-id))
+  (metadatas-for-tables [_this metadata-type table-ids]
+    (metadatas-for-tables metadata-provider cache metadata-type table-ids))
   (setting [_this setting-key]
     (setting metadata-provider cache setting-key))
 
