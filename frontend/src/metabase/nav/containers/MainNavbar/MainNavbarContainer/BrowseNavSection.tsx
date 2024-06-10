@@ -5,7 +5,7 @@ import { useHasModels } from "metabase/common/hooks/use-has-models";
 import CollapseSection from "metabase/components/CollapseSection";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Flex, Loader } from "metabase/ui";
+import { Skeleton, Flex } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
@@ -53,8 +53,9 @@ export const BrowseNavSection = ({
         loading={areModelsLoading}
         error={modelsError}
         loader={
-          <Flex py="sm" px="md" h="32.67px" align="center">
-            <Loader size={14} style={{ paddingInlineStart: "2px" }} />
+          <Flex py="sm" px="md" h="32.67px" gap="sm" align="center">
+            <Skeleton radius="md" h="md" w="md" />
+            <Skeleton radius="xs" w="4rem" h="1.2rem" />
           </Flex>
         }
         delay={0}
