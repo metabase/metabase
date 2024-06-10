@@ -24,6 +24,7 @@ import {
   expectGoodSnowplowEvents,
   modal,
   entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -229,6 +230,8 @@ describe(
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
+
+                    entityPickerModalTab("Dashboards").click();
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -247,6 +250,7 @@ describe(
                       "be.visible",
                     );
 
+                    entityPickerModalTab("Dashboards").click();
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );

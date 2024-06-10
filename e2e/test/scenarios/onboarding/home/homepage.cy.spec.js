@@ -22,6 +22,7 @@ import {
   setTokenFeatures,
   entityPickerModal,
   dashboardGrid,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -286,6 +287,7 @@ describe("scenarios > home > custom homepage", () => {
       });
 
       entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
         //Ensure that personal collections have been removed
         cy.findByText("First collection").should("exist");
         cy.findByText(/personal collection/).should("not.exist");
