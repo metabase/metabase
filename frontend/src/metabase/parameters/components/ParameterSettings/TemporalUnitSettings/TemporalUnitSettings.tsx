@@ -78,7 +78,7 @@ function TemporalUnitDropdown({
     }
   };
 
-  const handleUnitToggle = (selectedUnit: Lib.BucketName) => {
+  const handleUnitToggle = (selectedUnit: TemporalUnit) => {
     const newSelectedUnits = availableUnits.filter(availableUnit => {
       if (availableUnit === selectedUnit) {
         return !selectedUnitsSet.has(selectedUnit);
