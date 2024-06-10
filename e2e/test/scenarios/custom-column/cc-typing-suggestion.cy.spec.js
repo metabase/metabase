@@ -55,10 +55,10 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     { tags: "@flaky" },
     () => {
       addCustomColumn();
-      enterCustomColumnDetails({ formula: "LOW{enter}" });
+      enterCustomColumnDetails({ formula: "BET{enter}" });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("lower(");
+      cy.contains("between(");
     },
   );
 
