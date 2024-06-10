@@ -123,6 +123,8 @@ const app = express();
 // If your FE application is on a different domain from your BE, you need to enable CORS
 // by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
 // to your FE application URL.
+//
+// Limitation: We currently only support setting one origin in Authorized Origins in Metabase for CORS.
 app.use(
   cors({
     credentials: true,
@@ -462,8 +464,8 @@ return (
 
 # Known limitations
 
-The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
-
+- The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
+- Authorized Origins setting only supports 1 origin for CORS at the moment. We are working on supporting multiple origins in the near future.
 # Feedback
 
 For issues and feedback, there are two options:

@@ -145,6 +145,7 @@ export function autoWireParametersToNewCard({
             targetDashcard,
             mapping.target,
             targetQuestion,
+            parameter,
           );
 
           if (

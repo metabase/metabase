@@ -115,7 +115,7 @@ export function getScatterPlotModel(
     columnByDataKey,
     false,
     [],
-    [],
+    false,
     renderingContext,
   );
 

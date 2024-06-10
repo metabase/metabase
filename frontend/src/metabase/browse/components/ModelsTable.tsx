@@ -21,10 +21,10 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
-import { Icon, Flex, type IconProps } from "metabase/ui";
-import type { ModelResult } from "metabase-types/api";
+import { Flex, Icon, type IconProps } from "metabase/ui";
 
 import { trackModelClick } from "../analytics";
+import type { ModelResult } from "../types";
 import { getCollectionName, getIcon } from "../utils";
 
 import {
@@ -276,7 +276,7 @@ const TableLoader = () => (
   <tr>
     <td colSpan={4}>
       <Flex justify="center" color="text-light">
-        {t`Loading...`}
+        {t`Loading…`}
       </Flex>
     </td>
   </tr>

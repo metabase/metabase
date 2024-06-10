@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions-group :as perms-group]
@@ -446,7 +446,7 @@
       (is (thrown-with-msg?
            Exception
            #"Audit database permissions can only be changed by updating audit collection permissions."
-           (data-perms.graph/update-data-perms-graph! [(u/the-id group) config/audit-db-id :data :schemas] :all))))))
+           (data-perms.graph/update-data-perms-graph! [(u/the-id group) audit/audit-db-id :data :schemas] :all))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of native query perms doesn't fail if only one of them changes"

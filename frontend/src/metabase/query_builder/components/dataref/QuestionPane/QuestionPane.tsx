@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -40,21 +41,12 @@ interface QuestionPaneProps {
 }
 
 const getIcon = (question: Question): IconName => {
-  const type = question.type();
-
-  if (type === "question") {
-    return "table";
-  }
-
-  if (type === "model") {
-    return "model";
-  }
-
-  if (type === "metric") {
-    return "metric";
-  }
-
-  throw new Error(`Unknown question.type(): ${type}`);
+  return match(question.type())
+    .returnType<IconName>()
+    .with("question", () => "table")
+    .with("model", () => "model")
+    .with("metric", () => "metric")
+    .exhaustive();
 };
 
 const QuestionPane = ({
