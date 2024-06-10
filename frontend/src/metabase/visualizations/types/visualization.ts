@@ -154,6 +154,8 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
   getValue?: (series: Series, settings: VisualizationSettings) => TValue;
+  getDisabled?: (series: Series, settings: VisualizationSettings) => TValue;
+  disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
   getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
@@ -186,20 +188,23 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> & {
-  name: string;
-  noun: string;
+export type Visualization = React.ComponentType<VisualizationProps> &
+  VisualizationDefinition;
+
+export type VisualizationDefinition = {
+  name?: string;
+  noun?: string;
   uiName: string;
   identifier: string;
   aliases?: string[];
   iconName: IconName;
 
-  maxMetricsSupported: number;
-  maxDimensionsSupported: number;
+  maxMetricsSupported?: number;
+  maxDimensionsSupported?: number;
 
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
-  noHeader: boolean;
+  noHeader?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
@@ -210,9 +215,9 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries: Series;
+  placeHolderSeries?: Series;
 
-  transformSeries: (series: Series) => TransformedSeries;
+  transformSeries?: (series: Series) => TransformedSeries;
   // TODO: remove dependency on metabase-lib
   isSensible: (data: DatasetData, query?: Query) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
@@ -221,7 +226,7 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
     settings: VisualizationSettings,
     query: Query,
   ) => void | never;
-  isLiveResizable: (series: Series) => boolean;
+  isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
   placeholderSeries: RawSeries;
 };

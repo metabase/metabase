@@ -53,6 +53,7 @@ const INNER_RADIUS_RATIO = 3 / 5;
 const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
+// TODO delete this file before merging
 export default class PieChart extends Component {
   constructor(props) {
     super(props);
