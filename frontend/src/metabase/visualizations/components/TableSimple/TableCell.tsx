@@ -192,6 +192,7 @@ export function TableCell({
       isRightAligned={isColumnRightAligned(column)}
     >
       <CellContent
+        isHighlighted={isID(column)}
         className={TableS.cellData}
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}

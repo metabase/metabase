@@ -99,6 +99,13 @@ LineCustomYAxisRangeEqualsExtents.args = {
   renderingContext,
 };
 
+export const CustomYAxisRangeWithColumnScaling = Template.bind({});
+CustomYAxisRangeWithColumnScaling.args = {
+  rawSeries: data.customYAxisRangeWithColumnScaling as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineFullyNullDimension37902 = Template.bind({});
 LineFullyNullDimension37902.args = {
   rawSeries: data.lineFullyNullDimension37902 as any,
@@ -458,6 +465,12 @@ CompactXAxisDoesNotWork38917.args = {
   renderingContext,
 };
 
+export const DataLabelsUnderTrendGoalLines41280 = Template.bind({});
+DataLabelsUnderTrendGoalLines41280.args = {
+  rawSeries: data.dataLabelsUnderTrendGoalLines41280 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
 export const TicksNativeWeekWithGapShortRange = Template.bind({});
 TicksNativeWeekWithGapShortRange.args = {
   rawSeries: data.ticksNativeWeekWithGapShortRange as any,
@@ -682,6 +695,13 @@ BarCorrectWidthWhenTwoYAxes.args = {
   renderingContext,
 };
 
+export const BarDataLabelsNegatives = Template.bind({});
+BarDataLabelsNegatives.args = {
+  rawSeries: data.barDataLabelsNegatives as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarStackedNormalizedSeriesLabels = Template.bind({});
 BarStackedNormalizedSeriesLabels.args = {
   rawSeries: data.barStackedNormalizedSeriesLabels as any,
@@ -729,6 +749,38 @@ export const BarStackedSeriesLabelsNormalizedAutoCompactness = Template.bind(
 );
 BarStackedSeriesLabelsNormalizedAutoCompactness.args = {
   rawSeries: data.barStackedSeriesLabelsNormalizedAutoCompactness as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarStackedLabelsNullVsZero = Template.bind({});
+BarStackedLabelsNullVsZero.args = {
+  rawSeries: data.barStackedLabelsNullVsZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarMinHeightLimit = Template.bind({});
+BarMinHeightLimit.args = {
+  rawSeries: data.barMinHeightLimit as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboDataLabelsAutoCompactnessPropagatesFromLine = Template.bind(
+  {},
+);
+ComboDataLabelsAutoCompactnessPropagatesFromLine.args = {
+  rawSeries: data.comboDataLabelsAutoCompactnessPropagatesFromLine as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ComboDataLabelsAutoCompactnessPropagatesFromTotals = Template.bind(
+  {},
+);
+ComboDataLabelsAutoCompactnessPropagatesFromTotals.args = {
+  rawSeries: data.comboDataLabelsAutoCompactnessPropagatesFromTotals as any,
   dashcardSettings: {},
   renderingContext,
 };

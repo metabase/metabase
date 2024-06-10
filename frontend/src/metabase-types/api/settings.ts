@@ -303,6 +303,7 @@ interface PublicSettings {
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
+  "persisted-model-refresh-cron-schedule": string;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;

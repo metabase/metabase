@@ -2,12 +2,15 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useSearchQuery } from "metabase/api";
+import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_CONTENT_VERIFICATION,
+} from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-import type { ModelResult, SearchRequest } from "metabase-types/api";
+import type { ModelResult } from "metabase-types/api";
 
 import { filterModels } from "../utils";
 
@@ -27,12 +30,7 @@ const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
 export const BrowseModels = () => {
   const [actualModelFilters, setActualModelFilters] = useModelFilterSettings();
 
-  const query: SearchRequest = {
-    models: ["dataset"], // 'model' in the sense of 'type of thing'
-    model_ancestors: true,
-    filter_items_in_personal_collection: "exclude",
-  };
-  const result = useSearchQuery(query);
+  const result = useFetchModels({ model_ancestors: true });
 
   const { allModels, doVerifiedModelsExist } = useMemo(() => {
     const allModels = (result.data?.data as ModelResult[] | undefined) ?? [];
@@ -42,13 +40,18 @@ export const BrowseModels = () => {
     return { allModels, doVerifiedModelsExist };
   }, [result]);
 
+  const models = useMemo(
+    () => PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(allModels),
+    [allModels],
+  );
+
   const { filteredModels } = useMemo(() => {
     // If no models are verified, don't filter them
     const filteredModels = doVerifiedModelsExist
-      ? filterModels(allModels, actualModelFilters, availableModelFilters)
-      : allModels;
+      ? filterModels(models, actualModelFilters, availableModelFilters)
+      : models;
     return { filteredModels };
-  }, [allModels, actualModelFilters, doVerifiedModelsExist]);
+  }, [actualModelFilters, doVerifiedModelsExist, models]);
 
   return (
     <BrowseContainer>

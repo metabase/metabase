@@ -4,7 +4,6 @@
    [compojure.core :refer [GET]]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -487,6 +486,19 @@
                                   []))))]
     (map annotate search-results)))
 
+(defn- add-collection-effective-location
+  "Batch-hydrates :effective_location and :effective_parent on collection search results. Keeps search results in
+  order."
+  [search-results]
+  (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
+        hydrated-colls (t2/hydrate collections :effective_parent)
+        idx->coll      (into {} (map (juxt :id identity) hydrated-colls))]
+    (map (fn [search-result]
+           (if (mi/instance-of? :model/Collection search-result)
+             (idx->coll (:id search-result))
+             (assoc search-result :effective_location nil)))
+         search-results)))
+
 (defn- add-can-write [row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
     (assoc row :can_write (mi/can-write? row))
@@ -509,9 +521,6 @@
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
-                            (map #(if (t2/instance-of? :model/Collection %)
-                                    (t2/hydrate % :effective_location)
-                                    (assoc % :effective_location nil)))
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (filter (partial check-permissions-for-model (:archived? search-ctx)))
@@ -524,9 +533,10 @@
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                              true hydrate-user-metadata
+                              true                           hydrate-user-metadata
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                              true (map scoring/serialize))
+                              true                           (add-collection-effective-location)
+                              true                           (map scoring/serialize))
         add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
@@ -647,14 +657,13 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
+  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf SearchableModel)]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
-   context                             [:maybe [:enum "search-bar" "search-app" "command-palette"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -663,44 +672,23 @@
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let [start-time (System/currentTimeMillis)
-        models-set (if (seq models)
+  (let [models-set (if (seq models)
                      (set models)
-                     search.config/all-models)
-        results    (search (search-context
-                            {:search-string       q
-                             :archived            archived
-                             :created-at          created_at
-                             :created-by          (set created_by)
-                             :filter-items-in-personal-collection filter_items_in_personal_collection
-                             :last-edited-at      last_edited_at
-                             :last-edited-by      (set last_edited_by)
-                             :table-db-id         table_db_id
-                             :models              models-set
-                             :limit               mw.offset-paging/*limit*
-                             :offset              mw.offset-paging/*offset*
-                             :model-ancestors?    model_ancestors
-                             :search-native-query search_native_query
-                             :verified            verified}))
-        duration   (- (System/currentTimeMillis) start-time)
-        has-advanced-filters (some some?
-                                   [models created_by created_at last_edited_by
-                                    last_edited_at search_native_query verified])]
-    (when (contains? #{"search-app" "search-bar" "command-palette"} context)
-      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
-                             {:runtime-milliseconds duration
-                              :context              context})
-      (when has-advanced-filters
-        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
-                               {:runtime-milliseconds  duration
-                                :content-type          models
-                                :creator               (some? created_by)
-                                :creation-date         (some? created_at)
-                                :last-editor           (some? last_edited_by)
-                                :last-edit-date        (some? last_edited_at)
-                                :verified-items        (some? verified)
-                                :search-native-queries (some? search_native_query)})))
-
-    results))
+                     search.config/all-models)]
+    (search (search-context
+             {:search-string       q
+              :archived            archived
+              :created-at          created_at
+              :created-by          (set created_by)
+              :filter-items-in-personal-collection filter_items_in_personal_collection
+              :last-edited-at      last_edited_at
+              :last-edited-by      (set last_edited_by)
+              :table-db-id         table_db_id
+              :models              models-set
+              :limit               mw.offset-paging/*limit*
+              :offset              mw.offset-paging/*offset*
+              :model-ancestors?    model_ancestors
+              :search-native-query search_native_query
+              :verified            verified}))))
 
 (api/define-routes)

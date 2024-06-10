@@ -94,11 +94,7 @@ export const PaletteResults = withRouter(
                     {item}
                   </Box>
                 ) : (
-                  <PaletteResultItem
-                    item={item}
-                    active={active}
-                    togglePalette={query.toggle}
-                  />
+                  <PaletteResultItem item={item} active={active} />
                 )}
               </Flex>
             );

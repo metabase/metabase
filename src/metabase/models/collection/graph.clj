@@ -3,6 +3,7 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require
    [clojure.data :as data]
+   [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
@@ -10,7 +11,9 @@
     :refer [CollectionPermissionGraphRevision]]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group :as perms-group :as perms-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group
+    :as perms-group
+    :refer [PermissionsGroup]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -88,7 +91,7 @@
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
   (let [admin-group-id      (:id (perms-group/admin))
-        audit-collection-id (:id (perms/default-audit-collection))]
+        audit-collection-id (:id (audit/default-audit-collection))]
     (if (nil? audit-collection-id)
       graph
       (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))

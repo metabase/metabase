@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase-enterprise.audit-db-test :as audit-db-test]
+   [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase.config :as config]
    [metabase.models :refer [Collection]]
    [metabase.models.collection :as collection]
@@ -15,7 +15,7 @@
 
 (deftest list-collections-instance-analytics-test
   (mt/with-premium-features #{:audit-app}
-    (audit-db-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration
       (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should be the last collection."
           (testing "GET /api/collection"
@@ -29,7 +29,7 @@
                         last
                         :type))))))))
   (mt/with-premium-features #{}
-    (audit-db-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration
       (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
@@ -72,7 +72,7 @@
     (testing "You should only see your collection and public collections"
       ;; Set audit-app feature so that we can assert that audit collections are also visible when running EE
       (mt/with-premium-features #{:audit-app}
-        (audit-db-test/with-audit-db-restoration
+        (audit-test/with-audit-db-restoration
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
                 crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
             (t2.with-temp/with-temp [Collection collection          {}
