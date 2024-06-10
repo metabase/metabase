@@ -166,7 +166,7 @@ const StrategyFormBody = ({
   return (
     <FormWrapper>
       <StyledForm style={{ overflow: isInSidebar ? undefined : "auto" }}>
-        <FormBox className="strategy-form-box">
+        <FormBox>
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
               <Group spacing="sm">
@@ -241,10 +241,7 @@ const FormButtonsGroup = ({
   isInSidebar?: boolean;
 }) => {
   return (
-    <StyledFormButtonsGroup
-      isInSidebar={isInSidebar}
-      className="form-buttons-group"
-    >
+    <StyledFormButtonsGroup isInSidebar={isInSidebar}>
       {children}
     </StyledFormButtonsGroup>
   );
