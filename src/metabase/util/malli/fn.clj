@@ -288,7 +288,8 @@
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
 (defn instrument-fn?
-  "Returns true if mu.fn/fn and mu/defn in a namespace should be instrumented with malli schema validation."
+  "Returns true if mu.fn/fn and mu/defn should be instrumented with malli schema validation. `namespace` is
+  the namespace of the form being instrumented."
   [namespace]
   (or (true? (:instrument/always (meta namespace)))
       config/is-dev?
