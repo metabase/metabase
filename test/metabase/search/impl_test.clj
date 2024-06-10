@@ -286,3 +286,46 @@
                 [:or [:like [:lower :model-index-value.name] "%foo%"]]
                 [:inline [:= 0 1]]]
                (:where (search-query))))))))
+
+(deftest ^:parallel search-native-query-test
+  (doseq [model ["dataset" "card"]]
+    (testing model
+      (testing "do not search for native query by default"
+        (let [where-clause (:where (#'search.impl/search-query-for-model
+                                    model
+                                    (assoc search.filter-test/default-search-ctx :search-string "foo")))]
+          (is (= :and (first where-clause)))
+          (is (contains? (set where-clause)
+                         [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]))))
+       (testing "search in both name, description and dataset_query if is enabled"
+         (let [where-clause (:where (#'search.impl/search-query-for-model
+                                     model
+                                     (assoc search.filter-test/default-search-ctx :search-string "foo" :search-native-query true)))]
+           (is (= :and (first where-clause)))
+           (is (contains? (set where-clause)
+                          [:or
+                           [:like [:lower :card.name] "%foo%"]
+                           [:like [:lower :card.description] "%foo%"]
+                           [:like [:lower :dataset_query] "%foo%"]])))))))
+
+(deftest ^:parallel search-native-query-test-2
+  (testing "action"
+    (testing "do not search for native query by default"
+      (let [where-clause (:where (#'search.impl/search-query-for-model
+                                  "action"
+                                  (assoc search.filter-test/default-search-ctx :search-string "foo")))]
+        (is (= :and (first where-clause)))
+        (is (contains? (set where-clause)
+                       [:or
+                        [:like [:lower :action.name] "%foo%"]
+                        [:like [:lower :action.description] "%foo%"]]))))
+    (testing "search in both name, description and dataset_query if is enabled"
+      (let [where-clause (:where (#'search.impl/search-query-for-model
+                                  "action"
+                                  (assoc search.filter-test/default-search-ctx :search-string "foo" :search-native-query true)))]
+        (is (= :and (first where-clause)))
+        (is (contains? (set where-clause)
+                       [:or
+                        [:like [:lower :action.name] "%foo%"]
+                        [:like [:lower :action.description] "%foo%"]
+                        [:like [:lower :query_action.dataset_query] "%foo%"]]))))))
