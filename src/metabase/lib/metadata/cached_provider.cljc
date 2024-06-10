@@ -92,7 +92,7 @@
 (defn- metadatas-for-tables [metadata-provider cache metadata-type table-ids]
   (let [k        (case metadata-type
                    :metadata/column  ::table-fields
-                   :metadata/metric  ::table-metrics
+                   :metadata/legacy-metric  ::table-metrics
                    :metadata/segment ::table-segments)
         uncached (filter #(nil? (get-in-cache cache [k %])) table-ids)
         objects  (lib.metadata.protocols/metadatas-for-tables metadata-provider metadata-type uncached)]

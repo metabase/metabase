@@ -32,7 +32,7 @@
 (defn- metadatas-for-tables [tracker metadata-provider metadata-type table-ids]
   (let [tracking-type (case metadata-type
                         :metadata/column        ::table-fields
-                        :metadata/metric        ::table-metrics
+                        :metadata/legacy-metric ::table-metrics
                         :metadata/segment       ::table-segments)]
     (track-ids! tracker tracking-type table-ids))
   (lib.metadata.protocols/metadatas-for-tables metadata-provider metadata-type table-ids))

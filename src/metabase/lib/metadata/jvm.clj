@@ -395,8 +395,8 @@
                  :active          true
                  :visibility_type [:not-in #{"sensitive" "retired"}])
 
-      :metadata/metric
-      (t2/select :metadata/metric :table_id [:in table-ids] :type :metric, :archived false)
+      :metadata/legacy-metric
+      (t2/select :metadata/legacy-metric :table_id [:in table-ids], :archived false)
 
       :metadata/segment
       (t2/select :metadata/segment :table_id [:in table-ids] :archived false))))
