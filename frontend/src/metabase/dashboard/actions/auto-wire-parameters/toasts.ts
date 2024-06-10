@@ -72,7 +72,10 @@ export const showAutoWireParametersToast =
           message: t`The filter was auto-connected to all questions containing “${columnName}”.`,
           actionLabel: t`Undo`,
           timeout: 12000,
-          type: "filterAutoConnect",
+          type: "filterAutoConnectDone",
+          extraInfo: {
+            dashcardIds: dashcardAttributes.map(({ id }) => id),
+          },
           action: revertConnectAll,
         }),
       );
@@ -159,12 +162,13 @@ export const closeAutoWireParameterToast =
     dispatch(dismissUndo(toastId, false));
   };
 
+const autoWireToastTypes = ["filterAutoConnect", "filterAutoConnectDone"];
 export const closeAddCardAutoWireToasts =
   () => (dispatch: Dispatch, getState: GetState) => {
     const undos = getState().undo;
 
     for (const undo of undos) {
-      if (undo.type === "filterAutoConnect") {
+      if (undo.type && autoWireToastTypes.includes(undo.type)) {
         dispatch(dismissUndo(undo.id, false));
       }
     }

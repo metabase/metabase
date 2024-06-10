@@ -1,3 +1,4 @@
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -34,6 +35,13 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
 function getUndo(state, undoId) {
   return _.findWhere(state.undo, { id: undoId });
 }
+
+export const getAutoConnectedUndos = createSelector(
+  [state => state.undo],
+  undo => {
+    return undo.filter(undo => undo.type === "filterAutoConnectDone");
+  },
+);
 
 export const dismissUndo = createThunkAction(
   DISMISS_UNDO,

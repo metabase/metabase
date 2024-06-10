@@ -9,5 +9,6 @@ export type UndoState = {
   actionLabel?: string;
   canDismiss?: boolean;
   dismissIconColor?: string;
+  extraInfo?: Record<string, unknown>;
   _domId?: string | number;
 }[];
