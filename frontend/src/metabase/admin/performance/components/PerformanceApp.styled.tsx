@@ -2,6 +2,8 @@ import styled from "@emotion/styled";
 
 import { Tabs } from "metabase/ui";
 
+import { PerformanceTabId } from "../types";
+
 export const TabsList = styled(Tabs.List)`
   padding: 0 2.5rem;
   background-color: var(--mb-color-bg-light);
@@ -22,10 +24,12 @@ export const Tab = styled(Tabs.Tab)`
   }
 `;
 
-export const TabsPanel = styled(Tabs.Panel)`
+export const TabsPanel = styled(Tabs.Panel)<{ value: string }>`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
-  overflow: hidden;
   justify-content: stretch;
+  padding: 1rem 2.5rem;
+  ${props =>
+    props.value === PerformanceTabId.DataCachingSettings && `overflow: hidden;`}
 `;

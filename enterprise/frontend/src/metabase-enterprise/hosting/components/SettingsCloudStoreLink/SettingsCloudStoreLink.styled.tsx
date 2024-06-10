@@ -12,7 +12,7 @@ export const Description = styled.p`
 export const Link = styled(ExternalLink)`
   display: inline-flex;
   align-items: center;
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   font-weight: bold;
   background-color: var(--mb-color-brand);
   padding: 12px 18px;
@@ -25,7 +25,7 @@ export const Link = styled(ExternalLink)`
 `;
 
 export const LinkIcon = styled(Icon)`
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   opacity: 0.6;
   margin-left: 8px;
 `;

@@ -672,7 +672,6 @@ describe("scenarios > dashboard > tabs", () => {
 
     setFilter("Time", "Relative Date");
 
-    // Auto-connection happens here
     selectDashboardFilter(getDashboardCard(0), "Created At");
     saveDashboard();
 
@@ -692,11 +691,11 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findAllByTestId("table-row").should("exist");
     });
 
-    // Loader in the 1st tab
+    // we do not auto-wire automatically in different tabs anymore, so first tab
+    // should not show a loader and re-run query
     goToTab("Tab 1");
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("exist");
-      cy.wait("@saveCard");
+      cy.findByTestId("loading-spinner").should("not.exist");
       cy.findAllByTestId("table-row").should("exist");
     });
   });

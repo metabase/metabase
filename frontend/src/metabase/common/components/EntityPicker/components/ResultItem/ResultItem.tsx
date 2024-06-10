@@ -50,7 +50,7 @@ export const ResultItem = ({
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
         <FixedSizeIcon
-          color={color(icon.color ?? (isSelected ? "white" : "brand"))}
+          color={color(icon.color ?? (isSelected ? "text-white" : "brand"))}
           name={icon.name}
           style={{
             flexShrink: 0,
@@ -74,7 +74,7 @@ export const ResultItem = ({
       {parentInfo && (
         <Flex
           style={{
-            color: isSelected ? color("white") : color("text-light"),
+            color: isSelected ? color("text-white") : color("text-light"),
             flexShrink: 0,
           }}
           align="center"

@@ -85,7 +85,7 @@ export const DashboardHeaderContainer = styled.header<{
   ${({ isNightMode }) =>
     isNightMode &&
     css`
-      color: ${color("text-white")};
+      color: var(--mb-color-text-white);
     `}
 `;
 

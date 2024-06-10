@@ -97,7 +97,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
         variant="subtle"
         p="0.25rem"
       >
-        <Icon name="burger" size={32} color="white" />
+        <Icon name="burger" size={32} color="text-white" />
       </Button>
       {mobileNavOpen && (
         <AdminMobileNavBarItems>

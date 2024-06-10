@@ -64,7 +64,7 @@ export const RelativeSizeIcon = styled(Icon)`
 
 export const InvertedColorRelativeSizeIcon = styled(RelativeSizeIcon)`
   background-color: var(--mb-color-brand);
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   border-radius: 0.3em;
   padding: 0.3em;
 `;
