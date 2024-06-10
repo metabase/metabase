@@ -37,20 +37,21 @@ export function PieChart({
     formatters,
     computedVizSettings,
     renderingContext,
+    DIMENSIONS.maxSideLength,
   );
   const { legendHeight, Legend } = getPieChartLegend(
     chartModel,
     formatters,
     computedVizSettings,
-    DIMENSIONS.sideLen,
-    DIMENSIONS.sideLen + DIMENSIONS.chartLegendMargin,
+    DIMENSIONS.maxSideLength,
+    DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend,
   );
 
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
-    width: DIMENSIONS.sideLen,
-    height: DIMENSIONS.sideLen,
+    width: DIMENSIONS.maxSideLength,
+    height: DIMENSIONS.maxSideLength,
   });
   chart.setOption(option);
   const chartSvg = sanitizeSvgForBatik(
@@ -61,8 +62,10 @@ export function PieChart({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width={DIMENSIONS.sideLen}
-      height={DIMENSIONS.sideLen + DIMENSIONS.chartLegendMargin + legendHeight}
+      width={DIMENSIONS.maxSideLength}
+      height={
+        DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend + legendHeight
+      }
     >
       <Group dangerouslySetInnerHTML={{ __html: chartSvg }}></Group>
       <Legend />
