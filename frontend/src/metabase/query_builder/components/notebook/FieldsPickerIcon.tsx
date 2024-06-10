@@ -3,13 +3,12 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import { NotebookCell } from "./NotebookCell";
 
 const FieldPickerContentContainer = styled(IconButtonWrapper)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   padding: ${NotebookCell.CONTAINER_PADDING};
   opacity: 0.5;
 `;

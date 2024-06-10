@@ -1,12 +1,12 @@
-(ns metabase-enterprise.audit-db
+(ns metabase-enterprise.audit-app.audit
   (:require
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.models.database :refer [Database]]
-   [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -20,15 +20,6 @@
    (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
-
-(defsetting last-analytics-checksum
-  "A place to save the analytics-checksum, to check between app startups. If set to -1, skips the checksum process
-  entirely to avoid calculating checksums in environments (e2e tests) where we don't care."
-  :type       :integer
-  :visibility :internal
-  :audit      :never
-  :doc        false
-  :export?    false)
 
 (defn- running-from-jar?
   "Returns true iff we are running from a jar.
@@ -75,14 +66,6 @@
                        out (io/output-stream (str out-file))]
              (io/copy in out)))))))
 
-(def ^:private default-audit-collection-entity-id
-  "Default audit collection entity (instance analytics) id."
-  "vG58R8k-QddHWA7_47umn")
-
-(def ^:private default-custom-reports-entity-id
-  "Default custom reports entity id."
-  "okNLSZKdSxaoG58JSQY54")
-
 (def default-question-overview-entity-id
   "Default Question Overview (this is a dashboard) entity id."
   "jm7KgY6IuS6pQjkBZ7WUI")
@@ -90,31 +73,6 @@
 (def default-dashboard-overview-entity-id
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
-
-(def ^{:arglists '([checksum model entity-id])
-       :private  true} memoized-select-audit-entity*
-  (mdb/memoize-for-application-db
-   (fn [checksum model entity-id]
-     (when checksum
-       (t2/select-one model :entity_id entity-id)))))
-
-(defn memoized-select-audit-entity
-  "Returns the object from entity id and model. Memoizes from entity id.
-  Should only be used for audit/pre-loaded objects."
-  [model entity-id]
-  (memoized-select-audit-entity* (last-analytics-checksum) model entity-id))
-
-(defenterprise default-custom-reports-collection
-  "Default custom reports collection."
-  :feature :none
-  []
-  (memoized-select-audit-entity :model/Collection default-custom-reports-entity-id))
-
-(defenterprise default-audit-collection
-  "Default audit collection (instance analytics) collection."
-  :feature :none
-  []
-  (memoized-select-audit-entity :model/Collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -239,7 +197,7 @@
 (defn- get-last-and-current-checksum
   "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums entirely."
   []
-  (let [last-checksum (last-analytics-checksum)]
+  (let [last-checksum (audit/last-analytics-checksum)]
     (if (should-skip-checksum? last-checksum)
       [SKIP_CHECKSUM_FLAG SKIP_CHECKSUM_FLAG]
       [last-checksum (analytics-checksum)])))
@@ -261,7 +219,7 @@
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (last-analytics-checksum! current-checksum))))))
+              (audit/last-analytics-checksum! current-checksum))))))
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       (adjust-audit-db-to-host! audit-db))))
 
@@ -272,7 +230,7 @@
       (nil? audit-db)
       (u/prog1 ::installed
        (log/info "Installing Audit DB...")
-       (install-database! (mdb/db-type) perms/audit-db-id))
+       (install-database! (mdb/db-type) audit/audit-db-id))
 
       (not= (mdb/db-type) (:engine audit-db))
       (u/prog1 ::updated

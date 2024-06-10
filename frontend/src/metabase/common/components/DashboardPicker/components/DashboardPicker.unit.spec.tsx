@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import {
   setupCollectionItemsEndpoint,
-  setupRecentSelectionsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -160,7 +160,7 @@ interface SetupOpts {
 }
 
 const commonSetup = () => {
-  setupRecentSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
   mockScrollBy();
 

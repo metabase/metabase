@@ -12,7 +12,7 @@ import {
   setupSearchEndpoints,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
-  setupRecentSelectionsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -436,7 +436,7 @@ const setup = async ({
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
-  setupRecentSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   if (hasCollectionAccess) {
     setupCollectionsEndpoints({ collections });

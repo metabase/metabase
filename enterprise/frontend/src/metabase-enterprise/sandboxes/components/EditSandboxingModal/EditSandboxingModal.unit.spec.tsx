@@ -7,7 +7,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupRecentSelectionsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -74,7 +74,7 @@ const setup = ({
     rootCollection: EDITABLE_ROOT_COLLECTION,
   });
 
-  setupRecentSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   setupAdhocQueryMetadataEndpoint(
     createMockCardQueryMetadata({ databases: [database] }),
   );

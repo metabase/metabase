@@ -37,7 +37,7 @@ export const SearchInputContainer = styled.div<{
       `;
     }
     return css`
-      background-color: ${color("white")};
+      background-color: var(--mb-color-bg-white);
 
       &:hover {
         background-color: var(--mb-color-bg-light);

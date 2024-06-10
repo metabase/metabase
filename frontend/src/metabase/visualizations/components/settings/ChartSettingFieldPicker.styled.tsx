@@ -19,7 +19,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   border-radius: 0.5rem;
   padding-right: 1rem;
   padding-left: 0.5rem;
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
 
   ${Triggerable.Trigger} {
     flex: 1;
@@ -51,7 +51,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   }
 
   ${SelectButton.Root}:disabled {
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
   }
 `;
 

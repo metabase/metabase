@@ -1,13 +1,11 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const EditGroupButton = styled.li`
   cursor: pointer;
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;
@@ -18,7 +16,7 @@ export const DeleteModalTrigger = styled.li`
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

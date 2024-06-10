@@ -1,7 +1,7 @@
 (ns metabase.models.table
   (:require
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
@@ -10,8 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -69,7 +68,7 @@
           non-magic-groups (perms-group/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
       ;; Data access permissions
-      (if (= (:db_id table) config/audit-db-id)
+      (if (= (:db_id table) audit/audit-db-id)
         (do
          ;; Tables in audit DB should start out with no query access in all groups
          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)

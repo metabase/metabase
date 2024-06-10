@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 export interface ButtonRootProps {
   purple?: boolean;
@@ -22,12 +22,12 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   ${({ purple, theme }) =>
     purple &&
     css`
-      color: ${color("white")};
+      color: var(--mb-color-text-white);
       background-color: var(--mb-color-filter);
       border: 1px solid var(--mb-color-filter);
 
       &:hover {
-        color: ${color("white")};
+        color: var(--mb-color-text-white);
         background-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
         border-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
       }

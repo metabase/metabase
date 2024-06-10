@@ -2,7 +2,7 @@ import { color } from "./palette";
 import { getColorScale } from "./scales";
 
 describe("scales", () => {
-  const colors = [color("white"), color("bg-black")];
+  const colors = [color("bg-white"), color("bg-black")];
 
   it("should interpolate colors by default", () => {
     const scale = getColorScale([0, 1], colors);

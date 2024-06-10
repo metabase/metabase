@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
-  setupRecentSelectionsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -25,7 +25,7 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
 
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   renderWithProviders(
     <NotebookStep
