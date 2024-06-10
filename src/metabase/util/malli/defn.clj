@@ -90,9 +90,8 @@
                           {:arglists (list 'quote (deparameterized-arglists parsed))
                            :schema   (mu.fn/fn-schema parsed)}
                           attr-map)
-        docstring        (annotated-docstring parsed)
-        instrument?      (mu.fn/instrument-ns? *ns*)]
-    (if-not instrument?
+        docstring        (annotated-docstring parsed)]
+    (if-not (mu.fn/instrument-fn? *ns*)
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(mu.fn/deparameterized-fn-form parsed))

@@ -76,7 +76,7 @@
                                describe-fields-using-describe-table)]
       (cond->> (describe-fields-fn driver database args)
         ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-        (mu.fn/instrument-ns? *ns*)
+        (mu.fn/instrument-fn? *ns*)
         (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
 
 (defn- describe-fks-using-describe-table-fks
@@ -111,7 +111,7 @@
                                 describe-fks-using-describe-table-fks)]
           (cond->> (describe-fks-fn driver database args)
             ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
-            (mu.fn/instrument-ns? *ns*)
+            (mu.fn/instrument-fn? *ns*)
             (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %)))))))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]

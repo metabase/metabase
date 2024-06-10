@@ -287,7 +287,7 @@
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
-(defn instrument-ns?
+(defn instrument-fn?
   "Returns true if mu.fn/fn and mu/defn in a namespace should be instrumented with malli schema validation."
   [namespace]
   (or (true? (:instrument/always (meta namespace)))
@@ -347,9 +347,8 @@
   problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
   fix this later."
   [& fn-tail]
-  (let [parsed (parse-fn-tail fn-tail)
-        instrument? (instrument-ns? *ns*)]
-    (if-not instrument?
+  (let [parsed (parse-fn-tail fn-tail)]
+    (if-not (instrument-fn? *ns*)
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:
