@@ -1,4 +1,4 @@
-import type { ReactNode, MouseEvent } from "react";
+import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
@@ -32,6 +32,20 @@ import {
 } from "./BaseItemsTable.styled";
 
 type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
+
+const ItemLinkComponent = ({
+  onClick,
+  item,
+  children,
+}: PropsWithChildren<{
+  item: CollectionItem;
+  onClick?: (item: CollectionItem) => void;
+}>) => {
+  if (onClick) {
+    return <ItemButton onClick={() => onClick(item)}>{children}</ItemButton>;
+  }
+  return <ItemLink to={item.getUrl()}>{children}</ItemLink>;
+};
 
 export const Columns = {
   Select: {
@@ -136,21 +150,11 @@ export const Columns = {
       item: CollectionItem;
       testIdPrefix?: string;
       includeDescription?: boolean;
-      onClick?: (item: CollectionItem, event: MouseEvent) => void;
+      onClick?: (item: CollectionItem) => void;
     }) => {
-      const ItemLinkComponent = onClick
-        ? ({ children }: { children: ReactNode }) => (
-            <ItemButton onClick={(e: MouseEvent) => onClick(item, e)}>
-              {children}
-            </ItemButton>
-          )
-        : ({ children }: { children: ReactNode }) => (
-            <ItemLink to={item.getUrl()}>{children}</ItemLink>
-          );
-
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-          <ItemLinkComponent>
+          <ItemLinkComponent onClick={onClick} item={item}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}

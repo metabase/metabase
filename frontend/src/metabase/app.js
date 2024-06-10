@@ -32,13 +32,13 @@ import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
-import { DragDropContextProviderContext } from "metabase/collections/context";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
+import { setIsDndAvailable } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -71,16 +71,12 @@ function _init(reducers, getRoutes, callback) {
   root.render(
     <Provider store={store}>
       <EmotionCacheProvider>
-        <DragDropContextProviderContext.Provider
-          value={DragDropContextProvider}
-        >
-          <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-            <ThemeProvider>
-              <GlobalStyles />
-              <Router history={history}>{routes}</Router>
-            </ThemeProvider>
-          </DragDropContextProvider>
-        </DragDropContextProviderContext.Provider>
+        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+          <ThemeProvider>
+            <GlobalStyles />
+            <Router history={history}>{routes}</Router>
+          </ThemeProvider>
+        </DragDropContextProvider>
       </EmotionCacheProvider>
     </Provider>,
   );
@@ -88,6 +84,7 @@ function _init(reducers, getRoutes, callback) {
   registerVisualizations();
 
   store.dispatch(refreshSiteSettings());
+  store.dispatch(setIsDndAvailable(true));
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
 

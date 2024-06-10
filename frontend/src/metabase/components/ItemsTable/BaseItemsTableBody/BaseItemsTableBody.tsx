@@ -1,12 +1,11 @@
-import { useContext } from "react";
-
-import { DragDropContextProviderContext } from "metabase/collections/context";
 import {
   ItemDragSourceTableRow,
   TableRow,
 } from "metabase/components/ItemsTable/BaseItemTableRow";
 import type { BaseItemsTableProps } from "metabase/components/ItemsTable/BaseItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
+import { useSelector } from "metabase/lib/redux";
+import { getIsDndAvailable } from "metabase/selectors/app";
 import type { CollectionItem } from "metabase-types/api";
 
 import { TBody } from "../BaseItemsTable.styled";
@@ -45,7 +44,7 @@ export const BaseItemsTableBody = ({
   | "onMove"
   | "onToggleSelected"
 >) => {
-  const isDndAvailable = useContext(DragDropContextProviderContext);
+  const isDndAvailable = useSelector(getIsDndAvailable);
 
   const TableRowComponent = isDndAvailable ? ItemDragSourceTableRow : TableRow;
   return (

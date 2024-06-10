@@ -26,6 +26,7 @@ interface LocationChangeAction {
 }
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
+
 export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
@@ -95,8 +96,18 @@ const isNavbarOpen = handleActions(
   true,
 );
 
+const SET_IS_DND_AVAILABLE = "metabase/app/SET_IS_DND_AVAILABLE";
+export const setIsDndAvailable = createAction(SET_IS_DND_AVAILABLE);
+const isDndAvailable = handleActions(
+  {
+    [SET_IS_DND_AVAILABLE]: (isAvailable: boolean) => isAvailable,
+  },
+  false,
+);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   errorPage,
   isNavbarOpen,
+  isDndAvailable,
 });

@@ -12,7 +12,6 @@ import { isTrashedCollection } from "metabase/collections/utils";
 import { BaseItemsTableBody } from "metabase/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
 import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
-import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
@@ -116,7 +115,6 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
-  isLoading?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -143,20 +141,11 @@ export const BaseItemsTable = ({
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
   onClick,
-  isLoading,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
-
-  if (isLoading) {
-    return (
-      <Center>
-        <Loader size="lg" />
-      </Center>
-    );
-  }
 
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>

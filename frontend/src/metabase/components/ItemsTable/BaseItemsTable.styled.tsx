@@ -93,9 +93,8 @@ const itemLinkStyle = css`
 
 export const ItemButton = styled(Text)<
   TextProps & HTMLAttributes<HTMLDivElement>
->`
-  ${itemLinkStyle}
-`;
+>(itemLinkStyle);
+
 export const ItemLink = styled(Link)(itemLinkStyle);
 
 export const ItemNameCell = styled.td`

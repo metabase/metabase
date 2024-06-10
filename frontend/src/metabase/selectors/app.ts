@@ -208,3 +208,7 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     return isNavbarOpen;
   },
 );
+
+export const getIsDndAvailable = (state: State) => {
+  return state.app.isDndAvailable;
+};
