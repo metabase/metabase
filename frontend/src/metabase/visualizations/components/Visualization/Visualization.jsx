@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { assoc } from "icepick";
-import { PureComponent, useMemo } from "react";
+import { PureComponent } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -75,6 +75,7 @@ const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
+    href: undefined,
     hovered: null,
     clicked: null,
     error: null,
@@ -151,7 +152,14 @@ class Visualization extends PureComponent {
     const computedSettings = !this.isLoading(series)
       ? getComputedSettingsForSeries(series)
       : {};
+
+    const nextCard = series[0].card;
+    const previousCard =
+      newProps.rawSeries.find(series => series.card.id === nextCard?.id)
+        ?.card ?? newProps.rawSeries[0].card;
+
     this.setState({
+      href: newProps.getHref?.({ nextCard, previousCard }),
       hovered: null,
       error: null,
       genericError: null,
@@ -304,33 +312,16 @@ class Visualization extends PureComponent {
 
   // Add the underlying card of current series to onChangeCardAndRun if available
   handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
-    this.props.onChangeCardAndRun({
-      nextCard,
-      previousCard: this.getPreviousCard(nextCard),
-      objectId,
-    });
-  };
-
-  getHref = () => {
-    if (!this.props.getHref) {
-      return undefined;
-    }
-
-    const nextCard = this.state.series[0].card;
-
-    return this.props.getHref({
-      nextCard,
-      previousCard: this.getPreviousCard(nextCard),
-    });
-  };
-
-  getPreviousCard = nextCard => {
     const { rawSeries } = this.props;
     const previousCard =
       rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
       rawSeries[0].card;
 
-    return previousCard;
+    this.props.onChangeCardAndRun({
+      nextCard,
+      previousCard,
+      objectId,
+    });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -376,7 +367,7 @@ class Visualization extends PureComponent {
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
-    let { series, hovered, clicked } = this.state;
+    let { href, series, hovered, clicked } = this.state;
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
@@ -491,133 +482,99 @@ class Visualization extends PureComponent {
 
     return (
       <ErrorBoundary onError={this.onErrorBoundaryError}>
-        <HrefMemo
-          getHref={this.props.getHref}
-          nextCard={series[0].card}
-          rawSeries={this.props.rawSeries}
+        <VisualizationRoot
+          className={className}
+          style={style}
+          data-testid="visualization-root"
         >
-          {({ href }) => (
-            <VisualizationRoot
-              className={className}
-              style={style}
-              data-testid="visualization-root"
-            >
-              {!!hasHeader && (
-                <VisualizationHeader>
-                  <ChartCaption
-                    series={series}
-                    settings={settings}
-                    icon={headerIcon}
-                    actionButtons={extra}
-                    width={width}
-                    href={href}
-                    onChangeCardAndRun={
-                      this.props.onChangeCardAndRun && !replacementContent
-                        ? this.handleOnChangeCardAndRun
-                        : null
-                    }
-                  />
-                </VisualizationHeader>
-              )}
-              {replacementContent ? (
-                replacementContent
-              ) : isDashboard && noResults ? (
-                <NoResultsView isSmall={small} />
-              ) : error ? (
-                <ErrorView
-                  error={errorMessageOverride ?? error}
-                  icon={errorIcon}
-                  isSmall={small}
-                  isDashboard={isDashboard}
-                />
-              ) : genericError ? (
-                <SmallGenericError bordered={false} />
-              ) : loading ? (
-                <LoadingView
-                  expectedDuration={expectedDuration}
-                  isSlow={isSlow}
-                />
-              ) : (
-                <div
-                  data-card-key={getCardKey(series[0].card?.id)}
-                  className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                >
-                  <CardVisualization
-                    {...this.props}
-                    // NOTE: CardVisualization class used as a selector for tests
-                    className={cx(
-                      "CardVisualization",
-                      CS.flexFull,
-                      CS.flexBasisNone,
-                    )}
-                    isPlaceholder={isPlaceholder}
-                    isMobile={isMobile}
-                    series={series}
-                    settings={settings}
-                    card={series[0].card} // convenience for single-series visualizations
-                    data={series[0].data} // convenience for single-series visualizations
-                    hovered={hovered}
-                    clicked={clicked}
-                    headerIcon={hasHeader ? null : headerIcon}
-                    onHoverChange={this.handleHoverChange}
-                    onVisualizationClick={this.handleVisualizationClick}
-                    visualizationIsClickable={this.visualizationIsClickable}
-                    onRenderError={this.onRenderError}
-                    onRender={this.onRender}
-                    onActionDismissal={this.hideActions}
-                    gridSize={gridSize}
-                    href={href}
-                    onChangeCardAndRun={
-                      this.props.onChangeCardAndRun
-                        ? this.handleOnChangeCardAndRun
-                        : null
-                    }
-                  />
-                </div>
-              )}
-              <ChartTooltip
+          {!!hasHeader && (
+            <VisualizationHeader>
+              <ChartCaption
                 series={series}
-                hovered={hovered}
                 settings={settings}
+                icon={headerIcon}
+                actionButtons={extra}
+                width={width}
+                href={href}
+                onChangeCardAndRun={
+                  this.props.onChangeCardAndRun && !replacementContent
+                    ? this.handleOnChangeCardAndRun
+                    : null
+                }
               />
-              {this.props.onChangeCardAndRun && (
-                <ConnectedClickActionsPopover
-                  clicked={clicked}
-                  clickActions={regularClickActions}
-                  onChangeCardAndRun={this.handleOnChangeCardAndRun}
-                  onClose={this.hideActions}
-                  series={series}
-                  onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-                />
-              )}
-            </VisualizationRoot>
+            </VisualizationHeader>
           )}
-        </HrefMemo>
+          {replacementContent ? (
+            replacementContent
+          ) : isDashboard && noResults ? (
+            <NoResultsView isSmall={small} />
+          ) : error ? (
+            <ErrorView
+              error={errorMessageOverride ?? error}
+              icon={errorIcon}
+              isSmall={small}
+              isDashboard={isDashboard}
+            />
+          ) : genericError ? (
+            <SmallGenericError bordered={false} />
+          ) : loading ? (
+            <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
+          ) : (
+            <div
+              data-card-key={getCardKey(series[0].card?.id)}
+              className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
+            >
+              <CardVisualization
+                {...this.props}
+                // NOTE: CardVisualization class used as a selector for tests
+                className={cx(
+                  "CardVisualization",
+                  CS.flexFull,
+                  CS.flexBasisNone,
+                )}
+                isPlaceholder={isPlaceholder}
+                isMobile={isMobile}
+                series={series}
+                settings={settings}
+                card={series[0].card} // convenience for single-series visualizations
+                data={series[0].data} // convenience for single-series visualizations
+                hovered={hovered}
+                clicked={clicked}
+                headerIcon={hasHeader ? null : headerIcon}
+                onHoverChange={this.handleHoverChange}
+                onVisualizationClick={this.handleVisualizationClick}
+                visualizationIsClickable={this.visualizationIsClickable}
+                onRenderError={this.onRenderError}
+                onRender={this.onRender}
+                onActionDismissal={this.hideActions}
+                gridSize={gridSize}
+                href={href}
+                onChangeCardAndRun={
+                  this.props.onChangeCardAndRun
+                    ? this.handleOnChangeCardAndRun
+                    : null
+                }
+              />
+            </div>
+          )}
+          <ChartTooltip series={series} hovered={hovered} settings={settings} />
+          {this.props.onChangeCardAndRun && (
+            <ConnectedClickActionsPopover
+              clicked={clicked}
+              clickActions={regularClickActions}
+              onChangeCardAndRun={this.handleOnChangeCardAndRun}
+              onClose={this.hideActions}
+              series={series}
+              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+            />
+          )}
+        </VisualizationRoot>
       </ErrorBoundary>
     );
   }
 }
 
 Visualization.defaultProps = defaultProps;
-
-const HrefMemo = ({ children, nextCard, rawSeries, getHref }) => {
-  /**
-   * Caution: if previousCard is a dependency of this hook then it won't correctly react to deps changes
-   */
-  const href = useMemo(() => {
-    if (!getHref) {
-      return undefined;
-    }
-
-    const previousCard =
-      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
-      rawSeries[0].card;
-
-    return getHref({ nextCard, previousCard });
-  }, [getHref, nextCard, rawSeries]);
-
-  return children({ href });
-};
 
 export default _.compose(
   ExplicitSize({
