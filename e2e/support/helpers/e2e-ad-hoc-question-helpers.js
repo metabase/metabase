@@ -65,13 +65,7 @@ export function startNewNativeQuestion(database = SAMPLE_DB_ID) {
 
   const hash = adhocQuestionHash(newNativeQuestionQuery);
 
-  cy.intercept("GET", "/api/database?saved=true").as("getSavedDatabases");
-
   cy.visit("/question#" + hash);
-  cy.wait("@getSavedDatabases");
-  // cy.findByTestId("native-query-top-bar").within(() => {
-  //   cy.icon("contract").should("be.visible");
-  // });
 
   return cy.get(".ace_content").as("editor").should("be.visible");
 }
