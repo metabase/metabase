@@ -489,9 +489,10 @@
 
 (defn latest-applied-major-version
   "Gets the latest version applied to the database."
-  [conn database]
+  [conn ^Database database]
   (when-not (fresh-install? conn database)
-    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED DESC LIMIT 1" (changelog-table-name liquibase))
+    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED DESC LIMIT 1"
+                                  (.getDatabaseChangeLogTableName database))
           changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
       (some-> changeset-id extract-numbers first))))
 
