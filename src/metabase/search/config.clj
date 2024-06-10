@@ -191,49 +191,27 @@
   {:arglists '([model])}
   (fn [model] model))
 
-(defmethod native-query-columns :default [_] [])
-
-(doseq [model ["card" "dataset" "action" "metric"]]
-  (defmethod native-query-columns model [_] [:dataset_query]))
+(defmethod native-query-columns :default   [_] [])
+(defmethod native-query-columns "card"     [_] [:dataset_query])
+(defmethod native-query-columns "dataset"  [_] (native-query-columns "card"))
+(defmethod native-query-columns "metric"   [_] (native-query-columns "card"))
+(defmethod native-query-columns "action"   [_] [:dataset_query])
 
 (defmulti searchable-columns-for-model
   "The columns that will be searched for the query."
   {:arglists '([model])}
   (fn [model] model))
 
-(defmethod searchable-columns-for-model :default
-  [_]
-  [:name])
-
-(doseq [model ["card" "dataset" "action" "metric"]]
- (defmethod searchable-columns-for-model model
-  [_]
-  [:name
-   :description]))
-
-(defmethod searchable-columns-for-model "dashboard"
-  [_]
-  [:name
-   :description])
-
-(defmethod searchable-columns-for-model "page"
-  [_]
-  (searchable-columns-for-model "dashboard"))
-
-(defmethod searchable-columns-for-model "database"
-  [_]
-  [:name
-   :description])
-
-(defmethod searchable-columns-for-model "table"
-  [_]
-  [:name
-   :display_name
-   :description])
-
-(defmethod searchable-columns-for-model "indexed-entity"
-  [_]
-  [:name])
+(defmethod searchable-columns-for-model :default         [_] [:name])
+(defmethod searchable-columns-for-model "action"         [_] [:name :description])
+(defmethod searchable-columns-for-model "card"           [_] [:name :description])
+(defmethod searchable-columns-for-model "dataset"        [_] (searchable-columns-for-model "card"))
+(defmethod searchable-columns-for-model "metric"         [_] (searchable-columns-for-model "card"))
+(defmethod searchable-columns-for-model "dashboard"      [_] [:name :description])
+(defmethod searchable-columns-for-model "page"           [_] (searchable-columns-for-model "dashboard"))
+(defmethod searchable-columns-for-model "database"       [_] [:name :description])
+(defmethod searchable-columns-for-model "table"          [_] [:name :description :display_name])
+(defmethod searchable-columns-for-model "indexed-entity" [_] [:name])
 
 (def ^:private default-columns
   "Columns returned for all models."
