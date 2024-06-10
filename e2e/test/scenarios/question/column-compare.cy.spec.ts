@@ -705,16 +705,16 @@ function verifySummarizeText(options: CheckTextOpts) {
   rightSidebar().button("Add aggregation").click();
 
   popover().within(() => {
-    cy.findByText(options.itemName).should("exist").click();
+    cy.findByText(options.itemName).should("be.visible").click();
 
     if (options.step1Title) {
-      cy.findByText(options.step1Title).should("exist");
-      cy.findByText("Sum of Price").should("exist");
+      cy.findByText(options.step1Title).should("be.visible");
+      cy.findByText("Sum of Price").should("be.visible");
       cy.findByText("Count").click();
     }
 
-    cy.findByText(options.step2Title).should("exist");
-    cy.findByText(options.offsetHelp).should("exist");
+    cy.findByText(options.step2Title).should("be.visible");
+    cy.findByText(options.offsetHelp).should("be.visible");
   });
 }
 
@@ -722,9 +722,9 @@ function verifyColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
   tableHeaderClick("Count");
 
   popover().within(() => {
-    cy.findByText(options.itemName).should("exist").click();
-    cy.findByText(options.step2Title).should("exist");
-    cy.findByText(options.offsetHelp).should("exist");
+    cy.findByText(options.itemName).should("be.visible").click();
+    cy.findByText(options.step2Title).should("be.visible");
+    cy.findByText(options.offsetHelp).should("be.visible");
   });
 }
 
@@ -732,16 +732,16 @@ function verifyPlusButtonText(options: CheckTextOpts) {
   cy.button("Add column").click();
 
   popover().within(() => {
-    cy.findByText(options.itemName).should("exist").click();
+    cy.findByText(options.itemName).should("be.visible").click();
 
     if (options.step1Title) {
-      cy.findByText(options.step1Title).should("exist");
-      cy.findByText("Sum of Price").should("exist");
+      cy.findByText(options.step1Title).should("be.visible");
+      cy.findByText("Sum of Price").should("be.visible");
       cy.findByText("Count").click();
     }
 
-    cy.findByText(options.step2Title).should("exist");
-    cy.findByText(options.offsetHelp).should("exist");
+    cy.findByText(options.step2Title).should("be.visible");
+    cy.findByText(options.offsetHelp).should("be.visible");
   });
 }
 
@@ -753,16 +753,16 @@ function verifyNotebookText(options: CheckTextOpts) {
     .click();
 
   popover().within(() => {
-    cy.findByText(options.itemName).should("exist").click();
+    cy.findByText(options.itemName).should("be.visible").click();
 
     if (options.step1Title) {
-      cy.findByText(options.step1Title).should("exist");
-      cy.findByText("Sum of Price").should("exist");
-      cy.findByText("Count").should("exist").click();
+      cy.findByText(options.step1Title).should("be.visible");
+      cy.findByText("Sum of Price").should("be.visible");
+      cy.findByText("Count").should("be.visible").click();
     }
 
-    cy.findByText(options.step2Title).should("exist");
-    cy.findByText(options.offsetHelp).should("exist");
+    cy.findByText(options.step2Title).should("be.visible");
+    cy.findByText(options.offsetHelp).should("be.visible");
   });
 }
 
@@ -775,7 +775,7 @@ function verifyAggregations(results: AggregationResult[]) {
   for (const result of results) {
     cy.findByTestId("aggregate-step")
       .findByText(result.name)
-      .should("exist")
+      .should("be.visible")
       .click();
 
     cy.get(".ace_content").should("have.text", result.expression);
@@ -788,7 +788,7 @@ function verifyColumns(names: string[]) {
   visualize();
 
   for (const name of names) {
-    cy.findAllByTestId("header-cell").contains(name).should("exist");
+    cy.findAllByTestId("header-cell").contains(name).should("be.visible");
   }
 }
 
@@ -797,11 +797,11 @@ function verifyBreakoutRequiredError() {
 
   cy.get("main")
     .findByText("There was a problem with your question")
-    .should("exist");
+    .should("be.visible");
   cy.get("main").findByText("Show error details").click();
   cy.get("main")
     .findByText(
       "Window function requires either breakouts or order by in the query",
     )
-    .should("exist");
+    .should("be.visible");
 }
