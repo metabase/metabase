@@ -26,14 +26,14 @@ const SUM_OF_TOTAL = {
 };
 
 function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
-  tooltipSelector("#88BF4D");
+  tooltipSelector("#88BF4D", 0);
   testTooltipPairs([
     ["Created At", "2022"],
     ["Sum of Total", "42,156.87"],
   ]);
   testTooltipExcludesText("Compared to previous year");
 
-  tooltipSelector("#88BF4D");
+  tooltipSelector("#88BF4D", 1);
   testTooltipPairs([
     ["Created At", "2023"],
     ["Sum of Total", "205,256.02"],
@@ -97,14 +97,14 @@ const AVG_OF_TOTAL = {
 };
 
 function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
-  tooltipSelector("#A989C5");
+  tooltipSelector("#A989C5", 0);
   testTooltipPairs([
     ["Created At", "2022"],
     ["Average of Total", "56.66"],
   ]);
   testTooltipExcludesText("Compared to previous year");
 
-  tooltipSelector("#A989C5");
+  tooltipSelector("#A989C5", 1);
   testTooltipPairs([
     ["Created At", "2023"],
     ["Average of Total", "56.86"],
