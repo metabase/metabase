@@ -10,7 +10,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { ListField } from "metabase/components/ListField";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
-import { parseStringValue } from "metabase/components/TokenField";
+import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
@@ -70,6 +70,7 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
 }
 
 export interface IFieldValuesWidgetProps {
+  color?: "brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -96,6 +97,7 @@ export interface IFieldValuesWidgetProps {
 
   multi?: boolean;
   autoFocus?: boolean;
+  className?: string;
   prefix?: string;
   placeholder?: string;
   checkedColor?: string;
@@ -106,8 +108,10 @@ export interface IFieldValuesWidgetProps {
 }
 
 export function FieldValuesWidgetInner({
+  color,
   maxResults = MAX_SEARCH_RESULTS,
   alwaysShowOptions = true,
+  style = {},
   formatOptions = {},
   containerWidth,
   maxWidth = 500,
@@ -126,6 +130,7 @@ export function FieldValuesWidgetInner({
   onChange,
   multi,
   autoFocus,
+  className,
   prefix,
   placeholder,
   checkedColor,
@@ -489,7 +494,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
-        ) : (
+        ) : multi ? (
           <MultiAutocomplete<string>
             onSearchChange={onInputChange}
             onChange={onChange}
@@ -504,6 +509,40 @@ export function FieldValuesWidgetInner({
             // but the type of the FieldValuesWidget props is string[]
             parseValue={parseFreeformValue}
             maxSelectedValues={multi ? undefined : 1}
+          />
+        ) : (
+          <TokenField
+            prefix={prefix}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={tokenFieldPlaceholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            optionsStyle={
+              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+            }
+            // end forwarded props
+            options={options}
+            valueKey="0"
+            valueRenderer={valueRenderer}
+            optionRenderer={optionRenderer}
+            layoutRenderer={layoutRenderer}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option?.some?.(
+                value =>
+                  value != null &&
+                  String(value).toLowerCase().includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={onInputChange}
+            parseFreeformValue={parseFreeformValue}
+            updateOnInputBlur
           />
         )}
       </div>
