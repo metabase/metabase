@@ -51,10 +51,12 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly insert function suggestion with the opening parenthesis", () => {
     addCustomColumn();
-    enterCustomColumnDetails({ formula: "LOW{enter}" });
+    enterCustomColumnDetails({ formula: "BET{enter}" });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("lower(");
+    cy.findByTestId("expression-editor-textfield").should(
+      "contain",
+      "between(",
+    );
   });
 
   it("should show expression function helper if a proper function is typed", () => {
