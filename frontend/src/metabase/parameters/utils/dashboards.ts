@@ -174,7 +174,7 @@ function buildFieldFilterUiParameter(
 
     const question = questions[card.id] ?? new Question(card, metadata);
     try {
-      const field = getParameterTargetField(target, question);
+      const field = getParameterTargetField(question, parameter, target);
 
       return {
         field,

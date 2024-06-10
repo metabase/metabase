@@ -6,6 +6,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -155,6 +156,12 @@
      :was-pivot    was-pivot)))
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
+
+(api/defendpoint POST "/query_metadata"
+  "Get all of the required query metadata for an ad-hoc query."
+  [:as {{:keys [database] :as query} :body}]
+  {database ms/PositiveInt}
+  (api.query-metadata/adhoc-query-metadata query))
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."

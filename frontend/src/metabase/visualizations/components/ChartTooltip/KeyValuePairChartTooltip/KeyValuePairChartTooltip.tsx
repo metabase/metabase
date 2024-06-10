@@ -31,6 +31,7 @@ const KeyValuePairChartTooltip = ({
   settings,
 }: StackedDataTooltipProps) => {
   const rows = useMemo(() => getRows(hovered), [hovered]);
+  const { isAlreadyScaled } = hovered;
   const footerRows = hovered.footerData;
 
   const showFooter = footerRows && footerRows.length > 0;
@@ -45,6 +46,7 @@ const KeyValuePairChartTooltip = ({
             value={value}
             column={col}
             settings={settings}
+            isAlreadyScaled={isAlreadyScaled}
           />
         ))}
       </TableBody>
@@ -70,9 +72,16 @@ export interface TooltipRowProps {
   value?: any;
   column: RemappingHydratedDatasetColumn | DatasetColumn | null;
   settings: ComputedVisualizationSettings;
+  isAlreadyScaled?: boolean;
 }
 
-const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
+const TooltipRow = ({
+  name,
+  value,
+  column,
+  settings,
+  isAlreadyScaled,
+}: TooltipRowProps) => (
   <tr>
     {name ? (
       <TableCell className={cx(CS.textLight, CS.textRight)}>{name}:</TableCell>
@@ -82,7 +91,7 @@ const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
     <TableCell className={cx(CS.textBold, CS.textLeft)}>
       {isValidElement(value)
         ? value
-        : formatValueForTooltip({ value, column, settings })}
+        : formatValueForTooltip({ value, column, settings, isAlreadyScaled })}
     </TableCell>
   </tr>
 );

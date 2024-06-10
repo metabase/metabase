@@ -10,7 +10,7 @@ export const CardRoot = styled(ExternalLink)`
   display: flex;
   align-items: center;
   padding: 1rem;
-  border: 1px solid ${color("focus")};
+  border: 1px solid var(--mb-color-focus);
   border-radius: 0.5rem;
 
   ${breakpointMinLarge} {

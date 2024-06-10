@@ -13,7 +13,7 @@ export const Root = styled.div`
 
   padding: 0.5rem;
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const SlowQueryMessageContainer = styled.div`

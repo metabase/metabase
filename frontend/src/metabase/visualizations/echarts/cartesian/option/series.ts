@@ -368,7 +368,7 @@ export const buildEChartsStackLabelOptions = (
       const value = datum[seriesModel.dataKey];
 
       if (typeof value !== "number") {
-        return " ";
+        return "";
       }
       return formatter(value);
     },
@@ -582,6 +582,7 @@ const buildEChartsLineAreaSeries = (
       focus: hasMultipleSeries ? "series" : "self",
       itemStyle: {
         color: seriesModel.color,
+        opacity: 1,
       },
     },
     blur: {

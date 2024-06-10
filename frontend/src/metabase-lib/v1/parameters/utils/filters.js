@@ -28,6 +28,7 @@ export function fieldFilterForParameter(parameter) {
 
 export function columnFilterForParameter(query, stageIndex, parameter) {
   const type = getParameterType(parameter);
+
   switch (type) {
     case "date":
       return column => Lib.isDate(column);

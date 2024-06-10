@@ -70,7 +70,7 @@ export const DocumentationLink = styled(ExternalLink)`
   align-items: center;
   margin-top: 1rem;
 
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
 `;
 

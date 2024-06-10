@@ -46,5 +46,5 @@ export const ModelDescription = styled(EditableText)`
 
 export const ModelInfoLink = styled(Link)`
   ${commonInfoTextStyle}
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;

@@ -18,7 +18,7 @@ const FormContainer = styled.div`
   }
 
   ${SelectButton.Root}:focus {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;
 

@@ -23,6 +23,6 @@ export const ObjectRelationContent = styled.div<ObjectRelationshipContentProps>`
   cursor: ${props => props.isClickable && "pointer"};
 
   &:hover {
-    color: ${props => props.isClickable && color("brand")};
+    color: ${props => props.isClickable && "var(--mb-color-brand)"};
   }
 `;

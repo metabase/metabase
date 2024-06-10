@@ -4,12 +4,15 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import {
   CompareAggregations,
   getOffsetPeriod,
 } from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import { getQuestion } from "metabase/query_builder/selectors";
+import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -75,6 +78,7 @@ export function AggregationPicker({
   onSelect,
   onClose,
 }: AggregationPickerProps) {
+  const question = checkNotNull(useSelector(getQuestion));
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
@@ -241,11 +245,19 @@ export function AggregationPicker({
   );
 
   const handleCompareSubmit = useCallback(
-    (aggregations: Lib.Aggregable[]) => {
+    (aggregations: Lib.ExpressionClause[]) => {
       onAdd(aggregations);
+
+      trackColumnCompareViaShortcut(
+        query,
+        stageIndex,
+        aggregations,
+        question.id(),
+      );
+
       onClose?.();
     },
-    [onAdd, onClose],
+    [query, stageIndex, question, onAdd, onClose],
   );
 
   if (isComparing) {
