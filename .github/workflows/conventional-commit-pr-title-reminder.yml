@@ -40,9 +40,9 @@ jobs:
           comment='@${{ github.event.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 
           Here are all the supported types that will be shown in the changelog:
-          - feat
-          - fix
-          - perf
+          - `feat`
+          - `fix`
+          - `perf`
 
           Please also make sure to include `sdk` scope, otherwise, the changelog will not include this change.
 
