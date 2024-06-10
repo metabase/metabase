@@ -314,6 +314,7 @@ class Visualization extends PureComponent {
   // Add the underlying card of current series to onChangeCardAndRun if available
   handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
     const { rawSeries } = this.props;
+
     const previousCard =
       rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
       rawSeries[0].card;
