@@ -10,6 +10,7 @@ import {
   filterWidget,
   getDashboardCard,
   popover,
+  queryBuilderMain,
   resetFilterWidgetToDefault,
   restore,
   saveDashboard,
@@ -17,6 +18,10 @@ import {
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+
+const dashboardDetails = {
+  name: "Test dashboard",
+};
 
 const singleBreakoutQuestionDetails = {
   name: "Single breakout",
@@ -176,7 +181,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       createQuestion(expressionBreakoutQuestionDetails);
       createQuestion(binningBreakoutQuestionDetails);
       createNativeQuestion(nativeQuestionDetails);
-      cy.createDashboard().then(({ body: dashboard }) =>
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         visitDashboard(dashboard.id),
       );
       editDashboard();
@@ -190,7 +195,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       saveDashboard();
       filterWidget().click();
       popover().findByText("Year").click();
-      getDashboardCard().findByText("Created At: Year").should("be.visible");
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Created At: Year").should("be.visible");
+      backToDashboard();
       editDashboard();
       removeQuestion();
 
@@ -206,7 +216,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       saveDashboard();
       filterWidget().click();
       popover().findByText("Quarter").click();
-      getDashboardCard().findByText("Q2 2022").should("be.visible");
+      getDashboardCard().within(() => {
+        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText(multiBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Q2 2022").should("be.visible");
+      backToDashboard();
       editDashboard();
       removeQuestion();
 
@@ -218,7 +233,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       saveDashboard();
       filterWidget().click();
       popover().findByText("Quarter").click();
-      getDashboardCard().findByText("Created At: Quarter").should("be.visible");
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText(multiStageQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Created At: Quarter").should("be.visible");
+      backToDashboard();
       editDashboard();
       removeQuestion();
 
@@ -343,6 +363,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
   });
 });
+
+function backToDashboard() {
+  cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
+}
 
 function addTemporalUnitParameter() {
   cy.findByTestId("dashboard-header")
