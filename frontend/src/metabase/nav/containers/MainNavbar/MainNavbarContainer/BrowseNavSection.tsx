@@ -5,7 +5,7 @@ import { useHasModels } from "metabase/common/hooks/use-has-models";
 import CollapseSection from "metabase/components/CollapseSection";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Skeleton, Flex } from "metabase/ui";
+import { Flex, Skeleton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
