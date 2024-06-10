@@ -155,41 +155,51 @@
                [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
     :order-by [[:id :desc]]}))
 
+(defn- str-or-kw-enum [& kw-or-strs]
+  (let [values (mapcat #(cond (keyword? %) [% (u/qualified-name %)]
+                              string? [(keyword %) %]
+                              :else (throw (ex-info "Expected string or keyword" {:value %})))
+                       kw-or-strs)]
+    (into [:enum] values)))
+
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
-  [:and {:registry {::pc [:map
-                          [:id [:or [:int {:min 1}] [:= "root"]]]
-                          [:name :string]
-                          [:authority_level [:enum "official" nil]]]}}
-   [:map
-    [:id [:int {:min 1}]]
-    [:name :string]
-    [:description [:maybe :string]]
-    [:model [:enum :dataset :card :metric :dashboard :collection :table]]
-    [:can_write :boolean]
-    [:timestamp :string]]
-   [:multi {:dispatch :model}
-    [:card [:map
-            [:parent_collection ::pc]
-            [:display :string]
-            [:moderated_status [:enum "verified" nil]]]]
-    [:dataset [:map
+  (mc/schema
+   [:and {:registry {::official [:maybe (str-or-kw-enum "official")]
+                     ::verified [:maybe (str-or-kw-enum "verified")]
+                     ::pc [:map
+                           [:id [:or [:int {:min 1}] [:= "root"]]]
+                           [:name :string]
+                           [:authority_level ::official]]}}
+    [:map
+     [:id [:int {:min 1}]]
+     [:name :string]
+     [:description [:maybe :string]]
+     [:model [:enum :dataset :card :metric :dashboard :collection :table]]
+     [:can_write :boolean]
+     [:timestamp :string]]
+    [:multi {:dispatch :model}
+     [:card [:map
+             [:display :string]
+             [:parent_collection ::pc]
+             [:moderated_status ::verified]]]
+     [:dataset [:map
+                [:parent_collection ::pc]
+                [:moderated_status ::verified]]]
+     [:metric [:map
+               [:display :string]
                [:parent_collection ::pc]
-               [:moderated_status [:enum "verified" nil]]]]
-    [:metric [:map
-              [:parent_collection ::pc]
-              [:display :string]
-              [:moderated_status [:enum "verified" nil]]]]
-    [:dashboard [:map [:parent_collection ::pc]]]
-    [:table [:map
-             [:display_name :string]
-             [:database [:map
-                         [:id [:int {:min 1}]]
-                         [:name :string]]]]]
-    [:collection [:map
-                  [:parent_collection ::pc]
-                  [:effective_location :string]
-                  [:authority_level [:enum "official" nil]]]]]])
+               [:moderated_status ::verified]]]
+     [:dashboard [:map [:parent_collection ::pc]]]
+     [:table [:map
+              [:display_name :string]
+              [:database [:map
+                          [:id [:int {:min 1}]]
+                          [:name :string]]]]]
+     [:collection [:map
+                   [:parent_collection ::pc]
+                   [:effective_location :string]
+                   [:authority_level ::official]]]]]))
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]].
