@@ -22,12 +22,11 @@ export const getFormatters = (
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
-    return String(
-      formatValue(value, {
-        ...settings.column(chartColumns.dimension.column),
-        jsx: false,
-      }),
-    );
+    const options = getFormattingOptionsWithoutScaling({
+      ...settings.column(chartColumns.dimension.column),
+      jsx: false,
+    });
+    return String(formatValue(value, options));
   };
 
   const metricColumn = getLabelsMetricColumn(chartColumns);
@@ -35,25 +34,24 @@ export const getFormatters = (
   const percentXTicksFormatter = (percent: NumberLike) => {
     const column = metricColumn.column;
     const number_separators = settings.column(column)?.number_separators;
+    const options = getFormattingOptionsWithoutScaling({
+      column,
+      number_separators,
+      jsx: false,
+      number_style: "percent",
+      decimals: 2,
+    });
 
-    return String(
-      formatValue(percent, {
-        column,
-        number_separators,
-        jsx: false,
-        number_style: "percent",
-        decimals: 2,
-      }),
-    );
+    return String(formatValue(percent, options));
   };
 
   const xTickFormatter = (value: NumberLike) => {
-    return String(
-      formatValue(value, {
-        ...settings.column(metricColumn.column),
-        jsx: false,
-      }),
-    );
+    const options = getFormattingOptionsWithoutScaling({
+      ...settings.column(metricColumn.column),
+      jsx: false,
+    });
+
+    return String(formatValue(value, options));
   };
 
   const shouldFormatXTicksAsPercent = getStackOffset(settings) === "expand";

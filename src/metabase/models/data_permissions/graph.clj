@@ -12,11 +12,13 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.permission-graph :as api.permission-graph]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -137,7 +139,7 @@
   (let [admin-group-id (u/the-id (perms-group/admin))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id config/audit-db-id])]}))]
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
     (if (and group-id (not= group-id admin-group-id))
       ;; Don't add admin perms when we're fetching the perms for a specific non-admin group
       api-graph
@@ -362,7 +364,7 @@
                          vals
                          (map keys)
                          (apply concat))]
-    (when (some #{config/audit-db-id} changes-ids)
+    (when (some #{audit/audit-db-id} changes-ids)
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))

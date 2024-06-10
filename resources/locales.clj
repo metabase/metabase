@@ -6,6 +6,7 @@
    "bg"
    "ca"
    "cs"
+   "da"
    "de"
    "en"
    "es"

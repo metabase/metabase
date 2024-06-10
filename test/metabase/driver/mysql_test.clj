@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -360,6 +361,47 @@
                                :base_type :type/Text}]}]
                    (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                         (map table-fingerprint))))))))))
+
+(defn- create-enums-table! [db]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (:details db))]
+    (doseq [sql ["CREATE TABLE birds (name VARCHAR(50) PRIMARY KEY, bird_type ENUM('toucan', 'pigeon', 'turkey'));"
+                 "INSERT INTO birds (name, bird_type) VALUES ('Rasta', 'toucan');"]]
+      (jdbc/execute! spec sql))))
+
+(deftest enums-test
+  (mt/test-driver :mysql
+    (testing "ENUM columns are synced with the correct base and semantic types"
+      (mt/with-empty-db
+        (create-enums-table! (mt/db))
+        (sync/sync-database! (mt/db))
+        (is (=? {:base_type     :type/MySQLEnum
+                 :semantic_type :type/Category}
+                (t2/select-one :model/Field :name "bird_type")))))))
+
+(deftest enums-actions-test
+  (mt/test-driver :mysql
+    (testing "actions with enums"
+      (mt/with-empty-db
+        (create-enums-table! (mt/db))
+        (sync/sync-database! (mt/db))
+        (mt/with-actions-enabled
+          (mt/with-actions [model {:type          :model
+                                   :dataset_query (mt/mbql-query birds)}
+                            {action-id :action-id} {:type :implicit
+                                                    :kind "row/create"}]
+            (testing "Enum fields are a valid implicit parameter target"
+              (let [columns        (->> model :result_metadata (map :name) set)
+                    action-targets (->> (action/select-action :id action-id)
+                                        :parameters
+                                        (map :id)
+                                        set)]
+                (is (= columns action-targets))))
+            (testing "Can create new records with an enum value"
+              (is (= {:created-row {:name "Lucky", :bird_type "pigeon"}}
+                     (mt/user-http-request :crowberto
+                                           :post 200
+                                           (format "action/%s/execute" action-id)
+                                           {:parameters {"name" "Lucky", "bird_type" "pigeon"}}))))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql

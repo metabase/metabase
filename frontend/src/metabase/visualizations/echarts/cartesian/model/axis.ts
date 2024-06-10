@@ -540,7 +540,7 @@ export function getYAxesModels(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
-  compactSeriesDataKeys: DataKey[],
+  isCompactFormatting: boolean,
   renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
@@ -575,17 +575,6 @@ export function getYAxesModels(
     stackModel => stackModel.axis === "left",
   );
 
-  const leftAxisFormattingOptions = getYAxisFormattingOptions({
-    compactSeriesDataKeys,
-    axisSeriesKeysSet: leftAxisSeriesKeysSet,
-    settings,
-  });
-  const rightAxisFormattingOptions = getYAxisFormattingOptions({
-    compactSeriesDataKeys,
-    axisSeriesKeysSet: rightAxisSeriesKeysSet,
-    settings,
-  });
-
   return {
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
@@ -596,7 +585,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       renderingContext,
-      leftAxisFormattingOptions,
+      { compact: isCompactFormatting },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
@@ -609,7 +598,7 @@ export function getYAxesModels(
         ? null
         : settings["stackable.stack_type"] ?? null,
       renderingContext,
-      rightAxisFormattingOptions,
+      { compact: isCompactFormatting },
     ),
   };
 }

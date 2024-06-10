@@ -23,10 +23,10 @@ import {
 export const tableApi = Api.injectEndpoints({
   endpoints: builder => ({
     listTables: builder.query<Table[], TableListQuery | void>({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/table",
-        body,
+        params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
     }),
@@ -38,10 +38,10 @@ export const tableApi = Api.injectEndpoints({
       providesTags: table => (table ? provideTableTags(table) : []),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/table/${id}/query_metadata`,
-        body,
+        params,
       }),
       providesTags: table => (table ? provideTableTags(table) : []),
     }),

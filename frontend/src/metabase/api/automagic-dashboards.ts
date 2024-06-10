@@ -7,7 +7,7 @@ import type {
 
 import { Api } from "./api";
 import {
-  provideDashboardMetadataTags,
+  provideDashboardQueryMetadataTags,
   provideDatabaseCandidateListTags,
 } from "./tags";
 
@@ -20,7 +20,7 @@ export const automagicDashboardsApi = Api.injectEndpoints({
       query: ({ entity, entityId }) =>
         `/api/automagic-dashboards/${entity}/${entityId}/query_metadata`,
       providesTags: metadata =>
-        metadata ? provideDashboardMetadataTags(metadata) : [],
+        metadata ? provideDashboardQueryMetadataTags(metadata) : [],
     }),
     listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
       query: id => `/api/automagic-dashboards/database/${id}/candidates`,

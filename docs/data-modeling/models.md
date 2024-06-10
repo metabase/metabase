@@ -14,6 +14,7 @@ Models:
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
 - Live in collections to keep them separate from messy database schemas.
 - Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
+- Can be [persisted for faster loading](./model-persistence.md).
 
 For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
 
@@ -173,56 +174,7 @@ Just like with a question, admins can verify models. Verifying a model will give
 
 ## Model persistence
 
-_Currently available for PostgreSQL, MySQL, and Redshift_.
-
-Metabase can persist the results of your models so that your models (and the questions based on those models) load faster.
-
-You can think of persisted models as materialized views. Metabase will store model results in tables in a bespoke schema in your data warehouse (not the Metabase application database). When people ask questions based on your models, Metabase will use those stored results instead of re-running the model's query.
-
-> Model persistence doesn't work with [data sandboxing](../permissions/data-sandboxes.md).
-
-### Turn on model persistence in Metabase
-
-To persist models for faster loading, go to **Admin settings** > **Performance** > **Model persistence**.
-
-You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency.
-
-The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected and otherwise uses the System Timezone (which defaults to GMT in Metabase Cloud).
-
-We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
-
-If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will re-run the query until the next scheduled model refresh.
-
-### Create a schema to store cached models
-
-Go to **Admin settings** > **Databases** > your database > **Turn model caching on**.
-
-![Cache models UI](./images/cache-model-schema.png)
-
-If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it.
-
-If the connection's credentials lack the necessary permissions to create the schema in your database, you'll need to create the schema in the database yourself:
-
-1. Click on the **info icon** to get the schema name.
-
-   > In the above image, the schema name is "metabase_cache_134ba_7", but your schema name will differ.
-
-2. Create the schema in your database---make sure you use the exact schema name from step 1.
-3. Ensure that the credentials Metabase uses can manage and write to that schema.
-
-### Refreshing a model's cached results
-
-To refresh a model's cached results, go to the model and click on the **i** info icon. In the info sidebar that opens, you'll see a note about when Metabase last refreshed the model's cache, and an icon to refresh the cache.
-
-### View model caching logs
-
-You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
-
-### Caching individual models
-
-{% include plans-blockquote.html feature="Caching individual models" %}
-
-On some paid plans, you can also toggle caching on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Turn model caching on/off**.
+See [Model persistence](./model-persistence.md)
 
 ## Further reading
 

@@ -5,6 +5,7 @@
     "allowSyntheticDefaultImports": true,
     "module": "commonjs",
     "isolatedModules": true,
+    "ignoreDeprecations": "5.0",
     "importsNotUsedAsValues": "error",
     "strict": true,
     "moduleResolution": "node",

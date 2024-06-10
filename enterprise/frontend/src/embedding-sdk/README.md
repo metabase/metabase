@@ -39,12 +39,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC1
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC2
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC1/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC2/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -123,6 +123,8 @@ const app = express();
 // If your FE application is on a different domain from your BE, you need to enable CORS
 // by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
 // to your FE application URL.
+//
+// Limitation: We currently only support setting one origin in Authorized Origins in Metabase for CORS.
 app.use(
   cors({
     credentials: true,
@@ -248,19 +250,14 @@ const questionId = 1; // This is the question ID you want to embed
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
 
-The API follows the same configuration as that of public dashboard embeddings, which you can read about (here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#public-embed-parameters]
-
 
 #### Parameters
 
 - **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
-- **parameterQueryParams**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
-- **bordered**: `boolean` – Whether the dashboard should have a border.
-- **titled**: `boolean` – Whether the dashboard should display a title.
-- **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
-- **hideParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
-- **font**: `string | null` – The font to use. If not specified, the Metabase instance font or `theme.fontFamily` will be used instead.
-- **theme**: `DisplayTheme` – The display theme (e.g., "light", "night", or "transparent" ).
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **withTitle**: `boolean` – Whether the dashboard should display a title.
+- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 
 
 ```jsx
@@ -271,23 +268,19 @@ const config = {...}
 
 export default function App() {
   const dashboardId = 1; // This is the dashboard ID you want to embed
-  const parameterQueryParams = {}; // Define your query parameters here
+  const initialParameterValues = {}; // Define your query parameters here
 
-  const font = "Inter"
   // choose parameter names that are in your dashboard
-  const hideParameters = ["location", "city"]
+  const hiddenParameters = ["location", "city"]
 
   return (
     <MetabaseProvider config={config}>
         <StaticDashboard
           dashboardId={dashboardId}
-          parameterQueryParams={parameterQueryParams}
-          bordered={true}
-          titled={false}
-          hideDownloadButton={false}
-          hideParameters={hideParameters}
-          font={font}
-          theme="light"
+          initialParameterValues={initialParameterValues}
+          withTitle={false}
+          withDownloads={false}
+          hiddenParameters={hideParameters}
         />
     </MetabaseProvider>
   );
@@ -471,8 +464,8 @@ return (
 
 # Known limitations
 
-The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
-
+- The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
+- Authorized Origins setting only supports 1 origin for CORS at the moment. We are working on supporting multiple origins in the near future.
 # Feedback
 
 For issues and feedback, there are two options:

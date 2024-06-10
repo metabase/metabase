@@ -73,7 +73,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         try {
           const [userResponse, siteSettingsResponse] = await Promise.all([
             dispatch(refreshCurrentUser()),
-            dispatch(refreshSiteSettings()),
+            dispatch(refreshSiteSettings({})),
           ]);
 
           if (

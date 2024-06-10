@@ -6,6 +6,7 @@ import { Route } from "react-router";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -46,6 +47,7 @@ async function setup({
 }: SetupOpts = {}) {
   setupCollectionsEndpoints({ collections: [] });
   setupDatabasesEndpoints([createMockDatabase()]);
+  setupSearchEndpoints([]);
   fetchMock.get("path:/api/bookmark", []);
 
   const storeInitialState = createMockState({
