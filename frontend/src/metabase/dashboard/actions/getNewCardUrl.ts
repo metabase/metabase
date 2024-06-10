@@ -11,6 +11,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
+  VirtualCard,
 } from "metabase-types/api";
 import type { StoreDashboard } from "metabase-types/store";
 
@@ -31,8 +32,8 @@ export const getNewCardUrl = ({
   metadata: Metadata;
   dashboard: Dashboard | StoreDashboard;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  nextCard: Card;
-  previousCard: Card;
+  nextCard: Card | VirtualCard;
+  previousCard: Card | VirtualCard;
   dashcard: QuestionDashboardCard;
   objectId?: number | string;
 }): string | undefined => {

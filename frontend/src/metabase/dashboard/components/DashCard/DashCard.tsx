@@ -8,8 +8,12 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import { getDashcardData } from "metabase/dashboard/selectors";
+import {
+  getDashcardData,
+  getParameterValues,
+} from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
@@ -20,16 +24,17 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getMetadata } from "metabase/selectors/metadata";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type {
   Card,
   CardId,
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
-  VisualizationSettings,
   VirtualCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
@@ -38,9 +43,8 @@ import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPane
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
-  NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
-  DashCardGetNewCardUrlHandler,
+  NavigateToNewCardFromDashboardOpts,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -70,9 +74,6 @@ export interface DashCardProps {
   onReplaceCard: (dashcard: StoreDashcard) => void;
   onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
-  getNewCardUrl?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => string | undefined;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
@@ -106,7 +107,6 @@ function DashCardInner({
   onAddSeries,
   onReplaceCard,
   onRemove,
-  getNewCardUrl,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -272,17 +272,23 @@ function DashCardInner({
       [dashcard, navigateToNewCardFromDashboard],
     );
 
-  const getHref = useCallback<DashCardGetNewCardUrlHandler>(
-    ({ nextCard, previousCard, objectId }) => {
-      return getNewCardUrl?.({
-        nextCard,
-        previousCard,
-        dashcard,
-        objectId,
-      });
-    },
-    [dashcard, getNewCardUrl],
-  );
+  const metadata = useSelector(getMetadata);
+  const parameterValues = useSelector(getParameterValues);
+
+  const href = useMemo(() => {
+    if (!isQuestionDashCard(dashcard)) {
+      return undefined;
+    }
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard: mainCard,
+      previousCard: mainCard,
+    });
+  }, [dashboard, dashcard, mainCard, metadata, parameterValues]);
 
   return (
     <ErrorBoundary>
@@ -336,7 +342,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
-          getHref={getNewCardUrl ? getHref : null}
+          href={navigateToNewCardFromDashboard ? href : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}

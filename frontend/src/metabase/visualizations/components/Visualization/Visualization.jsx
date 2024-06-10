@@ -94,7 +94,6 @@ class Visualization extends PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !equals(newProps.getHref, this.props.getHref) ||
       !equals(newProps.settings, this.props.settings) ||
       !equals(newProps.timelineEvents, this.props.timelineEvents) ||
       !equals(
@@ -154,13 +153,7 @@ class Visualization extends PureComponent {
       ? getComputedSettingsForSeries(series)
       : {};
 
-    const nextCard = series[0].card;
-    const previousCard =
-      newProps.rawSeries.find(series => series.card.id === nextCard?.id)
-        ?.card ?? newProps.rawSeries[0].card;
-
     this.setState({
-      href: newProps.getHref?.({ nextCard, previousCard }),
       hovered: null,
       error: null,
       genericError: null,
@@ -350,6 +343,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
+      href,
       errorMessageOverride,
       showTitle,
       isDashboard,
@@ -369,7 +363,7 @@ class Visualization extends PureComponent {
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
-    let { href, series, hovered, clicked } = this.state;
+    let { series, hovered, clicked } = this.state;
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
