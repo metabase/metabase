@@ -1,0 +1,15 @@
+.input:not(:disabled) {
+  cursor: pointer;
+
+  &::selection {
+    background-color: transparent;
+  }
+}
+
+.rightSection {
+  pointer-events: none;
+}
+
+.icon {
+  color: var(--mb-color-text-dark);
+}

@@ -19,7 +19,10 @@ import {
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  isFilterParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -38,6 +41,7 @@ import {
   SettingLabelError,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
+import { TemporalUnitPicker } from "./TemporalUnitPicker";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -161,7 +165,7 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      {sectionId && !isTemporalUnitParameter(parameter) && (
+      {sectionId && isFilterParameter(parameter) && (
         <>
           <Box mb="xl">
             <SettingLabel>{t`Filter type`}</SettingLabel>
@@ -183,7 +187,12 @@ export const ParameterSettings = ({
           )}
         </>
       )}
-
+      {isTemporalUnitParameter(parameter) && (
+        <Box mb="xl">
+          <SettingLabel>{t`Unit of Time options`}</SettingLabel>
+          <TemporalUnitPicker value={[]} onChange={() => 1} />
+        </Box>
+      )}
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>

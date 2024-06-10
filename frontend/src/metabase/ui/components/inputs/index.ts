@@ -10,6 +10,7 @@ export * from "./MultiSelect";
 export * from "./NumberInput";
 export * from "./Radio";
 export * from "./Select";
+export * from "./SelectInput";
 export * from "./Textarea";
 export * from "./Switch";
 export * from "./SegmentedControl";
