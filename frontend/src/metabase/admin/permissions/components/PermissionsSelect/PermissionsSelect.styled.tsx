@@ -31,7 +31,7 @@ export const OptionsListItem = styled.li`
 
   &:hover {
     color: var(--mb-color-text-white);
-    background-color: ${lighten("accent7", 0.1)};
+    background-color: ${() => lighten("accent7", 0.1)};
   }
 `;
 
