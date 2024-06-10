@@ -1,4 +1,4 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
@@ -26,14 +26,14 @@ export const TitleContainer = styled.div`
 `;
 
 export const RemoveButton = styled(Button)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: transparent;
 
   opacity: 0.6;
   transition: all 100ms;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: transparent;
     opacity: 1;
   }
@@ -48,7 +48,7 @@ RemoveButton.defaultProps = {
 export const AddButton = styled(Button)`
   width: 34px;
   margin-left: 0.5rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   transition: none;
 `;
 
@@ -69,20 +69,20 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-const selectedStyle = css`
+const getSelectedStyle = (theme: Theme) => css`
   ${Content},
   ${ColumnTypeIcon} {
-    background-color: ${color("summarize")};
-    color: ${color("white")};
+    background-color: var(--mb-color-summarize);
+    color: var(--mb-color-text-white);
   }
 
   ${BucketPickerPopover.TriggerButton} {
     opacity: 1;
-    color: ${alpha("white", 0.65)};
+    color: ${alpha(theme.fn.themeColor("text-white"), 0.65)};
   }
 
   ${BucketPickerPopover.TriggerButton}:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     opacity: 1;
   }
 `;
@@ -101,7 +101,7 @@ const unselectedStyle = css`
     ${Content},
     ${ColumnTypeIcon},
     ${AddButton} {
-      color: ${color("summarize")};
+      color: var(--mb-color-summarize);
       background-color: var(--mb-color-bg-light);
     }
 
@@ -128,5 +128,6 @@ export const Root = styled.li<{ isSelected: boolean }>`
   min-height: 34px;
   position: relative;
 
-  ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
+  ${props =>
+    props.isSelected ? getSelectedStyle(props.theme) : unselectedStyle}
 `;

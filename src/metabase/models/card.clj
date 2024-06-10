@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.analyze :as analyze]
    [metabase.api.common :as api]
+   [metabase.audit :as audit]
    [metabase.compatibility :as compatibility]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
@@ -96,9 +97,9 @@
    (if (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (perms/default-audit-collection)))
+        (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (perms/default-audit-collection))))
+        (= (:collection_id instance) (:id (audit/default-audit-collection))))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]

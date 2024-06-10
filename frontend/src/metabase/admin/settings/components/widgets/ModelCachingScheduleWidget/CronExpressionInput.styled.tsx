@@ -45,7 +45,7 @@ export const PopoverContent = styled.div`
   background-color: #222;
   padding: 18px;
 
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const PopoverTitle = styled.span`

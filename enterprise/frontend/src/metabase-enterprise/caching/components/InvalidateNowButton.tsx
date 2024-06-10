@@ -40,7 +40,7 @@ export const InvalidateNowButton = ({
             icon: "warning",
             message: e.data.message,
             toastColor: "error",
-            dismissIconColor: color("white"),
+            dismissIconColor: color("text-white"),
           }),
         );
       }

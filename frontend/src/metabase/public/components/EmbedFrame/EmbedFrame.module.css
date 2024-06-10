@@ -3,13 +3,13 @@ body {
 }
 
 .EmbedFrame {
-  background-color: white;
+  background-color: var(--mb-color-bg-dashboard);
 }
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-dark);
-  background-color: white;
+  background-color: var(--mb-color-bg-dashboard);
 }
 
 .ThemeNight.EmbedFrame {
@@ -19,18 +19,18 @@ body {
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
-  color: color-mod(var(--color-text-white) alpha(-14%));
+  color: color-mod(var(--mb-color-text-white) alpha(-14%));
   background-color: var(--mb-color-bg-black);
   border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .fullscreenNightText {
-  color: color-mod(var(--color-text-white) alpha(-14%));
+  color: color-mod(var(--mb-color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
 .ThemeNight.EmbedFrame svg text {
-  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
+  fill: color-mod(var(--mb-color-text-white) alpha(-14%)) !important;
   stroke: none !important;
 }
 

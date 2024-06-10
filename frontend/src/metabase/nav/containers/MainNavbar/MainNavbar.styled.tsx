@@ -33,7 +33,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 
   overflow: auto;
   overflow-x: hidden;
@@ -146,7 +146,7 @@ export const PaddedSidebarLink = styled(SidebarLink)`
 export const AddYourOwnDataLink = styled(SidebarLink)`
   background: var(--mb-color-brand);
   border-radius: 8px;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   margin: ${space(1)};
   padding: 2px 6px;
   svg {
@@ -160,7 +160,7 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
 
   &:hover {
     background: ${() => lighten("brand", 0.12)};
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
 
     svg {
       color: var(--mb-color-brand-light) !important;

@@ -44,7 +44,7 @@ export const BulkActionBar = ({
       {styles => (
         <BulkActionsToast style={styles} isNavbarOpen={isNavbarOpen}>
           <ToastCard dark data-testid="toast-card">
-            {message && <Text color="white">{message}</Text>}
+            {message && <Text color="text-white">{message}</Text>}
             <Flex gap="sm" align="center">
               {children}
             </Flex>

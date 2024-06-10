@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 
 export const HostingLink = styled(ExternalLink)`
   font-weight: bold;
@@ -11,7 +10,7 @@ export const HostingLink = styled(ExternalLink)`
   border-radius: 0.5rem;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

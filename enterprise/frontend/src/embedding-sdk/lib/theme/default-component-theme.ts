@@ -28,6 +28,15 @@ export const FONT_SIZES = {
  * such as charts, data tables and popovers.
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
+  dashboard: {
+    backgroundColor: "var(--mb-color-bg-white)",
+    card: {
+      backgroundColor: "var(--mb-color-bg-white)",
+    },
+  },
+  question: {
+    backgroundColor: "transparent",
+  },
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
@@ -39,8 +48,8 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   pivotTable: {
     rowToggle: {
-      textColor: "white",
-      backgroundColor: "text-light",
+      textColor: "text-white",
+      backgroundColor: "text-light", // TODO: should it be "bg-dark" ?
     },
   },
   cartesian: {

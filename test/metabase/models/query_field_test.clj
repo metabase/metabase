@@ -12,7 +12,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^:private query-field-keys [:card_id :field_id :direct_reference])
+(def ^:private query-field-keys [:card_id :field_id :explicit_reference])
 
 (defn- qf->map [query-field]
   (select-keys query-field query-field-keys))
@@ -61,10 +61,10 @@
   (with-test-setup
     (let [total-qf {:card_id          card-id
                     :field_id         total-id
-                    :direct_reference true}
+                    :explicit_reference true}
           tax-qf   {:card_id          card-id
                     :field_id         tax-id
-                    :direct_reference true}]
+                    :explicit_reference true}]
 
       (testing "A freshly created card has relevant corresponding QueryFields"
         (is (= #{total-qf}
@@ -103,35 +103,35 @@
   (with-test-setup
     (let [total-qf {:card_id          card-id
                     :field_id         total-id
-                    :direct_reference false}
+                    :explicit_reference false}
           tax-qf   {:card_id          card-id
                     :field_id         tax-id
-                    :direct_reference false}]
+                    :explicit_reference false}]
       (testing "simple select *"
         (trigger-parse! card-id "select * from orders")
         (let [qfs (query-fields-for-card card-id)]
           (is (= 9 (count qfs)))
-          (is (not-every? :direct_reference qfs))
+          (is (not-every? :explicit_reference qfs))
           (is (set/subset? #{total-qf tax-qf} qfs)))))))
 
 (deftest table-wildcard-test
   (with-test-setup
     (let [total-qf {:card_id          card-id
                     :field_id         total-id
-                    :direct_reference true}
+                    :explicit_reference true}
           tax-qf   {:card_id          card-id
                     :field_id         tax-id
-                    :direct_reference true}]
+                    :explicit_reference true}]
       (testing "mix of select table.* and named columns"
         (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
         (let [qfs (query-fields-for-card card-id)]
           (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id)
                  (count qfs)))
           ;; 13 total, but id is referenced directly
-          (is (= 12 (t2/count :model/QueryField :card_id card-id :direct_reference false)))
+          (is (= 12 (t2/count :model/QueryField :card_id card-id :explicit_reference false)))
           ;; subset since it also includes the PKs/FKs
           (is (set/subset? #{total-qf tax-qf}
-                           (t2/select-fn-set qf->map :model/QueryField :card_id card-id :direct_reference true))))))))
+                           (t2/select-fn-set qf->map :model/QueryField :card_id card-id :explicit_reference true))))))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
@@ -147,11 +147,11 @@
                                                        :alias        "Venues"
                                                        :condition    [:= $checkins.venue_id $venues.id]}]})}]
       (mt/$ids
-        (is (= {:direct #{%venues.name %venues.price}}
+        (is (= {:explicit #{%venues.name %venues.price}}
                (#'query-field/query-field-ids (:dataset_query c1))))
-        (is (= {:direct nil}
+        (is (= {:explicit nil}
                (#'query-field/query-field-ids (:dataset_query c2))))
-        (is (= {:direct #{%venues.id %checkins.venue_id}}
+        (is (= {:explicit #{%venues.id %checkins.venue_id}}
                (#'query-field/query-field-ids (:dataset_query c3)))))))
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -159,5 +159,5 @@
           venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
           mlv2-query        (-> (lib/query metadata-provider venues)
                                 (lib/aggregate (lib/distinct venues-name)))]
-      (is (= {:direct #{(mt/id :venues :name)}}
+      (is (= {:explicit #{(mt/id :venues :name)}}
                (#'query-field/query-field-ids mlv2-query))))))
