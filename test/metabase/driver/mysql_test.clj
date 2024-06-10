@@ -373,27 +373,26 @@
 (deftest enums-actions-test
   (mt/test-driver :mysql
     (testing "actions with enums"
-      (mt/with-empty-db
+      (mt/with-actions-test-data-and-actions-enabled
         (create-enums-table! (mt/db))
         (sync/sync-database! (mt/db))
-        (mt/with-actions-enabled
-          (mt/with-actions [model {:type          :model
-                                   :dataset_query (mt/mbql-query birds)}
-                            {action-id :action-id} {:type :implicit
-                                                    :kind "row/create"}]
-            (testing "Enum fields are a valid implicit parameter target"
-              (let [columns        (->> model :result_metadata (map :name) set)
-                    action-targets (->> (action/select-action :id action-id)
-                                        :parameters
-                                        (map :id)
-                                        set)]
-                (is (= columns action-targets))))
-            (testing "Can create new records with an enum value"
-              (is (= {:created-row {:name "Lucky", :bird_type "pigeon"}}
-                     (mt/user-http-request :crowberto
-                                           :post 200
-                                           (format "action/%s/execute" action-id)
-                                           {:parameters {"name" "Lucky", "bird_type" "pigeon"}}))))))))))
+        (mt/with-actions [model {:type          :model
+                                 :dataset_query (mt/mbql-query birds)}
+                          {action-id :action-id} {:type :implicit
+                                                  :kind "row/create"}]
+          (testing "Enum fields are a valid implicit parameter target"
+            (let [columns        (->> model :result_metadata (map :name) set)
+                  action-targets (->> (action/select-action :id action-id)
+                                      :parameters
+                                      (map :id)
+                                      set)]
+              (is (= columns action-targets))))
+          (testing "Can create new records with an enum value"
+            (is (= {:created-row {:name "Lucky", :bird_type "pigeon"}}
+                   (mt/user-http-request :crowberto
+                                         :post 200
+                                         (format "action/%s/execute" action-id)
+                                         {:parameters {"name" "Lucky", "bird_type" "pigeon"}})))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
