@@ -17,6 +17,7 @@ import {
   restore,
   saveDashboard,
   visitDashboard,
+  visitEmbeddedPage,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -494,6 +495,24 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByText("Year").click();
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
+
+    it("should be able to use temporal unit parameters in a embedded dashboard", () => {
+      createDashboardWithCard({
+        enable_embedding: true,
+        embedding_params: {
+          [parameterDetails.slug]: "enabled",
+        },
+      }).then(dashboard => {
+        visitEmbeddedPage({
+          resource: { dashboard: dashboard.id },
+          params: {},
+        });
+      });
+
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
   });
 });
 
@@ -522,11 +541,14 @@ function editParameter(name) {
     .click();
 }
 
-function createDashboardWithCard() {
+function createDashboardWithCard(dashboardDetails = {}) {
   return createQuestion(singleBreakoutQuestionDetails).then(
     ({ body: card }) => {
       return cy
-        .createDashboard({ parameters: [parameterDetails] })
+        .createDashboard({
+          ...dashboardDetails,
+          parameters: [parameterDetails],
+        })
         .then(({ body: dashboard }) => {
           return addOrUpdateDashboardCard({
             dashboard_id: dashboard.id,
