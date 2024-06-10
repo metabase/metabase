@@ -21,7 +21,7 @@
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (org.apache.poi.ss SpreadsheetVersion)
    (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook DataConsolidateFunction)
-   (org.apache.poi.xssf.usermodel XSSFSheet XSSFPivotTable)
+   (org.apache.poi.xssf.usermodel XSSFWorkbook XSSFSheet XSSFRow XSSFPivotTable)
    (org.apache.poi.ss.util CellReference CellRangeAddress AreaReference)
    (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
 
@@ -420,6 +420,31 @@
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
     row))
 
+(defn- add-row2!
+  "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
+
+  This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
+  [^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+  (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
+                  0
+                  (inc (.getLastRowNum sheet)))
+        row     (.createRow sheet row-num)]
+    (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
+      (let [id-or-name   (or (:id col) (:name col))
+            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                             (get col-settings {::mb.viz/column-name id-or-name}))
+            scaled-val   (if (and value (::mb.viz/scale settings))
+                           (* value (::mb.viz/scale settings))
+                           value)
+            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+            parsed-value (or
+                           (maybe-parse-temporal-value value col)
+                           (maybe-parse-coordinate-value value col)
+                           scaled-val)]
+        (set-cell! (.createCell ^XSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
+    row))
+
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
   of large datasets will be prohibitively slow."
@@ -477,12 +502,15 @@
    :stddev DataConsolidateFunction/STD_DEV})
 
 (defn- native-pivot
-  [rows {:keys [pivot-grouping-key] :as pivot-spec}]
+  [rows
+   {:keys [pivot-grouping-key] :as pivot-spec}
+   {:keys [ordered-cols col-settings viz-settings]}]
   (let [idx-shift                       (fn [indices]
                                           (map (fn [idx]
                                                  (if (> idx pivot-grouping-key)
                                                    (dec idx)
                                                    idx)) indices))
+        ordered-cols                    (vec (m/remove-nth pivot-grouping-key ordered-cols))
         {:keys [pivot-rows
                 pivot-cols
                 pivot-measures
@@ -493,10 +521,15 @@
                                             (update :aggregation-functions #(vec (m/remove-nth pivot-grouping-key %))))
         wb                              (spreadsheet/create-workbook
                                          "pivot" [[]]
-                                         "data" rows)
+                                         "data" [])
+        data-format                     (. ^XSSFWorkbook wb createDataFormat)
+        cell-styles                     (compute-column-cell-styles wb data-format viz-settings ordered-cols)
+        typed-cell-styles               (compute-typed-cell-styles wb data-format)
         data-sheet                      (spreadsheet/select-sheet "data" wb)
         pivot-sheet                     (spreadsheet/select-sheet "pivot" wb)
         area-ref                        (cell-range->area-ref (cell-range rows))
+        _                               (doseq [row rows]
+                                          (add-row2! data-sheet row ordered-cols col-settings cell-styles typed-cell-styles))
         ^XSSFPivotTable pivot-table     (.createPivotTable ^XSSFSheet pivot-sheet
                                                            ^AreaReference area-ref
                                                            ^CellReference (CellReference. "A1")
@@ -517,7 +550,8 @@
         cell-styles       (volatile! nil)
         typed-cell-styles (volatile! nil)
         rows!             (atom [])
-        pivot-options     (atom nil)]
+        pivot-options     (atom nil)
+        cell-style-data   (atom nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
@@ -529,6 +563,9 @@
           (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format))
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
+            (reset! cell-style-data {:ordered-cols ordered-cols
+                                     :col-settings col-settings
+                                     :viz-settings viz-settings})
             (reset! pivot-options opts))
 
           (when col-names
@@ -564,7 +601,7 @@
       (finish! [_ {:keys [row_count]}]
         (if @pivot-options
           (let [header (vec (m/remove-nth (:pivot-grouping-key @pivot-options) (:column-titles @pivot-options)))
-                wb     (native-pivot (concat [header] @rows!) @pivot-options)]
+                wb     (native-pivot (concat [header] @rows!) @pivot-options @cell-style-data)]
             (try
               (spreadsheet/save-workbook-into-stream! os wb)
               (finally
