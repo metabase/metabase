@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import { ResponsiveChild } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 import { FixedSizeIcon, Flex, Group } from "metabase/ui";
 
 import { Ellipsis } from "./Ellipsis";
@@ -18,7 +17,7 @@ export const Breadcrumb = styled(ResponsiveChild)<{
   ${({ maxWidth }) => {
     return maxWidth ? `td & { max-width: ${maxWidth} };` : "";
   }}
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;

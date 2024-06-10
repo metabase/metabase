@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import FormInput from "metabase/core/components/FormInput";
 import { Form } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmailFormRoot = styled.div`
@@ -25,7 +24,7 @@ export const EmailFormLabel = styled.div`
 export const EmailFormLabelCard = styled.div`
   display: flex;
   padding: 0 1.5rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   background-color: var(--mb-color-bg-white);
 `;
 
@@ -42,7 +41,7 @@ export const EmailFormLabelText = styled.div`
 `;
 
 export const EmailFormHeader = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 1.5rem;

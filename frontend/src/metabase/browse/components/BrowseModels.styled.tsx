@@ -5,7 +5,6 @@ import Card from "metabase/components/Card";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
 
 import { BrowseGrid } from "./BrowseContainer.styled";
@@ -64,7 +63,7 @@ export const CollectionHeaderContainer = styled.button`
   border-top: 1px solid var(--mb-color-border);
   margin-top: 0.75rem;
   cursor: pointer;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   &:hover {
     color: var(--mb-color-brand);
   }
@@ -83,7 +82,7 @@ export const CollectionHeaderLink = styled(Link)`
 `;
 
 export const BannerCloseButton = styled(IconButtonWrapper)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   margin-inline-start: auto;
 `;
 
@@ -130,7 +129,7 @@ export const CollectionSummary = styled.div`
   margin-inline-start: auto;
   white-space: nowrap;
   font-size: 0.75rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
@@ -139,7 +138,7 @@ export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
 `;
 
 export const BannerModelIcon = styled(FixedSizeIcon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-inline-end: 0.5rem;
 `;
 

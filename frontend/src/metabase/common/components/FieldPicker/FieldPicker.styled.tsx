@@ -4,7 +4,6 @@ import {
   QueryColumnInfoIcon,
   HoverParent,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { color } from "metabase/lib/colors";
 
 export const ItemTitle = styled.div`
   min-width: 10ch;
@@ -13,7 +12,7 @@ export const ItemTitle = styled.div`
 export const ItemIcon = styled(QueryColumnInfoIcon)`
   margin: 0 0.5em;
   margin-left: 0.75em;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const ItemList = styled.ul`

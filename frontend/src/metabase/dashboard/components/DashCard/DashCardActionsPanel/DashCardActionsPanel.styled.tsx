@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
 
 type DashCardActionsPanelContainerProps = {
   isDashCardTabMenuOpen: boolean;
@@ -62,7 +61,7 @@ export const DashCardActionsPanelContainer = styled("div", {
 export const DashCardActionButtonsContainer = styled.span`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1px;
   gap: 0.5rem;
 `;

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";
 
@@ -19,7 +18,7 @@ export interface SkeletonTitleProps {
 }
 
 export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: ${props => (props.size === "large" ? "1rem" : "")};
   line-height: ${props => (props.size === "large" ? "1.375rem" : "")};
   font-weight: bold;
@@ -35,7 +34,7 @@ export const SkeletonPlaceholder = styled.div`
 `;
 
 export const SkeletonCaptionDescription = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: 0.5rem;
   visibility: hidden;
 `;

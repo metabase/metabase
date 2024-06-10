@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
@@ -24,7 +23,7 @@ export const ColumnItemRoot = styled.div<ColumnItemRootProps>`
     pointer-events: auto !important;
   }
 
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   ${props =>
     props.isDraggable &&

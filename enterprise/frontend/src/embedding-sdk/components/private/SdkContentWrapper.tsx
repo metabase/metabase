@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import { getRootStyle } from "metabase/css/core/base.styled";
+import { rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { alpha, color, lighten } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -84,7 +84,7 @@ const SdkContentWrapperInner = styled.div<
 
   ${aceEditorStyles}
   ${saveDomImageStyles}
-  ${({ theme }) => getRootStyle(theme)}
+  ${rootStyle}
 
   ${({ baseUrl }) => defaultFontFiles({ baseUrl })}
   ${({ fontFiles }) =>

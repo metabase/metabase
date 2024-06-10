@@ -5,7 +5,6 @@ import {
   HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
-import { color } from "metabase/lib/colors";
 
 export const ExpressionList = styled.ul`
   min-width: 250px;
@@ -34,7 +33,7 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
   background: white;
   height: 2rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   display: flex;
   align-items: center;
   padding-left: 0.875rem;
@@ -60,7 +59,7 @@ export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
 export const GroupTitle = styled(ExpressionListItem)`
   font-weight: bold;
   font-size: 12px;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   pointer-events: none;
   margin-top: 12px;
 

@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import Triggerable from "metabase/components/Triggerable";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
@@ -33,7 +32,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
 
   ${SelectButton.Icon} {
     margin-left: 0;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     height: 0.625rem;
     ${props => props.disabled && "display: none;"}
     flex-shrink: 0;
@@ -47,7 +46,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     overflow-wrap: anywhere;
     text-align: left;
     overflow: hidden;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   ${SelectButton.Root}:disabled {
@@ -71,7 +70,7 @@ export const SettingsButton = styled(Button)<SettingsIconProps>`
 
 export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
   &:hover {

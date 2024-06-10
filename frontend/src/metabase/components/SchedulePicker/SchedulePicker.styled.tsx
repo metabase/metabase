@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const PickerRoot = styled.div`
   margin-top: 1.5rem;
 `;
@@ -22,5 +20,5 @@ export const PickerText = styled.span`
 
 export const ScheduleDescriptionContainer = styled.div`
   margin-top: 1rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
