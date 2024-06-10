@@ -3,6 +3,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as m]
    [toucan2.core :as t2]))
@@ -22,13 +23,10 @@
 (mr/def ::context
   [:maybe [:enum :dashboard :question]])
 
-(mu/defn ^:private validate
-  [_log-entry :- [:map [:context {:optional true} ::context]]]
-  :no-op)
-
 (t2/define-before-insert :model/ViewLog
   [log-entry]
-  (validate log-entry)
+  (when (mu.fn/instrument-ns? *ns*)
+    (mu/validate-throw [:map [:context {:optional true} ::context]] log-entry))
   (let [defaults {:timestamp :%now}]
     (merge defaults log-entry)))
 
