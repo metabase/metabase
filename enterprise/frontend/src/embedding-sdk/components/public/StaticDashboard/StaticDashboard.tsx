@@ -16,7 +16,7 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
-type StaticDashboardProps = {
+export type StaticDashboardProps = {
   dashboardId: DashboardId;
   initialParameterValues?: Query;
   withTitle?: boolean;

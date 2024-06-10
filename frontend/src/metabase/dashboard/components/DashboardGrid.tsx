@@ -600,6 +600,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   render() {
     const { dashboard, width } = this.props;
+
     return (
       <DashboardGridContainer
         data-testid="dashboard-grid"
