@@ -43,7 +43,8 @@
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (net.snowflake.client.jdbc SnowflakeSQLException)))
+   (java.util Properties)
+   (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,6 +126,15 @@
   (when raw-name
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
+(defn connection-str->parameters
+  "Get map of parameters from Snowflake `conn-str`, where keys are uppercase string parameter names and values
+  are strings. Returns nil when string is invalid."
+  [conn-str]
+  (let [^SnowflakeConnectString conn-str* (SnowflakeConnectString/parse conn-str (Properties.))]
+    (if-not (.isValid conn-str*)
+      (log/warn "Invalid connection string.")
+      (.getParameters conn-str*))))
+
 (defn- maybe-add-role-to-spec-url
   "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing
   Snowflake jdbc driver ignores `:role` connection property when `:connection-uri` (presumably containing
@@ -132,7 +142,7 @@
   [spec details]
   (if (and (string? (not-empty (:connection-uri spec)))
            (string? (not-empty (:role details)))
-           (not (str/includes? (:connection-uri spec) "role=")))
+           (not (contains? (connection-str->parameters (:connection-uri spec)) "ROLE")))
     (let [role-opts-str (sql-jdbc.common/additional-opts->string :url {:role (codec/url-encode (:role details))})]
       (-> spec
           ;; It is advised to use either connection property or url parameter, not both. Eg. in the following link.
