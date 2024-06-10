@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
+import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import type { OnToggleSelectedWithItem } from "metabase/collections/types";
-import type { BaseItemsTableProps } from "metabase/components/ItemsTable/BaseItemsTable/BaseItemsTable";
+import type { BaseItemsTableProps } from "metabase/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";

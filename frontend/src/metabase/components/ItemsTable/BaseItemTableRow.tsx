@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 
-import type { BaseItemsTableProps } from "metabase/components/ItemsTable/BaseItemsTable/BaseItemsTable";
+import type { BaseItemsTableProps } from "metabase/components/ItemsTable/BaseItemsTable";
 import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import type { CollectionItem } from "metabase-types/api";

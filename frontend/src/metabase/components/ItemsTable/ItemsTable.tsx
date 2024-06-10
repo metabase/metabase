@@ -3,8 +3,8 @@ import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultIt
 import CS from "metabase/css/core/index.css";
 import type { CollectionItem } from "metabase-types/api";
 
-import type { BaseItemsTableProps } from "./BaseItemsTable/BaseItemsTable";
-import { BaseItemsTable } from "./BaseItemsTable/BaseItemsTable";
+import type { BaseItemsTableProps } from "./BaseItemsTable";
+import { BaseItemsTable } from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 
 const Item = ({

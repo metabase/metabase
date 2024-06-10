@@ -176,9 +176,7 @@ export const CollectionItemsTable = ({
               onCopy={handleCopy}
               onSelectAll={handleSelectAll}
               onSelectNone={clear}
-              onClick={
-                onClick ? (item: CollectionItem) => onClick(item) : undefined
-              }
+              onClick={onClick}
               showActionMenu={showActionMenu}
             />
             <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>

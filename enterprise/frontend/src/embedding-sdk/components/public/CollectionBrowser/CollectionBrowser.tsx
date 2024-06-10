@@ -15,7 +15,7 @@ import type {
 } from "metabase-types/api";
 
 type CollectionBrowserProps = {
-  collectionId: CollectionId;
+  collectionId?: CollectionId;
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleCollectionTypes?: CollectionItemModel[];
@@ -28,8 +28,9 @@ export const CollectionBrowser = withPublicComponentWrapper(
     pageSize = COLLECTION_PAGE_SIZE,
     visibleCollectionTypes = ALL_MODELS,
   }: CollectionBrowserProps) => {
-    const [currentCollectionId, setCurrentCollectionId] =
-      useState(collectionId);
+    const [currentCollectionId, setCurrentCollectionId] = useState(
+      collectionId ?? "root",
+    );
 
     const onClickItem = (item: CollectionItem) => {
       if (onClick) {
