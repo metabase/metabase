@@ -404,6 +404,7 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
+        entityPickerModalTab("Dashboards").click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );

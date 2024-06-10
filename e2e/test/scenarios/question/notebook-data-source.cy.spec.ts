@@ -23,6 +23,7 @@ import {
   onlyOnOSS,
   onlyOnEE,
   startNewQuestion,
+  shouldDisplayTabs,
   tabsShouldBe,
   visitModel,
   visitQuestion,
@@ -126,8 +127,9 @@ describe("scenarios > notebook > data source", () => {
       });
 
       startNewQuestion();
+
       entityPickerModal().within(() => {
-        tabsShouldBe("Recents", ["Recents", "Tables", "Saved questions"]);
+        shouldDisplayTabs(["Tables", "Saved questions"]);
         entityPickerModalTab("Models").should("not.exist");
       });
     });
@@ -199,7 +201,6 @@ describe("scenarios > notebook > data source", () => {
 
         startNewQuestion();
         entityPickerModal().within(() => {
-          entityPickerModalTab("Recents").should("exist");
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
           cy.findByText(schemaName).click();
@@ -266,7 +267,7 @@ describe("scenarios > notebook > data source", () => {
         .click();
 
       entityPickerModal().within(() => {
-        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+        shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
 
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
