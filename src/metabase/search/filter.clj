@@ -159,7 +159,7 @@
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-filter [:last-edited-at model]
     [_filter model query last-edited-at]
-    (if last-edited-at
+    (if-not last-edited-at
       query
       (cond-> query
         ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice

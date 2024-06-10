@@ -269,7 +269,7 @@
       (sql.helpers/left-join [:report_card :model]
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
-                             [:= (search.config/column-with-alias "query_action" :action_id) :action.id])
+                             [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses model
                                              search-ctx)))
 
