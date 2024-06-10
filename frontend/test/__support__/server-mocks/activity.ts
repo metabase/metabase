@@ -2,22 +2,20 @@ import fetchMock from "fetch-mock";
 
 import type { PopularItem, RecentItem, Dashboard } from "metabase-types/api";
 
-// TODO: update these two calls somehow... don't really need both since we have one endpoint
-
-export function setupRecentViewsEndpoints(recentlyViewedItems: RecentItem[]) {
+export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {
   fetchMock.get(url => url.endsWith("/api/activity/recents?context=views"), {
-    recents: recentlyViewedItems,
+    recents: recentItems,
   });
 }
 
-export function setupRecentSelectionsEndpoints(
-  recentlySelectedItems: RecentItem[],
+export function setupRecentViewsAndSelectionsEndpoints(
+  recentItems: RecentItem[],
 ) {
   fetchMock.get(
     url =>
       url.endsWith("/api/activity/recents?context=selections&context=views"),
     {
-      recents: recentlySelectedItems,
+      recents: recentItems,
     },
   );
 }
