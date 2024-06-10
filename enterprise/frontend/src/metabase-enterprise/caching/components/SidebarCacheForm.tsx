@@ -89,6 +89,7 @@ const SidebarCacheForm_Base = ({
           shouldShowName={false}
           onReset={closeSidebar}
           buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
+          isInSidebar
         />
       </DelayedLoadingAndErrorWrapper>
       {confirmationModal}

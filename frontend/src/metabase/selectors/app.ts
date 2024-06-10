@@ -15,6 +15,8 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
+import { getSetting } from "./settings";
+
 export interface RouterProps {
   location: Location;
 }
@@ -204,3 +206,12 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     return isNavbarOpen;
   },
 );
+
+export const getCustomHomePageDashboardId = createSelector(
+  [getUser],
+  user => user?.custom_homepage?.dashboard_id || null,
+);
+
+export const getHasDismissedCustomHomePageToast = (state: State) => {
+  return getSetting(state, "dismissed-custom-dashboard-toast");
+};

@@ -83,7 +83,7 @@ describeWithSnowplow("scenarios > browse", () => {
 
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse models" }).click();
+    navigationSidebar().findByLabelText("Browse models").click();
     cy.findByRole("button", { name: /filter icon/i }).should("not.exist");
     cy.findByRole("switch", { name: /Show verified models only/ }).should(
       "not.exist",
