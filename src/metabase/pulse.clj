@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -414,12 +415,13 @@
    {{channel-id :channel} :details}]
   (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via Slack"
                              pulse-id (pr-str pulse-name) (parts->cards-count parts)))
-  (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
-    {:channel-id  channel-id
-     :attachments (remove nil?
-                          (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data parts)
-                                    (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
+  (channel/render-notification
+   :channel/slack
+   {:payload-type           :notification/dashboard-subscription
+    :dashboard              (t2/select-one :model/Dashboard dashboard-id)
+    :dashboard-subscription pulse
+    :payload                parts}
+   [channel-id]))
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
@@ -446,17 +448,10 @@
   [pulse parts {{channel-id :channel} :details}]
   (log/debug (u/format-color :cyan "Sending Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
   (channel/render-notification
-   {:channel_type :channel/slack}
+   :channel/slack
    {:payload-type :notification/alert
-    :payload      parts
-    :recipients   (mapv :recipients (:channels pulse))})
-
-  #_{:channel-id  channel-id
-     :attachments (cons {:blocks [{:type "header"
-                                   :text {:type "plain_text"
-                                          :text (str "🔔 " (first-question-name pulse))
-                                          :emoji true}}]}
-                        (create-slack-attachment-data parts))})
+    :payload      (first parts)}
+   [channel-id]))
 
 (defmethod notification :default
   [_alert-or-pulse _parts {:keys [channel_type], :as _channel}]
@@ -507,10 +502,10 @@
     (if channel-id :slack :email)))
 
 (defmethod send-notification! :slack
-  [{:keys [channel-id message attachments]}]
-  (let [attachments (create-and-upload-slack-attachments! attachments)]
+  [messages]
+  (doseq [message messages]
     (try
-      (slack/post-chat-message! channel-id message attachments)
+      (channel/send! :channel/slack message)
       (catch ExceptionInfo e
         ;; Token errors have already been logged and we should not retry.
         (when-not (contains? (:errors (ex-data e)) :slack-token)
@@ -528,7 +523,9 @@
 (defn- send-notification-retrying!
   "Like [[send-notification!]] but retries sending on errors according to the retry settings."
   [& args]
-  (apply (retry/decorate send-notification!) args))
+  (if config/is-dev?
+    (apply send-notification! args)
+    (apply (retry/decorate send-notification!) args)))
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
@@ -561,4 +558,4 @@
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
 
-#_(send-pulse! (t2/select-one :model/Pulse 56))
+#_(ngoc/with-tc(send-pulse! (t2/select-one :model/Pulse 2)))

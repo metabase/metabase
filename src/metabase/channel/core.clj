@@ -1,4 +1,7 @@
 (ns metabase.channel.core
+  "The channel system of Metabase.
+
+  The API is still in developemt and subject to change."
   (:require
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
@@ -10,12 +13,12 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defmulti render-notification
-  (fn [channel-details payload _recipients _template]
-    [(:channel_type channel-details) (:payload-type payload)]))
+  (fn [channel-type notification-content _recipients]
+    [channel-type (:payload-type notification-content)]))
 
 (defmulti send!
-  (fn [channel-details _message]
-    [(:channel_type channel-details)]))
+  {:arglists '([channel-type message])}
+  first)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                             Utils                                               ;;

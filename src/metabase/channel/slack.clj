@@ -95,33 +95,33 @@
 
 (def ^:private SlackMessage
   [:map {:closed true}
-   [:channel_id :string]
+   [:channel-id                  :string]
    ;; TODO: tighten this payload schema
-   [:payload :any]
-   [:maybe [:message :string]]])
+   [:attachments                 :any]
+   [:message    {:optional true} [:maybe :string]]])
 
 (mu/defmethod channel/send! :channel/slack
-  [_channel-details message :- SlackMessage]
-  (let [{:keys [channel-id payload]} message]
-   (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! payload))))
+  [_channel-type message :- SlackMessage]
+  (let [{:keys [channel-id attachments]} message]
+   (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defmethod channel/render-notification [:channel/slack :notification/alert]
-  [_channel-details payload recipients _template]
-  (for [{channel-id :recipient} recipients]
-    (let [{:keys [card]} payload
-          channel-id     (str/replace channel-id "#" "")
-          attachments    [{:blocks [{:type "header"
-                                     :text {:type "plain_text"
-                                            :text (str "🔔 " (:name card))
-                                            :emoji true}}]}
-                          ;; TODO: do we really need to generate attachments for each channel?
-                          (payload->attachment-data (assoc payload :type :card) channel-id)]]
-      {:channel-id channel-id
-       :payload    (create-and-upload-slack-attachments! attachments)})))
+  [_channel-details notification-content channel-ids]
+  (for [channel-id channel-ids]
+    (let [payload        (:payload notification-content)
+          {:keys [card]} payload
+          channel-id     (str/replace channel-id "#" "")]
+      {:channel-id  channel-id
+       :attachments [{:blocks [{:type "header"
+                                :text {:type "plain_text"
+                                       :text (str "🔔 " (:name card))
+                                       :emoji true}}]}
+                      ;; TODO: do we really need to generate attachments for each channel?
+                     (payload->attachment-data payload channel-id)]})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
@@ -175,14 +175,13 @@
       attachment)))
 
 (defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription]
-  [_channel-details payload recipients _template]
-  (let [{:keys [dashboard
-                dashboard-subscription]} payload
-        attachments                      (remove nil?
-                                                 (flatten [(slack-dashboard-header dashboard-subscription dashboard)
-                                                           (create-slack-attachment-data (:result payload))
-                                                           (when dashboard (slack-dashboard-footer dashboard-subscription dashboard))]))
-        uploaded-attachments             (create-and-upload-slack-attachments! attachments)]
-    (for [{channel-id :recipient} recipients]
-      {:channel-id channel-id
-       :payload    uploaded-attachments})))
+  [_channel-type notification-content channel-ids]
+  (let [{:keys [payload
+                dashboard
+                dashboard-subscription]} notification-content]
+    (for [channel-id channel-ids]
+      {:channel-id  channel-id
+       :attachments (remove nil?
+                            (flatten [(slack-dashboard-header dashboard-subscription dashboard)
+                                      (create-slack-attachment-data payload)
+                                      (when dashboard (slack-dashboard-footer dashboard-subscription dashboard))]))})))
