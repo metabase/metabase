@@ -42,6 +42,7 @@ const setup = options => {
       dashcard={createMockDashboardCard({ card })}
       question={new Question(card, metadata)}
       editingParameter={createMockParameter()}
+      autoConnectedUndos={[]}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}

@@ -19,8 +19,9 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { getAutoConnectedUndos } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Icon } from "metabase/ui";
+import { Flex, Icon, Text } from "metabase/ui";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
@@ -89,6 +90,7 @@ const mapStateToProps = (
   metadata: getMetadata(state),
   question: getQuestionByCard(state, props),
   mappingOptions: getDashcardParameterMappingOptions(state, props),
+  autoConnectedUndos: getAutoConnectedUndos(state),
 });
 
 const mapDispatchToProps = {
@@ -110,6 +112,7 @@ interface DashcardCardParameterMapperProps {
   // virtual cards will not have question
   question?: Question;
   mappingOptions: ParameterMappingOption[];
+  autoConnectedUndos: State["undo"];
 }
 
 export function DashCardCardParameterMapper({
@@ -121,6 +124,7 @@ export function DashCardCardParameterMapper({
   isMobile,
   question,
   mappingOptions,
+  autoConnectedUndos,
 }: DashcardCardParameterMapperProps) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const prevParameter = usePrevious(editingParameter);
@@ -136,6 +140,16 @@ export function DashCardCardParameterMapper({
   const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
   const isTemporalUnit =
     editingParameter != null && isTemporalUnitParameter(editingParameter);
+
+  const autoConnectedDashcardIds = useMemo(() => {
+    return autoConnectedUndos.flatMap(undo =>
+      undo.extraInfo ? (undo.extraInfo.dashcardIds as DashCardId[]) : [],
+    );
+  }, [autoConnectedUndos]);
+
+  const isRecentlyAutoConnected = autoConnectedDashcardIds.includes(
+    dashcard.id,
+  );
 
   useEffect(() => {
     if (!prevParameter || !editingParameter) {
@@ -356,6 +370,19 @@ export function DashCardCardParameterMapper({
               </TargetButton>
             </TippyPopover>
           </Tooltip>
+          {isRecentlyAutoConnected && (
+            <Flex mt="sm" align="center">
+              <Icon name="sparkles" size="16" />
+              <Text
+                component="span"
+                ml="xs"
+                weight="bold"
+                fz="sm"
+                lh={1}
+                color="text-light"
+              >{t`Auto-connected`}</Text>
+            </Flex>
+          )}
         </>
       )}
       {target && isParameterVariableTarget(target) && (
