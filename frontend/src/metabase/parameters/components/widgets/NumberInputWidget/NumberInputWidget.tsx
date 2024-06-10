@@ -45,7 +45,7 @@ export function NumberInputWidget({
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
   const isValid =
-    (arity === "n" || unsavedArrayValue.length === arity) &&
+    (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
 
   const onClick = () => {
@@ -64,7 +64,7 @@ export function NumberInputWidget({
       {arity === "n" || arity === 1 ? (
         <TokenFieldWrapper>
           <TokenField
-            multi
+            multi={arity === "n"}
             updateOnInputChange
             autoFocus={autoFocus}
             value={unsavedArrayValue}
