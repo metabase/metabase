@@ -1,9 +1,10 @@
 import { useLocation } from "react-use";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
+import { useDashboardQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getCustomHomePageDashboardId } from "metabase/selectors/app";
 import { getSettingsLoading } from "metabase/selectors/settings";
+import type { DashboardId } from "metabase-types/api";
 
 import { useSetting } from "./use-setting";
 
@@ -13,8 +14,10 @@ export const useHomepageDashboard = () => {
   const siteUrl = useSetting("site-url");
   const location = useLocation();
 
-  const { data: dashboard, isLoading: isLoadingDashboard } =
-    useGetDashboardQuery(dashboardId ? { id: dashboardId } : skipToken);
+  const { data: dashboard, isLoading: isLoadingDashboard } = useDashboardQuery({
+    enabled: dashboardId !== null,
+    id: dashboardId as DashboardId,
+  });
 
   const pathname = location?.href?.replace(siteUrl, "");
 
