@@ -42,7 +42,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-class PublicQuestionInner extends Component {
+class PublicOrEmbeddedQuestionInner extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -254,8 +254,8 @@ class PublicQuestionInner extends Component {
   }
 }
 
-export const PublicQuestion = _.compose(
+export const PublicOrEmbeddedQuestion = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ card }) => card && card.name),
   ExplicitSize({ refreshMode: "debounceLeading" }),
-)(PublicQuestionInner);
+)(PublicOrEmbeddedQuestionInner);

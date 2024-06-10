@@ -14,6 +14,8 @@ import {
   getValueLabels,
   createQuestion,
   chartPathsWithFillColors,
+  createNativeQuestion,
+  testStackedTooltipRows,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -623,4 +625,70 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.contains("42,156.87");
     });
   });
+
+  it("should correctly show tool-tips when stacked bar charts contain a total value that is negative (#39012)", () => {
+    cy.signInAsAdmin();
+
+    createNativeQuestion(
+      {
+        name: "42948",
+        native: {
+          query:
+            "    SELECT DATE '2024-05-21' AS created_at, 'blue' AS category, -7 as v\nUNION ALL SELECT DATE '2024-05-21' , 'yellow', 5\nUNION ALL SELECT DATE '2024-05-20' , 'blue', -16\nUNION ALL SELECT DATE '2024-05-20' , 'yellow', 8\nUNION ALL SELECT DATE '2024-05-19' ,'blue', 2\nUNION ALL SELECT DATE '2024-05-19' ,'yellow', 8\nUNION ALL SELECT DATE '2024-05-22' ,'blue', 2\nUNION ALL SELECT DATE '2024-05-22' ,'yellow', -2\nUNION ALL SELECT DATE '2024-05-23' ,'blue', 3\nUNION ALL SELECT DATE '2024-05-23' ,'yellow', -2\nORDER BY created_at",
+        },
+
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["V"],
+          "stackable.stack_type": "stacked",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    chartPathWithFillColor("#A989C5").eq(0).realHover();
+    testStackedTooltipRows([
+      ["blue", "2", "20.00 %"],
+      ["yellow", "8", "80.00 %"],
+      ["Total", "10", "100 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(1).realHover();
+    testStackedTooltipRows([
+      ["blue", "-16", "-200.00 %"],
+      ["yellow", "8", "100 %"],
+      ["Total", "-8", "-100.00 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(2).realHover();
+    testStackedTooltipRows([
+      ["blue", "-7", "-350.00 %"],
+      ["yellow", "5", "250.00 %"],
+      ["Total", "-2", "-100.00 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(3).realHover();
+    testStackedTooltipRows([
+      ["blue", "2", "Infinity %"],
+      ["yellow", "-2", "-Infinity %"],
+      ["Total", "0", "NaN %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(4).realHover();
+    testStackedTooltipRows([
+      ["blue", "3", "300.00 %"],
+      ["yellow", "-2", "-200.00 %"],
+      ["Total", "1", "100 %"],
+    ]);
+    resetHoverState();
+  });
 });
+
+function resetHoverState() {
+  cy.findByTestId("main-logo").realHover();
+}
