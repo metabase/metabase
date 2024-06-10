@@ -112,6 +112,7 @@ export function ColumnInput({
       >
         <Popover.Target>
           <Button
+            data-testid="column-input"
             ref={button}
             onMouseDownCapture={handleButtonClick}
             onKeyDown={handleKeyDown}

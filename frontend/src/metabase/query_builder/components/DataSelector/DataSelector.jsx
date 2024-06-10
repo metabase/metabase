@@ -10,7 +10,6 @@ import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
@@ -43,8 +42,10 @@ import {
   TableTrigger,
   Trigger,
 } from "./TriggerComponents";
+import { DATA_BUCKET } from "./constants";
 import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
+import { getDataTypes } from "./utils";
 
 const MIN_SEARCH_LENGTH = 2;
 

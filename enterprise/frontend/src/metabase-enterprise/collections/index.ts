@@ -21,6 +21,7 @@ import {
   isRegularCollection,
   getInstanceAnalyticsCustomCollection,
   getIcon,
+  filterOutItemsFromInstanceAnalytics,
 } from "./utils";
 
 if (hasPremiumFeature("official_collections")) {
@@ -60,6 +61,9 @@ if (hasPremiumFeature("official_collections")) {
       ];
     }
   };
+
+  PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics =
+    filterOutItemsFromInstanceAnalytics;
 
   PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
     FormCollectionAuthorityLevel;

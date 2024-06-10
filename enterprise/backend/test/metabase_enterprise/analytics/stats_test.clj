@@ -1,7 +1,7 @@
 (ns metabase-enterprise.analytics.stats-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
    [metabase.db :as mdb]
    [metabase.test :as mt]
@@ -11,7 +11,7 @@
   (testing "Metabase Analytics doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
+      (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
       (testing "sense check: Collection, Dashboard, and Cards exist"
         (is (true? (t2/exists? :model/Collection)))
         (is (true? (t2/exists? :model/Dashboard)))

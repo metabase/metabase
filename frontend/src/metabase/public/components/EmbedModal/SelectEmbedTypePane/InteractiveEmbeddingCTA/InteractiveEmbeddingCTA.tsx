@@ -53,7 +53,7 @@ export const InteractiveEmbeddingCTA = () => {
       >
         <Text
           align="center"
-          c="text-swhite"
+          c="text-white"
           span
           tt="uppercase"
           lts="0.7"

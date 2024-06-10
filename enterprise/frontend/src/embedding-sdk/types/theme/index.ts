@@ -79,6 +79,18 @@ export type MetabaseColor = keyof MetabaseColors;
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
 export interface MetabaseComponentTheme {
+  dashboard: {
+    backgroundColor: string;
+
+    card: {
+      backgroundColor: string;
+    };
+  };
+
+  question: {
+    backgroundColor: string;
+  };
+
   /** Data tables **/
   table: {
     cell: {
