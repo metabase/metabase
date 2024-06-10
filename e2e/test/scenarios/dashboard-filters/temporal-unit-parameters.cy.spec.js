@@ -130,6 +130,14 @@ const nativeQuestionDetails = {
   name: "SQL query",
   display: "table",
   native: {
+    query: "SELECT * FROM ORDERS",
+  },
+};
+
+const nativeQuestionWithParameterDetails = {
+  name: "SQL query with a parameter",
+  display: "table",
+  native: {
     query: "SELECT * FROM ORDERS WHERE {{date}}",
     "template-tags": {
       date: {
@@ -175,14 +183,14 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("mapping targets", () => {
-    it("should add a temporal unit parameter, connect it to a card, and drill thru", () => {
+    it("should connect a parameter to a question and drill thru", () => {
       createQuestion(noBreakoutQuestionDetails);
       createQuestion(singleBreakoutQuestionDetails);
       createQuestion(multiBreakoutQuestionDetails);
       createQuestion(multiStageQuestionDetails);
       createQuestion(expressionBreakoutQuestionDetails);
       createQuestion(binningBreakoutQuestionDetails);
-      createNativeQuestion(nativeQuestionDetails);
+      createNativeQuestion(nativeQuestionWithParameterDetails);
       cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         visitDashboard(dashboard.id),
       );
@@ -266,13 +274,57 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       removeQuestion();
 
       cy.log("native query");
-      addQuestion(nativeQuestionDetails.name);
+      addQuestion(nativeQuestionWithParameterDetails.name);
       editParameter(parameterDetails.name);
       getDashboardCard()
         .findByText(/Add a variable to this question/)
         .should("be.visible");
+    });
+
+    it("should connect a parameter to a model", () => {
+      createQuestion({ ...singleBreakoutQuestionDetails, type: "model" });
+      createNativeQuestion({ ...nativeQuestionDetails, type: "model" });
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+      editDashboard();
+      addTemporalUnitParameter();
+
+      cy.log("MBQL model");
+      addQuestion(singleBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("No valid fields").should("be.visible");
       dashboardParametersDoneButton().click();
       removeQuestion();
+
+      cy.log("SQL model");
+      addQuestion(nativeQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("No valid fields").should("be.visible");
+    });
+
+    it("should connect a parameter to a metric", () => {
+      createQuestion({ ...singleBreakoutQuestionDetails, type: "metric" });
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+      editDashboard();
+      addTemporalUnitParameter();
+
+      addQuestion(singleBreakoutQuestionDetails.name);
+      editParameter(parameterDetails.name);
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText(singleBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderHeader()
+        .findByText(`${singleBreakoutQuestionDetails.name} by Created At: Year`)
+        .should("be.visible");
     });
 
     it("should connect multiple parameters to a card with multiple breakouts and drill thru", () => {
