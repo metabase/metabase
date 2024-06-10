@@ -69,7 +69,7 @@ export const SelectTime = ({
   const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
   const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
   return (
-    <Group spacing={isClock12Hour ? "xs" : "sm"}>
+    <Group spacing={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
       <AutoWidthSelect
         value={hourIndex.toString()}
         data={getHours()}

@@ -1,8 +1,10 @@
+import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
+import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import {
@@ -71,6 +73,12 @@ function MainNavbarView({
   handleCreateNewCollection,
   handleCloseNavbar,
 }: Props) {
+  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
+    "expand-bookmarks-in-nav",
+  );
+
+  const { canNavigateHome } = useHomepageDashboard();
+
   const {
     card: cardItem,
     collection: collectionItem,
@@ -84,8 +92,16 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
-    "expand-bookmarks-in-nav",
+  const handleHomeClick = useCallback(
+    (event: MouseEvent) => {
+      // Prevent navigating to the dashboard homepage when a user is already there
+      // https://github.com/metabase/metabase/issues/43800
+      if (!canNavigateHome) {
+        event.preventDefault();
+      }
+      onItemSelect();
+    },
+    [canNavigateHome, onItemSelect],
   );
 
   return (
@@ -95,7 +111,7 @@ function MainNavbarView({
           <PaddedSidebarLink
             isSelected={nonEntityItem?.url === "/"}
             icon="home"
-            onClick={onItemSelect}
+            onClick={handleHomeClick}
             url="/"
           >
             {t`Home`}

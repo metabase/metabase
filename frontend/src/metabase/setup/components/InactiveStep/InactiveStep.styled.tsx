@@ -14,12 +14,11 @@ export const StepRoot = styled.section<Props>`
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
   background-color: ${props =>
-    props.isCompleted ? color("white") : "var(--mb-color-bg-medium)"};
+    color(props.isCompleted ? "bg-white" : "bg-medium")};
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${props =>
-    props.isCompleted ? color("success") : "var(--mb-color-brand)"};
+  color: ${props => (props.isCompleted ? color("success") : color("brand"))};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -36,11 +35,10 @@ export const StepLabel = styled.div<Props>`
   width: 2.625rem;
   height: 2.625rem;
   border: 1px solid
-    ${props =>
-      props.isCompleted ? color("success") : "var(--mb-color-border)"};
+    ${props => (props.isCompleted ? color("success") : color("border"))};
   border-radius: 50%;
   background-color: ${props =>
-    props.isCompleted ? color("success") : color("white")};
+    props.isCompleted ? color("success") : color("bg-white")};
 `;
 
 export const StepLabelText = styled.span`
@@ -52,5 +50,5 @@ export const StepLabelText = styled.span`
 export const StepLabelIcon = styled(Icon)`
   width: 1rem;
   height: 1rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;

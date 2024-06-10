@@ -4,7 +4,7 @@ import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
@@ -98,7 +98,7 @@ export const NotebookContainer = ({
     <Flex
       pos="absolute"
       inset={0}
-      bg={color("white")}
+      bg="bg-white"
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,

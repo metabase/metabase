@@ -312,8 +312,8 @@
 
 (deftest downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
-    ;; it's "v47.00-030" but not "v47.00-029" because for some reasons,
-    ;; SOMETIMES the rollback of custom migration doens't get triggered on mysql and this test got flaky.
+    ;; it's "v47.00-030" but not "v47.00-029" for some reason,
+    ;; SOMETIMES the rollback of custom migration doesn't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
       (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User) {:first_name  "Howard"
@@ -1761,7 +1761,7 @@
           (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id)))))
         (testing "the init-send-pulse-triggers job should be re-run after migrate up"
           (migrate!)
-          ;; we need to redef this so quarzt trigger that run on a different thread use the same db connection as this test
+          ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
           (with-redefs [mdb.connection/*application-db* mdb.connection/*application-db*]
             ;; simulate starting MB after migrate up, which will trigger this function
             (task/init! ::task.send-pulses/SendPulses)

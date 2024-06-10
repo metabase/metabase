@@ -62,7 +62,7 @@ export const ExpandButton = styled(Button)`
   margin-left: auto;
 
   &:hover {
-    color: ${({ theme }) => theme.fn?.themeColor("text-white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

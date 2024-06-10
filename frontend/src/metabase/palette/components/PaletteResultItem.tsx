@@ -6,6 +6,7 @@ import { color } from "metabase/lib/colors";
 import { Flex, Text, Icon, Box } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
+import { getCommandPaletteIcon } from "../utils";
 
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
@@ -13,7 +14,7 @@ interface PaletteResultItemProps {
 }
 
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
-  const iconColor = active ? color("brand-light") : color("text-light");
+  const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
 
   const parentName =
     item.extra?.parentCollection || item.extra?.database || null;
@@ -27,7 +28,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       p=".75rem"
       mx="1.5rem"
       miw="0"
-      align="center"
+      align="start"
       justify="space-between"
       gap="0.5rem"
       fw={700}
@@ -38,15 +39,13 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         flexBasis: 0,
       }}
       bg={active ? color("brand") : "none"}
-      c={active ? color("white") : color("text-dark")}
+      c={active ? color("text-white") : color("text-dark")}
       aria-label={item.name}
     >
       {/** Icon Container */}
-      {item.icon && (
+      {icon && (
         <Icon
-          aria-hidden
-          name={item.icon || "click"}
-          color={iconColor}
+          {...icon}
           style={{
             flexBasis: "16px",
           }}
@@ -75,7 +74,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {item.extra?.isVerified && (
             <Icon
               name="verified_filled"
-              color={active ? color("white") : color("brand")}
+              color={active ? color("text-white") : color("brand")}
               style={{
                 verticalAlign: "sub",
                 marginLeft: "0.25rem",
@@ -86,7 +85,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             <Text
               component="span"
               ml="0.25rem"
-              c={iconColor}
+              c={active ? color("brand-light") : color("text-light")}
               fz="0.75rem"
               lh="1rem"
               fw="normal"
@@ -95,7 +94,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         </Box>
         <Text
           component="span"
-          color={active ? "white" : "text-light"}
+          color={active ? "text-white" : "text-light"}
           fw="normal"
           style={{
             textOverflow: "ellipsis",

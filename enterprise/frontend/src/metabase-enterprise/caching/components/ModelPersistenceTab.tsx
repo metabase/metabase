@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { TabId } from "metabase/admin/performance/components/PerformanceApp";
 import { Tab } from "metabase/admin/performance/components/PerformanceApp.styled";
+import { PerformanceTabId } from "metabase/admin/performance/types";
 
 export const ModelPersistenceTab = () => {
   return (
-    <Tab key="ModelPersistence" value={TabId.ModelPersistence}>
+    <Tab key="ModelPersistence" value={PerformanceTabId.ModelPersistence}>
       {t`Model persistence`}
     </Tab>
   );

@@ -1,8 +1,9 @@
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import type { SearchResult, ModelResult } from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { createMockModelResult } from "./test-utils";
+import type { ModelResult } from "./types";
 import type { ActualModelFilters, AvailableModelFilters } from "./utils";
 import { filterModels } from "./utils";
 
@@ -186,17 +187,15 @@ describe("Browse utils", () => {
   }));
   const availableModelFilters: AvailableModelFilters = {
     onlyRed: {
-      predicate: (model: SearchResult) => model.name.startsWith("red"),
+      predicate: model => model.name.startsWith("red"),
       activeByDefault: false,
     },
     onlyGood: {
-      predicate: (model: SearchResult) =>
-        Boolean(model.moderated_status?.startsWith("good")),
+      predicate: model => Boolean(model.moderated_status?.startsWith("good")),
       activeByDefault: false,
     },
     onlyBig: {
-      predicate: (model: SearchResult) =>
-        Boolean(model.description?.startsWith("big")),
+      predicate: model => Boolean(model.description?.startsWith("big")),
       activeByDefault: true,
     },
   };

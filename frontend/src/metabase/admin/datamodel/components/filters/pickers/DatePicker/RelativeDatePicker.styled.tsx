@@ -24,7 +24,7 @@ export const NumericInput = styled(BaseNumericInput)<BaseProps>`
 `;
 
 export const OptionsContainer = styled.div`
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   padding: ${space(2)} ${space(1)};
 `;
 
