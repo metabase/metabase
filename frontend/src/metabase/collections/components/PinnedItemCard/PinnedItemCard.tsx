@@ -8,10 +8,17 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import Tooltip from "metabase/core/components/Tooltip";
+import { getIcon } from "metabase/lib/icon";
+import { modelToUrl } from "metabase/lib/urls";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { IconName } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionItem,
+  RecentCollectionItem,
+} from "metabase-types/api";
 
 import {
   ActionsContainer,
@@ -27,13 +34,14 @@ import {
 type Props = {
   databases?: Database[];
   bookmarks?: Bookmark[];
-  createBookmark: CreateBookmark;
-  deleteBookmark: DeleteBookmark;
+  createBookmark?: CreateBookmark;
+  deleteBookmark?: DeleteBookmark;
   className?: string;
-  item: CollectionItem;
-  collection: Collection;
-  onCopy: (items: CollectionItem[]) => void;
-  onMove: (items: CollectionItem[]) => void;
+  item: CollectionItem | RecentCollectionItem;
+  collection?: Collection;
+  onCopy?: (items: CollectionItem[]) => void;
+  onMove?: (items: CollectionItem[]) => void;
+  onClick?: () => void;
 };
 
 const TOOLTIP_MAX_WIDTH = 450;
@@ -42,6 +50,12 @@ const DEFAULT_DESCRIPTION: Record<string, string> = {
   card: t`A question`,
   dashboard: t`A dashboard`,
   dataset: t`A model`,
+};
+
+const isCollectionItem = (
+  item: CollectionItem | RecentCollectionItem,
+): item is CollectionItem => {
+  return !("parent_collection" in item);
 };
 
 function PinnedItemCard({
@@ -54,9 +68,13 @@ function PinnedItemCard({
   collection,
   onCopy,
   onMove,
+  onClick,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const icon = item.getIcon().name;
+  const icon = getIcon({
+    model: item.model,
+    moderated_status: item.moderated_status,
+  }).name;
   const { description, name, model } = item;
   const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
 
@@ -71,24 +89,34 @@ function PinnedItemCard({
     }
   };
 
+  const hasActions =
+    isCollectionItem(item) &&
+    (onCopy || onMove || createBookmark || deleteBookmark || collection);
+
   return (
-    <ItemLink className={className} to={item.getUrl()}>
+    <ItemLink
+      className={className}
+      to={modelToUrl(item) ?? "/"}
+      onClick={onClick}
+    >
       <ItemCard flat>
         <Body>
           <Header>
             <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer>
               {item.model === "dataset" && <ModelDetailLink model={item} />}
-              <ActionMenu
-                databases={databases}
-                bookmarks={bookmarks}
-                createBookmark={createBookmark}
-                deleteBookmark={deleteBookmark}
-                item={item}
-                collection={collection}
-                onCopy={onCopy}
-                onMove={onMove}
-              />
+              {hasActions && (
+                <ActionMenu
+                  databases={databases}
+                  bookmarks={bookmarks}
+                  createBookmark={createBookmark}
+                  deleteBookmark={deleteBookmark}
+                  item={item}
+                  collection={collection}
+                  onCopy={onCopy}
+                  onMove={onMove}
+                />
+              )}
             </ActionsContainer>
           </Header>
           <Tooltip
