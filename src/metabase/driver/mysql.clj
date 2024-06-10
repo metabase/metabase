@@ -477,7 +477,7 @@
     :DATETIME   :type/DateTime
     :DECIMAL    :type/Decimal
     :DOUBLE     :type/Float
-    :ENUM       :type/*
+    :ENUM       :type/MySQLEnum
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer

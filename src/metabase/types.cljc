@@ -252,6 +252,7 @@
 
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
+(derive :type/MySQLEnum :type/TextLike)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
 (derive :type/IPAddress :type/TextLike)
