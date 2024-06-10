@@ -41,7 +41,7 @@ import {
   SettingLabelError,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
-import { TemporalUnitPicker } from "./TemporalUnitPicker";
+import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -190,7 +190,7 @@ export const ParameterSettings = ({
       {isTemporalUnitParameter(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`Unit of Time options`}</SettingLabel>
-          <TemporalUnitPicker value={[]} onChange={() => 1} />
+          <TemporalUnitSettings />
         </Box>
       )}
       {canUseCustomSource(parameter) && (
