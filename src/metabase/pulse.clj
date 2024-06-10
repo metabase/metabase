@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -444,12 +445,18 @@
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
   (log/debug (u/format-color :cyan "Sending Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
-  {:channel-id  channel-id
-   :attachments (cons {:blocks [{:type "header"
-                                 :text {:type "plain_text"
-                                        :text (str "🔔 " (first-question-name pulse))
-                                        :emoji true}}]}
-                      (create-slack-attachment-data parts))})
+  (channel/render-notification
+   {:channel_type :channel/slack}
+   {:payload-type :notification/alert
+    :payload      parts
+    :recipients   (mapv :recipients (:channels pulse))})
+
+  #_{:channel-id  channel-id
+     :attachments (cons {:blocks [{:type "header"
+                                   :text {:type "plain_text"
+                                          :text (str "🔔 " (first-question-name pulse))
+                                          :emoji true}}]}
+                        (create-slack-attachment-data parts))})
 
 (defmethod notification :default
   [_alert-or-pulse _parts {:keys [channel_type], :as _channel}]
@@ -553,3 +560,5 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
+
+#_(send-pulse! (t2/select-one :model/Pulse 56))
