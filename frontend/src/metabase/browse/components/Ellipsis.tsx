@@ -4,9 +4,10 @@ import { forwardRef } from "react";
 import type { FlexProps } from "metabase/ui";
 import { Text } from "metabase/ui";
 
+import type { RefProp } from "../types";
+
 import { EllipsisAndSeparator } from "./CollectionBreadcrumbsWithTooltip.styled";
 import { PathSeparator } from "./PathSeparator";
-import type { RefProp } from "./types";
 type EllipsisProps = {
   includeSep?: boolean;
 } & FlexProps;
