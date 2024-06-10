@@ -280,7 +280,6 @@ export const CollectionContentView = ({
                   clear={clear}
                   handleMove={handleMove}
                   handleCopy={handleCopy}
-                  pageSize={2}
                 />
                 <CollectionBulkActions
                   collection={collection}

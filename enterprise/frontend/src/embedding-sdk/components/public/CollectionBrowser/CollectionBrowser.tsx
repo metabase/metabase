@@ -29,6 +29,7 @@ export const CollectionBrowser = withPublicComponentWrapper(
       onClick={onClick}
       pageSize={pageSize}
       models={visibleCollectionTypes}
+      showActionMenu={false}
     />
   ),
 );

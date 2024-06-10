@@ -28,6 +28,7 @@ type BaseItemTableRowProps = PropsWithChildren<
     | "onMove"
     | "onToggleSelected"
     | "onClick"
+    | "showActionMenu"
   >
 >;
 
@@ -47,6 +48,7 @@ export const TableRow = ({
   itemKey,
   collection,
   onClick,
+  showActionMenu,
 }: BaseItemTableRowProps) => (
   <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
     <ItemComponent
@@ -63,6 +65,7 @@ export const TableRow = ({
       onCopy={onCopy}
       onMove={onMove}
       onToggleSelected={onToggleSelected}
+      showActionMenu={showActionMenu}
     />
   </tr>
 );
@@ -85,6 +88,7 @@ export const ItemDragSourceTableRow = ({
   onClick,
   selectedItems,
   onDrop,
+  showActionMenu,
 }: BaseItemTableRowProps) => {
   return (
     <ItemDragSource
@@ -111,6 +115,7 @@ export const ItemDragSourceTableRow = ({
           onMove={onMove}
           onToggleSelected={onToggleSelected}
           onClick={onClick}
+          showActionMenu={showActionMenu}
         />
       </tr>
     </ItemDragSource>

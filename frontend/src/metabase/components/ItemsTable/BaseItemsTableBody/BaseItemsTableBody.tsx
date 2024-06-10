@@ -43,6 +43,7 @@ export const BaseItemsTableBody = ({
   | "onCopy"
   | "onMove"
   | "onToggleSelected"
+  | "showActionMenu"
 >) => {
   const isDndAvailable = useSelector(getIsDndAvailable);
 

@@ -52,6 +52,7 @@ export type CollectionItemsTableProps = {
   selected: CollectionItem[];
   toggleItem: (item: CollectionItem) => void;
   onClick: (item: CollectionItem) => void;
+  showActionMenu: boolean;
 }>;
 
 export const CollectionItemsTable = ({
@@ -73,6 +74,7 @@ export const CollectionItemsTable = ({
   pageSize = COLLECTION_PAGE_SIZE,
   models = ALL_MODELS,
   onClick,
+  showActionMenu = true,
 }: CollectionItemsTableProps) => {
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
@@ -177,6 +179,7 @@ export const CollectionItemsTable = ({
               onClick={
                 onClick ? (item: CollectionItem) => onClick(item) : undefined
               }
+              showActionMenu={showActionMenu}
             />
             <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
               {hasPagination && (

@@ -19,7 +19,7 @@ export type ItemRendererProps = {
   databases?: Database[];
   bookmarks?: Bookmark[];
 } & ActionMenuProps &
-  Pick<BaseItemsTableProps, "onClick">;
+  Pick<BaseItemsTableProps, "onClick" | "showActionMenu">;
 
 export const DefaultItemRenderer = ({
   item,
@@ -35,6 +35,7 @@ export const DefaultItemRenderer = ({
   bookmarks,
   testIdPrefix = "item",
   onClick,
+  showActionMenu,
 }: ItemRendererProps) => {
   const canSelect =
     collection?.can_write && typeof onToggleSelected === "function";
@@ -71,16 +72,18 @@ export const DefaultItemRenderer = ({
       />
       <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
       <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />
-      <Columns.ActionMenu.Cell
-        item={item}
-        collection={collection}
-        databases={databases}
-        bookmarks={bookmarks}
-        onCopy={onCopy}
-        onMove={onMove}
-        createBookmark={createBookmark}
-        deleteBookmark={deleteBookmark}
-      />
+      {showActionMenu && (
+        <Columns.ActionMenu.Cell
+          item={item}
+          collection={collection}
+          databases={databases}
+          bookmarks={bookmarks}
+          onCopy={onCopy}
+          onMove={onMove}
+          createBookmark={createBookmark}
+          deleteBookmark={deleteBookmark}
+        />
+      )}
       <Columns.RightEdge.Cell />
     </>
   );

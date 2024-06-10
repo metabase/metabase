@@ -115,6 +115,7 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
+  showActionMenu?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -140,6 +141,7 @@ export const BaseItemsTable = ({
   isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
+  showActionMenu,
   onClick,
   ...props
 }: BaseItemsTableProps) => {
@@ -156,7 +158,7 @@ export const BaseItemsTable = ({
           <Columns.Name.Col isInDragLayer={isInDragLayer} />
           <Columns.LastEditedBy.Col />
           <Columns.LastEditedAt.Col />
-          <Columns.ActionMenu.Col />
+          {showActionMenu && <Columns.ActionMenu.Col />}
           <Columns.RightEdge.Col />
         </colgroup>
       )}
@@ -193,7 +195,7 @@ export const BaseItemsTable = ({
               onSortingOptionsChange={onSortingOptionsChange}
               isTrashed={isTrashed}
             />
-            <Columns.ActionMenu.Header />
+            {showActionMenu && <Columns.ActionMenu.Header />}
             <Columns.RightEdge.Header />
           </tr>
         </thead>
@@ -214,6 +216,7 @@ export const BaseItemsTable = ({
         onMove={onMove}
         onToggleSelected={onToggleSelected}
         onClick={onClick}
+        showActionMenu={showActionMenu}
       />
     </Table>
   );
