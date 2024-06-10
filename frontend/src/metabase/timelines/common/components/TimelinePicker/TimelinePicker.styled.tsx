@@ -59,7 +59,7 @@ const selectedStyles = css`
   background-color: var(--mb-color-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 
   ${CardIcon} {
@@ -67,8 +67,8 @@ const selectedStyles = css`
   }
 
   ${CardIconContainer} {
-    border-color: ${color("white")};
-    background-color: ${color("white")};
+    border-color: var(--mb-color-bg-white);
+    background-color: var(--mb-color-bg-white);
   }
 `;
 

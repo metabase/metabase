@@ -67,7 +67,7 @@ export const CodeBlock = styled.pre`
   white-space: pre-wrap;
   margin: 0;
 
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   background-color: ${color("text-dark")};
 `;
 

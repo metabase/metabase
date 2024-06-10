@@ -14,7 +14,6 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
@@ -244,7 +243,7 @@ const FormButtonsGroup = ({
     <Group
       py="md"
       spacing="md"
-      bg={color("white")}
+      bg="bg-white"
       className="form-buttons-group"
       style={{
         justifyContent: isInSidebar ? undefined : "flex-end",

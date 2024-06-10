@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { space } from "metabase/styled-components/theme";
 
@@ -66,7 +65,7 @@ export const ModalRight = styled.div`
     top: 0;
     padding: 1.5rem 1.5rem 0.5rem 1.5rem;
     margin: 0;
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
     z-index: 5;
   }
 `;

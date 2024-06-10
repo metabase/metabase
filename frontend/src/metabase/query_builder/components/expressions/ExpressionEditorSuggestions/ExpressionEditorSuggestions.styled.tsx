@@ -16,7 +16,7 @@ export const SuggestionMatch = styled.span`
 `;
 
 const highlighted = css`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 `;
 
@@ -27,8 +27,6 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   padding-right: 0.5rem;
   cursor: pointer;
   height: 2rem;
-  display: flex;
-  align-items: center;
 
   ${props => props.isHighlighted && highlighted}
 `;
@@ -50,7 +48,6 @@ export const SuggestionTitle = styled.span`
 `;
 
 export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
-  padding: 0;
   margin-left: auto;
   padding: 0.3125rem 0;
   visibility: hidden;

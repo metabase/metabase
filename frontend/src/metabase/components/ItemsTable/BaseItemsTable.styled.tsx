@@ -15,7 +15,7 @@ import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
 
 export const Table = styled.table<{ isInDragLayer?: boolean }>`
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   table-layout: fixed;
   border-collapse: unset;
   border-radius: 0.5rem;

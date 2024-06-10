@@ -45,7 +45,7 @@ export const TargetButton = styled.div<{ variant: string }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   cursor: pointer;
   border: 2px solid var(--mb-color-brand);
   border-radius: 8px;
@@ -67,7 +67,7 @@ export const TargetButton = styled.div<{ variant: string }>`
     css`
       border-color: var(--mb-color-brand);
       background-color: var(--mb-color-brand);
-      color: ${color("white")};
+      color: var(--mb-color-text-white);
     `}
 
   ${({ variant }) =>
@@ -84,7 +84,7 @@ export const TargetButton = styled.div<{ variant: string }>`
     css`
       border-color: var(--mb-color-error);
       background-color: var(--mb-color-error);
-      color: ${color("white")};
+      color: var(--mb-color-text-white);
     `}
 `;
 
@@ -100,14 +100,14 @@ export const TargetButtonText = styled.span`
 `;
 
 export const CloseIconButton = styled(Button)<{ icon?: string; size?: number }>`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: transparent;
   border: none;
   padding: ${space(0)} !important;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${alpha("white", 0.2)};
+    color: var(--mb-color-text-white);
+    background-color: ${() => alpha("bg-white", 0.2)};
   }
 `;
 
