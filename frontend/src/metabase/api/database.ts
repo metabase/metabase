@@ -32,26 +32,26 @@ export const databaseApi = Api.injectEndpoints({
       ListDatabasesResponse,
       ListDatabasesRequest | void
     >({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/database",
-        body,
+        params,
       }),
       providesTags: response => provideDatabaseListTags(response?.data ?? []),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}`,
-        body,
+        params,
       }),
       providesTags: database => (database ? provideDatabaseTags(database) : []),
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/metadata`,
-        body,
+        params,
       }),
       providesTags: database => (database ? provideDatabaseTags(database) : []),
     }),
@@ -59,10 +59,10 @@ export const databaseApi = Api.injectEndpoints({
       SchemaName[],
       ListDatabaseSchemasRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/schemas`,
-        body,
+        params,
       }),
       providesTags: (schemas = []) => [
         listTag("schema"),
@@ -83,10 +83,10 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListDatabaseSchemaTablesRequest
     >({
-      query: ({ id, schema, ...body }) => ({
+      query: ({ id, schema, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/schema/${schema}`,
-        body,
+        params,
       }),
       providesTags: (tables = []) => [
         listTag("table"),
@@ -97,10 +97,10 @@ export const databaseApi = Api.injectEndpoints({
       Table[],
       ListVirtualDatabaseTablesRequest
     >({
-      query: ({ id, schema, ...body }) => ({
+      query: ({ id, schema, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/datasets/${schema}`,
-        body,
+        params,
       }),
       providesTags: (tables = []) => [
         listTag("table"),
@@ -108,10 +108,10 @@ export const databaseApi = Api.injectEndpoints({
       ],
     }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/idfields`,
-        body,
+        params,
       }),
       providesTags: [listTag("field")],
     }),

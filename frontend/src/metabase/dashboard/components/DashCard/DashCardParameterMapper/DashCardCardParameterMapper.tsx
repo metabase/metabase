@@ -177,6 +177,7 @@ export function DashCardCardParameterMapper({
     dashcard,
     target,
     question,
+    editingParameter ?? undefined,
   );
 
   const hasPermissionsToMap = useMemo(() => {

@@ -96,14 +96,14 @@ export default class CustomGeoJSONWidget extends Component {
 
       for (const feature of geoJson.features) {
         if (!feature.properties) {
-          throw t`Invalid custom GeoJSON: feature is misssing properties`;
+          throw t`Invalid custom GeoJSON: feature is missing properties`;
         }
       }
     }
 
     if (geoJson.type === "Feature") {
       if (!geoJson.properties) {
-        throw t`Invalid custom GeoJSON: feature is misssing properties`;
+        throw t`Invalid custom GeoJSON: feature is missing properties`;
       }
     }
   };

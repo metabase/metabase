@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
 import { isSmallScreen, reload } from "metabase/lib/dom";
 import { loadLocalization } from "metabase/lib/i18n";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAction, createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import { openNavbar } from "metabase/redux/app";
@@ -25,12 +25,21 @@ import type { LoginData } from "./types";
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
   REFRESH_LOCALE,
-  async (_, { getState }) => {
+  async (_, { dispatch, getState }) => {
     const userLocale = getUser(getState())?.locale;
     const siteLocale = getSetting(getState(), "site-locale");
-    await loadLocalization(userLocale ?? siteLocale ?? "en");
+    if (userLocale && userLocale !== siteLocale) {
+      // This sets a flag to keep the route guard from redirecting us while the reload is happening
+      await dispatch(pauseRedirect());
+      reload();
+    } else {
+      await loadLocalization(userLocale ?? siteLocale ?? "en");
+    }
   },
 );
+
+export const PAUSE_REDIRECT = "metabase/user/PAUSE_REDIRECT";
+export const pauseRedirect = createAction(PAUSE_REDIRECT);
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
 export const refreshSession = createAsyncThunk(

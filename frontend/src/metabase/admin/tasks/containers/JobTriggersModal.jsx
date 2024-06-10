@@ -1,17 +1,15 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
-import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetTasksInfoQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-
-import { fetchJobInfo } from "../jobInfo";
+import { useDispatch } from "metabase/lib/redux";
 
 const renderTriggersTable = triggers => {
   return (
@@ -53,40 +51,22 @@ const renderTriggersTable = triggers => {
   );
 };
 
-class JobTriggersModal extends Component {
-  state = {
-    triggers: null,
-    error: null,
-  };
+export const JobTriggersModal = props => {
+  const dispatch = useDispatch();
+  const { data, error, isFetching } = useGetTasksInfoQuery();
 
-  async componentDidMount() {
-    try {
-      const { jobKey } = this.props.params;
-      const jobs = jobKey && (await this.props.fetchJobInfo()).payload.jobs;
-      const job = jobs && _.findWhere(jobs, { key: jobKey });
-      const triggers = (job && job.triggers) || [];
+  const { jobKey } = props.params;
+  const jobs = jobKey && data?.jobs;
+  const job = jobs && _.findWhere(jobs, { key: jobKey });
 
-      this.setState({ triggers, error: null });
-    } catch (error) {
-      this.setState({ error });
-    }
-  }
-
-  render() {
-    const {
-      params: { jobKey },
-      goBack,
-    } = this.props;
-    const { triggers, error } = this.state;
-
-    return (
-      <ModalContent title={t`Triggers for ${jobKey}`} onClose={goBack}>
-        <LoadingAndErrorWrapper loading={!triggers} error={error}>
-          {() => renderTriggersTable(triggers)}
-        </LoadingAndErrorWrapper>
-      </ModalContent>
-    );
-  }
-}
-
-export default connect(null, { fetchJobInfo, goBack })(JobTriggersModal);
+  return (
+    <ModalContent
+      title={t`Triggers for ${jobKey}`}
+      onClose={() => dispatch(goBack())}
+    >
+      <LoadingAndErrorWrapper loading={isFetching} error={error}>
+        {() => renderTriggersTable(job?.triggers)}
+      </LoadingAndErrorWrapper>
+    </ModalContent>
+  );
+};
