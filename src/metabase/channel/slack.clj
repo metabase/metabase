@@ -14,8 +14,6 @@
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
-(channel/register! :channel/slack)
-
 (defn- database-id [card]
   (or (:database_id card)
       (get-in card [:dataset_query :database])))
@@ -103,7 +101,7 @@
 (mu/defmethod channel/send! :channel/slack
   [_channel-type message :- SlackMessage]
   (let [{:keys [channel-id attachments]} message]
-   (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
+    (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Alerts                                                ;;

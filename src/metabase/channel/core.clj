@@ -5,8 +5,9 @@
   (:require
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Channels methods                                           ;;
@@ -18,22 +19,20 @@
 
 (defmulti send!
   {:arglists '([channel-type message])}
-  first)
+  (fn [channel-type _message]
+    channel-type))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                             Utils                                               ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn do-register!
-  "Impl of [[register!]]"
-  [channel]
-  (when-not *compile-files*
-    (assert (= (namespace channel) "channel") "Channel must be a namespaced keyword of :channel. E.g: :channel/slack")
-    (log/info (u/format-color :blue "Registered channel %s from namespace %s" channel (ns-name *ns*)))
-    (classloader/require (ns-name *ns*))
-    (derive channel :channel/*)))
+(defn- find-and-load-metabase-channels!
+  "Load namespaces that start with `metabase.channel"
+  []
+  (doseq [ns-symb u/metabase-namespace-symbols
+          :when   (.startsWith (name ns-symb) "metabase.channel.")]
+    (log/info "Loading channel namespace:" (u/format-color :blue ns-symb))
+    (classloader/require ns-symb)))
 
-(defmacro register!
-  "Register a channel implementation."
-  [channel]
-  `(do-register! ~channel))
+(when-not *compile-files*
+  (find-and-load-metabase-channels!))

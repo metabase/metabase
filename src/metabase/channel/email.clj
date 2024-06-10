@@ -9,8 +9,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(channel/register! :channel/slack)
-
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- (ms/InstanceOf :model/Card)]

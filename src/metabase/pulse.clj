@@ -1,12 +1,8 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.channel.core :as channel]
-   [metabase.email :as email]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -15,8 +11,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
-   [metabase.public-settings :as public-settings]
-   [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.util :as pu]
@@ -24,16 +18,13 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.log :as log]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.retry :as retry]
+   #_[metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -188,110 +179,6 @@
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
-(defn- first-question-name [pulse]
-  (-> pulse :cards first :name))
-
-(defn- alert-condition-type->description [condition-type]
-  (case (keyword condition-type)
-    :meets (trs "reached its goal")
-    :below (trs "gone below its goal")
-    :rows  (trs "results")))
-
-(def ^:private block-text-length-limit 3000)
-(def ^:private attachment-text-length-limit 2000)
-
-(defn- truncate-mrkdwn
-  "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
-  adds an ellipsis character to the end."
-  [mrkdwn limit]
-  (if (> (count mrkdwn) limit)
-    (-> mrkdwn
-        (subs 0 (dec limit))
-        (str "…"))
-    mrkdwn))
-
-(defn- text->markdown-block
-  [text]
-  (let [mrkdwn (markdown/process-markdown text :slack)]
-    (when (not (str/blank? mrkdwn))
-      {:blocks [{:type "section"
-                 :text {:type "mrkdwn"
-                        :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
-
-(defn- part->attachment-data
-  [part channel-id]
-  (case (:type part)
-    :card
-    (let [{:keys [card dashcard result]}          part
-          {card-id :id card-name :name :as card} card]
-      {:title           (or (-> dashcard :visualization_settings :card.title)
-                            card-name)
-       :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
-       :title_link      (urls/card-url card-id)
-       :attachment-name "image.png"
-       :channel-id      channel-id
-       :fallback        card-name})
-
-    :text
-    (text->markdown-block (:text part))
-
-    :tab-title
-    (text->markdown-block (format "# %s" (:text part)))))
-
-(defn- create-slack-attachment-data
-  "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
-  [parts]
-  (let [channel-id (slack/files-channel)]
-    (for [part  parts
-          :let  [attachment (part->attachment-data part channel-id)]
-          :when attachment]
-      attachment)))
-
-(defn- subject
-  [{:keys [name cards dashboard_id]}]
-  (if (or dashboard_id
-          (some :dashboard_id cards))
-    name
-    (trs "Pulse: {0}" name)))
-
-(defn- filter-text
-  [filter]
-  (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (pulse-params/value-string filter))
-   attachment-text-length-limit))
-
-(defn- slack-dashboard-header
-  "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
-  Slack dashboard subscription"
-  [pulse dashboard]
-  (let [header-section  {:type "header"
-                         :text {:type "plain_text"
-                                :text (subject pulse)
-                                :emoji true}}
-        creator-section {:type   "section"
-                         :fields [{:type "mrkdwn"
-                                   :text (str "Sent by " (-> pulse :creator :common_name))}]}
-        filters         (pulse-params/parameters pulse dashboard)
-        filter-fields   (for [filter filters]
-                          {:type "mrkdwn"
-                           :text (filter-text filter)})
-        filter-section  (when (seq filter-fields)
-                          {:type   "section"
-                           :fields filter-fields})]
-    (if filter-section
-      {:blocks [header-section filter-section creator-section]}
-      {:blocks [header-section creator-section]})))
-
-(defn- slack-dashboard-footer
-  "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
-  [pulse dashboard]
-  {:blocks
-   [{:type "divider"}
-    {:type "context"
-     :elements [{:type "mrkdwn"
-                 :text (str "<" (pulse-params/dashboard-url (u/the-id dashboard) (pulse-params/parameters pulse dashboard)) "|"
-                            "*Sent from " (public-settings/site-name) "*>")}]}]})
-
 (def slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
   many columns) is truncated."
@@ -372,89 +259,46 @@
     (not (are-all-parts-empty? parts))
     true))
 
-(defn- parts->cards-count
-  [parts]
-  (count (filter #(some? (#{:text :card} (:type %))) parts)))
+(defn- get-notification-info
+  [pulse parts]
+  (let [alert? (= :alert (alert-or-pulse pulse))]
+    (merge {:payload-type (if alert?
+                            :notification/alert
+                            :notification/dashboard-subscription)
+            :payload      (if alert? (first parts) parts)}
+           (if alert?
+             {:alert pulse
+              :card  (t2/select-one :model/Card (-> parts first :card :id))}
+             {:dashboard-subscription pulse
+              :dashboard (t2/select-one :model/Dashboard (:dashboard_id pulse))}))))
 
-;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
-;; running the underlying query
-(defmulti ^:private notification
-  "Polymorphic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
-  channel_type (i.e. email vs. slack)"
-  {:arglists '([alert-or-pulse parts channel])}
-  (fn [pulse _ {:keys [channel_type]}]
-    [(alert-or-pulse pulse) (keyword channel_type)]))
+(defn- channels-to-channel-recipients
+  [channel-type channels]
+  (assert (= 1 (count (set (map :channel_type channels)))) "All channels must be of the same type")
+  (if (= :channel/slack channel-type)
+    (map #(get-in % [:details :channel]) channels)
+    (for [recipient (flatten (map :recipients channels))]
+      (if-not (:id recipient)
+        {:kind :external-email
+         :email (:email recipient)}
+        {:kind :user
+         :user recipient}))))
 
-(defn- construct-pulse-email [subject recipients message]
-  {:subject      subject
-   :recipients   recipients
-   :message-type :attachments
-   :message      message})
-
-(defmethod notification [:pulse :email]
-  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
-  (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via email"
-                             pulse-id (pr-str pulse-name) (parts->cards-count parts)))
-  (channel/render-notification
-   :channel/email
-   {:payload-type           :notification/dashboard-subscription
-    :dashboard              (t2/select-one :model/Dashboard dashboard-id)
-    :dashboard-subscription pulse
-    :payload                parts}
-   (for [recipient recipients]
-     (if-not (:id recipient)
-       {:kind :external-email
-        :email (:email recipient)}
-       {:kind :user
-        :user recipient}))))
-
-
-(defmethod notification [:pulse :slack]
-  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
-   parts
-   {{channel-id :channel} :details}]
-  (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via Slack"
-                             pulse-id (pr-str pulse-name) (parts->cards-count parts)))
-  (channel/render-notification
-   :channel/slack
-   {:payload-type           :notification/dashboard-subscription
-    :dashboard              (t2/select-one :model/Dashboard dashboard-id)
-    :dashboard-subscription pulse
-    :payload                parts}
-   [channel-id]))
-
-(defmethod notification [:alert :email]
-  [{:keys [id] :as pulse} parts channel]
-  (log/debugf "Sending Alert (%s: %s) via email" id name)
-  (def channel channel)
-  (channel/render-notification
-   :channel/email
-   {:payload-type :notification/alert
-    :card         (t2/select-one :model/Card (:id (:card (first parts))))
-    :alert        pulse
-    :payload      (first parts)}
-   (for [recipient (:recipients channel)]
-     (if-not (:id recipient)
-       {:kind :external-email
-        :email (:email recipient)}
-       {:kind :user
-        :user recipient}))))
-
-(defmethod notification [:alert :slack]
-  [pulse parts {{channel-id :channel} :details}]
-  (log/debug (u/format-color :cyan "Sending Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
-  (channel/render-notification
-   :channel/slack
-   {:payload-type :notification/alert
-    :payload      (first parts)}
-   [channel-id]))
-
-(defmethod notification :default
-  [_alert-or-pulse _parts {:keys [channel_type], :as _channel}]
-  (throw (UnsupportedOperationException. (tru "Unrecognized channel type {0}" (pr-str channel_type)))))
-
-(defn- parts->notifications [{:keys [channels channel-ids] pulse-id :id :as pulse} parts]
-  (let [channel-ids (or channel-ids (mapv :id channels))]
+(defn- send-pulse!*
+  "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
+  [{:keys [channels channel-ids cards] pulse-id :id :as pulse} dashboard]
+  (let [parts       (if dashboard
+                      ;; send the dashboard
+                      (execute-dashboard pulse dashboard)
+                      ;; send the cards instead
+                      (for [card cards
+                            ;; Pulse ID may be `nil` if the Pulse isn't saved yet
+                            :let [part (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id)]
+                            ;; some cards may return empty part, e.g. if the card has been archived
+                            :when part]
+                        part))
+        channel-ids (or channel-ids (mapv :id channels))
+        channel-type->channels (group-by :channel_type channels)]
     (when (should-send-notification? pulse parts)
       (let [event-type (if (= :pulse (alert-or-pulse pulse))
                          :event/subscription-send
@@ -466,67 +310,23 @@
 
       (when (:alert_first_only pulse)
         (t2/delete! Pulse :id pulse-id))
-      ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
-      (for [channel channels
-            :when   (contains? (set channel-ids) (:id channel))]
-        (notification pulse parts channel)))))
-
-(defn- pulse->notifications
-  "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
-  [{:keys [cards] pulse-id :id :as pulse} dashboard]
-  (parts->notifications
-    pulse
-    (if dashboard
-      ;; send the dashboard
-      (execute-dashboard pulse dashboard)
-      ;; send the cards instead
-      (for [card cards
-            ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-            :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
-            ;; some cards may return empty part, e.g. if the card has been archived
-            :when part]
-        part))))
+      (doseq [[channel-type channels] channel-type->channels
+              ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
+              :let    [channels (filter #(contains? (set channel-ids) (:id %)) channels)]
+              :when   (seq channels)]
+        (let [channel-type (if (= :email (keyword channel-type))
+                             :channel/email
+                             :channel/slack)
+              messages (channel/render-notification channel-type
+                                                    (get-notification-info pulse parts)
+                                                    (channels-to-channel-recipients channel-type channels))]
+          (doseq [message messages]
+            ;; TODO this should retry
+            (channel/send! channel-type message)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmulti ^:private send-notification!
-  "Invokes the side-effecty function for sending emails/slacks depending on the notification type"
-  {:arglists '([pulse-or-alert])}
-  (fn [{:keys [channel-id]}]
-    (if channel-id :slack :email)))
-
-(defmethod send-notification! :slack
-  [messages]
-  (doseq [message messages]
-    (try
-      (channel/send! :channel/slack message)
-      (catch ExceptionInfo e
-        ;; Token errors have already been logged and we should not retry.
-        (when-not (contains? (:errors (ex-data e)) :slack-token)
-          (throw e))))))
-
-(defmethod send-notification! :email
-  [emails]
-  (doseq [email emails]
-    (channel/send! :channel/email email)))
-
-(defn- send-notification-retrying!
-  "Like [[send-notification!]] but retries sending on errors according to the retry settings."
-  [& args]
-  (if config/is-dev?
-    (apply send-notification! args)
-    (apply (retry/decorate send-notification!) args)))
-
-(defn- send-notifications! [notifications]
-  (doseq [notification notifications]
-    ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
-    ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
-    (try
-      (send-notification-retrying! notification)
-      (catch Throwable e
-        (log/error e "Error sending notification!")))))
 
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
@@ -548,6 +348,6 @@
                       pulse/hydrate-notification
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
-      (send-notifications! (pulse->notifications pulse dashboard)))))
+      (send-pulse!* pulse dashboard))))
 
 #_(ngoc/with-tc(send-pulse! (t2/select-one :model/Pulse 3)))

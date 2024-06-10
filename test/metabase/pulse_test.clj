@@ -939,7 +939,7 @@
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
-          (#'metabase.pulse/send-notifications! [fake-email-notification])
+          (#'metabase.pulse/send-pulse!* [fake-email-notification])
           (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
           (is (= 1 (count @mt/inbox)))))))
@@ -950,7 +950,7 @@
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
-          (#'metabase.pulse/send-notifications! [fake-email-notification])
+          (#'metabase.pulse/send-pulse!* [fake-email-notification])
           (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
           (is (= 0 (count @mt/inbox)))))))
@@ -964,7 +964,7 @@
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
-          (#'metabase.pulse/send-notifications! [fake-email-notification])
+          (#'metabase.pulse/send-pulse!* [fake-email-notification])
           (is (= {:numberOfFailedCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
           (is (= 0 (count @mt/inbox)))))))
@@ -978,7 +978,7 @@
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
-            (#'metabase.pulse/send-notifications! [fake-email-notification])
+            (#'metabase.pulse/send-pulse!* [fake-email-notification])
             (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                    (get-positive-retry-metrics test-retry)))
             (is (= 1 (count @mt/inbox))))))))
@@ -993,7 +993,7 @@
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [slack/post-chat-message! (constantly nil)
                     retry/decorate           (rt/test-retry-decorate-fn test-retry)]
-        (#'metabase.pulse/send-notifications! [fake-slack-notification])
+        (#'metabase.pulse/send-pulse!* [fake-slack-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
   (testing "post slack message succeeds hiding token error"
@@ -1002,7 +1002,7 @@
                                                (throw (ex-info "Invalid token"
                                                                {:errors {:slack-token "Invalid token"}})))
                     retry/decorate           (rt/test-retry-decorate-fn test-retry)]
-        (#'metabase.pulse/send-notifications! [fake-slack-notification])
+        (#'metabase.pulse/send-pulse!* [fake-slack-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
   (testing "post slack message fails b/c retry limit"
@@ -1012,7 +1012,7 @@
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
                     retry/decorate           (rt/test-retry-decorate-fn test-retry)]
-        (#'metabase.pulse/send-notifications! [fake-slack-notification])
+        (#'metabase.pulse/send-pulse!* [fake-slack-notification])
         (is (= {:numberOfFailedCallsWithRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
   (testing "post slack message succeeds with retry"
@@ -1022,7 +1022,7 @@
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
                     retry/decorate           (rt/test-retry-decorate-fn test-retry)]
-          (#'metabase.pulse/send-notifications! [fake-slack-notification])
+          (#'metabase.pulse/send-pulse!* [fake-slack-notification])
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))))))
 
