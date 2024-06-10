@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  appBar,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
@@ -10,6 +11,7 @@ import {
   filterWidget,
   getDashboardCard,
   popover,
+  queryBuilderHeader,
   queryBuilderMain,
   resetFilterWidgetToDefault,
   restore,
@@ -173,7 +175,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("mapping targets", () => {
-    it("should add a temporal unit parameter and connect it to a card", () => {
+    it("should add a temporal unit parameter, connect it to a card, and drill thru", () => {
       createQuestion(noBreakoutQuestionDetails);
       createQuestion(singleBreakoutQuestionDetails);
       createQuestion(multiBreakoutQuestionDetails);
@@ -273,7 +275,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       removeQuestion();
     });
 
-    it("should allow to map to multiple questions within on dashcard", () => {
+    it("should map to multiple questions within a dashcard and drill thru", () => {
       createDashboardWithMultiSeriesCard().then(dashboard =>
         visitDashboard(dashboard.id),
       );
@@ -292,7 +294,28 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       filterWidget().click();
       popover().findByText("Quarter").click();
-      getDashboardCard().findByText("Q1 2023").should("be.visible");
+      getDashboardCard().within(() => {
+        cy.findByText("Q1 2023").should("be.visible");
+        cy.findByText("Question 1").click();
+      });
+      appBar()
+        .should("contain.text", "Started from")
+        .should("contain.text", "Question 1");
+      queryBuilderHeader()
+        .findByText("Count by Created At: Quarter")
+        .should("be.visible");
+      backToDashboard();
+
+      getDashboardCard().within(() => {
+        cy.findByText("Q1 2023").should("be.visible");
+        cy.findByText("Question 2").click();
+      });
+      appBar()
+        .should("contain.text", "Started from")
+        .should("contain.text", "Question 2");
+      queryBuilderHeader()
+        .findByText("Count by Created At: Quarter")
+        .should("be.visible");
     });
   });
 
@@ -408,15 +431,15 @@ function createDashboardWithCard() {
 }
 
 function createDashboardWithMultiSeriesCard() {
-  return cy.createDashboard().then(({ body: dashboard }) => {
+  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
     return createQuestion({
       ...singleBreakoutQuestionDetails,
-      name: "Q1",
+      name: "Question 1",
       display: "line",
     }).then(({ body: card1 }) => {
       return createQuestion({
         ...singleBreakoutQuestionDetails,
-        name: "Q2",
+        name: "Question 2",
         display: "line",
       }).then(({ body: card2 }) => {
         addOrUpdateDashboardCard({
