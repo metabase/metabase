@@ -287,6 +287,46 @@ export default function App() {
 }
 ```
 
+### Embedding the collection browser
+
+With the Collection Browser, you can browse the items in your Metabase instance from your application.
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **withTitle**: `boolean` – Whether the dashboard should display a title.
+- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+
+
+```jsx
+import React from "react";
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const initialParameterValues = {}; // Define your query parameters here
+
+  // choose parameter names that are in your dashboard
+  const hiddenParameters = ["location", "city"]
+
+  return (
+    <MetabaseProvider config={config}>
+        <StaticDashboard
+          dashboardId={dashboardId}
+          initialParameterValues={initialParameterValues}
+          withTitle={false}
+          withDownloads={false}
+          hiddenParameters={hideParameters}
+        />
+    </MetabaseProvider>
+  );
+}
+```
+
 
 ### Customizing appearance
 
