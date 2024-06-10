@@ -135,7 +135,7 @@ const StrategyEditorForDatabases_Base = ({
         </aside>
       </Stack>
       {confirmationModal}
-      <Flex gap="xl">
+      <Flex gap="xl" style={{ overflow: "hidden" }}>
         <RoundedBox twoColumns={canOverrideRootStrategy}>
           {canOverrideRootStrategy && (
             <PLUGIN_CACHING.StrategyFormLauncherPanel
