@@ -1,0 +1,31 @@
+name: Conventional commit PR Title Reminder
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - enterprise/frontend/src/embedding-sdk/**
+
+jobs:
+  pr-title-reminder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remind PR authors to use conventional commit in the title
+        run: |
+          gh pr pr comment -b '@{{ github.pull_request.user.login }} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
+
+          Here are all the supported types that will be shown in the changelog:
+          - feat
+          - fix
+          - perf
+
+          Please also make sure to include `sdk` scope, otherwise, the changelog will not include this change.
+
+          For example, these are valid PR titles:
+          - `feat(sdk): Add interactive dashboard component`
+          - `feat(sdk): Support theming pie chart`
+          - `fix(sdk): Fix static dashboard crash`'
