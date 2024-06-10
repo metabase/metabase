@@ -678,13 +678,13 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 });
 
 function toggleColumnPickerItems(names: string[]) {
-  cy.findByTestId("column-picker").click({ force: true });
+  cy.findByTestId("column-picker").parent().click();
 
   for (const name of names) {
     cy.findAllByTestId("column-picker-item").contains(name).click();
   }
 
-  cy.findByTestId("column-picker").click({ force: true });
+  cy.findByTestId("column-picker").parent().click();
 }
 
 function verifyNoColumnCompareShortcut() {
