@@ -678,4 +678,11 @@
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
-                                                               "&foo=bar")))))))
+                                                               "&foo=bar"))))))
+  (testing (str "Returns nothing for role suffixed keys "
+                "(https://github.com/metabase/metabase/pull/43602#discussion_r1628043704)")
+    (let [role "!@#$%^&*()"
+          params (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                                   "?asdfrole=" (codec/url-encode role)))]
+      (is (not (contains? params "ROLE")))
+      (is (contains? params "ASDFROLE")))))
