@@ -22,16 +22,9 @@
   (:import
    (java.time LocalDate)))
 
-(def ^:private false-clause [:inline [:= 0 1]])
-
-(defn- sandboxed-or-impersonated-user? []
-  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
-  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
-  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
-  ;; all.
-  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
-          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
-  (premium-features/sandboxed-or-impersonated-user?))
+(def false-clause
+  "A clause which is always false. Useful for when you want to return no results."
+  [:inline [:= 0 1]])
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;

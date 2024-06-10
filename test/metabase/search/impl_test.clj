@@ -60,7 +60,6 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [do-search (fn []
                           (search.impl/search {:search-string      search-string
-                                               :archived           false
                                                :models             search.config/all-models
                                                :current-user-id    (mt/user->id :crowberto)
                                                :current-user-perms #{"/"}
@@ -133,7 +132,6 @@
                                 (is (= expected
                                        (->> (search.impl/search (search.impl/search-context
                                                                  {:search-string      search-term
-                                                                  :archived           false
                                                                   :models             search.config/all-models
                                                                   :created-at         created-at
                                                                   :current-user-id    (mt/user->id :crowberto)
@@ -218,7 +216,6 @@
                                 (is (= expected
                                        (->> (search.impl/search (search.impl/search-context
                                                                  {:search-string      search-term
-                                                                  :archived           false
                                                                   :models             search.config/all-models
                                                                   :last-edited-at     last-edited-at
                                                                   :current-user-id    (mt/user->id :crowberto)
@@ -274,3 +271,18 @@
             [:= :table.active true]
             [:= :table.visibility_type nil]]
            (:where (#'search.impl/search-query-for-model "table" search.filter-test/default-search-ctx))))))
+
+(deftest ^:parallel indexed-entity-sandboxed-or-impersonated-user-test
+  (testing "Only active, visible, and non audit DB tables should be included"
+    (let [search-query (fn []
+                         (#'search.impl/search-query-for-model
+                          "indexed-entity"
+                          (assoc search.filter-test/default-search-ctx :search-string "foo")))]
+      (mt/with-dynamic-redefs [search.impl/sandboxed-or-impersonated-user? (constantly false)]
+        (is (= [:or [:like [:lower :model-index-value.name] "%foo%"]]
+               (:where (search-query)))))
+      (mt/with-dynamic-redefs [search.impl/sandboxed-or-impersonated-user? (constantly true)]
+        (is (= [:and
+                [:or [:like [:lower :model-index-value.name] "%foo%"]]
+                [:inline [:= 0 1]]]
+               (:where (search-query))))))))

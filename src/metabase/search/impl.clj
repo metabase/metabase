@@ -93,6 +93,24 @@
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
+(defn- wildcarded-tokens [s]
+  (->> s
+       search.util/normalize
+       search.util/tokenize
+       (map search.util/wildcard-match)))
+
+(mu/defn ^:private search-string-clause
+  [model
+   search-ctx :- SearchContext]
+  (when (not (str/blank? (:search-string search-ctx)))
+    (into
+     [:or]
+     (for [wildcarded-token (wildcarded-tokens (:search-string search-ctx))
+           column           (cond-> (search.config/searchable-columns-for-model model)
+                              (:search-native-query search-ctx)
+                              (concat (search.config/native-query-columns model)))]
+       [:like [:lower (search.config/column-with-alias model column)] wildcarded-token]))))
+
 (mu/defn ^:private base-query-for-model :- [:map {:closed true}
                                             [:select :any]
                                             [:from :any]
@@ -104,6 +122,7 @@
   [model :- SearchableModel context :- SearchContext]
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
+      (sql.helpers/where (search-string-clause model context))
       (search.filter/build-filters model context)))
 
 (mu/defn add-collection-join-and-where-clauses
@@ -228,29 +247,10 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(defn- wildcarded-tokens [s]
-  (->> s
-       search.util/normalize
-       search.util/tokenize
-       (map search.util/wildcard-match)))
-
-(mu/defn ^:private search-string-clause
-  [model
-   search-ctx :- SearchContext]
-  (when (not (str/blank? (:search-string search-ctx)))
-    (into
-     [:or]
-     (for [wildcarded-token (wildcarded-tokens (:search-string search-ctx))
-           column           (cond-> (search.config/searchable-columns-for-model model)
-                              (:search-native-query search-ctx)
-                              (concat (search.config/native-query-columns model)))]
-       [:like [:lower (search.config/column-with-alias model column)] wildcarded-token]))))
-
 (mu/defn ^:private shared-card-impl
   [type       :- :metabase.models.card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (sql.helpers/where (search-string-clause "card" search-ctx))
       (sql.helpers/where (when (:search-native-query search-ctx)
                            [:= (search.config/column-with-alias "card" :query_type) [:inline "native"]]))
       (sql.helpers/where [:= :card.type (name type)])
@@ -338,6 +338,15 @@
          query
          collection-perm-clause)))))
 
+(defn- sandboxed-or-impersonated-user? []
+  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
+  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
+  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
+  ;; all.
+  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
+          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
+  (premium-features/sandboxed-or-impersonated-user?))
+
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]
   (-> (base-query-for-model model search-ctx)
@@ -345,6 +354,7 @@
                              [:= :model-index.id :model-index-value.model_index_id])
       (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
+      (sql.helpers/where (when (sandboxed-or-impersonated-user?) search.filter/false-clause))
       (add-model-index-permissions-clause current-user-perms)))
 
 (defmethod search-query-for-model "segment"

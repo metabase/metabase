@@ -356,28 +356,6 @@
           (merge default-search-ctx
                  {:created-by #{1}}))))))
 
-(deftest build-filters-indexed-entity-test
-  (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly false)]
-      (is (= [:and
-              [:or [:like [:lower :model-index-value.name] "%foo%"]]
-              [:inline [:= 1 1]]]
-             (:where (search.filter/build-filters
-                      base-search-query
-                      "indexed-entity"
-                      (merge default-search-ctx {:search-string "foo"}))))))))
-
-(deftest build-filters-indexed-entity-test-2
-  (testing "otherwise search result is empty"
-    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly true)]
-      (is (= [:and
-              [:or [:= 0 1]]
-              [:inline [:= 1 1]]]
-             (:where (search.filter/build-filters
-                      base-search-query
-                      "indexed-entity"
-                      (merge default-search-ctx {:search-string "foo"}))))))))
-
 (deftest ^:parallel build-filters-search-native-query
   (doseq [model ["dataset" "card"]]
     (testing model
