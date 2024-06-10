@@ -29,6 +29,7 @@ import type {
   ParameterMappingOptions,
   ParameterTarget,
   QuestionDashboardCard,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -483,6 +484,21 @@ export const setParameterIsMultiSelect = createThunkAction(
 
     return { id: parameterId, isMultiSelect };
   },
+);
+
+export const SET_PARAMETER_TEMPORAL_UNITS =
+  "metabase/dashboard/SET_PARAMETER_TEMPORAL_UNITS";
+export const setParameterTemporalUnits = createThunkAction(
+  SET_PARAMETER_TEMPORAL_UNITS,
+  (parameterId: ParameterId, temporalUnits: TemporalUnit[]) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        temporal_units: temporalUnits,
+      }));
+
+      return { id: parameterId, temporalUnits };
+    },
 );
 
 export const SET_PARAMETER_QUERY_TYPE =

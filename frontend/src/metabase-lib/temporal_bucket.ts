@@ -84,6 +84,6 @@ export function formatRelativeDateRange({
   });
 }
 
-export function availableTemporalUnits(): string[] {
+export function availableTemporalUnits(): BucketName[] {
   return ML.available_temporal_units();
 }

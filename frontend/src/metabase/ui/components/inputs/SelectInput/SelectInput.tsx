@@ -22,6 +22,9 @@ export const SelectInput = forwardRef(function SelectInput(
         input: S.input,
         rightSection: canClear ? undefined : S.rightSection,
       }}
+      value={value}
+      disabled={disabled}
+      readOnly
       rightSection={
         hasRightSection && (
           <Icon
@@ -31,7 +34,6 @@ export const SelectInput = forwardRef(function SelectInput(
           />
         )
       }
-      readOnly
       {...props}
     />
   );

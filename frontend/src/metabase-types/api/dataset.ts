@@ -153,3 +153,16 @@ export interface TemplateTag {
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
+
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "hour-of-day";

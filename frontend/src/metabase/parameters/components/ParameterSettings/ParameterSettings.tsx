@@ -26,6 +26,7 @@ import {
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -55,6 +56,7 @@ export interface ParameterSettingsProps {
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onChangeRequired: (value: boolean) => void;
+  onChangeTemporalUnits: (temporalUnits: TemporalUnit[]) => void;
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
@@ -76,6 +78,7 @@ export const ParameterSettings = ({
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeRequired,
+  onChangeTemporalUnits,
   embeddedParameterVisibility,
   hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
@@ -190,7 +193,10 @@ export const ParameterSettings = ({
       {isTemporalUnitParameter(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`Unit of Time options`}</SettingLabel>
-          <TemporalUnitSettings />
+          <TemporalUnitSettings
+            parameter={parameter}
+            onChangeTemporalUnits={onChangeTemporalUnits}
+          />
         </Box>
       )}
       {canUseCustomSource(parameter) && (
