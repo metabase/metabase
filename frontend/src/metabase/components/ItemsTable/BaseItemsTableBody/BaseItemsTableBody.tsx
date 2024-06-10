@@ -26,6 +26,7 @@ export const BaseItemsTableBody = ({
   onMove,
   onToggleSelected,
   onClick,
+  showActionMenu,
 }: Pick<
   BaseItemsTableProps,
   | "onClick"
@@ -76,6 +77,7 @@ export const BaseItemsTableBody = ({
             onToggleSelected={onToggleSelected}
             items={items}
             onClick={onClick}
+            showActionMenu={showActionMenu}
           />
         );
       })}
