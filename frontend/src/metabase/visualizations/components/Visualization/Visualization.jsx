@@ -94,6 +94,7 @@ class Visualization extends PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
+      !equals(newProps.getHref, this.props.getHref) ||
       !equals(newProps.settings, this.props.settings) ||
       !equals(newProps.timelineEvents, this.props.timelineEvents) ||
       !equals(
