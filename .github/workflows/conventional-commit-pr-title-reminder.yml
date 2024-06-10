@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - master
-      - 43850-remind-sdk-dev-to-use-conventional-commits
     paths:
       - enterprise/frontend/src/embedding-sdk/**
 
