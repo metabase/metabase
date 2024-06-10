@@ -21,18 +21,18 @@ import {
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
     listCards: builder.query<Card[], ListCardsRequest | void>({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/card",
-        body,
+        params,
       }),
       providesTags: (cards = []) => provideCardListTags(cards),
     }),
     getCard: builder.query<Card, GetCardRequest>({
-      query: ({ id, ignore_error, ...body }) => ({
+      query: ({ id, ignore_error, ...params }) => ({
         method: "GET",
         url: `/api/card/${id}`,
-        body,
+        params,
         noEvent: ignore_error,
       }),
       providesTags: card => (card ? provideCardTags(card) : []),
