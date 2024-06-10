@@ -21,6 +21,7 @@ import {
   undoToast,
   setTokenFeatures,
   entityPickerModal,
+  dashboardGrid,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -422,6 +423,33 @@ describe("scenarios > home > custom homepage", () => {
         cy.findByText("We're a little lost...").should("not.exist");
         cy.findByText("Customize").should("be.visible");
       });
+    });
+
+    it("should not redirect when already on the dashboard homepage (metabase#43800)", () => {
+      cy.intercept(
+        "GET",
+        `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+      ).as("getDashboardMetadata");
+      cy.intercept(
+        "POST",
+        `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/*/card/*/query`,
+      ).as("runDashCardQuery");
+
+      cy.visit("/");
+      dashboardGrid()
+        .findAllByTestId("loading-spinner")
+        .should("have.length", 0);
+
+      cy.findByTestId("main-logo-link").click().click();
+      navigationSidebar().findByText("Home").click().click();
+
+      main().findByText("Something's gone wrong").should("not.exist");
+      cy.get("@getDashboardMetadata.all").should("have.length", 1);
+      cy.get("@runDashCardQuery.all").should("have.length", 1);
+      cy.location("pathname").should(
+        "equal",
+        `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      );
     });
   });
 });

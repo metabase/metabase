@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import type { AppBarProps } from "./AppBar";
@@ -44,7 +43,7 @@ describe("AppBar", () => {
         isLogoVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("main-logo")).toBeInTheDocument();
       expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
@@ -57,7 +56,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("collection-path")).toBeInTheDocument();
       expect(screen.queryByTestId("question-lineage")).not.toBeInTheDocument();
@@ -69,7 +68,7 @@ describe("AppBar", () => {
         isQuestionLineageVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("question-lineage")).toBeInTheDocument();
       expect(screen.queryByTestId("collection-path")).not.toBeInTheDocument();
@@ -85,7 +84,7 @@ describe("AppBar", () => {
         isLogoVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("search-bar")).toBeInTheDocument();
       expect(screen.queryByTestId("search-button")).not.toBeInTheDocument();
@@ -106,7 +105,7 @@ describe("AppBar", () => {
         isLogoVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("main-logo")).toBeInTheDocument();
       expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
@@ -119,7 +118,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("collection-path")).toBeInTheDocument();
       expect(screen.queryByTestId("question-lineage")).not.toBeInTheDocument();
@@ -131,7 +130,7 @@ describe("AppBar", () => {
         isQuestionLineageVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("question-lineage")).toBeInTheDocument();
       expect(screen.queryByTestId("collection-path")).not.toBeInTheDocument();
@@ -147,7 +146,7 @@ describe("AppBar", () => {
         isLogoVisible: true,
       });
 
-      render(<AppBar {...props} />);
+      renderWithProviders(<AppBar {...props} />);
 
       expect(screen.getByTestId("search-bar")).toBeInTheDocument();
       expect(screen.queryByTestId("search-button")).not.toBeInTheDocument();
