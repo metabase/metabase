@@ -798,7 +798,7 @@ function verifyBreakoutRequiredError() {
   cy.get("main")
     .findByText("There was a problem with your question")
     .should("exist");
-  cy.get("main").findByText("Show error details").should("exist").click();
+  cy.get("main").findByText("Show error details").click();
   cy.get("main")
     .findByText(
       "Window function requires either breakouts or order by in the query",
