@@ -275,7 +275,43 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       removeQuestion();
     });
 
-    it("should map to multiple questions within a dashcard and drill thru", () => {
+    it("should connect multiple parameters to a card with multiple breakouts and drill thru", () => {
+      createQuestion(multiBreakoutQuestionDetails);
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+
+      editDashboard();
+      addQuestion(multiBreakoutQuestionDetails.name);
+      addTemporalUnitParameter();
+      getDashboardCard().findByText("Select…").click();
+      popover().findAllByText("Created At").eq(0).click();
+      addTemporalUnitParameter();
+      getDashboardCard().findByText("Select…").click();
+      popover().findAllByText("Created At").eq(1).click();
+      saveDashboard();
+
+      filterWidget().eq(0).click();
+      popover().findByText("Year").click();
+      filterWidget().eq(1).click();
+      popover().findByText("Week").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("May 1, 2022").should("be.visible");
+        cy.findByText(multiBreakoutQuestionDetails.name).click();
+      });
+      appBar()
+        .should("contain.text", "Started from")
+        .should("contain.text", multiBreakoutQuestionDetails.name);
+      queryBuilderMain().within(() => {
+        cy.findByText("Product → Created At: Week").should("be.visible");
+        cy.findByText("2022").should("be.visible");
+        cy.findByText("2023").should("be.visible");
+      });
+    });
+
+    it("should connect a parameter to multiple questions within a dashcard and drill thru", () => {
       createDashboardWithMultiSeriesCard().then(dashboard =>
         visitDashboard(dashboard.id),
       );
