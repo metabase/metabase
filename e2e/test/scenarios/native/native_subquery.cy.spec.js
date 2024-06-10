@@ -9,8 +9,6 @@ import {
   entityPickerModal,
 } from "e2e/support/helpers";
 
-import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
-
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
     restore();
@@ -298,8 +296,7 @@ describe("scenarios > question > native subquery", () => {
             "loadQuestion",
           );
 
-          startNewNativeQuestion();
-          SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+          startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
           cy.wait("@loadQuestion");
           cy.findByTestId("sidebar-header-title").should(
             "have.text",
@@ -327,8 +324,7 @@ describe("scenarios > question > native subquery", () => {
         ({ body: { id: baseQuestionId } }) => {
           const tagID = `#${baseQuestionId}`;
 
-          startNewNativeQuestion();
-          SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+          startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
 
           runNativeQuery();
 
