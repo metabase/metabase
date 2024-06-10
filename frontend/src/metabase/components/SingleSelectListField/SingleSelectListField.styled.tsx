@@ -44,7 +44,7 @@ export const OptionItem = styled.div<OptionItemProps>`
   background-color: ${props =>
     props.selected ? color(props.selectedColor) : color("bg-white")};
   color: ${props =>
-    props.selected ? color("text-white") : color("text-dark")};
+    props.selected ? color("text-white") : "var(--mb-color-text-dark)"};
 
   &:hover {
     background-color: ${props =>

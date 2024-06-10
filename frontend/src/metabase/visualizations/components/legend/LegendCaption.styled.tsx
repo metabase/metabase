@@ -26,7 +26,7 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(Icon)`
-  color: ${() => lighten("text-light", 0.1)};
+  color: ${({ theme }) => lighten(theme.fn?.themeColor("text-light"), 0.1)};
   margin: 0 0.375rem;
 
   &:hover {

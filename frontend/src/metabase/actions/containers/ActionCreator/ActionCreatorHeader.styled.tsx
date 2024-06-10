@@ -29,11 +29,6 @@ export const EditableText = styled(EditableTextBase)`
   color: var(--mb-color-text-medium);
 `;
 
-export const Option = styled.div`
-  color: var(--mb-color-text-medium);
-  ${disabled => disabled && `color: var(--mb-color-text-medium)`};
-`;
-
 export const CompactSelect = styled(Select)`
   ${SelectButton.Root} {
     border: none;

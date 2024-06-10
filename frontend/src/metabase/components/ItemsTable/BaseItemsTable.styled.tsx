@@ -5,7 +5,6 @@ import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
-import { color } from "metabase/lib/colors";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import { FixedSizeIcon } from "metabase/ui";
 
@@ -128,7 +127,7 @@ export const SortingControlContainer = styled.div<{
 }>`
   display: flex;
   align-items: center;
-  color: ${({ isActive }) => isActive && color("text-dark")};
+  color: ${({ isActive }) => isActive && "var(--mb-color-text-dark)"};
   ${props => (props.isSortable ? `cursor: pointer; user-select: none;` : "")}
 
   .Icon {

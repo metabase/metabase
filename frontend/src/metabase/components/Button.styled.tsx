@@ -17,6 +17,5 @@ export const TextButton = styled(Button)<{ size: "small" | "medium" }>`
 
   &:hover {
     background-color: transparent;
-    color: var(--mb-color-brand);
   }
 `;

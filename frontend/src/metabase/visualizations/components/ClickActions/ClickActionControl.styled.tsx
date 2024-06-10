@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { Icon, rem } from "metabase/ui";
 
 export const ClickActionButtonIcon = styled(Icon)`
@@ -74,7 +74,7 @@ export const SortControl = styled(Button)`
 `;
 
 export const FormattingControl = styled(Button)`
-  color: ${() => alpha(color("text-light"), 0.65)};
+  color: ${({ theme }) => alpha(theme.fn.themeColor("text-light"), 0.65)};
   margin-left: auto;
   line-height: 1;
 
