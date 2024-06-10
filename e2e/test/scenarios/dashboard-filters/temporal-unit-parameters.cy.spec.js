@@ -297,11 +297,6 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard().findByText("No valid fields").should("be.visible");
       dashboardParametersDoneButton().click();
       removeQuestion();
-
-      cy.log("SQL model");
-      addQuestion(nativeQuestionDetails.name);
-      editParameter(parameterDetails.name);
-      getDashboardCard().findByText("No valid fields").should("be.visible");
     });
 
     it("should connect a parameter to a metric", () => {

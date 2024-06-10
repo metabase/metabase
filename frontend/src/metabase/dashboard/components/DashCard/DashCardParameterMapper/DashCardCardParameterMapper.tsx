@@ -133,10 +133,7 @@ export function DashCardCardParameterMapper({
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
-  const isNative =
-    isQuestionDashCard(dashcard) &&
-    isNativeDashCard(dashcard) &&
-    question?.type() === "question";
+  const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
   const isTemporalUnit =
     editingParameter != null && isTemporalUnitParameter(editingParameter);
 
