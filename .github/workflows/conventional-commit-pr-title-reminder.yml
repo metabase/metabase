@@ -46,7 +46,7 @@ jobs:
 
           These types `docs`, `style`, `refactor`, `test`, `build`, and `ci` are also encouraged for non-changelog related tasks.
 
-          Please also make sure to include `sdk` scope, otherwise, the changelog will not include this change.
+          Please also make sure to include `sdk` scope, otherwise, the changelog will not include this task.
 
           For example, these are valid PR titles:
           - `feat(sdk): Add interactive dashboard component`
