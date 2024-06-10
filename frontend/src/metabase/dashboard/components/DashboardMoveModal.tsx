@@ -57,7 +57,7 @@ const DashboardMoveToast = ({
   collectionId: CollectionId;
 }) => (
   <ToastRoot>
-    <Icon name="collection" className="mr1" color="white" />
+    <Icon name="collection" className="mr1" color="text-white" />
     {jt`Dashboard moved to ${(
       <Collection.Link
         id={collectionId}

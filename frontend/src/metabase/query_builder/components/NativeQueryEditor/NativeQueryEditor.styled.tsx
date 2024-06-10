@@ -24,7 +24,7 @@ const getAceEditorStyles = () => css`
   .ace_search_field,
   .ace_searchbtn,
   .ace_button {
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
     border-radius: 5px;
     border: 1px solid var(--mb-color-border);
   }

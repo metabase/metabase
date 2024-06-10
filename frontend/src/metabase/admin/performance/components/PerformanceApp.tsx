@@ -6,19 +6,19 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
+import { PerformanceTabId } from "../types";
+
 import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
-export enum TabId {
-  DataCachingSettings = "dataCachingSettings",
-  ModelPersistence = "modelPersistence",
-}
-const validTabIds = new Set(Object.values(TabId).map(String));
-const isValidTabId = (tab: TabsValue): tab is TabId =>
+const validTabIds = new Set(Object.values(PerformanceTabId).map(String));
+const isValidTabId = (tab: TabsValue): tab is PerformanceTabId =>
   !!tab && validTabIds.has(tab);
 
 export const PerformanceApp = ({ route }: { route: Route }) => {
-  const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
+  const [tabId, setTabId] = useState<PerformanceTabId>(
+    PerformanceTabId.DataCachingSettings,
+  );
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -55,18 +55,21 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
       h={tabsHeight}
     >
       <TabsList>
-        <Tab key="DataCachingSettings" value={TabId.DataCachingSettings}>
-          {t`Data caching settings`}
+        <Tab
+          key={PerformanceTabId.DataCachingSettings}
+          value={PerformanceTabId.DataCachingSettings}
+        >
+          {t`Database caching settings`}
         </Tab>
         <PLUGIN_CACHING.ModelPersistenceTab />
       </TabsList>
-      <TabsPanel key={tabId} value={tabId} p="1rem 2.5rem">
-        {tabId === TabId.DataCachingSettings && (
-          <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
+      <TabsPanel key={tabId} value={tabId}>
+        {tabId === PerformanceTabId.DataCachingSettings && (
+          <Flex style={{ flex: 1, overflow: "hidden" }} bg="bg-light" h="100%">
             <StrategyEditorForDatabases route={route} />
           </Flex>
         )}
-        {tabId === TabId.ModelPersistence && (
+        {tabId === PerformanceTabId.ModelPersistence && (
           <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
             <PLUGIN_CACHING.ModelPersistenceConfiguration />
           </Flex>
