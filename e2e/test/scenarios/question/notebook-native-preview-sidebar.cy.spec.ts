@@ -159,7 +159,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       sidebarMargin;
 
     cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/setting/notebook-native-preview-shown").as(
       "updatePreviewState",
