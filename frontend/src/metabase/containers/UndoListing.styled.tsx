@@ -59,15 +59,13 @@ export const DefaultText = styled.span`
 
 export const UndoButton = styled(Link)`
   font-weight: bold;
-  background-color: ${({ theme }) =>
-    alpha(theme.fn.themeColor("bg-white"), 0.1)};
+  background-color: ${() => alpha(color("bg-white"), 0.1)};
   padding: 4px 12px;
   margin-left: ${space(1)};
   border-radius: 8px;
 
   :hover {
-    background-color: ${({ theme }) =>
-      alpha(theme.fn.themeColor("bg-white"), 0.3)};
+    background-color: ${() => alpha(color("bg-white"), 0.3)};
   }
 `;
 

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color as brandColor, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export interface AvatarProps {
   color?: string;
@@ -10,7 +10,7 @@ export interface AvatarProps {
 }
 
 export const Avatar = styled.div<AvatarProps>`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 3em;
   height: 3em;
   display: flex;
@@ -19,6 +19,6 @@ export const Avatar = styled.div<AvatarProps>`
   border-radius: 999px;
   font-weight: 900;
   line-height: 1;
-  background-color: ${({ bg = brandColor("brand") }) => bg};
+  background-color: ${({ bg = color("brand") }) => bg};
   flex-shrink: 0;
 `;
