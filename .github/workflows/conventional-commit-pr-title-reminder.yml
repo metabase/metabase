@@ -50,5 +50,7 @@ jobs:
           - `feat(sdk): Add interactive dashboard component`
           - `feat(sdk): Support theming pie chart`
           - `fix(sdk): Fix static dashboard crash`'
+
+          gh pr comment -b "$comment" --edit-last || gh pr comment -b "$comment"
         env:
           GH_TOKEN: ${{ github.token }}
