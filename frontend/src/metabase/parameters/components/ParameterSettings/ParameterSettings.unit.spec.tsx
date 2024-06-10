@@ -252,6 +252,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
       onChangeSourceType={jest.fn()}
       onChangeSourceConfig={jest.fn()}
       onChangeRequired={jest.fn()}
+      onChangeTemporalUnits={jest.fn()}
       hasMapping={false}
     />,
   );

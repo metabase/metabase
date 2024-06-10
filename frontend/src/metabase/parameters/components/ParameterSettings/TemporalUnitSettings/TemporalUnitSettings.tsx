@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -25,26 +24,18 @@ export function TemporalUnitSettings({
   parameter,
   onChangeTemporalUnits,
 }: TemporalUnitSettingsProps) {
-  const availableUnits = useMemo(() => Lib.availableTemporalUnits(), []);
+  const availableUnits = Lib.availableTemporalUnits();
   const selectedUnits = parameter.temporal_units ?? availableUnits;
-  const isAll = selectedUnits.length === availableUnits.length;
-  const isNone = selectedUnits.length === 0;
-  const selectedText = useMemo(
-    () => getSelectedText(selectedUnits, isAll),
-    [selectedUnits, isAll],
-  );
 
   return (
     <Popover width="target">
       <Popover.Target>
-        <SelectInput value={selectedText} />
+        <SelectInput value={getSelectedText(selectedUnits, availableUnits)} />
       </Popover.Target>
       <Popover.Dropdown>
         <TemporalUnitDropdown
           selectedUnits={selectedUnits}
           availableUnits={availableUnits}
-          isAll={isAll}
-          isNone={isNone}
           onChange={onChangeTemporalUnits}
         />
       </Popover.Dropdown>
@@ -55,19 +46,17 @@ export function TemporalUnitSettings({
 interface TemporalUnitDropdownProps {
   selectedUnits: TemporalUnit[];
   availableUnits: TemporalUnit[];
-  isAll: boolean;
-  isNone: boolean;
   onChange: (selectedUnits: TemporalUnit[]) => void;
 }
 
 function TemporalUnitDropdown({
   selectedUnits,
   availableUnits,
-  isAll,
-  isNone,
   onChange,
 }: TemporalUnitDropdownProps) {
   const selectedUnitsSet = new Set(selectedUnits);
+  const isAll = selectedUnits.length === availableUnits.length;
+  const isNone = selectedUnits.length === 0;
   const isDisabledDeselection = selectedUnitsSet.size <= 1;
 
   const handleAllToggle = () => {
@@ -121,13 +110,16 @@ function TemporalUnitDropdown({
   );
 }
 
-function getSelectedText(units: TemporalUnit[], isAll: boolean) {
-  if (isAll) {
+function getSelectedText(
+  selectedUnits: TemporalUnit[],
+  availableUnits: TemporalUnit[],
+) {
+  if (selectedUnits.length === availableUnits.length) {
     return t`All`;
   }
 
-  const visibleUnits = units.slice(0, VISIBLE_UNIT_LIMIT);
-  const invisibleUnits = units.slice(VISIBLE_UNIT_LIMIT);
+  const visibleUnits = selectedUnits.slice(0, VISIBLE_UNIT_LIMIT);
+  const invisibleUnits = selectedUnits.slice(VISIBLE_UNIT_LIMIT);
   const visibleSections = [
     ...visibleUnits.map(unit => Lib.describeTemporalUnit(unit)),
     ...(invisibleUnits.length > 0 ? [`+${invisibleUnits.length}`] : []),
