@@ -44,6 +44,8 @@ jobs:
           - `fix`
           - `perf`
 
+          These types `docs`, `style`, `refactor`, `test`, `build`, and `ci` are also encouraged for non-changelog related tasks.
+
           Please also make sure to include `sdk` scope, otherwise, the changelog will not include this change.
 
           For example, these are valid PR titles:
