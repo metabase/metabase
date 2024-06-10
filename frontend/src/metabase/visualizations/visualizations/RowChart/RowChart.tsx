@@ -130,8 +130,9 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () => getGroupedDataset(data.rows, chartColumns, formatColumnValue),
-    [chartColumns, data, formatColumnValue],
+    () =>
+      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const theme = useMemo(getChartTheme, []);
@@ -190,6 +191,9 @@ const RowChartVisualization = ({
 
     onHoverChange?.({
       ...hoverData,
+      // since we already scaled the dataset, we do not want the tool-tip
+      // formatter to apply scaling a second time
+      isAlreadyScaled: true,
       event: event.nativeEvent,
       element: event.currentTarget,
     });

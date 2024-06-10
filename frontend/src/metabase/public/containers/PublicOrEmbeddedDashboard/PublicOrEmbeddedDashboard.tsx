@@ -56,7 +56,7 @@ import type { State } from "metabase-types/store";
 
 import EmbedFrame from "../../components/EmbedFrame";
 
-import { DashboardContainer } from "./PublicDashboard.styled";
+import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
 const mapStateToProps = (state: State, props: OwnProps) => {
   return {
@@ -99,11 +99,11 @@ type OwnProps = {
   };
 } & DashboardControlsProps;
 
-type PublicDashboardProps = ReduxProps &
+type PublicOrEmbeddedDashboardProps = ReduxProps &
   OwnProps &
   DashboardControlsPassedProps;
 
-class PublicDashboardInner extends Component<PublicDashboardProps> {
+class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
   _initialize = async () => {
     const {
       initialize,
@@ -149,7 +149,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
     this.props.cancelFetchDashboardCardData();
   }
 
-  async componentDidUpdate(prevProps: PublicDashboardProps) {
+  async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
       return this._initialize();
     }
@@ -266,7 +266,7 @@ class PublicDashboardInner extends Component<PublicDashboardProps> {
               <DashboardContainer>
                 <DashboardGridConnected
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
-                  isPublic
+                  isPublicOrEmbedded
                   mode={PublicMode as unknown as Mode}
                   metadata={this.props.metadata}
                   navigateToNewCardFromDashboard={() => {}}
@@ -297,10 +297,10 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
-export const PublicDashboard = _.compose(
+export const PublicOrEmbeddedDashboardControlled = _.compose(
   connector,
   title(
     ({ dashboard }: { dashboard: Dashboard }) => dashboard && dashboard.name,
   ),
   DashboardControls,
-)(PublicDashboardInner) as ComponentType<OwnProps>;
+)(PublicOrEmbeddedDashboardInner) as ComponentType<OwnProps>;

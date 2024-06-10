@@ -1,48 +1,148 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, restore } from "e2e/support/helpers";
+import {
+  createQuestion,
+  restore,
+  openNotebook,
+  enterCustomColumnDetails,
+  visualize,
+  saveQuestion,
+} from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-// TODO: unskip once 39150 is fixed
-describe.skip("issue 39150", () => {
+describe("issue 39150", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  ["model", "question"].forEach(type => {
-    it(`should render results if a ${type} depends on a ${type} and both have the same custom column name (metabase#39150)`, () => {
-      createQuestion({
-        type,
-        name: `${type} 39150`,
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Total: ["+", ["field", ORDERS.TOTAL, null], 1],
-          },
-          limit: 5,
-        },
-      }).then(({ body: { id: questionId } }) => {
-        createQuestion(
-          {
-            type,
-            name: `${type} 39150 Child`,
-            query: {
-              "source-table": `card__${questionId}`,
-              expressions: {
-                Total: ["+", ["field", ORDERS.TOTAL, null], 1],
+  it("allows custom columns with the same name in nested models (metabase#39150-1)", () => {
+    const ccName = "CC Rating";
+
+    createQuestion({
+      name: "Source Model",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [ccName]: [
+            "ceil",
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                "base-type": "type/Float",
               },
-            },
+            ],
+          ],
+        },
+        limit: 2,
+      },
+    }).then(({ body: { id: sourceModelId } }) => {
+      createQuestion(
+        {
+          name: "Nested Model",
+          type: "model",
+          query: {
+            "source-table": `card__${sourceModelId}`,
           },
-          { visitQuestion: true },
-        );
-      });
-
-      cy.log("verify that rendered result has 3 'Total' columns");
-
-      cy.findAllByTestId("header-cell")
-        .filter(":contains('Total')")
-        .should("have.length", 3);
+        },
+        { visitQuestion: true },
+      );
     });
+
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+    enterCustomColumnDetails({
+      formula: "floor([Rating])",
+      name: ccName,
+    });
+
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByTestId("header-cell")
+      .filter(`:contains('${ccName}')`)
+      .should("have.length", 2);
+  });
+
+  it("allows custom columns with the same name as the aggregation column from the souce model (metabase#39150-2)", () => {
+    createQuestion({
+      name: "Source Model",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            {
+              "base-type": "type/Text",
+            },
+          ],
+        ],
+        limit: 2,
+      },
+    }).then(({ body: { id: sourceModelId } }) => {
+      createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": `card__${sourceModelId}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+    enterCustomColumnDetails({
+      formula: "[Count] + 1",
+      name: "Count",
+    });
+
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains('Count')")
+      .should("have.length", 2);
+
+    saveQuestion("Nested Model", { wrapId: true, idAlias: "nestedModelId" });
+
+    cy.log("Make sure this works for the deeply nested models as well");
+    cy.get("@nestedModelId").then(nestedModelId => {
+      createQuestion(
+        {
+          type: "model",
+          query: {
+            "source-table": `card__${nestedModelId}`,
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    openNotebook();
+    cy.findByTestId("action-buttons").findByText("Custom column").click();
+
+    enterCustomColumnDetails({
+      formula: "[Count] + 5",
+      name: "Count",
+    });
+
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByTestId("header-cell")
+      .filter(":contains('Count')")
+      .should("have.length", 3);
   });
 });

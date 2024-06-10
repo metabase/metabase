@@ -177,6 +177,7 @@ const Dashboards = createEntity({
             id,
             dispatch,
             dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
     ),
 

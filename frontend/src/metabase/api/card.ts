@@ -15,24 +15,24 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideCardMetadataTags,
+  provideCardQueryMetadataTags,
 } from "./tags";
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
     listCards: builder.query<Card[], ListCardsRequest | void>({
-      query: body => ({
+      query: params => ({
         method: "GET",
         url: "/api/card",
-        body,
+        params,
       }),
       providesTags: (cards = []) => provideCardListTags(cards),
     }),
     getCard: builder.query<Card, GetCardRequest>({
-      query: ({ id, ignore_error, ...body }) => ({
+      query: ({ id, ignore_error, ...params }) => ({
         method: "GET",
         url: `/api/card/${id}`,
-        body,
+        params,
         noEvent: ignore_error,
       }),
       providesTags: card => (card ? provideCardTags(card) : []),
@@ -43,7 +43,7 @@ export const cardApi = Api.injectEndpoints({
         url: `/api/card/${id}/query_metadata`,
       }),
       providesTags: (metadata, error, id) =>
-        metadata ? provideCardMetadataTags(id, metadata) : [],
+        metadata ? provideCardQueryMetadataTags(id, metadata) : [],
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({

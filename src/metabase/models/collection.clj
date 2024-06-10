@@ -10,6 +10,7 @@
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.events :as events]
    [metabase.models.collection.root :as collection.root]
@@ -69,7 +70,7 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (= id (:id (perms/default-audit-collection))))
+  (= id (:id (audit/default-audit-collection))))
 
 (defmethod mi/can-write? Collection
   ([instance]
@@ -371,6 +372,37 @@
   ([real-location-path allowed-collection-ids]
    (effective-location-path* real-location-path allowed-collection-ids)))
 
+(def ^:private effective-parent-fields
+  "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views
+  and collection search results."
+  [:id :name :authority_level :type])
+
+(defn- effective-parent-root []
+  (select-keys
+   (collection.root/root-collection-with-ui-details {})
+   effective-parent-fields))
+
+(mi/define-batched-hydration-method effective-parent
+  :effective_parent
+  "Given a seq of `collections`, batch hydrates them with their `:effective_parent`, their parent collection in their
+  effective location. (i.e. the most recent ancestor the current user has read access to). If :effective_location is not
+  present on any collections, it is hydrated as well, as it is needed to compute the effective parent."
+  [collections]
+  (let [collections     (map #(t2/hydrate % :effective_location) collections)
+        parent-ids      (->> collections
+                             (map :effective_location)
+                             (keep location-path->parent-id))
+        id->parent-coll (merge {nil (effective-parent-root)}
+                               (when (seq parent-ids)
+                                 (t2/select-pk->fn identity :model/Collection
+                                                   {:select effective-parent-fields
+                                                    :where [:in :id parent-ids]})))]
+    (map
+     (fn [collection]
+       (let [parent-id (-> collection :effective_location location-path->parent-id)]
+         (assoc collection :effective_parent (id->parent-coll parent-id))))
+     collections)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
@@ -585,7 +617,7 @@
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; Make sure we're not trying to archive the Custom Reports Collection...
-  (when (= (perms/default-custom-reports-collection) collection)
+  (when (= (audit/default-custom-reports-collection) collection)
     (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
   (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
@@ -948,7 +980,7 @@
           :write (perms/collection-readwrite-path collection-or-id))})))
 
 (def ^:private instance-analytics-collection-type
-  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-db]]"
+  "The value of the `:type` field for the `instance-analytics` Collection created in [[metabase-enterprise.audit-app.audit]]"
   "instance-analytics")
 
 (defmethod mi/exclude-internal-content-hsql :model/Collection

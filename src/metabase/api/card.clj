@@ -197,12 +197,13 @@
 (defn get-card
   "Get `Card` with ID."
   [id]
-  (let [raw-card (t2/select-one Card :id id)]
+  (let [with-last-edit-info #(first (last-edit/with-last-edit-info [%] :card))
+        raw-card (t2/select-one Card :id id)]
     (-> raw-card
         api/read-check
         hydrate-card-details
         ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
-        (last-edit/with-last-edit-info :card)
+        with-last-edit-info
         collection.root/hydrate-root-collection)))
 
 (api/defendpoint GET "/:id"
@@ -372,12 +373,12 @@
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]
-   (when-not (supported-series-display-type card-display)
-             (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
-                             {:display         card-display
-                              :allowed-display (map name supported-series-display-type)
-                              :status-code     400})))
-   (fetch-compatible-series
+    (when-not (supported-series-display-type card-display)
+      (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
+                      {:display         card-display
+                       :allowed-display (map name supported-series-display-type)
+                       :status-code     400})))
+    (fetch-compatible-series
      card
      {:exclude-ids exclude_ids
       :query       query

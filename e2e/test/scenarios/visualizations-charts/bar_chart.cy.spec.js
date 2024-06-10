@@ -12,6 +12,10 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   getValueLabels,
+  createQuestion,
+  chartPathsWithFillColors,
+  createNativeQuestion,
+  testStackedTooltipRows,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -561,4 +565,130 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.get(".axis.yr").should("not.exist");
       });
   });
+
+  it("should correctly handle bar sizes and tool-tips for multiple y-axis metrics with column scaling  (#43536)", () => {
+    cy.signInAsAdmin();
+
+    const column_settings = { '["name","sum"]': { scale: 0.5 } };
+    const multiMetric = {
+      name: "Should split",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["sum", ["field", ORDERS.TOTAL]],
+          ["sum", ["field", ORDERS.TOTAL]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+      },
+      display: "bar",
+      visualization_settings: {
+        column_settings,
+        "graph.show_values": true,
+        "graph.stackable.stack_type": "stacked",
+        series_settings: {
+          sum_2: {
+            axis: "left",
+          },
+          sum: {
+            axis: "left",
+          },
+        },
+      },
+    };
+
+    createQuestion(multiMetric, { visitQuestion: true });
+
+    const [firstMetric, secondMetric] = chartPathsWithFillColors([
+      "#88BF4D",
+      "#98D9D9",
+    ]);
+    firstMetric.then($metricOne => {
+      const { height: heightMetricOne } = $metricOne[0].getBoundingClientRect();
+      secondMetric.then($metricTwo => {
+        const { height: heightMetricTwo } =
+          $metricTwo[0].getBoundingClientRect();
+
+        // since the first metric is scaled to be half of the second metric
+        // the first bar should be half the size of the first bar
+        // within a given tolerance
+        expect(heightMetricOne - heightMetricTwo / 2).to.be.lessThan(0.1);
+      });
+    });
+
+    chartPathWithFillColor("#88BF4D").first().realHover();
+    popover().within(() => {
+      cy.contains("Sum of Total");
+      // half of the unscaled metric
+      cy.contains("21,078.43");
+      // full value of the unscale metric
+      cy.contains("42,156.87");
+    });
+  });
+
+  it("should correctly show tool-tips when stacked bar charts contain a total value that is negative (#39012)", () => {
+    cy.signInAsAdmin();
+
+    createNativeQuestion(
+      {
+        name: "42948",
+        native: {
+          query:
+            "    SELECT DATE '2024-05-21' AS created_at, 'blue' AS category, -7 as v\nUNION ALL SELECT DATE '2024-05-21' , 'yellow', 5\nUNION ALL SELECT DATE '2024-05-20' , 'blue', -16\nUNION ALL SELECT DATE '2024-05-20' , 'yellow', 8\nUNION ALL SELECT DATE '2024-05-19' ,'blue', 2\nUNION ALL SELECT DATE '2024-05-19' ,'yellow', 8\nUNION ALL SELECT DATE '2024-05-22' ,'blue', 2\nUNION ALL SELECT DATE '2024-05-22' ,'yellow', -2\nUNION ALL SELECT DATE '2024-05-23' ,'blue', 3\nUNION ALL SELECT DATE '2024-05-23' ,'yellow', -2\nORDER BY created_at",
+        },
+
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+          "graph.metrics": ["V"],
+          "stackable.stack_type": "stacked",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    chartPathWithFillColor("#A989C5").eq(0).realHover();
+    testStackedTooltipRows([
+      ["blue", "2", "20.00 %"],
+      ["yellow", "8", "80.00 %"],
+      ["Total", "10", "100 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(1).realHover();
+    testStackedTooltipRows([
+      ["blue", "-16", "-200.00 %"],
+      ["yellow", "8", "100 %"],
+      ["Total", "-8", "-100.00 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(2).realHover();
+    testStackedTooltipRows([
+      ["blue", "-7", "-350.00 %"],
+      ["yellow", "5", "250.00 %"],
+      ["Total", "-2", "-100.00 %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(3).realHover();
+    testStackedTooltipRows([
+      ["blue", "2", "Infinity %"],
+      ["yellow", "-2", "-Infinity %"],
+      ["Total", "0", "NaN %"],
+    ]);
+    resetHoverState();
+
+    chartPathWithFillColor("#A989C5").eq(4).realHover();
+    testStackedTooltipRows([
+      ["blue", "3", "300.00 %"],
+      ["yellow", "-2", "-200.00 %"],
+      ["Total", "1", "100 %"],
+    ]);
+    resetHoverState();
+  });
 });
+
+function resetHoverState() {
+  cy.findByTestId("main-logo").realHover();
+}

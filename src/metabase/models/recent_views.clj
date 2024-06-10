@@ -21,7 +21,6 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -178,7 +177,7 @@
 
 (defn- root-coll []
   (select-keys
-   (into {} (root/root-collection-with-ui-details {}))
+   (root/root-collection-with-ui-details {})
    [:id :name :authority_level]))
 
 ;; == Recent Cards ==
@@ -296,18 +295,9 @@
                                  {:select [:id :name :description :authority_level :archived :location]
                                   :where [:and
                                           [:in :id collection-ids]
-                                          [:= :archived false]]})
-          coll->parent-id (fn [c]
-                            (some-> c collection/effective-location-path collection/location-path->ids last))
-          parent-ids (into #{} (keep coll->parent-id) collections)
-          id->parent-coll (merge {nil (root-coll)}
-                                 (when (seq parent-ids)
-                                   (t2/select-pk->fn identity :model/Collection
-                                                     {:select [:id :name :authority_level]
-                                                      :where [:in :id parent-ids]})))]
-      ;; replace the collection ids with their collection data:
-      (map (fn [c] (assoc c :effective_parent (->> c coll->parent-id id->parent-coll)))
-           collections))))
+                                          [:= :archived false]]})]
+      (->> (t2/hydrate collections :effective_parent)
+           (map #(m/dissoc-in % [:effective_parent :type]))))))
 
 (defmethod fill-recent-view-info :collection [{:keys [_model model_id timestamp model_object]}]
   (when-let [collection (and

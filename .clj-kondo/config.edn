@@ -136,7 +136,7 @@
    ;;    namespace(s). This is mostly a temporary placeholder until we go in and create module namespaces, which means
    ;;    you should go create one.
    ;;
-   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed ;; to use namespaces from
+   ;; 2. A set of namespace symbols. All namespaces in other modules will only be allowed to use namespaces from
    ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
    ;;    better than `:any`.
    ;;
@@ -163,6 +163,7 @@
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
+    metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.config                #{metabase.config}
@@ -267,6 +268,7 @@
     metabase.analyze               :any
     metabase.api                   :any
     metabase.async                 :any
+    metabase.audit                 :any
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.config                #{metabase.plugins}
@@ -857,11 +859,11 @@
     :metabase/defsetting-must-specify-export {:level :off}
     :discouraged-var                         {metabase.driver/database-supports? {:level :off}}}
 
-  :hooks
-  {:analyze-call
-   {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-    clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
-    clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
+   :hooks
+   {:analyze-call
+    {clojure.core/defmacro hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn     hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation
+     clojure.core/defn-    hooks.clojure.core/non-thread-safe-form-should-end-with-exclamation}}}
 
   source-namespaces
   {:linters

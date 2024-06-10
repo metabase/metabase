@@ -45,6 +45,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { getColumnScaling, getBarSeriesDataLabelKey } from "./util";
 
 /**
  * Sums two metric column values.
@@ -356,13 +357,15 @@ function getStackedValueTransformFunction(
       const rawBelowTotal = belowSeriesKeys
         .map(belowSeriesKey => datum[belowSeriesKey])
         .reduce((total: number, rowValue) => {
-          const value = getNumberOrZero(rowValue);
-
-          if (sign === "+" && value >= 0) {
-            return total + value;
+          if (typeof rowValue !== "number") {
+            return total;
           }
-          if (sign === "-" && value < 0) {
-            return total + value;
+
+          if (sign === "+" && rowValue >= 0) {
+            return total + rowValue;
+          }
+          if (sign === "-" && rowValue < 0) {
+            return total + rowValue;
           }
           return total;
         }, 0);
@@ -390,7 +393,7 @@ function getStackedValueTransformFunction(
   };
 }
 
-function getStackedValueTransfom(
+function getStackedValueTransform(
   settings: ComputedVisualizationSettings,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   stackModels: StackModel[],
@@ -419,15 +422,69 @@ function getStackedDataLabelTransform(
       const transformedDatum = { ...datum };
 
       seriesDataKeys.forEach(seriesDataKey => {
-        if (getNumberOrZero(datum[seriesDataKey]) > 0) {
+        const value = datum[seriesDataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+
+        if (value >= 0) {
           transformedDatum[POSITIVE_STACK_TOTAL_DATA_KEY] = Number.MIN_VALUE;
         }
-        if (getNumberOrZero(datum[seriesDataKey]) < 0) {
+        if (value < 0) {
           transformedDatum[NEGATIVE_STACK_TOTAL_DATA_KEY] = -Number.MIN_VALUE;
         }
       });
 
       return transformedDatum;
+    },
+  };
+}
+
+function getBarSeriesDataLabelTransform(
+  barSeriesModels: SeriesModel[],
+): ConditionalTransform {
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        const value = datum[dataKey];
+        if (typeof value !== "number") {
+          return;
+        }
+        if (value >= 0) {
+          transforedDatum[getBarSeriesDataLabelKey(dataKey, "+")] =
+            Number.MIN_VALUE;
+        }
+        if (value < 0) {
+          transforedDatum[getBarSeriesDataLabelKey(dataKey, "-")] =
+            -Number.MIN_VALUE;
+        }
+      });
+
+      return transforedDatum;
+    },
+  };
+}
+
+/**
+ * Replaces zero values with nulls for bar series so that we can use minHeight ECharts option
+ * to set minimum bar height for all non-zero values because it applies to bars with zero values too.
+ */
+function getBarSeriesZeroToNullTransform(
+  barSeriesModels: SeriesModel[],
+): ConditionalTransform {
+  return {
+    condition: barSeriesModels.length > 0,
+    fn: (datum: Datum) => {
+      const transforedDatum = { ...datum };
+
+      barSeriesModels.forEach(({ dataKey }) => {
+        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
+      });
+
+      return transforedDatum;
     },
   };
 }
@@ -571,6 +628,32 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+export function scaleDataset(
+  dataset: ChartDataset,
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+): ChartDataset {
+  const transformFn = (datum: Datum) => {
+    const transformedRecord = { ...datum };
+    for (const seriesModel of seriesModels) {
+      const scale = getColumnScaling(seriesModel.column, settings);
+
+      const key = seriesModel.dataKey;
+      if (key in datum) {
+        const scaledValue = Number.isFinite(datum[key])
+          ? (datum[key] as number) * scale
+          : null;
+        transformedRecord[key] = scaledValue;
+      }
+    }
+    return transformedRecord;
+  };
+
+  return dataset.map(datum => {
+    return transformFn(datum);
+  });
+}
+
 const getYAxisScaleTransforms = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
@@ -588,7 +671,7 @@ const getYAxisScaleTransforms = (
     nonStackedSeriesKeys,
     value => yAxisScaleTransforms.toEChartsAxisValue(value),
   );
-  const stackedTransforms = getStackedValueTransfom(
+  const stackedTransforms = getStackedValueTransform(
     settings,
     yAxisScaleTransforms,
     stackModels,
@@ -616,6 +699,12 @@ export const applyVisualizationSettingsDataTransformations = (
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
 ) => {
+  const barSeriesModels = seriesModels.filter(seriesModel => {
+    const seriesSettings = settings.series(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+    return seriesSettings.display === "bar";
+  });
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
 
   if (
@@ -670,6 +759,7 @@ export const applyVisualizationSettingsDataTransformations = (
       }),
     },
     getStackedDataLabelTransform(settings, seriesDataKeys),
+    getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:
         settings["stackable.stack_type"] != null &&
@@ -680,6 +770,7 @@ export const applyVisualizationSettingsDataTransformations = (
           ?.seriesKeys ?? [],
       ),
     },
+    getBarSeriesZeroToNullTransform(barSeriesModels),
   ]);
 };
 
