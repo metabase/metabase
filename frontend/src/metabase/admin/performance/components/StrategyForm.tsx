@@ -52,6 +52,7 @@ import {
   FormWrapper,
   LoaderInButton,
   StyledForm,
+  StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
 
 interface ButtonLabels {
@@ -240,19 +241,12 @@ const FormButtonsGroup = ({
   isInSidebar?: boolean;
 }) => {
   return (
-    <Group
-      py="md"
-      spacing="md"
-      bg="bg-white"
+    <StyledFormButtonsGroup
+      isInSidebar={isInSidebar}
       className="form-buttons-group"
-      style={{
-        justifyContent: isInSidebar ? undefined : "flex-end",
-        paddingInlineStart: isInSidebar ? "2rem" : "2.5rem",
-        paddingInlineEnd: isInSidebar ? "1rem" : "2.5rem",
-      }}
     >
       {children}
-    </Group>
+    </StyledFormButtonsGroup>
   );
 };
 
