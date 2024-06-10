@@ -187,7 +187,7 @@
   #{:name :display_name :collection_name :description})
 
 (defmulti searchable-columns-for-model
-  "The columns that will be searched for the query."
+  "The columns that can be searched for the query."
   {:arglists '([model])}
   (fn [model] model))
 
@@ -238,6 +238,13 @@
 (defmethod searchable-columns-for-model "indexed-entity"
   [_]
   [:name])
+
+(defn searchable-columns
+  "The columns that will be searched for the query."
+  [model search-native-query]
+  (cond->> (searchable-columns-for-model model)
+    (not search-native-query)
+    (remove #{:dataset_query})))
 
 (def ^:private default-columns
   "Columns returned for all models."

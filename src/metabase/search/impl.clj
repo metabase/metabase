@@ -620,7 +620,7 @@
 
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
-                            (map (partial scoring/score-and-result (:search-string search-ctx)))
+                            (map (partial scoring/score-and-result (:search-string search-ctx) (:search-native-query search-ctx)))
 
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)

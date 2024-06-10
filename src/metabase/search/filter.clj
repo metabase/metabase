@@ -80,12 +80,8 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (cond->> (search.config/searchable-columns-for-model model)
-                              (not search-native-query?)
-                              (remove #{:dataset_query})
-
-                              true
-                              (map #(search.config/column-with-model-alias model %)))
+     (for [column           (->> (search.config/searchable-columns model search-native-query?)
+                                 (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
