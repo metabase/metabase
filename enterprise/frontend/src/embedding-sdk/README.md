@@ -293,36 +293,31 @@ With the Collection Browser, you can browse the items in your Metabase instance 
 
 #### Parameters
 
-- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
-- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
-- **withTitle**: `boolean` – Whether the dashboard should display a title.
-- **withDownloads**: `boolean | null` – Whether to hide the download button.
-- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will start at the root `Our analytics` collection.
+- **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
+- **pageSize**: `number` – The number of items to display per page.
+- **visibleCollectionTypes**: `("card" | "dashboard" | "collection")[]` – the types of entities that should be seen. If not provided, all entities will be shown. 
 
-
-```jsx
+```tsx
 import React from "react";
-import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
-
-const config = {...}
+import { CollectionBrowser } from "metabase-types/api";
 
 export default function App() {
-  const dashboardId = 1; // This is the dashboard ID you want to embed
-  const initialParameterValues = {}; // Define your query parameters here
+  const collectionId = 123; // This is the collection ID you want to browse
+  const handleItemClick = (item) => {
+    console.log("Clicked item:", item);
+  };
 
-  // choose parameter names that are in your dashboard
-  const hiddenParameters = ["location", "city"]
+  // Define the collection item types you want to be visible
+  const visibleCollectionTypes = ["dashboard", "card"];
 
   return (
-    <MetabaseProvider config={config}>
-        <StaticDashboard
-          dashboardId={dashboardId}
-          initialParameterValues={initialParameterValues}
-          withTitle={false}
-          withDownloads={false}
-          hiddenParameters={hideParameters}
-        />
-    </MetabaseProvider>
+    <CollectionBrowser
+      collectionId={collectionId}
+      onClick={handleItemClick}
+      pageSize={10}
+      visibleCollectionTypes={visibleCollectionTypes}
+    />
   );
 }
 ```
