@@ -39,11 +39,12 @@
                                     :creator_id  (mt/user->id :crowberto)}
                  Table     table-1 {:name "rand-name"}]
     (mt/with-test-user :crowberto
-      (doseq [{:keys [topic event]} [{:topic :event/dashboard-read :event {:object-id (:id dash-1)}}
-                                     {:topic :event/dashboard-read :event {:object-id (:id dash-2)}}
-                                     {:topic :event/dashboard-read :event {:object-id (:id dash-3)}}
-                                     {:topic :event/card-query :event {:card-id (:id card-1)}}
-                                     {:topic :event/table-read :event {:object table-1}}]]
+      (doseq [{:keys [topic event]}
+              [{:topic :event/dashboard-read :event {:object-id (:id dash-1) :user-id (mt/user->id :crowberto)}}
+               {:topic :event/dashboard-read :event {:object-id (:id dash-2) :user-id (mt/user->id :crowberto)}}
+               {:topic :event/dashboard-read :event {:object-id (:id dash-3) :user-id (mt/user->id :crowberto)}}
+               {:topic :event/card-read :event {:object-id (:id card-1) :user-id (mt/user->id :crowberto)}}
+               {:topic :event/table-read :event {:object table-1 :user-id (mt/user->id :crowberto)}}]]
         (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
       (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
         (is (= (assoc dash-3 :collection nil :view_count 1) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
@@ -113,18 +114,18 @@
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [:model/RecentViews]
         (mt/with-test-user :crowberto
-          (doseq [[topic event] [[:event/card-query     {:card-id (:id dataset)}]
-                                 [:event/card-query     {:card-id (:id dataset)}]
-                                 [:event/card-query     {:card-id (:id card1)}]
-                                 [:event/card-query     {:card-id (:id card1)}]
-                                 [:event/card-query     {:card-id (:id card1)}]
-                                 [:event/dashboard-read {:object-id (:id dash)}]
-                                 [:event/card-query     {:card-id (:id card1)}]
-                                 [:event/dashboard-read {:object-id (:id dash)}]
-                                 [:event/table-read     {:object table1}]
-                                 [:event/card-query     {:card-id (:id archived)}]
-                                 [:event/table-read     {:object hidden-table}]
-                                 [:event/card-query     {:card-id (:id metric)}]]]
+          (doseq [[topic event] [[:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id dataset)}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id dataset)}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id card1)}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id card1)}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id card1)}]
+                                 [:event/dashboard-read {:user-id (mt/user->id :crowberto), :object-id (:id dash)}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id card1)}]
+                                 [:event/dashboard-read {:user-id (mt/user->id :crowberto), :object-id (:id dash)}]
+                                 [:event/table-read     {:user-id (mt/user->id :crowberto), :object table1}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id archived)}]
+                                 [:event/table-read     {:user-id (mt/user->id :crowberto), :object hidden-table}]
+                                 [:event/card-read      {:user-id (mt/user->id :crowberto), :object-id (:id metric)}]]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
             (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
@@ -135,8 +136,8 @@
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
                      (map #(select-keys % [:model :id :name]) recent-views))))))
         (mt/with-test-user :rasta
-          (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
-          (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-read {:object-id (:id dataset) :user-id (mt/user->id :rasta)})
+          (events/publish-event! :event/card-read {:object-id (:id card1) :user-id (mt/user->id :crowberto)})
           (testing "Only the user's own views are returned."
             (let [recent-views (:recent_views (mt/user-http-request :rasta :get 200 "activity/recent_views"))]
               (is (partial=

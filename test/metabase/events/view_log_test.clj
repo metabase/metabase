@@ -40,7 +40,7 @@
     (mt/with-temp [:model/User user {}
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
-        (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user) :context :question})
+        (events/publish-event! :event/card-read {:object-id (u/id card), :user-id (u/the-id user), :context :question})
         (is (nil? (latest-view (u/id user) (u/id card)))
             "view log entries should not be made in OSS")))))
 
@@ -140,7 +140,45 @@
       (is (= 2 (t2/select-one-fn :view_count :model/Table (:id table)))
           "view_count should be incremented"))))
 
+;;; ------------------------------------- Recent view tests begin --------------------------------------
 
+(defn- most-recent-view
+  [user-id model-id model-type]
+  (t2/select-one [:model/RecentViews :user_id :model :model_id]
+                 :user_id  user-id
+                 :model_id model-id
+                 :model    model-type
+                 {:order-by [[:id :desc]]}))
+
+(deftest recent-view-card-read-test
+  (mt/with-temp [:model/Card card {:creator_id (mt/user->id :rasta)}]
+    (mt/with-test-user :rasta
+      (events/publish-event! :event/card-read {:object-id (:id card)
+                                               :user-id   (mt/user->id :rasta)})
+      (is (= {:user_id  (mt/user->id :rasta)
+              :model    "card"
+              :model_id (:id card)}
+             (most-recent-view (mt/user->id :rasta) (:id card) "card"))))))
+
+(deftest recent-view-table-read-test
+  (mt/with-temp [:model/Table table {}]
+    (mt/with-test-user :rasta
+      (events/publish-event! :event/table-read {:object table :user-id (mt/user->id :rasta)})
+      (is (= {:user_id  (mt/user->id :rasta)
+              :model    "table"
+              :model_id (:id table)}
+             (most-recent-view (mt/user->id :rasta) (:id table) "table"))))))
+
+(deftest recent-view-dashboard-read-test
+  (mt/with-temp [:model/Dashboard dashboard {:creator_id (mt/user->id :rasta)}]
+    (mt/with-test-user :rasta
+      (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id (mt/user->id :rasta)})
+      (is (= {:user_id  (mt/user->id :rasta)
+              :model    "dashboard"
+              :model_id (:id dashboard)}
+             (most-recent-view (mt/user->id :rasta) (:id dashboard) "dashboard"))))))
+
+;;; ------------------------------------- Recent view tests end --------------------------------------
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
 (deftest get-collection-view-log-test

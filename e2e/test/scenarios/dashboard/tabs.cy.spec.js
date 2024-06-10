@@ -408,6 +408,7 @@ describe("scenarios > dashboard > tabs", () => {
 
   it("should only fetch cards on the current tab", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     visitDashboardAndCreateTab({
@@ -475,7 +476,15 @@ describe("scenarios > dashboard > tabs", () => {
       });
     });
 
-    // Visit second tab and confirm only second card was queried
+    cy.wait(500); // this is needed to avoid flakes
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
+    });
+
+    // // Visit second tab and confirm only second card was queried
     goToTab("Tab 2");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
@@ -533,6 +542,14 @@ describe("scenarios > dashboard > tabs", () => {
       secondQuestion().then(r => {
         expect(r.view_count).to.equal(6); // 5 (previously) + 1 (secondQuestion)
       });
+    });
+
+    cy.wait(500); // this is needed to avoid flakes
+    firstQuestion().then(r => {
+      expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+    });
+    secondQuestion().then(r => {
+      expect(r.view_count).to.equal(6); // 5 (previously) + 1 (secondQuestion)
     });
 
     // Visit second tab and confirm only second card was queried

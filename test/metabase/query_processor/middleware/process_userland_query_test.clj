@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -16,7 +15,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -130,19 +128,6 @@
                :dashboard_id nil}
               (qe))
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
-
-(def ^:private ^:dynamic *viewlog-call-count* nil)
-
-(methodical/defmethod events/publish-event! ::event
-  [_topic _event]
-  (when *viewlog-call-count*
-    (swap! *viewlog-call-count* inc)))
-
-(deftest ^:parallel viewlog-call-test
-  (testing "no viewlog event with nil card id"
-    (binding [*viewlog-call-count* (atom 0)]
-      (process-userland-query {:database 2, :type :query, :query {:source-table 26}})
-      (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]

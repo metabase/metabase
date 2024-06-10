@@ -1,10 +1,12 @@
 (ns metabase.events.view-log
-  "This namespace is responsible for subscribing to events which should update the view log and view counts."
+  "This namespace is responsible for subscribing to events which should update the view log, view counts,
+   and recent views for a user."
   (:require
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.models.recent-views :as recent-views]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -34,10 +36,21 @@
   [& {:keys [model object-id object user-id has-access context]
       :or   {has-access true}}]
   {:model      (u/lower-case-en (audit-log/model-name (or model object)))
-   :user_id    (or user-id api/*current-user-id*)
+   :user_id    user-id
    :model_id   (or object-id (u/id object))
    :has_access has-access
    :context    context})
+
+(defn- do-catch-throwable [topic f]
+  (try
+    (f)
+    (catch Throwable e
+      (log/warnf e "Failed to process view event: %s" topic))))
+
+(defmacro ^:private catch-throwable
+  {:style/indent 1}
+  [topic & body]
+  `(do-catch-throwable ~topic (fn [] ~@body)))
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
@@ -49,11 +62,10 @@
     {:name    "view-log-card-read"
      :topic   topic
      :user-id user-id}
-    (try
+    (catch-throwable topic
+      (recent-views/update-users-recent-views! user-id :model/Card object-id)
       (increment-view-counts! :model/Card object-id)
-      (record-views! (generate-view :model :model/Card event))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+      (record-views! (generate-view :model :model/Card event)))))
 
 (derive ::collection-read-event :metabase/event)
 (derive :event/collection-read ::collection-read-event)
@@ -61,28 +73,19 @@
 (m/defmethod events/publish-event! ::collection-read-event
   "Handle processing for a generic read event notification"
   [topic event]
-  (try
+  (catch-throwable topic
     (-> event
         generate-view
-        record-views!)
-    (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+        record-views!)))
 
-(derive ::read-permission-failure :metabase/event)
-(derive :event/read-permission-failure ::read-permission-failure)
+(derive ::collection-touch-event :metabase/event)
+(derive :event/collection-touch ::collection-touch-event)
 
-(m/defmethod events/publish-event! ::read-permission-failure
-  "Handle processing for a generic read event notification"
-  [topic {:keys [object] :as event}]
-  (try
-    ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
-    ;; other models.
-    (when (#{:model/Card :model/Dashboard} (t2/model object))
-     (-> event
-         generate-view
-         record-views!))
-    (catch Throwable e
-      (log/warnf e "Failed to process view event. %s" topic))))
+(m/defmethod events/publish-event! ::collection-touch-event
+  "Handle processing for a single collection touch event."
+  [topic {:keys [collection-id user-id] :as _event}]
+  (catch-throwable topic
+    (recent-views/update-users-recent-views! user-id :model/Collection collection-id)))
 
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
@@ -91,14 +94,27 @@
   "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
   [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
-    {:name "view-log-dashboard-read"
-     :topic topic
+    {:name    "view-log-dashboard-read"
+     :topic   topic
      :user-id user-id}
-    (try
+    (catch-throwable topic
+      (recent-views/update-users-recent-views! user-id :model/Dashboard object-id)
       (increment-view-counts! :model/Dashboard object-id)
-      (record-views! (generate-view :model :model/Dashboard event))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+      (record-views! (generate-view :model :model/Dashboard event)))))
+
+(derive ::read-permission-failure :metabase/event)
+(derive :event/read-permission-failure ::read-permission-failure)
+
+(m/defmethod events/publish-event! ::read-permission-failure
+  "Handle processing for a generic read event notification"
+  [topic {:keys [object] :as event}]
+  (catch-throwable topic
+    ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
+    ;; other models.
+    (when (#{:model/Card :model/Dashboard} (t2/model object))
+     (-> event
+         generate-view
+         record-views!))))
 
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
@@ -111,7 +127,8 @@
     {:name "view-log-table-read"
      :topic topic
      :user-id user-id}
-    (try
+    (catch-throwable topic
+      (recent-views/update-users-recent-views! user-id :model/Table (:id object))
       (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
@@ -120,6 +137,4 @@
         (-> event
             (assoc :has-access has-access?)
             generate-view
-            record-views!))
-      (catch Throwable e
-        (log/warnf e "Failed to process view event. %s" topic)))))
+            record-views!)))))

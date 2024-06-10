@@ -1,13 +1,9 @@
 (ns metabase.query-processor.middleware.process-userland-query
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
-  to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
-  adding query ViewLogs, storing exceptions and formatting the results.
-
-  ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
-  event -- see [[metabase.events.view-log]]."
+  to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions, storing
+  exceptions and formatting the results."
   (:require
    [java-time.api :as t]
-   [metabase.events :as events]
    [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
@@ -108,11 +104,6 @@
        (rf))
 
       ([acc]
-       ;; We don't actually have a guarantee that it's from a card just because it's userland
-       (when (integer? (:card_id execution-info))
-         (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
-                                                   :card-id (:card_id execution-info)
-                                                   :context (:context execution-info)}))
        (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count field-usages)
        (rf (if (map? acc)
              (success-response execution-info acc)
@@ -159,9 +150,7 @@
 
   1. Record a `QueryExecution` entry in the application database when this query is finished running
 
-  2. Record a ViewLog entry when running a query for a Card
-
-  3. Add extra info like `running_time` and `started_at` to the results"
+  2. Add extra info like `running_time` and `started_at` to the results"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]
