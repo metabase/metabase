@@ -145,7 +145,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     },
   );
 
-  it("sidebar should be resizable", { tags: "@flaky" }, () => {
+  it("sidebar should be resizable", () => {
     const toleranceDelta = 0.5;
 
     const borderWidth = 1;
