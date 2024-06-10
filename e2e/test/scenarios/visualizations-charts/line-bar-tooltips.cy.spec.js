@@ -31,7 +31,7 @@ function testSumTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
     ["Created At", "2022"],
     ["Sum of Total", "42,156.87"],
   ]);
-  testTooltipExcludesText("Compared to preivous year");
+  testTooltipExcludesText("Compared to previous year");
 
   tooltipSelector("#88BF4D");
   testTooltipPairs([
@@ -102,7 +102,7 @@ function testAvgTotalChange(tooltipSelector = showTooltipForCircleInSeries) {
     ["Created At", "2022"],
     ["Average of Total", "56.66"],
   ]);
-  testTooltipExcludesText("Compared to preivous year");
+  testTooltipExcludesText("Compared to previous year");
 
   tooltipSelector("#A989C5");
   testTooltipPairs([
@@ -135,7 +135,7 @@ function testCumSumChange(testFirstTooltip = true) {
       ["Created At", "2022"],
       ["Cumulative sum of Quantity", "3,236"],
     ]);
-    testTooltipExcludesText("Compared to preivous year");
+    testTooltipExcludesText("Compared to previous year");
   }
 
   showTooltipForCircleInSeries("#88BF4D", testFirstTooltip ? 0 : 1);
@@ -165,7 +165,7 @@ function testAvgDiscountChange() {
     ["Created At", "2022"],
     ["Average of Discount", "5.03"],
   ]);
-  testTooltipExcludesText("Compared to preivous year");
+  testTooltipExcludesText("Compared to previous year");
 
   showTooltipForCircleInSeries("#509EE3");
   testTooltipPairs([
@@ -181,7 +181,7 @@ function testSumDiscountChange() {
     ["Created At", "2022"],
     ["Sum of Discount", "342.09"],
   ]);
-  testTooltipExcludesText("Compared to preivous year");
+  testTooltipExcludesText("Compared to previous year");
 
   showTooltipForCircleInSeries("#98D9D9");
   testTooltipPairs([
@@ -550,7 +550,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           ["Created At", "April 2022"],
           ["Sum of Total", "52.76"],
         ]);
-        testTooltipExcludesText("Compared to preivous month");
+        testTooltipExcludesText("Compared to previous month");
 
         showTooltipForCircleInSeries("#88BF4D");
         testTooltipPairs([
@@ -576,14 +576,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           ["Created At", "April 2022"],
           ["Sum of Total", "52.76"],
         ]);
-        testTooltipExcludesText("Compared to preivous month");
+        testTooltipExcludesText("Compared to previous month");
 
         showTooltipForCircleInSeries("#88BF4D");
         testTooltipPairs([
           ["Created At", "June 2022"],
           ["Sum of Total", "2,072.94"],
         ]);
-        testTooltipExcludesText("Compared to preivous month");
+        testTooltipExcludesText("Compared to previous month");
 
         showTooltipForCircleInSeries("#88BF4D");
         testTooltipPairs([
@@ -597,7 +597,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           ["Created At", "September 2022"],
           ["Sum of Total", "5,372.08"],
         ]);
-        testTooltipExcludesText("Compared to preivous month");
+        testTooltipExcludesText("Compared to previous month");
       },
     );
 
@@ -613,14 +613,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         ["Created At", "April 2022"],
         ["Sum of Total", "52.76"],
       ]);
-      testTooltipExcludesText("Compared to preivous month");
+      testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D");
       testTooltipPairs([
         ["Created At", "May 2022"],
         ["Sum of Total", "1,265.72"],
       ]);
-      testTooltipExcludesText("Compared to preivous month");
+      testTooltipExcludesText("Compared to previous month");
     });
   });
 
@@ -692,7 +692,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         APRIL_CHANGES.forEach(change => {
           showTooltipForCircleInSeries("#88BF4D");
           if (change === null) {
-            testTooltipExcludesText("Compared to preivous");
+            testTooltipExcludesText("Compared to previous");
             return;
           }
           testPairedTooltipValues("Compared to previous month", change);
@@ -707,7 +707,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         DST_WEEK_CHANGES.forEach(change => {
           showTooltipForCircleInSeries("#88BF4D");
           if (change === null) {
-            testTooltipExcludesText("Compared to preivous");
+            testTooltipExcludesText("Compared to previous");
             return;
           }
           testPairedTooltipValues("Compared to previous week", change);
@@ -722,7 +722,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         DST_DAY_CHANGES.forEach(change => {
           showTooltipForCircleInSeries("#88BF4D");
           if (change === null) {
-            testTooltipExcludesText("Compared to preivous");
+            testTooltipExcludesText("Compared to previous");
             return;
           }
           testPairedTooltipValues("Compared to previous day", change);
