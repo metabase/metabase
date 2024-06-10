@@ -8,12 +8,8 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import {
-  getDashcardData,
-  getParameterValues,
-} from "metabase/dashboard/selectors";
+import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
@@ -24,7 +20,6 @@ import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type {
@@ -117,6 +112,7 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
+  const href = useSelector(state => getDashcardHref(state, dashcard.id));
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -271,24 +267,6 @@ function DashCardInner({
       },
       [dashcard, navigateToNewCardFromDashboard],
     );
-
-  const metadata = useSelector(getMetadata);
-  const parameterValues = useSelector(getParameterValues);
-
-  const href = useMemo(() => {
-    if (!isQuestionDashCard(dashcard)) {
-      return undefined;
-    }
-
-    return getNewCardUrl({
-      metadata,
-      dashboard,
-      parameterValues,
-      dashcard,
-      nextCard: mainCard,
-      previousCard: mainCard,
-    });
-  }, [dashboard, dashcard, mainCard, metadata, parameterValues]);
 
   return (
     <ErrorBoundary>
