@@ -17,6 +17,7 @@ import {
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   entityPickerModal,
+  undoToastList,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -192,8 +193,8 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
       nextQuestionName: "Next question",
     });
 
-    // There're two toasts: "Undo replace" and "Undo parameters auto-wiring"
-    cy.findAllByTestId("toast-undo").eq(0).button("Undo").click();
+    // There're two toasts: "Undo replace" and "Auto-connect"
+    undoToastList().eq(0).button("Undo").click();
 
     // Ensure we kept viz settings and parameter mapping changes from before
     findTargetDashcard().within(() => {
