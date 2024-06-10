@@ -395,19 +395,19 @@
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
   (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via email"
                              pulse-id (pr-str pulse-name) (parts->cards-count parts)))
-  (let [user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
-                                                         (some? (:id recipient)))) recipients)
-        non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
-                                                         (nil? (:id recipient)))) recipients)
-        timezone            (some->> parts (some :card) defaulted-timezone)
-        dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
-        email-to-users      (when (> (count user-recipients) 0)
-                              (construct-pulse-email (subject pulse) (mapv :email user-recipients) (messages/render-pulse-email timezone pulse dashboard parts nil)))
-        email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email (subject pulse) [non-user] (messages/render-pulse-email timezone pulse dashboard parts non-user)))]
-    (if email-to-users
-      (conj email-to-nonusers email-to-users)
-      email-to-nonusers)))
+  (channel/render-notification
+   :channel/email
+   {:payload-type           :notification/dashboard-subscription
+    :dashboard              (t2/select-one :model/Dashboard dashboard-id)
+    :dashboard-subscription pulse
+    :payload                parts}
+   (for [recipient recipients]
+     (if-not (:id recipient)
+       {:kind :external-email
+        :email (:email recipient)}
+       {:kind :user
+        :user recipient}))))
+
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
@@ -426,23 +426,19 @@
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
   (log/debugf "Sending Alert (%s: %s) via email" id name)
-  (let [condition-kwd       (messages/pulse->alert-condition-kwd pulse)
-        email-subject       (trs "Alert: {0} has {1}"
-                                 (first-question-name pulse)
-                                 (alert-condition-type->description condition-kwd))
-        user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
-                                                         (some? (:id recipient)))) (:recipients channel))
-        non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
-                                                         (nil? (:id recipient)))) (:recipients channel))
-        first-part          (some :card parts)
-        timezone            (defaulted-timezone first-part)
-        email-to-users      (when (> (count user-recipients) 0)
-                              (construct-pulse-email email-subject (mapv :email user-recipients) (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) nil)))
-        email-to-nonusers   (for [non-user (map :email non-user-recipients)]
-                              (construct-pulse-email email-subject [non-user] (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) non-user)))]
-       (if email-to-users
-         (conj email-to-nonusers email-to-users)
-         email-to-nonusers)))
+  (def channel channel)
+  (channel/render-notification
+   :channel/email
+   {:payload-type :notification/alert
+    :card         (t2/select-one :model/Card (:id (:card (first parts))))
+    :alert        pulse
+    :payload      (first parts)}
+   (for [recipient (:recipients channel)]
+     (if-not (:id recipient)
+       {:kind :external-email
+        :email (:email recipient)}
+       {:kind :user
+        :user recipient}))))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
@@ -513,12 +509,8 @@
 
 (defmethod send-notification! :email
   [emails]
-  (doseq [{:keys [subject recipients message-type message]} emails]
-    (email/send-message-or-throw! {:subject      subject
-                                   :recipients   recipients
-                                   :message-type message-type
-                                   :message      message
-                                   :bcc?         (email/bcc-enabled?)})))
+  (doseq [email emails]
+    (channel/send! :channel/email email)))
 
 (defn- send-notification-retrying!
   "Like [[send-notification!]] but retries sending on errors according to the retry settings."
@@ -558,4 +550,4 @@
     (when (not (:archived dashboard))
       (send-notifications! (pulse->notifications pulse dashboard)))))
 
-#_(ngoc/with-tc(send-pulse! (t2/select-one :model/Pulse 2)))
+#_(ngoc/with-tc(send-pulse! (t2/select-one :model/Pulse 3)))
