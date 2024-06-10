@@ -344,7 +344,7 @@ function Widget({
   if (isNumberParameter(parameter)) {
     let arity = getNumberParameterArity(parameter);
 
-    if (!deriveFieldOperatorFromParameter(parameter).multi) {
+    if (!deriveFieldOperatorFromParameter(parameter).multi && arity === "n") {
       arity = 1;
     }
 
