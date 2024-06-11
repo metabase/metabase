@@ -24,7 +24,6 @@ import {
   expectGoodSnowplowEvents,
   modal,
   entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -226,12 +225,15 @@ describe(
                   cy.log("assert public collections are not visible");
                   openQuestionActions();
                   popover().findByText("Add to dashboard").click();
+                  clickTabForUser(user, "Dashboards");
+
                   entityPickerModal().within(() => {
                     cy.findByText("Add this question to a dashboard").should(
                       "be.visible",
                     );
 
-                    entityPickerModalTab("Dashboards").click();
+                    clickTabForUser(user, "Dashboards");
+
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -250,7 +252,7 @@ describe(
                       "be.visible",
                     );
 
-                    entityPickerModalTab("Dashboards").click();
+                    clickTabForUser(user, "Dashboards");
                     cy.findByText(/'s personal collection/i).should(
                       "be.visible",
                     );
@@ -484,4 +486,12 @@ function moveQuestionTo(newCollectionName, clickTab = false) {
     cy.findByText(newCollectionName).click();
     cy.button("Move").click();
   });
+}
+
+function clickTabForUser(user, tabName) {
+  if (user === "admin") {
+    cy.findAllByRole("tab")
+      .contains(tabName)
+      .then($el => $el && cy.wrap($el).click());
+  }
 }
