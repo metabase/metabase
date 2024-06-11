@@ -370,14 +370,17 @@
   (let [query (:query (searchable-data-query-for-model model))]
     (sql.helpers/where query [:= :id id])))
 
-(defn search-all-models-query [search-ctx]
-  {:select [:*]
-   :from   :search
-   :where
-   (into
-    [:or]
-    (for [model ["card"]] ; just card for now
-      (search-filters-for-model model search-ctx)))})
+;; TODO: right not this returns a HoneySQL expression that can be
+;; used in a WHERE clause, but this will take a different format
+;; in the future to allow more backends to compile it to their
+;; own query language
+(defn general-search-query
+  "Returns a HoneySQL clause that can be used in a WHERE clause to search across all models."
+  [search-ctx]
+  (into
+   [:or]
+   (for [model ["card"]] ; just card for now
+     (search-filters-for-model model search-ctx))))
 
 ;; -------------- Backend-specific code -----------------
 
@@ -456,9 +459,16 @@
                     :search_model (:search-model change)
                     search-data)))))
 
-;; TODO: make this a multimethod to be implemented by each backend
-(defn execute-search [query]
-  (map #(into {} %) (t2/query query)))
+;; TODO: make this a multimethod to be implemented by each backend that compiles the query.
+;; For now we use HoneySQL
+(defn execute-search [filters-subquery]
+  ;; `build-query` is very simple right now because `filters-subquery` is in HoneySQL.
+  ;; But we will need to make `filters-
+  (let [build-query (fn [filters-subquery]
+                      {:select :*
+                       :from   :search
+                       :where  filters-subquery})]
+    (map #(into {} %) (t2/query (build-query filters-subquery)))))
 
 (comment
   ;; 1. reindex
@@ -469,7 +479,7 @@
                     :model-ancestors?   false
                     :current-user-id    1
                     :current-user-perms #{"/"}}]
-    (execute-search (search-all-models-query search-ctx)))
+    (execute-search (general-search-query search-ctx)))
   ;; => ({:description nil,
   ;;      :archived false,
   ;;      :collection_position nil,
