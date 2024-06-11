@@ -38,7 +38,6 @@ export const showAutoWireParametersToast =
 
     dispatch(
       addUndo({
-        // id: AUTO_WIRE_TOAST_ID,
         icon: null,
         message,
         actionLabel: t`Auto-connect`,
