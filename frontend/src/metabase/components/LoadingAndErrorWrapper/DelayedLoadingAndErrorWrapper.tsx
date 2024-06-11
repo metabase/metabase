@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { Transition } from "metabase/ui";
+import { rerenderOnShortcutKeyPress } from "metabase/ui/components/feedback/Skeleton/hooks";
 
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 
@@ -46,6 +47,9 @@ export const DelayedLoadingAndErrorWrapper = ({
   // FIXME: remove this
   loading ||= (window as { stayLoading?: boolean }).stayLoading;
 
+  // FIXME: remove this
+  const key = rerenderOnShortcutKeyPress();
+
   props.loadingMessages ??= [];
 
   useEffect(() => {
@@ -67,6 +71,7 @@ export const DelayedLoadingAndErrorWrapper = ({
       transition="fade"
       duration={200}
       timingFunction="ease"
+      key={key}
     >
       {styles => (
         <div style={styles}>
