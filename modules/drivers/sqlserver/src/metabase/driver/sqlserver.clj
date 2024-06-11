@@ -781,12 +781,3 @@
 (defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
-
-(defmethod driver/normalize-db-details :sqlserver
-  [_ database]
-  (if-let [rowcount-override (-> database :details :rowcount-override)]
-    ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
-    ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
-    (-> (update database :details #(dissoc % :rowcount-override))
-        (update :settings #(assoc % :unaggregated-query-row-limit rowcount-override)))
-    database))
