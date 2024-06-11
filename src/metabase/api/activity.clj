@@ -22,13 +22,11 @@
      "card"      [Card
                   :id :name :collection_id :description :display
                   :dataset_query :type :archived
-                  :collection.authority_level [:collection.name :collection_name]
-                  :trashed_from_collection_id]
+                  :collection.authority_level [:collection.name :collection_name]]
      "dashboard" [Dashboard
                   :id :name :collection_id :description
                   :archived
-                  :collection.authority_level [:collection.name :collection_name]
-                  :trashed_from_collection_id]
+                  :collection.authority_level [:collection.name :collection_name]]
      "table"     [Table
                   :id :name :db_id :active
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]

@@ -62,7 +62,7 @@ describe("scenarios > collections > trash", () => {
     popover().within(() => {
       cy.findByText("Move to trash").should("not.exist");
       cy.findByText("Restore").should("exist");
-      cy.findByText("Delete permanently").should("exist");
+      cy.findByText("Delete permanently").should("not.exist");
     });
     toggleEllipsisMenuFor("Collection A");
 
@@ -338,12 +338,15 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("can delete from trash list");
     toggleEllipsisMenuFor("Collection A");
-    popover().findByText("Delete permanently").click();
-    modal().findByText("Delete Collection A permanently?").should("exist");
-    modal().findByText("Delete permanently").click();
-    collectionTable().within(() => {
-      cy.findByText("Collection A").should("not.exist");
-    });
+    // FUTURE: replace following two lines with commented out code when collections can be deleted
+    popover().findByText("Delete permanently").should("not.exist");
+    toggleEllipsisMenuFor("Collection A");
+    // popover().findByText("Delete permanently").click();
+    // modal().findByText("Delete Collection A permanently?").should("exist");
+    // modal().findByText("Delete permanently").click();
+    // collectionTable().within(() => {
+    //   cy.findByText("Collection A").should("not.exist");
+    // });
 
     toggleEllipsisMenuFor("Dashboard A");
     popover().findByText("Delete permanently").click();
@@ -365,12 +368,15 @@ describe("scenarios > collections > trash", () => {
     collectionTable().within(() => {
       cy.findByText("Collection B").click();
     });
-    archiveBanner().findByText("Delete permanently").click();
-    modal().findByText("Delete Collection B permanently?").should("exist");
-    modal().findByText("Delete permanently").click();
-    collectionTable().within(() => {
-      cy.findByText("Collection B").should("not.exist");
-    });
+    // FUTURE: replace following two lines with commented out code when collections can be deleted
+    archiveBanner().findByText("Delete permanently").should("not.exist");
+    cy.visit("/trash");
+    // archiveBanner().findByText("Delete permanently").click();
+    // modal().findByText("Delete Collection B permanently?").should("exist");
+    // modal().findByText("Delete permanently").click();
+    // collectionTable().within(() => {
+    //   cy.findByText("Collection B").should("not.exist");
+    // });
 
     collectionTable().within(() => {
       cy.findByText("Dashboard B").click();
@@ -402,12 +408,13 @@ describe("scenarios > collections > trash", () => {
         true,
       );
       cy.visit("/trash");
-      selectItem("Collection A");
-      selectItem("Dashboard A");
-      selectItem("Question A");
     });
 
     it("user should be able to bulk restore", () => {
+      selectItem("Collection A");
+      selectItem("Dashboard A");
+      selectItem("Question A");
+
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
@@ -424,6 +431,10 @@ describe("scenarios > collections > trash", () => {
     });
 
     it("user should be able to bulk move out of trash", () => {
+      selectItem("Collection A");
+      selectItem("Dashboard A");
+      selectItem("Question A");
+
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
@@ -455,6 +466,9 @@ describe("scenarios > collections > trash", () => {
     });
 
     it("user should be able to bulk delete", () => {
+      selectItem("Dashboard A");
+      selectItem("Question A");
+
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
@@ -464,12 +478,13 @@ describe("scenarios > collections > trash", () => {
         });
 
       modal().within(() => {
-        cy.findByText("Delete 3 items permanently?");
+        cy.findByText("Delete 2 items permanently?");
         cy.findByText("Delete permanently").click();
       });
 
       collectionTable().within(() => {
-        cy.findByText("Collection A").should("not.exist");
+        cy.findByText("Collection A").should("exist");
+        cy.findByText("Dashboard A").should("not.exist");
         cy.findByText("Question A").should("not.exist");
       });
     });
