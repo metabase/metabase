@@ -31,12 +31,13 @@ const options = [
 ];
 
 describe("ParameterPopover", () => {
-  it("should render options with icons", () => {
-    render(
-      <ParametersPopover onClose={jest.fn()} onAddParameter={jest.fn()} />,
-    );
+  it.each(options)(
+    "should render '$title' option with icon '$icon'",
+    ({ title, subtitle, icon }) => {
+      render(
+        <ParametersPopover onClose={jest.fn()} onAddParameter={jest.fn()} />,
+      );
 
-    options.forEach(({ title, subtitle, icon }) => {
       expect(screen.getByText(title)).toBeInTheDocument();
 
       const section = screen.getByText(title).parentElement as HTMLElement;
@@ -45,6 +46,6 @@ describe("ParameterPopover", () => {
       expect(
         within(section).getByLabelText(`${icon} icon`),
       ).toBeInTheDocument();
-    });
-  });
+    },
+  );
 });
