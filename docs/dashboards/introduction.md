@@ -226,7 +226,7 @@ Combining fullscreen mode and auto refresh is a great way to keep your team in s
 
 {% include plans-blockquote.html feature="Caching dashboard results" %}
 
-See [Caching per dashboard](../configuring-metabase/caching.md#caching-per-dashboard).
+See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching-policy).
 
 ## Sharing dashboards with public links
 

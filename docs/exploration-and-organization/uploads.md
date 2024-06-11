@@ -40,7 +40,7 @@ Instead of deleting a model and recreating it, you can replace the underlying da
 
 Like appending to uploaded models, replacing the uploaded CSV data with a new CSV file requires the columns and headings to match.
 
-If you [delete the uploaded table](../databases/uploads.md#deleting-uploaded-tables), you won't be able to replace the model's data.
+If you [delete the uploaded table](../databases/uploads.md#deleting-tables-created-by-uploads), you won't be able to replace the model's data.
 
 ## Further reading
 
