@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   useEffect,
   useRef,
@@ -75,6 +76,7 @@ export const ExpressionEditorSuggestions = forwardRef<
   ref,
 ) {
   const listRef = useRef(null);
+  const mergedRef = useMergedRef(ref, listRef);
   const withIndex = suggestions.map((suggestion, index) => ({
     ...suggestion,
     index,
@@ -93,7 +95,7 @@ export const ExpressionEditorSuggestions = forwardRef<
   const groups = group(items);
 
   function handleMouseDown(evt: MouseEvent) {
-    if (evt.target === listRef.current) {
+    if (evt.target === mergedRef.current) {
       evt.preventDefault();
       evt.stopPropagation();
     }
@@ -115,57 +117,55 @@ export const ExpressionEditorSuggestions = forwardRef<
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
         <DelayGroup>
-          <div ref={ref}>
-            <ExpressionList
-              data-testid="expression-suggestions-list"
-              ref={listRef}
-              onMouseDownCapture={handleMouseDown}
-            >
-              <ExpressionEditorSuggestionsListGroup
-                suggestions={groups._none}
-                query={query}
-                stageIndex={stageIndex}
-                highlightedIndex={highlightedIndex}
-                onSuggestionMouseDown={onSuggestionMouseDown}
-                onHighlightSuggestion={onHighlightSuggestion}
-              />
-              <ExpressionEditorSuggestionsListGroup
-                name="popularAggregations"
-                suggestions={groups.popularAggregations}
-                query={query}
-                stageIndex={stageIndex}
-                highlightedIndex={highlightedIndex}
-                onSuggestionMouseDown={onSuggestionMouseDown}
-                onHighlightSuggestion={onHighlightSuggestion}
-              />
-              <ExpressionEditorSuggestionsListGroup
-                name="popularExpressions"
-                suggestions={groups.popularExpressions}
-                query={query}
-                stageIndex={stageIndex}
-                highlightedIndex={highlightedIndex}
-                onSuggestionMouseDown={onSuggestionMouseDown}
-                onHighlightSuggestion={onHighlightSuggestion}
-              />
-              <ExpressionEditorSuggestionsListGroup
-                name="shortcuts"
-                suggestions={groups.shortcuts}
-                query={query}
-                stageIndex={stageIndex}
-                highlightedIndex={highlightedIndex}
-                onSuggestionMouseDown={onSuggestionMouseDown}
-                onHighlightSuggestion={onHighlightSuggestion}
-              />
-            </ExpressionList>
-            {footers.map(suggestion => (
-              <Footer
-                key={suggestion.index}
-                suggestion={suggestion}
-                highlightedIndex={highlightedIndex}
-                onHighlightSuggestion={onHighlightSuggestion}
-              />
-            ))}
-          </div>
+          <ExpressionList
+            data-testid="expression-suggestions-list"
+            ref={mergedRef}
+            onMouseDownCapture={handleMouseDown}
+          >
+            <ExpressionEditorSuggestionsListGroup
+              suggestions={groups._none}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="popularAggregations"
+              suggestions={groups.popularAggregations}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="popularExpressions"
+              suggestions={groups.popularExpressions}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="shortcuts"
+              suggestions={groups.shortcuts}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+          </ExpressionList>
+          {footers.map(suggestion => (
+            <Footer
+              key={suggestion.index}
+              suggestion={suggestion}
+              highlightedIndex={highlightedIndex}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+          ))}
         </DelayGroup>
       </Popover.Dropdown>
     </Popover>
