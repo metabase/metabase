@@ -111,14 +111,22 @@ function App({
       };
       match([e.ctrlKey, e.key])
         .with([true, "n"], () => {
-          // eslint-disable-next-line no-console
-          console.log("toggling natural skeletons");
           win.noNaturalSkeletons = !win.noNaturalSkeletons;
+          // eslint-disable-next-line no-console
+          console.log(
+            `toggling natural skeletons: ${
+              win.noNaturalSkeletons ? "on" : "off"
+            }`,
+          );
         })
         .with([true, "l"], () => {
-          // eslint-disable-next-line no-console
-          console.log("toggling permanent loading state");
           win.stayLoading = !win.stayLoading;
+          // eslint-disable-next-line no-console
+          console.log(
+            `toggling permanent loading state: ${
+              win.stayLoading ? "on" : "off"
+            }`,
+          );
         });
     };
     document.addEventListener("keydown", onKeyDown);
