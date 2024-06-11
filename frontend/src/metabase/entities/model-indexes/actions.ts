@@ -15,16 +15,24 @@ import { getPkRef } from "./utils";
 
 export type FieldWithMaybeIndex = Field & {
   should_index?: boolean;
-  field_ref?: FieldReference;
+};
+
+type FieldWithIndexAndRef = Field & {
+  should_index: boolean;
+  field_ref: FieldReference;
+};
+
+const filterForRefAndShouldIndex = (
+  field: FieldWithMaybeIndex,
+): field is FieldWithIndexAndRef => {
+  return field.should_index !== undefined && !!field.field_ref;
 };
 
 export const updateModelIndexes =
   (model: Question) => async (dispatch: Dispatch, getState: any) => {
     const fields = model.getResultMetadata();
 
-    const fieldsWithIndexFlags = fields.filter(
-      (field: FieldWithMaybeIndex) => field.should_index !== undefined,
-    );
+    const fieldsWithIndexFlags = fields.filter(filterForRefAndShouldIndex);
 
     if (fieldsWithIndexFlags.length === 0) {
       return;
@@ -70,7 +78,7 @@ export const updateModelIndexes =
   };
 
 function getFieldsToIndex(
-  fieldsWithIndexFlags: FieldWithMaybeIndex[],
+  fieldsWithIndexFlags: FieldWithIndexAndRef[],
   existingIndexes: ModelIndex[],
 ) {
   // make sure none of these fields are already indexed by this model
@@ -86,7 +94,7 @@ function getFieldsToIndex(
 }
 
 function getIndexIdsToRemove(
-  fieldsWithIndexFlags: FieldWithMaybeIndex[],
+  fieldsWithIndexFlags: FieldWithIndexAndRef[],
   existingIndexes: ModelIndex[],
 ) {
   const indexIdsToRemove = fieldsWithIndexFlags.reduce(

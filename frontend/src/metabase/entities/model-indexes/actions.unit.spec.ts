@@ -26,7 +26,19 @@ const createModelWithResultMetadata = (fields: Field[]) => {
 };
 
 const setup = () => {
-  return getStore({ [Api.reducerPath]: Api.reducer }, {}, [Api.middleware]);
+  const store = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
+    Api.middleware,
+  ]);
+
+  const dispatchSpy = jest.spyOn(store, "dispatch");
+  const getStateSpy = jest.spyOn(store, "getState");
+
+  return {
+    dispatch: store.dispatch,
+    getState: store.getState,
+    dispatchSpy,
+    getStateSpy,
+  };
 };
 
 describe("Entities > model-indexes > actions", () => {
@@ -65,12 +77,11 @@ describe("Entities > model-indexes > actions", () => {
         createMockField(),
       ]);
 
-      const mockDispatch = jest.fn();
-      const mockGetState = jest.fn();
-      await updateModelIndexes(model)(mockDispatch, mockGetState);
+      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
+      await updateModelIndexes(model)(dispatch, getState);
 
-      expect(mockDispatch).not.toHaveBeenCalled();
-      expect(mockGetState).not.toHaveBeenCalled();
+      expect(dispatchSpy).not.toHaveBeenCalled();
+      expect(getStateSpy).not.toHaveBeenCalled();
     });
 
     it("should make a POST call for a newly-added index field", async () => {
@@ -85,12 +96,9 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(model.id(), []);
 
-      const store = setup();
+      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
 
-      const dispatchSpy = jest.spyOn(store, "dispatch");
-      const getStateSpy = jest.spyOn(store, "getState");
-
-      await updateModelIndexes(model)(store.dispatch, store.getState);
+      await updateModelIndexes(model)(dispatch, getState);
 
       expect(dispatchSpy).toHaveBeenCalled();
       expect(getStateSpy).toHaveBeenCalled();
@@ -123,15 +131,11 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(1, [existingModelIndex]);
 
-      const store = setup();
-      const { dispatch } = store;
+      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
 
       await dispatch(listModelIndexes.initiate({ model_id: 1 }));
 
-      const dispatchSpy = jest.spyOn(store, "dispatch");
-      const getStateSpy = jest.spyOn(store, "getState");
-
-      await updateModelIndexes(model)(store.dispatch, store.getState);
+      await updateModelIndexes(model)(dispatch, getState);
 
       expect(dispatchSpy).toHaveBeenCalled();
       expect(getStateSpy).toHaveBeenCalled();
@@ -162,24 +166,16 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(1, [existingModelIndex]);
 
-      const mockDispatch = jest.fn();
-      const mockGetState = jest.fn(() => ({
-        entities: {
-          modelIndexes: { 99: existingModelIndex },
-          modelIndexes_list: {
-            '{"model_id":1}': {
-              list: [99],
-              metadata: {},
-            },
-          },
-        },
-      }));
-      await updateModelIndexes(model)(mockDispatch, mockGetState);
+      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
 
-      expect(mockDispatch).toHaveBeenCalled();
-      expect(mockGetState).toHaveBeenCalled();
+      await dispatch(listModelIndexes.initiate({ model_id: 1 }));
 
-      const response = await fetchMock.lastCall();
+      await updateModelIndexes(model)(dispatch, getState);
+
+      expect(dispatchSpy).toHaveBeenCalled();
+      expect(getStateSpy).toHaveBeenCalled();
+
+      const response = await fetchMock.lastCall(undefined, "POST");
 
       // no calls to fetch
       expect(response).toBeUndefined();
@@ -197,12 +193,9 @@ describe("Entities > model-indexes > actions", () => {
 
       setupModelIndexEndpoints(model.id(), []);
 
-      const store = setup();
+      const { dispatch, getState, dispatchSpy, getStateSpy } = setup();
 
-      const dispatchSpy = jest.spyOn(store, "dispatch");
-      const getStateSpy = jest.spyOn(store, "getState");
-
-      await updateModelIndexes(model)(store.dispatch, store.getState);
+      await updateModelIndexes(model)(dispatch, getState);
 
       expect(dispatchSpy).not.toHaveBeenCalled();
       expect(getStateSpy).toHaveBeenCalled();
