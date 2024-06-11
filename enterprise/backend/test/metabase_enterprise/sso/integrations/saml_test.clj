@@ -50,7 +50,7 @@
   (binding [client/*url-prefix* ""]
     (thunk)))
 
-(use-fixtures :each disable-api-url-prefix)
+(use-fixtures :once disable-api-url-prefix)
 
 (def ^:private default-idp-uri            "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri       "http://localhost:3000/test")
