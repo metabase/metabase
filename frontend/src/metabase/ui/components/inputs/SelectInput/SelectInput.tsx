@@ -1,4 +1,5 @@
 import { Input, type InputProps } from "@mantine/core";
+import cx from "classnames";
 import { forwardRef, type InputHTMLAttributes, type Ref } from "react";
 
 import { Icon } from "../../icons";
@@ -9,7 +10,15 @@ export type SelectInputProps = InputHTMLAttributes<HTMLInputElement> &
   InputProps & { clearable?: boolean; onClear?: () => void };
 
 export const SelectInput = forwardRef(function SelectInput(
-  { value, readOnly, disabled, clearable, onClear, ...props }: SelectInputProps,
+  {
+    value,
+    classNames,
+    readOnly,
+    disabled,
+    clearable,
+    onClear,
+    ...props
+  }: SelectInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const canClear = value != null && clearable;
@@ -19,9 +28,14 @@ export const SelectInput = forwardRef(function SelectInput(
     <Input
       ref={ref}
       classNames={{
-        input: S.input,
-        rightSection: canClear ? undefined : S.rightSection,
+        ...classNames,
+        input: cx(S.input, classNames?.input),
+        rightSection: cx(
+          { [S.rightSection]: canClear },
+          classNames?.rightSection,
+        ),
       }}
+      {...props}
       value={value}
       disabled={disabled}
       readOnly
@@ -34,7 +48,6 @@ export const SelectInput = forwardRef(function SelectInput(
           />
         )
       }
-      {...props}
     />
   );
 });

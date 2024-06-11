@@ -1,0 +1,180 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { SelectInput, Stack } from "metabase/ui";
+
+export const args = {
+  size: "md",
+  placeholder: "No semantic type",
+  clearable: false,
+  disabled: false,
+  readOnly: false,
+};
+
+export const sampleArgs = {
+  value: "Entity key",
+};
+
+export const argTypes = {
+  size: {
+    options: ["xs", "md"],
+    control: { type: "inline-radio" },
+  },
+  placeholder: {
+    control: { type: "text" },
+  },
+  clearable: {
+    control: { type: "boolean" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  readOnly: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Inputs/SelectInput"
+  component={SelectInput}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# SelectInput
+
+A base component extracted from [Mantine Select](https://v6.mantine.dev/core/select/) for cases where a custom dropdown is required.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-Select?type=design&node-id=1-96&mode=design&t=Mk8RP6HsneuWzHtr-0)
+- [Mantine Select Docs](https://v6.mantine.dev/core/select/)
+
+## Examples
+
+export const DefaultTemplate = args => <SelectInput {...args} />;
+
+export const VariantTemplate = args => (
+  <Stack>
+    <SelectInput {...args} />
+    <SelectInput {...args} variant="unstyled" />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Size - md
+
+export const EmptyMd = VariantTemplate.bind({});
+
+<Canvas>
+  <Story name="Empty, md">{EmptyMd}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledMd = VariantTemplate.bind({});
+FilledMd.args = {
+  value: sampleArgs.value,
+};
+
+<Canvas>
+  <Story name="Filled, md">{FilledMd}</Story>
+</Canvas>
+
+#### Clearable
+
+export const ClearableMd = VariantTemplate.bind({});
+ClearableMd.args = {
+  value: sampleArgs.value,
+  clearable: true,
+};
+
+<Canvas>
+  <Story name="Clearable, md">{ClearableMd}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledMd = VariantTemplate.bind({});
+DisabledMd.args = {
+  disabled: true,
+};
+
+<Canvas>
+  <Story name="Disabled, md">{DisabledMd}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyMd = VariantTemplate.bind({});
+ReadOnlyMd.args = {
+  value: sampleArgs.value,
+  readOnly: true,
+};
+
+<Canvas>
+  <Story name="Read only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
+### Size - xs
+
+export const EmptyXs = VariantTemplate.bind({});
+EmptyXs.args = {
+  ...EmptyMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Empty, xs">{EmptyXs}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledXs = VariantTemplate.bind({});
+FilledXs.args = {
+  ...FilledMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Filled, xs">{FilledXs}</Story>
+</Canvas>
+
+#### Clearable
+
+export const ClearableXs = VariantTemplate.bind({});
+ClearableXs.args = {
+  ...ClearableMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Clearable, xs">{ClearableXs}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledXs = VariantTemplate.bind({});
+DisabledXs.args = {
+  ...DisabledMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Disabled, xs">{DisabledXs}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyXs = VariantTemplate.bind({});
+ReadOnlyXs.args = {
+  ...ReadOnlyMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+</Canvas>
