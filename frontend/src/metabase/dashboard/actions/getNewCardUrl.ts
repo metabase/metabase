@@ -54,16 +54,22 @@ export const getNewCardUrl = ({
     dashcard,
   );
 
-  const url = ML_Urls.getUrlWithParameters(
-    nextQuestion,
-    parametersMappedToCard,
-    parameterValues,
-    {
-      objectId,
-    },
-  );
+  // This try/catch block is a temporary workaround for metabase#43990.
+  // Please remove it once the underlying issue is fixed.
+  try {
+    const url = ML_Urls.getUrlWithParameters(
+      nextQuestion,
+      parametersMappedToCard,
+      parameterValues,
+      {
+        objectId,
+      },
+    );
 
-  return url;
+    return url;
+  } catch (error) {
+    return undefined;
+  }
 };
 
 export function getParametersMappedToDashcard(
