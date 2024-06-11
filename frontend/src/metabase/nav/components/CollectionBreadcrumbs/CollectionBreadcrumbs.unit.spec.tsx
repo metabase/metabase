@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 
+import { isRootCollection } from "metabase/collections/utils";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import type {
@@ -13,12 +14,34 @@ import {
   PathContainer,
   PathSeparator,
 } from "./CollectionBreadcrumbs.styled";
-import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
+}
+
+function getCollectionList({
+  baseCollectionId = null,
+  collection,
+}: {
+  collection: Collection;
+  baseCollectionId?: CollectionId | null;
+}) {
+  if (baseCollectionId && collection.id === baseCollectionId) {
+    return [];
+  }
+
+  const ancestors = collection.effective_ancestors || [];
+  const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
+  const [_, ...crumbsWithoutRoot] = ancestors;
+
+  if (baseCollectionId) {
+    const index = ancestors.findIndex(part => part.id === baseCollectionId);
+    return ancestors.slice(index);
+  } else {
+    return hasRoot ? crumbsWithoutRoot : ancestors;
+  }
 }
 
 export const CollectionBreadcrumbs = ({

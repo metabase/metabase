@@ -295,7 +295,7 @@ With the Collection Browser, you can browse the items in your Metabase instance 
 
 - **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will start at the root `Our analytics` collection.
 - **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
-- **pageSize**: `number` – The number of items to display per page.
+- **pageSize**: `number` – The number of items to display per page. The default is 25.
 - **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be visible. If not provided, all entities will be shown. 
 
 ```tsx
