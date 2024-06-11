@@ -23,6 +23,7 @@ type BadgeProps = PropsWithChildren<{
   inactiveColor?: string;
   activeColor?: string;
   isSingleLine?: boolean;
+  className?: string;
 }>;
 
 export const Badge = ({
