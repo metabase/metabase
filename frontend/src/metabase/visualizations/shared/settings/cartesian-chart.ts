@@ -254,6 +254,7 @@ export const getDefaultLegendIsReversed = (
 
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";
+export const getDefaultDataLabelsFormatting = () => "auto";
 
 export const getAvailableXAxisScales = (
   [{ data }]: RawSeries,

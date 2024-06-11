@@ -7,7 +7,7 @@ import { Icon } from "metabase/ui";
 export const CardIcon = styled(Icon)`
   display: block;
   flex: 0 0 auto;
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   width: 1.25rem;
   height: 1.25rem;
 `;
@@ -20,9 +20,9 @@ export const CardTitle = styled(Ellipsified)`
 `;
 
 export const CardTitlePrimary = styled.span`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const CardTitleSecondary = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

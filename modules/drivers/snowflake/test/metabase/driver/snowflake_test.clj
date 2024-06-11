@@ -35,6 +35,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -422,7 +423,15 @@
                        (assoc :dbname pk-db
                               :private-key-value (u/encode-base64 pk-key)
                               :user pk-user))]
-       (is (driver/can-connect? :snowflake details))))))
+       (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
+         (is (driver/can-connect? :snowflake details)))
+       ;; Following is required when private key and role are used together. See
+       ;; the [[metabase.driver.snowflake/maybe-add-role-to-spec-url]] for the details.
+       (testing "Role is added to connection url, if url is present (#43600)"
+         (let [details-with-role (assoc details :role "SOME_ROLE")
+               conn-str (:connection-uri (sql-jdbc.conn/connection-details->spec :snowflake details-with-role))
+               parsed-params (driver.snowflake/connection-str->parameters conn-str)]
+           (is (= "SOME_ROLE" (get parsed-params "ROLE")))))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake
@@ -646,3 +655,34 @@
                     ["2023-11-01T00:00:00+11:00" 1]]
                    (mt/with-temporary-setting-values [report-timezone "Australia/Sydney"]
                      (mt/rows (qp/process-query query)))))))))))
+
+(deftest ^:parallel connection-str->parameters-test
+  (testing "Returns nil for invalid connection string"
+    (are [conn-str] (= nil (driver.snowflake/connection-str->parameters conn-str))
+      nil "" "asdf" "snowflake:jdbc://x"))
+  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
+    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com"
+      "jdbc:snowflake://x.snowflakecomputing.com/"
+      "jdbc:snowflake://x.snowflakecomputing.com/?"))
+  (testing "Returns decoded parameters"
+    (let [role "!@#$%^&*()"]
+      (is (= {"ACCOUNT" "x"
+              "ROLE" role}
+             (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                               "?role=" (codec/url-encode role)))))))
+  (testing "Returns multiple url parameters"
+    (let [role "!@#$%^&*()"]
+      (is (= {"ACCOUNT" "x"
+              "ROLE" role
+              "FOO" "bar"}
+             (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                               "?role=" (codec/url-encode role)
+                                                               "&foo=bar"))))))
+  (testing (str "Returns nothing for role suffixed keys "
+                "(https://github.com/metabase/metabase/pull/43602#discussion_r1628043704)")
+    (let [role "!@#$%^&*()"
+          params (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
+                                                                   "?asdfrole=" (codec/url-encode role)))]
+      (is (not (contains? params "ROLE")))
+      (is (contains? params "ASDFROLE")))))

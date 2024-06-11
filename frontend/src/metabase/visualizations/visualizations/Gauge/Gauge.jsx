@@ -38,7 +38,7 @@ const getBackgroundArcColor = () => color("bg-medium");
 const getSegmentLabelColor = () => color("text-dark");
 const getCenterLabelColor = () => color("text-dark");
 const getArrowFillColor = () => color("text-medium");
-const getArrowStrokeColor = () => "white";
+const getArrowStrokeColor = () => color("bg-white");
 
 // in ems, but within the scaled 100px SVG element
 const FONT_SIZE_SEGMENT_LABEL = 0.25;

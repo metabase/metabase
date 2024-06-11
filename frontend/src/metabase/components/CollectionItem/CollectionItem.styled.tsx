@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 export const ItemLink = styled(Link)`
   display: block;
   background-color: var(--mb-color-bg-medium);
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   border-radius: 8px;
 
   &:hover {
@@ -36,5 +36,5 @@ export const CardContent = styled.div`
 `;
 
 export const CollectionIcon = styled(Icon)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;

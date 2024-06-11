@@ -10,7 +10,7 @@ export const FormMessageStyled = styled.span<{
   noPadding?: boolean;
 }>`
   color: ${({ hasSucceeded }) =>
-    hasSucceeded ? color("success") : color("error")};
+    hasSucceeded ? "var(--mb-color-success)" : color("error")};
   float: left;
   opacity: 0;
   padding-bottom: ${({ noPadding }) => (noPadding ? "" : space(2))};

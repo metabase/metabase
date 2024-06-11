@@ -43,7 +43,8 @@
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (net.snowflake.client.jdbc SnowflakeSQLException)))
+   (java.util Properties)
+   (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,6 +126,31 @@
   (when raw-name
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
+(defn connection-str->parameters
+  "Get map of parameters from Snowflake `conn-str`, where keys are uppercase string parameter names and values
+  are strings. Returns nil when string is invalid."
+  [conn-str]
+  (let [^SnowflakeConnectString conn-str* (SnowflakeConnectString/parse conn-str (Properties.))]
+    (if-not (.isValid conn-str*)
+      (log/warn "Invalid connection string.")
+      (.getParameters conn-str*))))
+
+(defn- maybe-add-role-to-spec-url
+  "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing
+  Snowflake jdbc driver ignores `:role` connection property when `:connection-uri` (presumably containing
+  private_key_file) is used."
+  [spec details]
+  (if (and (string? (not-empty (:connection-uri spec)))
+           (string? (not-empty (:role details)))
+           (not (contains? (connection-str->parameters (:connection-uri spec)) "ROLE")))
+    (let [role-opts-str (sql-jdbc.common/additional-opts->string :url {:role (codec/url-encode (:role details))})]
+      (-> spec
+          ;; It is advised to use either connection property or url parameter, not both. Eg. in the following link.
+          ;; https://docs.oracle.com/javase/8/docs/api/java/sql/DriverManager.html#getConnection-java.lang.String-java.util.Properties-
+          (dissoc :role)
+          (update :connection-uri sql-jdbc.common/conn-str-with-additional-opts :url role-opts-str)))
+    spec))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
@@ -165,7 +191,10 @@
                    (update :schema upcase-not-nil)
                    resolve-private-key
                    (dissoc :host :port :timezone)))
-        (sql-jdbc.common/handle-additional-options details))))
+        (sql-jdbc.common/handle-additional-options details)
+        ;; Role is not respected when used as connection property if connection string is present with private key
+        ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
+        (maybe-add-role-to-spec-url details))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake
   [_ base-type]

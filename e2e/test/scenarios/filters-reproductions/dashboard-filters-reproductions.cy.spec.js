@@ -32,6 +32,7 @@ import {
   openQuestionsSidebar,
   visitEmbeddedPage,
   createQuestion,
+  assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -210,6 +211,9 @@ describe("issue 8030 + 32444", () => {
 
         setFilter("Text or Category", "Is");
         selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
+
+        undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
         cy.findAllByTestId("dashcard")
           .eq(1)
           .findByLabelText("Disconnect")
@@ -922,21 +926,19 @@ describe("issue 19494", () => {
 
     connectFilterToCard({ filterName: "Card 1 Filter", cardPosition: 0 });
     setDefaultFilter("Doohickey");
-    undoToast().findByText("Undo auto-connection").click();
 
     connectFilterToCard({ filterName: "Card 2 Filter", cardPosition: -1 });
     setDefaultFilter("Gizmo");
-    undoToast().findByText("Undo auto-connection").click();
 
     saveDashboard();
 
     checkAppliedFilter("Card 1 Filter", "Doohickey");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("148.23");
+
+    getDashboardCard(0).should("contain", "148.23");
 
     checkAppliedFilter("Card 2 Filter", "Gizmo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("110.93");
+
+    getDashboardCard(1).should("contain", "110.93");
   });
 });
 
@@ -1205,7 +1207,7 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     filterWidget().click();
-    cy.findByPlaceholderText("Enter some text").type("Gizmo{enter}");
+    popover().findByText("Gizmo").click();
     cy.button("Add filter").click();
 
     cy.findAllByText("Gizmo");
@@ -2025,7 +2027,7 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    cy.findByPlaceholderText("Enter some text").type("Gizmo").blur();
+    popover().findByText("Gizmo").click();
     cy.button("Add filter").click();
 
     cy.findAllByText("Doohickey").should("not.exist");
@@ -2476,5 +2478,107 @@ describe("issue 43154", () => {
 
   it("should be able to see field values with a model-based question with aggregation (metabase#43154)", () => {
     verifyNestedFilter(questionWithAggregationDetails);
+  });
+});
+
+describe("issue 43799", () => {
+  const modelDetails = {
+    name: "43799",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          alias: "People - User",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.USER_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              PEOPLE.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "People - User",
+              },
+            ],
+          ],
+          "source-table": PEOPLE_ID,
+        },
+      ],
+      aggregation: [
+        [
+          "sum",
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+        [
+          "sum",
+          [
+            "field",
+            ORDERS.SUBTOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+      ],
+      breakout: [
+        [
+          "field",
+          PEOPLE.SOURCE,
+          {
+            "base-type": "type/Text",
+            "join-alias": "People - User",
+          },
+        ],
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          {
+            "base-type": "type/Text",
+            "source-field": ORDERS.PRODUCT_ID,
+          },
+        ],
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to map a parameter to an explicitly joined column in the model query", () => {
+    cy.createDashboardWithQuestions({ questions: [modelDetails] }).then(
+      ({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      },
+    );
+    editDashboard();
+    cy.findByTestId("dashboard-header").findByLabelText("Add a filter").click();
+    popover().findByText("Text or Category").click();
+    getDashboardCard().findByText("Select…").click();
+    popover().findByText("People - User → Source").click();
+    saveDashboard();
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Google").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().findByText("43799").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("People - User → Source is Google")
+      .should("be.visible");
+    assertQueryBuilderRowCount(4);
   });
 });

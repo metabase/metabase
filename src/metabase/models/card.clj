@@ -11,13 +11,16 @@
    [medley.core :as m]
    [metabase.analyze :as analyze]
    [metabase.api.common :as api]
+   [metabase.audit :as audit]
    [metabase.compatibility :as compatibility]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -96,9 +99,9 @@
    (if (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (perms/default-audit-collection)))
+        (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (perms/default-audit-collection))))
+        (= (:collection_id instance) (:id (audit/default-audit-collection))))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
@@ -144,21 +147,34 @@
    :id
    {:default 0}))
 
+(defn- source-card-id
+  [query]
+  (let [query-type (lib/normalized-query-type query)]
+    (case query-type
+      :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+      :mbql/query (-> query lib/normalize lib.util/source-card-id)
+      nil)))
+
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
-  (mi/instances-with-hydrated-data
-   cards :can_run_adhoc_query
-   (fn []
-     (into {}
-           (comp
-            (filter (comp seq :dataset_query))
-            (map
-             (fn [{card-id :id :keys [dataset_query]}]
-               [card-id (query-perms/can-run-query? dataset_query)])))
-           cards))
-   :id
-   {:default false}))
+  (let [dataset-cards (filter (comp seq :dataset_query) cards)
+        source-card-ids (into #{}
+                              (keep (comp source-card-id :dataset_query))
+                              dataset-cards)]
+    (binding [query-perms/*card-instances*
+              (when (seq source-card-ids)
+                (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
+      (mi/instances-with-hydrated-data
+       cards :can_run_adhoc_query
+       (fn []
+         (into {}
+               (map
+                (fn [{card-id :id :keys [dataset_query]}]
+                  [card-id (query-perms/can-run-query? dataset_query)]))
+               dataset-cards))
+       :id
+       {:default false}))))
 
 (mi/define-batched-hydration-method add-can-run-adhoc-query
   :can_run_adhoc_query

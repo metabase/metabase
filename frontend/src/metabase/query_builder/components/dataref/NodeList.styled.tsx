@@ -5,7 +5,6 @@ import {
   HoverParent,
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -76,7 +75,7 @@ export const NodeListTitleText = styled.span`
 
 export const QuestionId = styled.span`
   font-size: 0.75rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: ${space(0)};
 `;
 

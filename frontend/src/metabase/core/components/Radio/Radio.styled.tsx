@@ -98,7 +98,9 @@ export const RadioContainerBubble = styled(RadioContainer)`
   border-radius: 10rem;
   font-weight: bold;
   color: ${props =>
-    props.checked ? color("white") : getContrastSchemeColor(props.colorScheme)};
+    props.checked
+      ? color("text-white")
+      : getContrastSchemeColor(props.colorScheme)};
   background-color: ${props =>
     props.checked
       ? getSchemeColor(props.colorScheme)
