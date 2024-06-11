@@ -175,6 +175,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     width: 0,
     isEditing: false,
     isEditingParameter: false,
+    withCardTitle: true,
   };
 
   componentDidMount() {
