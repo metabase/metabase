@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const TokenFieldContainer = styled.ul`
@@ -31,5 +30,5 @@ export const TokenInputItem = styled.li`
 export const PrefixContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

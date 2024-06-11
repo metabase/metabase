@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 export const Content = styled.div`
   display: flex;
@@ -59,7 +59,7 @@ AddButton.defaultProps = {
 };
 
 export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const Title = styled.div`
@@ -90,11 +90,11 @@ const getSelectedStyle = (theme: Theme) => css`
 const unselectedStyle = css`
   ${BucketPickerPopover.TriggerButton} {
     opacity: 0;
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
   }
 
   ${ColumnTypeIcon} {
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
   }
 
   &:hover {
@@ -111,11 +111,11 @@ const unselectedStyle = css`
 
     ${BucketPickerPopover.TriggerButton} {
       opacity: 1;
-      color: ${color("text-light")};
+      color: var(--mb-color-text-light);
     }
 
     ${BucketPickerPopover.TriggerButton}:hover {
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
     }
   }
 `;

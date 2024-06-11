@@ -4,7 +4,7 @@ import { SortableDiv } from "metabase/core/components/Sortable";
 import { TabButton } from "metabase/core/components/TabButton";
 import TabLink from "metabase/core/components/TabLink";
 import BaseTabList from "metabase/core/components/TabList";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const TabList = styled(BaseTabList)`
@@ -46,7 +46,7 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   width: 3rem;
   padding-bottom: ${space(2)};
   text-align: ${props => props.direction};
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   &:hover {
     color: var(--mb-color-brand);
   }

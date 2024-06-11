@@ -1,10 +1,8 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const SectionHeader = styled.h4`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -15,7 +13,7 @@ export const SectionHeader = styled.h4`
 `;
 
 export const SectionDescription = styled.p`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 8px;
   margin-bottom: 16px;
   line-height: 1.7em;

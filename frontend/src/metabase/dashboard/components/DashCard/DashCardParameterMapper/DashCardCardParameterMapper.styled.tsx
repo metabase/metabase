@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -16,7 +16,7 @@ export const Container = styled.div<{ isSmall: boolean }>`
 `;
 
 export const TextCardDefault = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin: ${space(1)} 0;
   display: flex;
   flex-direction: row;
@@ -35,7 +35,7 @@ export const CardLabel = styled.div`
 
 export const Header = styled.h4`
   width: 100%;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: ${space(1)};
   text-align: center;
 `;
@@ -52,7 +52,7 @@ export const TargetButton = styled.div<{ variant: string }>`
   min-height: 30px;
   padding: 0.25em 0.5em;
   margin: 0 0.25rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   ${({ variant }) =>
     variant === "disabled" &&
@@ -76,7 +76,7 @@ export const TargetButton = styled.div<{ variant: string }>`
       pointer-events: none;
       border-color: var(--mb-color-bg-light);
       background-color: var(--mb-color-bg-light);
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
     `}
 
   ${({ variant }) =>

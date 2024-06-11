@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const Container = styled.div`
   width: 472px;
@@ -24,7 +23,7 @@ export const FieldLabel = styled.label`
   text-transform: uppercase;
   letter-spacing: 0.06em;
 
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const Footer = styled.div`
