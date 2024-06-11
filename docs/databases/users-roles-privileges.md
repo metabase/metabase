@@ -109,7 +109,7 @@ GRANT metabase_actions TO metabase;
 
 ## Privileges to enable model persistence
 
-[Model caching](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+[Model persistence](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
@@ -119,14 +119,14 @@ In addition to the [minimum database privileges](#minimum-database-privileges):
 - Give the `metabase_model_persistence` role to the `metabase` user.
 
 ```sql
--- Create a role to bundle database privileges for Metabase model caching.
+-- Create a role to bundle database privileges for Metabase model persistence.
 CREATE ROLE metabase_model_persistence WITH LOGIN;
 
 -- If you don't want to give CREATE access to your database,
--- add the schema manually before enabling modeling caching.
+-- add the schema manually before enabling modeling persistence.
 GRANT CREATE ON "database" TO metabase_model_persistence;
 
--- Grant write privileges to the SCHEMA used for model caching.
+-- Grant write privileges to the SCHEMA used for model persistence.
 GRANT USAGE ON "your_schema" TO metabase_model_persistence;
 GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO metabase_model_persistence;
 
