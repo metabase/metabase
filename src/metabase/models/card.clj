@@ -2,6 +2,7 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
+   [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
    [clojure.set :as set]
@@ -19,6 +20,7 @@
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
@@ -543,11 +545,53 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
+(defn- rewrite-column-key [payload column-key]
+  (if-not (str/includes? column-key "[")
+    column-key ; Not JSON, so it's already converted.
+    (let [[key-type mbql-key]     (some-> column-key json/parse-string mbql.normalize/normalize)
+          {:keys [query columns]} @payload
+          column                  (case key-type
+                                    :name (m/find-first #(= (:name %) mbql-key) columns)
+                                    :ref  (lib/find-column-for-legacy-ref query -1 mbql-key columns)
+                                    (throw (ex-info (str "Unexpected viz-settings column key: " column-key)
+                                                    {:column-key column-key
+                                                     :key-type   key-type})))
+          new-key                 (:lib/desired-column-alias column)]
+      (when-not new-key
+        (log/warnf "Failed to rewrite visualization_settings key to column alias: '%s'" column-key))
+      (or new-key column-key))))
+
+(defn- replace-column-settings-refs-with-aliases
+  "Replace the JSON-encoded `[:ref [:field ...]]` strings in `[:visualization_settings :column_settings]` with field
+  aliases. They should be in the `result_metadata`."
+  [card]
+  (when (and (:visualization_settings card)
+             (not (:dataset_query card)))
+    (throw (ex-info "Cannot select :visualization_settings without :dataset_query" {})))
+  (if-let [database-id (and (not-empty (:dataset_query card))
+                            (or (:database (:dataset_query card))
+                                (:database_id card)))]
+    (let [payload (delay
+                    (let [provider   (lib.metadata.jvm/application-database-metadata-provider database-id)
+                          normalized (mbql.normalize/normalize (:dataset_query card))
+                          mlv2-query (mu/disable-enforcement
+                                       (lib/query provider normalized))]
+                      {:query  mlv2-query
+                       :columns (lib/returned-columns mlv2-query)}))]
+      (m/update-existing-in card [:visualization_settings :column_settings]
+                            update-keys #(rewrite-column-key payload %)))
+    ;; With no database, just return it as it is.
+    (do
+      (when (some-> card :visualization_settings :column_settings not-empty)
+        (log/warnf "Card with no database but with viz settings: %s" card))
+      card)))
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled
-   (dissoc card :dataset_query_metrics_v2_migration_backup)))
+  (-> card
+      (dissoc :dataset_query_metrics_v2_migration_backup)
+      replace-column-settings-refs-with-aliases
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (t2/define-before-insert :model/Card
   [card]

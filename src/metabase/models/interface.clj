@@ -5,6 +5,7 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
@@ -282,7 +283,10 @@
    to modern MBQL clauses so things work correctly."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
+            (let [k (u/qualified-name k)]
+              (cond-> k
+                ;; Could be an embedded JSON string like "[\"ref\", [\"field\", ...]]"; parse and normalize it if so.
+                (str/includes? k "[") (some-> json/parse-string mbql.normalize/normalize json/generate-string))))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
