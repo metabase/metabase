@@ -6,10 +6,10 @@ export const useRerenderOnShortcut = () => {
   const [value, setValue] = useState(0);
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey) {
+    const onKeyDown = (_e: KeyboardEvent) => {
+      setTimeout(() => {
         setValue(val => val + 1);
-      }
+      }, 0);
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
