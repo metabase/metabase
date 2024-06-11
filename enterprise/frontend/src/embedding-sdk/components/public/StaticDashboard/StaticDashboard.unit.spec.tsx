@@ -111,7 +111,7 @@ describe("StaticDashboard", () => {
 
     // loading spinner should be in here
     // you should see `data-testid="loading-spinner"` there
-    // screen.debug();
+    screen.debug();
 
     // Loader does not go away! Test will fail here.
     await waitForLoaderToBeRemoved();
