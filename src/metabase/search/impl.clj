@@ -257,16 +257,6 @@
   {:arglists '([model])}
   (fn [model] model))
 
-;; TODO: Querying is WIP
-;; we need to define a subquery that includes logic specific to the search model
-;; and combine them with an OR clause
-;; [:or [:and [:= :search_model "card"] ...]]
-;; `search-filters-for-model` defines what goes in the AND clause for each model
-;; it replaces `search-query-for-model`
-(defmulti ^:private search-filters-for-model
-  {:arglists '([model search-context])}
-  (fn [model _] model))
-
 (defmethod searchable-data-query-for-model "card"
   [model]
   {:query (-> {:select (concat [[[:inline "card"] :search_model]]
@@ -305,26 +295,6 @@
              :last_edited_at
              :display
              :created_at]})
-
-(defmethod search-filters-for-model "card"
-  [model search-ctx]
-  (let [card-type "question"]
-    (:where
-     (-> {}
-         ;; TODO: extract search string clause and apply it across all models to allow for full-text search
-         (sql.helpers/where (search-string-clause model search-ctx))
-         (sql.helpers/where [:= :type card-type])
-         ;; TODO: update build-filters to only query from the search table, and not use joins
-         (search.filter/build-filters model search-ctx)
-         ; TODO: implement bookmarks
-         #_(sql.helpers/left-join [:card_bookmark :bookmark]
-                                  [:and
-                                   [:= :bookmark.card_id :card.id]
-                                   [:= :bookmark.user_id (:current-user-id search-ctx)]])
-         ; TODO: implement collection filtering
-         #_(add-collection-join-and-where-clauses "card" search-ctx)
-         ; TODO: implement table-db-id fitler
-         #_(add-card-db-id-clause (:table-db-id search-ctx))))))
 
 (defmethod searchable-data-query-for-model "table"
   [model]
