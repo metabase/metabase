@@ -23,8 +23,7 @@ export const getCollectionList = ({
     : -1;
 
   if (baseIndex > 0) {
-    const index = ancestors.findIndex(part => part.id === baseCollectionId);
-    return ancestors.slice(index);
+    return ancestors.slice(baseIndex);
   } else {
     return hasRoot ? crumbsWithoutRoot : ancestors;
   }

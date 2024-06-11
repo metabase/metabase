@@ -17,6 +17,8 @@ import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { useSelector } from "metabase/lib/redux";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -76,6 +78,8 @@ export const CollectionItemsTable = ({
   onClick,
   showActionMenu = true,
 }: CollectionItemsTableProps) => {
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
     useState<SortingOptions>({
       sort_column: "name",
@@ -102,7 +106,7 @@ export const CollectionItemsTable = ({
     [setPage],
   );
 
-  const showAllItems = !collection || isRootTrashCollection(collection);
+  const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
 
   const unpinnedQuery = {
     collection: collectionId,
@@ -113,26 +117,30 @@ export const CollectionItemsTable = ({
     ...unpinnedItemsSorting,
   };
 
+  const onSearchListLoaded = (result: {
+    payload: { metadata: { total: number } };
+  }) => {
+    // onLoaded returns a `payload` object with the data and metadata
+    if (result.payload?.metadata?.total) {
+      setTotal(result.payload.metadata.total);
+    }
+  };
+
   return (
     <Search.ListLoader
       query={unpinnedQuery}
       loadingAndErrorWrapper={false}
       keepListWhileLoading
       wrapped
+      onLoaded={onSearchListLoaded}
     >
       {({
         list: unpinnedItems = [],
-        metadata = {},
         loading: loadingUnpinnedItems,
       }: {
         list: CollectionItem[];
-        metadata: { total?: number };
         loading: boolean;
       }) => {
-        if (metadata.total) {
-          setTotal(metadata.total);
-        }
-
         const hasPagination: boolean = total ? total > pageSize : false;
 
         const unselected = getIsSelected

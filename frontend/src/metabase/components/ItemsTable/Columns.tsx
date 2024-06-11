@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
+import { getUrl } from "metabase/browse/utils";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
@@ -41,10 +42,16 @@ const ItemLinkComponent = ({
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
 }>) => {
-  if (onClick) {
-    return <ItemButton onClick={() => onClick(item)}>{children}</ItemButton>;
+  const url = getUrl(item);
+
+  if (!url) {
+    return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
-  return <ItemLink to={item.getUrl()}>{children}</ItemLink>;
+  return (
+    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+      {children}
+    </ItemLink>
+  );
 };
 
 export const Columns = {

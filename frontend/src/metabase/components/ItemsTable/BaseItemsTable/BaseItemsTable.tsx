@@ -14,7 +14,11 @@ import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultIt
 import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import {
+  type SortColumn,
+  SortDirection,
+  type SortingOptions,
+} from "metabase-types/api/sorting";
 
 import {
   ColumnHeader,
@@ -26,7 +30,7 @@ import { Columns } from "../Columns";
 import type { ResponsiveProps } from "../utils";
 
 export type SortableColumnHeaderProps = {
-  name?: string;
+  name?: SortColumn;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
   columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;

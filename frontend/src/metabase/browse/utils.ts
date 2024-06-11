@@ -62,3 +62,8 @@ export const getIcon = (item: unknown): { name: IconName; color: string } => {
   const entity = entityForObject(item);
   return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
 };
+
+export const getUrl = (item: unknown): string => {
+  const entity = entityForObject(item);
+  return entity?.objectSelectors?.getUrl?.(item) || null;
+};

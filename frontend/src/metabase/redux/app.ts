@@ -96,20 +96,9 @@ const isNavbarOpen = handleActions(
   true,
 );
 
-const SET_IS_DND_AVAILABLE = "metabase/app/SET_IS_DND_AVAILABLE";
-export const setIsDndAvailable = createAction(SET_IS_DND_AVAILABLE);
-const isDndAvailable = handleActions(
-  {
-    [SET_IS_DND_AVAILABLE]: (_, { payload }) => {
-      return payload;
-    },
-  },
-  false,
-);
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   errorPage,
   isNavbarOpen,
-  isDndAvailable,
+  isDndAvailable: () => true,
 });

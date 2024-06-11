@@ -38,7 +38,6 @@ import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
-import { setIsDndAvailable } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -84,7 +83,6 @@ function _init(reducers, getRoutes, callback) {
   registerVisualizations();
 
   store.dispatch(refreshSiteSettings());
-  store.dispatch(setIsDndAvailable(true));
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
 
