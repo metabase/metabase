@@ -2,7 +2,7 @@ import { Input, type InputProps } from "@mantine/core";
 import cx from "classnames";
 import { forwardRef, type InputHTMLAttributes, type Ref } from "react";
 
-import { Icon } from "../../icons";
+import { Icon } from "../../../icons";
 
 import S from "./SelectInput.module.css";
 
