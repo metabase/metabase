@@ -94,7 +94,7 @@ export function getPieChartOption(
   seriesOption.radius = getRadiusOption(innerSideLength);
   seriesOption.itemStyle = {
     borderWidth:
-      (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion,
+      (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion, // arc length formula: s = 2πr(θ/360°), we want border to be 1 degree
   };
   seriesOption.label.fontSize = Math.max(
     DIMENSIONS.slice.maxFontSize * (innerSideLength / DIMENSIONS.maxSideLength),
