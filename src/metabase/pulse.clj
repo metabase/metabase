@@ -274,12 +274,10 @@
              {:dashboard (t2/select-one :model/Dashboard (:dashboard_id pulse))}))))
 
 (defn- channels-to-channel-recipients
-  [channel-type channels]
-  (assert (= 1 (count (set (map :channel_type channels)))) "All channels must be of the same type")
-  (if (= :channel/slack channel-type)
-    ;; slack channels [:sequential :string]
-    (map #(get-in % [:details :channel]) channels)
-    (for [recipient (flatten (map :recipients channels))]
+  [channel]
+  (if (= :slack (keyword (:channel_type channel)))
+    [(get-in channel [:details :channel])]
+    (for [recipient (:recipients channel)]
       (if-not (:id recipient)
         {:kind :external-email
          :email (:email recipient)}
@@ -341,7 +339,7 @@
                                          :channel/slack)
                           messages     (channel/render-notification channel-type
                                                                     (get-notification-info pulse parts channel)
-                                                                    (channels-to-channel-recipients channel-type channels))]
+                                                                    (channels-to-channel-recipients channel))]
                       (doall
                        (for [message messages]
                          (send-retrying! channel-type message))))
