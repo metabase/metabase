@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
 
+import { RawMaybeLink } from "metabase/components/Badge/Badge.styled";
 import Card from "metabase/components/Card";
-import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
 
-export const ItemLink = styled(Link)`
+export const ItemLink = styled(RawMaybeLink)`
   display: block;
   height: min-content;
 `;
@@ -63,4 +63,5 @@ export const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 2.5rem;
 `;

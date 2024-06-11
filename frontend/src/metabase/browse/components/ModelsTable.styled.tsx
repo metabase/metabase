@@ -8,11 +8,17 @@ import {
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { breakpoints } from "metabase/ui/theme";
 
-export const ModelTableRow = styled.tr`
-  cursor: pointer;
+export const ModelTableRow = styled.tr<{ skeleton?: boolean }>`
   :outline {
     outline: 2px solid var(--mb-color-brand);
   }
+  ${props =>
+    props.skeleton
+      ? `
+    :hover { background-color: unset ! important; }
+    td { cursor: unset ! important; }
+    `
+      : `cursor: pointer;`}
 `;
 
 export const ModelNameLink = styled(ItemLink)`

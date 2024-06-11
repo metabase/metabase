@@ -11,7 +11,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
-import type { IconName } from "metabase/ui";
+import { Skeleton, type IconName } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -31,18 +31,29 @@ import {
   Title,
 } from "./PinnedItemCard.styled";
 
+type ItemOrSkeleton =
+  | {
+      item: CollectionItem | RecentCollectionItem;
+      skeleton?: never;
+      iconForSkeleton?: never;
+    }
+  | {
+      item?: never;
+      skeleton: true;
+      iconForSkeleton: IconName;
+    };
+
 type Props = {
   databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
   className?: string;
-  item: CollectionItem | RecentCollectionItem;
   collection?: Collection;
   onCopy?: (items: CollectionItem[]) => void;
   onMove?: (items: CollectionItem[]) => void;
   onClick?: () => void;
-};
+} & ItemOrSkeleton;
 
 const TOOLTIP_MAX_WIDTH = 450;
 
@@ -69,14 +80,18 @@ function PinnedItemCard({
   onCopy,
   onMove,
   onClick,
+  skeleton,
+  iconForSkeleton,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const icon = getIcon({
-    model: item.model,
-    moderated_status: item.moderated_status,
-  }).name;
-  const { description, name, model } = item;
-  const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
+  const icon =
+    iconForSkeleton ??
+    getIcon({
+      model: item.model,
+      moderated_status: item.moderated_status,
+    }).name;
+  const defaultedDescription =
+    item?.description || DEFAULT_DESCRIPTION[item?.model || ""] || "";
 
   const maybeEnableTooltip = (
     event: MouseEvent<HTMLDivElement>,
@@ -90,13 +105,14 @@ function PinnedItemCard({
   };
 
   const hasActions =
+    item &&
     isCollectionItem(item) &&
     (onCopy || onMove || createBookmark || deleteBookmark || collection);
 
   return (
     <ItemLink
       className={className}
-      to={modelToUrl(item) ?? "/"}
+      to={item ? modelToUrl(item) ?? "/" : undefined}
       onClick={onClick}
     >
       <ItemCard flat>
@@ -104,7 +120,7 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon as unknown as IconName} />
             <ActionsContainer>
-              {item.model === "dataset" && <ModelDetailLink model={item} />}
+              {item?.model === "dataset" && <ModelDetailLink model={item} />}
               {hasActions && (
                 <ActionMenu
                   databases={databases}
@@ -119,22 +135,29 @@ function PinnedItemCard({
               )}
             </ActionsContainer>
           </Header>
-          <Tooltip
-            tooltip={name}
-            placement="bottom"
-            maxWidth={TOOLTIP_MAX_WIDTH}
-            isEnabled={showTitleTooltip}
-          >
-            <Title
-              onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
+          {skeleton ? (
+            <Skeleton natural h="1.5rem" />
+          ) : (
+            <Tooltip
+              tooltip={item?.name}
+              placement="bottom"
+              maxWidth={TOOLTIP_MAX_WIDTH}
+              isEnabled={showTitleTooltip}
             >
-              {name}
-            </Title>
-          </Tooltip>
-
-          <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
-            {defaultedDescription}
-          </Description>
+              <Title
+                onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
+              >
+                {item?.name}
+              </Title>
+            </Tooltip>
+          )}
+          {skeleton ? (
+            <Skeleton natural mt="xs" mb="4px" h="1rem" />
+          ) : (
+            <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
+              {defaultedDescription}
+            </Description>
+          )}
         </Body>
       </ItemCard>
     </ItemLink>

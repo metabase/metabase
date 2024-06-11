@@ -3,10 +3,11 @@ import styled from "@emotion/styled";
 
 import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import { FixedSizeIcon } from "metabase/ui";
+
+import { RawMaybeLink } from "../Badge/Badge.styled";
 
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
@@ -78,7 +79,7 @@ export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
   height: 3em;
 `;
 
-export const ItemLink = styled(Link)`
+export const ItemLink = styled(RawMaybeLink)`
   display: flex;
   grid-gap: 0.5rem;
   align-items: center;
