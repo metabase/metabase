@@ -26,16 +26,20 @@ export function TemporalUnitSettings({
 }: TemporalUnitSettingsProps) {
   const availableUnits = Lib.availableTemporalUnits();
   const selectedUnits = parameter.temporal_units ?? availableUnits;
+  const isAll = selectedUnits.length === availableUnits.length;
+  const isNone = selectedUnits.length === 0;
 
   return (
     <Popover width="target">
       <Popover.Target>
-        <SelectInput value={getSelectedText(selectedUnits, availableUnits)} />
+        <SelectInput value={getSelectedText(selectedUnits, isAll, isNone)} />
       </Popover.Target>
       <Popover.Dropdown>
         <TemporalUnitDropdown
           selectedUnits={selectedUnits}
           availableUnits={availableUnits}
+          isAll={isAll}
+          isNone={isNone}
           onChange={onChangeTemporalUnits}
         />
       </Popover.Dropdown>
@@ -46,17 +50,19 @@ export function TemporalUnitSettings({
 interface TemporalUnitDropdownProps {
   selectedUnits: TemporalUnit[];
   availableUnits: TemporalUnit[];
+  isAll: boolean;
+  isNone: boolean;
   onChange: (selectedUnits: TemporalUnit[]) => void;
 }
 
 function TemporalUnitDropdown({
   selectedUnits,
   availableUnits,
+  isAll,
+  isNone,
   onChange,
 }: TemporalUnitDropdownProps) {
   const selectedUnitsSet = new Set(selectedUnits);
-  const isAll = selectedUnits.length === availableUnits.length;
-  const isNone = selectedUnits.length === 0;
   const isDisabledDeselection = selectedUnitsSet.size <= 1;
 
   const handleAllToggle = () => {
@@ -112,10 +118,14 @@ function TemporalUnitDropdown({
 
 function getSelectedText(
   selectedUnits: TemporalUnit[],
-  availableUnits: TemporalUnit[],
+  isAll: boolean,
+  isNone: boolean,
 ) {
-  if (selectedUnits.length === availableUnits.length) {
+  if (isAll) {
     return t`All`;
+  }
+  if (isNone) {
+    return t`None`;
   }
 
   const visibleUnits = selectedUnits.slice(0, VISIBLE_UNIT_LIMIT);
