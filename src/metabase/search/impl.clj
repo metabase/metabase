@@ -461,14 +461,16 @@
 
 ;; TODO: make this a multimethod to be implemented by each backend that compiles the query.
 ;; For now we use HoneySQL
-(defn execute-search [filters-subquery]
-  ;; `build-query` is very simple right now because `filters-subquery` is in HoneySQL.
-  ;; But we will need to make `filters-
-  (let [build-query (fn [filters-subquery]
-                      {:select :*
-                       :from   :search
-                       :where  filters-subquery})]
-    (map #(into {} %) (t2/query (build-query filters-subquery)))))
+(defn execute-search [general-query]
+  ;; compiling `general-query` to `specific-query` is very simple because `general-query` is HoneySQL.
+  ;; But we will need to change `general-query` from HoneySQL to allow for non-SQL backends,
+  ;; and we'll compile it for each backend into a `specific-query`.
+  (let [compile (fn [q]
+                  {:select :*
+                   :from   :search
+                   :where  q})
+        specific-query (compile general-query)]
+    (map #(into {} %) (t2/query specific-query))))
 
 (comment
   ;; 1. reindex
