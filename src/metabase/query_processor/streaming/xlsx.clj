@@ -534,7 +534,7 @@
                                           (add-row! data-sheet row ordered-cols col-settings cell-styles typed-cell-styles))
         ^XSSFPivotTable pivot-table     (.createPivotTable ^XSSFSheet pivot-sheet
                                                            ^AreaReference area-ref
-                                                           ^CellReference (CellReference. "A1")
+                                                           (CellReference. "A1")
                                                            ^XSSFSheet data-sheet)]
     (doseq [idx pivot-rows]
       (.addRowLabel pivot-table idx))
