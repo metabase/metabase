@@ -47,5 +47,5 @@ export const SectionTitle = styled.p`
   margin: 0;
 
   font-size: 0.875em;
-  color: ${({ theme }) => theme.fn.themeColor("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

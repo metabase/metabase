@@ -59,7 +59,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     position: absolute;
     top: 1px;
     transform: translateX(${getTranslateX});
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
     transition: transform 0.3s;
     box-shadow: 2px 2px 6px var(--mb-color-shadow);
   }

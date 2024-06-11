@@ -104,7 +104,7 @@
      (field-query :f.name (:column column))
      (into [:or] (map table-query tables))]))
 
-(defn- direct-field-ids-for-query
+(defn- explicit-field-ids-for-query
   "Selects IDs of Fields that could be used in the query"
   [{column-maps :columns table-maps :tables} db-id]
   (let [columns (map :component column-maps)
@@ -128,8 +128,8 @@
       ;; limit to the named tables
       (seq table-wildcards)            (map :component table-wildcards))))
 
-(defn- indirect-field-ids-for-query
-  "Similar to direct-field-ids-for-query, but for wildcard selects"
+(defn- implicit-field-ids-for-query
+  "Similar to explicit-field-ids-for-query, but for wildcard selects"
   [parsed-query db-id]
   (when-let [tables (wildcard-tables parsed-query)]
     (t2/select-pks-set :model/Field (merge field-and-table-fragment
@@ -139,12 +139,12 @@
                                                     (into [:or] (map table-query tables))]}))))
 
 (defn field-ids-for-sql
-  "Returns a `{:direct #{...} :indirect #{...}}` map with field IDs that (may) be referenced in the given card's
+  "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
   to return fields that are in the query.
 
-  Direct references are columns that are named in the query; indirect ones are from wildcards. If a field could be
-  both direct and indirect, it will *only* show up in the `:direct` set."
+  Explicit references are columns that are named in the query; implicit ones are from wildcards. If a field could be
+  both explicit and implicit, it will *only* show up in the `:explicit` set."
   [query]
   (when (and (active?)
              (:native query))
@@ -153,9 +153,9 @@
           driver       (driver.u/database->driver db-id)
           macaw-opts   (nqa.impl/macaw-options driver)
           parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
-          direct-ids   (direct-field-ids-for-query parsed-query db-id)
-          indirect-ids (set/difference
-                        (indirect-field-ids-for-query parsed-query db-id)
-                        direct-ids)]
-      {:direct   direct-ids
-       :indirect indirect-ids})))
+          explicit-ids (explicit-field-ids-for-query parsed-query db-id)
+          implicit-ids (set/difference
+                        (implicit-field-ids-for-query parsed-query db-id)
+                        explicit-ids)]
+      {:explicit   explicit-ids
+       :implicit implicit-ids})))

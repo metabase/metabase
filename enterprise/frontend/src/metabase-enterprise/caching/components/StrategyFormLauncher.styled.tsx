@@ -59,7 +59,7 @@ export const StyledLauncher = styled(Flex)<
   font-weight: ${({ forRoot, inheritsRootStrategy }) =>
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
   background-color: ${({ forRoot }) =>
-    forRoot ? "var(--mb-color-bg-medium)" : color("white")};
+    forRoot ? color("bg-medium") : color("bg-white")};
   ${({ forRoot }) =>
     !forRoot &&
     css`

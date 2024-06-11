@@ -24,7 +24,7 @@ export const MetabaseLink = styled(ExternalLink)<{ variant: Variant }>`
 
 const messageVariantStyles = {
   default: css`
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
 
     margin-left: 0.5rem;
     ${breakpointMinMedium} {
@@ -32,7 +32,7 @@ const messageVariantStyles = {
     }
   `,
   large: css`
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     margin-top: 1rem;
   `,
 };
@@ -44,7 +44,7 @@ export const Message = styled.span<{ variant: Variant }>`
 export const MetabaseName = styled.span<{ isDark: boolean; variant: Variant }>`
   color: ${props => {
     if (props.isDark) {
-      return color("white");
+      return color("text-white");
     }
     return color(props.variant === "large" ? "text-dark" : "brand");
   }};

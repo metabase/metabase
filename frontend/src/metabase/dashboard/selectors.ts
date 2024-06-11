@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
-import { createSelectorCreator, lruMemoize } from "reselect";
+import { createSelectorCreator, lruMemoize, weakMapMemoize } from "reselect";
 import _ from "underscore";
 
 import {
@@ -13,17 +13,18 @@ import { getParameterMappingOptions as _getParameterMappingOptions } from "metab
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
-  DashboardId,
   DashCardId,
+  Dashboard,
   DashboardCard,
+  DashboardId,
   DashboardParameterMapping,
   ParameterId,
-  Dashboard,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -32,6 +33,7 @@ import type {
   StoreDashboard,
 } from "metabase-types/store";
 
+import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
   hasDatabaseActionsEnabled,
   isQuestionCard,
@@ -53,6 +55,7 @@ function isEditParameterSidebar(
 }
 
 const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
+const createWeakSelector = createSelectorCreator(weakMapMemoize);
 
 export const getDashboardBeforeEditing = (state: State) =>
   state.dashboard.editingDashboard;
@@ -185,6 +188,37 @@ export const getDashboardComplete = createSelector(
         dashcards: orderedDashcards,
       }
     );
+  },
+);
+
+export const getDashcardHref = createWeakSelector(
+  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
+  (metadata, dashboard, parameterValues, dashcard) => {
+    if (
+      !dashboard ||
+      !dashcard ||
+      !isQuestionDashCard(dashcard) ||
+      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+    ) {
+      return undefined;
+    }
+
+    const card = {
+      ...dashcard.card,
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
+    };
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard: card,
+      previousCard: card,
+    });
   },
 );
 

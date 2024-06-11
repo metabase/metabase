@@ -38,7 +38,7 @@ export const Description = styled.div`
 `;
 
 export const EmptyDescription = styled(Description)`
-  color: ${({ theme }) => theme.fn.themeColor("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 700;
 `;
 
@@ -64,7 +64,7 @@ export const RelativeSizeIcon = styled(Icon)`
 
 export const InvertedColorRelativeSizeIcon = styled(RelativeSizeIcon)`
   background-color: var(--mb-color-brand);
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   border-radius: 0.3em;
   padding: 0.3em;
 `;

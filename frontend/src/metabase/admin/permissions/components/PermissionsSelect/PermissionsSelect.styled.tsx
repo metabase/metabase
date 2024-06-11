@@ -30,8 +30,8 @@ export const OptionsListItem = styled.li`
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${lighten("accent7", 0.1)};
+    color: var(--mb-color-text-white);
+    background-color: ${() => lighten("accent7", 0.1)};
   }
 `;
 
@@ -54,7 +54,7 @@ export const ToggleLabel = styled.label`
 
 export const WarningIcon = styled(Icon)`
   margin-right: 0.25rem;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 WarningIcon.defaultProps = {

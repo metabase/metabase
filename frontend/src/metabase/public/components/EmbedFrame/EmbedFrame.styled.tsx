@@ -83,7 +83,7 @@ export const Body = styled.main`
 `;
 
 export const ActionButtonsContainer = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: auto;
 `;
 
@@ -111,7 +111,7 @@ function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
   if (theme === "transparent") {
     return "transparent";
   }
-  return color("white");
+  return color("bg-white");
 }
 
 function getParameterPanelBorderColor(theme?: DisplayTheme) {

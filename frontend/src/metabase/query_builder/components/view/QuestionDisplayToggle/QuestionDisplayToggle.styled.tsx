@@ -23,6 +23,6 @@ export const ToggleIcon = styled.div<ToggleIconProps>`
   padding: 4px 8px;
   cursor: pointer;
   background-color: ${props => (props.active ? color("brand") : "transparent")};
-  color: ${props => (props.active ? "white" : "inherit")};
+  color: ${props => (props.active ? "var(--mb-color-text-white)" : "inherit")};
   border-radius: 99px;
 `;
