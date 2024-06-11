@@ -31,7 +31,7 @@
 (defn- recipients->emails
   [recipients]
   {:user-emails     (mapv (comp :email :user) (filter #(= :user (:kind %)) recipients))
-   :non-user-emails (mapv :recipient (filter #(= :external-email (:kind %)) recipients))})
+   :non-user-emails (mapv :email (filter #(= :external-email (:kind %)) recipients))})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Alerts                                                ;;

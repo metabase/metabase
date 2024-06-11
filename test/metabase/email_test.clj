@@ -192,22 +192,18 @@
 
 (defn summarize-multipart-single-email
   [email & regexes]
-  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (cond-> email
-      (:to email)      (update :to set)
-      (:bcc email)     (update :bcc set)
-      (:message email) (update :message (fn [email-body-seq]
-                                         (doall
-                                          (for [{email-type :type :as email-part} email-body-seq]
-                                            (if (string? email-type)
-                                              (email-body->regex-boolean email-part)
-                                              (summarize-attachment email-part))))))
-      (:body email)    (update :body (fn [email-body-seq]
+  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)
+        body-or-content           (fn [email-body-seq]
                                       (doall
                                        (for [{email-type :type :as email-part} email-body-seq]
                                          (if (string? email-type)
                                            (email-body->regex-boolean email-part)
-                                           (summarize-attachment email-part)))))))))
+                                           (summarize-attachment email-part)))))]
+    (cond-> email
+      (:to email)      (update :to set)
+      (:bcc email)     (update :bcc set)
+      (:message email) (update :message body-or-content)
+      (:body email)    (update :body body-or-content))))
 
 (defn summarize-multipart-email
   "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will
@@ -215,7 +211,7 @@
   [& regexes]
   (m/map-vals (fn [emails-for-recipient]
                 (for [email emails-for-recipient]
-                  (summarize-multipart-single-email email regexes)))
+                  (apply summarize-multipart-single-email email regexes)))
               @inbox))
 
 (defn email-to

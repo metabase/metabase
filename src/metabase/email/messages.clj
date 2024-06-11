@@ -600,6 +600,9 @@
     {:title                     card-name
      :titleUrl                  (urls/card-url card-id)
      :alertSchedule             (alert-schedule-text channel)
+     :notificationText          (if (nil? non-user-email)
+                                    "Manage your subscriptions"
+                                    "Unsubscribe")
      :notificationManagementUrl (if (nil? non-user-email)
                                   (urls/notification-management-url)
                                   (str (urls/unsubscribe-url)

@@ -9,7 +9,6 @@
     [metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]
-    [metabase.models.user :as user]
     [metabase.pulse :as pulse]
     [metabase.pulse.markdown :as markdown]
     [metabase.pulse.render :as render]
@@ -30,11 +29,11 @@
   (condp
    #(<= 0 (.indexOf ^String %2 ^String %1))
    (.toLowerCase (System/getProperty "os.name"))
-    "win" :win
-    "mac" :mac
-    "nix" :unix
-    "nux" :unix
-    nil))
+   "win" :win
+   "mac" :mac
+   "nix" :unix
+   "nux" :unix
+   nil))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- open
@@ -81,15 +80,19 @@
      nil
      query-results)))
 
-(defn open-hiccup-as-html
+(defn open-html
   "Take a hiccup data structure, render it as html, then open it in the browser."
-  [hiccup]
-  (let [html-str (hiccup/html hiccup)
-        tmp-file (File/createTempFile "card-html" ".html")]
+  [html-str]
+  (let [tmp-file (File/createTempFile "card-html" ".html")]
     (with-open [w (io/writer tmp-file)]
       (.write w ^String html-str))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
+
+(defn open-hiccup-as-html
+  "Take a hiccup data structure, render it as html, then open it in the browser."
+  [hiccup]
+  (open-html (hiccup/html hiccup)))
 
 (def ^:private execute-dashboard #'pulse/execute-dashboard)
 

@@ -16,10 +16,11 @@
 (defn send-pulse-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
-  (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)}
+  (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
+                                                   :alert_condition "rows"}
                            :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
     (let [pulse-result       (atom nil)
-          orig-execute-pulse #'pulse/execute-pulse]
+          orig-execute-pulse @#'pulse/execute-pulse]
      (with-redefs [channel/send!               (fn [& _args]
                                                  :noop)
                    pulse/execute-pulse          (fn [& args]

@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.core :as channel]
-   [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -286,12 +285,22 @@
         {:kind :user
          :user recipient}))))
 
+(defn- channel-send!
+  [& args]
+  (try
+    (apply channel/send! args)
+    (catch Exception e
+      ;; Token errors have already been logged and we should not retry.
+      (when-not (and (= :channel/slack (first args))
+                     (contains? (:errors (ex-data e)) :slack-token))
+        (throw e)))))
+
 (defn- send-retrying!
   [& args]
-  (log/info :send-retrying args)
-  (if config/is-dev?
-    (apply channel/send! args)
-    (apply (retry/decorate channel/send!) args)))
+  (try
+    (apply (retry/decorate channel-send!) args)
+    (catch Throwable e
+      (log/error e "Error sending notification!"))))
 
 (defn- execute-pulse
   [{:keys [cards] pulse-id :id :as pulse} dashboard]
@@ -323,23 +332,24 @@
                                            :object  {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}}))
 
-      (when (:alert_first_only pulse)
-        (t2/delete! Pulse :id pulse-id))
-      (doall
-       (for [[channel-type channels] channel-type->channels
-             :when                   (seq channels)]
-         (try
-           (let [channel-type (if (= :email (keyword channel-type))
-                                :channel/email
-                                :channel/slack)
-                 messages     (channel/render-notification channel-type
-                                                           (get-notification-info pulse parts)
-                                                           (channels-to-channel-recipients channel-type channels))]
-             (doall
-              (for [message messages]
-                (send-retrying! channel-type message))))
-           (catch Exception e
-             (log/errorf e "Error sending pulse %d to channel %s" (:id pulse) channel-type))))))))
+
+      (u/prog1 (doall
+                (for [[channel-type channels] channel-type->channels
+                      :when                   (seq channels)]
+                  (try
+                    (let [channel-type (if (= :email (keyword channel-type))
+                                         :channel/email
+                                         :channel/slack)
+                          messages     (channel/render-notification channel-type
+                                                                    (get-notification-info pulse parts)
+                                                                    (channels-to-channel-recipients channel-type channels))]
+                      (doall
+                       (for [message messages]
+                         (send-retrying! channel-type message))))
+                    (catch Exception e
+                      (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) channel-type)))))
+        (when (:alert_first_only pulse)
+          (t2/delete! Pulse :id pulse-id))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |
