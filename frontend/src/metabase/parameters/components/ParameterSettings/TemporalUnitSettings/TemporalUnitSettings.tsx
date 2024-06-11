@@ -63,7 +63,7 @@ function TemporalUnitDropdown({
   onChange,
 }: TemporalUnitDropdownProps) {
   const selectedUnitsSet = new Set(selectedUnits);
-  const isDisabledDeselection = selectedUnitsSet.size <= 1;
+  const isDisabledDeselection = selectedUnits.length <= 1;
 
   const handleAllToggle = () => {
     if (isAll) {
@@ -128,11 +128,12 @@ function getSelectedText(
     return t`None`;
   }
 
-  const visibleUnits = selectedUnits.slice(0, VISIBLE_UNIT_LIMIT);
-  const invisibleUnits = selectedUnits.slice(VISIBLE_UNIT_LIMIT);
-  const visibleSections = [
-    ...visibleUnits.map(unit => Lib.describeTemporalUnit(unit)),
-    ...(invisibleUnits.length > 0 ? [`+${invisibleUnits.length}`] : []),
-  ];
-  return visibleSections.join(", ");
+  const visibleUnitCount = Math.max(selectedUnits.length, VISIBLE_UNIT_LIMIT);
+  const hiddenUnitCount = selectedUnits.length - visibleUnitCount;
+
+  return selectedUnits
+    .slice(0, visibleUnitCount)
+    .map(unit => Lib.describeTemporalUnit(unit))
+    .concat(hiddenUnitCount > 0 ? [`+${hiddenUnitCount}`] : [])
+    .join(", ");
 }
