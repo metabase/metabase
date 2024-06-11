@@ -93,10 +93,10 @@
 
 (def ^:private SlackMessage
   [:map {:closed true}
-   [:channel-id                  :string]
-   ;; TODO: tighten this payload schema
-   [:attachments                 :any]
-   [:message    {:optional true} [:maybe :string]]])
+   [:channel-id                   :string]
+   ;; TODO: tighten this attachments schema
+   [:attachments                  :any]
+   [:message     {:optional true} [:maybe :string]]])
 
 (mu/defmethod channel/send! :channel/slack
   [_channel-type message :- SlackMessage]
@@ -107,18 +107,16 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmethod channel/render-notification [:channel/slack :notification/alert]
-  [_channel-details notification-content channel-ids]
+(mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
+  [_channel-details {:keys [payload card]} channel-ids]
   (for [channel-id channel-ids]
-    (let [payload        (:payload notification-content)
-          {:keys [card]} payload
-          channel-id     (str/replace channel-id "#" "")]
+    (let [channel-id (str/replace channel-id "#" "")]
       {:channel-id  channel-id
        :attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (:name card))
                                        :emoji true}}]}
-                      ;; TODO: do we really need to generate attachments for each channel?
+                     ;; TODO: do we really need to generate attachments for each channel?
                      (payload->attachment-data payload channel-id)]})))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -172,14 +170,11 @@
           :when attachment]
       attachment)))
 
-(defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription]
-  [_channel-type notification-content channel-ids]
-  (let [{:keys [payload
-                dashboard
-                dashboard-subscription]} notification-content]
-    (for [channel-id channel-ids]
-      {:channel-id  channel-id
-       :attachments (remove nil?
-                            (flatten [(slack-dashboard-header dashboard-subscription dashboard)
-                                      (create-slack-attachment-data payload)
-                                      (when dashboard (slack-dashboard-footer dashboard-subscription dashboard))]))})))
+(mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload dashboard pulse]} channel-ids]
+  (for [channel-id channel-ids]
+    {:channel-id  channel-id
+     :attachments (remove nil?
+                          (flatten [(slack-dashboard-header pulse dashboard)
+                                    (create-slack-attachment-data payload)
+                                    (slack-dashboard-footer pulse dashboard)]))}))

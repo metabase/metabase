@@ -9,6 +9,13 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def ^:private EmailMessage
+  [:map
+   [:subject      :string]
+   [:recipients   [:sequential ms/Email]]
+   [:message-type [:enum :attachments :html :text]]
+   [:message      :any]])
+
 (mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- (ms/InstanceOf :model/Card)]
@@ -20,15 +27,6 @@
    :recipients   recipients
    :message-type :attachments
    :message      message})
-
-(defn- send-emails!
-  [emails]
-  (doseq [{:keys [subject recipients message-type message]} emails]
-    (email/send-message-or-throw! {:subject      subject
-                                   :recipients   recipients
-                                   :message-type message-type
-                                   :message      message
-                                   :bcc?         (email/bcc-enabled?)})))
 
 (defn- recipients->emails
   [recipients]
@@ -58,45 +56,34 @@
 
     nil))
 
-(def ^:private EmailMessage
-  [:map
-   [:subject :string]
-   ;; :email
-   [:recipients [:sequential :string]]
-   [:message-type [:enum :attachments :html :text]]
-   [:message      :any]])
-
 (mu/defmethod channel/send! :channel/email
-  [_channel-type {:keys [subject recipients message-type message] :as email-message} :- EmailMessage]
-  (def email-message email-message)
+  [_channel-type {:keys [subject recipients message-type message]} :- EmailMessage]
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
                                  :message      message
                                  :bcc?         (email/bcc-enabled?)}))
 
-(defmethod channel/render-notification [:channel/email :notification/alert]
-  [_channel-type notification-content recipients]
-  (let [{:keys [card alert
-                payload]}         notification-content
-        condition-kwd             (messages/pulse->alert-condition-kwd alert)
+(mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
+  [_channel-type {:keys [card pulse payload]} recipients]
+  (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (trs "Alert: {0} has {1}"
-                                       (get-in notification-content [:card :name])
+                                       (:name card)
                                        (alert-condition-type->description condition-kwd))
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (defaulted-timezone card)
-        pc                        (t2/select-one :model/PulseChannel :enabled true :pulse_id (:id alert))
+        pc                        (t2/select-one :model/PulseChannel :enabled true :pulse_id (:id pulse))
         goal                      (find-goal-value card)
         email-to-users            (when (> (count user-emails) 0)
                                     (construct-pulse-email email-subject user-emails
-                                                           (messages/render-alert-email timezone alert pc
+                                                           (messages/render-alert-email timezone pulse pc
                                                                                         [payload]
                                                                                         goal
                                                                                         nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
                                     (construct-pulse-email email-subject [non-user-email]
-                                                           (messages/render-alert-email timezone alert pc
+                                                           (messages/render-alert-email timezone pulse pc
                                                                                         [payload]
                                                                                         goal
                                                                                         non-user-email)))]
@@ -106,17 +93,14 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmethod channel/render-notification [:channel/email :notification/dashboard-subscription]
-  [_channel-details notification-content recipients]
-  (let [{:keys [dashboard
-                payload
-                dashboard-subscription]} notification-content
-        {:keys [user-emails
+(mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
+  [_channel-details {:keys [dashboard payload pulse]} recipients]
+  (let [{:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
-        timezone            (some->> payload (some :card) defaulted-timezone)
-        email-subject       (:name dashboard)
-        email-to-users      (when (seq user-emails)
-                              (construct-pulse-email email-subject user-emails (messages/render-pulse-email timezone dashboard-subscription dashboard payload nil)))
-        email-to-nonusers   (for [non-user-email non-user-emails]
-                              (construct-pulse-email email-subject [non-user-email] (messages/render-pulse-email timezone dashboard-subscription dashboard payload non-user-email)))]
+        timezone                  (some->> payload (some :card) defaulted-timezone)
+        email-subject             (:name dashboard)
+        email-to-users            (when (seq user-emails)
+                                    (construct-pulse-email email-subject user-emails (messages/render-pulse-email timezone pulse dashboard payload nil)))
+        email-to-nonusers         (for [non-user-email non-user-emails]
+                                    (construct-pulse-email email-subject [non-user-email] (messages/render-pulse-email timezone pulse dashboard payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
