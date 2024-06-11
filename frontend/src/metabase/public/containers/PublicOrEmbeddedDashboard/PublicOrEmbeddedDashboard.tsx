@@ -276,7 +276,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   isNightMode={isNightMode}
                   withCardTitle={this.props.cardTitled}
                   clickBehaviorSidebarDashcard={null}
-                  width={0}
+                  width={300}
                 />
               </DashboardContainer>
             ) : null

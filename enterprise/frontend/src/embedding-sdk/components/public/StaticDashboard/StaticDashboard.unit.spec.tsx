@@ -43,7 +43,11 @@ const setup = (options: SetupOptions = {}) => {
     query: { "source-table": ORDERS_ID },
   });
 
-  const tableCard = createMockCard({ id: 1, dataset_query });
+  const tableCard = createMockCard({
+    id: 1,
+    dataset_query,
+    name: "Here is a card title",
+  });
 
   const tableDashcard = createMockDashboardCard({
     id: 1,
@@ -101,8 +105,15 @@ describe("StaticDashboard", () => {
   it("should render", async () => {
     setup();
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
 
-    // TODO: make dashcards render
+    // Dashboard card's question title should be in here.
+    expect(await screen.findByText("Here is a card title")).toBeInTheDocument();
+
+    // loading spinner should be in here
+    // you should see `data-testid="loading-spinner"` there
+    // screen.debug();
+
+    // Loader does not go away! Test will fail here.
+    await waitForLoaderToBeRemoved();
   });
 });
