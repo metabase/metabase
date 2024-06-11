@@ -3,7 +3,7 @@ import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/ty
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import { Legend } from "../Legend";
-import { calculateLegendRows } from "../Legend/utils";
+import { calculateLegendRowsWithColumns } from "../Legend/utils";
 
 export function getPieChartLegend(
   chartModel: PieChartModel,
@@ -16,7 +16,7 @@ export function getPieChartLegend(
     return { legendHeight: 0, Legend: () => null };
   }
 
-  const legendRows = calculateLegendRows({
+  const legendRows = calculateLegendRowsWithColumns({
     items: chartModel.slices.map(s => {
       const label =
         s.key === "Other" ? s.key : formatters.formatDimension(s.key);
@@ -35,9 +35,6 @@ export function getPieChartLegend(
     }),
     width,
   });
-  if (!legendRows) {
-    throw Error("Error calculating legend rows");
-  }
 
   const { height: legendHeight, items } = legendRows;
 
