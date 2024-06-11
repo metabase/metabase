@@ -1,5 +1,5 @@
 export const DIMENSIONS = {
-  paddingTop: 16,
+  chartLegendMargin: 16,
   sideLen: 540,
   margin: 20,
   slice: {
