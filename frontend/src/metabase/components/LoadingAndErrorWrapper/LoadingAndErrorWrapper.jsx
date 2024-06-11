@@ -111,10 +111,11 @@ export default class LoadingAndErrorWrapper extends Component {
 
   render() {
     // FIXME: remove this
-    this.props.loading ||= window.stayLoading;
+    const loading = this.props.loading || window.stayLoading;
 
     const {
-      loading,
+      // FIXME: restore this
+      // loading,
       error,
       noBackground,
       noWrapper,
