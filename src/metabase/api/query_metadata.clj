@@ -75,9 +75,13 @@
                  (mapcat (comp collect-source-tables #(-> % :dataset_query :query)))
                  partition-table-ids)
             real-card-ids (filter pos-int? (concat (map :id cards) card-ids)) ; xray cards don't have real ids
-            mp (db->mp database-id)]
-        (lib.metadata.protocols/metadatas mp :metadata/card real-card-ids)
-        (lib.metadata.protocols/metadatas mp :metadata/table table-ids)))
+            mp (db->mp database-id)
+            table-ids (into (set table-ids)
+                            (keep :table-id)
+                            (lib.metadata.protocols/metadatas mp :metadata/card real-card-ids))]
+        (lib.metadata.protocols/metadatas mp :metadata/table table-ids)
+        (doseq [metadata-type [:metadata/column :metadata/legacy-metric]]
+          (lib.metadata.protocols/metadatas-for-tables mp metadata-type table-ids))))
     (group-by :type (set (mapcat (fn [{card-type :type card-id :id :keys [database_id dataset_query]}]
                                    (let [mp (db->mp database_id)
                                          query (lib/query mp dataset_query)]
