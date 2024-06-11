@@ -1,0 +1,17 @@
+.item {
+  &:hover {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand-lighter);
+  }
+
+  &.selected,
+  &[data-selected] {
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+  }
+
+  &.disabled,
+  &[data-disabled] {
+    color: var(--mb-color-text-light);
+  }
+}

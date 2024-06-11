@@ -127,6 +127,7 @@ export const VariantTemplate = args => (
 );
 
 export const Default = DefaultTemplate.bind({});
+Default.args = { initiallyOpened: true };
 
 <Canvas>
   <Story name="Default">{Default}</Story>
