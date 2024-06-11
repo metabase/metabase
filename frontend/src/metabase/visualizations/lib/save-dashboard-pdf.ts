@@ -1,3 +1,7 @@
+import { t } from "ttag";
+
+import type { Dashboard } from "metabase-types/api";
+
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 export const saveDashboardPdf = async (
@@ -42,4 +46,10 @@ export const saveDashboardPdf = async (
   pdf.addImage(image, "JPEG", 0, 0, imageWidth, imageHeight, "", "FAST", 0);
 
   pdf.save(fileName);
+};
+
+export const exportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
+  return Array.isArray(tabs) && tabs.length > 1
+    ? t`Export tab as PDF`
+    : t`Export as PDF`;
 };

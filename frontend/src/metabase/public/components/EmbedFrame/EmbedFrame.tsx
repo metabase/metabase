@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useMount } from "react-use";
-import { t } from "ttag";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
@@ -24,7 +23,10 @@ import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import {
+  exportTabAsPdfButtonText,
+  saveDashboardPdf,
+} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -218,11 +220,7 @@ export const EmbedFrame = ({
                       color="text-dark"
                       onClick={saveAsPDF}
                     >
-                      {/* TODO: refactor into a util as it's duplicated logic */}
-                      {Array.isArray(dashboard.tabs) &&
-                      dashboard.tabs.length > 1
-                        ? t`Export tab as PDF`
-                        : t`Export as PDF`}
+                      {exportTabAsPdfButtonText(dashboard.tabs)}
                     </Button>
                   )}
                 </TitleAndButtonsContainer>

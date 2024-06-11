@@ -53,7 +53,10 @@ import { dismissAllUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import {
+  exportTabAsPdfButtonText,
+  saveDashboardPdf,
+} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Bookmark as IBookmark,
@@ -527,10 +530,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       });
 
       extraButtons.push({
-        title:
-          Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
-            ? t`Export tab as PDF`
-            : t`Export as PDF`,
+        title: exportTabAsPdfButtonText(dashboard.tabs),
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {
