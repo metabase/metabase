@@ -11,9 +11,15 @@
   - Alert attachments"
   (:require
    [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.test :as mt])
+  (:import
+   (org.apache.poi.xssf.usermodel XSSFSheet)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private pivot-rows-query
   "SELECT *
@@ -170,3 +176,28 @@
                    "Sum of Price"
                    "Average of Rating"]]
                (take 2 result))))))))
+
+(deftest pivot-table-native-pivot-in-xlsx-test
+  (testing "Pivot table xlsx downloads produce a 'native pivot' in the workbook."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                                :values  [[:aggregation 0]
+                                                          [:aggregation 1]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+        (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
+              pivot  (with-open [in (io/input-stream result)]
+                       (->> (spreadsheet/load-workbook in)
+                            (spreadsheet/select-sheet "pivot")
+                            ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
+          (is (not (nil? pivot))))))))
