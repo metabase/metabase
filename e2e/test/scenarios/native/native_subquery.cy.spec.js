@@ -9,8 +9,6 @@ import {
   entityPickerModal,
 } from "e2e/support/helpers";
 
-import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
-
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
     restore();
@@ -293,8 +291,7 @@ describe("scenarios > question > native subquery", () => {
         const tagID = `#${nestedQuestionId}`;
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
-        startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -308,27 +305,22 @@ describe("scenarios > question > native subquery", () => {
     );
   });
 
-  it(
-    "should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)",
-    { tags: "@flaky" },
-    () => {
-      const questionDetails = {
-        name: "28218",
-        native: { query: "select 1;" }, // semicolon is important here
-      };
+  it("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
+    const questionDetails = {
+      name: "28218",
+      native: { query: "select 1;" }, // semicolon is important here
+    };
 
-      cy.createNativeQuestion(questionDetails).then(
-        ({ body: { id: baseQuestionId } }) => {
-          const tagID = `#${baseQuestionId}`;
+    cy.createNativeQuestion(questionDetails).then(
+      ({ body: { id: baseQuestionId } }) => {
+        const tagID = `#${baseQuestionId}`;
 
-          startNewNativeQuestion();
-          SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
 
-          runNativeQuery();
+        runNativeQuery();
 
-          cy.get("[data-testid=cell-data]").should("contain", "1");
-        },
-      );
-    },
-  );
+        cy.get("[data-testid=cell-data]").should("contain", "1");
+      },
+    );
+  });
 });
