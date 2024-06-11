@@ -38,6 +38,7 @@
    [metabase.models.query-execution :as query-execution]
    [metabase.models.query-field :as query-field]
    [metabase.models.revision :as revision]
+   [metabase.models.searchable :as searchable]
    [metabase.models.secret :as secret]
    [metabase.models.segment :as segment]
    [metabase.models.session :as session]
@@ -92,6 +93,7 @@
          query-execution/keep-me
          query-field/keep-me
          revision/keep-me
+         searchable/keep-me
          secret/keep-me
          segment/keep-me
          session/keep-me

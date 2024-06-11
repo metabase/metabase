@@ -1,12 +1,16 @@
 (ns metabase.search.impl
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
@@ -107,16 +111,11 @@
     (into
      [:or]
      (for [wildcarded-token (wildcarded-tokens (:search-string search-ctx))
-           [native? column] (cond-> (for [x (search.config/searchable-columns-for-model model)]
-                                      [false x])
-                                 (:search-native-query search-ctx)
-                                 (concat (for [x (search.config/native-query-columns model)]
-                                           [true x])))]
+           column (cond-> (search.config/searchable-columns-for-model model)
+                    (:search-native-query search-ctx)
+                    (concat (search.config/native-query-columns model)))]
        [:like
-        [:lower (if (and native? (= model "action"))
-                  ;; unfortunately we have to hardcode this for now because we don't have a way to specify which columns are from which table
-                  :query_action.dataset_query
-                  (search.config/column-with-alias model column))]
+        [:lower column]
         wildcarded-token]))))
 
 (mu/defn ^:private base-query-for-model :- [:map {:closed true}
@@ -206,8 +205,8 @@
     query))
 
 (mu/defn ^:private replace-select :- :map
-  "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
-  can't find the target select.
+  "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column.
+   If the target-alias cannot be found, add the select.
 
   This works with the assumption that `query` contains a list of select from [[select-clause-for-model]],
   and some of them are dummy column casted to the correct type.
@@ -225,9 +224,7 @@
         with-select [with target-alias]]
     (if (some? idx)
       (assoc query :select (m/replace-nth idx with-select selects))
-      (throw (ex-info "Failed to replace selector" {:status-code  400
-                                                    :target-alias target-alias
-                                                    :with         with})))))
+      (sql.helpers/select query [with target-alias]))))
 
 (mu/defn ^:private with-last-editing-info :- :map
   [query :- :map
@@ -238,7 +235,7 @@
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-alias model :id)]
                               [:= :r.most_recent true]
-                              [:= :r.model (search.config/search-model->revision-model model)]])))
+                              [:= :r.model [:inline (search.config/search-model->revision-model model)]]])))
 
 (mu/defn ^:private with-moderated-status :- :map
   [query :- :map
@@ -247,13 +244,262 @@
       (replace-select :moderated_status :mr.status)
       (sql.helpers/left-join [:moderation_review :mr]
                              [:and
-                              [:= :mr.moderated_item_type "card"]
+                              [:= :mr.moderated_item_type [:inline "card"]]
                               [:= :mr.moderated_item_id (search.config/column-with-alias model :id)]
                               [:= :mr.most_recent true]])))
 
-(defmulti ^:private search-query-for-model
+;; ----------------- NEW IMPLEMENTATION BEGINS -------------------
+
+;; -------------- Model-specific code -----------------
+
+;; TODO: make :query and :columns separate multimethods?
+(defmulti ^:private searchable-data-query-for-model
+  {:arglists '([model])}
+  (fn [model] model))
+
+;; TODO: Querying is WIP
+;; we need to define a subquery that includes logic specific to the search model
+;; and combine them with an OR clause
+;; [:or [:and [:= :search_model "card"] ...]]
+;; `search-filters-for-model` defines what goes in the AND clause for each model
+;; it replaces `search-query-for-model`
+(defmulti ^:private search-filters-for-model
   {:arglists '([model search-context])}
   (fn [model _] model))
+
+(defmethod searchable-data-query-for-model "card"
+  [model]
+  {:query (-> {:select (concat [[[:inline "card"] :search_model]]
+                               (map #(search.config/column-with-alias model %)
+                                    (conj search.config/default-columns
+                                          :type ;; rename this to card_type?
+                                          :query_type
+                                          :collection_id
+                                          :trashed_from_collection_id
+                                          :collection_position
+                                          :dataset_query
+                                          :display
+                                          :creator_id)))
+               :from   (from-clause-for-model model)}
+              ;; TODO: add all columns from filters
+              #_(search.filter/build-filters model context)
+              ;; TODO: collection perms clause
+              #_(add-collection-join-and-where-clauses "card" search-ctx)
+              (with-last-editing-info "card")
+              (with-moderated-status "card"))
+   :columns [:type
+             :query_type
+             :search_model
+             :description
+             :archived
+             :collection_position
+             :trashed_from_collection_id
+             :collection_id
+             :name
+             :creator_id
+             :updated_at
+             :moderated_status
+             :dataset_query
+             :last_editor_id
+             :id
+             :last_edited_at
+             :display
+             :created_at]})
+
+(defmethod search-filters-for-model "card"
+  [model search-ctx]
+  (let [card-type "question"]
+    (:where
+     (-> {}
+         ;; TODO: extract search string clause and apply it across all models to allow for full-text search
+         (sql.helpers/where (search-string-clause model search-ctx))
+         (sql.helpers/where [:= :type card-type])
+         ;; TODO: update build-filters to only query from the search table, and not use joins
+         (search.filter/build-filters model search-ctx)
+         ; TODO: implement bookmarks
+         #_(sql.helpers/left-join [:card_bookmark :bookmark]
+                                  [:and
+                                   [:= :bookmark.card_id :card.id]
+                                   [:= :bookmark.user_id (:current-user-id search-ctx)]])
+         ; TODO: implement collection filtering
+         #_(add-collection-join-and-where-clauses "card" search-ctx)
+         ; TODO: implement table-db-id fitler
+         #_(add-card-db-id-clause (:table-db-id search-ctx))))))
+
+(defmethod searchable-data-query-for-model "table"
+  [model]
+  {:query (let [table-column #(search.config/column-with-alias model %)]
+            (-> (-> {:select [[[:inline "table"] :search_model]
+                              [:table.id :id]
+                              [:table.name :name]
+                              [:table.created_at :created_at]
+                              [:table.display_name :display_name]
+                              [:table.description :description]
+                              [:table.updated_at :updated_at]
+                              [:table.initial_sync_status :initial_sync_status]
+                              [:table.id :table_id]
+                              [:table.db_id :database_id]
+                              [:table.schema :table_schema]
+                              [:table.name :table_name]
+                              [:table.description :table_description]
+                              [:metabase_database.name :database_name]]
+                     :from   (from-clause-for-model model)}
+              ;; TODO
+                    #_(search.filter/build-filters model context))
+                (sql.helpers/where [:and
+                                    [:not [:= :table.db_id [:inline audit/audit-db-id]]]
+                                    [:= :table.active true]
+                                    [:= :table.visibility_type nil]])
+                (sql.helpers/left-join :metabase_database [:= (table-column :db_id) :metabase_database.id])))
+   :columns [:search_model
+             :id
+             :name
+             :created_at
+             :display_name
+             :description
+             :updated_at
+             :initial_sync_status
+             :table_id
+             :database_id
+             :table_schema
+             :table_name
+             :table_description
+             :database_name]})
+
+(defn searchable-data-query-for-instance [model id]
+  (let [query (:query (searchable-data-query-for-model model))]
+    (sql.helpers/where query [:= :id id])))
+
+(defn search-all-models-query [search-ctx]
+  {:select [:*]
+   :from   :search
+   :where
+   (into
+    [:or]
+    (for [model ["card"]] ; just card for now
+      (search-filters-for-model model search-ctx)))})
+
+;; -------------- Backend-specific code -----------------
+
+;; union all the queries for each model, selecting all columns from each query
+(def models ["table" "card"])
+(def search-table-name "search")
+
+;; TODO: move this to metabase.driver
+(defmulti ^:private search-type->database-type
+  "Given a search type, return the database type for that column. Applies to postgres for now"
+  {:arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+;; TODO: implement for MySQL and H2
+(defmethod search-type->database-type :postgres
+  [_driver search-type]
+  (case search-type
+    :text      "TEXT"
+    :integer   "INTEGER"
+    :boolean   "BOOLEAN"
+    :timestamp "TIMESTAMP"
+    :json      "JSON"
+    :decimal   "DECIMAL"
+    :float     "DOUBLE"
+    :time      "TIME"))
+
+;; TODO: implement this for each search backend
+(defn reindex []
+  ;; 1. Create the search table with the appropriate columns
+  (let [driver  :postgres
+        columns (->> models
+                     (map #(set (:columns (searchable-data-query-for-model %))))
+                     (reduce set/union)
+                     sort)
+        columns+types (for [column columns
+                            :let [type (get (assoc search.config/all-search-columns :search_model :text)
+                                            column)]]
+                        [column (keyword (search-type->database-type driver type))])]
+    (t2/query {:drop-table [:if-exists (keyword search-table-name)]})
+    (t2/query {:create-table (keyword search-table-name)
+               :with-columns columns+types})
+  ;; 2. For each model, insert the data into the search table
+  (doseq [model models]
+    (let [{:keys [query columns]} (searchable-data-query-for-model model)
+          ->sql #(first (mdb.query/compile %))]
+      (t2/query (str (->sql {:insert-into (keyword search-table-name)
+                             :columns columns})
+                     "\n"
+                     (->sql {:select columns
+                             :from   [[query :alias]]})))))))
+
+(comment
+  (reindex)
+  ;; TODO: make this a test checking that there are no query parameters in each query
+  (assert (every? nil? (for [model ["card" "table"]]
+                         (let [{:keys [query]} (searchable-data-query-for-model model)
+                               format-sql #(sql/format % :quoted true, :dialect (sql.qp/quote-style driver))]
+                           (second (format-sql query)))))
+          )
+  )
+
+;; TODO: implement this for each search backend
+(defn index [& changes]
+  (for [{:keys [change-type search-model id] :as change} changes]
+    (case change-type
+      :insert
+      (let [search-data (t2/query (searchable-data-query-for-instance search-model id))]
+        (t2/insert! :model/Searchable search-data))
+      :delete
+      (t2/delete! :model/Searchable :id id :search_model search-model)
+      :update
+      (let [search-data (t2/query (searchable-data-query-for-instance search-model id))]
+        (t2/update! :model/Searchable
+                    :id (:id change)
+                    :search_model (:search-model change)
+                    search-data)))))
+
+;; TODO: make this a multimethod to be implemented by each backend
+(defn execute-search [query]
+  (map #(into {} %) (t2/query query)))
+
+(comment
+  ;; 1. reindex
+  (reindex)
+  ;; 2. execute search:
+  (let [search-ctx {:search-string      "orders"
+                    :models             search.config/all-models
+                    :model-ancestors?   false
+                    :current-user-id    1
+                    :current-user-perms #{"/"}}]
+    (execute-search (search-all-models-query search-ctx)))
+  ;; => ({:description nil,
+  ;;      :archived false,
+  ;;      :collection_position nil,
+  ;;      :table_id nil,
+  ;;      :trashed_from_collection_id nil,
+  ;;      :database_id nil,
+  ;;      :collection_id nil,
+  ;;      :database_name nil,
+  ;;      :query_type "query",
+  ;;      :name "Orders q",
+  ;;      :type "question",
+  ;;      :table_schema nil,
+  ;;      :search_model "card",
+  ;;      :creator_id 3,
+  ;;      :updated_at #t "2024-06-11T00:50:50.820882",
+  ;;      :moderated_status nil,
+  ;;      :dataset_query "{\"database\":2,\"type\":\"query\",\"query\":{\"source-table\":12}}",
+  ;;      :last_editor_id 3,
+  ;;      :id 237,
+  ;;      :last_edited_at #t "2024-06-11T00:50:50.865469",
+  ;;      :table_description nil,
+  ;;      :display "table",
+  ;;      :initial_sync_status nil,
+  ;;      :table_name nil,
+  ;;      :display_name nil,
+  ;;      :created_at #t "2024-06-11T00:50:50.820882"})
+
+  )
+
+;; ----------------- NEW IMPLEMENTATION ENDS -------------------
 
 (mu/defn ^:private shared-card-impl
   [type       :- :metabase.models.card/type
@@ -270,6 +516,10 @@
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
       (with-moderated-status "card")))
+
+(defmulti ^:private search-query-for-model
+  {:arglists '([model search-context])}
+  (fn [model _] model))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -369,18 +619,6 @@
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:metabase_table :table] [:= :segment.table_id :table.id])))
-
-(defmethod search-query-for-model "table"
-  [model {:keys [current-user-perms table-db-id], :as search-ctx}]
-  (let [table-column #(search.config/column-with-alias model %)]
-    (when (seq current-user-perms)
-      (-> (base-query-for-model model search-ctx)
-          (sql.helpers/where [:and
-                              [:not [:= (table-column :db_id) audit/audit-db-id]]
-                              [:= (table-column :active) true]
-                              [:= (table-column :visibility_type) nil]])
-          (add-table-db-id-clause table-db-id)
-          (sql.helpers/left-join :metabase_database [:= (table-column :db_id) :metabase_database.id])))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"

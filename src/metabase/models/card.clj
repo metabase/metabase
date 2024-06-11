@@ -45,6 +45,7 @@
     :refer [defenterprise]]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.util :as qp.util]
+   [metabase.search.impl :as search.impl]
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.util.i18n :refer [trs]]
    [metabase.util :as u]
@@ -550,6 +551,13 @@
   (public-settings/remove-public-uuid-if-public-sharing-is-disabled
    (dissoc card :dataset_query_metrics_v2_migration_backup)))
 
+;; Maybe this should be after-delete, but that doesn't exist for toucan yet
+(t2/define-before-delete :model/Card
+  [card]
+  (search.impl/index {:change-type  :insert
+                      :id           (:id card)
+                      :search-model "card"}))
+
 (t2/define-before-insert :model/Card
   [card]
   (-> card
@@ -566,7 +574,11 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-field/update-query-fields-for-card! card)))
+    (query-field/update-query-fields-for-card! card)
+    (search.impl/index {:change-type  :insert
+                        :id           (:id card)
+                        :search-model "card"
+                        :values       card})))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -594,7 +606,11 @@
   [card]
   (u/prog1 card
     (when (contains? (t2/changes card) :dataset_query)
-      (query-field/update-query-fields-for-card! card))))
+      (query-field/update-query-fields-for-card! card)))
+  (search.impl/index {:change-type  :update
+                      :id           (:id card)
+                      :search-model "card"
+                      :values       card}))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
