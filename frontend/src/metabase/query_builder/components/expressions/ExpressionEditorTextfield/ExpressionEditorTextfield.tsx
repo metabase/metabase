@@ -217,7 +217,6 @@ class ExpressionEditorTextfield extends React.Component<
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
   helpTextTarget = React.createRef<HTMLDivElement>();
-  popupMenuTarget = React.createRef<HTMLDivElement>();
 
   static defaultProps = {
     expression: "",
@@ -447,11 +446,6 @@ class ExpressionEditorTextfield extends React.Component<
   };
 
   handleInputBlur = (e: React.FocusEvent) => {
-    // Ensure there is no active popup menu before we blur
-    if (this.popupMenuTarget?.current) {
-      return;
-    }
-
     this.setState({ isFocused: false });
 
     // Switching to another window also triggers the blur event.
@@ -727,7 +721,6 @@ class ExpressionEditorTextfield extends React.Component<
           highlightedIndex={highlightedSuggestionIndex}
           onHighlightSuggestion={this.handleHighlightSuggestion}
           open={isFocused}
-          ref={this.popupMenuTarget}
         >
           <EditorContainer
             isFocused={isFocused}
