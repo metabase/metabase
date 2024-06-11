@@ -326,6 +326,7 @@ function Widget({
     return (
       <TemporalUnitWidget
         parameter={parameter}
+        value={value}
         setValue={setValue}
         onClose={onPopoverClose}
       />

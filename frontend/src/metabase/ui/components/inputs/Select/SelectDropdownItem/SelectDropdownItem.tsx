@@ -1,14 +1,14 @@
 import { type BoxProps, Group, Text } from "@mantine/core";
 import cx from "classnames";
-import type { Ref, HTMLAttributes } from "react";
-import { forwardRef } from "react";
+import { forwardRef, type HTMLAttributes, type Ref } from "react";
 
-import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
 
-import S from "./SelectItem.module.css";
+import S from "./SelectDropdownItem.module.css";
 
-interface SelectItemProps extends HTMLAttributes<HTMLDivElement>, BoxProps {
+interface SelectDropdownItemProps
+  extends HTMLAttributes<HTMLDivElement>,
+    BoxProps {
   value: string;
   label?: string;
   icon?: IconName;
@@ -16,7 +16,7 @@ interface SelectItemProps extends HTMLAttributes<HTMLDivElement>, BoxProps {
   isDisabled?: boolean;
 }
 
-export const SelectItem = forwardRef(function SelectItem(
+export const SelectDropdownItem = forwardRef(function SelectDropdownItem(
   {
     className,
     value,
@@ -25,7 +25,7 @@ export const SelectItem = forwardRef(function SelectItem(
     isSelected,
     isDisabled,
     ...others
-  }: SelectItemProps,
+  }: SelectDropdownItemProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (

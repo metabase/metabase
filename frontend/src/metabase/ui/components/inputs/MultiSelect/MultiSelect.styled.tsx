@@ -9,7 +9,7 @@ import {
   getSelectItemsOverrides,
 } from "../Select/Select.styled";
 import { SelectDropdown } from "../Select/SelectDropdown";
-import { SelectItem } from "../Select/SelectItem";
+import { SelectDropdownItem } from "../Select/SelectDropdownItem";
 
 const SIZES = {
   xs: rem(30),
@@ -29,7 +29,7 @@ export const getMultiSelectOverrides =
         variant: "default",
         withinPortal: true,
         dropdownComponent: SelectDropdown,
-        itemComponent: SelectItem,
+        itemComponent: SelectDropdownItem,
         clearButtonProps: {
           color: "text-dark",
         },

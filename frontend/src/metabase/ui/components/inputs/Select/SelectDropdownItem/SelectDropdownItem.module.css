@@ -1,4 +1,8 @@
 .item {
+  cursor: pointer;
+  border-radius: 6px;
+  word-break: break-all;
+
   &:hover {
     color: var(--mb-color-brand);
     background-color: var(--mb-color-brand-lighter);
@@ -12,6 +16,7 @@
 
   &.disabled,
   &[data-disabled] {
+    cursor: default;
     color: var(--mb-color-text-light);
   }
 }
