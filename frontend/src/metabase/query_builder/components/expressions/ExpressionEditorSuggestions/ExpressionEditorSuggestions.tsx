@@ -95,7 +95,7 @@ export const ExpressionEditorSuggestions = forwardRef<
   const groups = group(items);
 
   function handleMouseDown(evt: MouseEvent) {
-    if (evt.target === mergedRef.current) {
+    if (evt.target === listRef.current) {
       evt.preventDefault();
       evt.stopPropagation();
     }
