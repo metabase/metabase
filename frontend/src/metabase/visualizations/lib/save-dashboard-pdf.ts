@@ -20,7 +20,7 @@ export const saveDashboardPdf = async (
       const title = doc.createElement("h2") as HTMLElement;
       title.innerHTML = dashboardName;
       title.style["borderBottom"] = "1px solid var(--mb-color-border)";
-      title.style["padding"] = "0 1rem 1rem 1rem";
+      title.style["padding"] = "2rem 1rem 1rem 1rem";
       node.insertBefore(title, node.firstChild);
     },
   });
@@ -39,7 +39,7 @@ export const saveDashboardPdf = async (
     orientation: pdfWidth > pdfHeight ? "l" : "p",
   });
 
-  pdf.addImage(image, "JPEG", 0, 60, imageWidth, imageHeight, "", "FAST", 0);
+  pdf.addImage(image, "JPEG", 0, 0, imageWidth, imageHeight, "", "FAST", 0);
 
   pdf.save(fileName);
 };
