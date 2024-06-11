@@ -108,25 +108,27 @@ function App({
       const win = window as {
         stayLoading?: boolean;
         noNaturalSkeletons?: boolean;
+        shimmerSkeletons?: boolean;
       };
       match([e.ctrlKey, e.key])
+        .with([true, "s"], () => {
+          win.shimmerSkeletons = !win.shimmerSkeletons;
+          // eslint-disable-next-line no-console
+          console.log(
+            `Skeleton shimmer ${win.shimmerSkeletons ? "on" : "off"}`,
+          );
+        })
         .with([true, "n"], () => {
           win.noNaturalSkeletons = !win.noNaturalSkeletons;
           // eslint-disable-next-line no-console
           console.log(
-            `toggling natural skeletons: ${
-              win.noNaturalSkeletons ? "on" : "off"
-            }`,
+            `Natural skeletons ${win.noNaturalSkeletons ? "on" : "off"}`,
           );
         })
         .with([true, "l"], () => {
           win.stayLoading = !win.stayLoading;
           // eslint-disable-next-line no-console
-          console.log(
-            `toggling permanent loading state: ${
-              win.stayLoading ? "on" : "off"
-            }`,
-          );
+          console.log(`Permanent loading ${win.stayLoading ? "on" : "off"}`);
         });
     };
     document.addEventListener("keydown", onKeyDown);
