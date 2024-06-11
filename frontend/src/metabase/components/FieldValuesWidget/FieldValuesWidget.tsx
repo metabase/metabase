@@ -462,7 +462,7 @@ export function FieldValuesWidgetInner({
     return { value, label };
   };
 
-  const isSimpleInput = parameter.values_query_type === "none";
+  const isSimpleInput = parameter?.values_query_type === "none";
 
   return (
     <ErrorBoundary>
