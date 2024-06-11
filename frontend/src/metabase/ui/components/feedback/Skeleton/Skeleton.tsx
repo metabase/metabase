@@ -8,6 +8,11 @@ export const Skeleton = (
     natural?: boolean;
   },
 ) => {
+  // FIXME: remove this
+  props.natural &&= (
+    window as { noNaturalSkeletons?: boolean }
+  ).noNaturalSkeletons;
+
   const width = useMemo(
     () => (props.natural ? `${Math.random() * 30 + 50}%` : props.width),
     [props.natural, props.width],

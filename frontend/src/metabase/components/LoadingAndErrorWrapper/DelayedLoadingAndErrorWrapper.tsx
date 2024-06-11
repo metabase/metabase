@@ -43,6 +43,9 @@ export const DelayedLoadingAndErrorWrapper = ({
   // If delay is zero show the wrapper immediately. Otherwise, apply a timeout
   const [showWrapper, setShowWrapper] = useState(delay === 0);
 
+  // FIXME: remove this
+  loading ||= (window as { stayLoading?: boolean }).stayLoading;
+
   props.loadingMessages ??= [];
 
   useEffect(() => {
