@@ -1,11 +1,11 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
+import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
 import { deleteSession, initiateSLO } from "metabase/lib/auth";
 import { isSmallScreen, reload } from "metabase/lib/dom";
 import { loadLocalization } from "metabase/lib/i18n";
-import { createAction, createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import { openNavbar } from "metabase/redux/app";
