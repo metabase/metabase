@@ -12,11 +12,11 @@ export const TableRoot = styled.div`
 `;
 
 function getIdColumnOverride(theme: MantineTheme) {
-  const backgroundColor =
-    theme.other.table.idColumn?.backgroundColor ?? theme.fn.themeColor("brand");
+  const brand = theme.fn.themeColor("brand");
+  const { backgroundColor } = theme.other.table.idColumn ?? {};
 
   return css`
-    border: 1px solid ${alpha(backgroundColor, 0.14)};
-    background-color: ${alpha(backgroundColor, 0.08)};
+    border: 1px solid ${backgroundColor ?? alpha(brand, 0.14)};
+    background-color: ${backgroundColor ?? alpha(brand, 0.08)};
   `;
 }
