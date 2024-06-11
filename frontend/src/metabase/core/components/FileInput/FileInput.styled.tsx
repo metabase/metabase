@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const InputRoot = styled.label`
   display: flex;
 `;
@@ -11,7 +9,7 @@ export interface InputFieldProps {
 }
 
 export const InputField = styled.input<InputFieldProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   flex: 1 1 auto;
   font-family: inherit;
   font-weight: ${props => (props.hasValue ? "bold" : "")};
@@ -33,7 +31,7 @@ export const InputButton = styled.span`
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
   box-sizing: border-box;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   cursor: pointer;
   display: inline-block;
   font-family: inherit;

@@ -1,11 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   overflow-y: auto;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   height: 100%;
 
   ${props =>
@@ -33,6 +31,5 @@ export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
 export const TabWrapper = styled.div`
   display: grid;
   grid-template-rows: auto 1fr;
-  min-width: calc(min(50rem, 100vw));
   width: calc(min(65rem, 100vw));
 `;

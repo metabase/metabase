@@ -13,10 +13,10 @@ export const RemoveButton = styled.button<RemoveButtonProps>`
   width: 44px;
   cursor: pointer;
   border-radius: 0 8px 8px 0;
-  border-left: 1px solid ${alpha(color("white"), 0.25)};
+  border-left: 1px solid ${() => alpha(color("bg-white"), 0.25)};
 
   color: ${props =>
-    props.isConditionComplete ? color("white") : color("brand")};
+    props.isConditionComplete ? color("text-white") : color("brand")};
 
   &:hover,
   &:focus {

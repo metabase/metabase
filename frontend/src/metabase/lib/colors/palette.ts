@@ -168,13 +168,13 @@ export const getTextColorForBackground = (
   getColor: ColorGetter = color,
 ) => {
   const whiteTextContrast =
-    Color(getColor(backgroundColor)).contrast(Color(getColor("white"))) *
+    Color(getColor(backgroundColor)).contrast(Color(getColor("text-white"))) *
     whiteTextColorPriorityFactor;
   const darkTextContrast = Color(getColor(backgroundColor)).contrast(
     Color(getColor("text-dark")),
   );
 
   return whiteTextContrast > darkTextContrast
-    ? getColor("white")
+    ? getColor("text-white")
     : getColor("text-dark");
 };

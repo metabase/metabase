@@ -64,7 +64,7 @@ const _StaticDashboard = ({
   const { font } = useEmbedFont();
 
   return (
-    <Box ref={ref} style={{ overflow: "auto" }}>
+    <Box w="100%" ref={ref} style={{ overflow: "auto" }}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}

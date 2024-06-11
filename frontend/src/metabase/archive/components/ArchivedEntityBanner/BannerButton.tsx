@@ -15,14 +15,14 @@ export const BannerButton = ({
   <Button
     compact
     variant="outline"
-    color="white"
+    color="text-white"
     miw="2rem"
     h="2rem"
     onClick={onClick}
   >
     <Flex align="center" gap="sm">
       <FixedSizeIcon size={12} name={iconName} />
-      <Text color="white" display={{ base: "none", sm: "inline" }}>
+      <Text color="text-white" display={{ base: "none", sm: "inline" }}>
         {children}
       </Text>
     </Flex>

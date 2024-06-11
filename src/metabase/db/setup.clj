@@ -126,7 +126,7 @@
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
       (let [latest-available (liquibase/latest-available-major-version liquibase)
-            latest-applied (liquibase/latest-applied-major-version conn)]
+            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
         ;; `latest-applied` will be `nil` for fresh installs
         (when (and latest-applied (< latest-available latest-applied))
           (throw (ex-info

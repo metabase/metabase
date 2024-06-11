@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 interface SidebarButtonProps {
@@ -30,7 +29,7 @@ export const SidebarIcon = styled(Icon)<SidebarIconProps>`
   ${props =>
     !props.isLogoVisible &&
     css`
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
 
       &:hover {
         color: var(--mb-color-brand);

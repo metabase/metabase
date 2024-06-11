@@ -13,11 +13,11 @@ button.horizontalButton {
   color: var(--mb-color-text-dark);
 
   &:hover {
-    color: var(--color-white);
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
 
     .nested {
-      color: var(--color-white);
+      color: var(--mb-color-text-white);
     }
   }
 

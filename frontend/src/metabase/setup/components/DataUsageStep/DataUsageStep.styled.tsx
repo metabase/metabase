@@ -1,11 +1,10 @@
 import styled from "@emotion/styled";
 
 import Toggle from "metabase/core/components/Toggle";
-import { color } from "metabase/lib/colors";
 
 export const StepDescription = styled.div`
   margin: 0.875rem 0 1.25rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const StepToggleContainer = styled.div`
@@ -22,13 +21,13 @@ export const StepToggle = styled(Toggle)`
 `;
 
 export const StepToggleLabel = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: 0.5rem;
 `;
 
 export const StepInfoList = styled.ul`
   margin: 0 0 1.25rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   list-style: disc inside;
   line-height: 2;
 `;

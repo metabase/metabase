@@ -66,21 +66,23 @@
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; fake a db where we ran all the migrations, including the legacy ones
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
-        (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase "")
-          (t2/update! (liquibase/changelog-table-name conn) {:filename "migrations/000_migrations.yaml"})
-          (liquibase/consolidate-liquibase-changesets! conn liquibase))
-        (testing "makes sure the change log filename are correctly set"
-          (is (= (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
-                 (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/000_legacy_migrations.yaml")))
+          (liquibase/with-liquibase [liquibase conn]
+            (let [table-name (liquibase/changelog-table-name liquibase)]
+              (.update liquibase "")
+              (t2/update! table-name {:filename "migrations/000_migrations.yaml"})
+              (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
-          (is (= (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
-                 (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/001_update_migrations.yaml"))))
+              (testing "makes sure the change log filename are correctly set"
+                (is (= (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
+                       (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
-        (is (= (t2/select-fn-set :id (liquibase/changelog-table-name conn))
-               (set/union
-                (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
-                (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))
+                (is (= (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
+                       (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml"))))
+
+              (is (= (t2/select-fn-set :id table-name)
+                     (set/union
+                      (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
+                      (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))))
 
 (deftest wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}
