@@ -37,7 +37,7 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     right: 0;
     border-radius: 8px;
 
-    ${({theme}) => getDashboardCardShadowOrBorder(theme)}
+    ${({ theme }) => getDashboardCardShadowOrBorder(theme)}
   }
 
   ${props =>
@@ -84,7 +84,7 @@ export const DashboardGridContainer = styled.div<{
     `}
 `;
 
-function getDashboardCardShadowOrBorder({ theme }: { theme: MantineTheme }) {
+function getDashboardCardShadowOrBorder(theme: MantineTheme) {
   const { border } = theme.other.dashboard.card;
 
   if (border) {
