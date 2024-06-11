@@ -100,6 +100,10 @@ function App({
 
   // FIXME: REMOVE THIS TEMPORARY PROTOTYPING CODE
   useEffect(() => {
+    const attr = "data-shortcutKeysInitialized";
+    if (document.body.hasAttribute(attr)) {
+      return;
+    }
     const onKeyDown = (e: KeyboardEvent) => {
       const win = window as {
         stayLoading?: boolean;
@@ -118,7 +122,11 @@ function App({
         });
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.body.setAttribute(attr, "true");
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.removeAttribute(attr);
+    };
   }, []);
 
   return (
