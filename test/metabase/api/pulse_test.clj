@@ -1010,7 +1010,7 @@
             (is (=? {:subject    "Daily Sad Toucans"
                      :recipients ["rasta@metabase.com"]
                      :message    {"Daily Sad Toucans" true}}
-                    (mt/summarize-multipart-single-email #p (first (:channel/email channel-messages)) #"Daily Sad Toucans"))))))))
+                    (mt/summarize-multipart-single-email (first (:channel/email channel-messages)) #"Daily Sad Toucans"))))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
