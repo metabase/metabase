@@ -16,6 +16,7 @@
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
+   :closure-defines {goog.debug.LOGGING_ENABLED true}
    :entries    [metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit

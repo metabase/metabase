@@ -16,7 +16,7 @@ export const HeaderLink = styled.div`
   align-items: center;
   min-width: 0;
   margin-right: auto;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   cursor: ${props => props.onClick && "pointer"};
 
   &:hover {
@@ -44,5 +44,5 @@ export const HeaderMenu = styled.div`
 
 export const HeaderCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

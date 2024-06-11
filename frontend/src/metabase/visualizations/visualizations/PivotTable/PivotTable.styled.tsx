@@ -170,7 +170,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const ResizeHandle = styled.div`

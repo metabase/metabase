@@ -32,7 +32,8 @@ import {
   isVirtualDashCard,
 } from "../utils";
 
-import { autoWireParametersToNewCard } from "./auto-wire-parameters/actions";
+import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
+import { closeAddCardAutoWireToasts } from "./auto-wire-parameters/toasts";
 import {
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
@@ -53,7 +54,7 @@ type NewDashboardCard = Omit<
   "entity_id" | "created_at" | "updated_at"
 >;
 
-type AddDashCardOpts = NewDashCardOpts & {
+export type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<NewDashboardCard> & {
     card: Card | VirtualCard;
   };
@@ -136,7 +137,7 @@ export const addSectionToDashboard =
     trackSectionAdded(dashId, sectionLayout.id);
   };
 
-type AddCardToDashboardOpts = NewDashCardOpts & {
+export type AddCardToDashboardOpts = NewDashCardOpts & {
   cardId: CardId;
 };
 
@@ -159,7 +160,7 @@ export const addCardToDashboard =
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
     await dispatch(loadMetadataForCard(card));
-    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+    dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
   };
 
 export const addHeadingDashCardToDashboard =
@@ -234,7 +235,7 @@ export const replaceCard =
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
     await dispatch(loadMetadataForCard(card));
-    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+    dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);
   };
@@ -249,6 +250,8 @@ export const removeCardFromDashboard = createThunkAction(
       cardId: DashboardCard["card_id"];
     }) =>
     dispatch => {
+      dispatch(closeAddCardAutoWireToasts());
+
       // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
       dispatch(cancelFetchCardData(cardId, dashcardId));
       return { dashcardId };

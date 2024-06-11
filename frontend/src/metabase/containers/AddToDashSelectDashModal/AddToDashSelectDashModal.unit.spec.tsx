@@ -8,7 +8,7 @@ import {
   setupMostRecentlyViewedDashboard,
   setupSearchEndpoints,
   setupCollectionItemsEndpoint,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -230,7 +230,7 @@ const setup = async ({
 
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupCollectionByIdEndpoint({ collections, error });
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
 

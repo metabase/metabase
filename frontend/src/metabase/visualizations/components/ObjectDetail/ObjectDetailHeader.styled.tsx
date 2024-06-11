@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const ObjectDetailHeaderWrapper = styled.div`
   flex-shrink: 0;
   display: flex;
@@ -10,7 +8,7 @@ export const ObjectDetailHeaderWrapper = styled.div`
 `;
 
 export const ObjectIdLabel = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: 0.5rem;
 `;
 

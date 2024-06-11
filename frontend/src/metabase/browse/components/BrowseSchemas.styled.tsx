@@ -25,7 +25,7 @@ export const SchemaLink = styled(Link)`
   overflow: hidden;
 
   &:hover {
-    color: ${color("accent2")};
+    color: ${() => color("accent2")};
   }
 `;
 

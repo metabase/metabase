@@ -175,6 +175,14 @@
     (is (migration-id-in-range? 1 "v42.00-015" "v43.00-014"))
     (is (not (migration-id-in-range? 1 "v43.00-014" "v42.00-015")))))
 
+(defn- range-description [start-id end-id {:keys [inclusive-start? inclusive-end?]}]
+  (let [inclusive-exclusive #(if % "inclusive" "exclusive")]
+    (if end-id
+      (format "between %s (%s) and %s (%s)"
+              start-id (inclusive-exclusive inclusive-start?)
+              end-id (inclusive-exclusive inclusive-end?))
+      (format "from %s (%s) until the end" start-id (inclusive-exclusive inclusive-start?)))))
+
 (defn run-migrations-in-range!
   "Run Liquibase migrations from our migrations YAML file in the range of `start-id` -> `end-id` (inclusive) against a
   DB with `jdbc-spec`."
@@ -183,6 +191,8 @@
                                                          :or {inclusive-start? true
                                                               inclusive-end? true}}])}
   [^java.sql.Connection conn [start-id end-id] & [range-options]]
+  (log/debugf "Finding and running migrations %s" (range-description start-id end-id range-options))
+
   (liquibase/with-liquibase [liquibase conn]
     (let [database (.getDatabase liquibase)
           change-set-filters [(reify ChangeSetFilter
@@ -225,21 +235,18 @@
                 ([direction version]
                  (case direction
                    :up
-                   (do
-                     (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-                     ;; If we have rolled back earlier migrations, it's no longer safe to resume from start-id.
-                     (if-let [start-after @restart-id]
-                       (run-migrations-in-range! conn [start-after end-id] {:inclusive-start? false})
-                       (run-migrations-in-range! conn [start-id end-id])))
+                   ;; If we have rolled back earlier migrations, it's no longer safe to resume from start-id.
+                   (if-let [start-after @restart-id]
+                     (run-migrations-in-range! conn [start-after end-id] {:inclusive-start? false})
+                     (run-migrations-in-range! conn [start-id end-id]))
 
                    :down
                    (do
                      (assert (int? version), "Downgrade requires a version")
                      (mdb/migrate! (mdb/data-source) :down version)
                      ;; We may have rolled back migrations prior to start-id, so its no longer safe to start from there.
-                     (liquibase/with-liquibase [liquibase conn]
-                       (let [table-name (.getDatabaseChangeLogTableName (.getDatabase liquibase))]
-                         (reset! restart-id (t2/select-one-pk table-name {:order-by [[:orderexecuted :desc]]}))))))))]
+                     (reset! restart-id (t2/select-one-pk (liquibase/changelog-table-name conn)
+                                                          {:order-by [[:orderexecuted :desc]]}))))))]
         (f migrate))))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 

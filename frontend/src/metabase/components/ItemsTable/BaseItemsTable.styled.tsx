@@ -5,7 +5,6 @@ import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
-import { color } from "metabase/lib/colors";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import { FixedSizeIcon } from "metabase/ui";
 
@@ -56,7 +55,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
     padding: 0.75em 1em 0.75em;
   }
   font-weight: bold;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   ${hideResponsively}
 `;
 
@@ -110,7 +109,7 @@ export const SortingIcon = styled(FixedSizeIcon)`
 `;
 
 export const DescriptionIcon = styled(FixedSizeIcon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 SortingIcon.defaultProps = {
@@ -118,7 +117,7 @@ SortingIcon.defaultProps = {
 };
 
 export const ModelDetailLink = styled(BaseModelDetailLink)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   visibility: hidden;
 `;
 
@@ -128,7 +127,7 @@ export const SortingControlContainer = styled.div<{
 }>`
   display: flex;
   align-items: center;
-  color: ${props => (props.isActive ? color("text-dark") : "")};
+  color: ${({ isActive }) => isActive && "var(--mb-color-text-dark)"};
   ${props => (props.isSortable ? `cursor: pointer; user-select: none;` : "")}
 
   .Icon {
@@ -136,7 +135,7 @@ export const SortingControlContainer = styled.div<{
   }
 
   &:hover {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
 
     .Icon {
       visibility: visible;
@@ -156,7 +155,7 @@ export const RowActionsContainer = styled.div`
 
 export const TableItemSecondaryField = styled.span`
   font-size: 0.95em;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const TBody = styled.tbody`
