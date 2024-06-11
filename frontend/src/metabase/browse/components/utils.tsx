@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import type {
-  CollectionEssentials,
-  SearchResult,
-} from "metabase-types/api";
+import type { CollectionEssentials, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { ModelResult } from "../types";
