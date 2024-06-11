@@ -3,6 +3,7 @@ import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { connect } from "react-redux";
+import { match } from "ts-pattern";
 
 import { AppBanner } from "metabase/components/AppBanner";
 import {
@@ -95,6 +96,47 @@ function App({
 
   useEffect(() => {
     initializeIframeResizer();
+  }, []);
+
+  // FIXME: REMOVE THIS TEMPORARY PROTOTYPING CODE
+  useEffect(() => {
+    const attr = "data-shortcutKeysInitialized";
+    if (document.body.hasAttribute(attr)) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      const win = window as {
+        stayLoading?: boolean;
+        noNaturalSkeletons?: boolean;
+        shimmerSkeletons?: boolean;
+      };
+      match([e.ctrlKey, e.key])
+        .with([true, "s"], () => {
+          win.shimmerSkeletons = !win.shimmerSkeletons;
+          // eslint-disable-next-line no-console
+          console.log(
+            `Skeleton shimmer ${win.shimmerSkeletons ? "on" : "off"}`,
+          );
+        })
+        .with([true, "n"], () => {
+          win.noNaturalSkeletons = !win.noNaturalSkeletons;
+          // eslint-disable-next-line no-console
+          console.log(
+            `Natural skeletons ${win.noNaturalSkeletons ? "on" : "off"}`,
+          );
+        })
+        .with([true, "l"], () => {
+          win.stayLoading = !win.stayLoading;
+          // eslint-disable-next-line no-console
+          console.log(`Permanent loading ${win.stayLoading ? "on" : "off"}`);
+        });
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.body.setAttribute(attr, "true");
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.removeAttribute(attr);
+    };
   }, []);
 
   return (
