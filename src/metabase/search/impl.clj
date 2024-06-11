@@ -370,16 +370,20 @@
   (let [query (:query (searchable-data-query-for-model model))]
     (sql.helpers/where query [:= :id id])))
 
+(def searchable-models ["card"]) ; just card for now
+
 ;; TODO: right not this returns a HoneySQL expression that can be
 ;; used in a WHERE clause, but this will take a different format
 ;; in the future to allow more backends to compile it to their
-;; own query language
+;; own queries. To unlock full text search, we'll need to move the LIKE
+;; clauses from here to the backend-specific code, so H2 and MySQL can use LIKE,
+;; and Postgres can use full text search.
 (defn general-search-query
   "Returns a HoneySQL clause that can be used in a WHERE clause to search across all models."
   [search-ctx]
   (into
    [:or]
-   (for [model ["card"]] ; just card for now
+   (for [model searchable-models]
      (search-filters-for-model model search-ctx))))
 
 ;; -------------- Backend-specific code -----------------
