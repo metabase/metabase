@@ -69,7 +69,7 @@ describe("NumberInputWidget", () => {
       );
 
       const textbox = screen.getByRole("textbox");
-      await userEvent.clear(textbox);
+      await userEvent.type(textbox, "{backspace}{backspace}{backspace}");
       await userEvent.type(textbox, "456");
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
