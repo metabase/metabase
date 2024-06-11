@@ -2,12 +2,13 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
+  VisualizationSettings,
 } from "metabase-types/api";
-import { createMockDataset } from "metabase-types/api/mocks";
+import { createMockSingleSeries } from "metabase-types/api/mocks";
 
-import { syncVizSettingsWithQueryResults } from "./sync-settings";
+import { syncVizSettingsWithSeries } from "./sync-settings";
 
-const cols: DatasetColumn[] = [
+const columns: DatasetColumn[] = [
   {
     display_name: "num",
     source: "native",
@@ -36,47 +37,52 @@ const cols: DatasetColumn[] = [
   },
 ];
 
-const vizSettingColumns: TableColumnOrderSetting[] = cols.map(column => ({
+const vizSettingColumns: TableColumnOrderSetting[] = columns.map(column => ({
   key: getColumnKey(column),
   name: column.name,
   fieldRef: column.field_ref,
   enabled: true,
 }));
 
-const noVizSettings = {};
-const vizSettings = {
+const noVizSettings: VisualizationSettings = {};
+const vizSettings: VisualizationSettings = {
   "table.columns": vizSettingColumns,
 };
 
-describe("syncVizSettingsWithQueryResults", () => {
+function createSeries({
+  cols = columns,
+  settings = vizSettings,
+}: { cols?: DatasetColumn[]; settings?: VisualizationSettings } = {}) {
+  return [
+    createMockSingleSeries(
+      { visualization_settings: settings },
+      { data: { cols, rows: [] } },
+    ),
+  ];
+}
+
+describe("syncVizSettingsWithSeries", () => {
   describe("when 'table.columns' setting is not defined", () => {
     it("should do nothing when given empty query results", () => {
-      const queryResults = createMockDataset({
-        error: { status: 500 },
-        data: { cols: [], rows: [] },
-      });
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        noVizSettings,
-        queryResults,
-      );
+      const series = [
+        createMockSingleSeries(
+          { visualization_settings: noVizSettings },
+          { error: { status: 500 }, data: { cols: [], rows: [] } },
+        ),
+      ];
+      const syncedSettings = syncVizSettingsWithSeries(noVizSettings, series);
       expect(syncedSettings).toEqual({});
     });
 
     it("should do nothing when given query results with no columns", () => {
-      const queryResults = createMockDataset({ data: { cols: [], rows: [] } });
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        noVizSettings,
-        queryResults,
-      );
+      const series = createSeries({ settings: noVizSettings, cols: [] });
+      const syncedSettings = syncVizSettingsWithSeries(noVizSettings, series);
       expect(syncedSettings).toEqual({});
     });
 
     it("should do nothing when given query results with columns", () => {
-      const queryResults = createMockDataset({ data: { cols } });
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        noVizSettings,
-        queryResults,
-      );
+      const series = createSeries({ settings: noVizSettings, cols: columns });
+      const syncedSettings = syncVizSettingsWithSeries(noVizSettings, series);
       expect(syncedSettings).toEqual({});
     });
   });
@@ -98,18 +104,13 @@ describe("syncVizSettingsWithQueryResults", () => {
         ],
         base_type: "type/Float",
       };
-      const queryResults = createMockDataset({
-        data: { cols: [...cols.slice(1), addedColumn] },
-      });
+      const series = createSeries({ cols: [...columns.slice(1), addedColumn] });
 
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        vizSettings,
-        queryResults,
-      );
+      const syncedSettings = syncVizSettingsWithSeries(vizSettings, series);
 
       expect(syncedSettings).toEqual({
         "table.columns": [
-          ...vizSettings["table.columns"].slice(1),
+          ...vizSettingColumns.slice(1),
           {
             key: getColumnKey(addedColumn),
             name: addedColumn.name,
@@ -134,18 +135,15 @@ describe("syncVizSettingsWithQueryResults", () => {
         name: "foo",
         base_type: "type/Float",
       };
-      const queryResults = createMockDataset({
-        data: { cols: [updatedColumn, ...cols.slice(1)] },
+      const series = createSeries({
+        cols: [updatedColumn, ...columns.slice(1)],
       });
 
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        vizSettings,
-        queryResults,
-      );
+      const syncedSettings = syncVizSettingsWithSeries(vizSettings, series);
 
       expect(syncedSettings).toEqual({
         "table.columns": [
-          ...vizSettings["table.columns"].slice(1),
+          ...vizSettingColumns.slice(1),
           {
             key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
@@ -170,18 +168,15 @@ describe("syncVizSettingsWithQueryResults", () => {
         ],
         base_type: "type/Integer",
       };
-      const queryResults = createMockDataset({
-        data: { cols: [updatedColumn, ...cols.slice(1)] },
+      const series = createSeries({
+        cols: [updatedColumn, ...columns.slice(1)],
       });
 
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        vizSettings,
-        queryResults,
-      );
+      const syncedSettings = syncVizSettingsWithSeries(vizSettings, series);
 
       expect(syncedSettings).toEqual({
         "table.columns": [
-          ...vizSettings["table.columns"].slice(1),
+          ...vizSettingColumns.slice(1),
           {
             key: getColumnKey(updatedColumn),
             name: updatedColumn.name,
@@ -193,15 +188,8 @@ describe("syncVizSettingsWithQueryResults", () => {
     });
 
     it("shouldn't update settings if order of columns has changed", () => {
-      const queryResults = createMockDataset({
-        data: { cols: [cols[1], cols[0]] },
-      });
-
-      const syncedSettings = syncVizSettingsWithQueryResults(
-        vizSettings,
-        queryResults,
-      );
-
+      const series = createSeries({ cols: [columns[1], columns[0]] });
+      const syncedSettings = syncVizSettingsWithSeries(vizSettings, series);
       expect(syncedSettings).toEqual(vizSettings);
     });
   });

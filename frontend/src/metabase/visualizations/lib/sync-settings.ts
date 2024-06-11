@@ -3,23 +3,30 @@ import {
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-export function syncVizSettingsWithQueryResults(
+export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
-  queryResults?: Dataset,
-  prevQueryResults?: Dataset,
+  _series?: Series | null,
+  _previousSeries?: Series | null,
 ): VisualizationSettings {
   let newSettings = settings;
 
-  if (queryResults && !queryResults.error) {
-    newSettings = syncTableColumnSettings(newSettings, queryResults);
+  const series = _series?.[0];
+  const previousSeries = _previousSeries?.[0];
 
-    if (prevQueryResults && !prevQueryResults.error) {
+  if (series && !series.error) {
+    newSettings = syncTableColumnSettings(newSettings, series);
+
+    if (previousSeries && !previousSeries.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
-        queryResults,
-        prevQueryResults,
+        series,
+        previousSeries,
       );
     }
   }
@@ -29,7 +36,7 @@ export function syncVizSettingsWithQueryResults(
 
 function syncTableColumnSettings(
   settings: VisualizationSettings,
-  { data }: Dataset,
+  { data }: SingleSeries,
 ): VisualizationSettings {
   // "table.columns" receive a value only if there are custom settings
   // e.g. some columns are hidden. If it's empty, it means everything is visible
@@ -77,8 +84,8 @@ function syncTableColumnSettings(
 
 function syncGraphMetricSettings(
   settings: VisualizationSettings,
-  { data: { cols } }: Dataset,
-  { data: { cols: prevCols } }: Dataset,
+  { data: { cols } }: SingleSeries,
+  { data: { cols: prevCols } }: SingleSeries,
 ): VisualizationSettings {
   const graphMetrics = settings["graph.metrics"];
   if (!graphMetrics) {
