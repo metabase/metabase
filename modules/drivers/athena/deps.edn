@@ -7,7 +7,4 @@
  :deps
  #_{com.amazonaws/aws-java-sdk-core {:mvn/version "1.12.683"}
   com.metabase/athena-jdbc        {:mvn/version "2.0.35"}}
- {;; At the current stage I use locally downloaded uber jar from:
-  ;; https://downloads.athena.us-east-1.amazonaws.com/drivers/JDBC/3.2.0/athena-jdbc-3.2.0-with-dependencies.jar
-  ;; Link can be found on https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver.html#jdbc-v3-driver-download
-  com.metabase/athena-jdbc {:local/root "<ADD DOWNLOAD ROOT>/athena-jdbc-3.2.0-with-dependencies.jar"}}}
+ {com.metabase/athena-jdbc {:mvn/version "3.2.0"}}}
