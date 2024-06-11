@@ -1,6 +1,10 @@
 import type { Story } from "@storybook/react";
 
-import { VisualizationWrapper } from "__support__/storybook";
+import {
+  VisualizationWrapper,
+  SdkVisualizationWrapper,
+} from "__support__/storybook";
+import type { MetabaseTheme } from "embedding-sdk";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -24,3 +28,24 @@ export const Default: Story = () => (
     </Box>
   </VisualizationWrapper>
 );
+
+export const EmbeddingTheme: Story = () => {
+  const theme: MetabaseTheme = {
+    components: {
+      dashboard: {
+        card: { backgroundColor: "#2d2d30" },
+      },
+      table: {
+        cell: { backgroundColor: "#2f3640" },
+      },
+    },
+  };
+
+  return (
+    <SdkVisualizationWrapper theme={theme}>
+      <Box h={500}>
+        <Visualization rawSeries={RAW_SERIES} />,
+      </Box>
+    </SdkVisualizationWrapper>
+  );
+};

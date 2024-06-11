@@ -35,6 +35,7 @@ export const CellContent = styled.span<{
     props.isClickable &&
     css`
       cursor: pointer;
+
       &:hover {
         color: var(--mb-color-brand);
       }
@@ -45,17 +46,15 @@ function getCellColor(options: {
   isHighlighted: boolean;
   theme: MantineTheme;
 }) {
+  const tableTheme = options.theme.other.table;
+
   if (options.isHighlighted) {
     return css`
-      color: var(--mb-color-brand);
+      color: ${tableTheme.idColumn?.textColor ?? "var(--mb-color-brand)"};
     `;
   }
 
-  const { textColor } = options.theme.other.table.cell;
-
-  if (textColor) {
-    return css`
-      color: ${textColor};
-    `;
-  }
+  return css`
+    color: ${tableTheme.cell.textColor};
+  `;
 }
