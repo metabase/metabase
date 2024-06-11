@@ -7,7 +7,7 @@ import type {
 import { getStylesRef, px, rem, getSize } from "@mantine/core";
 
 import { SelectDropdown } from "./SelectDropdown";
-import { SelectItem } from "./SelectItem";
+import { SelectItem, getItemFontSize, getItemLineHeight } from "./SelectItem";
 
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
   Select: {
@@ -109,16 +109,6 @@ export const getSelectInputOverrides = (
   };
 };
 
-const LINE_HEIGHTS = {
-  xs: rem(16),
-  md: rem(24),
-};
-
-const ITEM_FONT_SIZES = {
-  xs: rem(12),
-  md: rem(14),
-};
-
 const SEPARATOR_FONT_SIZES = {
   xs: rem(12),
   md: rem(12),
@@ -133,8 +123,21 @@ export const getSelectItemsOverrides = (
       padding: "0.75rem",
     },
     item: {
-      fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
-      lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
+      color: theme.fn.themeColor("text-dark"),
+      fontSize: getItemFontSize(size),
+      lineHeight: getItemLineHeight(size),
+      padding: theme.spacing.sm,
+      "&[data-hovered]": {
+        color: theme.fn.themeColor("brand"),
+        backgroundColor: theme.fn.themeColor("brand-lighter"),
+      },
+      "&[data-selected]": {
+        color: theme.fn.themeColor("text-white"),
+        backgroundColor: theme.fn.themeColor("brand"),
+      },
+      "&[data-disabled]": {
+        color: theme.fn.themeColor("text-light"),
+      },
     },
     separator: {
       padding: `0 ${theme.spacing.sm}`,
@@ -162,8 +165,8 @@ export const getSelectItemsOverrides = (
     },
     nothingFound: {
       color: theme.fn.themeColor("text-light"),
-      fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
-      lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
+      fontSize: getItemFontSize(size),
+      lineHeight: getItemLineHeight(size),
       padding: theme.spacing.sm,
     },
   };
