@@ -1,9 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  addOrUpdateDashboardCard,
-  appBar,
   filterWidget,
-  getDashboardCard,
   popover,
   queryBuilderMain,
   restore,
