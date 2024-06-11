@@ -52,6 +52,7 @@ import {
   FormWrapper,
   LoaderInButton,
   StyledForm,
+  StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
 
 interface ButtonLabels {
@@ -165,7 +166,7 @@ const StrategyFormBody = ({
   return (
     <FormWrapper>
       <StyledForm style={{ overflow: isInSidebar ? undefined : "auto" }}>
-        <FormBox className="strategy-form-box">
+        <FormBox>
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
               <Group spacing="sm">
@@ -240,19 +241,9 @@ const FormButtonsGroup = ({
   isInSidebar?: boolean;
 }) => {
   return (
-    <Group
-      py="md"
-      spacing="md"
-      bg="bg-white"
-      className="form-buttons-group"
-      style={{
-        justifyContent: isInSidebar ? undefined : "flex-end",
-        paddingInlineStart: isInSidebar ? "2rem" : "2.5rem",
-        paddingInlineEnd: isInSidebar ? "1rem" : "2.5rem",
-      }}
-    >
+    <StyledFormButtonsGroup isInSidebar={isInSidebar}>
       {children}
-    </Group>
+    </StyledFormButtonsGroup>
   );
 };
 

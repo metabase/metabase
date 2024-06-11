@@ -10,13 +10,13 @@ const getAceEditorStyles = () => css`
   .ace_editor {
     height: 100%;
     background-color: var(--mb-color-bg-light);
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   .ace_search {
     font-family: Lato;
     background-color: var(--mb-color-bg-light);
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     border-color: var(--mb-color-border);
     padding-bottom: 2px;
   }
@@ -84,7 +84,7 @@ const getAceEditorStyles = () => css`
     padding-top: 2px;
     font-size: 10px;
     font-weight: 700;
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
     padding-left: 0;
     padding-right: 7px;
     display: block;

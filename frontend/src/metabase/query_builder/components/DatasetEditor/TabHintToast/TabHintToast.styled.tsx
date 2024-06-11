@@ -11,12 +11,12 @@ export const ToastCard = styled(Card)`
 `;
 
 export const ToastMessage = styled.span`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
 `;
 
 export const TabIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-right: ${space(1)};
 `;
 

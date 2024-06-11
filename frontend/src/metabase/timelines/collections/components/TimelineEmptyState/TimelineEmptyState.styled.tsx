@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import DateTime from "metabase/components/DateTime";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmptyStateRoot = styled.div`
@@ -29,7 +29,7 @@ export const EmptyStateTooltip = styled.div`
   margin-bottom: 1rem;
   padding: 1rem;
   border-radius: 0.5rem;
-  background-color: ${color("text-dark")};
+  background-color: var(--mb-color-text-dark);
 `;
 
 export const EmptyStateTooltipIcon = styled(Icon)`
@@ -85,7 +85,7 @@ export const EmptyStateThreadIconContainer = styled.div`
 `;
 
 export const EmptyStateMessage = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   line-height: 1.5rem;
   margin-bottom: 2rem;
   text-align: center;

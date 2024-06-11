@@ -208,7 +208,6 @@
                          :card.archived
                          :card.id
                          :card.display
-                         :card.trashed_from_collection_id
                          [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
                          [:collection.id :collection_id]
@@ -304,7 +303,6 @@
                          :dash.name
                          :dash.description
                          :dash.archived
-                         :dash.trashed_from_collection_id
                          [:dash.collection_id :entity-coll-id]
                          [:c.id :collection_id]
                          [:c.name :collection_name]
@@ -338,7 +336,7 @@
     (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
-                                           :archived :location :trashed_from_location]
+                                           :archived :location]
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]

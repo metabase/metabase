@@ -2,7 +2,6 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
-import { color } from "metabase/lib/colors";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
@@ -107,7 +106,7 @@ describe("Text", () => {
         ).toHaveTextContent("Heading");
         expect(screen.getByTestId("editing-dashboard-heading-container"))
           .toHaveStyle(`border: 1px solid var(--mb-color-brand);
-                        color: ${color("text-light")};`);
+                        color: var(--mb-color-text-light);`);
       });
 
       it("should preview with text when it has content", () => {

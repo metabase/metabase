@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 export const SavedEntityPickerRoot = styled.div`
@@ -34,7 +33,7 @@ export const BackButton = styled.a`
   font-size: 16px;
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   border-bottom: 1px solid var(--mb-color-border);
   padding: 1rem;
 

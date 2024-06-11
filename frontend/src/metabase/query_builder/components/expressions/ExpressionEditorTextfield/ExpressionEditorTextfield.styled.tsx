@@ -47,13 +47,13 @@ export const EditorContainer = styled.div<{
   }
 
   .ace_hidpi .ace_content {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     font-weight: 700;
   }
 
   .ace-tm .ace_keyword,
   .ace-tm .ace_constant.ace_numeric {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   .ace-tm .ace_variable {
@@ -61,7 +61,7 @@ export const EditorContainer = styled.div<{
   }
 
   .ace-tm .ace_string {
-    color: ${color("accent5")};
+    color: ${() => color("accent5")};
   }
 
   .ace_cursor {

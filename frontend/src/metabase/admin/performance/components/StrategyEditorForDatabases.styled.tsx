@@ -31,6 +31,5 @@ export const RoundedBox = styled.div<{ twoColumns?: boolean }>`
 export const TabWrapper = styled.div`
   display: grid;
   grid-template-rows: auto 1fr;
-  min-width: calc(min(50rem, 100vw));
   width: calc(min(65rem, 100vw));
 `;

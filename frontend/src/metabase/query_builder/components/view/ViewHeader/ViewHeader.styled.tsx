@@ -104,7 +104,7 @@ export const IconHeaderButton = styled(HeaderButton)`
 
 const getDefaultColor = () => color("brand");
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   //margin-left: 4px;
 
   ${breakpointMaxSmall} {
@@ -169,7 +169,7 @@ export const HeaderDivider = styled.span`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 `;
@@ -210,7 +210,7 @@ interface ViewRunButtonWithTooltipProps {
 export const ViewRunButtonWithTooltip = styled(
   RunButtonWithTooltip,
 )<ViewRunButtonWithTooltipProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
     color: ${props => (props.isDirty ? color("text-white") : color("brand"))};
