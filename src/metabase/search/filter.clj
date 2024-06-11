@@ -47,8 +47,8 @@
 ;; These models have an `archive` column and they can be archived
 (doseq [model ["dashboard" "metric" "segment" "card" "dataset" "collection" "action"]]
   (defmethod build-filter [:archived model]
-    [_filter model query archived]
-    (sql.helpers/where query [:= (search.config/column-with-alias model :archived) (boolean archived)])))
+    [_filter _model query archived]
+    (sql.helpers/where query [:= :archived (boolean archived)])))
 
 ; created-by
 
@@ -235,7 +235,8 @@
   [query          :- :map
    model          :- SearchableModel
    search-context :- SearchContext]
-  (let [filters (keys (optional-filters->supported-models))]
+  ;; TODO: fix the rest of the filters
+  (let [filters [:archived] #_(keys (optional-filters->supported-models))]
     (reduce (fn [q filter]
               (let [v (get search-context filter)]
                 (build-filter filter model q v)))

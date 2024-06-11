@@ -126,7 +126,7 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
-(defn- create-table!-sql
+(defn create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
   (first (sql/format {:create-table (keyword table-name)
                       :with-columns (cond-> (mapv (fn [[name type-spec]]

@@ -135,6 +135,8 @@
   `UNION` two columns of two different types.)"
   (ordered-map/ordered-map
    ;; returned for all models. Important to be first for changing model for dataset
+   :query_type          :text
+   :type                :text
    :model               :text
    :id                  :integer
    :name                :text
@@ -213,11 +215,11 @@
 (defmethod searchable-columns-for-model "table"          [_] [:name :description :display_name])
 (defmethod searchable-columns-for-model "indexed-entity" [_] [:name])
 
-(def ^:private default-columns
+(def default-columns
   "Columns returned for all models."
   [:id :name :description :archived :created_at :updated_at])
 
-(def ^:private bookmark-col
+(def bookmark-col
   "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
   [[:case [:not= :bookmark.id nil] true :else false] :bookmark])
 
