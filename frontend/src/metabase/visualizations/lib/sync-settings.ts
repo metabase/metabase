@@ -13,7 +13,7 @@ export type SettingsSyncOptions = {
   column: DatasetColumn;
 };
 
-export function syncColumnSettings(
+export function syncVizSettingsWithQueryResults(
   settings: VisualizationSettings,
   queryResults?: Dataset,
   prevQueryResults?: Dataset,
@@ -67,12 +67,12 @@ function syncTableColumnSettings(
     cols,
     columnSettings,
   );
-  const addedColumns = cols.filter((col, colIndex) => {
+  const addedColumns = cols.filter((_, colIndex) => {
     const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
     return !hasVizSettings;
   });
   const existingColumnSettings = columnSettings.filter(
-    (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
+    (_, settingIndex) => columnIndexes[settingIndex] >= 0,
   );
   const noColumnsRemoved =
     existingColumnSettings.length === columnSettings.length;
