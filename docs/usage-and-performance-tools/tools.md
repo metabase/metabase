@@ -24,9 +24,9 @@ You can select and rerun multiple questions at a time while you troubleshoot to 
 
 Here you can view the:
 
-- [Models](../data-modeling/models.md) being cached,
-- The status of the last caching query,
-- When the model was last cached,
-- And who created the cache.
+- [Models](../data-modeling/models.md) being persisted
+- The status of the last model query refresh
+- When the model was last refreshed
+- And who created the persisted model
 
-You can also click the refresh icon to rerun the model's query to update its cache.
+You can also click the refresh icon to rerun the model's query to update its results.
