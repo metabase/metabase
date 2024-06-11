@@ -111,7 +111,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [block-data-permission]: ../permissions/data.md#blocked-view-data-permission
 [cant-see-tables]: ./cant-see-tables.md
 [collection-permissions]: ../permissions/collections.md
-[data-access]: ../permissions/data.md#data-permissions
+[data-access]: ../permissions/data.md#data-permission-types
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
 [groups]: ../people-and-groups/managing.md#groups
