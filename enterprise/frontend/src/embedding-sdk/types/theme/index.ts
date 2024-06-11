@@ -84,6 +84,13 @@ export interface MetabaseComponentTheme {
 
     card: {
       backgroundColor: string;
+
+      /**
+       * Add custom borders to dashboard cards when set.
+       * Value is the same as the border property in CSS, such as "1px solid #ff0000".
+       * This will replace the card's drop shadow.
+       **/
+      border?: string;
     };
   };
 

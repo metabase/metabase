@@ -1,18 +1,19 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListRecentItemsQuery } from "metabase/api";
+import { useLogRecentItemMutation, useListRecentsQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import type {
-  RecentItem,
-  SearchModel,
-  SearchRequest,
-  SearchResult,
-  SearchResultId,
+import {
+  isLoggableActivityModel,
+  type RecentItem,
+  type SearchModel,
+  type SearchRequest,
+  type SearchResult,
+  type SearchResultId,
 } from "metabase-types/api";
 
 import type {
@@ -93,10 +94,16 @@ export function EntityPickerModal<
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
-    useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
+    useListRecentsQuery(
+      { context: ["views", "selections"] },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
+  const [logRecentItem] = useLogRecentItemMutation();
 
   const [showActionButtons, setShowActionButtons] = useState<boolean>(
     !!actionButtons.length,
@@ -159,6 +166,18 @@ export function EntityPickerModal<
 
   const hasTabs = tabs.length > 1 || searchQuery;
 
+  const handleConfirm = useCallback(() => {
+    if (onConfirm) {
+      onConfirm();
+      if (selectedItem && isLoggableActivityModel(selectedItem)) {
+        logRecentItem({
+          model_id: selectedItem.id,
+          model: selectedItem.model,
+        });
+      }
+    }
+  }, [onConfirm, logRecentItem, selectedItem]);
+
   useWindowEvent(
     "keydown",
     event => {
@@ -217,7 +236,7 @@ export function EntityPickerModal<
             )}
             {!!hydratedOptions.hasConfirmButtons && onConfirm && (
               <ButtonBar
-                onConfirm={onConfirm}
+                onConfirm={handleConfirm}
                 onCancel={onClose}
                 canConfirm={canSelectItem}
                 actionButtons={showActionButtons ? actionButtons : []}

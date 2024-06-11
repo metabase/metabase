@@ -342,6 +342,7 @@ function Widget({
 
   if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
+
     return (
       <NumberInputWidget
         value={normalizedValue}

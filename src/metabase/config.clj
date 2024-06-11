@@ -159,3 +159,7 @@
   Using this effectively means `MB_LOAD_SAMPLE_CONTENT` defaults to true."
   []
   (not (false? (config-bool :mb-load-sample-content))))
+
+(def ^:dynamic *request-id*
+  "A unique identifier for the current request. This is bound by `metabase.server.middleware.request-id/wrap-request-id`."
+  nil)

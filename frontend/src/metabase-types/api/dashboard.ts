@@ -48,6 +48,7 @@ export interface Dashboard {
   collection_authority_level?: CollectionAuthorityLevel;
   can_write: boolean;
   can_restore: boolean;
+  can_delete: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;

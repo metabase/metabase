@@ -100,6 +100,10 @@ export function getNumberParameterArity(parameter: Parameter) {
   switch (parameter.type) {
     case "number/=":
     case "number/!=":
+      if (!getIsMultiSelect(parameter)) {
+        return 1;
+      }
+
       return "n";
     case "number/between":
       return 2;

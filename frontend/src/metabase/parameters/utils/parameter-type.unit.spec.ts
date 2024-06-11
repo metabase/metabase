@@ -8,7 +8,7 @@ describe("isSingleOrMultiSelectable", () => {
     const parameter = createMockParameter({
       sectionId: "number",
     });
-    expect(isSingleOrMultiSelectable(parameter)).toBe(false);
+    expect(isSingleOrMultiSelectable(parameter)).toBe(true);
   });
 
   it("is false for parameters with acceptable types and rejected subTypes", () => {
