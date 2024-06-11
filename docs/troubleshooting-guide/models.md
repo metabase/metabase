@@ -26,7 +26,7 @@ If your changes to a model's metadata or underlying question aren't showing up:
 
 1. Use model persistence.
 
-    - Metabase can [write back to your data warehouse][model-persistence]. If you enable model caching, Metabase will read a pre-computed and materialized version of the model directly from the database instead of running the query from scratch. Please consider this option is only available in some supported data warehouses.
+    - Metabase can [write back to your data warehouse][model-persistence]. If you enable model persistence, Metabase will read a pre-computed and materialized version of the model directly from the database instead of running the query from scratch. Please consider this option is only available in some supported data warehouses.
 
 2. Optimize the underlying saved question or SQL query.
 

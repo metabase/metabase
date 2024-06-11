@@ -8,7 +8,7 @@ We recommend creating a `metabase` database user with the following database rol
 
 - [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
 - Optional [`metabase_actions` for write access](#privileges-to-enable-actions) to tables used for Metabase actions.
-- Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model caching.
+- Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
@@ -115,7 +115,7 @@ In addition to the [minimum database privileges](#minimum-database-privileges):
 
 - Create a new role called `metabase_model_persistence`.
 - Give the role `CREATE` access to the database.
-- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model caching.
+- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model persistence.
 - Give the `metabase_model_persistence` role to the `metabase` user.
 
 ```sql
