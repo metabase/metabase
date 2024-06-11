@@ -172,6 +172,14 @@
      (.getObject ^java.sql.ResultSet rs ^int i)
      (qp.timezone/results-timezone-id))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIMESTAMP]
+  [_driver rs _rs-meta i]
+  (fn []
+    (t/local-date-time
+     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Timestamp)
+     #_(t/zone-id "UTC")
+     #_(qp.timezone/results-timezone-id))))
+
 ;; TODO: Handle time values as well ie. `read-time-and-timestamp-with-time-zone-columns-test`
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
