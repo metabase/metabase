@@ -247,7 +247,7 @@ describe("ParameterSidebar", () => {
         temporal_units: ["day"],
       });
       const { onChangeTemporalUnits } = setup({ parameter });
-      await userEvent.click(await screen.findByDisplayValue("Day"));
+      await userEvent.click(await screen.findByText("Day"));
       await userEvent.click(await screen.findByLabelText("Month"));
       expect(onChangeTemporalUnits).toHaveBeenCalledWith(["day", "month"]);
     });
