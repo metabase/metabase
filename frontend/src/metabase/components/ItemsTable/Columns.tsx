@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
-import { getUrl } from "metabase/browse/utils";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
@@ -11,8 +10,10 @@ import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
@@ -42,9 +43,9 @@ const ItemLinkComponent = ({
   item: CollectionItem;
   onClick?: (item: CollectionItem) => void;
 }>) => {
-  const url = getUrl(item);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
-  if (!url) {
+  if (isEmbeddingSdk) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
@@ -195,7 +196,9 @@ export const Columns = {
       sortingOptions,
       onSortingOptionsChange,
       isTrashed,
-    }: HeaderProps & { isTrashed: boolean }) => (
+    }: HeaderProps & {
+      isTrashed: boolean;
+    }) => (
       <SortableColumnHeader
         name="last_edited_by"
         sortingOptions={sortingOptions}
@@ -241,7 +244,9 @@ export const Columns = {
       sortingOptions,
       onSortingOptionsChange,
       isTrashed,
-    }: HeaderProps & { isTrashed: boolean }) => (
+    }: HeaderProps & {
+      isTrashed: boolean;
+    }) => (
       <SortableColumnHeader
         name="last_edited_at"
         sortingOptions={sortingOptions}
