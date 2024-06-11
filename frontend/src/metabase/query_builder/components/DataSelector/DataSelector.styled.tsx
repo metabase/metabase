@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import SelectList from "metabase/components/SelectList";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon, Text } from "metabase/ui";
 
@@ -12,7 +11,7 @@ export const DataSelectorSection = styled.section`
 
 export const DataBucketIcon = styled(Icon)`
   margin-top: 2px;
-  color: ${color("text-dark")} !important;
+  color: var(--mb-color-text-dark) !important;
 `;
 
 export const DataBucketDescription = styled.span`
@@ -28,7 +27,7 @@ const BackButtonContainer = styled.div`
 
 const BackButtonLabel = styled.span`
   font-size: 16px;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   margin-left: ${space(1)};
 
@@ -87,7 +86,7 @@ export const TriggerContainerIcon = styled.div`
 
 export const TextSchema = styled(Text)<React.PropsWithChildren>`
   font-size: 0.75em;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   line-height: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;

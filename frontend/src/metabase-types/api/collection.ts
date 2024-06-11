@@ -58,6 +58,7 @@ export interface Collection {
   description: string | null;
   can_write: boolean;
   can_restore: boolean;
+  can_delete: boolean;
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
@@ -114,6 +115,7 @@ export interface CollectionItem {
   below?: CollectionItemModel[];
   can_write?: boolean;
   can_restore?: boolean;
+  can_delete?: boolean;
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;

@@ -222,6 +222,7 @@ function DashboardInner(props: DashboardProps) {
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
+  const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
@@ -434,6 +435,7 @@ function DashboardInner(props: DashboardProps) {
                 entityType="dashboard"
                 canWrite={canWrite}
                 canRestore={canRestore}
+                canDelete={canDelete}
                 onUnarchive={() => dispatch(setArchivedDashboard(false))}
                 onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
                 onDeletePermanently={() => {

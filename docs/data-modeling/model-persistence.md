@@ -58,7 +58,7 @@ To refresh a model's results, go to the model and click on the **i** info icon. 
 
 ## View model persistence logs
 
-You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
+You can view the logs for model persistence by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
 
 ## Difference between persisted models and caching
 

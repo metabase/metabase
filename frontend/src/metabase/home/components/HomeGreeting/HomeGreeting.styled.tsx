@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
-import { color } from "metabase/lib/colors";
 import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
 
 export const GreetingRoot = styled.div`
@@ -25,7 +24,7 @@ export interface GreetingMessageProps {
 }
 
 export const GreetingMessage = styled.span<GreetingMessageProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
   line-height: 1.5rem;

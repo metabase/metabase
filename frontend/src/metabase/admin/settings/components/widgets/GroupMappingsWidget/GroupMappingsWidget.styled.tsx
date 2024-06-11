@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const GroupMappingsWidgetAndErrorRoot = styled.div`
@@ -38,7 +37,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     padding-right: ${space(1)};
     padding-top: 0;
   }
@@ -46,7 +45,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
 
 export const GroupMappingsWidgetAbout = styled.div`
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   display: flex;
   flex-direction: row;
 

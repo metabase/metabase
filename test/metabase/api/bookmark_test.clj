@@ -78,9 +78,7 @@
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp [Collection archived-collection {:name "Test Collection"
-                                                   :archived true
-                                                   :location (collection/trash-path)
-                                                   :trashed_from_location "/"}
+                                                   :archived true}
                    Card       archived-card {:name "Test Card" :archived true}
                    Dashboard  archived-dashboard {:name "Test Dashboard" :archived true}]
       (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)

@@ -1,12 +1,10 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const ErrorBox = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 4px;
 
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   background-color: var(--mb-color-bg-light);
 
   font-family: Monaco, monospace;
@@ -19,12 +17,12 @@ export const IconButtonContainer = styled.button`
   cursor: pointer;
 
   .Icon {
-    color: ${color("text-light")};
+    color: var(--mb-color-text-light);
   }
 
   &:hover {
     .Icon {
-      color: ${color("text-dark")};
+      color: var(--mb-color-text-dark);
     }
   }
 `;

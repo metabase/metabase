@@ -658,21 +658,18 @@
     [(parse-fn xs)]))
 
 
-;;; ---------------------------------------- MOVING TO TRASH ON ARCHIVE --------------------------------
+;;; ---------------------------------------- SET `archived_directly` ---------------------------------
 
-(defn move-on-archive-or-unarchive
-  "Given a current instance with a `collection_id` and `trashed_from_collection_id` and a set of updates to that
-  instance, return a possibly modified version of the updates reflecting the fact that archiving or unarchiving also
-  moves the instance to/from the Trash."
-  [current-obj obj-updates trash-collection-id]
+(defn updates-with-archived-directly
+  "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
+  [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)
-    (assoc :collection_id (cond
-                            (:archived obj-updates) trash-collection-id
+    (assoc :archived_directly (boolean (:archived obj-updates)))))
 
-                            (column-will-change? :collection_id current-obj obj-updates)
-                            (:collection_id obj-updates)
-
-                            :else (:trashed_from_collection_id current-obj))
-           :trashed_from_collection_id (when (:archived obj-updates)
-                                         (:collection_id current-obj)))))
+(defn present-in-trash-if-archived-directly
+  "If `:archived_directly` is `true`, set `:collection_id` to the trash collection ID."
+  [item trash-collection-id]
+  (cond-> item
+    (:archived_directly item)
+    (assoc :collection_id trash-collection-id)))
