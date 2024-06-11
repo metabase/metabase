@@ -124,6 +124,51 @@ export function getAutoWiredMappingsForDashcards(
   }
   return targetDashcardMappings;
 }
+
+export function getAutoWiredMappingsForTemporalUnitParameter(
+  parameter: Parameter,
+  dashcards: QuestionDashboardCard[],
+  questions: Record<CardId, Question>,
+): {
+  dashcardAttributes: SetMultipleDashCardAttributesOpts;
+  originalDashcardAttributes: SetMultipleDashCardAttributesOpts;
+} {
+  const dashcardAttributes: SetMultipleDashCardAttributesOpts = [];
+  const originalDashcardAttributes: SetMultipleDashCardAttributesOpts = [];
+
+  for (const dashcard of dashcards) {
+    const targetQuestion = questions[dashcard.card.id];
+    const mappingOptions = getParameterMappingOptions(
+      targetQuestion,
+      parameter,
+      dashcard.card,
+      dashcard,
+    );
+
+    if (mappingOptions.length === 1 && dashcard.card_id) {
+      dashcardAttributes.push({
+        id: dashcard.id,
+        attributes: {
+          parameter_mappings: getParameterMappings(
+            dashcard,
+            parameter.id,
+            dashcard.card_id,
+            mappingOptions[0].target,
+          ),
+        },
+      });
+      originalDashcardAttributes.push({
+        id: dashcard.id,
+        attributes: {
+          parameter_mappings: dashcard.parameter_mappings,
+        },
+      });
+    }
+  }
+
+  return { dashcardAttributes, originalDashcardAttributes };
+}
+
 export function getParameterMappings<DC extends DashboardCard>(
   dashcard: DC,
   parameter_id: ParameterId,

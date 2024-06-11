@@ -2,10 +2,12 @@ import {
   closeAutoWireParameterToast,
   showAddedCardAutoWireParametersToast,
   showAutoWireParametersToast,
+  showAutoWireTemporalUnitParameterToast,
 } from "metabase/dashboard/actions/auto-wire-parameters/toasts";
 import {
   getAllDashboardCardsWithUnmappedParameters,
   getAutoWiredMappingsForDashcards,
+  getAutoWiredMappingsForTemporalUnitParameter,
   getMatchingParameterOption,
   getParameterMappings,
 } from "metabase/dashboard/actions/auto-wire-parameters/utils";
@@ -18,6 +20,9 @@ import {
   getDashboard,
   getSelectedTabId,
   getTabs,
+  getDashboards,
+  getDashcards,
+  getDashboardId,
 } from "metabase/dashboard/selectors";
 import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
@@ -198,6 +203,48 @@ export function showAutoWireToastNewCard({
         dashcard_id,
         parametersMappingsToApply,
         parametersToMap,
+      }),
+    );
+  };
+}
+
+export function showAutoWireToastForTemporalUnitParameter(
+  parameterId: ParameterId,
+) {
+  return function (dispatch: Dispatch, getState: GetState) {
+    const dashboardId = getDashboardId(getState());
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    if (!dashboardId || !parameter) {
+      return;
+    }
+
+    const questions = getQuestions(getState());
+    const selectedTabId = getSelectedTabId(getState());
+    const dashcards = getExistingDashCards(
+      getDashboards(getState()),
+      getDashcards(getState()),
+      dashboardId,
+      selectedTabId,
+    );
+    const { dashcardAttributes, originalDashcardAttributes } =
+      getAutoWiredMappingsForTemporalUnitParameter(
+        parameter,
+        dashcards.filter(isQuestionDashCard),
+        questions,
+      );
+    const shouldShowToast = dashcardAttributes.length > 0;
+    if (!shouldShowToast) {
+      return;
+    }
+
+    const tabs = getTabs(getState());
+    dispatch(
+      showAutoWireTemporalUnitParameterToast({
+        dashcardAttributes,
+        originalDashcardAttributes,
+        hasMultipleTabs: tabs.length > 0,
       }),
     );
   };

@@ -79,6 +79,65 @@ export const showAutoWireParametersToast =
     }
   };
 
+export const showAutoWireTemporalUnitParameterToast =
+  ({
+    dashcardAttributes,
+    originalDashcardAttributes,
+    hasMultipleTabs,
+  }: {
+    dashcardAttributes: SetMultipleDashCardAttributesOpts;
+    originalDashcardAttributes: SetMultipleDashCardAttributesOpts;
+    hasMultipleTabs: boolean;
+  }) =>
+  (dispatch: Dispatch) => {
+    const message = hasMultipleTabs
+      ? t`Auto-connect this parameter to all questions in the current tab?`
+      : t`Auto-connect this parameter to all questions?`;
+
+    dispatch(
+      addUndo({
+        id: AUTO_WIRE_TOAST_ID,
+        icon: null,
+        message,
+        actionLabel: t`Auto-connect`,
+        timeout: 12000,
+        action: () => {
+          connectAll();
+          showUndoToast();
+        },
+      }),
+    );
+
+    function connectAll() {
+      dispatch(
+        setMultipleDashCardAttributes({
+          dashcards: dashcardAttributes,
+        }),
+      );
+    }
+
+    function revertConnectAll() {
+      dispatch(
+        setMultipleDashCardAttributes({
+          dashcards: originalDashcardAttributes,
+        }),
+      );
+    }
+
+    function showUndoToast() {
+      dispatch(
+        addUndo({
+          id: AUTO_WIRE_UNDO_TOAST_ID,
+          message: t`The parameter was auto-connected.`,
+          actionLabel: t`Undo`,
+          timeout: 12000,
+          type: "filterAutoConnect",
+          action: revertConnectAll,
+        }),
+      );
+    }
+  };
+
 export const showAddedCardAutoWireParametersToast =
   ({
     targetDashcard,
