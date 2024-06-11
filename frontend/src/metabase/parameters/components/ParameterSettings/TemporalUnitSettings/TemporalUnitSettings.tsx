@@ -37,7 +37,7 @@ export function TemporalUnitSettings({
           fw="normal"
           rightIcon={<Icon name="chevrondown" />}
           fullWidth
-          styles={{ inner: { justifyContent: "space-between" } }}
+          styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7
         >
           {getSelectedText(selectedUnits, isAll, isNone)}
         </Button>
