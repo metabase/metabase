@@ -462,6 +462,8 @@ export function FieldValuesWidgetInner({
     return { value, label };
   };
 
+  const isSimpleInput = parameter.values_query_type === "none";
+
   return (
     <ErrorBoundary>
       <div
@@ -494,7 +496,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
-        ) : multi ? (
+        ) : !isSimpleInput ? (
           <MultiAutocomplete<string>
             onSearchChange={onInputChange}
             onChange={onChange}
