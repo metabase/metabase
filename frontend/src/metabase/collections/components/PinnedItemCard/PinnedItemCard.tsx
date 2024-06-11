@@ -33,6 +33,7 @@ import {
 
 type ItemOrSkeleton =
   | {
+      /** If `item` is undefined, the `skeleton` prop must be true */
       item: CollectionItem | RecentCollectionItem;
       skeleton?: never;
       iconForSkeleton?: never;
@@ -80,7 +81,6 @@ function PinnedItemCard({
   onCopy,
   onMove,
   onClick,
-  skeleton,
   iconForSkeleton,
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
@@ -90,8 +90,6 @@ function PinnedItemCard({
       model: item.model,
       moderated_status: item.moderated_status,
     }).name;
-  const defaultedDescription =
-    item?.description || DEFAULT_DESCRIPTION[item?.model || ""] || "";
 
   const maybeEnableTooltip = (
     event: MouseEvent<HTMLDivElement>,
@@ -135,11 +133,9 @@ function PinnedItemCard({
               )}
             </ActionsContainer>
           </Header>
-          {skeleton ? (
-            <Skeleton natural h="1.5rem" />
-          ) : (
+          {item ? (
             <Tooltip
-              tooltip={item?.name}
+              tooltip={item.name}
               placement="bottom"
               maxWidth={TOOLTIP_MAX_WIDTH}
               isEnabled={showTitleTooltip}
@@ -147,16 +143,18 @@ function PinnedItemCard({
               <Title
                 onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
               >
-                {item?.name}
+                {item.name}
               </Title>
             </Tooltip>
-          )}
-          {skeleton ? (
-            <Skeleton natural mt="xs" mb="4px" h="1rem" />
           ) : (
+            <Skeleton natural h="1.5rem" />
+          )}
+          {item ? (
             <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
-              {defaultedDescription}
+              {item.description || DEFAULT_DESCRIPTION[item.model] || ""}
             </Description>
+          ) : (
+            <Skeleton natural mt="xs" mb="4px" h="1rem" />
           )}
         </Body>
       </ItemCard>
