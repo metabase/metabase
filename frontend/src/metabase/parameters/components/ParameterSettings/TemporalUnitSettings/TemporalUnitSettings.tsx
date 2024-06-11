@@ -128,7 +128,7 @@ function getSelectedText(
     return t`None`;
   }
 
-  const visibleUnitCount = Math.max(selectedUnits.length, VISIBLE_UNIT_LIMIT);
+  const visibleUnitCount = Math.min(selectedUnits.length, VISIBLE_UNIT_LIMIT);
   const hiddenUnitCount = selectedUnits.length - visibleUnitCount;
 
   return selectedUnits
