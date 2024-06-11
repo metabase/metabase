@@ -113,3 +113,88 @@ export const calculateLegendRows = ({
     items: rows.flat(),
   };
 };
+
+function calculateNumCols(
+  items: LegendItem[],
+  width: number,
+  fontSize: number,
+  fontWeight: number,
+) {
+  let colWidth: number;
+  let numCols = 0;
+
+  do {
+    if (numCols >= items.length) {
+      return items.length;
+    }
+
+    colWidth = Math.floor(width / ++numCols);
+  } while (
+    items.every(
+      item =>
+        calculateItemWidth(item, fontSize, fontWeight) +
+          LEGEND_ITEM_MARGIN_RIGHT <=
+        colWidth,
+    )
+  );
+
+  return numCols - 1;
+}
+
+export const calculateLegendRowsWithColumns = ({
+  items,
+  width,
+  horizontalPadding = 0,
+  verticalPadding = 0,
+  lineHeight = DEFAULT_LEGEND_LINE_HEIGHT,
+  fontSize = DEFAULT_LEGEND_FONT_SIZE,
+  fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
+  isReversed,
+}: CalculateLegendInput): { items: PositionedLegendItem[]; height: number } => {
+  if (items.length <= 1) {
+    return {
+      items: [],
+      height: 0,
+    };
+  }
+
+  const orderedItems = isReversed ? items.slice().reverse() : items;
+
+  const availableTotalWidth = width - 2 * horizontalPadding;
+
+  const numCols = calculateNumCols(
+    orderedItems,
+    availableTotalWidth,
+    fontSize,
+    fontWeight,
+  );
+  const colWidth = Math.floor(availableTotalWidth / numCols);
+  const numRows = Math.ceil(items.length / numCols);
+  const rows: PositionedLegendItem[][] = [];
+
+  for (let rowIndex = 0; rowIndex < numRows; rowIndex++) {
+    const currentRow: PositionedLegendItem[] = [];
+
+    for (let colIndex = 0; colIndex < numCols; colIndex++) {
+      const itemIndex = rowIndex * numCols + colIndex;
+      if (itemIndex >= orderedItems.length) {
+        break;
+      }
+
+      currentRow.push({
+        ...orderedItems[itemIndex],
+        left: colIndex * colWidth + horizontalPadding,
+        top: rowIndex * lineHeight + verticalPadding,
+      });
+    }
+
+    rows.push(currentRow);
+  }
+
+  const height = rows.length * lineHeight + verticalPadding * 2;
+
+  return {
+    height,
+    items: rows.flat(),
+  };
+};
