@@ -1,2 +1,2 @@
-export { Skeleton } from "@mantine/core";
+export { Skeleton } from "./Skeleton";
 export * from "./Skeleton.styled";
