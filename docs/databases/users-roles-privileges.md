@@ -8,12 +8,12 @@ We recommend creating a `metabase` database user with the following database rol
 
 - [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
 - Optional [`metabase_actions` for write access](#privileges-to-enable-actions) to tables used for Metabase actions.
-- Optional [`metabase_model_caching` for write access](#privileges-to-enable-model-caching) to the schema used for Metabase model caching.
+- Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
 - Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/databases/data-landscape#data-analysis-layer) that need read-only access to the analytics tables in your database.
-- Revoke the write access for `metabase_model_caching` without affecting the write access for `metabase_actions`.
+- Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
 ## Minimum database privileges
 
@@ -107,31 +107,31 @@ GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase
 GRANT metabase_actions TO metabase;
 ```
 
-## Privileges to enable model caching
+## Privileges to enable model persistence
 
-[Model caching](../data-modeling/models.md#model-caching) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+[Model persistence](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
-- Create a new role called `metabase_model_caching`.
+- Create a new role called `metabase_model_persistence`.
 - Give the role `CREATE` access to the database.
-- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model caching.
-- Give the `metabase_model_caching` role to the `metabase` user.
+- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model persistence.
+- Give the `metabase_model_persistence` role to the `metabase` user.
 
 ```sql
--- Create a role to bundle database privileges for Metabase model caching.
-CREATE ROLE metabase_model_caching WITH LOGIN;
+-- Create a role to bundle database privileges for Metabase model persistence.
+CREATE ROLE metabase_model_persistence WITH LOGIN;
 
 -- If you don't want to give CREATE access to your database,
--- add the schema manually before enabling modeling caching.
-GRANT CREATE ON "database" TO metabase_model_caching;
+-- add the schema manually before enabling modeling persistence.
+GRANT CREATE ON "database" TO metabase_model_persistence;
 
--- Grant write privileges to the SCHEMA used for model caching.
-GRANT USAGE ON "your_schema" TO metabase_model_caching;
-GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO metabase_model_caching;
+-- Grant write privileges to the SCHEMA used for model persistence.
+GRANT USAGE ON "your_schema" TO metabase_model_persistence;
+GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO metabase_model_persistence;
 
 -- Grant role to the metabase user.
-GRANT metabase_model_caching TO metabase;
+GRANT metabase_model_persistence TO metabase;
 ```
 
 ## Privileges to enable uploads
