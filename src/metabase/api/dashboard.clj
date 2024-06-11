@@ -25,6 +25,7 @@
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
@@ -840,8 +841,9 @@
   "Get all of the required query metadata for the cards on dashboard."
   [id]
   {id ms/PositiveInt}
-  (let [dashboard (get-dashboard id)]
-    (api.query-metadata/dashboard-metadata dashboard)))
+  (data-perms/with-relevant-permissions-for-user api/*current-user-id*
+    (let [dashboard (get-dashboard id)]
+      (api.query-metadata/dashboard-metadata dashboard))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

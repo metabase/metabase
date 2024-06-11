@@ -21,7 +21,7 @@ export const ClickActionButtonTextIcon = styled.span`
 `;
 
 export const Subtitle = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: normal;
   margin-left: 1rem;
 `;
@@ -35,7 +35,7 @@ export const TokenFilterActionButton = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
     border-color: var(--mb-color-brand);
   }
@@ -50,7 +50,7 @@ export const TokenActionButton = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
     border-color: var(--mb-color-brand);
   }
@@ -67,7 +67,7 @@ export const SortControl = styled(Button)`
   border-radius: 100px;
 
   &:hover {
-    color: ${({ theme }) => theme.fn.themeColor("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
     border-color: var(--mb-color-brand);
   }
@@ -88,7 +88,7 @@ export const FormattingControl = styled(Button)`
 `;
 
 export const InfoControl = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 10.75rem;

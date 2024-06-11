@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import CheckBox from "metabase/core/components/CheckBox";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 type OptionButtonProps = {
@@ -23,13 +22,13 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
 
 export const Separator = styled.div`
   margin: 1rem;
-  border-top: solid 1px ${color("text-light")};
+  border-top: solid 1px var(--mb-color-text-light);
   opacity: 0.5;
 `;
 
 export const ExcludeCheckBox = styled(CheckBox)`
   font-size: 1em;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: 600;
   min-height: 1.5em;
 `;

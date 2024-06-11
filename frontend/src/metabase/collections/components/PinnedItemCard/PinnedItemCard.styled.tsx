@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
@@ -31,7 +30,7 @@ export const Title = styled.div`
   font-weight: bold;
   font-size: 1rem;
   line-height: 1.5rem;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   transition: color 0.2s ease;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -39,7 +38,7 @@ export const Title = styled.div`
 `;
 
 export const Description = styled(MarkdownPreview)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const Body = styled.div`

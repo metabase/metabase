@@ -29,5 +29,5 @@
 /* create a smaller inset arrow on the right */
 .arrowRight::after {
   right: -19px;
-  border-left-color: var(--color-white);
+  border-left-color: var(--mb-color-bg-white);
 }

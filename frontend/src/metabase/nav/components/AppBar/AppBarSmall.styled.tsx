@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
 export const AppBarRoot = styled.div`
@@ -64,5 +63,5 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
 `;
 
 export const AppBarProfileLinkContainer = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

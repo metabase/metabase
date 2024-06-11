@@ -103,10 +103,10 @@ export const TextEditorRoot = styled.div`
   .highlighted-code-marker {
     position: absolute;
 
-    background: ${alpha(color("accent4"), 0.3)};
+    background: ${() => alpha(color("accent4"), 0.3)};
   }
 
   .highlighted-code-marker-row-number {
-    background: ${alpha(color("accent4"), 0.5)};
+    background: ${() => alpha(color("accent4"), 0.5)};
   }
 `;

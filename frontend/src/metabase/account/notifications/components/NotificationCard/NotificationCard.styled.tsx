@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const NotificationCardRoot = styled.div`
@@ -9,7 +8,7 @@ export const NotificationCardRoot = styled.div`
   padding: 1rem 1.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 6px;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
 
   &:not(:last-child) {
     margin-bottom: 1.25rem;
@@ -27,7 +26,7 @@ export const NotificationDescription = styled.div`
 `;
 
 export const NotificationMessage = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.75rem;
   line-height: 0.875rem;
 
@@ -38,12 +37,12 @@ export const NotificationMessage = styled.span`
 `;
 
 export const NotificationIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   cursor: pointer;
   width: 1rem;
   height: 1rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
