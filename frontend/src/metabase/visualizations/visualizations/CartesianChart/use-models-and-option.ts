@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { isCypressActive } from "metabase/env";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
@@ -114,6 +115,8 @@ export function useModelsAndOption({
       return {};
     }
 
+    const shouldAnimate = !isPlaceholder && !isCypressActive;
+
     switch (card.display) {
       case "waterfall":
         return getWaterfallChartOption(
@@ -123,7 +126,7 @@ export function useModelsAndOption({
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
-          isPlaceholder ?? false,
+          shouldAnimate,
           renderingContext,
         );
       case "scatter":
@@ -134,7 +137,7 @@ export function useModelsAndOption({
           selectedOrHoveredTimelineEventIds,
           settings,
           width,
-          isPlaceholder ?? false,
+          shouldAnimate,
           renderingContext,
         );
       default:
@@ -145,7 +148,7 @@ export function useModelsAndOption({
           selectedOrHoveredTimelineEventIds,
           settings,
           width,
-          isPlaceholder ?? false,
+          shouldAnimate,
           hoveredSeriesDataKey,
           renderingContext,
         );
