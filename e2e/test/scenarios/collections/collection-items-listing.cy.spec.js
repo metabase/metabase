@@ -109,6 +109,7 @@ describe("scenarios > collection items listing", () => {
         });
 
         visitRootCollection();
+        cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
 
         getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
           expect(actualNames, "sorted alphabetically by default").to.deep.equal(
@@ -238,6 +239,7 @@ describe("scenarios > collection items listing", () => {
 function toggleSortingFor(columnName) {
   const testId = "items-table-head";
   cy.findByTestId(testId).findByText(columnName).click();
+  cy.wait(50);
 }
 
 function getAllCollectionItemNames() {
