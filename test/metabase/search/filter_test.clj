@@ -6,9 +6,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
 
-(def ^:private default-search-ctx
-  {:search-string       nil
-   :archived?           false
+(def default-search-ctx
+  {:search-string      nil
    :models             search.config/all-models
    :model-ancestors?   false
    :current-user-id    1
@@ -23,10 +22,10 @@
       (is (= #{}
              (search.filter/search-context->applicable-models
               (assoc default-search-ctx :models #{}))))
-      (is (= search.config/all-models
+      (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:archived? true})))))))
+                     {:archived true})))))))
 
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
@@ -129,14 +128,7 @@
   (testing "archived filters"
     (is (= [:= :card.archived false]
            (:where (search.filter/build-filters
-                    base-search-query "card" default-search-ctx))))
-
-    (is (= [:and
-            [:= :table.active true]
-            [:= :table.visibility_type nil]
-            [:not [:= :table.db_id audit/audit-db-id]]]
-           (:where (search.filter/build-filters
-                    base-search-query "table"  default-search-ctx))))))
+                    base-search-query "card" default-search-ctx))))))
 
 (deftest ^:parallel build-table-filter-always-ignores-audit-tables
   (is (contains?
@@ -363,76 +355,3 @@
           "database"
           (merge default-search-ctx
                  {:created-by #{1}}))))))
-
-(deftest build-filters-indexed-entity-test
-  (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly false)]
-      (is (= [:and
-              [:or [:like [:lower :model-index-value.name] "%foo%"]]
-              [:inline [:= 1 1]]]
-             (:where (search.filter/build-filters
-                      base-search-query
-                      "indexed-entity"
-                      (merge default-search-ctx {:search-string "foo"}))))))))
-
-(deftest build-filters-indexed-entity-test-2
-  (testing "otherwise search result is empty"
-    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly true)]
-      (is (= [:and
-              [:or [:= 0 1]]
-              [:inline [:= 1 1]]]
-             (:where (search.filter/build-filters
-                      base-search-query
-                      "indexed-entity"
-                      (merge default-search-ctx {:search-string "foo"}))))))))
-
-(deftest ^:parallel build-filters-search-native-query
-  (doseq [model ["dataset" "card"]]
-    (testing model
-      (testing "do not search for native query by default"
-        (is (= [:and
-                [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]
-                [:= :card.archived false]]
-               (:where (search.filter/build-filters
-                        base-search-query
-                        model
-                        (merge default-search-ctx {:search-string "foo"})))))))))
-
-(deftest ^:parallel build-filters-search-native-query-2
-  (doseq [model ["dataset" "card"]]
-    (testing model
-      (testing "search in both name, description and dataset_query if is enabled"
-        (is (= [:and [:or
-                      [:like [:lower :card.name] "%foo%"]
-                      [:and [:= :card.query_type "native"] [:like [:lower :card.dataset_query] "%foo%"]]
-                      [:like [:lower :card.description] "%foo%"]]
-                [:= :card.archived false]]
-               (:where (search.filter/build-filters
-                        base-search-query
-                        model
-                        (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))))
-
-(deftest ^:parallel build-filters-search-native-query-3
-  (testing "action"
-    (testing "do not search for native query by default"
-      (is (= [:and
-              [:or [:like [:lower :action.name] "%foo%"] [:like [:lower :action.description] "%foo%"]]
-              [:= :action.archived false]]
-             (:where (search.filter/build-filters
-                      base-search-query
-                      "action"
-                      (merge default-search-ctx {:search-string "foo"}))))))))
-
-(deftest ^:parallel build-filters-search-native-query-4
-  (testing "action"
-    (testing "search in both name, description and dataset_query if is enabled"
-      (is (= [:and
-              [:or
-               [:like [:lower :action.name] "%foo%"]
-               [:like [:lower :query_action.dataset_query] "%foo%"]
-               [:like [:lower :action.description] "%foo%"]]
-              [:= :action.archived false]]
-             (:where (search.filter/build-filters
-                      base-search-query
-                      "action"
-                      (merge default-search-ctx {:search-string "foo" :search-native-query true}))))))))

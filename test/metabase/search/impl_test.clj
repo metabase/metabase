@@ -7,7 +7,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.audit :as audit]
    [metabase.search.config :as search.config]
+   [metabase.search.filter-test :as search.filter-test]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
    [toucan2.core :as t2]
@@ -58,7 +60,6 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [do-search (fn []
                           (search.impl/search {:search-string      search-string
-                                               :archived?          false
                                                :models             search.config/all-models
                                                :current-user-id    (mt/user->id :crowberto)
                                                :current-user-perms #{"/"}
@@ -131,7 +132,6 @@
                                 (is (= expected
                                        (->> (search.impl/search (search.impl/search-context
                                                                  {:search-string      search-term
-                                                                  :archived           false
                                                                   :models             search.config/all-models
                                                                   :created-at         created-at
                                                                   :current-user-id    (mt/user->id :crowberto)
@@ -216,7 +216,6 @@
                                 (is (= expected
                                        (->> (search.impl/search (search.impl/search-context
                                                                  {:search-string      search-term
-                                                                  :archived           false
                                                                   :models             search.config/all-models
                                                                   :last-edited-at     last-edited-at
                                                                   :current-user-id    (mt/user->id :crowberto)
@@ -264,3 +263,69 @@
     (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
                   search.impl/serialize
                   :dataset_query)))))
+
+(deftest ^:parallel active-table-search-test
+  (testing "Only active, visible, and non audit DB tables should be included"
+    (is (= [:and
+            [:not [:= :table.db_id audit/audit-db-id]]
+            [:= :table.active true]
+            [:= :table.visibility_type nil]]
+           (:where (#'search.impl/search-query-for-model "table" search.filter-test/default-search-ctx))))))
+
+(deftest ^:parallel indexed-entity-sandboxed-or-impersonated-user-test
+  (testing "Only active, visible, and non audit DB tables should be included"
+    (let [search-query (fn []
+                         (#'search.impl/search-query-for-model
+                          "indexed-entity"
+                          (assoc search.filter-test/default-search-ctx :search-string "foo")))]
+      (mt/with-dynamic-redefs [search.impl/sandboxed-or-impersonated-user? (constantly false)]
+        (is (= [:or [:like [:lower :model-index-value.name] "%foo%"]]
+               (:where (search-query)))))
+      (mt/with-dynamic-redefs [search.impl/sandboxed-or-impersonated-user? (constantly true)]
+        (is (= [:and
+                [:or [:like [:lower :model-index-value.name] "%foo%"]]
+                [:inline [:= 0 1]]]
+               (:where (search-query))))))))
+
+(deftest ^:parallel search-native-query-test
+  (doseq [model ["dataset" "card"]]
+    (testing model
+      (testing "do not search for native query by default"
+        (let [where-clause (:where (#'search.impl/search-query-for-model
+                                    model
+                                    (assoc search.filter-test/default-search-ctx :search-string "foo")))]
+          (is (= :and (first where-clause)))
+          (is (contains? (set where-clause)
+                         [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]))))
+       (testing "search in both name, description and dataset_query if is enabled"
+         (let [where-clause (:where (#'search.impl/search-query-for-model
+                                     model
+                                     (assoc search.filter-test/default-search-ctx :search-string "foo" :search-native-query true)))]
+           (is (= :and (first where-clause)))
+           (is (contains? (set where-clause)
+                          [:or
+                           [:like [:lower :card.name] "%foo%"]
+                           [:like [:lower :card.description] "%foo%"]
+                           [:like [:lower :dataset_query] "%foo%"]])))))))
+
+(deftest ^:parallel search-native-query-test-2
+  (testing "action"
+    (testing "do not search for native query by default"
+      (let [where-clause (:where (#'search.impl/search-query-for-model
+                                  "action"
+                                  (assoc search.filter-test/default-search-ctx :search-string "foo")))]
+        (is (= :and (first where-clause)))
+        (is (contains? (set where-clause)
+                       [:or
+                        [:like [:lower :action.name] "%foo%"]
+                        [:like [:lower :action.description] "%foo%"]]))))
+    (testing "search in both name, description and dataset_query if is enabled"
+      (let [where-clause (:where (#'search.impl/search-query-for-model
+                                  "action"
+                                  (assoc search.filter-test/default-search-ctx :search-string "foo" :search-native-query true)))]
+        (is (= :and (first where-clause)))
+        (is (contains? (set where-clause)
+                       [:or
+                        [:like [:lower :action.name] "%foo%"]
+                        [:like [:lower :action.description] "%foo%"]
+                        [:like [:lower :query_action.dataset_query] "%foo%"]]))))))

@@ -16,7 +16,7 @@
   [scorer]
   (comp :score
         first
-        (partial #'scoring/text-scores-with [{:weight 1 :scorer scorer}])))
+        (partial #'scoring/text-scores-with nil [{:weight 1 :scorer scorer}])))
 
 (deftest ^:parallel consecutivity-scorer-test
   (let [score (scorer->score #'scoring/consecutivity-scorer)]
@@ -243,7 +243,7 @@
                        d])              ; middling text match, no other signal
            (->> labeled-results
                 vals
-                (map (partial scoring/score-and-result search-string))
+                (map (partial scoring/score-and-result search-string nil))
                 (sort-by :score)
                 reverse
                 (map :result)
@@ -258,7 +258,7 @@
     (is (= (map :name [b c a])
            (->> labeled-results
                 vals
-                (map (partial scoring/score-and-result search-string))
+                (map (partial scoring/score-and-result search-string nil))
                 (sort-by :score)
                 reverse
                 (map :result)
@@ -270,7 +270,7 @@
                   (fn [_]
                     [{:weight 100 :score 0 :name "Some score type"}
                      {:weight 100 :score 0 :name "Some other score type"}])]
-      (is (= 0 (:score (scoring/score-and-result "" {:name "racing yo" :model "card"})))))))
+      (is (= 0 (:score (scoring/score-and-result "" nil {:name "racing yo" :model "card"})))))))
 
 
 (deftest ^:parallel force-weight-test

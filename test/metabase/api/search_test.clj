@@ -170,12 +170,15 @@
                                                      {:db_id db-id})
 
                    QueryAction _qa (query-action action-id)
-                   Card        card           (coll-data-map "card %s card" coll)
+                   Card        card           (assoc (coll-data-map "card %s card" coll)
+                                                     :query_type :native)
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
-                                                     :type :model)
+                                                     :type :model
+                                                     :query_type :native)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
                    Card        metric         (assoc (coll-data-map "metric %s metric" coll)
-                                                     :type :metric)
+                                                     :type :metric
+                                                     :query_type :native)
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
@@ -1263,12 +1266,12 @@
 (deftest search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
-      [:model/Card {mbql-card :id}             {:name search-term}
-       :model/Card {native-card-in-name :id}   {:name search-term}
-       :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
-       :model/Card {mbql-model :id}            {:name search-term :type :model}
-       :model/Card {native-model-in-name :id}  {:name search-term :type :model}
-       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
+      [:model/Card {mbql-card :id}             {:query_type :query,  :name search-term}
+       :model/Card {native-card-in-name :id}   {:query_type :native, :name search-term}
+       :model/Card {native-card-in-query :id}  {:query_type :native, :dataset_query (mt/native-query {:query (format "select %s" search-term)})}
+       :model/Card {mbql-model :id}            {:query_type :query,  :name search-term, :type :model}
+       :model/Card {native-model-in-name :id}  {:query_type :native, :name search-term, :type :model}
+       :model/Card {native-model-in-query :id} {:query_type :native, :dataset_query (mt/native-query {:query (format "select %s" search-term)}), :type :model}]
       (mt/with-actions
         [_                         {:type :model :dataset_query (mt/mbql-query venues)}
          {http-action :action-id}  {:type :http :name search-term}
@@ -1283,11 +1286,8 @@
                       :data
                       (map (juxt :model :id))
                       set))))
-
         (testing "if search-native-query is true, search both dataset_query and the name"
-          (is (= #{["card" mbql-card]
-                   ["card" native-card-in-name]
-                   ["dataset" mbql-model]
+          (is (= #{["card" native-card-in-name]
                    ["dataset" native-model-in-name]
                    ["action" http-action]
 
@@ -1349,16 +1349,16 @@
                (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
 
 (deftest models-archived-string-test
-  (testing "search/models request includes `archived-string` param"
+  (testing "search/models request can include the `archived` param"
     (with-search-items-in-root-collection "Available models"
       (mt/with-temp [Card   {model-id :id} action-model-params
                      Action _              (archived {:name     "test action"
                                                       :type     :query
                                                       :model_id model-id})]
-        (testing "`archived-string` is 'false'"
+        (testing "`archived` is not present"
           (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
-        (testing "`archived-string` is 'true'"
+                 (set (mt/user-http-request :crowberto :get 200 "search/models")))))
+        (testing "`archived` is 'true'"
           (is (= #{"action"}
                  (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
 

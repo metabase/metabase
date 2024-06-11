@@ -81,7 +81,7 @@
   [model]
   (-> model model-to-db-model :alias))
 
-(mu/defn column-with-model-alias :- keyword?
+(mu/defn column-with-alias :- keyword?
   "Given a column and a model name, Return a keyword representing the column with the model alias prepended.
 
   (column-with-model-alias \"card\" :id) => :card.id)"
@@ -99,7 +99,6 @@
    ;;
    ;; required
    ;;
-   [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:current-user-perms [:set perms.u/PathSchema]]
    [:model-ancestors?   :boolean]
@@ -108,6 +107,7 @@
    ;;
    ;; optional
    ;;
+   [:archived                            {:optional true} true?]
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
@@ -186,58 +186,32 @@
   "All of the result components that by default are displayed by the frontend."
   #{:name :display_name :collection_name :description})
 
+(defmulti native-query-columns
+  "The native query columns that will be searched if the `:search-native-query` option is true."
+  {:arglists '([model])}
+  (fn [model] model))
+
+(defmethod native-query-columns :default   [_] [])
+(defmethod native-query-columns "card"     [_] [:dataset_query])
+(defmethod native-query-columns "dataset"  [_] (native-query-columns "card"))
+(defmethod native-query-columns "metric"   [_] (native-query-columns "card"))
+(defmethod native-query-columns "action"   [_] [:dataset_query])
+
 (defmulti searchable-columns-for-model
   "The columns that will be searched for the query."
   {:arglists '([model])}
   (fn [model] model))
 
-(defmethod searchable-columns-for-model :default
-  [_]
-  [:name])
-
-(defmethod searchable-columns-for-model "action"
-  [_]
-  [:name
-   :dataset_query
-   :description])
-
-(defmethod searchable-columns-for-model "card"
-  [_]
-  [:name
-   :dataset_query
-   :description])
-
-(defmethod searchable-columns-for-model "dataset"
-  [_]
-  (searchable-columns-for-model "card"))
-
-(defmethod searchable-columns-for-model "metric"
-  [_]
-  (searchable-columns-for-model "card"))
-
-(defmethod searchable-columns-for-model "dashboard"
-  [_]
-  [:name
-   :description])
-
-(defmethod searchable-columns-for-model "page"
-  [_]
-  (searchable-columns-for-model "dashboard"))
-
-(defmethod searchable-columns-for-model "database"
-  [_]
-  [:name
-   :description])
-
-(defmethod searchable-columns-for-model "table"
-  [_]
-  [:name
-   :display_name
-   :description])
-
-(defmethod searchable-columns-for-model "indexed-entity"
-  [_]
-  [:name])
+(defmethod searchable-columns-for-model :default         [_] [:name])
+(defmethod searchable-columns-for-model "action"         [_] [:name :description])
+(defmethod searchable-columns-for-model "card"           [_] [:name :description])
+(defmethod searchable-columns-for-model "dataset"        [_] (searchable-columns-for-model "card"))
+(defmethod searchable-columns-for-model "metric"         [_] (searchable-columns-for-model "card"))
+(defmethod searchable-columns-for-model "dashboard"      [_] [:name :description])
+(defmethod searchable-columns-for-model "page"           [_] (searchable-columns-for-model "dashboard"))
+(defmethod searchable-columns-for-model "database"       [_] [:name :description])
+(defmethod searchable-columns-for-model "table"          [_] [:name :description :display_name])
+(defmethod searchable-columns-for-model "indexed-entity" [_] [:name])
 
 (def ^:private default-columns
   "Columns returned for all models."

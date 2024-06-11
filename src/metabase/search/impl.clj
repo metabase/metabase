@@ -1,8 +1,10 @@
 (ns metabase.search.impl
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.audit :as audit]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -64,7 +66,7 @@
 
       ;; This is a column reference, need to add the table alias to the column
       maybe-aliased-col
-      (search.config/column-with-model-alias model maybe-aliased-col)
+      (search.config/column-with-alias model maybe-aliased-col)
 
       ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
       ;; correct type, e.g.
@@ -92,10 +94,35 @@
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
+(defn- wildcarded-tokens [s]
+  (->> s
+       search.util/normalize
+       search.util/tokenize
+       (map search.util/wildcard-match)))
+
+(mu/defn ^:private search-string-clause
+  [model
+   search-ctx :- SearchContext]
+  (when (not (str/blank? (:search-string search-ctx)))
+    (into
+     [:or]
+     (for [wildcarded-token (wildcarded-tokens (:search-string search-ctx))
+           [native? column] (cond-> (for [x (search.config/searchable-columns-for-model model)]
+                                      [false x])
+                                 (:search-native-query search-ctx)
+                                 (concat (for [x (search.config/native-query-columns model)]
+                                           [true x])))]
+       [:like
+        [:lower (if (and native? (= model "action"))
+                  ;; unfortunately we have to hardcode this for now because we don't have a way to specify which columns are from which table
+                  :query_action.dataset_query
+                  (search.config/column-with-alias model column))]
+        wildcarded-token]))))
+
 (mu/defn ^:private base-query-for-model :- [:map {:closed true}
                                             [:select :any]
                                             [:from :any]
-                                            [:where :any]
+                                            [:where {:optional true} :any]
                                             [:join {:optional true} :any]
                                             [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
@@ -103,6 +130,7 @@
   [model :- SearchableModel context :- SearchContext]
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
+      (sql.helpers/where (search-string-clause model context))
       (search.filter/build-filters model context)))
 
 (mu/defn add-collection-join-and-where-clauses
@@ -208,7 +236,7 @@
       (replace-select :last_editor_id :r.user_id)
       (replace-select :last_edited_at :r.timestamp)
       (sql.helpers/left-join [:revision :r]
-                             [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
+                             [:and [:= :r.model_id (search.config/column-with-alias model :id)]
                               [:= :r.most_recent true]
                               [:= :r.model (search.config/search-model->revision-model model)]])))
 
@@ -220,7 +248,7 @@
       (sql.helpers/left-join [:moderation_review :mr]
                              [:and
                               [:= :mr.moderated_item_type "card"]
-                              [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
+                              [:= :mr.moderated_item_id (search.config/column-with-alias model :id)]
                               [:= :mr.most_recent true]])))
 
 (defmulti ^:private search-query-for-model
@@ -228,10 +256,12 @@
   (fn [model _] model))
 
 (mu/defn ^:private shared-card-impl
-  [model      :- :metabase.models.card/type
+  [type       :- :metabase.models.card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (sql.helpers/where [:= :card.type (name model)])
+      (sql.helpers/where (when (:search-native-query search-ctx)
+                           [:= (search.config/column-with-alias "card" :query_type) [:inline "native"]]))
+      (sql.helpers/where [:= :card.type (name type)])
       (sql.helpers/left-join [:card_bookmark :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
@@ -316,6 +346,15 @@
          query
          collection-perm-clause)))))
 
+(defn- sandboxed-or-impersonated-user? []
+  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
+  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
+  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
+  ;; all.
+  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
+          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
+  (premium-features/sandboxed-or-impersonated-user?))
+
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]
   (-> (base-query-for-model model search-ctx)
@@ -323,6 +362,7 @@
                              [:= :model-index.id :model-index-value.model_index_id])
       (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
+      (sql.helpers/where (when (sandboxed-or-impersonated-user?) search.filter/false-clause))
       (add-model-index-permissions-clause current-user-perms)))
 
 (defmethod search-query-for-model "segment"
@@ -332,11 +372,15 @@
 
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
-  (when (seq current-user-perms)
-
-    (-> (base-query-for-model model search-ctx)
-        (add-table-db-id-clause table-db-id)
-        (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))
+  (let [table-column #(search.config/column-with-alias model %)]
+    (when (seq current-user-perms)
+      (-> (base-query-for-model model search-ctx)
+          (sql.helpers/where [:and
+                              [:not [:= (table-column :db_id) audit/audit-db-id]]
+                              [:= (table-column :active) true]
+                              [:= (table-column :visibility_type) nil]])
+          (add-table-db-id-clause table-db-id)
+          (sql.helpers/left-join :metabase_database [:= (table-column :db_id) :metabase_database.id])))))
 
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
@@ -378,7 +422,7 @@
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
-  (if (:archived? search-ctx)
+  (if (:archived search-ctx)
     (can-write? instance)
     ;; We filter what we can (ie. everything that is in a collection) out already when querying
     true))
@@ -410,19 +454,19 @@
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
-  (if (:archived? search-ctx)
+  (if (:archived search-ctx)
     (can-write? instance)
     (can-read? instance)))
 
 (defmethod check-permissions-for-model :segment
   [search-ctx instance]
-  (if (:archived? search-ctx)
+  (if (:archived search-ctx)
     (can-write? instance)
     (can-read? instance)))
 
 (defmethod check-permissions-for-model :database
   [search-ctx instance]
-  (if (:archived? search-ctx)
+  (if (:archived search-ctx)
     (can-write? instance)
     (can-read? instance)))
 
@@ -620,7 +664,7 @@
 
                             (map #(update % :pk_ref json/parse-string))
                             (map add-can-write)
-                            (map (partial scoring/score-and-result (:search-string search-ctx)))
+                            (map (partial scoring/score-and-result (:search-string search-ctx) (:search-native-query search-ctx)))
 
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
@@ -690,20 +734,20 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id current-user-id
+        ctx    (cond-> {:current-user-id current-user-id
                         :current-user-perms current-user-perms
                         :model-ancestors?   (boolean model-ancestors?)
                         :models             models
                         :search-string      search-string}
+                 (some? archived)                            (assoc :archived archived)
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
-                 (some? last-edited-at)                     (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)                       (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)                        (assoc :table-db-id table-db-id)
-                 (some? limit)                              (assoc :limit-int limit)
-                 (some? offset)                             (assoc :offset-int offset)
-                 (some? search-native-query)                (assoc :search-native-query search-native-query)
-                 (some? verified)                           (assoc :verified verified))]
+                 (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)                        (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)                         (assoc :table-db-id table-db-id)
+                 (some? limit)                               (assoc :limit-int limit)
+                 (some? offset)                              (assoc :offset-int offset)
+                 (some? search-native-query)                 (assoc :search-native-query search-native-query)
+                 (some? verified)                            (assoc :verified verified))]
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
