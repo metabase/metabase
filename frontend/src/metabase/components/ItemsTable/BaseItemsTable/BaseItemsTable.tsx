@@ -145,7 +145,7 @@ export const BaseItemsTable = ({
   isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
-  showActionMenu,
+  showActionMenu = true,
   onClick,
   ...props
 }: BaseItemsTableProps) => {
