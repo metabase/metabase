@@ -123,4 +123,23 @@ describe("formatDateTimeForParameter", () => {
       "2020-01-01",
     );
   });
+  it(`should correctly format a date range with separator`, () => {
+    const options = { type: "", date_separator: "." };
+
+    expect(
+      formatDateTimeRangeWithUnit(
+        ["January 1. 2018, 11:00 AM", "January 7. 2018, 11:59 AM"],
+        "minute",
+        options,
+      ),
+    ).toBe("January 1. 2018, 11:00 AM – January 7. 2018, 11:59 AM");
+
+    expect(
+      formatDateTimeRangeWithUnit(
+        ["January 1, 2018, 11:00 AM", "January 7, 2018, 11:59 AM"],
+        "minute",
+        { type: "", date_separator: "/" },
+      ),
+    ).toBe("January 1/ 2018, 11:00 AM – January 7/ 2018, 11:59 AM");
+  });
 });
