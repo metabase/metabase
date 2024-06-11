@@ -23,6 +23,8 @@
                                    :type/DateTime       "TIMESTAMP"
                                    ;; TODO: Verify following is ok
                                    :type/DateTimeWithTZ "TIMESTAMP"
+                                   ;; TODO!!! following ok?
+                                   :type/DateTimeWithZoneOffset "TIMESTAMP"
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "DOUBLE"
                                    :type/Integer        "INTEGER"
@@ -55,10 +57,11 @@
   (existing-databases)
   )
 
+;; TMP MODIF to recreate test datasets!
 (defmethod tx/create-db! :athena
   [driver {:keys [schema], :as db-def} & options]
   (let [schema (ddl.i/format-name driver schema)]
-    (if (contains? #_#{} (existing-databases) schema)
+    (if (contains? #{} #_(existing-databases) schema)
       (log/infof "Databricks database %s already exists, skipping creation" (pr-str schema))
       (do
         (log/infof "Creating Databricks database %s" (pr-str schema))

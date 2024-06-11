@@ -1,27 +1,29 @@
 (ns metabase.driver.databricks-jdbc
   (:require
-   [buddy.core.codecs :as codecs]
-   [honey.sql :as sql]
+   #_[buddy.core.codecs :as codecs]
+   #_[honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   #_[metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util :as sql.u]
+   #_[metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.util :as u]
+   #_[metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
-   [java.sql Connection Date PreparedStatement Timestamp]
+   [java.sql Connection Date PreparedStatement Statement Timestamp]
    [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :databricks-jdbc, :parent :sql-jdbc)
+(driver/register! :databricks-jdbc, :parent :hive-like)
 
 ;; TODO: Iterate over features (not limited to following) and maybe add more.
 (doseq [[feature supported?] {:basic-aggregations              true
@@ -37,6 +39,7 @@
 ;; TODO: Following is probably incorrect. Find out why it was added and address!
 #_(defmethod sql-jdbc.execute/statement-supported? :databricks-jdbc [_] false)
 
+;; hl pass ok
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
   [_driver {:keys [catalog host http-path schema token] :as details}]
   (merge
@@ -57,7 +60,8 @@
     :pwd              token
     ;; TODO: Decide whether following is necessary
     ;;       based on https://docs.databricks.com/en/integrations/jdbc/capability.html#jdbc-native.
-    :UseNativeQuery 1}
+    :UseNativeQuery 1
+    #_#_:LogLevel 0}
    ;; TODO: There's an exception on logging thrown when attempting to create a database for a first time.
    ;;       Following has no effect in that regards.
    ;; TODO: Following is used now just for testing -- `connection-pool-invalidated-on-details-change`. Find a better
@@ -65,6 +69,7 @@
    (when-some [log-level (:log-level details)]
      {:LogLevel log-level})))
 
+; hl pass ok
 (defmethod driver/describe-database :databricks-jdbc
   [driver db-or-id-or-spec]
   {:tables
@@ -110,7 +115,7 @@
      {"preferredTestQuery" "SELECT 1"}))
 
 ;; TODO: Verify the types are correct!
-(defmethod sql-jdbc.sync/database-type->base-type :databricks-jdbc
+#_(defmethod sql-jdbc.sync/database-type->base-type :databricks-jdbc
   [_ database-type]
   (condp re-matches (u/lower-case-en (name database-type))
     #"boolean"          :type/Boolean
@@ -164,14 +169,15 @@
              :database-position idx}))))})
 
 ;; TODO: Why is the following required? -- [[metabase.driver.sql-jdbc-test/splice-parameters-mbql-test]]
-(def ^:dynamic *param-splice-style*
+#_(def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
   `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
   be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
   strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-(defmethod unprepare/unprepare-value [:databricks-jdbc String]
+;; use hive like instead!!
+#_(defmethod unprepare/unprepare-value [:databricks-jdbc String]
   [_ ^String s]
   ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
   ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
@@ -224,6 +230,7 @@
 #_(when-not (get (methods driver/database-supports?) [:databricks-jdbc :foreign-keys])
     (defmethod driver/database-supports? [:databricks-jdbc :foreign-keys] [_driver _feature _db] true))
 
+;;; This is from spark!!!
 (defmethod sql.qp/quote-style :databricks-jdbc
   [_driver]
   :mysql)
@@ -243,7 +250,7 @@
   (.setObject ps i (Timestamp/valueOf t)))
 
 ;; TODO: copied from hive-like
-(defn- format-interval
+#_(defn- format-interval
   "Interval actually supports more than just plain numbers, but that's all we currently need. See
   https://spark.apache.org/docs/latest/sql-ref-literals.html#interval-literal"
   [_fn [amount unit]]
@@ -251,17 +258,17 @@
          ;; other units are supported too but we're not currently supporting them.
          (#{:year :month :week :day :hour :minute :second :millisecond} unit)]}
   [(format "(interval '%d' %s)" (long amount) (name unit))])
-(sql/register-fn! ::interval #'format-interval)
-(defmethod sql.qp/add-interval-honeysql-form :databricks-jdbc
+#_(sql/register-fn! ::interval #'format-interval)
+#_(defmethod sql.qp/add-interval-honeysql-form :databricks-jdbc
   [driver hsql-form amount unit]
   (if (= unit :quarter)
     (recur driver hsql-form (* amount 3) :month)
     (h2x/+ (h2x/->timestamp hsql-form)
            [::interval amount unit])))
 
-;; Following 3 implementations are necessary for data loading logic in `insert-rows-honeysql-form :sql/test-extensions`
-;; to work correctly. Databricks jdbc driver is unable to execute `.setObject` with argument being instance of one of
-;; those classes.
+;; Following implementations are necessary for data loading logic in `insert-rows-honeysql-form :sql/test-extensions`
+;; to work correctly. Databricks jdbc driver is unable to execute `.setObject` with argument being instance
+;; of those classes.
 ;;
 ;; Relevant trace:
 ;  [[com.databricks.client.exceptions.ExceptionConverter toSQLException nil -1]
@@ -278,13 +285,13 @@
 ;; Specifically, `set-parameter` implementations of `clojure.java.jdbc/ISQLParameter` defined in
 ;; [[metabase.db.jdbc-protocols]] come into play here.
 ;;
-;; Databricks jdbc driver is unable to convert eg. LocalDate to java.sql.Date. To overcome values are converted into
-;; java.sql.<TYPE> types.
+;; Databricks jdbc driver is unable to convert eg. LocalDate to java.sql.Date. To overcome that, values are converted
+;; into java.sql.<TYPE> types.
 ;;
 ;; TODO: Check the conversion (when jdbc driver applies parameters) is correct! The instant is same!
 ;;
 ;; It may have undesired effect I'm not yet aware of. Analyzing test failures should reveal that.
-;; Also I believe there is more reasonable way to do those transformations.
+;; Also I believe there is more reasonable way to do those transformations. TBD.
 ;;
 ;; Alternative to this could be unpreparing ddl as Athena does.
 (defmethod sql.qp/->honeysql [:databricks-jdbc LocalDateTime]
@@ -299,45 +306,51 @@
   [_driver ^ZonedDateTime value]
   (t/instant->sql-timestamp (.toInstant value)))
 
+(defmethod sql.qp/->honeysql [:databricks-jdbc OffsetDateTime]
+  [_driver ^OffsetDateTime value]
+  (t/instant->sql-timestamp (.toInstant value)))
+
 ;; Following is copied from :hive-like. It enables eg. `dump-load-entities-test` to pass
 ;; TODO: Following this behavior is actually desired with Databricks. If so maybe there is a way how to reuse instead
 ;;       of copy. Or maybe it will turn out deriving :hive-like could be a good idea.
-(defn- date-format [format-str expr]
+#_(defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
-(defn- str-to-date [format-str expr]
+#_(defn- str-to-date [format-str expr]
   (h2x/->timestamp [:from_unixtime [:unix_timestamp expr (h2x/literal format-str)]]))
-(defn- trunc-with-format [format-str expr]
+#_(defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
-(defmethod sql.qp/date [:databricks-jdbc :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:databricks-jdbc :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
-(defmethod sql.qp/date [:databricks-jdbc :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
-(defmethod sql.qp/date [:databricks-jdbc :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))
-(defmethod sql.qp/date [:databricks-jdbc :hour-of-day]     [_ _ expr] [:hour (h2x/->timestamp expr)])
-(defmethod sql.qp/date [:databricks-jdbc :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (h2x/->timestamp expr)))
-(defmethod sql.qp/date [:databricks-jdbc :day-of-month]    [_ _ expr] [:dayofmonth (h2x/->timestamp expr)])
-(defmethod sql.qp/date [:databricks-jdbc :day-of-year]     [_ _ expr] (h2x/->integer (date-format "D" (h2x/->timestamp expr))))
-(defmethod sql.qp/date [:databricks-jdbc :month]           [_ _ expr] [:trunc (h2x/->timestamp expr) (h2x/literal :MM)])
-(defmethod sql.qp/date [:databricks-jdbc :month-of-year]   [_ _ expr] [:month (h2x/->timestamp expr)])
-(defmethod sql.qp/date [:databricks-jdbc :quarter-of-year] [_ _ expr] [:quarter (h2x/->timestamp expr)])
-(defmethod sql.qp/date [:databricks-jdbc :year]            [_ _ expr] [:trunc (h2x/->timestamp expr) (h2x/literal :year)])
+#_(defmethod sql.qp/date [:databricks-jdbc :default]         [_ _ expr] expr)
+#_(defmethod sql.qp/date [:databricks-jdbc :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
+#_(defmethod sql.qp/date [:databricks-jdbc :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
+#_(defmethod sql.qp/date [:databricks-jdbc :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))
+#_(defmethod sql.qp/date [:databricks-jdbc :hour-of-day]     [_ _ expr] [:hour (h2x/->timestamp expr)])
+#_(defmethod sql.qp/date [:databricks-jdbc :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (h2x/->timestamp expr)))
+#_(defmethod sql.qp/date [:databricks-jdbc :day-of-month]    [_ _ expr] [:dayofmonth (h2x/->timestamp expr)])
+#_(defmethod sql.qp/date [:databricks-jdbc :day-of-year]     [_ _ expr] (h2x/->integer (date-format "D" (h2x/->timestamp expr))))
+#_(defmethod sql.qp/date [:databricks-jdbc :month]           [_ _ expr] [:trunc (h2x/->timestamp expr) (h2x/literal :MM)])
+#_(defmethod sql.qp/date [:databricks-jdbc :month-of-year]   [_ _ expr] [:month (h2x/->timestamp expr)])
+#_(defmethod sql.qp/date [:databricks-jdbc :quarter-of-year] [_ _ expr] [:quarter (h2x/->timestamp expr)])
+#_(defmethod sql.qp/date [:databricks-jdbc :year]            [_ _ expr] [:trunc (h2x/->timestamp expr) (h2x/literal :year)])
 ;; same as before with `metabase.query-processor-test.alternative-date-test/filter-test`
-(defmethod sql.qp/unix-timestamp->honeysql [:databricks-jdbc :seconds]
+#_(defmethod sql.qp/unix-timestamp->honeysql [:databricks-jdbc :seconds]
   [_ _ expr]
   (h2x/->timestamp [:from_unixtime expr]))
 
 ;; also `metabase.query-processor-test.alternative-date-test/filter-test`
-(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc ZonedDateTime]
+#_(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc ZonedDateTime]
   [_driver ^PreparedStatement ps i ^ZonedDateTime t]
   (.setObject ps i (t/instant->sql-timestamp t #_(t/zoned-date-time))))
 
+;; probably unnecessary!
 ;; also `metabase.query-processor-test.alternative-date-test/filter-test`
-(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc OffsetDateTime]
+#_(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc OffsetDateTime]
   [_driver ^PreparedStatement ps i ^ZonedDateTime t]
   (.setObject ps i (t/instant->sql-timestamp t)))
 
 ;; TODO: Using INTERVAL -- `filter-by-expression-time-interval-test`
 
 ;; https://docs.databricks.com/en/sql/language-manual/functions/dayofweek.html
+;; TODO: again, verify this is necessary after removal of all hive stuff!
 (defmethod sql.qp/date [:databricks-jdbc :day-of-week] [driver _ expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek (h2x/->timestamp expr)]))
 
@@ -348,24 +361,28 @@
 
 ;; Copied from hive-like. Makes the `regex-extract-in-explict-join-test` pass.
 ;; dbricks TODO: Verify correctness!
-(defmethod sql.qp/->honeysql [:databricks-jdbc :regex-match-first]
+
+#_(defmethod sql.qp/->honeysql [:databricks-jdbc :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) 0])
 
 ;; copied from hive -- rest of date impls; slight modif to :week -- dayofweek instead of extract
+;; TODO: I could probably remove also this!!! How?
 (defmethod sql.qp/date [:databricks-jdbc :week]
   [driver _unit expr]
   (let [week-extract-fn (fn [expr]
                           (-> [:date_sub
                                (h2x/+ (h2x/->timestamp expr)
-                                      [::interval 1 :day])
+                                      ;; THIS
+                                      [::driver.hive-like/interval 1 :day])
+                               ;; THIS!
                                [:dayofweek (h2x/->timestamp expr)]]
                               (h2x/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
-(defmethod sql.qp/date [:databricks-jdbc :week-of-year-iso]
+#_(defmethod sql.qp/date [:databricks-jdbc :week-of-year-iso]
   [_driver _unit expr]
   [:weekofyear (h2x/->timestamp expr)])
-(defmethod sql.qp/date [:databricks-jdbc :quarter]
+#_(defmethod sql.qp/date [:databricks-jdbc :quarter]
   [_driver _unit expr]
   [:add_months
    [:trunc (h2x/->timestamp expr) (h2x/literal :year)]
@@ -375,12 +392,76 @@
 
 ;; required for eg. `etc-test`
 ;; TODO: Not sure yet if this conversion is good, seems so but double ch!
-(defmethod sql.qp/->honeysql [:databricks-jdbc OffsetDateTime]
+#_(defmethod sql.qp/->honeysql [:databricks-jdbc OffsetDateTime]
   [_driver ^LocalDateTime value]
   #_(Timestamp/valueOf (t/offset-date-time) #_value)
   (t/instant->sql-timestamp value #_(t/offset-date-time)))
 
+;; TODO: hive-like implem
 ;; TMP!!!! -- makes work [[metabase.driver.sql-jdbc-test/splice-parameters-mbql-test]]. Proper way!
+;;
+;;!!! maybe not necessary
 (defmethod unprepare/unprepare-value [:databricks-jdbc java.sql.Date]
   [_driver ^java.sql.Date value]
   (str "cast('" (.toString value) "' as DATE)"))
+
+;; TODO HIVE-LIKE (incl. legacy classes):
+;; - Verify unprepare-value implementations from hive-like suffice! (LocalDate, OffsetDateTime, ZonedDateTime)
+;; - Verify set-parameter impls from hive-like are sufficient!
+;; - Verify ->honeysql implementations here are needed!
+
+#_(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc Timestamp]
+  [_driver ^PreparedStatement ps i ^Timestamp t]
+  (.setObject ps i t))
+
+#_(comment
+  (prefers sql-jdbc.execute/set-parameter)
+  )
+
+#_(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc LocalDateTime]
+  [_driver ^PreparedStatement ps i ^Timestamp t]
+  (def tt t)
+  (.setObject ps i (Timestamp/valueOf t)))
+
+#_(prefer-method sql-jdbc.execute/set-parameter [:databricks-jdbc LocalDateTime] [:databricks-jdbc LocalDateTime])
+
+(defmethod sql-jdbc.execute/do-with-connection-with-options :databricks-jdbc
+  [driver db-or-id-or-spec options f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (try
+       (.setReadOnly conn false)
+       (catch Throwable e
+         (log/debug e "Error setting connection to readwrite")))
+     ;; Method is re-implemented because `legacy_time_parser_policy` has to be set to pass test suite.
+     ;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
+     (with-open [^Statement stmt (.createStatement conn)]
+       (.execute stmt "set legacy_time_parser_policy = legacy")
+       #_(.execute stmt "set ansi_mode = false"))
+     (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)
+     (f conn))))
+
+#_(defonce xi (atom []))
+
+;; This makes it work the [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-base-test]]
+;; However it should be probably further modified so (1) ->honeysql -> legacy type is not used and
+;; (2) legacy_time_parser could be omitted.
+(defmethod sql.qp/datetime-diff [:databricks-jdbc :second]
+  [_driver _unit x y]
+  #_(swap! xi conj [_driver _unit x y])
+  [:-
+   (into [:unix_timestamp y]
+         (remove nil?)
+         [(when (instance? java.sql.Date y)
+            (h2x/literal "yyyy-MM-dd"))
+          (when (instance? java.sql.Timestamp y)
+            (h2x/literal "yyyy-MM-dd HH:mm:ss"))])
+   (into [:unix_timestamp x]
+         (remove nil?)
+         [(when (instance? java.sql.Date x)
+            (h2x/literal "yyyy-MM-dd"))
+          (when (instance? java.sql.Timestamp x)
+            (h2x/literal "yyyy-MM-dd HH:mm:ss"))])])

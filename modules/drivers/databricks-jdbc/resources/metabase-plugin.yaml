@@ -12,12 +12,12 @@ driver:
     parent: sql-jdbc
     connection-properties:
       - host
-      - name: http-path 
+      - name: http-path
         display-name: HTTP path
         required: true
       - name: token
         display-name: Personal Access Token
-        required: true 
+        required: true
       - name: catalog
         display-name: Catalog
         default: default
@@ -27,6 +27,8 @@ driver:
         default: default
         required: true # does not have to be required
 init:
+  - step: load-namespace
+    namespace: metabase.driver.hive-like # probably not necessary as the ns is required, but just in case...
   - step: load-namespace
     namespace: metabase.driver.databricks-jdbc
   - step: register-jdbc-driver
