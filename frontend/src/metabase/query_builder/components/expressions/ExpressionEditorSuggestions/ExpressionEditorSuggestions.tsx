@@ -51,7 +51,7 @@ type WithIndex<T> = T & {
 };
 
 export const ExpressionEditorSuggestions = forwardRef<
-  HTMLDivElement,
+  HTMLUListElement,
   {
     query: Lib.Query;
     stageIndex: number;
