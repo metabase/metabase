@@ -6,8 +6,8 @@ const MIN_WIDTH = 180;
 
 interface TemporalUnitWidgetProps {
   parameter: Parameter;
-  value: TemporalUnit;
-  setValue: (unit: string) => void;
+  value?: TemporalUnit;
+  setValue: (unit: TemporalUnit) => void;
   onClose: () => void;
 }
 
@@ -20,7 +20,7 @@ export function TemporalUnitWidget({
   const availableTemporalUnits =
     parameter.temporal_units ?? Lib.availableTemporalUnits();
 
-  const handleSelect = (unit: string) => {
+  const handleSelect = (unit: TemporalUnit) => {
     setValue(unit);
     onClose();
   };
