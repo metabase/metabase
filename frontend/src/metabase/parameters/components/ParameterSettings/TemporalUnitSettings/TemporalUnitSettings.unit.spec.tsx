@@ -42,7 +42,7 @@ describe("TemporalUnitSettings", () => {
       }),
     });
 
-    expect(await screen.findByDisplayValue(value)).toBeInTheDocument();
+    expect(await screen.findByText(value)).toBeInTheDocument();
   });
 
   it("should select a unit and preserve the unit order", async () => {
@@ -52,7 +52,7 @@ describe("TemporalUnitSettings", () => {
         temporal_units: ["day", "year"],
       }),
     });
-    await userEvent.click(await screen.findByDisplayValue("Day, Year"));
+    await userEvent.click(await screen.findByText("Day, Year"));
     await userEvent.click(await screen.findByLabelText("Month"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith([
       "day",
@@ -68,9 +68,7 @@ describe("TemporalUnitSettings", () => {
         temporal_units: ["day", "month", "quarter", "year"],
       }),
     });
-    await userEvent.click(
-      await screen.findByDisplayValue("Day, Month, Quarter, +1"),
-    );
+    await userEvent.click(await screen.findByText("Day, Month, Quarter, +1"));
     await userEvent.click(await screen.findByLabelText("Quarter"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith([
       "day",
@@ -86,7 +84,7 @@ describe("TemporalUnitSettings", () => {
         temporal_units: ["minute"],
       }),
     });
-    await userEvent.click(await screen.findByDisplayValue("Minute"));
+    await userEvent.click(await screen.findByText("Minute"));
     await userEvent.click(await screen.findByLabelText("Select all"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith(
       Lib.availableTemporalUnits(),
@@ -100,7 +98,7 @@ describe("TemporalUnitSettings", () => {
         temporal_units: [],
       }),
     });
-    await userEvent.click(await screen.findByDisplayValue("None"));
+    await userEvent.click(await screen.findByText("None"));
     await userEvent.click(await screen.findByLabelText("Select all"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith(
       Lib.availableTemporalUnits(),
@@ -113,7 +111,7 @@ describe("TemporalUnitSettings", () => {
         type: "temporal-unit",
       }),
     });
-    await userEvent.click(await screen.findByDisplayValue("All"));
+    await userEvent.click(await screen.findByText("All"));
     await userEvent.click(await screen.findByLabelText("Select none"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith(["minute"]);
   });
