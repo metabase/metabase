@@ -2,7 +2,7 @@ import { Fragment } from "react";
 
 import { isRootCollection } from "metabase/collections/utils";
 import { useToggle } from "metabase/hooks/use-toggle";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -32,11 +32,7 @@ export const CollectionBreadcrumbs = ({
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
-        <CollectionBadge
-          collectionId={parts[0].id}
-          inactiveColor="text-medium"
-          isSingleLine
-        />
+        <CollectionBadge collectionId={parts[0].id} isSingleLine />
         <PathSeparator>/</PathSeparator>
         <ExpandButton
           small
@@ -50,11 +46,7 @@ export const CollectionBreadcrumbs = ({
     ) : (
       parts.map(collection => (
         <Fragment key={collection.id}>
-          <CollectionBadge
-            collectionId={collection.id}
-            inactiveColor="text-medium"
-            isSingleLine
-          />
+          <CollectionBadge collectionId={collection.id} isSingleLine />
           <PathSeparator>/</PathSeparator>
         </Fragment>
       ))
@@ -63,11 +55,7 @@ export const CollectionBreadcrumbs = ({
   return (
     <PathContainer>
       {content}
-      <CollectionBadge
-        collectionId={collection.id}
-        inactiveColor="text-medium"
-        isSingleLine
-      />
+      <CollectionBadge collectionId={collection.id} isSingleLine />
     </PathContainer>
   );
 };
