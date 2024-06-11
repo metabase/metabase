@@ -92,8 +92,8 @@ export interface IFieldValuesWidgetProps {
   dashboard?: Dashboard;
   question?: Question;
 
-  value: string[];
-  onChange: (value: string[]) => void;
+  value: RowValue[];
+  onChange: (value: RowValue[]) => void;
 
   multi?: boolean;
   autoFocus?: boolean;
@@ -102,7 +102,7 @@ export interface IFieldValuesWidgetProps {
   placeholder?: string;
   checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
+  valueRenderer?: (value: RowValue) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
   layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
@@ -363,7 +363,7 @@ export function FieldValuesWidgetInner({
   };
 
   if (!valueRenderer) {
-    valueRenderer = (value: string | number) =>
+    valueRenderer = (value: RowValue) =>
       renderValue({
         fields,
         formatOptions,
@@ -436,14 +436,18 @@ export function FieldValuesWidgetInner({
       : parseStringValue(value);
   };
 
-  const shouldCreate = (value: string | number) => {
-    const res = parseFreeformValue(value);
-    return res !== null;
+  const shouldCreate = (value: RowValue) => {
+    if (typeof value === "string" || typeof value === "number") {
+      const res = parseFreeformValue(value);
+      return res !== null;
+    }
+
+    return true;
   };
 
   const renderStringOption = function (option: FieldValue): {
     label: string;
-    value: string;
+    value: RowValue;
   } {
     const value = option[0];
     const column = fields[0];
@@ -457,8 +461,6 @@ export function FieldValuesWidgetInner({
         // we know it is string | number because we are passing jsx: false
       })?.toString() ?? "<null>";
 
-    // @ts-expect-error: the type of the FieldValuesWidget value is
-    // confusing: it accepts RowValue options but can only onChange(string[])
     return { value, label };
   };
 
@@ -480,7 +482,7 @@ export function FieldValuesWidgetInner({
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
-            value={value?.filter((v: string) => v != null)}
+            value={value?.filter((v: RowValue) => v != null)}
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
@@ -497,7 +499,7 @@ export function FieldValuesWidgetInner({
             checkedColor={checkedColor}
           />
         ) : !isSimpleInput ? (
-          <MultiAutocomplete<string>
+          <MultiAutocomplete
             onSearchChange={onInputChange}
             onChange={onChange}
             value={value.filter(v => v !== null && v !== undefined)}
@@ -507,8 +509,6 @@ export function FieldValuesWidgetInner({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             prefix={prefix}
-            // @ts-expect-error: we are actually using (string | number)[] here
-            // but the type of the FieldValuesWidget props is string[]
             parseValue={parseFreeformValue}
             maxSelectedValues={multi ? undefined : 1}
           />
