@@ -12,8 +12,8 @@ interface SelectDropdownItemProps
   value: string;
   label?: string;
   icon?: IconName;
-  isSelected?: boolean;
-  isDisabled?: boolean;
+  selected?: boolean;
+  disabled?: boolean;
 }
 
 export const SelectDropdownItem = forwardRef(function SelectDropdownItem(
@@ -22,8 +22,8 @@ export const SelectDropdownItem = forwardRef(function SelectDropdownItem(
     value,
     label = value,
     icon,
-    isSelected,
-    isDisabled,
+    selected,
+    disabled,
     ...others
   }: SelectDropdownItemProps,
   ref: Ref<HTMLDivElement>,
@@ -34,8 +34,8 @@ export const SelectDropdownItem = forwardRef(function SelectDropdownItem(
       className={cx(
         S.item,
         {
-          [S.selected]: isSelected,
-          [S.disabled]: isDisabled,
+          [S.selected]: selected,
+          [S.disabled]: disabled,
         },
         className,
       )}

@@ -31,7 +31,7 @@ export function TemporalUnitWidget({
         <SelectDropdownItem
           key={unit}
           value={Lib.describeTemporalUnit(unit)}
-          isSelected={value === unit}
+          selected={value === unit}
           onClick={() => handleSelect(unit)}
         />
       ))}
