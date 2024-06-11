@@ -23,7 +23,6 @@ import {
 } from "metabase/parameters/utils/ui";
 import { Icon } from "metabase/ui";
 import {
-  deriveFieldOperatorFromParameter,
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/v1/parameters/utils/operators";
@@ -342,11 +341,7 @@ function Widget({
   }
 
   if (isNumberParameter(parameter)) {
-    let arity = getNumberParameterArity(parameter);
-
-    if (!deriveFieldOperatorFromParameter(parameter).multi && arity === "n") {
-      arity = 1;
-    }
+    const arity = getNumberParameterArity(parameter);
 
     return (
       <NumberInputWidget
