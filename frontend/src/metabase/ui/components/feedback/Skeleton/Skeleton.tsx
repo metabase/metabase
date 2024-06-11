@@ -2,7 +2,7 @@ import type { SkeletonProps } from "@mantine/core";
 import { Skeleton as MantineSkeleton } from "@mantine/core";
 import { useMemo } from "react";
 
-import { rerenderOnShortcutKeyPress } from "./hooks";
+import { useRerenderOnShortcut } from "./hooks";
 
 export const Skeleton = ({
   natural,
@@ -14,7 +14,7 @@ export const Skeleton = ({
   // FIXME: remove this
   natural &&= !(window as { noNaturalSkeletons?: boolean }).noNaturalSkeletons;
 
-  const key = rerenderOnShortcutKeyPress();
+  const key = useRerenderOnShortcut();
 
   const width = useMemo(
     () => (natural ? `${Math.random() * 30 + 50}%` : props.width),
