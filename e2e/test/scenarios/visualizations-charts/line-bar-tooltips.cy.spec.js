@@ -729,14 +729,20 @@ function setupDashboard(cardId, addedSeriesCardId) {
   });
 }
 
-function showTooltipForCircleInSeries(seriesColor, index = 0) {
+function resetHoverState() {
   echartsTriggerBlur();
+  cy.get(POPOVER_ELEMENT).should("not.exist");
+  cy.wait(50);
+}
+
+function showTooltipForCircleInSeries(seriesColor, index = 0) {
+  resetHoverState();
   cy.get(POPOVER_ELEMENT).should("not.exist");
   cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
-  echartsTriggerBlur();
+  resetHoverState();
   cy.get(POPOVER_ELEMENT).should("not.exist");
   chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
