@@ -277,60 +277,50 @@ describe("scenarios > question > native subquery", () => {
     cy.get("#main-data-grid [data-testid=cell-data]").should("have.text", "41");
   });
 
-  it(
-    "should be able to reference a nested question (metabase#25988)",
-    { tags: "@flaky" },
-    () => {
-      const questionDetails = {
-        name: "Nested GUI question",
-        query: {
-          "source-table": `card__${ORDERS_QUESTION_ID}`,
-          limit: 2,
-        },
-      };
+  it("should be able to reference a nested question (metabase#25988)", () => {
+    const questionDetails = {
+      name: "Nested GUI question",
+      query: {
+        "source-table": `card__${ORDERS_QUESTION_ID}`,
+        limit: 2,
+      },
+    };
 
-      cy.createQuestion(questionDetails).then(
-        ({ body: { id: nestedQuestionId } }) => {
-          const tagID = `#${nestedQuestionId}`;
-          cy.intercept("GET", `/api/card/${nestedQuestionId}`).as(
-            "loadQuestion",
-          );
+    cy.createQuestion(questionDetails).then(
+      ({ body: { id: nestedQuestionId } }) => {
+        const tagID = `#${nestedQuestionId}`;
+        cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
-          startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
-          cy.wait("@loadQuestion");
-          cy.findByTestId("sidebar-header-title").should(
-            "have.text",
-            questionDetails.name,
-          );
+        startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
+        cy.wait("@loadQuestion");
+        cy.findByTestId("sidebar-header-title").should(
+          "have.text",
+          questionDetails.name,
+        );
 
-          runNativeQuery();
+        runNativeQuery();
 
-          cy.get("[data-testid=cell-data]").should("contain", "37.65");
-        },
-      );
-    },
-  );
+        cy.get("[data-testid=cell-data]").should("contain", "37.65");
+      },
+    );
+  });
 
-  it(
-    "should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)",
-    { tags: "@flaky" },
-    () => {
-      const questionDetails = {
-        name: "28218",
-        native: { query: "select 1;" }, // semicolon is important here
-      };
+  it("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
+    const questionDetails = {
+      name: "28218",
+      native: { query: "select 1;" }, // semicolon is important here
+    };
 
-      cy.createNativeQuestion(questionDetails).then(
-        ({ body: { id: baseQuestionId } }) => {
-          const tagID = `#${baseQuestionId}`;
+    cy.createNativeQuestion(questionDetails).then(
+      ({ body: { id: baseQuestionId } }) => {
+        const tagID = `#${baseQuestionId}`;
 
-          startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
+        startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
 
-          runNativeQuery();
+        runNativeQuery();
 
-          cy.get("[data-testid=cell-data]").should("contain", "1");
-        },
-      );
-    },
-  );
+        cy.get("[data-testid=cell-data]").should("contain", "1");
+      },
+    );
+  });
 });
