@@ -3,9 +3,11 @@ export type UndoState = {
   id: string | number;
   type?: string;
   action?: () => void;
+  message?: string;
+  timeout?: number;
   actions?: (() => void)[];
   showProgress?: boolean;
-  icon?: string;
+  icon?: string | null;
   toastColor?: string;
   actionLabel?: string;
   canDismiss?: boolean;
