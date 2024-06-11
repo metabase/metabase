@@ -287,7 +287,7 @@
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
-(defn instrument-fn?
+(defn instrument-ns?
   "Returns true if mu.fn/fn and mu/defn should be instrumented with malli schema validation. `namespace` is
   the namespace of the form being instrumented."
   [namespace]
@@ -349,7 +349,7 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)]
-    (if-not (instrument-fn? *ns*)
+    (if-not (instrument-ns? *ns*)
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:

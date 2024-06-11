@@ -91,7 +91,7 @@
                            :schema   (mu.fn/fn-schema parsed)}
                           attr-map)
         docstring        (annotated-docstring parsed)]
-    (if-not (mu.fn/instrument-fn? *ns*)
+    (if-not (mu.fn/instrument-ns? *ns*)
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(mu.fn/deparameterized-fn-form parsed))
