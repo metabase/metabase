@@ -90,7 +90,7 @@
           (adjust query)))))
 
 (deftest ^:parallel metric-with-implicit-join-test
-  (testing "Metrics with filters on implicitly joined columns produce query error when added in a Summarize block #43943"
+  (testing "Metrics with filters on implicitly joined columns should work #43943"
     (let [[source-metric mp] (mock-metric (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
                                             (lib/filter $q (lib/= (m/find-first (comp #{(meta/id :products :category)} :id) (lib/filterable-columns $q)) "Gadget"))
                                             (lib/aggregate $q (lib/count))))
