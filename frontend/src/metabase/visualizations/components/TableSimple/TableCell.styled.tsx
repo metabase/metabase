@@ -1,6 +1,8 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import type { MantineTheme } from "metabase/ui";
+
 export const CellRoot = styled.td<{
   isRightAligned: boolean;
   backgroundColor?: string;
@@ -15,7 +17,10 @@ export const CellRoot = styled.td<{
 
   border-bottom: 1px solid var(--mb-color-border);
 
-  background-color: ${props => props.backgroundColor ?? "unset"};
+  background-color: ${props =>
+    props.backgroundColor ??
+    props.theme.other.table.cell.backgroundColor ??
+    "unset"};
 `;
 
 export const CellContent = styled.span<{
@@ -24,11 +29,7 @@ export const CellContent = styled.span<{
 }>`
   display: inline-block;
 
-  ${props =>
-    props.isHighlighted &&
-    css`
-      color: var(--mb-color-brand);
-    `};
+  ${({ theme, isHighlighted }) => getCellColor({ theme, isHighlighted })}
 
   ${props =>
     props.isClickable &&
@@ -39,3 +40,22 @@ export const CellContent = styled.span<{
       }
     `}
 `;
+
+function getCellColor(options: {
+  isHighlighted: boolean;
+  theme: MantineTheme;
+}) {
+  if (options.isHighlighted) {
+    return css`
+      color: var(--mb-color-brand);
+    `;
+  }
+
+  const { textColor } = options.theme.other.table.cell;
+
+  if (textColor) {
+    return css`
+      color: ${textColor};
+    `;
+  }
+}
