@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -56,7 +57,7 @@
     :or   {channel :email}}
    f]
   (mt/with-temp [Pulse        {pulse-id :id, :as pulse} (->> pulse
-                                                             (merge {:name "Pulse Name"
+                                                             (merge {:name            "Pulse Name"
                                                                      :alert_condition "rows"}))
                  PulseCard    _ (merge {:pulse_id        pulse-id
                                         :card_id         (u/the-id card)

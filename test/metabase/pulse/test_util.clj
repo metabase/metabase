@@ -80,6 +80,22 @@
                  slack/files-channel (constantly "FOO")]
      (do-with-site-url (fn [] ~@body))))
 
+(def ^:dynamic *channel-messages* nil)
+
+(defn do-with-captured-channel-send-messages!
+  [thunk]
+  (let [channel-messages (atom nil)]
+    (with-redefs [channel/send! (fn [channel-type message]
+                                  (swap! channel-messages update channel-type conj message))]
+      (thunk)
+      @channel-messages)))
+
+(defmacro with-captured-channel-send-messages!
+  [& body]
+  `(do-with-captured-channel-send-messages!
+      (fn []
+        ~@body)))
+
 (def png-attachment
   {:type         :inline
    :content-id   true

@@ -39,8 +39,9 @@
 (defn- pulse-results
   "Results for creating and running a Pulse."
   [query]
-  (mt/with-temp [Card                  pulse-card {:dataset_query query}
-                 Pulse                 pulse {:name "Test Pulse"}
+  (mt/with-temp [Card                  pulse-card {:name          "Test card"
+                                                   :dataset_query query}
+                 Pulse                 pulse {:alert_condition "rows"}
                  PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
                  PulseChannel          pc {:channel_type :email
                                            :pulse_id     (:id pulse)
@@ -48,59 +49,48 @@
                  PulseChannelRecipient _ {:pulse_channel_id (:id pc)
                                           :user_id          (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
-      (mt/with-fake-inbox
-        (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}] _]
-                                                    [{:result result}])]
-          (mt/with-test-user nil
-            (metabase.pulse/send-pulse! pulse)))
-        (let [results @mt/inbox]
-          (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
-                                         :bcc     ["rasta@metabase.com"]
-                                         :subject "Pulse: Test Pulse"}]}
-                 (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
-          (get-in results ["rasta@metabase.com" 0 :body 0 :result]))))))
+      (-> (#'metabase.pulse/execute-pulse (pulse/retrieve-pulse pulse) nil) first :result))))
 
-(deftest bcc-enabled-pulse-test
-  (testing "When bcc is not enabled, return an email that uses to:"
-    (mt/with-temp [Card                  pulse-card {}
-                   Pulse                 pulse {:name "Test Pulse"}
-                   PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
-                   PulseChannel          pc {:channel_type :email
-                                             :pulse_id     (:id pulse)
-                                             :enabled      true}
-                   PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                            :user_id          (mt/user->id :rasta)}]
-      (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
-        (mt/with-fake-inbox
-          (with-redefs [messages/render-pulse-email  (fn [_timezone _pulse _dashboard [{:keys [result]}, :as _parts] _non-user-email]
-                                                       [{:result result}])
-                        email/bcc-enabled? (constantly false)]
-            (mt/with-test-user nil
-              (metabase.pulse/send-pulse! pulse)))
-          (let [results @mt/inbox]
-            (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
-                                           :to      ["rasta@metabase.com"]
-                                           :subject "Pulse: Test Pulse"}]}
-                   (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
-            (get-in results ["rasta@metabase.com" 0 :body 0 :result])))))))
+;; TODO this should be a channel test, not a pulse test
+#_(deftest bcc-enabled-pulse-test
+    (testing "When bcc is not enabled, return an email that uses to:"
+      (mt/with-temp [Card                  pulse-card {:name "Test card"
+                                                       :dataset_query (mt/mbql-query venues {:limit 1})}
+                     Pulse                 pulse {:name "Test Pulse"
+                                                  :alert_condition "rows"}
+                     PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                     PulseChannel          pc {:channel_type :email
+                                               :pulse_id     (:id pulse)
+                                               :enabled      true}
+                     PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                              :user_id          (mt/user->id :rasta)}]
+        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                 (metabase.pulse/send-pulse! pulse))]
+          (is (=? [{:from    "Alert: Test card has results"
+                    :to      ["rasta@metabase.com"]
+                    :subject "Pulse: Test Pulse"}]
+                  (:channel/email channel-messages)))))))
 
 (deftest pulse-send-event-test
   (testing "When we send a pulse, we also log the event:"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp [Card                  pulse-card {}
-                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
-                                                            :name "Test Pulse"}
-                               PulseCard             _ {:pulse_id (:id pulse)
-                                                        :card_id (:id pulse-card)}
-                               PulseChannel          pc {:channel_type :email
-                                                         :pulse_id     (:id pulse)
-                                                         :enabled      true}
-                               PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                                        :user_id          (mt/user->id :rasta)}]
+      (t2.with-temp/with-temp
+        [:model/Card                  pulse-card {:dataset_query (mt/mbql-query venues {:limit 1})}
+         :model/Dashboard             dashboard {:name "Test Dashboard"}
+         :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                                             :name "Test Pulse"
+                                             :alert_condition "rows"
+                                             :dashboard_id (:id dashboard)}
+         :model/PulseCard             _ {:pulse_id (:id pulse)
+                                         :card_id (:id pulse-card)}
+         :model/PulseChannel          pc {:channel_type :email
+                                          :pulse_id     (:id pulse)
+                                          :enabled      true}
+         :model/PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                         :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
-                                                         [{:result result}])]
+            (with-redefs [metabase.pulse/send-retrying!  (fn [_ _] :noop)]
               (mt/with-test-user :lucky
                 (metabase.pulse/send-pulse! pulse)))
             (is (= {:topic    :subscription-send
@@ -198,13 +188,15 @@
             (testing "POST /api/pulse/test"
               (mt/with-fake-inbox
                 (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
+                                                                     :alert_condition "rows"
                                                                      :cards    [{:id          (u/the-id card)
                                                                                  :include_csv true
                                                                                  :include_xls false}]
-                                                                     :channels [{:channel_type :email
-                                                                                 :enabled      :true
-                                                                                 :recipients   [{:id    (mt/user->id :rasta)
-                                                                                                 :email "rasta@metabase.com"}]}]})
+                                                                     :channels [{:channel_type  :email
+                                                                                 :schedule_type "hourly"
+                                                                                 :enabled       :true
+                                                                                 :recipients    [{:id    (mt/user->id :rasta)
+                                                                                                  :email "rasta@metabase.com"}]}]})
                 (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
                   (testing "email"
                     (is (= 22

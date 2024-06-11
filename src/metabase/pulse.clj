@@ -261,13 +261,14 @@
     true))
 
 (defn- get-notification-info
-  [pulse parts]
+  [pulse parts channel]
   (let [alert? (nil? (:dashboard_id pulse))]
     (merge {:payload-type (if alert?
                             :notification/alert
                             :notification/dashboard-subscription)
             :payload      (if alert? (first parts) parts)
-            :pulse        pulse}
+            :pulse        pulse
+            :channel      channel}
            (if alert?
              {:card  (t2/select-one :model/Card (-> parts first :card :id))}
              {:dashboard (t2/select-one :model/Dashboard (:dashboard_id pulse))}))))
@@ -321,8 +322,7 @@
         ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
         channels               (if (seq channel-ids)
                                  (filter #((set channel-ids) (:id %)) channels)
-                                 channels)
-        channel-type->channels (group-by :channel_type channels)]
+                                 channels)]
     (when (should-send-notification? pulse parts)
       (let [event-type (if (= :pulse (alert-or-pulse pulse))
                          :event/subscription-send
@@ -334,20 +334,19 @@
 
 
       (u/prog1 (doall
-                (for [[channel-type channels] channel-type->channels
-                      :when                   (seq channels)]
+                (for [channel channels]
                   (try
-                    (let [channel-type (if (= :email (keyword channel-type))
+                    (let [channel-type (if (= :email (keyword (:channel_type channel)))
                                          :channel/email
                                          :channel/slack)
                           messages     (channel/render-notification channel-type
-                                                                    (get-notification-info pulse parts)
+                                                                    (get-notification-info pulse parts channel)
                                                                     (channels-to-channel-recipients channel-type channels))]
                       (doall
                        (for [message messages]
                          (send-retrying! channel-type message))))
                     (catch Exception e
-                      (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) channel-type)))))
+                      (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type channel))))))
         (when (:alert_first_only pulse)
           (t2/delete! Pulse :id pulse-id))))))
 
@@ -376,5 +375,3 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-pulse!* pulse dashboard))))
-
-#_(send-pulse! (t2/select-one :model/Pulse 42))

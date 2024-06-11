@@ -65,7 +65,7 @@
                                  :bcc?         (email/bcc-enabled?)}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
-  [_channel-type {:keys [card pulse payload]} recipients]
+  [_channel-type {:keys [card pulse payload channel]} recipients]
   (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (trs "Alert: {0} has {1}"
                                        (:name card)
@@ -73,20 +73,21 @@
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (defaulted-timezone card)
-        pc                        (t2/select-one :model/PulseChannel :enabled true :pulse_id (:id pulse))
         goal                      (find-goal-value card)
         email-to-users            (when (> (count user-emails) 0)
-                                    (construct-pulse-email email-subject user-emails
-                                                           (messages/render-alert-email timezone pulse pc
-                                                                                        [payload]
-                                                                                        goal
-                                                                                        nil)))
+                                    (construct-pulse-email
+                                     email-subject user-emails
+                                     (messages/render-alert-email timezone pulse channel
+                                                                  [payload]
+                                                                  goal
+                                                                  nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
-                                    (construct-pulse-email email-subject [non-user-email]
-                                                           (messages/render-alert-email timezone pulse pc
-                                                                                        [payload]
-                                                                                        goal
-                                                                                        non-user-email)))]
+                                    (construct-pulse-email
+                                     email-subject [non-user-email]
+                                     (messages/render-alert-email timezone pulse channel
+                                                                  [payload]
+                                                                  goal
+                                                                  non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
 
 ;; ------------------------------------------------------------------------------------------------;;
