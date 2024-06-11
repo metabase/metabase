@@ -24,7 +24,7 @@ export const getSkeletonOverrides = (): MantineThemeOverride["components"] => {
                 "&::before": {
                   background:
                     "linear-gradient(100deg, transparent, rgba(0, 0, 0, .03) 50%, transparent) ! important",
-                  animation: `${shimmerAnimation} 1.2s linear infinite`,
+                  animation: `${shimmerAnimation} 1.4s linear infinite`,
                 },
                 "&::after": {
                   display: "none",
