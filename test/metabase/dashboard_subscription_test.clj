@@ -118,7 +118,7 @@
                       (thunk*)))]
             (case channel-type
               :email (pulse.test-util/email-test-setup (thunk))
-              :slack (pulse.test-util/slack-test-setup (thunk)))))))))
+              :slack (pulse.test-util/slack-test-setup! (thunk)))))))))
 
 (defn- tests
   "Convenience for writing multiple tests using [[do-test]]. `common` is a map of shared properties as passed

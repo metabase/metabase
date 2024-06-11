@@ -596,7 +596,7 @@
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
   [alert channel non-user-email]
-  (let [{card-id :id, card-name :name} (first-card alert)]
+  (let [{card-id :id card-name :name} (first-card alert)]
     {:title                     card-name
      :titleUrl                  (urls/card-url card-id)
      :alertSchedule             (alert-schedule-text channel)

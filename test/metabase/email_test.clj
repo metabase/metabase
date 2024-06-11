@@ -190,23 +190,33 @@
       (update :content-id boolean)
       (u/update-if-exists :file-name strip-timestamp)))
 
+(defn summarize-multipart-single-email
+  [email & regexes]
+  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
+    (cond-> email
+      (:to email)      (update :to set)
+      (:bcc email)     (update :bcc set)
+      (:message email) (update :message (fn [email-body-seq]
+                                         (doall
+                                          (for [{email-type :type :as email-part} email-body-seq]
+                                            (if (string? email-type)
+                                              (email-body->regex-boolean email-part)
+                                              (summarize-attachment email-part))))))
+      (:body email)    (update :body (fn [email-body-seq]
+                                      (doall
+                                       (for [{email-type :type :as email-part} email-body-seq]
+                                         (if (string? email-type)
+                                           (email-body->regex-boolean email-part)
+                                           (summarize-attachment email-part)))))))))
+
 (defn summarize-multipart-email
   "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will
   summarize the contents for comparison in expects"
   [& regexes]
-  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (m/map-vals (fn [emails-for-recipient]
-                  (for [email emails-for-recipient]
-                    (cond-> email
-                      (:to email)  (update :to set)
-                      (:bcc email) (update :bcc set)
-                      true         (update :body (fn [email-body-seq]
-                                                   (doall
-                                                    (for [{email-type :type :as email-part} email-body-seq]
-                                                      (if (string? email-type)
-                                                        (email-body->regex-boolean email-part)
-                                                        (summarize-attachment email-part)))))))))
-                @inbox)))
+  (m/map-vals (fn [emails-for-recipient]
+                (for [email emails-for-recipient]
+                  (summarize-multipart-single-email email regexes)))
+              @inbox))
 
 (defn email-to
   "Creates a default email map for `user-or-user-kwd`, as would be returned by `with-fake-inbox`."
@@ -272,20 +282,20 @@
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
       (let [calls (atom nil)]
-            (let [retry-config (assoc (#'retry/retry-configuration)
-                                  :max-attempts 1
-                                  :initial-interval-millis 1)
-              test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [prometheus/inc    #(swap! calls conj %)
-                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
-          (email/send-message!
-           :subject      "101 Reasons to use Metabase"
-           :recipients   ["test@test.com"]
-           :message-type :html
-           :message      "101. Metabase will make you a better person"))
-        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
+           (let [retry-config (assoc (#'retry/retry-configuration)
+                                 :max-attempts 1
+                                 :initial-interval-millis 1)
+                 test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+            (with-redefs [prometheus/inc    #(swap! calls conj %)
+                          retry/decorate    (rt/test-retry-decorate-fn test-retry)
+                          email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+              (email/send-message!
+               :subject      "101 Reasons to use Metabase"
+               :recipients   ["test@test.com"]
+               :message-type :html
+               :message      "101. Metabase will make you a better person"))
+            (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
+            (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

@@ -109,15 +109,15 @@
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
   [_channel-details {:keys [payload card]} channel-ids]
-  (for [channel-id channel-ids]
-    (let [channel-id (str/replace channel-id "#" "")]
-      {:channel-id  channel-id
-       :attachments [{:blocks [{:type "header"
+  (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (:name card))
                                        :emoji true}}]}
-                     ;; TODO: do we really need to generate attachments for each channel?
-                     (payload->attachment-data payload channel-id)]})))
+                     (payload->attachment-data payload (slack/files-channel))]]
+    (for [channel-id channel-ids]
+      (let [channel-id (str/replace channel-id "#" "")]
+        {:channel-id  channel-id
+         :attachments attachments}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
