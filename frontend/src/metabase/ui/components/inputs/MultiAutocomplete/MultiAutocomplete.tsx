@@ -139,7 +139,7 @@ export function MultiAutocomplete<TValue extends Base>({
     if (newSearchValue !== "") {
       const values = parseValues(newSearchValue, parseValue);
       if (values.length >= 1) {
-        const value = values[0] ?? newSearchValue;
+        const value = values[0];
         if (isValid(value)) {
           setSelectedValues(unique([...lastSelectedValues, value]));
         }
@@ -242,8 +242,8 @@ function getSelectItem<TValue extends Base>(
     return { value: item, label: item };
   }
 
-  if (typeof item === "number") {
-    return { value: item, label: item.toString() };
+  if (typeof item === "number" || typeof item === "boolean" || item === null) {
+    return { value: item, label: item?.toString() ?? "" };
   }
 
   if (!item.label) {
@@ -274,7 +274,11 @@ function defaultShouldCreate<TValue extends Base>(
   value: TValue,
   selectedValues: TValue[],
 ) {
-  if (typeof value === "number") {
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
     return !selectedValues.some(selectedValue => selectedValue === value);
   }
 

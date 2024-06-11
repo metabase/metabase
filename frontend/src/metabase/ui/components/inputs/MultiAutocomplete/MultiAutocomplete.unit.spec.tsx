@@ -4,6 +4,8 @@ import { useState } from "react";
 import { act, fireEvent, render, screen } from "__support__/ui";
 import { MultiAutocomplete, type MultiAutocompleteProps } from "metabase/ui";
 
+import type { Base } from "./types";
+
 const EXAMPLE_DATA = [
   { label: "Foo", value: "foo" },
   { label: "Bar", value: "bar" },
@@ -16,12 +18,28 @@ const NUMERIC_DATA = [
   { label: "3", value: 3 },
 ];
 
-type SetupOpts<ValueType extends string | number> = Omit<
+const BOOLEAN_DATA = [
+  { label: "yes", value: true },
+  { label: "no", value: false },
+  { label: "nope", value: false },
+];
+
+function parseBoolean(str: string) {
+  if (str === "yes" || str === "true") {
+    return true;
+  }
+  if (str === "no" || str === "false") {
+    return false;
+  }
+  return null;
+}
+
+type SetupOpts<ValueType extends Base> = Omit<
   TestInputProps<ValueType>,
   "onChange"
 >;
 
-function setup<ValueType extends string | number>(opts: SetupOpts<ValueType>) {
+function setup<ValueType extends Base>(opts: SetupOpts<ValueType>) {
   const onChange = jest.fn();
   render(<TestInput {...opts} onChange={onChange} aria-label="Filter value" />);
 
@@ -29,14 +47,12 @@ function setup<ValueType extends string | number>(opts: SetupOpts<ValueType>) {
   return { onChange, input };
 }
 
-type TestInputProps<ValueType extends string | number> =
+type TestInputProps<ValueType extends Base> =
   MultiAutocompleteProps<ValueType> & {
     initialValue?: ValueType[];
   };
 
-function TestInput<ValueType extends string | number>(
-  props: TestInputProps<ValueType>,
-) {
+function TestInput<ValueType extends Base>(props: TestInputProps<ValueType>) {
   const [value, setValue] = useState(props.initialValue ?? []);
 
   function handleChange(value: ValueType[]) {
@@ -374,6 +390,70 @@ describe("MultiAutocomplete", () => {
     });
   });
 
+  describe("boolean values", () => {
+    it("should work with boolean values", async () => {
+      const { input, onChange } = setup({
+        data: BOOLEAN_DATA,
+        parseValue: parseBoolean,
+      });
+
+      input.focus();
+      await userEvent.type(input, "yes,", {
+        pointerEventsCheck: 0,
+      });
+      expect(input).toHaveValue("");
+
+      expect(onChange).toHaveBeenLastCalledWith([true]);
+
+      await userEvent.type(input, "no,", {
+        pointerEventsCheck: 0,
+      });
+
+      expect(onChange).toHaveBeenLastCalledWith([true, false]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should accept comma-separated values when pasting", async () => {
+      const { input, onChange } = setup({
+        data: BOOLEAN_DATA,
+        parseValue: parseBoolean,
+      });
+
+      input.focus();
+      await userEvent.paste("yes,no");
+      expect(onChange).toHaveBeenLastCalledWith([true, false]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should not be possible to enter duplicate values", async () => {
+      const { input, onChange } = setup({
+        data: BOOLEAN_DATA,
+        parseValue: parseBoolean,
+      });
+
+      input.focus();
+      await userEvent.type(input, "yes,true,no,false,", {
+        pointerEventsCheck: 0,
+      });
+
+      expect(onChange).toHaveBeenLastCalledWith([true, false]);
+      expect(input).toHaveValue("");
+    });
+
+    it("should accept comma-separated values, but omit values not accepted by shouldCreate", async () => {
+      const { input, onChange } = setup({
+        data: BOOLEAN_DATA,
+        parseValue: parseBoolean,
+        shouldCreate(value: boolean) {
+          return value;
+        },
+      });
+      input.focus();
+      await userEvent.paste("true,false");
+      expect(onChange).toHaveBeenLastCalledWith([true]);
+      expect(input).toHaveValue("");
+    });
+  });
   it("should be possible to customize the way a value renders", async () => {
     const { input } = setup<string>({
       data: EXAMPLE_DATA,

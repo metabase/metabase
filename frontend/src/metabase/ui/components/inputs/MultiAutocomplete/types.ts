@@ -1,4 +1,4 @@
-export type Base = string | number;
+export type Base = string | number | boolean | null;
 
 export type SelectItem<TValue extends Base> = {
   label?: string;
