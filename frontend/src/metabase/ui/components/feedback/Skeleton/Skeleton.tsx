@@ -10,7 +10,7 @@ export const Skeleton = ({
   natural?: boolean;
 }) => {
   // FIXME: remove this
-  natural &&= (window as { noNaturalSkeletons?: boolean }).noNaturalSkeletons;
+  natural &&= !(window as { noNaturalSkeletons?: boolean }).noNaturalSkeletons;
 
   const width = useMemo(
     () => (natural ? `${Math.random() * 30 + 50}%` : props.width),
