@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.slack :as channel.slack]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card
@@ -451,7 +452,7 @@
                       (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-filter-test
-  (with-redefs [metabase.pulse/attachment-text-length-limit 15]
+  (with-redefs [channel.slack/attachment-text-length-limit 15]
     (tests {:pulse     {:skip_if_empty false}
             :dashboard pulse.test-util/test-dashboard}
       "Dashboard subscription that includes a dashboard filters"
@@ -598,7 +599,7 @@
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (deftest mrkdwn-length-limit-test
-  (with-redefs [metabase.pulse/block-text-length-limit 10]
+  (with-redefs [channel.slack/block-text-length-limit 10]
     (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
       "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
       {:card (pulse.test-util/checkins-query-card {})
