@@ -147,32 +147,6 @@ export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   return dashcards[dashcardId];
 };
 
-export const getDashcardHref = createWeakSelector(
-  [getMetadata, getDashboard, getParameterValues, getDashCardById],
-  (metadata, dashboard, parameterValues, dashcard) => {
-    if (!dashboard || !dashcard || !isQuestionDashCard(dashcard)) {
-      return undefined;
-    }
-
-    const card = {
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard?.card?.visualization_settings,
-        dashcard.visualization_settings,
-      ),
-    };
-
-    return getNewCardUrl({
-      metadata,
-      dashboard,
-      parameterValues,
-      dashcard,
-      nextCard: card,
-      previousCard: card,
-    });
-  },
-);
-
 export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
   const dashboard = getDashboardBeforeEditing(state);
   return dashboard?.dashcards?.find?.(dashcard => dashcard.id === dashcardId);
@@ -214,6 +188,37 @@ export const getDashboardComplete = createSelector(
         dashcards: orderedDashcards,
       }
     );
+  },
+);
+
+export const getDashcardHref = createWeakSelector(
+  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
+  (metadata, dashboard, parameterValues, dashcard) => {
+    if (
+      !dashboard ||
+      !dashcard ||
+      !isQuestionDashCard(dashcard) ||
+      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+    ) {
+      return undefined;
+    }
+
+    const card = {
+      ...dashcard.card,
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
+    };
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard: card,
+      previousCard: card,
+    });
   },
 );
 

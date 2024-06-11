@@ -13,7 +13,6 @@ import type {
   QuestionDashboardCard,
   VirtualCard,
 } from "metabase-types/api";
-import type { StoreDashboard } from "metabase-types/store";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)
@@ -30,7 +29,7 @@ export const getNewCardUrl = ({
   objectId,
 }: {
   metadata: Metadata;
-  dashboard: Dashboard | StoreDashboard;
+  dashboard: Dashboard;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   nextCard: Card | VirtualCard;
   previousCard: Card | VirtualCard;
