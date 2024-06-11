@@ -395,10 +395,15 @@
          (catch Exception _ value
                 value))))
 
-(defn- add-row!
+(defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
   This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
+  {:arglists '([sheet values cols col-settings cell-styles typed-cell-styles])}
+  (fn [sheet _values _cols _col-settings _cell-styles _typed-cell-styles]
+    (class sheet)))
+
+(defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
   [^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
@@ -414,16 +419,13 @@
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
             parsed-value (or
-                           (maybe-parse-temporal-value value col)
-                           (maybe-parse-coordinate-value value col)
-                           scaled-val)]
+                          (maybe-parse-temporal-value value col)
+                          (maybe-parse-coordinate-value value col)
+                          scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
     row))
 
-(defn- add-row2!
-  "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
-
-  This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
+(defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
   [^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
@@ -529,7 +531,7 @@
         pivot-sheet                     (spreadsheet/select-sheet "pivot" wb)
         area-ref                        (cell-range->area-ref (cell-range rows))
         _                               (doseq [row rows]
-                                          (add-row2! data-sheet row ordered-cols col-settings cell-styles typed-cell-styles))
+                                          (add-row! data-sheet row ordered-cols col-settings cell-styles typed-cell-styles))
         ^XSSFPivotTable pivot-table     (.createPivotTable ^XSSFSheet pivot-sheet
                                                            ^AreaReference area-ref
                                                            ^CellReference (CellReference. "A1")
