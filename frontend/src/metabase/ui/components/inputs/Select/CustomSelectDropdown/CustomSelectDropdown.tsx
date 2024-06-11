@@ -5,7 +5,7 @@ import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-conten
 
 // hack to prevent parent TippyPopover from closing when selecting an item in Select
 // remove when TippyPopover is no longer used
-export const SelectDropdown = forwardRef(function SelectDropdown(
+export const CustomSelectDropdown = forwardRef(function CustomSelectDropdown(
   props: HTMLAttributes<HTMLDivElement>,
   ref: Ref<HTMLDivElement>,
 ) {

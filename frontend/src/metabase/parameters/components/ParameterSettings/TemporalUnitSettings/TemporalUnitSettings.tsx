@@ -6,7 +6,7 @@ import {
   Divider,
   Popover,
   Text,
-  SelectInput,
+  CustomSelect,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
@@ -32,7 +32,7 @@ export function TemporalUnitSettings({
   return (
     <Popover width="target">
       <Popover.Target>
-        <SelectInput value={getSelectedText(selectedUnits, isAll, isNone)} />
+        <CustomSelect value={getSelectedText(selectedUnits, isAll, isNone)} />
       </Popover.Target>
       <Popover.Dropdown>
         <TemporalUnitDropdown

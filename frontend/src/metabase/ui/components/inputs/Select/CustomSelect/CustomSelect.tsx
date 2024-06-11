@@ -4,12 +4,12 @@ import { forwardRef, type InputHTMLAttributes, type Ref } from "react";
 
 import { Icon } from "../../../icons";
 
-import S from "./SelectInput.module.css";
+import S from "./CustomSelect.module.css";
 
-export type SelectInputProps = InputHTMLAttributes<HTMLInputElement> &
+export type CustomSelectProps = InputHTMLAttributes<HTMLInputElement> &
   InputProps & { clearable?: boolean; onClear?: () => void };
 
-export const SelectInput = forwardRef(function SelectInput(
+export const CustomSelect = forwardRef(function CustomSelect(
   {
     value,
     classNames,
@@ -18,7 +18,7 @@ export const SelectInput = forwardRef(function SelectInput(
     clearable,
     onClear,
     ...props
-  }: SelectInputProps,
+  }: CustomSelectProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const canClear = value != null && clearable;

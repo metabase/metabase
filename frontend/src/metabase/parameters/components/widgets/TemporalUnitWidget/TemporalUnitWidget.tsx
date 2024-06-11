@@ -1,4 +1,4 @@
-import { Box, SelectItem } from "metabase/ui";
+import { Box, CustomSelectItem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
 
@@ -28,7 +28,7 @@ export function TemporalUnitWidget({
   return (
     <Box p="sm" miw={MIN_WIDTH}>
       {availableTemporalUnits.map(unit => (
-        <SelectItem
+        <CustomSelectItem
           key={unit}
           value={Lib.describeTemporalUnit(unit)}
           selected={value === unit}
