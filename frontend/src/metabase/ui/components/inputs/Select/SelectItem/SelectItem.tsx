@@ -45,6 +45,8 @@ export const SelectItem = forwardRef(function SelectItem(
       lh={getItemLineHeight(size)}
       p="sm"
       spacing="sm"
+      role="option"
+      aria-selected={selected}
       {...props}
     >
       {icon && <Icon name={icon} />}
