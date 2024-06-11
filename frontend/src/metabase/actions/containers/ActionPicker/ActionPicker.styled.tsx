@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import CollapseSection from "metabase/components/CollapseSection";
 import UnstyledEmptyState from "metabase/components/EmptyState";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const ModelCollapseSection = styled(CollapseSection)`
@@ -43,12 +43,12 @@ export const EmptyState = styled(UnstyledEmptyState)`
 
 export const EmptyModelStateContainer = styled.div`
   padding: ${space(2)};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   text-align: center;
 `;
 
 export const EditButton = styled(Button)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   padding: 0 0.5rem;
 `;
 

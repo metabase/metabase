@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useStep } from "metabase/setup/useStep";
@@ -53,7 +52,7 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
     <ActiveStep title={t`Activate your commercial license`} label={stepLabel}>
       <Text
         mb="lg"
-        color={color("text-light")}
+        color="text-light"
       >{t`Unlock access to your paid features before starting`}</Text>
 
       <LicenseTokenForm

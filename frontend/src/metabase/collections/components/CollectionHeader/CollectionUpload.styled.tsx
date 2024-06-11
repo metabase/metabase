@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const UploadInput = styled.input`
   display: none;
 `;
@@ -20,7 +18,7 @@ export const InfoModalTitle = styled.h2`
 `;
 
 export const InfoModalBody = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const NewBadge = styled.div`

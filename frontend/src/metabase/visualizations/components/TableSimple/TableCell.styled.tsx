@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const CellRoot = styled.td<{
   isRightAligned: boolean;
   backgroundColor?: string;
@@ -10,7 +8,7 @@ export const CellRoot = styled.td<{
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   text-align: ${props => (props.isRightAligned ? "right" : "unset")};
   white-space: nowrap;

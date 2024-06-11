@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -35,6 +34,6 @@ export const Interval = styled.div`
   display: flex;
   align-items: center;
   font-weight: normal;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-right: ${space(2)};
 `;

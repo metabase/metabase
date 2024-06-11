@@ -21,7 +21,7 @@ export const ClickActionButtonTextIcon = styled.span`
 `;
 
 export const Subtitle = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: normal;
   margin-left: 1rem;
 `;
@@ -88,7 +88,7 @@ export const FormattingControl = styled(Button)`
 `;
 
 export const InfoControl = styled.div`
-  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 10.75rem;

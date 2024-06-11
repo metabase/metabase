@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -25,7 +24,7 @@ export const QueryErrorHeader = styled.div`
 
 export const QueryErrorTitle = styled.div`
   flex: 1 1 auto;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;

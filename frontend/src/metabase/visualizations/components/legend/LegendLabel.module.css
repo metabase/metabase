@@ -1,0 +1,16 @@
+.text {
+  color: var(--mb-color-text-dark);
+  font-weight: bold;
+}
+
+.link {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &:focus-visible {
+    outline: 0;
+  }
+}

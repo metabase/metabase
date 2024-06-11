@@ -7,7 +7,7 @@ import { alpha, color } from "metabase/lib/colors";
 
 export const FieldMappingRoot = styled.div`
   padding: 1rem 4rem;
-  border: 1px solid ${alpha("accent2", 0.2)};
+  border: 1px solid ${() => alpha("accent2", 0.2)};
   border-radius: 0.5rem;
 `;
 
