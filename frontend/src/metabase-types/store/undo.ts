@@ -4,6 +4,7 @@ export type UndoState = {
   type?: string;
   action?: () => void;
   actions?: (() => void)[];
+  showProgress?: boolean;
   icon?: string;
   toastColor?: string;
   actionLabel?: string;

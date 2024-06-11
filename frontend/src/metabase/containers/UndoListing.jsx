@@ -5,10 +5,11 @@ import { t } from "ttag";
 
 import BodyComponent from "metabase/components/BodyComponent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { AUTO_WIRE_TOAST_TIMEOUT } from "metabase/dashboard/actions/auto-wire-parameters/constants";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
-import { Transition } from "metabase/ui";
+import { Progress, Transition } from "metabase/ui";
 
 import {
   CardContent,
@@ -59,6 +60,15 @@ const slideIn = {
   transitionProperty: "transform, opacity",
 };
 
+const scaleX = {
+  in: { transform: "scaleX(0)" },
+  out: { transform: "scaleX(1)" },
+  common: { transformOrigin: "left" },
+  transitionProperty: "transform",
+};
+
+const TOAST_TRANSITION_DURATION = 300;
+
 function UndoToast({ undo, onUndo, onDismiss }) {
   const [mounted, setMounted] = useState(false);
 
@@ -70,7 +80,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
     <Transition
       mounted={mounted}
       transition={slideIn}
-      duration={300}
+      duration={TOAST_TRANSITION_DURATION}
       timingFunction="ease"
     >
       {styles => (
@@ -79,8 +89,10 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           data-testid="toast-undo"
           color={undo.toastColor}
           role="status"
+          noBorder={undo.showProgress}
           style={styles}
         >
+          {undo.showProgress && <UndoProgress />}
           <CardContent>
             <CardContentSide maw="75ch">
               {undo.icon && <CardIcon name={undo.icon} color="text-white" />}
@@ -123,6 +135,37 @@ function UndoListingInner() {
         />
       ))}
     </UndoList>
+  );
+}
+
+function UndoProgress() {
+  const [mounted, setMounted] = useState(false);
+
+  useMount(() => {
+    setMounted(true);
+  });
+
+  return (
+    <Transition
+      mounted={mounted}
+      transition={scaleX}
+      duration={AUTO_WIRE_TOAST_TIMEOUT - TOAST_TRANSITION_DURATION}
+      timingFunction="linear"
+    >
+      {styles => (
+        <Progress
+          size="sm"
+          value={100}
+          style={{
+            ...styles,
+            width: "100%",
+            position: "absolute",
+            top: 0,
+            left: 0,
+          }}
+        />
+      )}
+    </Transition>
   );
 }
 
