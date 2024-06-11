@@ -259,8 +259,9 @@ function ExpressionEditorSuggestionsListItem({
   }, [index, onHighlightSuggestion]);
 
   return (
-    <HoverParent>
+    <HoverParent as="li">
       <ExpressionListItem
+        as="div"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         ref={ref}
