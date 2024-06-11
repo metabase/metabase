@@ -5,7 +5,7 @@ import {
   getSelectItemsOverrides,
 } from "../Select/Select.styled";
 import { SelectDropdown } from "../Select/SelectDropdown";
-import { SelectDropdownItem } from "../Select/SelectDropdownItem";
+import { SelectItem } from "../Select/SelectItem";
 
 export const getAutocompleteOverrides =
   (): MantineThemeOverride["components"] => ({
@@ -14,7 +14,7 @@ export const getAutocompleteOverrides =
         size: "md",
         withinPortal: true,
         dropdownComponent: SelectDropdown,
-        itemComponent: SelectDropdownItem,
+        itemComponent: SelectItem,
         maxDropdownHeight: 512,
       }),
       styles: (theme, _, { size = "md" }) => ({

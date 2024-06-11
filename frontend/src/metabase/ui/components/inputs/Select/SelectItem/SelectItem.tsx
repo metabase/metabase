@@ -4,11 +4,9 @@ import { forwardRef, type HTMLAttributes, type Ref } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 
-import S from "./SelectDropdownItem.module.css";
+import S from "./SelectItem.module.css";
 
-interface SelectDropdownItemProps
-  extends HTMLAttributes<HTMLDivElement>,
-    BoxProps {
+interface SelectItemProps extends HTMLAttributes<HTMLDivElement>, BoxProps {
   value: string;
   label?: string;
   icon?: IconName;
@@ -16,7 +14,7 @@ interface SelectDropdownItemProps
   disabled?: boolean;
 }
 
-export const SelectDropdownItem = forwardRef(function SelectDropdownItem(
+export const SelectItem = forwardRef(function SelectItem(
   {
     className,
     value,
@@ -25,7 +23,7 @@ export const SelectDropdownItem = forwardRef(function SelectDropdownItem(
     selected,
     disabled,
     ...others
-  }: SelectDropdownItemProps,
+  }: SelectItemProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
