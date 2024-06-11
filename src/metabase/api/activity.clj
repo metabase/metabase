@@ -13,6 +13,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -80,6 +81,7 @@
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
                                               :where     [:and
+                                                          [:= :context "view"]
                                                           [:in :model #{"dashboard" "table"}]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
                                               :limit     views-limit
@@ -110,11 +112,32 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-(api/defendpoint GET "/recent_views"
+(api/defendpoint ^:deprecated GET "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
-  {:recent_views (recent-views/get-list *current-user-id*)})
+  {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
+
+(api/defendpoint GET "/recents"
+  "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
+  Allows for filtering by context: views or selections"
+  [:as {{:keys [context]} :params}]
+  {context (ms/QueryVectorOf [:enum :selections :views])}
+  (when-not (seq context) (throw (ex-info "context is required." {})))
+  (recent-views/get-recents *current-user-id* context))
+
+(api/defendpoint POST "/recents"
+  "Adds a model to the list of recently selected items."
+  [:as {{:keys [model model_id context]} :body}]
+  {model (into [:enum] recent-views/rv-models)
+   model_id ms/PositiveInt
+   context [:enum :selection]}
+  (let [model-id model_id
+        model-type (recent-views/rv-model->model model)]
+    (when-not (t2/exists? model-type :id model-id)
+      (throw (ex-info "Model not found" {:model model :model_id model-id})))
+    (api/read-check (t2/select-one model-type :id model-id))
+    (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
@@ -153,18 +176,21 @@
                official-wt 1
                recency-wt 2
                views-wt 4
-               scores [;; cards and dashboards? can be 'verified' in enterprise
-                       (if (verified? model_object) verified-wt 0)
-                       ;; items may exist in an 'official' collection in enterprise
-                       (if (official? model_object) official-wt 0)
-                       ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
-                       (* (/ (- n-items recency-pos) n-items) recency-wt)
-                       ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
+               scores (remove nil?
+                              [;; cards and dashboards? can be 'verified' in enterprise
+                               (when (verified? model_object) verified-wt)
+                               ;; items may exist in an 'official' collection in enterprise
+                               (when (official? model_object) official-wt)
+                               ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
+                               (when-not (zero? n-items)
+                                 (* (/ (- n-items recency-pos) n-items) recency-wt))
+                               ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
 
-                       ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
-                       ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
-                       ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
-                       (* (/ cnt max-count) views-wt)]]
+                               ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
+                               ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
+                               ;; a long time ago. This may not even make it into the firs 10 items from the query, even though it might be worth showing
+                               (when-not (zero? max-count)
+                                 (* (/ cnt max-count) views-wt))])]
            (assoc item :score (double (reduce + scores))))) items))))
 
 (def ^:private model->precedence

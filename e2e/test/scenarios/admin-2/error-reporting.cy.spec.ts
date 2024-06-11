@@ -21,7 +21,7 @@ describe("error reporting modal", () => {
     cy.visit("/");
 
     cy.findByTestId("home-page")
-      .findByText(/pick up where you left off/i)
+      .findByText(/see what metabase can do/i)
       .realClick();
     cy.wait(500);
 
@@ -54,7 +54,7 @@ describe("error reporting modal", () => {
     });
 
     cy.findByTestId("home-page")
-      .findByText(/pick up where you left off/i)
+      .findByText(/see what metabase can do/i)
       .realClick();
 
     cy.realPress(["Control", "F1"]);
