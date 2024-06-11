@@ -169,8 +169,9 @@
   [_driver rs _rs-meta i]
   (fn []
     (t/offset-date-time
-     (.getObject ^java.sql.ResultSet rs ^int i)
-     (qp.timezone/results-timezone-id))))
+       (.getObject ^java.sql.ResultSet rs ^int i String)
+       (qp.timezone/results-timezone-id))
+    #_(.getObject ^java.sql.ResultSet rs ^int i String)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIMESTAMP]
   [_driver rs _rs-meta i]
@@ -179,6 +180,28 @@
      (.getObject ^java.sql.ResultSet rs ^int i java.sql.Timestamp)
      #_(t/zone-id "UTC")
      #_(qp.timezone/results-timezone-id))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/DATE]
+  [_driver rs _rs-meta i]
+  (fn []
+    (t/local-date-time
+     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Timestamp)
+     #_(t/zone-id "UTC")
+     #_(qp.timezone/results-timezone-id))))
+
+;; [[date-time-zone-functions-test/datetime-math-tests-mongodb]]
+(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/DATE]
+  [_driver rs _rs-meta i]
+  (fn []
+    (t/local-date
+     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Date))))
+
+;; [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
+(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIME]
+  [_driver rs _rs-meta i]
+  (fn []
+    (t/local-time
+     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Time))))
 
 ;; TODO: Handle time values as well ie. `read-time-and-timestamp-with-time-zone-columns-test`
 

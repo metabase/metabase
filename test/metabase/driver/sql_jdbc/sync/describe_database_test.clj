@@ -206,7 +206,10 @@
                    (mt/db)
                    nil
                    (fn [^java.sql.Connection conn]
-                     (.setAutoCommit conn auto-commit)
+                     ;; Athena supports only autoCommit connections.
+                     (try
+                       (.setAutoCommit conn auto-commit)
+                       (catch Throwable _))
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?
