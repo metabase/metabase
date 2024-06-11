@@ -6,7 +6,6 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { screen, renderWithProviders } from "__support__/ui";
-import { delay } from "__support__/utils";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
@@ -101,19 +100,13 @@ const setup = (options: SetupOptions = {}) => {
 describe("StaticDashboard", () => {
   it("shows a dashboard card question title by default", async () => {
     setup();
-
-    await delay(1);
-
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
     expect(await screen.findByText("Here is a card title")).toBeInTheDocument();
   });
 
   it("hides the dashboard card question title when withCardTitle is false", async () => {
     setup({ props: { withCardTitle: false } });
-    await delay(1);
-
     expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
-
     expect(screen.queryByText("Here is a card title")).not.toBeInTheDocument();
   });
 });
