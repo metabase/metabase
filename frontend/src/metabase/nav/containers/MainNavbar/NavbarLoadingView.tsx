@@ -1,20 +1,56 @@
-import { t } from "ttag";
+import { Skeleton, Flex } from "metabase/ui";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { SidebarSection } from "./MainNavbar.styled";
 
-import {
-  LoadingAndErrorContainer,
-  LoadingAndErrorContent,
-  LoadingAndErrorTitle,
-} from "./MainNavbar.styled";
+const NavLinkSkeleton = () => (
+  <Flex my="1rem" gap="sm" px="1rem">
+    <Skeleton radius="100%" w="1rem" h="1rem" />
+    <Skeleton h="1rem" natural />
+  </Flex>
+);
+
+const SectionTitleSkeleton = () => (
+  <Skeleton
+    h=".75rem"
+    mt="2rem"
+    mb="1rem"
+    w="8rem"
+    style={{ marginInlineStart: "1rem" }}
+  />
+);
 
 export function NavbarLoadingView() {
   return (
-    <LoadingAndErrorContainer>
-      <LoadingAndErrorContent>
-        <LoadingSpinner />
-        <LoadingAndErrorTitle>{t`Loading…`}</LoadingAndErrorTitle>
-      </LoadingAndErrorContent>
-    </LoadingAndErrorContainer>
+    <div>
+      <SidebarSection>
+        <NavLinkSkeleton />
+      </SidebarSection>
+      <SidebarSection>
+        <SectionTitleSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+      </SidebarSection>
+      <SidebarSection>
+        <SectionTitleSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+      </SidebarSection>
+      <SidebarSection>
+        <SectionTitleSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+        <NavLinkSkeleton />
+      </SidebarSection>
+      <SidebarSection mt="2rem">
+        <NavLinkSkeleton />
+      </SidebarSection>
+    </div>
   );
 }
