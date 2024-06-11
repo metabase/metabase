@@ -43,7 +43,7 @@ export function PieChart({
     formatters,
     computedVizSettings,
     DIMENSIONS.sideLen,
-    DIMENSIONS.paddingTop,
+    DIMENSIONS.sideLen + DIMENSIONS.chartLegendMargin,
   );
 
   const chart = init(null, null, {
@@ -62,13 +62,10 @@ export function PieChart({
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={DIMENSIONS.sideLen}
-      height={DIMENSIONS.sideLen + DIMENSIONS.paddingTop + legendHeight}
+      height={DIMENSIONS.sideLen + DIMENSIONS.chartLegendMargin + legendHeight}
     >
+      <Group dangerouslySetInnerHTML={{ __html: chartSvg }}></Group>
       <Legend />
-      <Group
-        top={DIMENSIONS.paddingTop + legendHeight}
-        dangerouslySetInnerHTML={{ __html: chartSvg }}
-      ></Group>
     </svg>
   );
 }
