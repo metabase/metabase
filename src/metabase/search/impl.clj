@@ -277,7 +277,7 @@
                                           :collection_id
                                           :trashed_from_collection_id
                                           :collection_position
-                                          :dataset_query
+                                          [:dataset_query :searchable_native_query]
                                           :display
                                           :creator_id)))
                :from   (from-clause-for-model model)}
@@ -372,20 +372,6 @@
 
 (def searchable-models ["card"]) ; just card for now
 
-;; TODO: right not this returns a HoneySQL expression that can be
-;; used in a WHERE clause, but this will take a different format
-;; in the future to allow more backends to compile it to their
-;; own queries. To unlock full text search, we'll need to move the LIKE
-;; clauses from here to the backend-specific code, so H2 and MySQL can use LIKE,
-;; and Postgres can use full text search.
-(defn general-search-query
-  "Returns a HoneySQL clause that can be used in a WHERE clause to search across all models."
-  [search-ctx]
-  (into
-   [:or]
-   (for [model searchable-models]
-     (search-filters-for-model model search-ctx))))
-
 ;; -------------- Backend-specific code -----------------
 
 ;; union all the queries for each model, selecting all columns from each query
@@ -464,16 +450,19 @@
                     search-data)))))
 
 ;; TODO: make this a multimethod to be implemented by each backend that compiles the query.
-;; For now we use HoneySQL
-(defn execute-search [general-query]
-  ;; compiling `general-query` to `specific-query` is very simple because `general-query` is HoneySQL.
-  ;; But we will need to change `general-query` from HoneySQL to allow for non-SQL backends,
-  ;; and we'll compile it for each backend into a `specific-query`.
+(defn execute-search [search-ctx]
   (let [compile (fn [q]
-                  {:select :*
-                   :from   (keyword search-table-name)
-                   :where  q})
-        specific-query (compile general-query)]
+                  (->  {:select :*
+                        :from   (keyword search-table-name)}
+                       ;; TODO: extract search string clause and apply it across all models to allow for full-text search
+                       (sql.helpers/where (search-string-clause q search-ctx))
+                       ;; TODO: update build-filters to only query from the search table, and not use joins
+                       (search.filter/build-filters q search-ctx)
+                       ;; TODO: implement collection perms
+                       #_(add-collection-join-and-where-clauses "card" search-ctx)
+                       ;; TODO: implement table-db-id fitler
+                       #_(add-card-db-id-clause (:table-db-id search-ctx))))
+        specific-query (compile search-ctx)]
     (map #(into {} %) (t2/query specific-query))))
 
 (comment
@@ -485,7 +474,7 @@
                     :model-ancestors?   false
                     :current-user-id    1
                     :current-user-perms #{"/"}}]
-    (execute-search (general-search-query search-ctx)))
+    (execute-search search-ctx))
   ;; => ({:description nil,
   ;;      :archived false,
   ;;      :collection_position nil,
