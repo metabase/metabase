@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { match } from "ts-pattern";
 
 import { Transition } from "metabase/ui";
 
@@ -47,6 +48,28 @@ export const DelayedLoadingAndErrorWrapper = ({
   loading ||= (window as { stayLoading?: boolean }).stayLoading;
 
   props.loadingMessages ??= [];
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const win = window as {
+        stayLoading?: boolean;
+        noNaturalSkeletons?: boolean;
+      };
+      match([e.ctrlKey, e.key])
+        .with([true, "n"], () => {
+          // eslint-disable-next-line no-console
+          console.log("toggling natural skeletons");
+          win.noNaturalSkeletons = !win.noNaturalSkeletons;
+        })
+        .with([true, "l"], () => {
+          // eslint-disable-next-line no-console
+          console.log("toggling permanent loading state");
+          win.stayLoading = !win.stayLoading;
+        });
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
