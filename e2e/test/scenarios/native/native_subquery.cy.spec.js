@@ -78,6 +78,7 @@ describe("scenarios > question > native subquery", () => {
         openQuestionActions();
         cy.findByTestId("move-button").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });

@@ -47,10 +47,10 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 export const GROUPS = {
   popularExpressions: {
-    displayName: t`Most used functions`,
+    displayName: t`Common functions`,
   },
   popularAggregations: {
-    displayName: t`Most used aggregations`,
+    displayName: t`Common aggregations`,
   },
   shortcuts: {
     displayName: t`Shortcuts`,
@@ -195,6 +195,12 @@ export function suggest({
         .filter(
           clause => clause && database?.hasFeature(clause.requiresFeature),
         )
+        .filter(function disableOffsetInFilterExpressions(clause) {
+          const isOffset = clause.name === "offset";
+          const isFilterExpression = startRule === "boolean";
+          const isOffsetInFilterExpression = isOffset && isFilterExpression;
+          return !isOffsetInFilterExpression;
+        })
         .map(func => ({
           type: "functions",
           name: func.displayName,
@@ -267,7 +273,7 @@ export function suggest({
     }
 
     if (startRule === "aggregation") {
-      const metrics = Lib.availableLegacyMetrics(query, stageIndex);
+      const metrics = Lib.availableMetrics(query, stageIndex);
 
       if (metrics) {
         suggestions.push(

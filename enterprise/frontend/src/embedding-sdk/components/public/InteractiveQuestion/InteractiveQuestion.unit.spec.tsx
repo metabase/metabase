@@ -1,3 +1,4 @@
+import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import { within } from "@testing-library/react";
 
 import {
@@ -9,12 +10,17 @@ import {
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import {
+  clearQueryResult,
+  runQuestionQuery,
+} from "metabase/query_builder/actions";
 import {
   createMockCard,
   createMockColumn,
@@ -24,6 +30,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
@@ -67,13 +74,16 @@ const setup = ({
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  renderWithProviders(<InteractiveQuestion questionId={TEST_CARD.id} />, {
-    mode: "sdk",
-    sdkConfig: createMockConfig({
-      jwtProviderUri: "http://TEST_URI/sso/metabase",
-    }),
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <InteractiveQuestion questionId={TEST_CARD.id} />,
+    {
+      mode: "sdk",
+      sdkConfig: createMockConfig({
+        jwtProviderUri: "http://TEST_URI/sso/metabase",
+      }),
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("InteractiveQuestion", () => {
@@ -83,9 +93,7 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
-  // TODO [Oisin]: fix failing test in "Fix Interactive Question" PR
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip("should render when question is valid", async () => {
+  it("should render when question is valid", async () => {
     setup();
 
     await waitForLoaderToBeRemoved();
@@ -98,6 +106,48 @@ describe("InteractiveQuestion", () => {
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
+  });
+
+  it("should render loading state when drilling down", async () => {
+    const { store } = setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      await within(screen.getByTestId("TableInteractive-root")).findByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole("gridcell")).findByText("Test Row"),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    // Mimicking drilling down by rerunning the query again
+    const storeDispatch = store.dispatch as unknown as ThunkDispatch<
+      State,
+      void,
+      AnyAction
+    >;
+    act(() => {
+      storeDispatch(clearQueryResult());
+      storeDispatch(runQuestionQuery());
+    });
+
+    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(
+      within(await screen.findByRole("gridcell")).getByText("Test Row"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not render an error if a question isn't found before the question loaded", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.queryByText("Error")).not.toBeInTheDocument();
+    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
   });
 
   it("should render an error if a question isn't found", async () => {

@@ -5,7 +5,8 @@ export function getSearchItemTableOrCardId(searchResultItem) {
   // we have to convert IDs by adding "card__" prefix to a question id
   if (
     searchResultItem.model === "card" ||
-    searchResultItem.model === "dataset"
+    searchResultItem.model === "dataset" ||
+    searchResultItem.model === "metric"
   ) {
     return getQuestionVirtualTableId(searchResultItem.id);
   }

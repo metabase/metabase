@@ -13,8 +13,8 @@ import type {
   SdkDispatch,
 } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
-import { reloadSettings } from "metabase/admin/settings/settings";
 import api from "metabase/lib/api";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -71,9 +71,9 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         dispatch(setLoginStatus({ status: "loading" }));
 
         try {
-          const [userResponse, [_, siteSettingsResponse]] = await Promise.all([
+          const [userResponse, siteSettingsResponse] = await Promise.all([
             dispatch(refreshCurrentUser()),
-            dispatch(reloadSettings()),
+            dispatch(refreshSiteSettings()),
           ]);
 
           if (

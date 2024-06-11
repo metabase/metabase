@@ -8,7 +8,9 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.email :as email]
+   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
+   [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -144,9 +146,14 @@
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]
    [:hosted? :boolean]
+   [:embedding [:map
+                [:interested? :boolean]
+                [:done? :boolean]
+                [:app-origin :boolean]]]
    [:configured [:map
                  [:email :boolean]
-                 [:slack :boolean]]]
+                 [:slack :boolean]
+                 [:sso :boolean]]]
    [:counts [:map
              [:user :int]
              [:card :int]
@@ -157,14 +164,19 @@
              [:dashboard :boolean]
              [:pulse :boolean]
              [:hidden-table :boolean]
-             [:collection :boolean]]]])
+             [:collection :boolean]
+             [:embedded-resource :boolean]]]])
 
 (mu/defn ^:private state-for-checklist :- ChecklistState
   []
   {:db-type    (mdb/db-type)
    :hosted?    (premium-features/is-hosted?)
+   :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
+                :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
+                :app-origin  (boolean (embed.settings/embedding-app-origin))}
    :configured {:email (email/email-configured?)
-                :slack (slack/slack-configured?)}
+                :slack (slack/slack-configured?)
+                :sso   (google/google-auth-enabled)}
    :counts     {:user  (t2/count :model/User {:where (mi/exclude-internal-content-hsql :model/User)})
                 :card  (t2/count :model/Card {:where (mi/exclude-internal-content-hsql :model/Card)})
                 :table (val (ffirst (t2/query {:select [:%count.*]
@@ -180,10 +192,12 @@
                 :collection    (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
                 :model         (t2/exists? :model/Card {:where [:and
                                                                 [:= :type "model"]
-                                                                (mi/exclude-internal-content-hsql :model/Card)]})}})
+                                                                (mi/exclude-internal-content-hsql :model/Card)]})
+                :embedded-resource (or (t2/exists? :model/Card :enable_embedding true)
+                          (t2/exists? :model/Dashboard :enable_embedding true))}})
 
 (defn- get-connected-tasks
-  [{:keys [configured counts exists] :as _info}]
+  [{:keys [configured counts exists embedding] :as _info}]
   [{:title       (tru "Add a database")
     :group       (tru "Get connected")
     :description (tru "Connect to your data so your whole team can start to explore.")
@@ -202,6 +216,14 @@
     :link        "/admin/settings/slack"
     :completed   (configured :slack)
     :triggered   :always}
+   {:title       (tru "Setup embedding")
+    :group       (tru "Get connected")
+    :description (tru "Get customizable, flexible, and scalable customer-facing analytics in no time")
+    :link        "/admin/settings/embedding-in-other-applications"
+    :completed   (or (embedding :done?)
+                     (and (configured :sso) (embedding :app-origin))
+                     (exists :embedded-resource))
+    :triggered   (embedding :interested?)}
    {:title       (tru "Invite team members")
     :group       (tru "Get connected")
     :description (tru "Share answers and data with the rest of your team.")

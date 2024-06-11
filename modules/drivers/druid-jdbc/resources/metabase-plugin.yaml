@@ -1,0 +1,32 @@
+info:
+  name: Metabase Druid JDBC Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Druid databases using JDBC.
+driver:
+  name: druid-jdbc
+  display-name: Druid JDBC
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - merge:
+        - host
+        - default: http://localhost
+    - merge:
+        - port
+        - display-name: Router node port
+          default: 8888
+    - ssh-tunnel
+    - advanced-options-start
+    - name: json-unfolding
+      display-name: Allow unfolding of JSON columns
+      type: boolean
+      visible-if:
+        advanced-options: true
+      description: This enables unfolding JSON columns into their component fields.
+      default: true
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.druid-jdbc
+  - step: register-jdbc-driver
+    class: org.apache.calcite.avatica.remote.Driver

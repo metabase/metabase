@@ -98,6 +98,7 @@ describe(
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
       cy.intercept("GET", "/api/search?archived=true").as("getArchived");
       cy.intercept("GET", "/api/search?*").as("getSearchResults");
+      cy.intercept("GET", "/api/database?*").as("getDatabase");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -171,35 +172,6 @@ describe(
           cy.findByText("Update").should("not.exist");
           cy.findByText("Delete").should("not.exist");
         });
-
-      cy.log("Go to the archive");
-      cy.visit("/archive");
-
-      getArchiveListItem("Delete Order")
-        .icon("unarchive")
-        .click({ force: true });
-
-      cy.findByTestId("archived-list").within(() => {
-        cy.findByText("Items you archive will appear here.");
-        cy.findByText("Delete Order").should("not.exist");
-      });
-
-      cy.findByTestId("toast-undo").button("Undo").click();
-
-      cy.findByTestId("archived-list").within(() => {
-        cy.findByText("Items you archive will appear here.").should(
-          "not.exist",
-        );
-        cy.findByText("Delete Order").should("be.visible");
-      });
-
-      cy.log("Delete the action");
-      getArchiveListItem("Delete Order").icon("trash").click({ force: true });
-
-      cy.findByTestId("archived-list").within(() => {
-        cy.findByText("Items you archive will appear here.");
-        cy.findByText("Delete Order").should("not.exist");
-      });
     });
 
     it("should allow to create an action with the New button", () => {
@@ -209,6 +181,7 @@ describe(
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
+      cy.wait("@getDatabase");
       fillActionQuery(QUERY);
 
       cy.findByRole("dialog").within(() => {
@@ -939,10 +912,6 @@ function disableSharingFor(actionName) {
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();
   });
-}
-
-function getArchiveListItem(itemName) {
-  return cy.findByTestId(`archive-item-${itemName}`);
 }
 
 function resetAndVerifyScoreValue(dialect) {

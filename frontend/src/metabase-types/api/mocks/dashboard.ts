@@ -17,6 +17,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   name: "Dashboard",
   dashcards: [],
   can_write: true,
+  can_restore: true,
   description: "",
   cache_ttl: null,
   "last-edit-info": {
@@ -26,6 +27,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
     last_name: "Doe",
     timestamp: "2018-01-01",
   },
+  last_used_param_values: {},
   auto_apply_filters: true,
   archived: false,
   public_uuid: null,

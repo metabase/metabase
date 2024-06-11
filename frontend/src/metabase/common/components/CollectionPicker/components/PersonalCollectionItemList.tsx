@@ -12,6 +12,7 @@ export const PersonalCollectionsItemList = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   const {
     data: collections,
@@ -36,6 +37,7 @@ export const PersonalCollectionsItemList = ({
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

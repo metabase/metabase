@@ -77,6 +77,7 @@ export const StaticEmbedSetupPane = ({
 
   const siteUrl = useSetting("site-url");
   const secretKey = checkNotNull(useSetting("embedding-secret-key"));
+  const exampleDashboardId = useSetting("example-dashboard-id");
   const initialEmbeddingParams = getDefaultEmbeddingParams(
     resource,
     resourceParameters,
@@ -164,6 +165,7 @@ export const StaticEmbedSetupPane = ({
     trackStaticEmbedPublished({
       artifact: resourceType,
       resource,
+      isExampleDashboard: exampleDashboardId === resource.id,
       params: countEmbeddingParameterOptions({
         ...convertResourceParametersToEmbeddingParams(resourceParameters),
         ...embeddingParams,

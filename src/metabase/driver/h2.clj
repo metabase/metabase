@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
@@ -283,7 +282,7 @@
          (h2x/literal unit)
          (if (number? amount)
            (sql.qp/inline-num (long amount))
-           (h2x/cast :long amount))
+           (h2x/cast-unless-type-in "integer" #{"long" "integer"} amount))
          expr]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
@@ -552,7 +551,7 @@
                           (Class/forName true (classloader/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
-        (mdb.jdbc-protocols/clob->str (.getObject rs i)))
+        (mdb/clob->str (.getObject rs i)))
       (fn []
         (.getObject rs i)))))
 

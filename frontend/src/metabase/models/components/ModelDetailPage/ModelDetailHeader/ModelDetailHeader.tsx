@@ -49,8 +49,8 @@ function ModelDetailHeader({
         action: () => setModal("move"),
       },
       {
-        title: t`Archive`,
-        icon: "archive",
+        title: t`Move to trash`,
+        icon: "trash",
         action: () => setModal("archive"),
       },
     ];

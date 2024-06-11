@@ -13,3 +13,4 @@ serdes/meta:
 - id: okNLSZKdSxaoG58JSQY54
   label: custom_reports
   model: Collection
+is_sample: false

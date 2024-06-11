@@ -1,4 +1,4 @@
-import type { RegisteredSeriesOption } from "echarts";
+import type { LineSeriesOption } from "echarts/charts";
 import _ from "underscore";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -12,7 +12,7 @@ export const TREND_LINE_DASH = [5, 5];
 
 export function getTrendLinesOption(
   chartModel: CartesianChartModel,
-): RegisteredSeriesOption["line"][] {
+): LineSeriesOption[] {
   return (
     chartModel.trendLinesModel?.seriesModels.map(trendSeries => ({
       type: "line",

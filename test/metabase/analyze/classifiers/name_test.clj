@@ -23,7 +23,7 @@
 (deftest ^:parallel infer-entity-type-test
   (testing "name matches"
     (let [classify (fn [table-name] (-> (mi/instance Table {:name table-name})
-                                        classifiers.name/infer-entity-type
+                                        classifiers.name/infer-entity-type-by-name
                                         :entity_type))]
       (testing "matches simple"
         (is (= :entity/TransactionTable

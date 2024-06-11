@@ -11,9 +11,9 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(defn- stage-has-cumulative-aggregation? [stage]
+(defn- stage-has-window-aggregation? [stage]
   (lib.util.match/match (:aggregation stage)
-    #{:cum-sum :cum-count}))
+    #{:cum-sum :cum-count :offset}))
 
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))
@@ -54,7 +54,6 @@
                                   ;; for other columns: remove temporal type, it should be nil anyway but remove it to
                                   ;; be safe.
                                   nil))
-      (lib/with-join-alias nil)
       (lib/with-binning nil)))
 
 (mu/defn ^:private update-second-stage-refs :- ::lib.schema/stage
@@ -78,7 +77,7 @@
   (let [query            (assoc-in query path first-stage)
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
-        (dissoc :expressions :joins :source-table :source-card :sources :lib/stage-metadata :filters)
+        (dissoc :expressions :joins :source-table :source-card :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols))))
 
 (mu/defn ^:private nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
@@ -89,7 +88,7 @@
     [first-stage
      (new-second-stage query path stage first-stage)]))
 
-(mu/defn nest-breakouts-in-stages-with-cumulative-aggregation :- ::lib.schema/query
+(mu/defn nest-breakouts-in-stages-with-window-aggregation :- ::lib.schema/query
   "Some picky databases like BigQuery don't let you use anything inside `ORDER BY` in `OVER` expressions except for
   plain column identifiers that also appear in the `GROUP BY` clause... no inline temporal bucketing or things like
   that.
@@ -102,6 +101,6 @@
   (lib.walk/walk-stages
    query
    (fn [query path stage]
-     (when (and (stage-has-cumulative-aggregation? stage)
+     (when (and (stage-has-window-aggregation? stage)
                 (stage-has-breakout? stage))
        (nest-breakouts-in-stage query path stage)))))

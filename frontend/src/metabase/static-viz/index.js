@@ -1,4 +1,6 @@
-import { setPlatformAPI } from "echarts";
+import "fast-text-encoding";
+
+import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 import "metabase/lib/dayjs";
 

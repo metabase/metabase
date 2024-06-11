@@ -13,6 +13,14 @@ export function dimensionIsNumeric({ cols, rows }, i = 0) {
   return hasNumbersOrNullsOnly && hasAtLeastOneNumber;
 }
 
+export const isMultipleOf = (value, base) => {
+  // Ideally we could use Number.EPSILON as constant diffThreshold here.
+  // However, we sometimes see very small errors that are bigger than EPSILON.
+  // For example, when called 1.23456789 and 1e-8 we see a diff of ~1e-16.
+  const diffThreshold = Math.pow(10, SMALLEST_PRECISION_EXP);
+  return Math.abs(value - Math.round(value / base) * base) < diffThreshold;
+};
+
 // We seem to run into float bugs if we get any more precise than this.
 const SMALLEST_PRECISION_EXP = -14;
 
@@ -58,10 +66,10 @@ export function computeNumericDataInverval(xValues) {
   return bestPrecision;
 }
 
-export const isMultipleOf = (value, base) => {
-  // Ideally we could use Number.EPSILON as constant diffThreshold here.
-  // However, we sometimes see very small errors that are bigger than EPSILON.
-  // For example, when called 1.23456789 and 1e-8 we see a diff of ~1e-16.
-  const diffThreshold = Math.pow(10, SMALLEST_PRECISION_EXP);
-  return Math.abs(value - Math.round(value / base) * base) < diffThreshold;
-};
+export function computeChange(comparisonVal, currVal) {
+  if (comparisonVal === 0) {
+    return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
+  }
+
+  return (currVal - comparisonVal) / Math.abs(comparisonVal);
+}

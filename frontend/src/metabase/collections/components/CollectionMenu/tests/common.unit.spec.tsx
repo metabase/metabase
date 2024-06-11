@@ -64,7 +64,7 @@ describe("CollectionMenu", () => {
 
     await userEvent.click(getIcon("ellipsis"));
     expect(await screen.findByText("Move")).toBeInTheDocument();
-    expect(screen.getByText("Archive")).toBeInTheDocument();
+    expect(screen.getByText("Move to trash")).toBeInTheDocument();
   });
 
   it("should not be able to move and archive a collection without write access", () => {

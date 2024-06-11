@@ -277,11 +277,6 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
-(def transform-encrypted-text
-  "Transform for encrypted text."
-  {:in  encryption/maybe-encrypt
-   :out encryption/maybe-decrypt})
-
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to modern MBQL clauses so things work correctly."
@@ -299,8 +294,14 @@
           (normalize-mbql-clauses [form]
             (walk/postwalk
              (fn [form]
-               (cond-> form
-                 (mbql-field-clause? form) mbql.normalize/normalize))
+               (try
+                 (cond-> form
+                   (mbql-field-clause? form) mbql.normalize/normalize)
+                 (catch Exception e
+                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
+                              (u/pprint-to-str 'red form)
+                              (ex-message e))
+                   form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
@@ -348,7 +349,7 @@
 (def ^:private LegacyMetricSegmentDefinition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
+   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
   (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
@@ -466,6 +467,7 @@
       add-entity-id))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 
 ;; --- helper fns
 (defn changes-with-pk
@@ -490,14 +492,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  t2.u/dispatch-on-first-arg)
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
-  something like
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
+  be something like
 
     #{\"/db/1/schema/public/table/20/\"}
 
@@ -731,3 +733,34 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
+
+(defmulti parent-collection-id-for-perms
+  "What is the ID of the parent collection that should determine the perms objects set for this object?"
+  {:arglists '([instance])}
+  dispatch-on-model)
+
+(defmethod parent-collection-id-for-perms ::has-trashed-from-collection-id
+  [instance]
+  (cond
+    (not (:archived instance)) (:collection_id instance)
+    (contains? instance :trashed_from_collection_id) (:trashed_from_collection_id instance)
+    ;; If we're supposed to get permissions from the `trashed_from_collection_id` but it isn't present, we can't check
+    ;; permissions correctly.
+    :else (throw (ex-info "Missing trashed_from_collection_id" {:instance instance}))))
+
+(defmethod parent-collection-id-for-perms :default
+  [instance]
+  (:collection_id instance))
+
+(defmulti parent-collection-id-column-for-perms
+  "What column should we use to determine the perms for this model?"
+  {:arglists '([model])}
+  identity)
+
+(defmethod parent-collection-id-column-for-perms :default
+  [_model]
+  :collection_id)
+
+(defmethod parent-collection-id-column-for-perms ::has-trashed-from-collection-id
+  [_model]
+  [:coalesce :trashed_from_collection_id :collection_id])

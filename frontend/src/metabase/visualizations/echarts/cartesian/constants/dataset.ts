@@ -29,3 +29,7 @@ export const TICKS_INTERVAL_THRESHOLD = 3;
 export const ECHARTS_CATEGORY_AXIS_NULL_VALUE = `${NULL_CHAR}_NULL` as const;
 
 export const GOAL_LINE_SERIES_ID = `${NULL_CHAR}_goal_line` as const;
+
+export const TIMELINE_EVENT_SERIES_ID = `${NULL_CHAR}_timeline_events`;
+
+export const TIMELINE_EVENT_DATA_NAME = `${NULL_CHAR}_timeline_event`;

@@ -1,9 +1,9 @@
 (ns metabase.lib.filter.operator
   (:require
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -121,7 +121,7 @@
   "The list of available filter operators.
    The order of operators is relevant for the front end.
    There are slight differences between names and ordering for the different base types."
-  [column :- lib.metadata/ColumnMetadata]
+  [column :- ::lib.schema.metadata/column]
   ;; The order of these clauses is important since we want to match the most relevant type
   ;; the order is different than `lib.types.isa/field-type` as filters need to operate
   ;; on the effective-type rather than the semantic-type, eg boolean and number cannot become

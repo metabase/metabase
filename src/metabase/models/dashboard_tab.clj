@@ -30,7 +30,7 @@
   [:dashboard_tab_id])
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:default :tab-cards]
-  "Given a list of tabs, return a seq of ordered tabs, in which each tabs contain a seq of orderd cards."
+  "Given a list of tabs, return a seq of ordered tabs, in which each tabs contain a seq of ordered cards."
   [_model _k tabs]
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
   (let [dashboard-id      (:dashboard_id (first tabs))

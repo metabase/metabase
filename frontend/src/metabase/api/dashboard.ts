@@ -3,6 +3,7 @@ import type {
   CreateDashboardRequest,
   Dashboard,
   DashboardId,
+  DashboardMetadata,
   GetDashboardRequest,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -16,6 +17,7 @@ import {
   invalidateTags,
   listTag,
   provideDashboardListTags,
+  provideDashboardMetadataTags,
   provideDashboardTags,
 } from "./tags";
 
@@ -42,14 +44,29 @@ export const dashboardApi = Api.injectEndpoints({
       providesTags: dashboard =>
         dashboard ? provideDashboardTags(dashboard) : [],
     }),
+    getDashboardMetadata: builder.query<DashboardMetadata, DashboardId>({
+      query: id => ({
+        method: "GET",
+        url: `/api/dashboard/${id}/query_metadata`,
+      }),
+      providesTags: metadata =>
+        metadata ? provideDashboardMetadataTags(metadata) : [],
+    }),
     createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
       query: body => ({
         method: "POST",
         url: "/api/dashboard",
         body,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("dashboard")]),
+      invalidatesTags: (newDashboard, error) =>
+        newDashboard
+          ? [
+              ...invalidateTags(error, [listTag("dashboard")]),
+              ...invalidateTags(error, [
+                idTag("collection", newDashboard.collection_id ?? "root"),
+              ]),
+            ]
+          : [],
     }),
     updateDashboard: builder.mutation<Dashboard, UpdateDashboardRequest>({
       query: ({ id, ...body }) => ({

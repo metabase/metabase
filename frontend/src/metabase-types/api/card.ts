@@ -14,7 +14,7 @@ import type {
 import type { UserInfo } from "./user";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question";
+export type CardType = "model" | "question" | "metric";
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -30,6 +30,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   enable_embedding: boolean;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
+  can_restore: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
@@ -77,12 +78,16 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   original_card_id?: number;
 }
 
+export type LineSize = "S" | "M" | "L";
+
 export type SeriesSettings = {
   title?: string;
   color?: string;
   show_series_values?: boolean;
   display?: string;
   axis?: string;
+  "line.size"?: LineSize;
+  "line.style"?: "solid" | "dashed" | "dotted";
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
@@ -121,6 +126,7 @@ export type TableColumnOrderSetting = {
 };
 
 export type StackType = "stacked" | "normalized" | null;
+export type StackValuesDisplay = "total" | "all" | "series";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = typeof numericScale[number];
@@ -132,6 +138,7 @@ export type YAxisScale = NumericScale;
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
+  "graph.show_stack_values"?: StackValuesDisplay;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];

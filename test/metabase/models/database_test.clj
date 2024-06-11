@@ -309,6 +309,16 @@
         (is (partial= {:details {}}
                       db))))))
 
+(deftest ^:parallel after-select-driver-features-realize-db-row-test
+  ;; This test is necessary because driver multimethods should be able to assume that the db argument is a Database
+  ;; instance, not a transient row. Otherwise a call like `(mi/instance-of :model/Database db)` will return false
+  ;; when it should return true.
+  (testing "Make sure selecting a database calls `driver/database-supports?` with a database instance"
+    (mt/with-temp [Database {db-id :id} {:engine (u/qualified-name ::test)}]
+      (mt/with-dynamic-redefs [driver/database-supports? (fn [_ _ db]
+                                                           (is (true? (mi/instance-of? :model/Database db))))]
+        (is (some? (t2/select-one-fn :features Database :id db-id)))))))
+
 (deftest hydrate-tables-test
   (is (= ["CATEGORIES"
           "CHECKINS"

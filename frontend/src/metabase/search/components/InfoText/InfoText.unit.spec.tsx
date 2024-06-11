@@ -174,22 +174,6 @@ describe("InfoText", () => {
       );
     });
 
-    it("shows metric's table name", async () => {
-      await setup({
-        model: "metric",
-      });
-
-      const tableLink = screen.getByText(MOCK_TABLE.display_name);
-      expect(tableLink).toHaveAttribute(
-        "href",
-        `/question#?db=${MOCK_DATABASE.id}&table=${MOCK_TABLE.id}`,
-      );
-
-      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION}`,
-      );
-    });
-
     it("shows table's schema", async () => {
       await setup({
         model: "table",

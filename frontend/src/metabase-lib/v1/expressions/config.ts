@@ -291,6 +291,18 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
   },
+  offset: {
+    displayName: `Offset`,
+    type: "any", // ideally we'd dynamically infer it from the first argument
+    args: ["any", "number"],
+    requiresFeature: "window-functions/offset",
+    validator: function (_expr: any, offset: number) {
+      if (offset === 0) {
+        return t`Row offset cannot be zero`;
+      }
+    },
+    hasOptions: true,
+  },
   // boolean operators
   and: { displayName: `AND`, type: "boolean", args: ["boolean", "boolean"] },
   or: { displayName: `OR`, type: "boolean", args: ["boolean", "boolean"] },
@@ -472,6 +484,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "cum-sum",
   "distinct",
   "stddev",
+  "offset",
   "avg",
   "median",
   "min",

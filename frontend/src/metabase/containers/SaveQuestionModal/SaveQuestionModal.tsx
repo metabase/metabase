@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -10,7 +10,6 @@ import {
   getInstanceAnalyticsCustomCollection,
 } from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -47,6 +46,14 @@ const getLabels = (question: Question, showSaveType: boolean) => {
       singleStepTitle: t`Save model`,
       multiStepTitle: t`First, save your model`,
       nameInputPlaceholder: t`What is the name of your model?`,
+    };
+  }
+
+  if (type === "metric") {
+    return {
+      singleStepTitle: t`Save metric`,
+      multiStepTitle: t`First, save your metric`,
+      nameInputPlaceholder: t`What is the name of your metric?`,
     };
   }
 
@@ -90,7 +97,7 @@ const isOverwriteMode = (
 
 export const SaveQuestionModal = ({
   question,
-  originalQuestion,
+  originalQuestion: latestOriginalQuestion,
   onCreate,
   onSave,
   onClose,
@@ -98,6 +105,7 @@ export const SaveQuestionModal = ({
   initialCollectionId,
 }: SaveQuestionModalProps) => {
   const { data: collections } = useCollectionListQuery();
+  const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   // we can't use null because that can be ID of the root collection
@@ -219,90 +227,82 @@ export const SaveQuestionModal = ({
     question,
     showSaveType,
   );
-
   const title = multiStep ? multiStepTitle : singleStepTitle;
 
   return (
     <Modal.Root onClose={onClose} opened={true}>
       <Modal.Overlay />
-      <CreateCollectionOnTheGo>
-        {({ resumedValues }) => (
-          <FormProvider
-            initialValues={{ ...initialValues, ...resumedValues }}
-            onSubmit={handleSubmit}
-            validationSchema={SAVE_QUESTION_SCHEMA}
-            enableReinitialize
-          >
-            {({ values, setValues }) => (
-              <Modal.Content p="md" data-testid="save-question-modal">
-                <Modal.Header>
-                  <Modal.Title>{title}</Modal.Title>
-                  <Flex align="center" justify="flex-end" gap="sm">
-                    <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
-                      question={submittableQuestion}
-                      onAccept={nextValues =>
-                        setValues({ ...values, ...nextValues })
-                      }
-                    />
-                    <Modal.CloseButton />
-                  </Flex>
-                </Modal.Header>
-                <Modal.Body>
-                  <Form>
-                    {showSaveType && (
-                      <FormRadio
-                        name="saveType"
-                        title={t`Replace or save as new?`}
-                        options={[
-                          {
-                            name: t`Replace original question, "${originalQuestion?.displayName()}"`,
-                            value: "overwrite",
-                          },
-                          { name: t`Save as new question`, value: "create" },
-                        ]}
-                        vertical
+      <FormProvider
+        initialValues={{ ...initialValues }}
+        onSubmit={handleSubmit}
+        validationSchema={SAVE_QUESTION_SCHEMA}
+        enableReinitialize
+      >
+        {({ values, setValues }) => (
+          <Modal.Content p="md" data-testid="save-question-modal">
+            <Modal.Header>
+              <Modal.Title>{title}</Modal.Title>
+              <Flex align="center" justify="flex-end" gap="sm">
+                <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
+                  question={submittableQuestion}
+                  onAccept={nextValues =>
+                    setValues({ ...values, ...nextValues })
+                  }
+                />
+                <Modal.CloseButton />
+              </Flex>
+            </Modal.Header>
+            <Modal.Body>
+              <Form>
+                {showSaveType && (
+                  <FormRadio
+                    name="saveType"
+                    title={t`Replace or save as new?`}
+                    options={[
+                      {
+                        name: t`Replace original question, "${originalQuestion?.displayName()}"`,
+                        value: "overwrite",
+                      },
+                      { name: t`Save as new question`, value: "create" },
+                    ]}
+                    vertical
+                  />
+                )}
+                <TransitionGroup>
+                  {values.saveType === "create" && (
+                    <div className={CS.overflowHidden}>
+                      <FormInput
+                        name="name"
+                        title={t`Name`}
+                        placeholder={nameInputPlaceholder}
                       />
-                    )}
-                    <TransitionGroup>
-                      {values.saveType === "create" && (
-                        <div className={CS.overflowHidden}>
-                          <FormInput
-                            name="name"
-                            title={t`Name`}
-                            placeholder={nameInputPlaceholder}
-                          />
-                          <FormTextArea
-                            name="description"
-                            title={t`Description`}
-                            placeholder={t`It's optional but oh, so helpful`}
-                          />
-                          <FormCollectionPicker
-                            name="collection_id"
-                            title={t`Which collection should this go in?`}
-                            zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-                          />
-                        </div>
-                      )}
-                    </TransitionGroup>
-                    <FormFooter>
-                      <FormErrorMessage inline />
-                      <Button
-                        type="button"
-                        onClick={onClose}
-                      >{t`Cancel`}</Button>
-                      <FormSubmitButton
-                        title={t`Save`}
-                        data-testid="save-question-button"
-                        primary
+                      <FormTextArea
+                        name="description"
+                        title={t`Description`}
+                        placeholder={t`It's optional but oh, so helpful`}
                       />
-                    </FormFooter>
-                  </Form>
-                </Modal.Body>
-              </Modal.Content>
-            )}
-          </FormProvider>
+                      <FormCollectionPicker
+                        name="collection_id"
+                        title={t`Which collection should this go in?`}
+                        zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+                      />
+                    </div>
+                  )}
+                </TransitionGroup>
+                <FormFooter>
+                  <FormErrorMessage inline />
+                  <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+                  <FormSubmitButton
+                    title={t`Save`}
+                    data-testid="save-question-button"
+                    primary
+                  />
+                </FormFooter>
+              </Form>
+            </Modal.Body>
+          </Modal.Content>
         )}
-      </CreateCollectionOnTheGo>
+      </FormProvider>
     </Modal.Root>
   );
 };

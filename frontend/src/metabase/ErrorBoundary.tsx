@@ -5,11 +5,11 @@ import { SmallGenericError } from "metabase/components/ErrorPages";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ErrorBoundary extends Component<
-  {
+  React.PropsWithChildren<{
     onError?: (errorInfo: ErrorInfo) => void;
     errorComponent?: ComponentType;
     message?: string;
-  },
+  }>,
   {
     hasError: boolean;
   }

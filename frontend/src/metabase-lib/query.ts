@@ -1,13 +1,19 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type {
+  CardType,
+  DatabaseId,
+  DatasetQuery,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   CardMetadata,
   Clause,
+  ClauseType,
   ColumnMetadata,
   Join,
   MetadataProvider,
-  LegacyMetricMetadata,
+  MetricMetadata,
   Query,
   SegmentMetadata,
   TableMetadata,
@@ -23,7 +29,7 @@ export function fromLegacyQuery(
 
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
-   Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
+ Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
  */
 export function queryFromTableOrCardMetadata(
   metadataProvider: MetadataProvider,
@@ -76,12 +82,7 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause:
-    | Clause
-    | ColumnMetadata
-    | LegacyMetricMetadata
-    | SegmentMetadata
-    | Join,
+  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
@@ -99,12 +100,12 @@ export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
-export function canRun(query: Query): boolean {
-  return ML.can_run(query);
+export function canRun(query: Query, cardType: CardType): boolean {
+  return ML.can_run(query, cardType);
 }
 
-export function canSave(query: Query): boolean {
-  return ML.can_save(query);
+export function canSave(query: Query, cardType: CardType): boolean {
+  return ML.can_save(query, cardType);
 }
 
 export function asReturned(
@@ -112,4 +113,13 @@ export function asReturned(
   stageIndex: number,
 ): { query: Query; stageIndex: number } {
   return ML.as_returned(query, stageIndex);
+}
+
+export function previewQuery(
+  query: Query,
+  stageIndex: number,
+  clauseType: ClauseType,
+  clauseIndex: number | null,
+): Query | null {
+  return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
 }

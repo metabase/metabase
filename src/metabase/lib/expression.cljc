@@ -1,7 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure
-   :exclude
-   [+ - * / case coalesce abs time concat replace])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace])
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
@@ -9,7 +7,6 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -17,6 +14,7 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
@@ -28,7 +26,7 @@
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
-  [metadata :- lib.metadata/ColumnMetadata]
+  [metadata :- ::lib.schema.metadata/column]
   (let [options {:lib/uuid       (str (random-uuid))
                  :base-type      (:base-type metadata)
                  :effective-type ((some-fn :effective-type :base-type) metadata)}]
@@ -227,7 +225,8 @@
     expression-name :- ::lib.schema.common/non-blank-string
     expressionable
     options         :- [:maybe ::add-expression-options]]
-   (let [stage-number (or stage-number -1)]
+   (let [stage-number   (or stage-number -1)
+         expressionable (lib.common/->op-arg expressionable)]
      ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
      ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
      ;; the QP code, and it should be powered by MLv2 in due course.
@@ -237,8 +236,7 @@
      (lib.util/update-query-stage
        query stage-number
        add-expression-to-stage
-       (-> (lib.common/->op-arg expressionable)
-           (lib.util/top-level-expression-clause expression-name))
+       (lib.util/top-level-expression-clause expressionable expression-name)
        options))))
 
 (lib.common/defop + [x y & more])
@@ -291,8 +289,9 @@
 (lib.common/defop month-name [n])
 (lib.common/defop quarter-name [n])
 (lib.common/defop day-name [n])
+(lib.common/defop offset [x n])
 
-(mu/defn ^:private expression-metadata :- lib.metadata/ColumnMetadata
+(mu/defn ^:private expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query
    stage-number          :- :int
    expression-definition :- ::lib.schema.expression/expression]
@@ -302,7 +301,7 @@
                :name         expression-name
                :display-name expression-name))))
 
-(mu/defn expressions-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn expressions-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
    (expressions-metadata query -1))
@@ -325,7 +324,7 @@
   [expression-clause]
   expression-clause)
 
-(mu/defn expressionable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn expressionable-columns :- [:sequential ::lib.schema.metadata/column]
   "Get column metadata for all the columns that can be used expressions in
   the stage number `stage-number` of the query `query` and in expression index `expression-position`
   If `stage-number` is omitted, the last stage is used.
@@ -451,12 +450,12 @@
   `expression-position` is provided, for cyclic references with other expressions.
 
   - `expr` is a pMBQL expression usually created from a legacy MBQL expression created
-    using the custom column editor in the FE. It is expected to have been normalized and
-    converted using [[metabase.lib.convert/->pMBQL]].
+  using the custom column editor in the FE. It is expected to have been normalized and
+  converted using [[metabase.lib.convert/->pMBQL]].
   - `expression-mode` specifies what type of thing `expr` is: an :expression (custom column),
-    an :aggregation expression, or a :filter condition.
+  an :aggregation expression, or a :filter condition.
   - `expression-position` is only defined when editing an existing custom column, and in that case
-    it is the index of that expression in (expressions query stage-number).
+  it is the index of that expression in (expressions query stage-number).
 
   The function returns nil, if the expression is valid, otherwise it returns a map with
   an i18n message describing the problem under the key :message."
@@ -469,17 +468,31 @@
                                 :expression [expression-validator expression-explainer]
                                 :aggregation [aggregation-validator aggregation-explainer]
                                 :filter [filter-validator filter-explainer])]
-    (if (not (validator expr))
-      (let [error (explainer expr)
-            humanized (str/join ", " (me/humanize error))]
-        {:message (i18n/tru "Type error: {0}" humanized)})
-      (when-let [path (and (= expression-mode :expression)
-                           expression-position
-                           (let [exprs (expressions query stage-number)
-                                 edited-expr (nth exprs expression-position)
-                                 edited-name (expression->name edited-expr)
-                                 deps (-> (m/index-by expression->name exprs)
-                                          (assoc edited-name expr)
-                                          (update-vals referred-expressions))]
-                             (cyclic-definition deps)))]
-        {:message (i18n/tru "Cycle detected: {0}" (str/join " → " path))}))))
+    (or (when-not (validator expr)
+          (let [error (explainer expr)
+                humanized (str/join ", " (me/humanize error))]
+            {:message (i18n/tru "Type error: {0}" humanized)}))
+        (when-let [path (and (= expression-mode :expression)
+                             expression-position
+                             (let [exprs (expressions query stage-number)
+                                   edited-expr (nth exprs expression-position)
+                                   edited-name (expression->name edited-expr)
+                                   deps (-> (m/index-by expression->name exprs)
+                                            (assoc edited-name expr)
+                                            (update-vals referred-expressions))]
+                               (cyclic-definition deps)))]
+          {:message  (i18n/tru "Cycle detected: {0}" (str/join " → " path))
+           :friendly true})
+        (when (and (= expression-mode :expression)
+                   (lib.util.match/match-one expr :offset))
+          {:message  (i18n/tru "OFFSET is not supported in custom expressions")
+           :friendly true})
+        (when (and (= expression-mode :expression)
+                   (lib.util.match/match-one expr :offset)
+                   (empty? (:order-by (lib.util/query-stage query stage-number))))
+          {:message  (i18n/tru "OFFSET in a custom expression requires a sort order")
+           :friendly true})
+        (when (and (= expression-mode :filter)
+                   (lib.util.match/match-one expr :offset))
+          {:message  (i18n/tru "OFFSET is not supported in custom filters")
+           :friendly true}))))

@@ -7,6 +7,7 @@ import { getName } from "metabase/lib/name";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
+import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
 import { HomeCaption } from "../HomeCaption";
@@ -33,14 +34,11 @@ export const HomeRecentSection = () => {
     <div>
       <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
       <SectionBody>
-        {recentItems.map((item, index) => (
+        {recentsFilter(recentItems).map((item, index) => (
           <HomeModelCard
             key={index}
-            title={getName(item.model_object)}
-            icon={getIcon(
-              { ...item.model_object, model: item.model },
-              { variant: "secondary" },
-            )}
+            title={getName(item)}
+            icon={getIcon(item)}
             url={Urls.modelToUrl(item) ?? ""}
           />
         ))}
@@ -48,4 +46,8 @@ export const HomeRecentSection = () => {
       </SectionBody>
     </div>
   );
+};
+
+export const recentsFilter = (results: RecentItem[]): RecentItem[] => {
+  return results.filter(item => item.model !== "collection").slice(0, 5);
 };

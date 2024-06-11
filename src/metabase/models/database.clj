@@ -181,7 +181,7 @@
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (driver.impl/registered? driver)
-      (assoc :features (driver.u/features driver database))
+      (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
       (and (driver.impl/registered? driver)
            (:details database)
@@ -256,6 +256,13 @@
                          (partial handle-db-details-secret-prop! database))]
     (assoc database :details updated-details)))
 
+(defn- handle-uploads-enabled!
+  "This function maintains the invariant that only one database can have uploads_enabled=true."
+  [db]
+  (when (:uploads_enabled db)
+    (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+  db)
+
 (t2/define-before-update :model/Database
   [database]
   (let [changes                              (t2/changes database)
@@ -288,7 +295,10 @@
                  infer-db-schedules
 
                  (some? (:details changes))
-                 handle-secrets-changes)
+                 handle-secrets-changes
+
+                 (:uploads_enabled changes)
+                 handle-uploads-enabled!)
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
@@ -311,6 +321,7 @@
         (not details)             (assoc :details {})
         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       handle-secrets-changes
+      handle-uploads-enabled!
       infer-db-schedules))
 
 (defmethod serdes/hash-fields :model/Database
@@ -408,7 +419,8 @@
                          ;; there is an known issue with exception is ignored when render API response (#32822)
                          ;; If you see this error, you probably need to define a setting for `setting-name`.
                          ;; But ideally, we should resovle the above issue, and remove this try/catch
-                         (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
+                         (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
+                                     setting-name)
                          ;; let's be conservative and hide it by defaults, if you want to see it,
                          ;; you need to define it :)
                          false)))

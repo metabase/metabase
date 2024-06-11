@@ -14,10 +14,20 @@
    [metabase.analyze.fingerprint.schema :as fingerprint.schema]
    [metabase.analyze.schema :as analyze.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.field-values :as field-values]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(def ^Long category-cardinality-threshold
+  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
+  This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
+  frontend behavior such as widget choices."
+  30)
+
+(def ^Long auto-list-cardinality-threshold
+  "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
+  the Field should have FieldValues."
+  1000)
 
 (defn- cannot-be-category-or-list?
   [{base-type :base_type, semantic-type :semantic_type}]
@@ -38,11 +48,11 @@
     (when (and (nil? (:semantic_type field))
                (or (some-> nil% (< 1))
                    (isa? (:base_type field) :type/Boolean))
-               (some-> distinct-count (<= field-values/category-cardinality-threshold)))
+               (some-> distinct-count (<= category-cardinality-threshold)))
       (log/debugf "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                   (sync-util/name-for-logging field)
                   distinct-count
-                  field-values/category-cardinality-threshold)
+                  category-cardinality-threshold)
       true)))
 
 (mu/defn ^:private field-should-be-auto-list? :- [:maybe :boolean]
@@ -53,11 +63,11 @@
   ;; manually by an admin, and we don't want to stomp over their choices.
   (let [distinct-count (get-in fingerprint [:global :distinct-count])]
     (when (and (nil? (:has-field-values field))
-               (some-> distinct-count (<= field-values/auto-list-cardinality-threshold)))
+               (some-> distinct-count (<= auto-list-cardinality-threshold)))
       (log/debugf "%s has %d distinct values. Since that is less than %d, it should have cached FieldValues."
                   (sync-util/name-for-logging field)
                   distinct-count
-                  field-values/auto-list-cardinality-threshold)
+                  auto-list-cardinality-threshold)
       true)))
 
 (mu/defn infer-is-category-or-list :- [:maybe analyze.schema/Field]

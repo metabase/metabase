@@ -8,8 +8,9 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -19,13 +20,7 @@
   (driver/escape-alias driver join-alias))
 
 (defn- driver->escape-fn [driver]
-  (comp (mbql.u/unique-name-generator
-         ;; some databases treat aliases as case-insensitive so make sure the generated aliases
-         ;; are unique regardless of case
-         :name-key-fn     u/lower-case-en
-         ;; uniqified aliases needs to be escaped again just in case
-         :unique-alias-fn (fn [original suffix]
-                            (escape-alias driver (str original \_ suffix))))
+  (comp (lib.util/unique-name-generator (qp.store/metadata-provider))
         (partial escape-alias driver)))
 
 (defn- add-escaped-aliases

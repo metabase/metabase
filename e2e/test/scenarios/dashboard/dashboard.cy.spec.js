@@ -44,6 +44,8 @@ import {
   entityPickerModal,
   collectionOnTheGoModal,
   setFilter,
+  commandPaletteButton,
+  commandPalette,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -112,9 +114,8 @@ describe("scenarios > dashboard", () => {
         .findByRole("link", { name: "ask a new one" })
         .click();
 
-      popover().within(() => {
-        cy.findByPlaceholderText(/Search for some/).type("Pro");
-        // cy.findByText("Sample Database").click();
+      entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("Pro");
         cy.findByText("Products").click();
       });
 
@@ -126,7 +127,16 @@ describe("scenarios > dashboard", () => {
       cy.wait("@createQuestion");
       modal().within(() => {
         cy.button("Yes please!").click();
-        cy.findByText(dashboardName).click();
+      });
+
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
+        cy.findByText(dashboardName)
+          .closest("button")
+          .then($button => {
+            expect($button).to.have.attr("data-active", "true");
+          });
+        cy.button("Select").click();
       });
 
       openQuestionsSidebar();
@@ -163,6 +173,10 @@ describe("scenarios > dashboard", () => {
             .should("have.text", "Our analytics")
             .click();
         });
+
+        entityPickerModal()
+          .findByRole("tab", { name: /Collections/ })
+          .click();
         entityPickerModal()
           .findByText("Create a new collection")
           .click({ force: true });
@@ -212,23 +226,27 @@ describe("scenarios > dashboard", () => {
         cy.button("Yes please!").click();
       });
 
-      modal().findByText("Create a new dashboard").click();
-      modal().within(() => {
-        cy.findByLabelText("Name").type("Foo").blur();
-        cy.button("Create").click();
+      entityPickerModal()
+        .findByRole("tab", { name: /Dashboards/ })
+        .click();
+      entityPickerModal().findByText("Create a new dashboard").click();
+      cy.findByTestId("create-dashboard-on-the-go").within(() => {
+        cy.findByPlaceholderText("My new dashboard").type("Foo");
+        cy.findByText("Create").click();
       });
+      entityPickerModal().button("Select").click();
 
       saveDashboard();
 
       cy.log(
         "Find the originally visited (unrelated) dashboard in search and go to it",
       );
-      appBar()
-        .findByPlaceholderText(/^Search/)
-        .click();
-      cy.findAllByTestId("recently-viewed-item-title")
-        .contains("Orders in a dashboard")
-        .click();
+
+      commandPaletteButton().click();
+      commandPalette().within(() => {
+        cy.findByText("Recent items").should("exist");
+        cy.findByRole("option", { name: "Orders in a dashboard" }).click();
+      });
 
       cy.log("It should not contain an alien card from the other dashboard");
       getDashboardCards().should("have.length", 1).and("contain", "37.65");
@@ -315,6 +333,7 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -333,6 +352,7 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Our analytics").click();
           cy.button("Move").click();
         });
@@ -857,16 +877,17 @@ describe("scenarios > dashboard", () => {
             ],
           });
 
-          cy.intercept("GET", `/api/dashboard/${NEW_DASHBOARD_ID}`).as(
-            "loadDashboard",
-          );
+          cy.intercept(
+            "GET",
+            `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata`,
+          ).as("queryMetadata");
         });
       },
     );
     cy.signInAsNormalUser();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.wait("@loadDashboard");
+    cy.wait("@queryMetadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

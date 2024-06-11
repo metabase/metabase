@@ -12,7 +12,7 @@ import Select, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { uuid } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 

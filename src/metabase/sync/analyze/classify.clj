@@ -18,9 +18,7 @@
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require
    [clojure.data :as data]
-   [metabase.analyze.classifiers.core :as classifiers]
-   [metabase.analyze.classifiers.name :as classifiers.name]
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
+   [metabase.analyze :as analyze]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
@@ -76,9 +74,9 @@
                         (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
 
   ([field       :- i/FieldInstance
-    fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+    fingerprint :- [:maybe analyze/Fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
-     (let [updated-field (classifiers/run-classifiers field fingerprint)]
+     (let [updated-field (analyze/run-classifiers field fingerprint)]
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))))))
 
@@ -112,7 +110,7 @@
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
-                        (classifiers.name/infer-entity-type table))]
+                        (analyze/infer-entity-type-by-name table))]
     (if (instance? Exception updated-table)
       table
       (save-model-updates! table updated-table))))

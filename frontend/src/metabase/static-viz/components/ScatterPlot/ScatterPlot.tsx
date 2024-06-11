@@ -1,16 +1,19 @@
 import { Group } from "@visx/group";
-import { init } from "echarts";
+import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
+import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
 
 import { computeStaticComboChartSettings } from "../ComboChart/settings";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
+
+registerEChartsModules();
 
 const WIDTH = 540;
 const HEIGHT = 360;
@@ -32,7 +35,7 @@ export function ScatterPlot({
     renderingContext,
   );
 
-  const chartModel = getCartesianChartModel(
+  const chartModel = getScatterPlotModel(
     rawSeries,
     computedVisualizationSettings,
     renderingContext,
@@ -56,7 +59,7 @@ export function ScatterPlot({
     renderingContext,
   );
 
-  const option = getCartesianChartOption(
+  const option = getScatterPlotOption(
     chartModel,
     chartMeasurements,
     null,
@@ -64,7 +67,6 @@ export function ScatterPlot({
     computedVisualizationSettings,
     width,
     false,
-    null,
     renderingContext,
   );
   chart.setOption(option);

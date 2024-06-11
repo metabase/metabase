@@ -1,12 +1,10 @@
 import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
-import type { SearchResult } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockModelResult,
-} from "metabase-types/api/mocks";
+import type { SearchResult, ModelResult } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 
+import { createMockModelResult } from "./test-utils";
 import type { ActualModelFilters, AvailableModelFilters } from "./utils";
-import { filterModels, groupModels } from "./utils";
+import { filterModels } from "./utils";
 
 const collectionAlpha = createMockCollection({ id: 0, name: "Alpha" });
 const collectionBeta = createMockCollection({ id: 1, name: "Beta" });
@@ -16,7 +14,7 @@ const collectionZulu = createMockCollection({ id: 4, name: "Zulu" });
 const collectionAngstrom = createMockCollection({ id: 5, name: "Ångström" });
 const collectionOzgur = createMockCollection({ id: 6, name: "Özgür" });
 
-const mockModels: SearchResult[] = [
+const mockModels: ModelResult[] = [
   {
     id: 0,
     name: "Model 0",
@@ -181,46 +179,6 @@ const mockModels: SearchResult[] = [
 ].map(model => createMockModelResult(model));
 
 describe("Browse utils", () => {
-  it("include a function that groups models by collection, sorting the collections alphabetically when English is the locale", () => {
-    const groupedModels = groupModels(mockModels, "en-US");
-    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
-    expect(groupedModels[0]).toHaveLength(3);
-    expect(groupedModels[1][0].collection.name).toEqual("Ångström");
-    expect(groupedModels[1]).toHaveLength(3);
-    expect(groupedModels[2][0].collection.name).toEqual("Beta");
-    expect(groupedModels[2]).toHaveLength(3);
-    expect(groupedModels[3][0].collection.name).toEqual("Charlie");
-    expect(groupedModels[3]).toHaveLength(3);
-    expect(groupedModels[4][0].collection.name).toEqual("Delta");
-    expect(groupedModels[4]).toHaveLength(3);
-    expect(groupedModels[5][0].collection.name).toEqual("Our analytics");
-    expect(groupedModels[5]).toHaveLength(2);
-    expect(groupedModels[6][0].collection.name).toEqual("Özgür");
-    expect(groupedModels[6]).toHaveLength(3);
-    expect(groupedModels[7][0].collection.name).toEqual("Zulu");
-    expect(groupedModels[7]).toHaveLength(3);
-  });
-
-  it("include a function that groups models by collection, sorting the collections alphabetically when Swedish is the locale", () => {
-    const groupedModels = groupModels(mockModels, "sv-SV");
-    expect(groupedModels[0][0].collection.name).toEqual("Alpha");
-    expect(groupedModels[0]).toHaveLength(3);
-    expect(groupedModels[1][0].collection.name).toEqual("Beta");
-    expect(groupedModels[1]).toHaveLength(3);
-    expect(groupedModels[2][0].collection.name).toEqual("Charlie");
-    expect(groupedModels[2]).toHaveLength(3);
-    expect(groupedModels[3][0].collection.name).toEqual("Delta");
-    expect(groupedModels[3]).toHaveLength(3);
-    expect(groupedModels[4][0].collection.name).toEqual("Our analytics");
-    expect(groupedModels[4]).toHaveLength(2);
-    expect(groupedModels[5][0].collection.name).toEqual("Zulu");
-    expect(groupedModels[5]).toHaveLength(3);
-    expect(groupedModels[6][0].collection.name).toEqual("Ångström");
-    expect(groupedModels[6]).toHaveLength(3);
-    expect(groupedModels[7][0].collection.name).toEqual("Özgür");
-    expect(groupedModels[7]).toHaveLength(3);
-  });
-
   const diverseModels = mockModels.map((model, index) => ({
     ...model,
     name: index % 2 === 0 ? `red ${index}` : `blue ${index}`,

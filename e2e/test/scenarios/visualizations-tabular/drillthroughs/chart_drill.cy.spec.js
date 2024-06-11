@@ -17,6 +17,9 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   cartesianChartCircleWithColor,
+  entityPickerModal,
+  entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -100,6 +103,12 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       };
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
+
+      queryBuilderMain().within(() => {
+        cy.findByLabelText("Legend").findByText("Gadget").should("exist");
+        echartsContainer().findByText(/Count/).should("exist");
+      });
+      cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
       cy.findByTestId("query-visualization-root")
         .trigger("mousedown", 240, 200)
@@ -255,10 +264,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // Build a new question off that grouping by City
     startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("CA People").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.contains("CA People").click();
+    });
 
     addSummaryField({ metric: "Count of rows" });
 
@@ -553,8 +562,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount ($)").click();
+    tableHeaderClick("Discount ($)");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values").click();
 

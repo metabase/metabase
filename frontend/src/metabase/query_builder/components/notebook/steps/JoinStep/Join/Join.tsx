@@ -12,7 +12,6 @@ interface JoinProps {
   joinPosition: number;
   color: string;
   isReadOnly: boolean;
-  isModelDataSource: boolean;
   onJoinChange: (newJoin: Lib.Join) => void;
   onQueryChange: (newQuery: Lib.Query) => void;
 }
@@ -24,7 +23,6 @@ export function Join({
   joinPosition,
   color,
   isReadOnly,
-  isModelDataSource,
   onJoinChange,
   onQueryChange,
 }: JoinProps) {
@@ -45,7 +43,6 @@ export function Join({
         initialStrategy={draftStrategy}
         initialRhsTable={draftRhsTable}
         isReadOnly={isReadOnly}
-        isModelDataSource={isModelDataSource}
         onJoinChange={handleJoinChange}
       />
     );
@@ -59,7 +56,6 @@ export function Join({
       joinPosition={joinPosition}
       color={color}
       isReadOnly={isReadOnly}
-      isModelDataSource={isModelDataSource}
       onJoinChange={handleJoinChange}
       onQueryChange={onQueryChange}
       onDraftRhsTableChange={setDraftRhsTable}

@@ -29,7 +29,6 @@
         "table.pivot_column": "generation",
         "table.cell_column": "avg",
         "stackable.stack_type": "stacked",
-        "stackable.stack_display": "bar",
         "graph.x_axis.scale": "histogram",
         "graph.dimensions": ["generation"],
         "graph.metrics": ["avg", "avg_2", "avg_3", "avg_4", "avg_5", "avg_6"]

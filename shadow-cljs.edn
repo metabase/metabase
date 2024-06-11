@@ -16,8 +16,7 @@
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
-   :entries    [metabase.domain-entities.queries.util
-                metabase.lib.column-group
+   :entries    [metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
@@ -31,7 +30,8 @@
                 metabase.shared.util.currency
                 metabase.shared.util.time
                 metabase.types
-                metabase.util.devtools]}
+                metabase.util.devtools
+                metabase.xrays.domain-entities.queries.util]}
 
   :test
   {:target    :node-test

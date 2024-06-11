@@ -5,7 +5,7 @@ import { resetParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import {
   getDashboardParameterSections,
-  getDefaultOptionForParameterSection,
+  getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
@@ -17,11 +17,11 @@ import {
   Select,
   Button,
 } from "metabase/ui";
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
-  ParameterMappingOptions,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -58,10 +58,7 @@ const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
-const defaultOptionForSection = getDefaultOptionForParameterSection() as Record<
-  string,
-  ParameterMappingOptions
->;
+const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
 
 export const ParameterSettings = ({
   parameter,
@@ -116,7 +113,7 @@ export const ParameterSettings = ({
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
-  const handleTypeChange = (sectionId: string) => {
+  const handleTypeChange = (sectionId: ParameterSectionId) => {
     const defaultOptionOfNextType = defaultOptionForSection[sectionId];
 
     onChangeType(defaultOptionOfNextType.type, sectionId);

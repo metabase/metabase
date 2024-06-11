@@ -95,10 +95,7 @@ const DataSelectorTablePicker = ({
       table && selectedTable ? table.id === selectedTable.id : false;
 
     const renderItemIcon = ({ table }: { table: Table }) =>
-      table ? <Icon name="table" /> : null;
-
-    const renderItemExtra = ({ table }: { table: Table }) =>
-      table && <TableInfoIcon table={table} position="right" />;
+      table ? <TableInfoIcon table={table} position="top-start" /> : null;
 
     const renderItemWrapper = (content: ReactNode) => (
       <HoverParent>{content}</HoverParent>
@@ -127,7 +124,6 @@ const DataSelectorTablePicker = ({
             showSpinner={showSpinner}
             itemIsSelected={checkIfItemIsSelected}
             itemIsClickable={checkIfItemIsClickable}
-            renderItemExtra={renderItemExtra}
             renderItemIcon={renderItemIcon}
             renderItemWrapper={renderItemWrapper}
             showItemArrows={hasNextStep}

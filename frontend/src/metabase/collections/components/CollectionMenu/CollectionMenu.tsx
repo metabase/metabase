@@ -54,9 +54,10 @@ export const CollectionMenu = ({
       icon: "move",
       link: `${url}/move`,
     });
+
     items.push({
-      title: t`Archive`,
-      icon: "archive",
+      title: t`Move to trash`,
+      icon: "trash",
       link: `${url}/archive`,
     });
   }
@@ -66,7 +67,7 @@ export const CollectionMenu = ({
       <EntityMenu
         items={items}
         triggerIcon="ellipsis"
-        tooltip={t`Move, archive, and more...`}
+        tooltip={t`Move, trash, and more...`}
         tooltipPlacement="bottom"
       />
     );

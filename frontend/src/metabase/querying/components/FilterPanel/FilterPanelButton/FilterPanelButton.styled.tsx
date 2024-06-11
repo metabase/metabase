@@ -10,7 +10,13 @@ type FilterButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
     isExpanded: boolean;
   };
 
-export const FilterButton = styled(Button)<FilterButtonProps>`
+const shouldForwardProp = (propName: string) => {
+  return propName !== "isExpanded";
+};
+
+export const FilterButton = styled(Button, {
+  shouldForwardProp,
+})<FilterButtonProps>`
   color: ${({ isExpanded }) => (isExpanded ? color("white") : color("filter"))};
   background-color: ${({ isExpanded }) =>
     isExpanded ? alpha("filter", 0.8) : alpha("filter", 0.2)};

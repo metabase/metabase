@@ -184,7 +184,7 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
-(mu/defn infer-entity-type :- analyze.schema/Table
+(mu/defn infer-entity-type-by-name :- analyze.schema/Table
   "Classifer that infers the semantic type of a `table` based on its name."
   [table :- analyze.schema/Table]
   (let [table-name (-> table :name u/lower-case-en)]
@@ -193,7 +193,6 @@
                                             type))
                                         entity-types-patterns)
                                   (case (some-> (:db_id table) driver.u/database->driver)
-                                    :googleanalytics :entity/GoogleAnalyticsTable
-                                    :druid           :entity/EventTable
+                                    :druid :entity/EventTable
                                     nil)
                                   :entity/GenericTable))))

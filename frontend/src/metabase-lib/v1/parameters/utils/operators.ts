@@ -13,6 +13,12 @@ import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 import { getIsMultiSelect } from "../../../../metabase/parameters/utils/dashboards";
 
 type OperatorType = "date" | "number" | "string";
+export type ParameterSectionId =
+  | "number"
+  | "string"
+  | "date"
+  | "location"
+  | "id";
 
 export function getOperatorDisplayName(
   option: { type: string; name: string; operator: string },
@@ -64,7 +70,7 @@ function getParameterOperatorType(parameterType?: string) {
 
 export function buildTypedOperatorOptions(
   operatorType: OperatorType,
-  sectionId: string,
+  sectionId: ParameterSectionId,
   sectionName: string,
 ): ParameterMappingOptions[] {
   return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {

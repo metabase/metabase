@@ -28,7 +28,7 @@ export const CellContent = styled.span<{ isClickable: boolean }>`
     css`
       cursor: pointer;
       &:hover {
-        color: ${color("brand")};
+        color: ${props.theme.fn.themeColor("brand")};
       }
     `}
 `;

@@ -6,7 +6,6 @@ import _ from "underscore";
 import { databaseApi, tableApi } from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
-import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
 import { color } from "metabase/lib/colors";
 import {
@@ -245,17 +244,6 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Metrics.actionTypes.CREATE && !error) {
-      const { table_id: tableId, id: metricId } = payload.metric;
-      const table = state[tableId];
-      if (table) {
-        return {
-          ...state,
-          [tableId]: { ...table, metrics: [metricId, ...table.metrics] },
-        };
-      }
-    }
-
     if (type === Segments.actionTypes.UPDATE && !error) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
@@ -265,20 +253,6 @@ const Tables = createEntity({
           [tableId]: {
             ...table,
             segments: table.segments.filter(id => id !== segmentId),
-          },
-        };
-      }
-    }
-
-    if (type === Metrics.actionTypes.UPDATE) {
-      const { table_id: tableId, archived, id: metricId } = payload.metric;
-      const table = state[tableId];
-      if (archived && table && table.metrics) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            metrics: table.metrics.filter(id => id !== metricId),
           },
         };
       }

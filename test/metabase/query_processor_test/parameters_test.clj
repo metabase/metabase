@@ -127,7 +127,7 @@
 (deftest ^:parallel field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
             (let [query (field-filter-count-query table field value-type value)]
-              (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
+              (mt/with-native-query-testing-context query
                 (is (= expected-count
                        (run-count-query query))))))]
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
@@ -135,9 +135,7 @@
         ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when (and (mt/supports-time-type? driver/*driver*)
-                   ;; Not sure why it's failing for Snowflake, we'll have to investigate.
-                   (not (= :snowflake driver/*driver*)))
+        (when (mt/supports-time-type? driver/*driver*)
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime

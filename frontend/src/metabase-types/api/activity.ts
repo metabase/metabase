@@ -1,37 +1,55 @@
-import type { CollectionId } from "./collection";
-import type { DatabaseId } from "./database";
-import type { UserId } from "./user";
+import type { CardDisplayType } from "./card";
+import type { InitialSyncStatus } from "./database";
 
 export const ACTIVITY_MODELS = [
   "table",
   "card",
   "dataset",
+  "metric",
   "dashboard",
+  "collection",
 ] as const;
 export type ActivityModel = typeof ACTIVITY_MODELS[number];
-export type ActivityModelId = number;
 
-export interface ActivityModelObject {
+export interface BaseRecentItem {
+  id: number;
   name: string;
-  display_name?: string;
-  moderated_status?: string;
-  collection_id?: CollectionId | null;
-  collection_name?: string;
-  database_name?: string;
-  db_id?: DatabaseId;
+  model: ActivityModel;
+  description?: string | null;
+  timestamp: string;
 }
 
-export interface RecentItem {
-  cnt: number;
-  max_ts: string;
-  user_id: UserId;
-  model: ActivityModel;
-  model_id: ActivityModelId;
-  model_object: ActivityModelObject;
+export interface RecentTableItem extends BaseRecentItem {
+  model: "table";
+  display_name: string;
+  database: {
+    id: number;
+    name: string;
+    initial_sync_status: InitialSyncStatus;
+  };
 }
 
-export interface PopularItem {
-  model: ActivityModel;
-  model_id: ActivityModelId;
-  model_object: ActivityModelObject;
+export interface RecentCollectionItem extends BaseRecentItem {
+  model: "collection" | "dashboard" | "card" | "dataset" | "metric";
+  can_write: boolean;
+  parent_collection: {
+    id: number | null;
+    name: string;
+    authority_level?: "official" | null;
+  };
+  authority_level?: "official" | null; // for collections
+  moderated_status?: "verified" | null; // for models
+  display?: CardDisplayType; // for questions
+}
+
+export type RecentItem = RecentTableItem | RecentCollectionItem;
+
+export interface RecentItemsResponse {
+  recent_views: RecentItem[];
+}
+
+export type PopularItem = RecentItem;
+
+export interface PopularItemsResponse {
+  popular_items: PopularItem[];
 }

@@ -182,15 +182,17 @@
   (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
     [:absolute-datetime (temporal-literal-upper-bound target-unit t) :default]))
 
-(mu/defmethod temporal-value-lower-bound :relative-datetime :- mbql.s/relative-datetime
+(mu/defmethod temporal-value-lower-bound :relative-datetime :- [:maybe mbql.s/relative-datetime]
   [[_ n unit] temporal-unit]
-  (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
-    [:relative-datetime (if (= n :current) 0 n) target-unit]))
+  (when-not (= temporal-unit :default)
+    (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
+      [:relative-datetime (if (= n :current) 0 n) target-unit])))
 
-(mu/defmethod temporal-value-upper-bound :relative-datetime :- mbql.s/relative-datetime
+(mu/defmethod temporal-value-upper-bound :relative-datetime :- [:maybe mbql.s/relative-datetime]
   [[_ n unit] temporal-unit]
-  (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
-    [:relative-datetime (inc (if (= n :current) 0 n)) target-unit]))
+  (when-not (= temporal-unit :default)
+    (let [target-unit (target-unit-for-new-bound unit temporal-unit)]
+      [:relative-datetime (inc (if (= n :current) 0 n)) target-unit])))
 
 (defn- date-field-with-day-bucketing? [x]
   (and (isa? (field-or-expression-effective-type x) :type/Date)

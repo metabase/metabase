@@ -1,6 +1,6 @@
 :root {
-  --title-color: var(--color-text-medium);
-  --subtitle-color: var(--color-text-medium);
+  --title-color: var(--mb-color-text-medium);
+  --subtitle-color: var(--mb-color-text-medium);
   --icon-width: 60px;
 }
 
@@ -28,9 +28,9 @@
   line-height: 1.4em;
   letter-spacing: 1px;
   white-space: pre-wrap;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
   background-color: var(--color-bg-light);
-  border: 1px solid var(--color-text-light);
+  border: 1px solid var(--mb-color-text-light);
   border-radius: 4px;
   padding: 0.2em 0.4em;
 }

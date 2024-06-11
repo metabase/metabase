@@ -9,7 +9,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private default-task-history
-  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil})
+  {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil :status "success"})
 
 (defn- generate-tasks
   "Creates `n` task history maps with guaranteed increasing `:ended_at` times. This means that when stored and queried
@@ -18,7 +18,8 @@
   (let [now        (t/zoned-date-time)
         task-names (repeatedly n mt/random-name)]
     (map-indexed (fn [idx task-name]
-                   {:task       task-name
+                   {:status     :success
+                    :task       task-name
                     :started_at now
                     :ended_at   (t/plus now (t/seconds idx))})
                  task-names)))

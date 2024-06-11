@@ -69,23 +69,26 @@
 
 (defn get-list
   "Get a list of cache configurations for given `models` and a `collection`."
-  [models collection]
-  (->> (t2/select
-        :model/CacheConfig
-        :model [:in models]
-        {:left-join [:report_card      [:and
-                                        [:= :model [:inline "question"]]
-                                        [:= :model_id :report_card.id]
-                                        [:= :report_card.collection_id collection]]
-                     :report_dashboard [:and
-                                        [:= :model [:inline "dashboard"]]
-                                        [:= :model_id :report_dashboard.id]
-                                        [:= :report_dashboard.collection_id collection]]]
-         :where     [:case
-                     [:= :model [:inline "question"]]  [:!= :report_card.id nil]
-                     [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
-                     :else                             true]})
-       (mapv row->config)))
+  [models collection id]
+  (->>
+   (if id
+     (t2/select :model/CacheConfig {:where [:and [:in :model models] [:= :model_id id]]})
+     (t2/select
+      :model/CacheConfig
+      :model [:in models]
+      {:left-join [:report_card      [:and
+                                      [:= :model [:inline "question"]]
+                                      [:= :model_id :report_card.id]
+                                      [:= :report_card.collection_id collection]]
+                   :report_dashboard [:and
+                                      [:= :model [:inline "dashboard"]]
+                                      [:= :model_id :report_dashboard.id]
+                                      [:= :report_dashboard.collection_id collection]]]
+       :where     [:case
+                   [:= :model [:inline "question"]]  [:!= :report_card.id nil]
+                   [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]
+                   :else                             true]}))
+   (mapv row->config)))
 
 (defn store!
   "Store cache configuration in DB."

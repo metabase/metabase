@@ -13,6 +13,7 @@
    [metabase.driver.postgres]
    [metabase.events :as events]
    [metabase.logger :as logger]
+   [metabase.models.cloud-migration :as cloud-migration]
    [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
@@ -114,6 +115,12 @@
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
+
+  ;; Disable read-only mode if its on during startup.
+  ;; This can happen if a cloud migration process dies during h2 dump.
+  (when (cloud-migration/read-only-mode)
+    (cloud-migration/read-only-mode! false))
+
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
   (when (prometheus/prometheus-server-port)
@@ -148,6 +155,7 @@
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
+  (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)

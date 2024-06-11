@@ -8,7 +8,6 @@ import {
   DatabaseSchema,
   FieldSchema,
   IndexedEntitySchema,
-  MetricSchema,
   ModelIndexSchema,
   QuestionSchema,
   SegmentSchema,
@@ -25,7 +24,6 @@ import type {
   Database,
   Field,
   NativeQuerySnippet,
-  Metric,
   Table,
   User,
   Schema,
@@ -45,7 +43,6 @@ export interface EntitiesStateOpts {
   schemas?: Schema[];
   tables?: Table[];
   fields?: Field[];
-  metrics?: Metric[];
   segments?: Segment[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
@@ -61,7 +58,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   schemas: [SchemaSchema],
   tables: [TableSchema],
   fields: [FieldSchema],
-  metrics: [MetricSchema],
   segments: [SegmentSchema],
   snippets: [SnippetSchema],
   modelIndexes: [ModelIndexSchema],

@@ -38,7 +38,7 @@ export const refreshSession = createAsyncThunk(
   async (_, { dispatch }) => {
     await Promise.all([
       dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings()),
+      dispatch(refreshSiteSettings({})),
     ]);
     await dispatch(refreshLocale()).unwrap();
   },
@@ -52,15 +52,11 @@ interface LoginPayload {
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createAsyncThunk(
   LOGIN,
-  async (
-    { data, redirectUrl = "/" }: LoginPayload,
-    { dispatch, rejectWithValue },
-  ) => {
+  async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
       await SessionApi.create(data);
       await dispatch(refreshSession()).unwrap();
       trackLogin();
-      dispatch(push(redirectUrl));
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }
@@ -78,15 +74,11 @@ interface LoginGooglePayload {
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createAsyncThunk(
   LOGIN_GOOGLE,
-  async (
-    { credential, redirectUrl = "/" }: LoginGooglePayload,
-    { dispatch, rejectWithValue },
-  ) => {
+  async ({ credential }: LoginGooglePayload, { dispatch, rejectWithValue }) => {
     try {
       await SessionApi.createWithGoogleAuth({ token: credential });
       await dispatch(refreshSession()).unwrap();
       trackLoginGoogle();
-      dispatch(push(redirectUrl));
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }

@@ -9,6 +9,7 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -398,12 +399,12 @@
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
-  [stage idx new-name]
+  [metadata-providerable stage idx new-name]
   (let [the-joins      (:joins stage)
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name-fn (lib.util/unique-name-generator)
+      (let [unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))
             _              (run! unique-name-fn (map :alias the-joins))
             unique-name    (unique-name-fn new-name)]
         (-> stage
@@ -438,7 +439,7 @@
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
     new-name     :- :metabase.lib.schema.common/non-blank-string]
    (if-let [idx (join-spec->clause query stage-number join-spec)]
-     (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
+     (lib.util/update-query-stage query stage-number (partial rename-join-in-stage query) idx new-name)
      query)))
 
 (defn- remove-matching-missing-columns

@@ -8,6 +8,7 @@ import {
   openStaticEmbeddingModal,
   echartsContainer,
   cartesianChartCircle,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 import {
@@ -218,10 +219,6 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("Februar 11, 2025, 9:40 PM");
   });
 });
-
-function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1).closest("td").siblings("td").findByText(val2);
-}
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   echartsContainer().get("text").contains(xLabel);

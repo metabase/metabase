@@ -54,6 +54,7 @@ export interface StaticVisualizationProps {
 export interface VisualizationProps {
   series: Series;
   card: Card;
+  href: string | undefined;
   data: DatasetData;
   metadata: Metadata;
   rawSeries: RawSeries;
@@ -65,6 +66,7 @@ export interface VisualizationProps {
   isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
+  isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
   isEditing: boolean;

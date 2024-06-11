@@ -3,7 +3,7 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [metabase.analyze.query-results :as qr]
+   [metabase.analyze :as analyze]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -68,7 +68,7 @@
    rf            :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [(qr/insights-rf orig-metadata)]
+   [(analyze/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
      (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
        (record! metadata)

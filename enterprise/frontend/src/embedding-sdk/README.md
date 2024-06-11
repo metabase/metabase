@@ -5,42 +5,61 @@
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
 
 Features currently supported:
-* embedding questions - static
-* embedding questions - w/drill-down
-* plugins for custom actions
+
+- embedding questions - static
+- embedding questions - w/drill-down
+- embedding dashboards - static
+- theming with CSS variables
+- plugins for custom actions
 
 Features planned:
-* embedding dashboards - static
-* embedding dashboards - w/ drill-down
-* styling/theming via CSS
-* subscribing to events
+
+- embedding dashboards - w/ drill-down
+- embedding the collection browser
+- subscribing to events
 
 # Prerequisites
 
-* You have an application using React 17 or higher
-* You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-* You have a running Metabase instance using the enterprise binary. Currently, only master is supported until Metabase 50 is released.
+- You have an application using React 17 or higher
+- You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
+- You have a running Metabase instance using a compatible version of the enterprise binary. The v1.50.0 release candidate is the only supported version at this time. We do not recommend running this in production.
 
 # Getting started
 
-## Start a local build of Metabase from master
+## Start Metabase
 
-1. Check out the code from the metabase repo
-```git clone git@github.com:metabase/metabase.git```
-1. Move into the repo and start it
-```cd metabase && yarn dev-ee```
-1. Metabase will be running at http://localhost:3000/
-1. Go through the setup process
-1. Make sure to activate your license. You can do this during the setup process or after, from the admin settings
+Currently, the SDK only works with specific versions of Metabase.
+
+> Note these are not considered stable. Do not use these in production.
+
+You have the following options:
+
+### 1. Running on Docker
+
+Start the Metabase container:
+
+```bash
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.0-RC1
+```
+
+### 2. Running the Jar file
+
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.0-RC1/metabase.jar
+2. Create a new directory and move the Metabase JAR into it.
+3. Change into your new Metabase directory and run the JAR.
+
+```bash
+java -jar metabase.jar
+```
 
 ## Configure Metabase
 
 1. Go to Admin settings > Authentication > JWT
-    1. Set JWT Identity Provider URI to your JWT endpoint
-    1. Generate JWT signing key and take note of this value. You will need it later.
+   1. Set JWT Identity Provider URI to your JWT endpoint
+   1. Generate JWT signing key and take note of this value. You will need it later.
 1. Go to Admin settings > Embedding
-    1. Enable embedding if not already enabled
-    1. Inside interactive embedding, set Authorized Origins to your application URL
+   1. Enable embedding if not already enabled
+   1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
 
 ## Authenticate users from your back-end
 
@@ -53,20 +72,19 @@ The SDK will call this endpoint if it doesn't have a token or to refresh the tok
 Example:
 
 ```ts
-import express from "express"
-import type { Request, Response } from "express"
+const express = require("express");
 
-import jwt from "jsonwebtoken"
-import fetch from "node-fetch"
+const jwt = require("jsonwebtoken");
+const fetch = require("node-fetch");
 
-async function metabaseAuthHandler(req: Request, res: Response) {
-  const { user } = req.session
+async function metabaseAuthHandler(req, res) {
+  const { user } = req.session;
 
   if (!user) {
     return res.status(401).json({
-      status: 'error',
-      message: 'not authenticated',
-    })
+      status: "error",
+      message: "not authenticated",
+    });
   }
 
   const token = jwt.sign(
@@ -78,29 +96,39 @@ async function metabaseAuthHandler(req: Request, res: Response) {
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
     },
     // This is the JWT signing secret in your Metabase JWT authentication setting
-    METABASE_JWT_SHARED_SECRET
-  )
-  const ssoUrl = `${METABASE_INSTANCE_URL}?token=true&jwt=${token}`
+    METABASE_JWT_SHARED_SECRET,
+  );
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
 
   try {
-    const response = await fetch(ssoUrl, { method: 'GET' })
-    const token = await response.json()
+    const response = await fetch(ssoUrl, { method: "GET" });
+    const token = await response.json();
 
-    return res.status(200).json(token)
+    return res.status(200).json(token);
   } catch (error) {
     if (error instanceof Error) {
       res.status(401).json({
-        status: 'error',
-        message: 'authentication failed',
+        status: "error",
+        message: "authentication failed",
         error: error.message,
-      })
+      });
     }
   }
 }
 
-const app = express()
+const app = express();
 
-// middleware
+// Middleware
+
+// If your FE application is on a different domain from your BE, you need to enable CORS
+// by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
+// to your FE application URL.
+app.use(
+  cors({
+    credentials: true,
+  }),
+);
+
 app.use(
   session({
     secret: SESSION_SECRET,
@@ -108,22 +136,22 @@ app.use(
     saveUninitialized: true,
     cookie: { secure: false },
   }),
-)
-app.use(express.json())
+);
+app.use(express.json());
 
 // routes
-app.get("/sso/metabase", metabaseAuthHandler)
+app.get("/sso/metabase", metabaseAuthHandler);
 app.listen(PORT, () => {
-  console.log(`API running at http://localhost:${PORT}`)
-})
+  console.log(`API running at http://localhost:${PORT}`);
+});
 ```
 
 ## Installation
 
-You can install Metabase Embedding SDK for react via npm:
+You can install Metabase Embedding SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react --force
 ```
 
 or using yarn:
@@ -146,12 +174,25 @@ import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 const config = {
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-  font: "Lato", // Optional: Specify a font to use from the set of fonts supported by Metabase
-}
+};
+
+// See the "Customizing appearance" section for more information
+const theme = {
+  // Optional: Specify a font to use from the set of fonts supported by Metabase
+  fontFamily: "Lato",
+
+  // Optional: Match your application's color scheme
+  colors: {
+    brand: "#9B5966",
+    "text-primary": "#4C5773",
+    "text-secondary": "#696E7B",
+    "text-tertiary": "#949AAB",
+  },
+};
 
 export default function App() {
   return (
-    <MetabaseProvider config={config}>
+    <MetabaseProvider config={config} theme={theme}>
       Hello World!
     </MetabaseProvider>
   );
@@ -161,6 +202,9 @@ export default function App() {
 ### Embedding a static question
 
 After the SDK is configured, you can use embed your question using the `StaticQuestion` component.
+
+The component has a default height, which can be customized by using the `height` prop.
+To inherit the height from the parent container, you can pass `100%` to the height prop.
 
 ```jsx
 import React from "react";
@@ -173,7 +217,7 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-      <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
+        <StaticQuestion questionId={questionId} showVisualizationSelector={false} />
     </MetabaseProvider>
   );
 }
@@ -200,11 +244,174 @@ const questionId = 1; // This is the question ID you want to embed
 
 ```
 
+### Embedding a static dashboard
+
+After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
+
+The API follows the same configuration as that of public dashboard embeddings, which you can read about (here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#public-embed-parameters]
+
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **parameterQueryParams**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **bordered**: `boolean` – Whether the dashboard should have a border.
+- **titled**: `boolean` – Whether the dashboard should display a title.
+- **hideDownloadButton**: `boolean | null` – Whether to hide the download button.
+- **hideParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **font**: `string | null` – The font to use. If not specified, the Metabase instance font or `theme.fontFamily` will be used instead.
+- **theme**: `DisplayTheme` – The display theme (e.g., "light", "night", or "transparent" ).
+
+
+```jsx
+import React from "react";
+import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const parameterQueryParams = {}; // Define your query parameters here
+
+  const font = "Inter"
+  // choose parameter names that are in your dashboard
+  const hideParameters = ["location", "city"]
+
+  return (
+    <MetabaseProvider config={config}>
+        <StaticDashboard
+          dashboardId={dashboardId}
+          parameterQueryParams={parameterQueryParams}
+          bordered={true}
+          titled={false}
+          hideDownloadButton={false}
+          hideParameters={hideParameters}
+          font={font}
+          theme="light"
+        />
+    </MetabaseProvider>
+  );
+}
+```
+
+
+### Customizing appearance
+
+You can provide a theme object to the `MetabaseProvider` to customize the look and feel of embedded Metabase components.
+
+Here is the full list of theme properties supported. All of them are optional.
+
+```ts
+const theme = {
+  // Specify a font to use from the set of fonts supported by Metabase.
+  // You can set the font to "Custom" to use the custom font
+  // configured in your Metabase instance.
+  fontFamily: "Lato",
+
+  // Override the base font size for every component.
+  // This does not usually need to be set, as the components
+  // inherit the font size from the parent container, such as the body.
+  fontSize: "16px",
+
+  // Override the base line height for every component.
+  lineHeight: 1.5,
+
+  // Match your application's color scheme
+  colors: {
+    // The primary color of your application
+    brand: "#9B5966",
+
+    // The color of text that is most prominent
+    "text-primary": "#4C5773",
+
+    // The color of text that is less prominent
+    "text-secondary": "#696E7B",
+
+    // The color of text that is least prominent
+    "text-tertiary": "#949AAB",
+
+    // Default background color
+    background: "#FFFFFF",
+
+    // Slightly darker background color used for hover and accented elements
+    "background-hover": "#F9FBFC",
+
+    // Color used for borders
+    border: "#EEECEC",
+
+    // Color used for filters context
+    filter: "#7172AD",
+
+    // Color used for aggregations and breakouts context
+    summarize: "#88BF4D",
+
+    // Color used to indicate successful actions and positive values/trends
+    positive: "#BADC58",
+
+    // Color used to indicate dangerous actions and negative values/trends
+    negative: "#FF7979",
+
+    /** Color used for popover shadows */
+    shadow: "rgba(0,0,0,0.08)",
+
+    // Overrides the chart colors. Supports up to 8 colors
+    // Limitation: this does not affect charts with custom series color
+    charts: [
+      // can either be a hex code
+      "#9b59b6",
+
+      // or a color object. tint and shade represents lighter and darker variations
+      // only base color is required, while tint and shade are optional
+      { base: "#E74C3C", tint: "#EE6B56", shade: "#CB4436" },
+    ],
+  },
+
+  components: {
+    // Data table
+    table: {
+      cell: {
+        // Text color of cells, defaults to `text-primary`
+        textColor: "#4C5773",
+
+        // Default background color of cells, defaults to `background`
+        backgroundColor: "#FFFFFF",
+      },
+
+      idColumn: {
+        // Text color of ID column, defaults to `brand`
+        textColor: "#9B5966",
+
+        // Background color of ID column, defaults to a lighter shade of `brand`
+        backgroundColor: "#F5E9EB",
+      },
+    },
+
+    // Numerical value display
+    scalar: {
+      // The primary value to display
+      value: {
+        fontSize: "24px",
+        lineHeight: "21px",
+      },
+    },
+
+    // Pivot table
+    pivotTable: {
+      // Pivot row toggle to expand or collapse row
+      rowToggle: {
+        textColor: "#FFFFFF",
+        backgroundColor: "#95A5A6",
+      },
+    },
+  },
+};
+```
+
 ### Implementing custom actions
 
-`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the SDK behavior. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
+`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the behavior of components. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
 
-We'll support more plugins in next releases.
+We'll support more plugins in next releases. Please share your uses cases for us!
 
 ```jsx
 // You can provide a custom action with your own `onClick` logic.
@@ -249,15 +456,15 @@ const plugins = {
       ...clickActions,
       createCustomAction(clicked),
       createCustomActionWithView(clicked),
-    ]
-  }
-}
+    ];
+  },
+};
 
 const questionId = 1; // This is the question ID you want to embed
 
 return (
   <MetabaseProvider config={config} pluginsConfig={plugins}>
-    <InteractiveQuestion questionId={questionId}  />
+    <InteractiveQuestion questionId={questionId} />
   </MetabaseProvider>
 );
 ```
@@ -267,10 +474,11 @@ return (
 The Metabase Embedding SDK only supports React on SPA Webpack applications. Applications built with Vite aren't currently supported. We aim to add support for other platforms in the near future.
 
 # Feedback
+
 For issues and feedback, there are two options:
 
-* Chat with the team directly on Slack: If you don't have access, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
-* Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
+- Chat with the team directly on Slack: If you don't have access, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
+- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
 
 For security issues, please follow the instructions for responsible disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 

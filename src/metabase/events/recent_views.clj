@@ -34,19 +34,39 @@
 (derive ::card-query-event :metabase/event)
 (derive :event/card-query ::card-query-event)
 
+
 (m/defmethod events/publish-event! ::card-query-event
   "Handle processing for a single card query event."
   [topic {:keys [card-id user-id context] :as _event}]
-  (span/with-span!
-    {:name (str "recent-views-" (name topic))
-     :topic topic
-     :card-id card-id
-     :user-id user-id}
-    (try
-      (let [model    "card"
-            user-id  (or user-id api/*current-user-id*)]
-        ;; we don't want to count pinned card views
-        (when-not (#{:collection :dashboard} context)
-          (recent-views/update-users-recent-views! user-id model card-id)))
-      (catch Throwable e
-        (log/warnf e "Failed to process recent_views event: %s" topic)))))
+  (try
+    (let [user-id  (or user-id api/*current-user-id*)]
+      ;; we don't want to count pinned card views
+      (when-not (#{:collection :dashboard} context)
+        (recent-views/update-users-recent-views! user-id "card" card-id)))
+    (catch Throwable e
+      (log/warnf e "Failed to process recent_views event: %s" topic))))
+
+(derive ::legacy-card-event :metabase/event)
+(derive :event/card-create ::legacy-card-event)
+(derive :event/card-read ::legacy-card-event)
+(derive :event/card-update ::legacy-card-event)
+
+(m/defmethod events/publish-event! ::legacy-card-event
+  "Handle recent view processing for CRU (not D) events"
+  [topic {:keys [object user-id]}]
+  (try
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card (:id object))
+    (catch Throwable e
+      (log/warnf e "Failed to process recent_views event: %s" topic))))
+
+
+(derive ::collection-touch-event :metabase/event)
+(derive :event/collection-touch ::collection-touch-event)
+
+(m/defmethod events/publish-event! ::collection-touch-event
+  "Handle processing for a single collection touch event."
+  [topic {:keys [collection-id user-id] :as _event}]
+  (try
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Collection collection-id)
+    (catch Throwable e
+      (log/warnf e "Failed to process recent_views event: %s" topic))))

@@ -1,8 +1,9 @@
 (ns metabase.lib.drill-thru.column-extract-test
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
-   [clojure.test :refer [deftest testing]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,8 +30,9 @@
   (testing "column-extract is available for column clicks on temporal, URL and Email columns"
     (canned/canned-test
       :drill-thru/column-extract
-      (fn [_test-case {:keys [column] :as _context} {:keys [click column-type]}]
+      (fn [test-case {:keys [column] :as _context} {:keys [click column-type]}]
         (and (= click :header)
+             (not (:native? test-case))
              (or (= column-type :datetime)
                  (#{:type/URL :type/Email} (:semantic-type column))))))))
 
@@ -338,3 +340,14 @@
          :query-type     :unaggregated
          :column-name    "EMAIL"
          :custom-query   query-no-regex}))))
+
+(deftest ^:parallel extractions-for-drill-test
+  (let [drill (lib.drill-thru.tu/test-returns-drill
+                {:click-type     :header
+                 :query-type     :unaggregated
+                 :column-name    "CREATED_AT"
+                 :drill-type     :drill-thru/column-extract
+                 :expected       {:type         :drill-thru/column-extract
+                                  :extractions  datetime-extraction-units}})]
+    (is (=? datetime-extraction-units
+            (lib.drill-thru.column-extract/extractions-for-drill drill)))))

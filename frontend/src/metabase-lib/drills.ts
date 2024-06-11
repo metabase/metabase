@@ -2,13 +2,13 @@ import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 import type {
-  FilterDrillDetails,
-  ColumnMetadata,
   ClickObjectDataRow,
   ClickObjectDimension,
+  ColumnMetadata,
   DrillThru,
-  Query,
+  FilterDrillDetails,
   PivotType,
+  Query,
 } from "./types";
 
 // NOTE: value might be null or undefined, and they mean different things!

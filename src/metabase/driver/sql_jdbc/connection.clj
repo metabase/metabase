@@ -84,7 +84,12 @@
   :visibility :internal
   :type       :integer
   :default    15
-  :audit      :getter)
+  :audit      :getter
+  :doc "Change this to a higher value if you notice that regular usage consumes all or close to all connections.
+
+When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
+
+For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP

@@ -35,6 +35,8 @@ The options you'll see here will depend on the field's type. They're generally t
 
 Currency field formatting settings include all the same options as in the global formatting section, as well as all the options that Number fields have.
 
+See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+
 ## Question-level formatting
 
 Lastly, you can override all formatting settings in any specific saved question or dashboard card by clicking on the gear to open up the visualization options. To reset any overridden setting to the default, just click on the rotating arrow icon next to the setting's label. This will reset the setting to the field-level setting if there is one; otherwise it will be reset to the global default.

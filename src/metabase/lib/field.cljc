@@ -458,7 +458,8 @@
                                                                     (:lib/source metadata))
                                                               (:source-alias metadata))]
                                    {:join-alias source-alias})
-                                 (when-let [join-alias (lib.join.util/current-join-alias metadata)]
+                                 (when-let [join-alias (when-not inherited-column?
+                                                         (lib.join.util/current-join-alias metadata))]
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
@@ -466,7 +467,8 @@
                                    {::original-effective-type original-effective-type})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
-                                 (when-let [source-field-id (:fk-field-id metadata)]
+                                 (when-let [source-field-id (when-not inherited-column?
+                                                              (:fk-field-id metadata))]
                                    {:source-field source-field-id}))
         id-or-name        ((if inherited-column?
                              (some-fn :lib/desired-column-alias :name)

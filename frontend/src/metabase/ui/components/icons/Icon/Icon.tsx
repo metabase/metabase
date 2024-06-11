@@ -43,8 +43,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
 });
 
-/** An icon that does not shrink when the viewport gets narrower **/
-export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
-  min-width: ${({ size }) => size ?? 16}px;
-  min-height: ${({ size }) => size ?? 16}px;
+/** An icon that does not shrink when its container is too narrow **/
+export const FixedSizeIcon = styled(Icon)`
+  flex-shrink: 0;
 `;

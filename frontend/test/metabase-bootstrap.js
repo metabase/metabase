@@ -1,5 +1,4 @@
 import "regenerator-runtime/runtime";
-import "number-to-locale-string";
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
 

@@ -20,6 +20,7 @@
       (fn [test-case _context {:keys [click column-type]}]
         (and (= click :header)
              (= column-type :number)
+             (not (:native? test-case))
              (zero? (:aggregations test-case))
              (zero? (:breakouts test-case))
              (some #(or (isa? (:effective-type %) :type/Date)

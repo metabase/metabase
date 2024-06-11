@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 import { isWithinIframe, IFRAMED_IN_SELF } from "metabase/lib/dom";
-import { setOptions } from "metabase/redux/embed";
+import { setInitialUrlOptions } from "metabase/redux/embed";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview
 // will need to do something different if we ever embed metabase in itself for another reason
@@ -42,7 +42,7 @@ export function initializeEmbedding(store) {
       }
     });
 
-    store.dispatch(setOptions(window.location));
+    store.dispatch(setInitialUrlOptions(window.location));
   }
 }
 

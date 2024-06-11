@@ -275,7 +275,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
             path                         [:groups (u/the-id (perms-group/all-users)) lucky-personal-collection-id]]
-        (mt/throw-if-called graph/update-group-permissions!
+        (mt/throw-if-called! graph/update-group-permissions!
           (graph/update-graph! (assoc-in (graph :clear-revisions? true) path :read)))
 
         (testing "double-check that the graph is unchanged"

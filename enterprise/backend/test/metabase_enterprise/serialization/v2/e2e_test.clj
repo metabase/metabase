@@ -230,7 +230,8 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            (is (= 110 (-> @entities (get "Collection") count))))
+            ;; +1 for the Trash collection
+            (is (= 111 (-> @entities (get "Collection") count))))
 
           (testing "storage"
             (storage/store! (seq @extraction) dump-dir)
@@ -239,7 +240,8 @@
               (is (= 30 (count (dir->file-set (io/file dump-dir "actions"))))))
 
             (testing "for Collections"
-              (is (= 110 (count (for [f (file-set (io/file dump-dir))
+              ;; +1 for the Trash collection
+              (is (= 111 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]
@@ -478,15 +480,17 @@
                            :values_source_type   "card"}]
                          (:parameters (first (by-model extraction "Dashboard")))))
 
-                  (is (= [{:id                   "abc",
-                           :name                 "CATEGORY",
-                           :type                 :category,
-                           :values_source_config {:card_id     (:entity_id card1s),
-                                                  :value_field [:field
-                                                                ["my-db" nil "CUSTOMERS" "NAME"]
-                                                                nil]},
-                           :values_source_type   "card"}]
-                         (:parameters (first (by-model extraction "Card")))))
+                  ;; card1s has no parameters, card2s does.
+                  (is (= #{[]
+                           [{:id                   "abc",
+                             :name                 "CATEGORY",
+                             :type                 :category,
+                             :values_source_config {:card_id     (:entity_id card1s),
+                                                    :value_field [:field
+                                                                  ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                  nil]},
+                             :values_source_type   "card"}]}
+                         (set (map :parameters (by-model extraction "Card")))))
 
                   (storage/store! (seq extraction) dump-dir)))
 
@@ -856,3 +860,27 @@
                            (get-in viz [:column_settings
                                         (format "[\"ref\",[\"field\",%s,null]]" %people.name)
                                         :pivot_table.column_sort_order])))))))))))))
+
+(deftest extra-files-test
+  (testing "Adding some extra files does not break deserialization"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db
+        (let [coll (ts/create! Collection :name "coll")
+              _    (ts/create! Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) dump-dir)
+
+          (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
+          (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+
+          (testing "No exceptions when loading despite unreadable files"
+            (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
+                         (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
+                                          (map (comp second second))
+                                          (map #(.getName %))
+                                          set)]
+                           (testing "Hidden YAML wasn't read even though it's not throwing errors"
+                             (is (not (contains? files ".hidden.yaml"))))))]
+              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
+                (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
+                        logs))))))))))

@@ -143,17 +143,16 @@ describe("collection permissions", () => {
                     cy.visit("collection/root");
                     openCollectionItemMenu("Orders");
                     popover().within(() => {
-                      cy.findByText("Archive").click();
+                      cy.findByText("Move to trash").click();
                     });
                     cy.findByTestId("toast-undo").within(() => {
-                      cy.findByText("Archived question");
+                      cy.findByText("Trashed question");
                       cy.icon("close").click();
                     });
                     navigationSidebar().within(() => {
-                      cy.icon("ellipsis").click();
+                      cy.findByText("Trash").click();
                     });
-                    popover().findByText("View archive").click();
-                    cy.location("pathname").should("eq", "/archive");
+                    cy.location("pathname").should("eq", "/trash");
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders");
                   });
@@ -184,15 +183,15 @@ describe("collection permissions", () => {
                     });
 
                     openCollectionMenu();
-                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                    popover().within(() => cy.findByText("Archive").click());
-                    modal().findByText("Archive").click();
+                    popover().within(() =>
+                      // eslint-disable-next-line no-unscoped-text-selectors -- linter erroring for no reason
+                      cy.findByText("Move to trash").click(),
+                    );
+                    modal().findByText("Move to trash").click();
 
                     cy.wait("@editCollection");
 
-                    cy.findByTestId("collection-name-heading")
-                      .as("title")
-                      .contains("Second collection");
+                    cy.findByTestId("archive-banner").should("exist");
 
                     navigationSidebar().within(() => {
                       cy.findByText("First collection");
@@ -202,7 +201,7 @@ describe("collection permissions", () => {
 
                     // While we're here, we can test unarchiving the collection as well
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-                    cy.findByText("Archived collection");
+                    cy.findByText("Trashed collection");
                     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Undo").click();
 
@@ -212,9 +211,7 @@ describe("collection permissions", () => {
                     cy.findByText(
                       "Sorry, you don’t have permission to see that.",
                     ).should("not.exist");
-
-                    // We're still in the parent collection
-                    cy.get("@title").contains("Second collection");
+                    cy.findByTestId("archive-banner").should("not.exist");
 
                     // But unarchived collection is now visible in the sidebar
                     navigationSidebar().within(() => {
@@ -244,11 +241,9 @@ describe("collection permissions", () => {
                       .as("title")
                       .contains("Third collection");
                     // Creating new sub-collection at this point shouldn't be possible
-                    cy.findByTestId("collection-menu").within(() => {
-                      cy.icon("add").should("not.exist");
-                    });
                     // We shouldn't be able to change permissions for an archived collection (the root issue of #12489!)
-                    cy.icon("lock").should("not.exist");
+                    cy.findByTestId("collection-menu").should("not.exist");
+
                     /**
                      *  We can take 2 routes from here - it will really depend on the design decision:
                      *    1. Edit icon shouldn't exist at all in which case some other call to drill-through menu/button should exist
@@ -277,7 +272,9 @@ describe("collection permissions", () => {
                       );
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                       openCollectionMenu();
-                      popover().within(() => cy.findByText("Archive").click());
+                      popover().within(() =>
+                        cy.findByText("Move to trash").click(),
+                      );
                       modal().findByText("Cancel").click();
                       cy.location("pathname").should(
                         "eq",
@@ -294,10 +291,10 @@ describe("collection permissions", () => {
                   cy.visit("/collection/root");
                   openCollectionItemMenu(item);
                   popover().within(() => {
-                    cy.findByText("Archive").click();
+                    cy.findByText("Move to trash").click();
                   });
                   cy.findByText(item).should("not.exist");
-                  cy.findByText(`Archived ${expectedEntityName}`);
+                  cy.findByText(`Trashed ${expectedEntityName}`);
                   cy.findByText("Undo").click();
                   cy.findByText(
                     "Sorry, you don’t have permission to see that.",
@@ -339,7 +336,7 @@ describe("collection permissions", () => {
               cy.findByText("Orders")
                 .closest("tr")
                 .within(() => {
-                  cy.icon("table").trigger("mouseover");
+                  cy.icon("table2").trigger("mouseover");
                   cy.findByRole("checkbox").should("not.exist");
                 });
 

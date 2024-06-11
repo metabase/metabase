@@ -21,17 +21,18 @@ import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
 export const InvalidateNowButton = ({
   targetId,
+  targetModel,
   targetName,
 }: InvalidateNowButtonProps) => {
   const dispatch = useDispatch();
 
-  const invalidateTargetDatabase = useCallback(async () => {
+  const invalidateTarget = useCallback(async () => {
     try {
       const invalidate = CacheConfigApi.invalidate(
-        { include: "overrides", database: targetId },
+        { include: "overrides", [targetModel]: targetId },
         { hasBody: false },
       );
-      await resolveSmoothly(invalidate);
+      await resolveSmoothly([invalidate]);
     } catch (e) {
       if (isErrorWithMessage(e)) {
         dispatch(
@@ -39,16 +40,16 @@ export const InvalidateNowButton = ({
             icon: "warning",
             message: e.data.message,
             toastColor: "error",
-            dismissIconColor: "white",
+            dismissIconColor: color("white"),
           }),
         );
       }
       throw e;
     }
-  }, [dispatch, targetId]);
+  }, [dispatch, targetId, targetModel]);
 
   return (
-    <FormProvider initialValues={{}} onSubmit={invalidateTargetDatabase}>
+    <FormProvider initialValues={{}} onSubmit={invalidateTarget}>
       <InvalidateNowFormBody targetName={targetName} />
     </FormProvider>
   );
@@ -63,11 +64,9 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
   const confirmInvalidation = useCallback(
     () =>
       askConfirmation({
-        title: t`Invalidate all cached results for ${
-          targetName || t`this object`
-        }?`,
+        title: t`Clear all cached results for ${targetName || t`this object`}?`,
         message: "",
-        confirmButtonText: t`Invalidate`,
+        confirmButtonText: t`Clear cache`,
         onConfirm: submitForm,
       }),
     [askConfirmation, targetName, submitForm],
@@ -86,20 +85,20 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           label={
             <Group spacing="sm">
               <Icon color={color("danger")} name="trash" />
-              <Text>{t`Invalidate cache now`}</Text>
+              <Text>{t`Clear cache`}</Text>
             </Group>
           }
           activeLabel={
             <Group spacing="sm">
               <Loader size="1rem" />
-              <Text>{c("Shown when a cache is being invalidated")
-                .t`Invalidating… `}</Text>
+              <Text>{c("Shown when a cache is being cleared")
+                .t`Clearing cache… `}</Text>
             </Group>
           }
           successLabel={
             <Group spacing="sm">
               <IconInButton name="check" color={color("success")} />
-              <Text>{t`Done`}</Text>
+              <Text>{t`Cache cleared`}</Text>
             </Group>
           }
           failedLabel={

@@ -33,7 +33,7 @@
            (map (comp int first) (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
 
 (deftest table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (let [expected [["20th Century Cafe"]
                     ["25°"]
                     ["33 Taps"]

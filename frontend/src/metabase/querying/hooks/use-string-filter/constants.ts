@@ -1,42 +1,41 @@
+import type * as Lib from "metabase-lib";
+
 import type { OperatorOption } from "./types";
 
-export const OPERATOR_OPTIONS: Record<string, OperatorOption> = {
+export const OPERATOR_OPTIONS: Record<
+  Lib.StringFilterOperatorName,
+  OperatorOption
+> = {
   "=": {
     operator: "=",
-    valueCount: 1,
-    hasMultipleValues: true,
+    type: "exact",
   },
   "!=": {
     operator: "!=",
-    valueCount: 1,
-    hasMultipleValues: true,
+    type: "exact",
   },
   contains: {
     operator: "contains",
-    valueCount: 1,
-    hasCaseSensitiveOption: true,
+    type: "partial",
   },
   "does-not-contain": {
     operator: "does-not-contain",
-    valueCount: 1,
-    hasCaseSensitiveOption: true,
+    type: "partial",
   },
   "starts-with": {
     operator: "starts-with",
-    valueCount: 1,
-    hasCaseSensitiveOption: true,
+    type: "partial",
   },
   "ends-with": {
     operator: "ends-with",
-    valueCount: 1,
-    hasCaseSensitiveOption: true,
+    type: "partial",
   },
   "is-empty": {
     operator: "is-empty",
-    valueCount: 0,
+    type: "empty",
   },
   "not-empty": {
     operator: "not-empty",
-    valueCount: 0,
+    type: "empty",
   },
 };

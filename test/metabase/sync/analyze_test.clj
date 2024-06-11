@@ -99,7 +99,7 @@
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
-    (sync-survives-crash? classifiers.name/infer-entity-type)))
+    (sync-survives-crash? classifiers.name/infer-entity-type-by-name)))
 
 (defn- classified-semantic-type [values]
   (let [field (mi/instance Field {:base_type :type/Text})]

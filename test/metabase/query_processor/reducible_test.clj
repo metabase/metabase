@@ -1,4 +1,4 @@
-(ns metabase.query-processor.reducible-test
+(ns ^:mb/once metabase.query-processor.reducible-test
   "Some basic tests around very-low-level QP logic, and some of the new features of the QP (such as support for
   different reducing functions.)"
   (:require

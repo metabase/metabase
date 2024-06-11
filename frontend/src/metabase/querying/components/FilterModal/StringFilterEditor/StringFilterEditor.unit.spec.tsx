@@ -277,11 +277,8 @@ describe("StringFilterEditor", () => {
         filter,
       });
 
-      await userEvent.clear(screen.getByDisplayValue("Ga"));
-      await userEvent.type(
-        screen.getByPlaceholderText("Enter some text"),
-        "Wi",
-      );
+      const input = screen.getByLabelText("Filter value");
+      await userEvent.type(input, "{backspace}Wi");
       await userEvent.tab();
 
       expect(getNextFilterName()).toBe("Category starts with Wi");

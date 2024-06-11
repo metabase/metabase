@@ -94,7 +94,7 @@
 
 (defn column-titles
   "Generates the column titles that should be used in the export, taking into account viz settings."
-  [ordered-cols col-settings]
+  [ordered-cols col-settings format-rows?]
   (for [col ordered-cols]
     (let [id-or-name      (or (and (:remapped_from col) (:fk_field_id col))
                               (:id col)
@@ -107,7 +107,7 @@
           merged-settings (if is-currency?
                             (merge-global-settings format-settings :type/Currency)
                             format-settings)
-          column-title    (or (::mb.viz/column-title merged-settings)
+          column-title    (or (when format-rows? (::mb.viz/column-title merged-settings))
                               (:display_name col)
                               (:name col))]
       (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))

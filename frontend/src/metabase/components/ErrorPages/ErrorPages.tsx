@@ -9,6 +9,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
+import { getIsEmbedded } from "metabase/selectors/embed";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
 import {
@@ -86,24 +87,36 @@ export const Archived = ({
 );
 
 export const SmallGenericError = ({
-  message = t`Something's gone wrong, click for more information`,
+  message = t`Something's gone wrong.`,
+  bordered = true,
 }: {
   message?: string;
+  bordered?: boolean;
 }) => {
   const [isModalOpen, { turnOn: openModal, turnOff: closeModal }] =
     useToggle(false);
 
+  const isEmbedded = getIsEmbedded();
+
+  const tooltipMessage = isEmbedded
+    ? message
+    : message + t` Click for more information`;
+
   return (
-    <ErrorPageRoot bordered>
-      <Tooltip label={message}>
-        <Button
-          leftIcon={
-            <Icon name="warning" size={32} color={color("text-light")} />
-          }
-          color="text-light"
-          onClick={openModal}
-          variant="unstyled"
-        />
+    <ErrorPageRoot bordered={bordered}>
+      <Tooltip label={tooltipMessage}>
+        {isEmbedded ? (
+          <Icon name="warning" size={32} color={color("text-light")} />
+        ) : (
+          <Button
+            leftIcon={
+              <Icon name="warning" size={32} color={color("text-light")} />
+            }
+            color="text-light"
+            onClick={openModal}
+            variant="unstyled"
+          />
+        )}
       </Tooltip>
       <ErrorExplanationModal isModalOpen={isModalOpen} onClose={closeModal} />
     </ErrorPageRoot>

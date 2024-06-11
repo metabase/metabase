@@ -110,6 +110,7 @@ const RowChartVisualization = ({
   series: multipleSeries,
   fontFamily,
   width,
+  href,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -234,7 +235,7 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const { labels, colors } = useMemo(
+  const legendItems = useMemo(
     () => getLegendItems(series, seriesColors, settings),
     [series, seriesColors, settings],
   );
@@ -275,12 +276,12 @@ const RowChartVisualization = ({
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
           width={width}
+          href={href}
         />
       )}
       <RowChartLegendLayout
         hasLegend={hasLegend}
-        labels={labels}
-        colors={colors}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         onHoverChange={onHoverChange}

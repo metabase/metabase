@@ -10,7 +10,6 @@
   padding: 0.25em 0.65em;
   border-radius: 6px;
   min-width: 35px;
-  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellData .cellData:hover {
@@ -24,7 +23,7 @@
 
 .TableInteractiveHeader {
   box-sizing: border-box;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .TableInteractive .TableInteractiveCellWrapper {
@@ -34,19 +33,19 @@
   border-top: 1px solid transparent;
   border-left: 1px solid transparent;
   border-right: 1px solid transparent;
-  border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
+  border-bottom: 1px solid color-mod(var(--mb-color-border) alpha(-70%));
 }
 
 .TableInteractive .TableInteractiveHeader,
 .TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper,
 .TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper:hover {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
   background-image: none;
 }
 
 .TableInteractive .TableInteractiveHeader,
 .TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper {
-  background-color: var(--color-bg-white);
+  background-color: var(--mb-color-bg-white);
 }
 
 /* cell overflow ellipsis */
@@ -63,7 +62,7 @@
 /* pivot */
 .TableInteractive.TableInteractivePivot
   .TableInteractiveCellWrapperFirstColumn {
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--mb-color-border);
 }
 
 .TableInteractive
@@ -80,16 +79,10 @@
 
 .TableID .cellData {
   border: 1px solid transparent;
-  background-color: transparent;
   padding: 0.25em 0.65em;
   border-radius: 99px;
   min-width: 35px;
   text-align: center;
-  color: var(--mb-color-brand);
-}
-
-.TableInteractiveHeaderCellDataSorted {
-  color: var(--mb-color-brand);
 }
 
 .TableInteractiveHeaderCellDataSorted :global(.Icon-chevrondown),
@@ -102,6 +95,16 @@
   padding-left: 1.5em;
 }
 
-.TableInteractiveGutter {
-  background-color: var(--color-bg-white);
+.shortcutsWrapper {
+  position: absolute;
+  z-index: 50;
+  top: 0;
+  background: var(--mb-color-bg-white);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.isOverflowing {
+  border-left: 1px solid var(--mb-color-border);
 }

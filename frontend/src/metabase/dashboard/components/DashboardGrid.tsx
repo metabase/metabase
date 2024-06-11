@@ -1,23 +1,27 @@
 import cx from "classnames";
-import type { LocationDescriptor } from "history";
+import type { ComponentType } from "react";
 import { Component } from "react";
+import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
-import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
-  isQuestionDashCard,
   getVisibleCardIds,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { color } from "metabase/lib/colors";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -26,9 +30,9 @@ import {
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { addUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
@@ -36,25 +40,34 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   BaseDashboardCard,
   Card,
-  CardId,
-  DashCardDataMap,
   DashCardId,
   Dashboard,
-  QuestionDashboardCard,
   DashboardTabId,
-  ParameterId,
-  ParameterValueOrArray,
-  VisualizationSettings,
   DashboardCard,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
+import type { SetDashCardAttributesOpts } from "../actions";
+import {
+  removeCardFromDashboard,
+  showClickBehaviorSidebar,
+  markNewCardSeen,
+  setMultipleDashCardAttributes,
+  setDashCardAttributes,
+  undoRemoveCardFromDashboard,
+  replaceCard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  fetchCardData,
+} from "../actions";
+import { getNewCardUrl } from "../actions/getNewCardUrl";
+import { getDashcardDataMap, getParameterValues } from "../selectors";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { DashCard } from "./DashCard/DashCard";
-import type { DashCardOnChangeCardAndRunHandler } from "./DashCard/types";
 import {
   DashboardCardContainer,
   DashboardGridContainer,
@@ -75,74 +88,9 @@ type LayoutItem = {
   dashcard: BaseDashboardCard;
 };
 
-type DashboardChangeItem = {
-  id: DashCardId;
-  attributes: Partial<BaseDashboardCard>;
-};
-
-interface DashboardGridProps {
-  dashboard: Dashboard;
-  dashcardData: DashCardDataMap;
-  selectedTabId: DashboardTabId;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  slowCards: Record<CardId, boolean>;
-  isEditing: boolean;
-  isEditingParameter: boolean;
-  isPublic: boolean;
-  isXray: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
-  clickBehaviorSidebarDashcard: DashboardCard | null;
+type ExplicitSizeProps = {
   width: number;
-  mode: Mode;
-  metadata: Metadata;
-
-  fetchCardData: (
-    card: Card,
-    dashcard: QuestionDashboardCard,
-    options: {
-      clearCache?: boolean;
-      ignoreCache?: boolean;
-      reload?: boolean;
-    },
-  ) => Promise<unknown>;
-  replaceCard: (options: {
-    dashcardId: DashCardId;
-    nextCardId: CardId;
-  }) => void;
-  markNewCardSeen: (dashcardId: DashCardId) => void;
-
-  setDashCardAttributes: (options: DashboardChangeItem) => void;
-  setMultipleDashCardAttributes: (changes: {
-    dashcards: Array<DashboardChangeItem>;
-  }) => void;
-
-  removeCardFromDashboard: (options: {
-    dashcardId: DashCardId;
-    cardId?: CardId | null;
-  }) => void;
-  undoRemoveCardFromDashboard: (options: { dashcardId: DashCardId }) => void;
-
-  onReplaceAllDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: Partial<VisualizationSettings>,
-  ) => void;
-  onUpdateDashCardVisualizationSettings: (
-    id: DashCardId,
-    settings: Partial<VisualizationSettings>,
-  ) => void;
-
-  onChangeLocation: (location: LocationDescriptor) => void;
-  navigateToNewCardFromDashboard: DashCardOnChangeCardAndRunHandler;
-
-  showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
-
-  addUndo: (options: {
-    message: string;
-    undo: boolean;
-    action: () => void;
-  }) => void;
-}
+};
 
 interface DashboardGridState {
   visibleCardIds: Set<number>;
@@ -154,7 +102,53 @@ interface DashboardGridState {
   isAnimationPaused: boolean;
 }
 
-const mapDispatchToProps = { addUndo };
+const mapStateToProps = (state: State) => ({
+  metadata: getMetadata(state),
+  parameterValues: getParameterValues(state),
+  dashcardData: getDashcardDataMap(state),
+});
+
+const mapDispatchToProps = {
+  addUndo,
+  removeCardFromDashboard,
+  showClickBehaviorSidebar,
+  markNewCardSeen,
+  setMultipleDashCardAttributes,
+  setDashCardAttributes,
+  undoRemoveCardFromDashboard,
+  replaceCard,
+  onChangeLocation: push,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  fetchCardData,
+};
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+type DashboardGridReduxProps = ConnectedProps<typeof connector>;
+
+type OwnProps = {
+  dashboard: Dashboard;
+  selectedTabId: DashboardTabId | null;
+  slowCards: Record<DashCardId, boolean>;
+  isEditing: boolean;
+  isEditingParameter: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
+  isXray?: boolean;
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
+  mode?: Mode;
+  // public dashboard passes it explicitly
+  width?: number;
+  // public dashboard passes it as noop
+  navigateToNewCardFromDashboard?: () => void;
+  onEditingChange?: (dashboard: Dashboard | null) => void;
+};
+
+type DashboardGridProps = OwnProps &
+  DashboardGridReduxProps &
+  ExplicitSizeProps;
 
 class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   static contextType = ContentViewportContext;
@@ -259,7 +253,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       return;
     }
 
-    const changes: DashboardChangeItem[] = [];
+    const changes: SetDashCardAttributesOpts[] = [];
 
     layout.forEach(layoutItem => {
       const dashboardCard = this.getVisibleCards().find(
@@ -354,7 +348,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   getRowHeight() {
     const { width } = this.props;
 
-    const contentViewportElement = this.context;
+    const contentViewportElement = this.context as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
@@ -435,18 +429,14 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     return (
       <QuestionPickerModal
-        onChange={handleSelect}
+        title={t`Pick what you want to replace this with`}
         value={
           replaceCardModalDashCard.card.id
-            ? {
-                id: replaceCardModalDashCard.card.id,
-                model:
-                  replaceCardModalDashCard.card.type === "model"
-                    ? "dataset"
-                    : "card",
-              }
+            ? getQuestionPickerValue(replaceCardModalDashCard.card)
             : undefined
         }
+        models={["card", "dataset", "metric"]}
+        onChange={handleSelect}
         onClose={handleClose}
       />
     );
@@ -468,6 +458,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       dashcardId: dc.id,
       cardId: dc.card_id,
     });
+
     this.props.addUndo({
       message: t`Removed card`,
       undo: true,
@@ -477,37 +468,40 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   };
 
-  onDashCardAddSeries(dc: BaseDashboardCard) {
+  onDashCardAddSeries = (dc: BaseDashboardCard) => {
     this.setState({ addSeriesModalDashCard: dc });
-  }
+  };
 
   onReplaceCard = (dashcard: BaseDashboardCard) => {
     this.setState({ replaceCardModalDashCard: dashcard });
   };
 
-  getDashboardCardIcon = (dashCard: BaseDashboardCard) => {
-    const { isRegularCollection } = PLUGIN_COLLECTIONS;
-    const { dashboard } = this.props;
-    const isRegularQuestion = isRegularCollection({
-      authority_level: dashCard.collection_authority_level,
-    });
-    const isRegularDashboard = isRegularCollection({
-      authority_level: dashboard.collection_authority_level,
-    });
-    const authorityLevel = dashCard.collection_authority_level;
-    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
-      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 14;
-      return {
-        name: opts.icon,
-        color: opts.color ? color(opts.color) : undefined,
-        tooltip: opts.tooltips?.belonging,
-        size: iconSize,
-
-        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
-        targetOffsetX: dashCard.col === 0 ? iconSize : 0,
-      };
+  getNewCardUrl = ({
+    nextCard,
+    previousCard,
+    dashcard,
+    objectId,
+  }: {
+    nextCard: Card;
+    previousCard: Card;
+    dashcard: DashboardCard;
+    objectId?: number | string;
+  }) => {
+    if (!isQuestionDashCard(dashcard)) {
+      return undefined;
     }
+
+    const { dashboard, metadata, parameterValues } = this.props;
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard,
+      previousCard,
+      objectId,
+    });
   };
 
   renderDashCard(
@@ -525,9 +519,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     return (
       <DashCard
         dashcard={dc}
-        headerIcon={this.getDashboardCardIcon(dc)}
-        dashcardData={this.props.dashcardData}
-        parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
@@ -537,25 +528,27 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isFullscreen={this.props.isFullscreen}
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
-        isPublic={this.props.isPublic}
+        isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
-        onRemove={this.onDashCardRemove.bind(this, dc)}
-        onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
-        onReplaceCard={() => this.onReplaceCard(dc)}
-        onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
-        onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(
-          this,
-          dc.id,
-        )}
+        onRemove={this.onDashCardRemove}
+        onAddSeries={this.onDashCardAddSeries}
+        onReplaceCard={this.onReplaceCard}
+        onUpdateVisualizationSettings={
+          this.props.onUpdateDashCardVisualizationSettings
+        }
+        onReplaceAllVisualizationSettings={
+          this.props.onReplaceAllDashCardVisualizationSettings
+        }
         mode={this.props.mode}
+        getNewCardUrl={
+          this.props.navigateToNewCardFromDashboard
+            ? this.getNewCardUrl
+            : undefined
+        }
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
         onChangeLocation={this.props.onChangeLocation}
-        metadata={this.props.metadata}
         dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
@@ -666,6 +659,10 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
     return t`Model replaced`;
   }
 
+  if (type === "metric") {
+    return t`Metric replaced`;
+  }
+
   if (type === "question") {
     return t`Question replaced`;
   }
@@ -675,5 +672,5 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
-  connect(null, mapDispatchToProps),
-)(DashboardGrid);
+  connector,
+)(DashboardGrid) as ComponentType<OwnProps>;

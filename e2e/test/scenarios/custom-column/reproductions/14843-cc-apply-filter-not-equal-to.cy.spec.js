@@ -1,12 +1,11 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visualize,
   filter,
   openNotebook,
+  popover,
+  restore,
   selectFilterOperator,
+  visualize,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -23,9 +22,6 @@ const questionDetails = {
 describe("issue 14843", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-      "schema",
-    );
 
     restore();
     cy.signInAsAdmin();
@@ -34,8 +30,6 @@ describe("issue 14843", () => {
   it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
     openNotebook();
-
-    cy.wait("@schema");
 
     filter({ mode: "notebook" });
     popover().findByText(CC_NAME).click();

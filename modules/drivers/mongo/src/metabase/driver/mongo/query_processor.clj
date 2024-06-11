@@ -19,6 +19,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -173,12 +174,12 @@
   ([field]
    (field->name field \.))
 
-  ([field     :- lib.metadata/ColumnMetadata
+  ([field     :- ::lib.schema.metadata/column
     separator :- [:or :string char?]]
    (str/join separator (field-name-components field))))
 
 (mu/defmethod add/field-reference-mlv2 :mongo
-  [_driver field-inst :- lib.metadata/ColumnMetadata]
+  [_driver field-inst :- ::lib.schema.metadata/column]
   (field->name field-inst))
 
 (defmacro ^:private mongo-let

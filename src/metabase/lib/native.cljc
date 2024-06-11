@@ -248,7 +248,7 @@
   (= :write (:native-permissions (lib.metadata/database query))))
 
 (defmethod lib.query/can-run-method :mbql.stage/native
-  [query]
+  [query _card-type]
   (and
     (set/subset? (required-native-extras query)
                  (set (keys (native-extras query))))

@@ -25,6 +25,8 @@ import type {
   CardDisplayType,
   CardType,
   CollectionId,
+  DashboardId,
+  DashCardId,
   DatabaseId,
   Dataset,
   DatasetData,
@@ -261,6 +263,10 @@ class Question {
     );
   }
 
+  setArchived(archived: boolean) {
+    return this.setCard(assoc(this.card(), "archived", archived));
+  }
+
   // locking the display prevents auto-selection
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);
@@ -353,7 +359,9 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
+    return isNative
+      ? this.legacyQuery().canRun()
+      : Lib.canRun(this.query(), this.type());
   }
 
   canWrite(): boolean {
@@ -492,11 +500,11 @@ class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
-  collectionId(): number | null | undefined {
+  collectionId(): CollectionId | null | undefined {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number | null | undefined) {
+  setCollectionId(collectionId: CollectionId | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
@@ -518,7 +526,7 @@ class Question {
     dashboardId,
     dashcardId,
   }:
-    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: DashboardId; dashcardId: DashCardId }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)

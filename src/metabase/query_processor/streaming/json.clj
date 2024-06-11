@@ -35,7 +35,7 @@
                    :or   {format-rows? true}} :data} viz-settings]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
         ;; probably going to be parsed programmatically
-        (vreset! col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))
+        (vreset! col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
         (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)

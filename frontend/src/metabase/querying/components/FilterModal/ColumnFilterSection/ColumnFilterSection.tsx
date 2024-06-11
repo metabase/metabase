@@ -61,7 +61,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isNumeric(column)) {
     return NumberFilterEditor;
   }
-  if (Lib.isString(column)) {
+  if (Lib.isStringOrStringLike(column)) {
     return StringFilterEditor;
   }
   return EmptyFilterEditor;

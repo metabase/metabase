@@ -424,7 +424,7 @@
 
 (defmethod lib-type :metric
   [_object-type]
-  :metadata/legacy-metric)
+  :metadata/metric)
 
 (defmethod excluded-keys :metric
   [_object-type]
@@ -464,60 +464,69 @@
         (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
+(defn- metric-cards
+  [delayed-cards]
+  (when-let [cards @delayed-cards]
+    (into {}
+          (keep (fn [[id card]]
+                  (when (and card (= (:type @card) :metric) (not (:archived @card)))
+                    (let [card @card]
+                      [id (-> card
+                              (select-keys [:id :table-id :name :description :archived
+                                            :dataset-query])
+                              (assoc :lib/type :metadata/metric)
+                              delay)]))))
+          cards)))
+
 (defn- parse-metadata [metadata]
-  {:databases (parse-objects-delay :database metadata)
-   :tables    (parse-objects-delay :table    metadata)
-   :fields    (parse-objects-delay :field    metadata)
-   :cards     (parse-objects-delay :card     metadata)
-   :metrics   (parse-objects-delay :metric   metadata)
-   :segments  (parse-objects-delay :segment  metadata)})
+  (let [delayed-cards (parse-objects-delay :card metadata)]
+    {:databases (parse-objects-delay :database metadata)
+     :tables    (parse-objects-delay :table    metadata)
+     :fields    (parse-objects-delay :field    metadata)
+     :cards     delayed-cards
+     :metrics   (delay (metric-cards delayed-cards))
+     :segments  (parse-objects-delay :segment  metadata)}))
 
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
 
-(defn- table [metadata table-id]
-  (some-> metadata :tables deref (get table-id) deref))
-
-(defn- field [metadata field-id]
-  (some-> metadata :fields deref (get field-id) deref))
-
-(defn- card [metadata card-id]
-  (some-> metadata :cards deref (get card-id) deref))
-
-(defn- legacy-metric [metadata metric-id]
-  (some-> metadata :metrics deref (get metric-id) deref))
-
-(defn- segment [metadata segment-id]
-  (some-> metadata :segments deref (get segment-id) deref))
+(defn- metadatas [metadata metadata-type ids]
+  (let [k          (case metadata-type
+                     :metadata/table         :tables
+                     :metadata/column        :fields
+                     :metadata/card          :cards
+                     :metadata/segment       :segments)
+        metadatas* (some-> metadata k deref)]
+    (into []
+          (keep (fn [id]
+                  (some-> metadatas* (get id) deref)))
+          ids)))
 
 (defn- tables [metadata database-id]
-  (for [[_id table-delay] (some-> metadata :tables deref)
-        :let              [a-table (some-> table-delay deref)]
-        :when             (and a-table (= (:db-id a-table) database-id))]
-    a-table))
+  (into []
+        (keep (fn [[_id dlay]]
+                (when-let [table (some-> dlay deref)]
+                  (when (= (:db-id table) database-id)
+                    table))))
+        (some-> metadata :tables deref)))
 
-(defn- fields [metadata table-id]
-  (for [[_id field-delay] (some-> metadata :fields deref)
-        :let              [a-field (some-> field-delay deref)]
-        :when             (and a-field (= (:table-id a-field) table-id))]
-    a-field))
+(defn- metadatas-for-table
+  [metadata metadata-type table-id]
+  (let [k (case metadata-type
+            :metadata/column        :fields
+            :metadata/metric        :metrics
+            :metadata/segment       :segments)]
+    (into []
+          (keep (fn [[_id dlay]]
+                  (when-let [object (some-> dlay deref)]
+                    (when (= (:table-id object) table-id)
+                      object))))
+          (some-> metadata k deref))))
 
-(defn- legacy-metrics [metadata table-id]
-  (for [[_id metric-delay] (some-> metadata :metrics deref)
-        :let               [a-metric (some-> metric-delay deref)]
-        :when              (and a-metric (= (:table-id a-metric) table-id))]
-    a-metric))
-
-(defn- segments [metadata table-id]
-  (for [[_id segment-delay] (some-> metadata :segments deref)
-        :let               [a-segment (some-> segment-delay deref)]
-        :when              (and a-segment (= (:table-id a-segment) table-id))]
-    a-segment))
-
-(defn- setting [setting-key ^js unparsed-metadata]
+(defn- setting [^js unparsed-metadata setting-key]
   (-> unparsed-metadata
-    (object-get "settings")
-    (object-get (name setting-key))))
+      (object-get "settings")
+      (object-get (name setting-key))))
 
 (defn- metadata-provider*
   "Inner implementation for [[metadata-provider]], which wraps this with a cache."
@@ -525,17 +534,16 @@
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
-      (database       [_this]             (database       metadata database-id))
-      (table          [_this table-id]    (table          metadata table-id))
-      (field          [_this field-id]    (field          metadata field-id))
-      (legacy-metric  [_this metric-id]   (legacy-metric  metadata metric-id))
-      (segment        [_this segment-id]  (segment        metadata segment-id))
-      (card           [_this card-id]     (card           metadata card-id))
-      (tables         [_this]             (tables         metadata database-id))
-      (fields         [_this table-id]    (fields         metadata table-id))
-      (legacy-metrics [_this table-id]    (legacy-metrics metadata table-id))
-      (segments       [_this table-id]    (segments       metadata table-id))
-      (setting        [_this setting-key] (setting        setting-key unparsed-metadata))
+      (database [_this]
+        (database metadata database-id))
+      (metadatas [_this metadata-type ids]
+        (metadatas metadata metadata-type ids))
+      (tables [_this]
+        (tables metadata database-id))
+      (metadatas-for-table [_this metadata-type table-id]
+        (metadatas-for-table metadata metadata-type table-id))
+      (setting [_this setting-key]
+        (setting unparsed-metadata setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

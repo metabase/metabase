@@ -4,7 +4,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.util :as u]))
 
-(defn- unwrap
+(defn unwrap
   "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.
   These clauses `extend Array` so `Array.isArray(x)` is true, but they're treated as opaque by `js->clj`.
   This recurses over the whole query, unwrapping these values to their `.raw()` form."
@@ -12,8 +12,7 @@
   (cond
     ;; (object? x) only matches for things that are plain objects. eg. `(object? (js/Date.))` is false.
     ;; This matches anything that descends from `Object`, like `Join` clause, and has a `.raw()` method.
-    (and x
-         (instance? js/Object x)
+    (and (instance? js/Object x)
          (fn? (.-raw x)))        (-> x (.raw) js->clj unwrap)
     (map? x)                     (update-vals x unwrap)
     (sequential? x)              (mapv unwrap x)

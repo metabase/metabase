@@ -2,11 +2,11 @@
   "Tests for MBQL aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field :refer [Field]]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
@@ -141,9 +141,12 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count] [:count]]})))))))
 
-(deftest field-settings-for-aggregate-fields-test
+(deftest ^:parallel field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
-    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      {:fields [{:id       (mt/id :venues :price)
+                                                 :settings {:is_priceless false}}]})
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
         (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
@@ -151,9 +154,12 @@
                (or (-> results mt/cols first)
                    results)))))))
 
-(deftest semantic-type-for-aggregate-fields-test
+(deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
-    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:semantic_type :type/Currency}
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      {:fields [{:id            (mt/id :venues :price)
+                                                 :semantic-type :type/Currency}]})
       (let [price [:field (mt/id :venues :price) nil]]
         (doseq [[aggregation expected-semantic-type]
                 [[[:sum price] :type/Currency]

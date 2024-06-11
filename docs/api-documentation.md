@@ -80,6 +80,5 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Tiles](api/tiles.md)
 - [Timeline](api/timeline.md)
 - [Timeline event](api/timeline-event.md)
-- [Transform](api/transform.md)
 - [User](api/user.md)
 - [Util](api/util.md)

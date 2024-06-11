@@ -3,7 +3,10 @@ import { screen } from "@testing-library/react";
 import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import type { User } from "metabase-types/api";
-import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockRecentTableItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { HomeRecentSection } from "./HomeRecentSection";
 
@@ -13,11 +16,10 @@ interface SetupOpts {
 
 const setup = async ({ user = createMockUser() }: SetupOpts = {}) => {
   setupRecentViewsEndpoints([
-    createMockRecentItem({
+    createMockRecentTableItem({
       model: "table",
-      model_object: {
-        name: "Orders",
-      },
+      name: "ORDERS",
+      display_name: "Orders",
     }),
   ]);
 

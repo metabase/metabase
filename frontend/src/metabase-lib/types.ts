@@ -6,6 +6,7 @@ import type {
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
 } from "metabase-types/api";
 
 import type {
@@ -19,6 +20,7 @@ import type {
   RELATIVE_DATE_BUCKETS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
+import type { ColumnExtractionTag } from "./extractions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -39,18 +41,15 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
-declare const LegacyMetricMetadata: unique symbol;
-export type LegacyMetricMetadata = unknown & {
-  _opaque: typeof LegacyMetricMetadata;
+declare const MetricMetadata: unique symbol;
+export type MetricMetadata = unknown & {
+  _opaque: typeof MetricMetadata;
 };
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable =
-  | AggregationClause
-  | LegacyMetricMetadata
-  | ExpressionClause;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -95,6 +94,16 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
+export type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "order-by"
+  | "limit";
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
@@ -133,6 +142,10 @@ export type TableDisplayInfo = {
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
+  isQuestion?: boolean;
+  isModel?: boolean;
+  isMetric?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -225,12 +238,12 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
-export type LegacyMetricDisplayInfo = {
+export type MetricDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;
   description: string;
-  selected?: boolean;
+  aggregationPosition?: number;
 };
 
 export type ClauseDisplayInfo = Pick<
@@ -252,6 +265,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 export type ExpressionOperatorName =
   | "+"
+  | "-"
+  | "*"
+  | "/"
   | "="
   | "!="
   | ">"
@@ -272,7 +288,8 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment";
+  | "segment"
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -430,6 +447,7 @@ export type DrillThruType =
   | "drill-thru/automatic-insights"
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
+  | "drill-thru/combine-columns"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -453,7 +471,7 @@ export type ColumnExtraction = unknown & {
 };
 
 export type ColumnExtractionInfo = {
-  tag: string;
+  tag: ColumnExtractionTag;
   displayName: string;
 };
 
@@ -462,6 +480,9 @@ export type ColumnExtractDrillThruInfo =
     displayName: string;
     extractions: ColumnExtractionInfo[];
   };
+
+export type CombineColumnsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/combine-columns">;
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -528,6 +549,7 @@ export type ZoomTimeseriesDrillThruInfo =
 
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
+  | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -569,6 +591,7 @@ export interface ClickObject {
   seriesIndex?: number;
   cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

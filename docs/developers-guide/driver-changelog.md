@@ -13,11 +13,11 @@ title: Driver interface changelog
   efficient way possible. This is currently only required for drivers that support the `:uploads` feature, and has
   a default implementation for JDBC-based drivers.
 
-- New feature `:window-functions` has been added. Drivers that implement this method are expected to implement the
-  cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native query language.
-  For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is set to `false` by
-  default; the old (broken) post-processing implementations of cumulative aggregations will continue to be used. (See
-  issues [#13634](https://github.com/metabase/metabase/issues/13634) and
+- New feature `:window-functions/cumulative` has been added. Drivers that implement this method are expected to
+  implement the cumulative sum (`:cum-sum`) and cumulative count (`:cum-count`) aggregation clauses in their native
+  query language. For non-SQL drivers (drivers not based on our `:sql` or `:sql-jdbc` drivers), this feature flag is
+  set to `false` by default; the old (broken) post-processing implementations of cumulative aggregations will continue
+  to be used. (See issues [#13634](https://github.com/metabase/metabase/issues/13634) and
   [#15118](https://github.com/metabase/metabase/issues/15118) for more information on why the old implementation is
   broken.)
 
@@ -45,7 +45,7 @@ title: Driver interface changelog
   ```
 
   Non-SQL drivers can use
-  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-cumulative-aggregation`
+  `metabase.query-processor.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation`
   if they want to leverage the same query transformation. See the default `:sql` implementation of
   `metabase.driver.sql.query-processor/preprocess` for an example of using this transformation when needed.
 
@@ -53,6 +53,36 @@ title: Driver interface changelog
   implementation is working correctly.
 
 - `metabase.driver.common/class->base-type` no longer supports Joda Time classes. They have been deprecated since 2019.
+
+- New feature `:window-functions/offset` has been added to signify that a driver supports the new MBQL `:offset`
+  clause (equivalent of SQL `lead` and `lag` functions). This is enabled by default for `:sql` and `:sql-jdbc`-based
+  drivers. Other drivers should add an implementation for this clause and enable the feature flag.
+
+- `:type/field-values-unsupported` was added in `metabase.types` namespace. It is used in field values computation
+  logic, to determine whether a specific field should have its field values computed or not. At the time of writing
+  that is performed in `metabase.models.field-values/field-should-have-field-values?`. Deriving from it, driver
+  developers have a way to out of field values computation for fields that are incompatible with the query used for
+  computation. Example could be Druid's `COMPLEX<JSON>` database type fields. See the `:druid-jdbc` implementation
+  of `sql-jdbc.sync/database-type->base-type` in the `metabase.driver.druid-jdbc` and derivations in the
+  `metabase.types` namespace for an example.
+
+- New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
+  key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
+  (Presto, Athena, etc.) support *querying* over foreign key relationships (`:foreign-keys`) but do not track or enforce
+  those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
+  first-party SparkSQL, Presto and Athena drivers.
+
+- New feature `:connection/multiple-databases` has been added to indicate whether a *connection* to this driver
+  corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
+  This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
+  Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+## Metabase 0.49.9
+
+- Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
+  is optional to support. Drivers support this feature by default, and can choose not to support it if there is no way
+  to create a table with an auto-incrementing integer column. The driver can override the default using
+  `driver/database-supports?`.
 
 ## Metabase 0.49.1
 

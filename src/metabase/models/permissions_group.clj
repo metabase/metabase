@@ -13,6 +13,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -28,14 +29,20 @@
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 
-(derive :model/PermissionsGroup :metabase/model)
+(doto :model/PermissionsGroup
+  (derive :metabase/model)
+  (derive :hook/entity-id))
+
+(defmethod serdes/hash-fields :model/PermissionsGroup
+  [_user]
+  [:name])
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one PermissionsGroup :name group-name)
+     (u/prog1 (t2/select-one [PermissionsGroup :id :name] :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
@@ -119,7 +126,9 @@
   [group]
   (let [changes (t2/changes group)]
     (u/prog1 group
-      (check-not-magic-group group)
+      (when (contains? changes :name)
+        ;; Allow backfilling the entity ID for magic groups, but not changing anything else
+        (check-not-magic-group group))
       (when-let [group-name (:name changes)]
         (check-name-not-already-taken group-name)))))
 

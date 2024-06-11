@@ -22,6 +22,10 @@
      "created"       {:type         :date
                       :display-name "Genesis"
                       :name         "created"}
+     ;; Time granularity
+     "time_unit"     {:type         :temporal-unit
+                      :display-name "Unit"
+                      :name         "time_unit"}
      ;; Field Filters: Dates
      "created_range" {:type         :dimension,
                       :name         "created_range"
@@ -191,6 +195,18 @@
          (->sql (mt/native-query {:template-tags (tags "str_starts")
                                   :query         "SELECT * FROM people WHERE {{str_starts}}"})))))
 
+(deftest snippet-test
+  (testing "With a snippet"
+    (t2.with-temp/with-temp
+      [:model/NativeQuerySnippet {snippet-id :id} {:name    "a lovely snippet"
+                                                   :content "where total > 10"}]
+      (let [og-query "SELECT total FROM orders {{snippet: a lovely snippet}}"]
+        (is (= "SELECT total FROM orders where total > 10"
+               (->sql (mt/native-query {:query         og-query
+                                        :template-tags (assoc-in (lib-native/extract-template-tags og-query)
+                                                                 ["snippet: a lovely snippet" :snippet-id]
+                                                                 snippet-id)}))))))))
+
 (deftest card-ref-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:type          :model
@@ -207,6 +223,8 @@
                     :id
                     :category
                     :boolean
+                    ;; no valid default for temporal-unit
+                    :temporal-unit
                     ;; no longer in use
                     :location/city
                     :location/state

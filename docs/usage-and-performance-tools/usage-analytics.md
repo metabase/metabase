@@ -21,6 +21,7 @@ Some things to keep in mind with this special Metabase analytics collection:
 - Metabase analytics is a view-only collection. Even admins can't curate it. It is eternal.
 - By default, only admins can view the Metabase analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) will also get access to the Metabase analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Metabase analytics collection; you'll need to specifically grant groups access to the Metabase analytics collection.
 - You can duplicate any item in the Metabase analytics collection, modify the item to your liking, and save the item to another collection.
+- Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts) for more information.
 
 ## Permissions
 

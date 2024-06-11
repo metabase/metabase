@@ -10,12 +10,14 @@ import { SIDEBAR_WIDTH } from "../Sidebar";
 export const DashboardInfoSidebarRoot = styled.aside`
   width: ${SIDEBAR_WIDTH}px;
   min-width: ${SIDEBAR_WIDTH}px;
-  padding: 0 2rem 0.5rem;
   background: ${color("white")};
   border-left: 1px solid ${color("border")};
   align-self: stretch;
-  overflow-y: auto;
+  // FIXME: ensure that removing this style is OK
+  // overflow-y: auto;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 
   ${breakpointMaxSmall} {
     position: absolute;

@@ -8,7 +8,7 @@ import {
   isTime,
   isDate,
   isCoordinate,
-  isString,
+  isStringOrStringLike,
   isNumeric,
 } from "./column_types";
 import {
@@ -136,7 +136,7 @@ export function stringFilterParts(
   const [column, ...values] = args;
   if (
     !isColumnMetadata(column) ||
-    !isString(column) ||
+    !isStringOrStringLike(column) ||
     !isStringLiteralArray(values)
   ) {
     return null;

@@ -19,6 +19,11 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Enterprise Edition releases
 
+- [v1.49.12](https://github.com/metabase/metabase/releases/tag/v1.49.12)
+- [v1.49.11](https://github.com/metabase/metabase/releases/tag/v1.49.11)
+- [v1.49.10](https://github.com/metabase/metabase/releases/tag/v1.49.10)
+- [v1.49.9](https://github.com/metabase/metabase/releases/tag/v1.49.9)
+- [v1.49.8](https://github.com/metabase/metabase/releases/tag/v1.49.8)
 - [v1.49.7](https://github.com/metabase/metabase/releases/tag/v1.49.7)
 - [v1.49.6](https://github.com/metabase/metabase/releases/tag/v1.49.6)
 - [v1.49.5](https://github.com/metabase/metabase/releases/tag/v1.49.5)
@@ -27,6 +32,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 - [v1.49.2](https://github.com/metabase/metabase/releases/tag/v1.49.2)
 - [v1.49.1](https://github.com/metabase/metabase/releases/tag/v1.49.1)
 - [v1.49.0](https://github.com/metabase/metabase/releases/tag/v1.49.0)
+- [v1.48.13](https://github.com/metabase/metabase/releases/tag/v1.48.13)
 - [v1.48.12](https://github.com/metabase/metabase/releases/tag/v1.48.12)
 - [v1.48.11](https://github.com/metabase/metabase/releases/tag/v1.48.11)
 - [v1.48.10](https://github.com/metabase/metabase/releases/tag/v1.48.10)
@@ -160,6 +166,11 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
+- [v0.49.12](https://github.com/metabase/metabase/releases/tag/v0.49.12)
+- [v0.49.11](https://github.com/metabase/metabase/releases/tag/v0.49.11)
+- [v0.49.10](https://github.com/metabase/metabase/releases/tag/v0.49.10)
+- [v0.49.9](https://github.com/metabase/metabase/releases/tag/v0.49.9)
+- [v0.49.8](https://github.com/metabase/metabase/releases/tag/v0.49.8)
 - [v0.49.7](https://github.com/metabase/metabase/releases/tag/v0.49.7)
 - [v0.49.6](https://github.com/metabase/metabase/releases/tag/v0.49.6)
 - [v0.49.5](https://github.com/metabase/metabase/releases/tag/v0.49.5)
@@ -168,6 +179,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 - [v0.49.2](https://github.com/metabase/metabase/releases/tag/v0.49.2)
 - [v0.49.1](https://github.com/metabase/metabase/releases/tag/v0.49.1)
 - [v0.49.0](https://github.com/metabase/metabase/releases/tag/v0.49.0)
+- [v0.48.13](https://github.com/metabase/metabase/releases/tag/v0.48.13)
 - [v0.48.12](https://github.com/metabase/metabase/releases/tag/v0.48.12)
 - [v0.48.11](https://github.com/metabase/metabase/releases/tag/v0.48.11)
 - [v0.48.10](https://github.com/metabase/metabase/releases/tag/v0.48.10)

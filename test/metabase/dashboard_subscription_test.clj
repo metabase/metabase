@@ -29,7 +29,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- do-with-dashboard-sub-for-card
+(defn do-with-dashboard-sub-for-card
   "Creates a Pulse, Dashboard, and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if
   specified), then invokes
 
@@ -62,7 +62,7 @@
         (f pulse))
       (f pulse))))
 
-(defmacro ^:private with-dashboard-sub-for-card
+(defmacro with-dashboard-sub-for-card
   "e.g.
 
     (with-dashboard-sub-for-card [pulse {:card my-card, :pulse pulse-properties, ...}]
@@ -939,3 +939,9 @@
                          (->> (mapv #(str/split % #",")))
                          first
                          count))))))))))
+
+(deftest attachment-filenames-stay-readable-test
+  (testing "Filenames remain human-readable (#41669)"
+    (let [tmp (#'messages/create-temp-file ".tmp")
+          {:keys [file-name]} (#'messages/create-result-attachment-map :csv "テストSQL質問" tmp)]
+      (is (= "テストSQL質問" (first (str/split file-name #"_")))))))

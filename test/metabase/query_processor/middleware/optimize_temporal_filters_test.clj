@@ -5,6 +5,8 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -154,6 +156,34 @@
                      (mbql.u/assoc-field-options field-or-expr :temporal-unit unit)
                      [:absolute-datetime filter-value unit]
                      [:absolute-datetime filter-value unit]])))))))))
+
+(deftest ^:parallel optimize-less-than-or-equal-to-relative-datetime-test
+  (testing "Optimize [:<= x <16 weeks ago>] correctly (#42291)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)])
+                    (lib/filter (lib/<=
+                                 (-> (meta/field-metadata :orders :created-at)
+                                     (lib/with-temporal-bucket :default))
+                                 (lib/relative-datetime -16 :week))))]
+      (is (=? {:query {:filter [:<=
+                                [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
+                                [:relative-datetime -16 :week]]}}
+              (optimize-temporal-filters (lib.convert/->legacy-MBQL query)))))))
+
+(deftest ^:parallel optimize-between-relative-datetime-test
+  (testing "Optimize [:between x <17 weeks ago> <16 weeks ago>] correctly (#42291)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)])
+                    (lib/filter (lib/between
+                                 (-> (meta/field-metadata :orders :created-at)
+                                     (lib/with-temporal-bucket :default))
+                                 (lib/relative-datetime -17 :week)
+                                 (lib/relative-datetime -16 :week))))]
+      (is (=? {:query {:filter [:between
+                                [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default}]
+                                [:relative-datetime -17 :week]
+                                [:relative-datetime -16 :week]]}}
+              (optimize-temporal-filters (lib.convert/->legacy-MBQL query)))))))
 
 (defn- optimize-filter-clauses [t]
   (let [query {:database 1

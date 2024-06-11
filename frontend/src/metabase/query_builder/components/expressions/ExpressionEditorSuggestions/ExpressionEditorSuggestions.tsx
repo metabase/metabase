@@ -1,4 +1,3 @@
-import cx from "classnames";
 import {
   useEffect,
   useRef,
@@ -9,12 +8,19 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isObscured } from "metabase/lib/dom";
-import { DelayGroup, Icon, type IconName, Popover } from "metabase/ui";
+import {
+  DelayGroup,
+  Icon,
+  type IconName,
+  Popover,
+  DEFAULT_POPOVER_Z_INDEX,
+} from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type {
   Suggestion,
@@ -31,12 +37,10 @@ import type {
 import {
   ExpressionListItem,
   ExpressionListFooter,
-  ExternalIcon,
   ExpressionList,
   SuggestionMatch,
   SuggestionTitle,
   GroupTitle,
-  QueryColumnInfoIcon,
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
@@ -51,6 +55,7 @@ export function ExpressionEditorSuggestions({
   onSuggestionMouseDown,
   open,
   highlightedIndex,
+  onHighlightSuggestion,
   children,
 }: {
   query: Lib.Query;
@@ -59,6 +64,7 @@ export function ExpressionEditorSuggestions({
   onSuggestionMouseDown: (index: number) => void;
   open: boolean;
   highlightedIndex: number;
+  onHighlightSuggestion: (index: number) => void;
   children: ReactNode;
 }) {
   const ref = useRef(null);
@@ -93,7 +99,12 @@ export function ExpressionEditorSuggestions({
       opened={open && suggestions.length > 0}
       radius="xs"
       withinPortal
-      zIndex={300}
+      zIndex={DEFAULT_POPOVER_Z_INDEX}
+      middlewares={{
+        flip: false,
+        shift: false,
+        inline: false,
+      }}
     >
       <Popover.Target>{children}</Popover.Target>
       <Popover.Dropdown>
@@ -109,14 +120,7 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
-            />
-            <ExpressionEditorSuggestionsListGroup
-              name="shortcuts"
-              suggestions={groups.shortcuts}
-              query={query}
-              stageIndex={stageIndex}
-              highlightedIndex={highlightedIndex}
-              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
             <ExpressionEditorSuggestionsListGroup
               name="popularAggregations"
@@ -125,6 +129,7 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
             <ExpressionEditorSuggestionsListGroup
               name="popularExpressions"
@@ -133,6 +138,16 @@ export function ExpressionEditorSuggestions({
               stageIndex={stageIndex}
               highlightedIndex={highlightedIndex}
               onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
+            />
+            <ExpressionEditorSuggestionsListGroup
+              name="shortcuts"
+              suggestions={groups.shortcuts}
+              query={query}
+              stageIndex={stageIndex}
+              highlightedIndex={highlightedIndex}
+              onSuggestionMouseDown={onSuggestionMouseDown}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
           </ExpressionList>
           {footers.map(suggestion => (
@@ -140,6 +155,7 @@ export function ExpressionEditorSuggestions({
               key={suggestion.index}
               suggestion={suggestion}
               highlightedIndex={highlightedIndex}
+              onHighlightSuggestion={onHighlightSuggestion}
             />
           ))}
         </DelayGroup>
@@ -154,6 +170,7 @@ function ExpressionEditorSuggestionsListGroup({
   stageIndex,
   suggestions = [],
   onSuggestionMouseDown,
+  onHighlightSuggestion,
   highlightedIndex,
 }: {
   name?: GroupName;
@@ -161,6 +178,7 @@ function ExpressionEditorSuggestionsListGroup({
   stageIndex: number;
   suggestions?: Suggestion[];
   onSuggestionMouseDown: (index: number) => void;
+  onHighlightSuggestion: (index: number) => void;
   highlightedIndex: number;
 }) {
   const definition = name && GROUPS[name];
@@ -183,6 +201,7 @@ function ExpressionEditorSuggestionsListGroup({
           isHighlighted={suggestion.index === highlightedIndex}
           index={suggestion.index}
           onMouseDown={onSuggestionMouseDown}
+          onHighlightSuggestion={onHighlightSuggestion}
         />
       ))}
     </>
@@ -193,6 +212,7 @@ function ExpressionEditorSuggestionsListItem({
   query,
   stageIndex,
   suggestion,
+  onHighlightSuggestion,
   isHighlighted,
   onMouseDown,
   index,
@@ -202,12 +222,11 @@ function ExpressionEditorSuggestionsListItem({
   index: number;
   isHighlighted: boolean;
   onMouseDown: (index: number) => void;
+  onHighlightSuggestion: (index: number) => void;
   suggestion: Suggestion;
 }) {
   const { icon, helpText, range = [] } = suggestion;
   const [start = 0, end = 0] = range;
-
-  const { normal, highlighted } = colorForIcon(icon);
 
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -219,7 +238,7 @@ function ExpressionEditorSuggestionsListItem({
   }, [isHighlighted]);
 
   const handleMouseDown = useCallback(
-    function (event: React.MouseEvent) {
+    (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
       onMouseDown?.(index);
@@ -227,19 +246,33 @@ function ExpressionEditorSuggestionsListItem({
     [index, onMouseDown],
   );
 
+  const handleMouseMove = useCallback(() => {
+    onHighlightSuggestion(index);
+  }, [index, onHighlightSuggestion]);
+
   return (
     <HoverParent>
       <ExpressionListItem
         onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
         ref={ref}
         isHighlighted={isHighlighted}
-        className={cx(CS.hoverParent, CS.hoverInherit)}
         data-testid="expression-suggestions-list-item"
       >
-        {icon && (
+        {icon && (helpText || !suggestion.column) && (
           <Icon
             name={icon as IconName}
-            color={isHighlighted ? highlighted : normal}
+            color={isHighlighted ? color("brand-white") : color("text-light")}
+            className={CS.mr1}
+          />
+        )}
+        {!helpText && suggestion.column && (
+          <QueryColumnInfoIcon
+            query={query}
+            stageIndex={stageIndex}
+            column={suggestion.column}
+            position="top-start"
+            color={isHighlighted ? color("brand-white") : color("text-light")}
             className={CS.mr1}
           />
         )}
@@ -261,14 +294,6 @@ function ExpressionEditorSuggestionsListItem({
             />
           </InfoPopover>
         )}
-        {!helpText && suggestion.column && (
-          <QueryColumnInfoIcon
-            query={query}
-            stageIndex={stageIndex}
-            column={suggestion.column}
-            position="right"
-          />
-        )}
       </ExpressionListItem>
     </HoverParent>
   );
@@ -277,42 +302,42 @@ function ExpressionEditorSuggestionsListItem({
 function Footer({
   suggestion,
   highlightedIndex,
+  onHighlightSuggestion,
 }: {
   suggestion: WithIndex<SuggestionFooter>;
   highlightedIndex: number;
+  onHighlightSuggestion: (index: number) => void;
 }) {
   function handleMouseDownCapture(evt: MouseEvent) {
     // prevent the dropdown from closing
     evt.preventDefault();
   }
 
+  const handleMouseMove = useCallback(() => {
+    if (suggestion.index !== highlightedIndex) {
+      onHighlightSuggestion(suggestion.index);
+    }
+  }, [suggestion.index, onHighlightSuggestion, highlightedIndex]);
+
+  const isHighlighted = highlightedIndex === suggestion.index;
+
   return (
     <ExpressionListFooter
       target="_blank"
       href={suggestion.href}
       onMouseDownCapture={handleMouseDownCapture}
-      isHighlighted={highlightedIndex === suggestion.index}
+      onMouseMove={handleMouseMove}
+      isHighlighted={isHighlighted}
+      data-testid="expression-suggestions-list-item"
     >
-      {suggestion.name} <ExternalIcon name={suggestion.icon} />
+      <Icon
+        name="reference"
+        color={isHighlighted ? color("brand-white") : color("text-light")}
+        className={CS.mr1}
+      />
+      <SuggestionTitle>{suggestion.name}</SuggestionTitle>
     </ExpressionListFooter>
   );
-}
-
-function colorForIcon(icon: string | undefined | null) {
-  switch (icon) {
-    case "segment":
-      return { normal: color("accent2"), highlighted: color("brand-white") };
-    case "insight":
-      return { normal: color("accent1"), highlighted: color("brand-white") };
-    case "function":
-    case "combine":
-      return { normal: color("brand"), highlighted: color("brand-white") };
-    default:
-      return {
-        normal: color("text-medium"),
-        highlighted: color("brand-white"),
-      };
-  }
 }
 
 type SuggestionWithIndex = Suggestion & {

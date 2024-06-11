@@ -5,7 +5,7 @@
    [metabase.models.bookmark
     :refer [BookmarkOrdering CardBookmark CollectionBookmark DashboardBookmark]]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
+   [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -77,7 +77,10 @@
 
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp [Collection archived-collection {:name "Test Collection" :archived true}
+    (mt/with-temp [Collection archived-collection {:name "Test Collection"
+                                                   :archived true
+                                                   :location (collection/trash-path)
+                                                   :trashed_from_location "/"}
                    Card       archived-card {:name "Test Card" :archived true}
                    Dashboard  archived-dashboard {:name "Test Dashboard" :archived true}]
       (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)

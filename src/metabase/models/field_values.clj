@@ -27,6 +27,7 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
@@ -40,24 +41,13 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def ^Long category-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
-  This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
-  frontend behavior such as widget choices."
-  30)
-
-(def ^Long auto-list-cardinality-threshold
-  "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
-  the Field should have FieldValues."
-  1000)
-
 (def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
   100)
 
 (def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (long (* auto-list-cardinality-threshold entry-max-length)))
+  (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
 
 (def ^java.time.Period advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
@@ -242,6 +232,7 @@
            has-field-values :has_field_values} field-or-field-id]
       (boolean
        (and
+        (not (isa? base-type :type/field-values-unsupported))
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
         (not (isa? (keyword base-type) :type/Temporal))
         (#{:list :auto-list} (keyword has-field-values)))))))
@@ -402,7 +393,7 @@
         field-name                (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over
-      ;; the [[auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
+      ;; the [[analyze/auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
       ;; the [[*total-max-length*]] threshold we need to unmark it as `auto-list`. Switch it to `has_field_values` =
       ;; `nil` and delete the FieldValues; this will result in it getting a Search Widget in the UI when
       ;; `has_field_values` is automatically inferred by the [[metabase.models.field/infer-has-field-values]] hydration
@@ -413,7 +404,7 @@
       ;; way that could make this work. Thus, we are stuck doing it here :(
       (and (= :auto-list (keyword (:has_field_values field)))
            (or has_more_values
-               (> (count values) auto-list-cardinality-threshold)))
+               (> (count values) analyze/auto-list-cardinality-threshold)))
       (do
         (log/infof
          (str "Field %s was previously automatically set to show a list widget, but now has %s values."

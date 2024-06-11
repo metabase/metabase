@@ -9,6 +9,7 @@ export * from "./comparison";
 export * from "./database";
 export * from "./drills";
 export * from "./expression";
+export * from "./extractions";
 export * from "./fields";
 export * from "./filter";
 export * from "./join";

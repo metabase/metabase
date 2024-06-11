@@ -22,7 +22,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -141,6 +141,18 @@
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
+(defn- delete-jobs-with-no-class!
+  "Delete any jobs that have been scheduled but whose class is no longer available."
+  []
+  (when-let [scheduler (scheduler)]
+    (doseq [job-key (.getJobKeys scheduler nil)]
+      (try
+        (qs/get-job scheduler job-key)
+        (catch JobPersistenceException e
+          (when (instance? ClassNotFoundException (.getCause e))
+            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (qs/delete-job scheduler job-key)))))))
+
 (defn- init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
@@ -153,6 +165,7 @@
         (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        (delete-jobs-with-no-class!)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
@@ -185,11 +198,21 @@
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
+      ;; TODO: a job could have multiple triggers, so the first trigger is not guaranteed to be the one we want to
+      ;; replace. Should we check that the key name is matching?
       (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
         (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
         (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
+
+(mu/defn reschedule-trigger!
+  "Reschedule a trigger with the same key as the given trigger.
+
+  Used to update trigger properties like priority."
+  [trigger :- (ms/InstanceOfClass Trigger)]
+  (when-let [scheduler (scheduler)]
+    (.rescheduleJob scheduler (.getKey ^Trigger trigger) trigger)))
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
@@ -255,7 +278,7 @@
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
    :may-fire-again?    (.mayFireAgain trigger)
-   :data               (.getJobDataMap trigger)})
+   :data               (into {} (.getJobDataMap trigger))})
 
 (defmethod trigger->info CronTrigger
   [^CronTrigger trigger]
@@ -263,6 +286,9 @@
    ((get-method trigger->info Trigger) trigger)
    :schedule
    (.getCronExpression trigger)
+
+   :timezone
+   (.getID (.getTimeZone trigger))
 
    :misfire-instruction
    ;; not 100% sure why `case` doesn't work here...

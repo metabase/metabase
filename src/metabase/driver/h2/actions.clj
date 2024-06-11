@@ -3,7 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.actions.error :as actions.error]
+   [metabase.actions.core :as actions]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
@@ -63,7 +63,7 @@
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions.error/violate-not-null-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ column]
              (re-find #"NULL not allowed for column \"([^\"]+)\"" error-message)]
@@ -71,7 +71,7 @@
      :message (tru "{0} must have values." (str/capitalize column))
      :errors  {column (tru "You must provide a value.")}}))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions.error/violate-unique-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/violate-unique-constraint]
   [_driver error-type database _action-type error-message]
   (when-let [[_match constraint-name table]
              (re-find #"Unique index or primary key violation: \"[^.]+.(.+?) ON [^.]+.\"\"(.+?)\"\"" error-message)]
@@ -83,7 +83,7 @@
                         {}
                         columns)})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions.error/violate-foreign-key-constraint]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
   (when-let [[_match column]
              (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
@@ -102,7 +102,7 @@
               {:message (tru "Unable to update the record.")
                :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions.error/incorrect-value-type]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
   (when-let [[_ _expected-type _value]
              (re-find #"Data conversion error converting .*" error-message)]

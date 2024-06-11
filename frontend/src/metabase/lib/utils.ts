@@ -6,12 +6,6 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 const EMAIL_REGEX =
   /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
-function s4() {
-  return Math.floor((1 + Math.random()) * 0x10000)
-    .toString(16)
-    .substring(1);
-}
-
 export function isEmpty(str: string | null) {
   if (str != null) {
     str = String(str);
@@ -39,30 +33,6 @@ export function numberToWord(num: number) {
   } else {
     return "" + num;
   }
-}
-
-export function uuid() {
-  return (
-    s4() +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    "-" +
-    s4() +
-    s4() +
-    s4()
-  );
-}
-
-export function isUUID(uuid: unknown) {
-  return (
-    typeof uuid === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)
-  );
 }
 
 export function isJWT(string: unknown) {

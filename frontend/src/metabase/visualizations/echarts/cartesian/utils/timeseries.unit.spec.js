@@ -127,6 +127,18 @@ describe("visualization.lib.timeseries", () => {
       expect(unit).toBe("month");
       expect(count).toBe(3);
     });
+
+    it("should should ignore null X values", () => {
+      const { unit, count } = computeTimeseriesDataInverval([
+        null,
+        new Date("2020-01-01").toISOString(),
+        null,
+        new Date("2020-03-01").toISOString(),
+        null,
+      ]);
+      expect(unit).toBe("month");
+      expect(count).toBe(1);
+    });
   });
 
   describe("getTimezone", () => {
@@ -172,7 +184,7 @@ describe("visualization.lib.timeseries", () => {
         {
           xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
           xInterval: { interval: "month", count: 1 },
-          chartWidth: 800,
+          chartWidth: 700,
           tickFormat: fakeTickFormat,
         },
         { expectedUnit: "month", expectedCount: 3 },

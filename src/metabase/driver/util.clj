@@ -466,7 +466,7 @@
   #{"athena"
     "bigquery-cloud-sdk"
     "druid"
-    "googleanalytics"
+    "druid-jdbc"
     "h2"
     "mongo"
     "mysql"

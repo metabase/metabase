@@ -1,11 +1,13 @@
 import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
+  UpdateCollectionRequest,
   Collection,
-  CollectionRequest,
-  ListCollectionsRequest,
-  ListCollectionsResponse,
   CreateCollectionRequest,
+  ListCollectionsRequest,
+  ListCollectionsTreeRequest,
+  CollectionId,
+  DeleteCollectionRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -20,39 +22,46 @@ import {
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
+    listCollections: builder.query<Collection[], ListCollectionsRequest>({
+      query: params => ({
+        method: "GET",
+        url: `/api/collection`,
+        params,
+      }),
+      providesTags: (collections = []) =>
+        provideCollectionListTags(collections),
+    }),
+    listCollectionsTree: builder.query<
+      Collection[],
+      ListCollectionsTreeRequest
+    >({
+      query: params => ({
+        method: "GET",
+        url: "/api/collection/tree",
+        params,
+      }),
+      providesTags: (collections = []) =>
+        provideCollectionListTags(collections),
+    }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
       ListCollectionItemsRequest
     >({
-      query: ({ id, limit, offset, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/collection/${id}/items`,
-        params: { limit, offset },
-        body,
+        params,
       }),
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
-    getCollection: builder.query<Collection, CollectionRequest>({
-      query: ({ id, ...body }) => ({
+    getCollection: builder.query<Collection, CollectionId>({
+      query: id => ({
         method: "GET",
         url: `/api/collection/${id}`,
-        body,
       }),
       providesTags: collection =>
         collection ? provideCollectionTags(collection) : [],
-    }),
-    listCollections: builder.query<
-      ListCollectionsResponse,
-      ListCollectionsRequest
-    >({
-      query: ({ ...body }) => ({
-        method: "GET",
-        url: `/api/collection`,
-        body,
-      }),
-      providesTags: collections =>
-        collections ? provideCollectionListTags(collections) : [],
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: body => ({
@@ -70,12 +79,33 @@ export const collectionApi = Api.injectEndpoints({
             ]
           : [],
     }),
+    updateCollection: builder.mutation<Collection, UpdateCollectionRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/collection/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
+    }),
+    deleteCollection: builder.mutation<void, DeleteCollectionRequest>({
+      query: ({ id, ...body }) => ({
+        method: "DELETE",
+        url: `/api/collection/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
+    }),
   }),
 });
 
 export const {
-  useListCollectionItemsQuery,
   useListCollectionsQuery,
+  useListCollectionsTreeQuery,
+  useListCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
+  useUpdateCollectionMutation,
+  useDeleteCollectionMutation,
 } = collectionApi;

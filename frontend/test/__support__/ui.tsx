@@ -1,9 +1,11 @@
+import type { MantineThemeOverride } from "@mantine/core";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
+import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
@@ -13,7 +15,10 @@ import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
+import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { sdkReducers } from "embedding-sdk/store";
+import type { SdkStoreState } from "embedding-sdk/store/types";
+import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
@@ -39,10 +44,13 @@ export interface RenderWithProvidersOptions {
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
+  /** Renders children wrapped with kbar provider */
+  withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
   sdkConfig?: SDKConfig | null;
+  theme?: MantineThemeOverride;
 }
 
 /**
@@ -57,10 +65,12 @@ export function renderWithProviders(
     initialRoute = "/",
     storeInitialState = {},
     withRouter = false,
+    withKBar = false,
     withDND = false,
     withUndos = false,
     customReducers,
     sdkConfig = null,
+    theme,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
@@ -72,7 +82,10 @@ export function renderWithProviders(
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   } else if (mode === "sdk") {
     const sdkReducerNames = Object.keys(sdkReducers);
-    initialState = _.pick(initialState, ...sdkReducerNames) as State;
+    initialState = _.pick(
+      { sdk: createMockSdkState(), ...initialState },
+      ...sdkReducerNames,
+    ) as SdkStoreState;
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -114,17 +127,21 @@ export function renderWithProviders(
 
   const wrapper = (props: any) => {
     if (mode === "sdk") {
-      return <SdkWrapper {...props} config={sdkConfig} store={store} />;
+      return (
+        <SdkWrapper {...props} config={sdkConfig} store={store} theme={theme} />
+      );
     }
 
     return (
-      <Wrapper
+      <TestWrapper
         {...props}
         store={store}
         history={history}
         withRouter={withRouter}
         withDND={withDND}
         withUndos={withUndos}
+        theme={theme}
+        withKBar={withKBar}
       />
     );
   };
@@ -141,28 +158,34 @@ export function renderWithProviders(
   };
 }
 
-function Wrapper({
+export function TestWrapper({
   children,
   store,
   history,
   withRouter,
+  withKBar,
   withDND,
   withUndos,
+  theme,
 }: {
   children: React.ReactElement;
   store: any;
   history?: History;
   withRouter: boolean;
+  withKBar: boolean;
   withDND: boolean;
   withUndos?: boolean;
+  theme?: MantineThemeOverride;
 }): JSX.Element {
   return (
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <ThemeProvider>
-          <MaybeRouter hasRouter={withRouter} history={history}>
-            {children}
-          </MaybeRouter>
+        <ThemeProvider theme={theme}>
+          <MaybeKBar hasKBar={withKBar}>
+            <MaybeRouter hasRouter={withRouter} history={history}>
+              {children}
+            </MaybeRouter>
+          </MaybeKBar>
           {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
@@ -185,11 +208,11 @@ function SdkWrapper({
   return (
     <Provider store={store}>
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <SdkThemeProvider>
           <AppInitializeController config={config}>
             {children}
           </AppInitializeController>
-        </ThemeProvider>
+        </SdkThemeProvider>
       </EmotionCacheProvider>
     </Provider>
   );
@@ -208,6 +231,19 @@ function MaybeRouter({
     return children;
   }
   return <Router history={history}>{children}</Router>;
+}
+
+function MaybeKBar({
+  children,
+  hasKBar,
+}: {
+  children: React.ReactElement;
+  hasKBar: boolean;
+}): JSX.Element {
+  if (!hasKBar) {
+    return children;
+  }
+  return <KBarProvider>{children}</KBarProvider>;
 }
 
 function MaybeDNDProvider({
@@ -312,6 +348,20 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
  */
 export const mockScrollBy = () => {
   window.Element.prototype.scrollBy = jest.fn();
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollTo = () => {
+  window.Element.prototype.scrollTo = jest.fn();
+};
+
+/**
+ * jsdom doesn't have scrollBy, so we need to mock it
+ */
+export const mockScrollIntoView = () => {
+  window.Element.prototype.scrollIntoView = jest.fn();
 };
 
 /**

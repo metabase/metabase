@@ -1,4 +1,4 @@
-import type { LineSeriesOption } from "echarts";
+import type { LineSeriesOption } from "echarts/charts";
 import type { MarkLine1DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
 import type { IconName } from "metabase/ui/components/icons/Icon/icons";
@@ -7,6 +7,11 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { RenderingContext } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
+
+import {
+  TIMELINE_EVENT_DATA_NAME,
+  TIMELINE_EVENT_SERIES_ID,
+} from "../constants/dataset";
 
 // TODO: change to GraalVM supported implementation
 export const setSvgColor = (svgString: string, color: string) => {
@@ -55,7 +60,7 @@ export const getTimelineEventsSeries = (
       const dataUri = svgToImageUri(iconSvg);
 
       return {
-        name: "timeline-event",
+        name: TIMELINE_EVENT_DATA_NAME,
         xAxis: date,
         symbolSize: 16,
         symbolOffset: [0, 12],
@@ -77,7 +82,7 @@ export const getTimelineEventsSeries = (
     });
 
   return {
-    id: "timeline-events",
+    id: TIMELINE_EVENT_SERIES_ID,
     animation: false,
     type: "line",
     data: [],
@@ -91,6 +96,17 @@ export const getTimelineEventsSeries = (
         },
         lineStyle: {
           opacity: 1,
+        },
+      },
+      emphasis: {
+        lineStyle: {
+          color: getColor("brand"),
+        },
+        label: {
+          color: getColor("brand"),
+        },
+        itemStyle: {
+          color: getColor("brand"),
         },
       },
       symbol: "none",

@@ -80,7 +80,8 @@
      return-type)
    nil))
 
-;;; TODO -- add more stuff.
+;;; TODO: Support options more nicely - these don't allow for overriding the options, but we have a few cases where that
+;;; is necessary. See for example the inclusion of `string-filter-options` in [[metabase.lib.filter]].
 
 (defn catn-clause-schema
   "Helper intended for use with [[define-mbql-clause]]. Create an MBQL clause schema with `:catn`. Use this for clauses

@@ -3,6 +3,29 @@ import dayjs from "dayjs";
 
 import type { DatetimeUnit } from "metabase-types/api/query";
 
+const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
+  minute: 0,
+  hour: 0,
+  // It's not possible to have two consecutive hours or minutes across the
+  // daylight savings time change. Daylight savings begins at 2AM on March 10th,
+  // so after 1AM, the next hour is 3AM.
+  day: 0.05,
+  week: 0.01,
+  month: 0.01,
+  quarter: 0,
+  year: 0,
+};
+
+/**
+ * This function is used to get a tolerance for the difference between two dates
+ * across the daylight savings time change, using dayjs' date.diff method.
+ */
+export function getDaylightSavingsChangeTolerance(unit: string) {
+  return unit in DAYLIGHT_SAVINGS_CHANGE_TOLERANCE
+    ? DAYLIGHT_SAVINGS_CHANGE_TOLERANCE[unit]
+    : 0;
+}
+
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
     const day = dayjs.tz(value, "ddd").startOf("day");

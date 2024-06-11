@@ -8,7 +8,7 @@ import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
 
-import { BrowseGrid } from "./BrowseApp.styled";
+import { BrowseGrid } from "./BrowseContainer.styled";
 
 export const ModelCardLink = styled(Link)`
   margin: 0.5rem 0;

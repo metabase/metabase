@@ -8,10 +8,11 @@ import {
 import {
   getCardSeriesModels,
   getDimensionModel,
+  getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
-  BaseCartesianChartModel,
   ShowWarning,
+  WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
@@ -34,7 +35,7 @@ export const getWaterfallChartModel = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
-): BaseCartesianChartModel => {
+): WaterfallChartModel => {
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;
@@ -82,14 +83,28 @@ export const getWaterfallChartModel = (
     xAxisModel,
   );
 
+  const { formatter: waterfallLabelFormatter, isCompact } =
+    getWaterfallLabelFormatter(
+      seriesModel,
+      transformedDataset,
+      settings,
+      renderingContext,
+    );
+
   // Pass waterfall dataset and keys for correct extent computation
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
     [],
+    [],
     transformedDataset,
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
+    null,
     renderingContext,
+    {
+      compact:
+        settings["graph.label_value_formatting"] === "compact" || isCompact,
+    },
   );
 
   // Extending the original dataset with total datum for tooltips
@@ -101,6 +116,7 @@ export const getWaterfallChartModel = (
   );
 
   return {
+    stackModels: [],
     dataset: originalDatasetWithTotal,
     transformedDataset,
     seriesModels: [seriesModel],
@@ -113,5 +129,6 @@ export const getWaterfallChartModel = (
     seriesIdToDataKey: {
       [WATERFALL_TOTAL_KEY]: seriesModel.dataKey,
     },
+    waterfallLabelFormatter,
   };
 };

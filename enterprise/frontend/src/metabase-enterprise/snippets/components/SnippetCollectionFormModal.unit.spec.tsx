@@ -28,7 +28,6 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
     fetchMock.get(
       {
         url: `path:/api/collection/${folder.id}`,
-        query: { namespace: "snippets" },
       },
       folder,
     );

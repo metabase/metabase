@@ -34,7 +34,8 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version
-                         :cache_field_values_schedule :metadata_sync_schedule])
+                         :cache_field_values_schedule :metadata_sync_schedule :uploads_enabled :uploads_schema_name
+                         :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -56,6 +57,7 @@
    {:db          (db-details)
     :entity_type "entity/GenericTable"
     :field_order "database"
+    :view_count  0
     :metrics     []
     :segments    []}))
 
@@ -148,7 +150,9 @@
   (testing "GET /api/table/:id"
     (is (= (merge
             (dissoc (table-defaults) :segments :field_values :metrics)
-            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id (mt/id :venues)) :pk_field)
+            (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                       :id (mt/id :venues))
+                        :pk_field)
             {:schema       "PUBLIC"
              :name         "VENUES"
              :display_name "Venues"
@@ -164,7 +168,9 @@
                                                  :schema       nil}]
         (is (= (merge
                  (dissoc (table-defaults) :segments :field_values :metrics :db)
-                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status] :id table-id) :pk_field)
+                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                            :id table-id)
+                             :pk_field)
                  {:schema       ""
                   :name         "schemaless_table"
                   :display_name "Schemaless"
@@ -201,7 +207,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -273,7 +279,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
+              (t2/select-one [Table :created_at :updated_at :initial_sync_status :view_count] :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
                :display_name "Users"
@@ -474,7 +480,9 @@
                                             :database_indexed  true
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                            (t2/select-one [Table
+                                                                            :id :created_at :updated_at
+                                                                            :initial_sync_status :view_count]
                                                               :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
@@ -492,14 +500,15 @@
                                             :database_indexed true
                                             :table            (merge
                                                                (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                               (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
+                                                               (t2/select-one [Table
+                                                                               :id :created_at :updated_at
+                                                                               :initial_sync_status :view_count]
                                                                  :id (mt/id :users))
                                                                {:schema       "PUBLIC"
                                                                 :name         "USERS"
                                                                 :display_name "Users"
                                                                 :entity_type  "entity/UserTable"})))}]
                (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :users)))))))
-
     (testing "should just return nothing for 'virtual' tables"
       (is (= []
              (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
@@ -544,6 +553,28 @@
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
+(deftest table-metric-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (mt/with-temp [:model/Card metric {:type :metric
+                                       :name "Category metric"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}
+                   :model/Card _      {:type :metric
+                                       :name "Venues metric"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :venues)}
+                   :model/Card _      {:type :question
+                                       :name "Category question"
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}
+                   :model/Card _      {:type :metric
+                                       :name "Archived metric"
+                                       :archived true
+                                       :database_id (mt/id)
+                                       :table_id (mt/id :categories)}]
+      (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
+              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
+
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
@@ -580,6 +611,7 @@
                   :schema            "Everything else"
                   :db_id             (:database_id card)
                   :id                card-virtual-table-id
+                  :type              "question"
                   :moderated_status  nil
                   :description       nil
                   :dimension_options (default-dimension-options)
@@ -639,6 +671,7 @@
                     :schema            "Everything else"
                     :db_id             (:database_id card)
                     :id                card-virtual-table-id
+                    :type              "question"
                     :description       nil
                     :moderated_status  nil
                     :dimension_options (default-dimension-options)
@@ -876,6 +909,25 @@
               (is (= (repeat 2 (var-get #'api.table/coordinate-dimension-indexes))
                      (dimension-options))))))))))
 
+(deftest card-type-and-dataset-query-are-returned-with-metadata
+  (testing "GET /api/table/card__:id/query_metadata returns card type"
+    (let [dataset-query (mt/mbql-query venues
+                          {:aggregation  [:sum $price]
+                           :filter       [:> $price 1]
+                           :source-table $$venues})
+          base-card     {:database_id   (mt/id)
+                         :dataset_query dataset-query}]
+      (t2.with-temp/with-temp [Card question base-card
+                               Card model    (assoc base-card :type :model)
+                               Card metric   (assoc base-card :type :metric)]
+        (are [card expected-type] (=? expected-type
+                                      (->> (format "table/card__%d/query_metadata" (:id card))
+                                           (mt/user-http-request :crowberto :get 200)
+                                           ((juxt :type :dataset_query))))
+          question ["question" nil]
+          model    ["model"    nil]
+          metric   ["metric"   some?])))))
+
 (deftest related-test
   (testing "GET /api/table/:id/related"
     (testing "related/recommended entities"
@@ -961,11 +1013,11 @@
   (mt/test-driver :h2
     (mt/with-empty-db
       (testing "Happy path"
-        (mt/with-temporary-setting-values [uploads-enabled true]
+        (upload-test/with-uploads-enabled
           (is (= {:status 200, :body nil}
                  (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
-        (mt/with-temporary-setting-values [uploads-enabled false]
+        (upload-test/with-uploads-disabled
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                  (update-csv-via-api! :metabase.upload/append))))))))
 
@@ -992,11 +1044,11 @@
   (mt/test-driver :h2
     (mt/with-empty-db
      (testing "Happy path"
-       (mt/with-temporary-setting-values [uploads-enabled true]
+       (upload-test/with-uploads-enabled
          (is (= {:status 200, :body nil}
                 (update-csv-via-api! :metabase.upload/replace)))))
      (testing "Failure paths return an appropriate status code and a message in the body"
-       (mt/with-temporary-setting-values [uploads-enabled false]
+       (upload-test/with-uploads-disabled
          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                 (update-csv-via-api! :metabase.upload/replace))))))))
 

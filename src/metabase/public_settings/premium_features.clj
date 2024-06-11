@@ -29,7 +29,7 @@
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
-  #"airgap_[0-9a-f]*")
+  #"airgap_.+")
 
 (def ^:private TokenStr
   [:or
@@ -73,7 +73,7 @@
                 f
                 :ttl/threshold (u/minutes->ms 5))
       lock     (Object.)]
-  (defn- cached-active-users-count
+  (defn cached-active-users-count
     "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
     []
     (locking lock
@@ -84,6 +84,7 @@
   :visibility :admin
   :type       :integer
   :audit      :never
+  :setter     :none
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
@@ -132,7 +133,7 @@
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 (declare decode-airgap-token)
 
-(mu/defn ^:private max-users-allowed
+(mu/defn max-users-allowed
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
   (when-let [token (premium-embedding-token)]
@@ -253,6 +254,7 @@
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -279,6 +281,11 @@
         (throw (ex-info (.getMessage e) (merge
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
+
+(defn is-airgapped?
+  "Returns true if the current instance is airgapped."
+  []
+  (mc/validate AirgapToken (premium-embedding-token)))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -410,6 +417,10 @@
   "Should we enable advanced configuration for Google Sign-In authentication?"
   :sso-google)
 
+(define-premium-feature enable-scim?
+  "Should we enable user/group provisioning via SCIM?"
+  :scim)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -458,6 +469,10 @@
 (define-premium-feature ^{:added "0.50.0"} enable-llm-autodescription?
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
+
+(define-premium-feature enable-upload-management?
+  "Should we allow admins to clean up tables created from uploads?"
+  :upload-management)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"

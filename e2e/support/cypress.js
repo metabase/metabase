@@ -2,7 +2,6 @@ import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/o
 registerCypressGrep();
 
 import "@cypress/skip-test/support";
-import "@percy/cypress";
 import "@testing-library/cypress/add-commands";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";

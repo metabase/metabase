@@ -1,19 +1,17 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { isPublicCollection } from "metabase/collections/utils";
+import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
+import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import { useDashboardQuery } from "metabase/common/hooks";
-import ModalContent from "metabase/components/ModalContent";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import QuestionPicker from "metabase/containers/QuestionPicker";
 import CS from "metabase/css/core/index.css";
 import {
   ClickMappingsConnected,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { useSelector } from "metabase/lib/redux";
@@ -40,14 +38,14 @@ import {
 const LINK_TARGETS = {
   question: {
     Entity: Questions,
-    PickerComponent: QuestionPicker,
+    PickerComponent: QuestionPickerModal,
     pickerIcon: "bar" as const,
     getModalTitle: () => t`Pick a question to link to`,
     getPickerButtonLabel: () => t`Pick a question…`,
   },
   dashboard: {
     Entity: Dashboards,
-    PickerComponent: DashboardPicker,
+    PickerComponent: DashboardPickerModal,
     pickerIcon: "dashboard" as const,
     getModalTitle: () => t`Pick a dashboard to link to`,
     getPickerButtonLabel: () => t`Pick a dashboard…`,
@@ -59,9 +57,11 @@ const NO_DASHBOARD_TABS: DashboardTab[] = [];
 function PickerControl({
   clickBehavior,
   onCancel,
+  onClick,
 }: {
   clickBehavior: EntityCustomDestinationClickBehavior;
   onCancel: () => void;
+  onClick?: () => void;
 }) {
   const { Entity, pickerIcon, getPickerButtonLabel } =
     LINK_TARGETS[clickBehavior.linkType];
@@ -76,7 +76,7 @@ function PickerControl({
 
   return (
     <SidebarItem.Selectable isSelected padded={false}>
-      <LinkTargetEntityPickerContent>
+      <LinkTargetEntityPickerContent onClick={onClick}>
         <SelectedEntityPickerIcon name={pickerIcon} />
         <SelectedEntityPickerContent>
           {renderLabel()}
@@ -138,7 +138,9 @@ export function LinkedEntityPicker({
   const { linkType, targetId } = clickBehavior;
   const isDashboard = linkType === "dashboard";
   const hasSelectedTarget = clickBehavior.targetId != null;
-  const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
+  const { getModalTitle, PickerComponent } = LINK_TARGETS[linkType];
+
+  const [isPickerOpen, setIsPickerOpen] = useState(!hasSelectedTarget);
 
   const handleSelectLinkTargetEntityId = useCallback(
     (targetId: CardId | DashboardId) => {
@@ -246,37 +248,34 @@ export function LinkedEntityPicker({
     ? "exclude"
     : undefined;
 
+  const initialPickerValue =
+    typeof targetId === "number"
+      ? { id: targetId, model: linkType === "dashboard" ? "dashboard" : "card" }
+      : { id: "root", model: "collection" };
+
   return (
-    <div>
-      <div className={CS.pb1}>
-        <ModalWithTrigger
-          triggerElement={
-            <PickerControl
-              clickBehavior={clickBehavior}
-              onCancel={handleResetLinkTargetType}
-            />
-          }
-          isInitiallyOpen={!hasSelectedTarget}
-        >
-          {({ onClose }: { onClose: () => void }) => (
-            <ModalContent
-              title={getModalTitle()}
-              onClose={hasSelectedTarget ? onClose : undefined}
-            >
-              {/* TODO: drop maxHeight when PickerComponent is migrated to TS */}
-              <PickerComponent
-                filterPersonalCollections={filterPersonalCollections}
-                value={clickBehavior.targetId}
-                onChange={(targetId: CardId | DashboardId) => {
-                  handleSelectLinkTargetEntityId(targetId);
-                  onClose();
-                }}
-                maxHeight={undefined}
-              />
-            </ModalContent>
-          )}
-        </ModalWithTrigger>
-      </div>
+    <>
+      <PickerControl
+        clickBehavior={clickBehavior}
+        onClick={() => setIsPickerOpen(true)}
+        onCancel={handleResetLinkTargetType}
+      />
+      {isPickerOpen && (
+        <PickerComponent
+          title={getModalTitle()}
+          value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
+          onChange={newTarget => {
+            handleSelectLinkTargetEntityId(newTarget.id);
+            setIsPickerOpen(false);
+          }}
+          onClose={() => setIsPickerOpen(false)}
+          options={{
+            showPersonalCollections: filterPersonalCollections !== "exclude",
+            showRootCollection: true,
+            hasConfirmButtons: false,
+          }}
+        />
+      )}
 
       {isDashboard && dashboardTabs.length > 1 && (
         <Select
@@ -304,6 +303,6 @@ export function LinkedEntityPicker({
           updateSettings={updateSettings}
         />
       )}
-    </div>
+    </>
   );
 }

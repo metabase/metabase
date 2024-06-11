@@ -14,7 +14,12 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import { formatValueForTooltip } from "../utils";
 
-import { TooltipTableCell } from "./KeyValuePairChartTooltip.styled";
+import {
+  TableBody,
+  TableCell,
+  TableFooter,
+  TooltipTable,
+} from "./KeyValuePairChartTooltip.styled";
 
 export interface StackedDataTooltipProps {
   hovered: HoveredObject;
@@ -26,10 +31,13 @@ const KeyValuePairChartTooltip = ({
   settings,
 }: StackedDataTooltipProps) => {
   const rows = useMemo(() => getRows(hovered), [hovered]);
+  const footerRows = hovered.footerData;
+
+  const showFooter = footerRows && footerRows.length > 0;
 
   return (
-    <table className={cx(CS.py1, CS.px2)}>
-      <tbody>
+    <TooltipTable>
+      <TableBody hasBottomSpacing={showFooter}>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow
             key={index}
@@ -39,8 +47,21 @@ const KeyValuePairChartTooltip = ({
             settings={settings}
           />
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+      {showFooter && (
+        <TableFooter>
+          {footerRows.map(({ key, value, col }, index) => (
+            <TooltipRow
+              key={index}
+              name={key}
+              value={value}
+              column={col}
+              settings={settings}
+            />
+          ))}
+        </TableFooter>
+      )}
+    </TooltipTable>
   );
 };
 
@@ -54,17 +75,15 @@ export interface TooltipRowProps {
 const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TooltipTableCell className={cx(CS.textLight, CS.textRight, CS.pr1)}>
-        {name}:
-      </TooltipTableCell>
+      <TableCell className={cx(CS.textLight, CS.textRight)}>{name}:</TableCell>
     ) : (
-      <TooltipTableCell />
+      <TableCell />
     )}
-    <TooltipTableCell className={cx(CS.textBold, CS.textLeft)}>
+    <TableCell className={cx(CS.textBold, CS.textLeft)}>
       {isValidElement(value)
         ? value
         : formatValueForTooltip({ value, column, settings })}
-    </TooltipTableCell>
+    </TableCell>
   </tr>
 );
 

@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [malli.core :as mc]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
@@ -54,7 +53,7 @@
    "database"       {:db-model :model/Database :alias :database}
    "dataset"        {:db-model :model/Card :alias :card}
    "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model :model/LegacyMetric :alias :metric}
+   "metric"         {:db-model :model/Card :alias :card}
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
@@ -74,6 +73,7 @@
   [model]
   (case model
     "dataset" (recur "card")
+    "metric" (recur "card")
     (str/capitalize model)))
 
 (defn model->alias
@@ -95,24 +95,30 @@
 
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
-  (mc/schema
-   [:map {:closed true}
-    [:search-string                                        [:maybe ms/NonBlankString]]
-    [:archived?                                            :boolean]
-    [:model-ancestors?                                     :boolean]
-    [:current-user-perms                                   [:set perms.u/PathSchema]]
-    [:models                                               [:set SearchableModel]]
-    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
-    [:created-at                          {:optional true} ms/NonBlankString]
-    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:last-edited-at                      {:optional true} ms/NonBlankString]
-    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:table-db-id                         {:optional true} ms/PositiveInt]
-    [:limit-int                           {:optional true} ms/Int]
-    [:offset-int                          {:optional true} ms/Int]
-    [:search-native-query                 {:optional true} true?]
-    ;; true to search for verified items only, nil will return all items
-    [:verified                            {:optional true} true?]]))
+  [:map {:closed true}
+   ;;
+   ;; required
+   ;;
+   [:archived?          [:maybe :boolean]]
+   [:current-user-id    pos-int?]
+   [:current-user-perms [:set perms.u/PathSchema]]
+   [:model-ancestors?   :boolean]
+   [:models             [:set SearchableModel]]
+   [:search-string      [:maybe ms/NonBlankString]]
+   ;;
+   ;; optional
+   ;;
+   [:created-at                          {:optional true} ms/NonBlankString]
+   [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+   [:last-edited-at                      {:optional true} ms/NonBlankString]
+   [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:limit-int                           {:optional true} ms/Int]
+   [:offset-int                          {:optional true} ms/Int]
+   [:search-native-query                 {:optional true} true?]
+   [:table-db-id                         {:optional true} ms/PositiveInt]
+   ;; true to search for verified items only, nil will return all items
+   [:verified                            {:optional true} true?]])
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
@@ -141,6 +147,7 @@
    :collection_type     :text
    :collection_location :text
    :collection_authority_level :text
+   :trashed_from_collection_id :integer
    ;; returned for Card and Dashboard
    :collection_position :integer
    :creator_id          :integer
@@ -201,6 +208,10 @@
    :description])
 
 (defmethod searchable-columns-for-model "dataset"
+  [_]
+  (searchable-columns-for-model "card"))
+
+(defmethod searchable-columns-for-model "metric"
   [_]
   (searchable-columns-for-model "card"))
 
@@ -270,8 +281,9 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :trashed_from_collection_id :collection_position :dataset_query :display :creator_id
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
         [:collection.location :collection_location]
         [:collection.authority_level :collection_authority_level]
         bookmark-col dashboardcard-count-col))
@@ -282,6 +294,7 @@
    [:model-index.pk_ref         :pk_ref]
    [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
+   [:collection.type            :collection_type]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]
    [:model.name                 :model_name]
@@ -289,8 +302,9 @@
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :collection_id :collection_position :creator_id bookmark-col
+  (conj default-columns :trashed_from_collection_id :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
+        [:collection.type :collection_type]
         [:collection.authority_level :collection_authority_level]))
 
 (defmethod columns-for-model "database"

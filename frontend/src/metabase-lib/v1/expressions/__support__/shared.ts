@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
+import { createMockSegment } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
@@ -14,7 +14,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 const SEGMENT_ID = 1;
-const METRIC_ID = 1;
 
 const metadata = createMockMetadata({
   databases: [
@@ -31,17 +30,6 @@ const metadata = createMockMetadata({
               table_id: ORDERS_ID,
               definition: {
                 filter: [">", ["field", ORDERS.TOTAL, null], 30],
-                "source-table": ORDERS_ID,
-              },
-            }),
-          ],
-          metrics: [
-            createMockMetric({
-              id: METRIC_ID,
-              name: "Total Order Value",
-              table_id: ORDERS_ID,
-              definition: {
-                aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
                 "source-table": ORDERS_ID,
               },
             }),
@@ -66,7 +54,6 @@ const userName = checkNotNull(metadata.field(ORDERS.USER_ID))
   .mbql();
 
 const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
-const metric = checkNotNull(metadata.metric(METRIC_ID)).aggregationClause();
 
 const legacyQuery = checkNotNull(metadata.table(ORDERS_ID)).legacyQuery({
   foo: 42,
@@ -215,8 +202,6 @@ const aggregation = [
     ["-", 1, ["/", ["sum", ["*", total, 2]], ["count"]]],
     "aggregation with math inside and outside",
   ],
-  ["[Total Order Value]", metric, "metric"],
-  ["[Total Order Value] * 2", ["*", metric, 2], "metric with math"],
   ["Share([Total] > 50)", ["share", [">", total, 50]], "share aggregation"],
   [
     "CountIf([Total] > 50)",

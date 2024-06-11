@@ -3,6 +3,7 @@ import type {
   CategoryXAxisModel,
   NumericXAxisModel,
   SeriesModel,
+  TimeSeriesInterval,
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
@@ -29,4 +30,8 @@ export const isBreakoutSeries = (
   seriesModel: SeriesModel,
 ): seriesModel is BreakoutSeriesModel => {
   return "breakoutColumn" in seriesModel;
+};
+
+export const isQuarterInterval = (interval: TimeSeriesInterval) => {
+  return interval.unit === "month" && interval.count === 3;
 };

@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
@@ -50,12 +51,13 @@
     (testing "available for cell clicks subject to at least one breakout; and any pivot or legend click"
       (canned/canned-test
         :drill-thru/automatic-insights
-        (fn [_test-case context {:keys [click]}]
-          (or ;; Any pivot or legend click is good.
-              (#{:pivot :legend} click)
-              ;; As are cell clicks with at least 1 breakout.
-              (and (= click :cell)
-                   (seq (:dimensions context)))))))
+        (fn [test-case context {:keys [click]}]
+          (and (not (:native? test-case))
+               (or ;; Any pivot or legend click is good.
+                   (#{:pivot :legend} click)
+                   ;; As are cell clicks with at least 1 breakout.
+                   (and (= click :cell)
+                        (seq (:dimensions context))))))))
     (testing "not available at all with xrays disabled"
       (canned/canned-test
         :drill-thru/automatic-insights
@@ -101,9 +103,9 @@
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
     (auto-insights (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/aggregate (lib/sum-where
-                                        (meta/field-metadata :orders :subtotal)
-                                        (lib/= (meta/field-metadata :products :category)
-                                               "Doohickey")))
+                                       (meta/field-metadata :orders :subtotal)
+                                       (lib/= (meta/field-metadata :products :category)
+                                              "Doohickey")))
                        (lib/breakout (lib/with-temporal-bucket
                                        (meta/field-metadata :orders :created-at)
                                        :month)))
@@ -112,35 +114,26 @@
 
 (deftest ^:parallel automatic-insights-apply-test-3
   (testing "metric over time"
-    (let [metric   {:description "Orders with a subtotal of $100 or more."
-                    :archived false
-                    :updated-at "2023-10-04T20:11:34.029582"
-                    :lib/type :metadata/legacy-metric
-                    :definition
-                    {"source-table" (meta/id :orders)
-                     "aggregation" [["count"]]
-                     "filter" [">=" ["field" (meta/id :orders :subtotal) nil] 100]}
-                    :table-id (meta/id :orders)
-                    :name "Large orders"
-                    :caveats nil
-                    :entity-id "NWMNcv_yhhZIT7winoIdi"
-                    :how-is-this-calculated nil
-                    :show-in-getting-started false
-                    :id 1
-                    :database (meta/id)
-                    :points-of-interest nil
-                    :creator-id 1
-                    :created-at "2023-10-04T20:11:34.029582"}
+    (let [metric-id 101
+          metric-card {:description "Orders with a subtotal of $100 or more."
+                       :lib/type :metadata/card
+                       :type :metric
+                       :dataset-query {:type     :query
+                                       :database (meta/id)
+                                       :query    {:source-table (meta/id :orders)
+                                                  :aggregation  [[:count]]
+                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
+                       :database-id (meta/id)
+                       :name "Large orders"
+                       :id metric-id}
           provider (lib/composed-metadata-provider
                     meta/metadata-provider
-                    (providers.mock/mock-metadata-provider {:metrics [metric]}))]
-      (auto-insights (-> (lib/query provider (meta/table-metadata :orders))
-                         (lib/aggregate metric)
+                    (providers.mock/mock-metadata-provider {:cards [metric-card]}))]
+      (auto-insights (-> (lib/query provider (lib.metadata/card provider metric-id))
                          (lib/breakout (lib/with-temporal-bucket
                                          (meta/field-metadata :orders :created-at)
                                          :month)))
-                     [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]
-                      [:>= {} [:field {} (meta/id :orders :subtotal)] 100]]))))
+                     [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]))))
 
 (deftest ^:parallel binned-column-test
   (testing "Automatic insights for a binned column should generate filters for current bin's min/max values"

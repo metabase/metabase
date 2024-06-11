@@ -15,7 +15,7 @@
    [metabase.http-client :as client]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues LegacyMetric Segment Table]]
+    :refer [Card Collection Database Field FieldValues Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
@@ -132,7 +132,8 @@
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
-    :description      nil}
+    :description      nil
+    :type             "question"}
    kvs))
 
 (defn- ok-mbql-card []
@@ -195,12 +196,13 @@
 
 (deftest get-database-can-upload-test
   (testing "GET /api/database"
-    (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
+    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (doseq [uploads-enabled? [true false]]
-        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-          (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
-                                             uploads-schema-name "public"
-                                             uploads-database-id db-id]
+        (mt/with-temp [Database {db-id :id} {:engine          :postgres
+                                             :name            "The Chosen One"
+                                             :uploads_enabled uploads-enabled?
+                                             :uploads_schema_name "public"}]
+          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
             (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
               (is (= uploads-enabled? (:can_upload result))))))))))
 
@@ -222,9 +224,17 @@
                                 :type        :model
                                 :archived    true}
 
-     LegacyMetric   _                {:table_id table-id-1}
-     LegacyMetric   _                {:table_id table-id-1}
-     LegacyMetric   _                {:table_id table-id-2}
+     ;; metric
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :type        :metric
+                                :archived    true}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-1
+                                :type        :metric}
+     Card     _                {:database_id db-id
+                                :table_id    table-id-2
+                                :type        :metric}
      Segment  _                {:table_id table-id-2}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
@@ -688,9 +698,20 @@
   (mt/with-temp [Database {db-id :id} {}
                  Table    _ {:db_id db-id, :active false}]
     (testing "GET /api/database/:id/metadata?include_hidden=true"
-        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
-                          :tables)]
-          (is (= () tables))))))
+      (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
+                        :tables)]
+        (is (= () tables))))))
+
+(deftest fetch-database-metadata-skip-fields-test
+  (mt/with-temp [Database {db-id :id} {}
+                 Table    table       {:db_id db-id}
+                 Field    _           {:table_id (u/the-id table)}]
+    (testing "GET /api/database/:id/metadata?skip_fields=true"
+      (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
+                      :tables
+                      first
+                      :fields)]
+        (is (= () fields))))))
 
 (deftest autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -863,15 +884,15 @@
 (deftest databases-list-can-upload-test
   (testing "GET /api/database"
     (let [old-ids (t2/select-pks-set Database)]
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
-        (doseq [uploads-enabled? [true false]]
-          (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
-            (mt/with-temporary-setting-values [uploads-enabled uploads-enabled?
-                                               uploads-schema-name "public"
-                                               uploads-database-id db-id]
-              (let [result (get-all :crowberto "database" old-ids)]
-                (is (= (:total result) 1))
-                (is (= uploads-enabled? (-> result :data first :can_upload)))))))))))
+      (doseq [uploads-enabled? [true false]]
+        (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)
+          (mt/with-temp [Database _ {:engine          :postgres
+                                     :name            "The Chosen One"
+                                     :uploads_enabled uploads-enabled?
+                                     :uploads_schema_name "public"}]
+            (let [result (get-all :crowberto "database" old-ids)]
+              (is (= (:total result) 1))
+              (is (= uploads-enabled? (-> result :data first :can_upload))))))))))
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
@@ -1620,7 +1641,8 @@
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
-                   :description      nil}]
+                   :description      nil
+                   :type             "question"}]
                  (mt/user-http-request :lucky :get 200
                                        (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
@@ -1644,7 +1666,8 @@
                             :display_name     "Card 2"
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
-                            :description      nil}))))
+                            :description      nil
+                            :type             "question"}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
@@ -1670,7 +1693,8 @@
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
-                   :description      nil}]
+                   :description      nil
+                   :type             "model"}]
                  (mt/user-http-request :lucky :get 200
                                        (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
@@ -1693,7 +1717,8 @@
                             :display_name     "Card 2"
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
-                            :description      nil}))))
+                            :description      nil
+                            :type             "model"}))))
 
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."

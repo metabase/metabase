@@ -286,11 +286,11 @@
                                             :breakout    [[:expression "Price level"]]
                                             :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
                                             :limit       2})])
-        (is (= [["budget"    81]
-                ["expensive" 19]]
-               (mt/rows
-                (qp/process-query
-                 (query-with-source-card 1)))))))))
+        (let [query (query-with-source-card 1)]
+          (mt/with-native-query-testing-context query
+            (is (= [["budget"    81]
+                    ["expensive" 19]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel card-id-native-source-queries-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
@@ -1315,20 +1315,21 @@
     (testing "A nested query with a Metric should work as expected (#12507)"
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                         (mt/application-database-metadata-provider (mt/id))
-                                        {:metrics [{:id 1
-                                                    :name "Metric 1"
-                                                    :table-id   (mt/id :checkins)
-                                                    :definition (mt/$ids checkins
-                                                                  {:source-table $$checkins
-                                                                   :aggregation  [[:count]]
-                                                                   :filter       [:not-null $id]})}]})
+                                        {:cards [{:id 1
+                                                  :type :metric
+                                                  :name "Metric 1"
+                                                  :database-id (mt/id)
+                                                  :dataset-query (mt/mbql-query checkins
+                                                                   {:source-table $$checkins
+                                                                    :aggregation  [[:count]]
+                                                                    :filter       [:not-null $id]})}]})
         (is (= [[100]]
                (mt/formatted-rows [int]
-                 (mt/run-mbql-query checkins
-                   {:source-query {:source-table $$checkins
-                                   :aggregation  [[:metric 1]]
-                                   :breakout     [$venue_id]}
-                    :aggregation  [[:count]]}))))))))
+                                  (mt/run-mbql-query checkins
+                                    {:source-query {:source-table "card__1"
+                                                    :aggregation  [[:metric 1]]
+                                                    :breakout     [$venue_id]}
+                                     :aggregation  [[:count]]}))))))))
 
 (deftest ^:parallel nested-query-with-expressions-test
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"

@@ -97,6 +97,23 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     ],
   },
   {
+    name: "offset",
+    structure: "Offset",
+    description: () => t`Returns the value of an expression in a different row`,
+    args: [
+      {
+        name: t`expression`,
+        description: t`The value to get from a different row.`,
+        example: formatIdentifier(t`Total`),
+      },
+      {
+        name: t`rowOffset`,
+        description: t`Row number relative to the current row, for example -1 for the previous row or 1 for the next row.`,
+        example: "-1",
+      },
+    ],
+  },
+  {
     name: "avg",
     structure: "Average",
     description: () => t`Returns the average of the values in the column.`,

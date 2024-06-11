@@ -1,6 +1,6 @@
 .ListSectionHeader :global(.Icon),
 .ListItem .ListItemArrow :global(.Icon) {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .ListSectionHeader:hover :global(.Icon) {
@@ -8,11 +8,11 @@
 }
 
 .ListItem :global(.Icon) {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .ListSectionHeader {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
   border: 2px solid transparent;
 
   /* so that spacing matches [data-element-id=list-item] */
@@ -34,7 +34,7 @@
 }
 
 .ListSectionExpanded .ListSectionHeader .ListSectionTitle {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .ListSectionTitle {
@@ -61,11 +61,11 @@
 
 /* LIST ITEM TITLE */
 .ListItemTitle {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .ListItemDisabled .ListItemTitle {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
@@ -78,11 +78,11 @@
 .ListItemDescription {
   margin-top: 0.25em;
   margin-bottom: 0;
-  color: var(--color-text-medium);
+  color: var(--mb-color-text-medium);
 }
 
 .ListItemDisabled .ListItemDescription {
-  color: var(--color-text-dark);
+  color: var(--mb-color-text-dark);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemDescription,

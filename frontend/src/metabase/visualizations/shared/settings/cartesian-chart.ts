@@ -5,11 +5,19 @@ import { getMaxDimensionsSupported } from "metabase/visualizations";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
+  columnsAreValid,
   getDefaultDimensionsAndMetrics,
   getFriendlyName,
+  preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  isAny,
+  isDate,
+  isDimension,
+  isMetric,
+  isNumeric,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardDisplayType,
@@ -19,7 +27,48 @@ import type {
   SeriesOrderSetting,
 } from "metabase-types/api";
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+export function getDefaultDimensionFilter(display: string) {
+  return display === "scatter" ? isAny : isDimension;
+}
+
+export function getDefaultMetricFilter(display: string) {
+  return display === "scatter" ? isNumeric : isMetric;
+}
+
+export function getAreDimensionsAndMetricsValid(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  return rawSeries.some(
+    ({ card, data }) =>
+      columnsAreValid(
+        card.visualization_settings["graph.dimensions"],
+        data,
+        settings["graph._dimension_filter"],
+      ) &&
+      columnsAreValid(
+        card.visualization_settings["graph.metrics"],
+        data,
+        settings["graph._metric_filter"],
+      ),
+  );
+}
+
+export function getDefaultDimensions(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  return preserveExistingColumnsOrder(
+    settings["graph.dimensions"] ?? [],
+    getDefaultColumns(rawSeries).dimensions,
+  );
+}
+
+export function getDefaultMetrics(rawSeries: RawSeries) {
+  return getDefaultColumns(rawSeries).metrics;
+}
+
+export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
 
 export const isStackingValueValid = (
   cardDisplay: CardDisplayType,
@@ -39,6 +88,19 @@ export const isStackingValueValid = (
   return stackableDisplays.length > 1;
 };
 
+export const isShowStackValuesValid = (
+  seriesDisplays: string[],
+  settings: ComputedVisualizationSettings,
+) => {
+  const areAllAreas = seriesDisplays.every(display => display === "area");
+
+  return !areAllAreas && settings["stackable.stack_type"] !== "normalized";
+};
+
+export const getDefaultShowStackValues = (
+  settings: ComputedVisualizationSettings,
+) => (settings["stackable.stack_type"] === "normalized" ? "series" : "total");
+
 export const getDefaultStackingValue = (
   settings: ComputedVisualizationSettings,
   card: Card,
@@ -54,22 +116,6 @@ export const getDefaultStackingValue = (
       (settings["graph.dimensions"] ?? []).length > 1);
 
   return shouldStack ? "stacked" : null;
-};
-
-export const getDefaultStackDisplayValue = (
-  cardDisplay: string,
-  seriesDisplays: string[],
-) => {
-  const firstStackable = _.find(seriesDisplays, display =>
-    STACKABLE_DISPLAY_TYPES.has(display),
-  );
-  if (firstStackable) {
-    return firstStackable;
-  }
-  if (STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
-    return cardDisplay;
-  }
-  return "bar";
 };
 
 export const getSeriesOrderVisibilitySettings = (
@@ -135,8 +181,25 @@ export const getIsYAxisLabelEnabledDefault = () => true;
 
 export const getYAxisAutoRangeDefault = () => true;
 
-export const getYAxisAutoRangeIncludeZero = (display: string) =>
-  display !== "scatter";
+export const getYAxisUnpinFromZeroDefault = (display: string) =>
+  display === "scatter";
+
+export const isYAxisUnpinFromZeroValid = (
+  seriesDisplays: string[],
+  settings: ComputedVisualizationSettings,
+) => {
+  if (
+    !settings["graph.y_axis.auto_range"] ||
+    settings["stackable.stack_type"] != null
+  ) {
+    return false;
+  }
+
+  return seriesDisplays.every(
+    display =>
+      display !== "area" && display !== "bar" && display !== "waterfall",
+  );
+};
 
 export const getDefaultXAxisTitle = (
   dimensionColumn: DatasetColumn | undefined,
@@ -187,12 +250,42 @@ export const getDefaultXAxisScale = (
 
 export const getDefaultLegendIsReversed = (
   vizSettings: ComputedVisualizationSettings,
-) =>
-  vizSettings["stackable.stack_display"] != null &&
-  vizSettings["stackable.stack_type"] != null;
+) => vizSettings["stackable.stack_type"] != null;
 
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";
+
+export const getAvailableXAxisScales = (
+  [{ data }]: RawSeries,
+  settings: ComputedVisualizationSettings,
+) => {
+  const options = [];
+
+  const dimensionColumn = data.cols.find(
+    col => col != null && col.name === settings["graph.dimensions"]?.[0],
+  );
+
+  if (settings["graph.x_axis._is_timeseries"]) {
+    options.push({ name: t`Timeseries`, value: "timeseries" });
+  }
+
+  if (settings["graph.x_axis._is_numeric"]) {
+    options.push({ name: t`Linear`, value: "linear" });
+
+    // For relative date units such as day of week we do not want to show log, pow, histogram scales
+    if (!isDate(dimensionColumn)) {
+      if (!settings["graph.x_axis._is_histogram"]) {
+        options.push({ name: t`Power`, value: "pow" });
+        options.push({ name: t`Log`, value: "log" });
+      }
+      options.push({ name: t`Histogram`, value: "histogram" });
+    }
+  }
+
+  options.push({ name: t`Ordinal`, value: "ordinal" });
+
+  return options;
+};
 
 const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
 export const isXAxisScaleValid = (
@@ -201,10 +294,17 @@ export const isXAxisScaleValid = (
 ) => {
   const isWaterfall = series[0].card.display === "waterfall";
   const xAxisScale = settings["graph.x_axis.scale"];
+  const options = getAvailableXAxisScales(series, settings).map(
+    option => option.value,
+  );
+
+  if (xAxisScale && !options.includes(xAxisScale)) {
+    return false;
+  }
+
   return (
     !isWaterfall ||
-    xAxisScale == null ||
-    !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)
+    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
   );
 };
 

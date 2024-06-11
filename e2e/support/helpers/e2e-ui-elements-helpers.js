@@ -32,6 +32,29 @@ export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
 
+export function entityPickerModalLevel(level) {
+  return cy.findByTestId(`item-picker-level-${level}`);
+}
+
+export function entityPickerModalItem(level, name) {
+  return entityPickerModalLevel(level).findByText(name).parents("button");
+}
+
+export function entityPickerModalTab(name) {
+  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+}
+
+export function tabsShouldBe(selected, tabs) {
+  cy.findAllByRole("tab").should("have.length", tabs.length);
+  tabs.forEach(tab => {
+    if (tab === selected) {
+      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
+    } else {
+      entityPickerModalTab(tab).should("exist");
+    }
+  });
+}
+
 export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
@@ -58,15 +81,16 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("be.visible");
 }
 
 export function closeNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("not.be.visible");
 }
 
-export function browse() {
-  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return navigationSidebar().findByText("Browse data");
+export function browseDatabases() {
+  return navigationSidebar().findByLabelText("Browse databases");
 }
 
 /**
@@ -214,4 +238,14 @@ export const undoToastList = () => {
 
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
+}
+
+export function tableHeaderClick(headerString) {
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  cy.findByTestId("TableInteractive-root").within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
 }

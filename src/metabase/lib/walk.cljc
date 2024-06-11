@@ -171,22 +171,23 @@
    ::stage-path
    [:? ::path.joins-part]])
 
-(mu/defn query-for-stage-at-path :- [:map
-                                     [:query ::lib.schema/query]
-                                     [:stage-number :int]]
+(mu/defn query-for-path :- [:map
+                            [:query ::lib.schema/query]
+                            [:stage-number :int]]
   "For compatibility with functions that take query + stage-number. Create a fake query with the top-level `:stages`
-  pointing to the stages in `stage-path`; return a map with this fake `:query` and `stage-number`.
+   pointing to the stages in `path`; return a map with this fake `:query` and `stage-number`.
+   A join path will return `0` for `stage-number`
 
-  Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
+   Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
   [query      :- ::lib.schema/query
-   stage-path :- ::stage-path]
+   stage-path :- ::path]
   (let [[_stages stage-number & more] stage-path]
     (if (empty? more)
       {:query query, :stage-number stage-number}
       (let [[_joins join-number & more] more
             join                        (nth (lib.join/joins query stage-number) join-number)
             query'                      (assoc query :stages (:stages join))]
-        (recur query' more)))))
+        (recur query' (if (empty? more) [:stages 0] more))))))
 
 (defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
@@ -199,5 +200,5 @@
 
     (f <query> <stage-number> x y)"
   [f query stage-path & args]
-  (let [{:keys [query stage-number]} (query-for-stage-at-path query stage-path)]
+  (let [{:keys [query stage-number]} (query-for-path query stage-path)]
     (apply f query stage-number args)))

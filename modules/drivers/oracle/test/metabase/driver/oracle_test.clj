@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
@@ -225,48 +226,53 @@
   [[username-binding & [username]] & body]
   `(do-with-temp-user ~username (fn [~username-binding] ~@body)))
 
-(deftest subselect-test
+(deftest ^:parallel subselect-test
   (testing "Don't try to generate queries with SELECT (...) AS source, Oracle hates `AS`"
     ;; TODO -- seems WACK that we actually have to create objects for this to work and can't just stick them in the QP
     ;; store.
-    (t2.with-temp/with-temp [Database db {:name   "db"
-                                          :engine :oracle}
-                             Table table {:db_id  (:id db)
-                                          :schema "public"
-                                          :name   "table"}
-                             Field field {:table_id      (:id table)
-                                          :name          "field"
-                                          :display_name  "Field"
-                                          :database_type "char"
-                                          :base_type     :type/Text}]
-      (qp.store/with-metadata-provider (u/the-id db)
-        (let [hsql (sql.qp/mbql->honeysql :oracle
-                                          {:query {:source-table (:id table)
-                                                   :expressions  {"s" [:substring [:field (:id field) nil] 2]}
-                                                   :fields       [[:expression "s"]]
-                                                   :limit        3}})]
-          (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
-            (is (= [["SELECT"
-                     "  *"
-                     "FROM"
-                     "  ("
-                     "    SELECT"
-                     "      \"source\".\"s\" \"s\""
-                     "    FROM"
-                     "      ("
-                     "        SELECT"
-                     "          \"public\".\"table\".\"field\" \"field\","
-                     "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
-                     "        FROM"
-                     "          \"public\".\"table\""
-                     "      ) \"source\""
-                     "  )"
-                     "WHERE"
-                     "  rownum <= 3"]]
-                   (-> (sql.qp/format-honeysql :oracle hsql)
-                       vec
-                       (update 0 (partial driver/prettify-native-form :oracle))
-                       (update 0 str/split-lines))))))))))
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      {:database {:id     1
+                                                  :name   "db"
+                                                  :engine :oracle}
+                                       :tables   [{:id     1
+                                                   :db-id  1
+                                                   :schema "public"
+                                                   :name   "table"}]
+                                       :fields   [{:id            1
+                                                   :table-id      1
+                                                   :name          "field"
+                                                   :display-name  "Field"
+                                                   :database-type "char"
+                                                   :base-type     :type/Text}]})
+      (let [hsql (sql.qp/mbql->honeysql :oracle
+                                        {:query {:source-query {:source-table 1
+                                                                :expressions  {"s" [:substring [:field 1 nil] 2]}
+                                                                :fields       [[:field 1 nil]
+                                                                               [:expression "s"]]}
+                                                 :fields       [[:field "s" {:base-type :type/Text}]]
+                                                 :limit        3}})]
+        (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
+          (is (= [["SELECT"
+                   "  *"
+                   "FROM"
+                   "  ("
+                   "    SELECT"
+                   "      \"source\".\"s\" \"s\""
+                   "    FROM"
+                   "      ("
+                   "        SELECT"
+                   "          \"public\".\"table\".\"field\" \"field\","
+                   "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
+                   "        FROM"
+                   "          \"public\".\"table\""
+                   "      ) \"source\""
+                   "  )"
+                   "WHERE"
+                   "  rownum <= 3"]]
+                 (-> (sql.qp/format-honeysql :oracle hsql)
+                     vec
+                     (update 0 (partial driver/prettify-native-form :oracle))
+                     (update 0 str/split-lines)))))))))
 
 (deftest return-clobs-as-text-test
   (mt/test-driver :oracle
@@ -333,9 +339,9 @@
                               [(h2x/identifier :field-alias "name")]]
                              [(id "category_id" "number")
                               [(h2x/identifier :field-alias "category_id")]]
-                             [(id "latitude" "binary_float")
+                             [(id "latitude" "binary_double")
                               [(h2x/identifier :field-alias "latitude")]]
-                             [(id "longitude" "binary_float")
+                             [(id "longitude" "binary_double")
                               [(h2x/identifier :field-alias "longitude")]]
                              [(id "price" "number")
                               [(h2x/identifier :field-alias "price")]]]

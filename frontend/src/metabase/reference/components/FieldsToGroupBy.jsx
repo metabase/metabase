@@ -24,7 +24,7 @@ const mapStateToProps = (state, props) => ({
 
 class FieldsToGroupBy extends Component {
   render() {
-    const { fields, databaseId, metric, title, onChangeLocation, metadata } =
+    const { fields, databaseId, title, onChangeLocation, metadata } =
       this.props;
 
     return (
@@ -41,14 +41,12 @@ class FieldsToGroupBy extends Component {
                   className={cx(CS.px1, CS.mb1, CS.rounded, CS.bgLightHover)}
                   iconClass={L.icon}
                   field={field}
-                  metric={metric}
                   onClick={() =>
                     onChangeLocation(
                       getQuestionUrl({
                         dbId: databaseId,
                         tableId: field.table_id,
                         fieldId: field.id,
-                        metricId: metric.id,
                         metadata,
                       }),
                     )

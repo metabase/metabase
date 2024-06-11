@@ -138,7 +138,14 @@ export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   string,
   string | string[]
 > = {
-  string: ["=", "!="],
+  string: [
+    "=",
+    "!=",
+    "contains",
+    "does-not-contain",
+    "starts-with",
+    "ends-with",
+  ],
   category: "any",
   id: "any",
   location: ["=", "!="],

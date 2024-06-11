@@ -1,105 +1,106 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import type { useSearchListQuery } from "metabase/common/hooks";
+import { useSearchQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
-import { getLocale } from "metabase/setup/selectors";
-import { Box } from "metabase/ui";
-import type { SearchResult, CollectionId } from "metabase-types/api";
+import { color } from "metabase/lib/colors";
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import type { ModelResult, SearchRequest } from "metabase-types/api";
 
-import { BROWSE_MODELS_LOCALSTORAGE_KEY } from "../constants";
-import { getCollectionViewPreferences, groupModels } from "../utils";
+import type { ActualModelFilters } from "../utils";
+import { filterModels } from "../utils";
 
-import { CenteredEmptyState } from "./BrowseApp.styled";
-import { ModelGrid } from "./BrowseModels.styled";
+import {
+  BrowseContainer,
+  BrowseHeader,
+  BrowseMain,
+  BrowseSection,
+  CenteredEmptyState,
+} from "./BrowseContainer.styled";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
-import { ModelGroup } from "./ModelGroup";
+import { ModelsTable } from "./ModelsTable";
 
-export const BrowseModels = ({
-  modelsResult,
-}: {
-  modelsResult: ReturnType<typeof useSearchListQuery<SearchResult>>;
-}) => {
-  const { data: models = [], error, isLoading } = modelsResult;
-  const locale = useSelector(getLocale);
-  const localeCode: string | undefined = locale?.code;
-  const [collectionViewPreferences, setCollectionViewPreferences] = useState(
-    getCollectionViewPreferences,
+const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
+  PLUGIN_CONTENT_VERIFICATION;
+
+export const BrowseModels = () => {
+  const [actualModelFilters, setActualModelFilters] = useModelFilterSettings();
+
+  return (
+    <BrowseContainer>
+      <BrowseHeader>
+        <BrowseSection>
+          <Flex
+            w="100%"
+            h="2.25rem"
+            direction="row"
+            justify="space-between"
+            align="center"
+          >
+            <Title order={1} color="text-dark">
+              <Group spacing="sm">
+                <Icon size={24} color={color("brand")} name="model" />
+                {t`Models`}
+              </Group>
+            </Title>
+            <ModelFilterControls
+              actualModelFilters={actualModelFilters}
+              setActualModelFilters={setActualModelFilters}
+            />
+          </Flex>
+        </BrowseSection>
+      </BrowseHeader>
+      <BrowseMain>
+        <BrowseSection>
+          <BrowseModelsBody actualModelFilters={actualModelFilters} />
+        </BrowseSection>
+      </BrowseMain>
+    </BrowseContainer>
   );
+};
+
+export const BrowseModelsBody = ({
+  actualModelFilters,
+}: {
+  /** Mapping of filter names to true if the filter is active
+   * or false if it is inactive */
+  actualModelFilters: ActualModelFilters;
+}) => {
+  const query: SearchRequest = {
+    models: ["dataset"], // 'model' in the sense of 'type of thing'
+    model_ancestors: true,
+    filter_items_in_personal_collection: "exclude",
+  };
+  const { data, error, isLoading } = useSearchQuery(query);
+
+  const filteredModels = useMemo(() => {
+    const unfilteredModels = (data?.data as ModelResult[]) ?? [];
+    const filteredModels = filterModels(
+      unfilteredModels,
+      actualModelFilters,
+      availableModelFilters,
+    );
+    return filteredModels;
+  }, [data, actualModelFilters]);
 
   if (error || isLoading) {
     return (
       <LoadingAndErrorWrapper
         error={error}
         loading={isLoading}
-        style={{ display: "flex", flex: 1 }}
+        style={{ flex: 1 }}
       />
     );
   }
 
-  const handleToggleCollectionExpand = (collectionId: CollectionId) => {
-    const newPreferences = {
-      ...collectionViewPreferences,
-      [collectionId]: {
-        expanded: !(
-          collectionViewPreferences?.[collectionId]?.expanded ?? true
-        ),
-        showAll: !!collectionViewPreferences?.[collectionId]?.showAll,
-      },
-    };
-    setCollectionViewPreferences(newPreferences);
-    localStorage.setItem(
-      BROWSE_MODELS_LOCALSTORAGE_KEY,
-      JSON.stringify(newPreferences),
-    );
-  };
-
-  const handleToggleCollectionShowAll = (collectionId: CollectionId) => {
-    const newPreferences = {
-      ...collectionViewPreferences,
-      [collectionId]: {
-        expanded: collectionViewPreferences?.[collectionId]?.expanded ?? true,
-        showAll: !collectionViewPreferences?.[collectionId]?.showAll,
-      },
-    };
-    setCollectionViewPreferences(newPreferences);
-    localStorage.setItem(
-      BROWSE_MODELS_LOCALSTORAGE_KEY,
-      JSON.stringify(newPreferences),
-    );
-  };
-
-  const groupsOfModels = groupModels(models, localeCode);
-
-  if (models.length) {
+  if (filteredModels.length) {
     return (
-      <>
+      <Stack mb="lg" spacing="md">
         <ModelExplanationBanner />
-        <ModelGrid role="grid">
-          {groupsOfModels.map(groupOfModels => {
-            const collectionId = groupOfModels[0].collection.id;
-            return (
-              <ModelGroup
-                expanded={
-                  collectionViewPreferences?.[collectionId]?.expanded ?? true
-                }
-                showAll={!!collectionViewPreferences?.[collectionId]?.showAll}
-                toggleExpanded={() =>
-                  handleToggleCollectionExpand(collectionId)
-                }
-                toggleShowAll={() =>
-                  handleToggleCollectionShowAll(collectionId)
-                }
-                models={groupOfModels}
-                key={`modelgroup-${collectionId}`}
-                localeCode={localeCode}
-              />
-            );
-          })}
-        </ModelGrid>
-      </>
+        <ModelsTable models={filteredModels} />
+      </Stack>
     );
   }
 

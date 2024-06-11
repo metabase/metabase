@@ -1,8 +1,25 @@
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { Transition } from "metabase/ui";
 
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
+
+export type LoadingAndErrorWrapperProps = {
+  className?: string;
+  error: any;
+  loading: any;
+  noBackground?: boolean;
+  noWrapper?: boolean;
+  children?: ReactNode;
+  style?: object;
+  showSpinner?: boolean;
+  loadingMessages?: string[];
+  messageInterval?: number;
+  loadingScenes?: string[];
+  renderError?: (error: any) => ReactNode;
+  "data-testid"?: string;
+};
 
 /**
  * A loading/error display component that waits a bit before appearing
@@ -12,12 +29,17 @@ export const DelayedLoadingAndErrorWrapper = ({
   error,
   loading,
   delay = 300,
+  blankComponent = null,
+  children,
+  ...props
 }: {
-  error: unknown;
-  loading: boolean;
   delay?: number;
-}) => {
+  /** This is shown during the delay if `loading` is true */
+  blankComponent?: ReactNode;
+} & LoadingAndErrorWrapperProps) => {
   const [showWrapper, setShowWrapper] = useState(false);
+
+  props.loadingMessages ??= [];
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -26,8 +48,11 @@ export const DelayedLoadingAndErrorWrapper = ({
     return () => clearTimeout(timeout);
   }, [delay]);
 
+  if (!loading && !error) {
+    return <>{children}</>;
+  }
   if (!showWrapper) {
-    return null;
+    return <>{blankComponent}</>;
   }
   return (
     <Transition
@@ -38,7 +63,9 @@ export const DelayedLoadingAndErrorWrapper = ({
     >
       {styles => (
         <div style={styles}>
-          <LoadingAndErrorWrapper error={error} loading={loading} />
+          <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
+            {children}
+          </LoadingAndErrorWrapper>
         </div>
       )}
     </Transition>

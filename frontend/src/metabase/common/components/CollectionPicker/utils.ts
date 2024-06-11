@@ -1,4 +1,4 @@
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
   ListCollectionItemsRequest,
@@ -100,9 +100,6 @@ export const isFolder = (item: CollectionPickerItem): boolean => {
   );
 };
 
-export const generateKey = (query?: ListCollectionItemsRequest) =>
-  JSON.stringify(query ?? "root");
-
 export const getParentCollectionId = (
   location?: string | null,
 ): CollectionId => {
@@ -122,9 +119,9 @@ export const getPathLevelForItem = (
     return 0;
   }
 
-  const parentCollectionId = getParentCollectionId(
-    item?.effective_location ?? item?.location,
-  );
+  const parentCollectionId =
+    item.collection_id ??
+    getParentCollectionId(item?.effective_location ?? item?.location);
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(

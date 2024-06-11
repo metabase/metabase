@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createDashboardWithTabs,
+  dashboardGrid,
   goToTab,
   popover,
   restore,
@@ -213,31 +214,37 @@ describe("issue 39863", () => {
     }).then(dashboard => visitDashboard(dashboard.id));
 
     // Initial query for 1st tab
+    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 1);
 
     // Initial query for 2nd tab
     goToTab(TAB_2.name);
     cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 2);
 
     // No parameters change, no query rerun
     goToTab(TAB_1.name);
-    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 2);
 
     // Rerun 1st tab query with new parameters
     setDateFilter();
     cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 3);
 
     // Rerun 2nd tab query with new parameters
     goToTab(TAB_2.name);
     cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 4);
 
     // No parameters change, no query rerun
     goToTab(TAB_1.name);
     goToTab(TAB_2.name);
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 4);
   });
 
@@ -270,31 +277,37 @@ describe("issue 39863", () => {
     }).then(dashboard => visitDashboard(dashboard.id));
 
     // Initial query for 1st tab
+    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 1);
 
     // Initial query for 2nd tab
     goToTab(TAB_2.name);
     cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 2);
 
     // No parameters change, no query rerun
     goToTab(TAB_1.name);
-    cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 2);
 
     // Rerun 1st tab query with new parameters
     setDateFilter();
     cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 3);
 
     // Rerun 2nd tab query with new parameters
     goToTab(TAB_2.name);
     cy.wait("@dashcardQuery");
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 4);
 
     // No parameters change, no query rerun
     goToTab(TAB_1.name);
     goToTab(TAB_2.name);
+    assertNoLoadingSpinners();
     cy.get("@dashcardQuery.all").should("have.length", 4);
   });
 });
@@ -304,4 +317,8 @@ function setDateFilter() {
   popover()
     .findByText(/Last 12 months/i)
     .click();
+}
+
+function assertNoLoadingSpinners() {
+  dashboardGrid().findAllByTestId("loading-spinner").should("have.length", 0);
 }

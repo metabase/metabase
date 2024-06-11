@@ -14,6 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
+   [potemkin :as p]
    [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
@@ -24,6 +25,11 @@
 
 ;; Fool Eastwood into thinking this namespace is used
 (comment hiccup.util/keep-me)
+
+(p/import-vars
+  [datetime
+   format-temporal-str
+   temporal-string?])
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"

@@ -3,6 +3,7 @@ import type {
   AnyAction,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
+import type { JSX } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
@@ -46,6 +47,8 @@ export type SdkState = {
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;
+  loaderComponent: null | (() => JSX.Element);
+  errorComponent: null | (({ message }: { message: string }) => JSX.Element);
 };
 
 export interface SdkStoreState extends State {

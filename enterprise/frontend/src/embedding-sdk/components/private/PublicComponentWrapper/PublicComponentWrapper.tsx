@@ -1,10 +1,10 @@
-import type { ComponentType } from "react";
+import type { JSX } from "react";
 import { t } from "ttag";
 
-import { SdkError } from "embedding-sdk/components/private/SdkError";
+import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
+import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import { Loader } from "metabase/ui";
 
 export const PublicComponentWrapper = ({
   children,
@@ -22,7 +22,7 @@ export const PublicComponentWrapper = ({
   }
 
   if (loginStatus.status === "loading") {
-    return <Loader data-testid="loading-spinner" />;
+    return <SdkLoader />;
   }
 
   if (loginStatus.status === "error") {
@@ -31,21 +31,3 @@ export const PublicComponentWrapper = ({
 
   return children;
 };
-
-export function withPublicComponentWrapper<P>(
-  WrappedComponent: ComponentType<P>,
-): React.FC<P> {
-  const WithPublicComponentWrapper: React.FC<P> = props => {
-    return (
-      <PublicComponentWrapper>
-        <WrappedComponent {...props} />
-      </PublicComponentWrapper>
-    );
-  };
-
-  WithPublicComponentWrapper.displayName = `withPublicComponentWrapper(${
-    WrappedComponent.displayName || WrappedComponent.name || "Component"
-  })`;
-
-  return WithPublicComponentWrapper;
-}

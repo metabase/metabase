@@ -26,6 +26,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       ...getSelectItemsOverrides(theme, size),
       // For epic (metabase#38699)
       dropdown: {
+        background: theme.fn.themeColor("bg-white"),
         ">div": {
           maxHeight: "none !important",
         },

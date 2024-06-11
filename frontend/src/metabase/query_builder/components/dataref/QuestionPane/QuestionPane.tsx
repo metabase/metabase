@@ -50,6 +50,10 @@ const getIcon = (question: Question): IconName => {
     return "model";
   }
 
+  if (type === "metric") {
+    return "metric";
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 

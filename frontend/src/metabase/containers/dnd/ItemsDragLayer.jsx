@@ -3,9 +3,9 @@ import { Component } from "react";
 import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
-import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import BodyComponent from "metabase/components/BodyComponent";
+import { BaseItemsTable } from "metabase/components/ItemsTable/BaseItemsTable";
 
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
 // so we exclude files named `*DragLayer.jsx` in webpack.config.js
@@ -64,7 +64,7 @@ class DraggedItems extends Component {
     // necessary for decent drag performance
     return (
       nextProps.items.length !== this.props.items.length ||
-      nextProps.pinnedItems.length !== this.props.pinnedItems ||
+      nextProps.pinnedItems.length !== this.props.pinnedItems.length ||
       nextProps.draggedItem !== this.props.draggedItem
     );
   }
@@ -79,13 +79,11 @@ class DraggedItems extends Component {
 
   renderItem = ({ item, ...itemProps }) => {
     const isPinned = this.checkIsPinned(item);
-
     const key = `${item.model}-${item.id}`;
-    const PINNED_WIDTH = 400;
 
     if (isPinned) {
       return (
-        <div style={{ width: PINNED_WIDTH }}>
+        <td style={{ padding: 0 }}>
           <PinnedItemCard
             key={key}
             item={item}
@@ -93,7 +91,7 @@ class DraggedItems extends Component {
             onCopy={_.noop}
             onMove={_.noop}
           />
-        </div>
+        </td>
       );
     }
     return (
@@ -111,6 +109,7 @@ class DraggedItems extends Component {
   render() {
     const { items, draggedItem } = this.props;
     const index = _.findIndex(items, draggedItem);
+    const allPinned = items.every(item => this.checkIsPinned(item));
     return (
       <div
         style={{
@@ -120,9 +119,11 @@ class DraggedItems extends Component {
       >
         <BaseItemsTable
           items={items}
-          renderItem={this.renderItem}
+          ItemComponent={props => this.renderItem(props)}
           headless
-          style={{ width: 960 }}
+          isInDragLayer
+          style={{ width: allPinned ? 400 : undefined }}
+          includeColGroup={!allPinned}
         />
       </div>
     );

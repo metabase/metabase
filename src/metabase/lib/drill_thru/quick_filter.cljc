@@ -43,13 +43,13 @@
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
@@ -57,7 +57,7 @@
   (lib.options/ensure-uuid (into [op {}] args)))
 
 (mu/defn ^:private operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
-  [column :- lib.metadata/ColumnMetadata
+  [column :- ::lib.schema.metadata/column
    value]
   (let [field-ref (lib.ref/ref column)]
     (cond
@@ -65,8 +65,11 @@
       []
 
       (= value :null)
-      [{:name "=" :filter (operator :is-null  field-ref)}
-       {:name "≠" :filter (operator :not-null field-ref)}]
+      (for [[op label] (if (or (lib.types.isa/string? column) (lib.types.isa/string-like? column))
+                         [[:is-empty "="] [:not-empty "≠"]]
+                         [[:is-null "="] [:not-null "≠"]])]
+        {:name   label
+         :filter (operator op field-ref)})
 
       (or (lib.types.isa/numeric? column)
           (lib.types.isa/temporal? column))

@@ -232,7 +232,6 @@
                                      (not (seq (:recipients (email-channel alert-updates))))
                                      (not (slack-channel alert-updates)))
                             {:archived true})))]
-
       ;; Only admins or users has subscription or monitoring perms
       ;; can update recipients or explicitly archive an alert
       (when (and (or api/*is-superuser?*

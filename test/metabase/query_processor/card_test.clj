@@ -5,9 +5,13 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn run-query-for-card
@@ -165,3 +169,40 @@
                                                                             :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
       (is (= [[100]]
              (mt/rows (run-query-for-card card-id)))))))
+
+(deftest nested-query-permissions-test
+  (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection allowed-collection    {}
+                       :model/Collection disallowed-collection {}
+                       :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                                :type     :native
+                                                                                :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                                :database_id   (mt/id)
+                                                                :collection_id (u/the-id disallowed-collection)}
+                       :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                                :collection_id (u/the-id allowed-collection)}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
+          (mt/with-test-user :rasta
+            (letfn [(process-query-for-card [card]
+                      (qp.card/process-query-for-card
+                       (u/the-id card) :api
+                       :run (fn [query info]
+                              (let [info (assoc info :query-hash (byte-array 0))]
+                                (qp/process-query (assoc query :info info))))))]
+              (testing "Should not be able to run the parent Card"
+                (is (not (mi/can-read? disallowed-collection)))
+                (is (not (mi/can-read? parent-card)))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"\QYou don't have permissions to do that.\E"
+                     (process-query-for-card parent-card))))
+              (testing "Should be able to run the child Card (#15131)"
+                (is (not (mi/can-read? parent-card)))
+                (is (mi/can-read? allowed-collection))
+                (is (mi/can-read? child-card))
+                (is (= [[1] [2]]
+                       (mt/rows (process-query-for-card child-card))))))))))))

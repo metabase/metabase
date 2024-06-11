@@ -141,7 +141,7 @@ describe("Dashboard utils", () => {
     it("should return false for cards with loaded data", () => {
       expect(
         isDashcardLoading(createMockDashboardCard({ id: 1 }), {
-          1: { 2: createMockDataset() },
+          2: createMockDataset(),
         }),
       ).toBe(false);
     });
@@ -149,7 +149,8 @@ describe("Dashboard utils", () => {
     it("should return true when the dash card data is missing", () => {
       expect(
         isDashcardLoading(createMockDashboardCard({ id: 1 }), {
-          1: { 2: null, 3: createMockDataset() },
+          2: null,
+          3: createMockDataset(),
         }),
       ).toBe(true);
     });

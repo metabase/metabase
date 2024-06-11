@@ -12,8 +12,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expresssion]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -397,7 +396,8 @@
 (defmethod display-info-method :metadata/table
   [query stage-number table]
   (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table-id query) (:id table))}))
+         {:is-source-table (= (lib.util/source-table-id query) (:id table))
+          :schema (:schema table)}))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
@@ -427,20 +427,25 @@
        (empty? columns)
        (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
 
-(def ^:private UniqueNameFn
+(mr/def ::unique-name-fn
+  "Stateful function with the signature
+
+    (f str) => unique-str
+
+  i.e. repeated calls with the same string should return different unique strings."
   [:=>
-   [:cat ::lib.schema.common/non-blank-string]
+   [:cat :string] ; this is allowed to be a blank string.
    ::lib.schema.common/non-blank-string])
 
 (def ReturnedColumnsOptions
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:map
    ;; has the signature (f str) => str
-   [:unique-name-fn {:optional true} UniqueNameFn]])
+   [:unique-name-fn {:optional true} ::unique-name-fn]])
 
 (mu/defn ^:private default-returned-columns-options :- ReturnedColumnsOptions
-  []
-  {:unique-name-fn (lib.util/unique-name-generator)})
+  [metadata-providerable]
+  {:unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))})
 
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
@@ -477,7 +482,7 @@
     stage-number   :- :int
     x
     options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options) options)]
+   (let [options (merge (default-returned-columns-options query) options)]
      (returned-columns-method query stage-number x options))))
 
 (def VisibleColumnsOptions
@@ -492,9 +497,9 @@
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
 (mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
-  []
+  [metadata-providerable]
   (merge
-   (default-returned-columns-options)
+   (default-returned-columns-options metadata-providerable)
    {:include-joined?                              true
     :include-expressions?                         true
     :include-implicitly-joinable?                 true
@@ -561,7 +566,7 @@
     stage-number   :- :int
     x
     options        :- [:maybe VisibleColumnsOptions]]
-   (let [options (merge (default-visible-columns-options) options)]
+   (let [options (merge (default-visible-columns-options query) options)]
      (visible-columns-method query stage-number x options))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]

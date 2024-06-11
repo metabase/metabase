@@ -1,33 +1,45 @@
 import type {
-  ActivityModelObject,
   PopularItem,
   RecentItem,
+  RecentTableItem,
+  RecentCollectionItem,
 } from "metabase-types/api";
 
-export const createMockModelObject = (
-  opts?: Partial<ActivityModelObject>,
-): ActivityModelObject => ({
-  name: "Orders",
-  ...opts,
-});
-
-export const createMockRecentItem = (
-  opts?: Partial<RecentItem>,
+export const createMockRecentTableItem = (
+  opts?: Partial<RecentTableItem>,
 ): RecentItem => ({
+  id: 1,
   model: "table",
-  model_id: 1,
-  model_object: createMockModelObject(),
-  cnt: 1,
-  max_ts: "2021-03-01T00:00:00.000Z",
-  user_id: 1,
+  name: "my_cool_table",
+  display_name: "My Cool Table",
+  timestamp: "2021-03-01T00:00:00.000Z",
+  database: {
+    id: 1,
+    name: "My Cool Collection",
+    initial_sync_status: "complete",
+  },
   ...opts,
 });
 
-export const createMockPopularItem = (
-  opts?: Partial<PopularItem>,
-): PopularItem => ({
-  model: "table",
-  model_id: 1,
-  model_object: createMockModelObject(),
+export const createMockRecentCollectionItem = (
+  opts?: Partial<RecentCollectionItem>,
+): RecentItem => ({
+  id: 1,
+  model: "card",
+  name: "My Cool Question",
+  timestamp: "2021-03-01T00:00:00.000Z",
+  can_write: true,
+  parent_collection: {
+    id: 1,
+    name: "My Cool Collection",
+  },
   ...opts,
 });
+
+export const createMockPopularTableItem = (
+  opts?: Partial<RecentTableItem>,
+): PopularItem => createMockRecentTableItem(opts);
+
+export const createMockPopularCollectionItem = (
+  opts?: Partial<RecentCollectionItem>,
+): PopularItem => createMockRecentCollectionItem(opts);

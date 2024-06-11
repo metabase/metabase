@@ -348,9 +348,16 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                            (lib.metadata/database (qp.store/metadata-provider)))
-                                              (u/id db-or-id-or-spec)     db-or-id-or-spec))
+    (when-let [db (cond
+                    ;; id?
+                    (integer? db-or-id-or-spec)
+                    (qp.store/with-metadata-provider db-or-id-or-spec
+                      (lib.metadata/database (qp.store/metadata-provider)))
+                    ;; db?
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec
+                    ;; otherwise it's a spec and we can't get the db
+                    :else nil)]
+      (set-role-if-supported! driver conn db))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
@@ -720,12 +727,16 @@
                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
                ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]] (#41448).
-               (finally (try (.cancel stmt)
-                             (catch SQLFeatureNotSupportedException _
-                               (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
-                                          (name driver)))
-                             (catch Throwable _
-                               (log/warn "Statement cancelation failed.")))))))))))
+               (finally
+                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                 ;;       It should be removed afterwards!
+                 (when-not (= :vertica driver)
+                   (try (.cancel stmt)
+                        (catch SQLFeatureNotSupportedException _
+                          (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                                     (name driver)))
+                        (catch Throwable _
+                          (log/warn "Statement cancelation failed."))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the

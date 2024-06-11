@@ -198,7 +198,7 @@ function pin(name) {
 function archive(name) {
   openEllipsisMenuFor(name);
   popover().within(() => {
-    cy.findByText("Archive").click();
+    cy.findByText("Move to trash").click();
   });
 }
 

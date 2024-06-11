@@ -4,7 +4,6 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.automagic-dashboards.core :as magic]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo :as mongo]
@@ -26,6 +25,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mongo :as tdm]
    [metabase.util.log :as log]
+   [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])

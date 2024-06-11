@@ -1,4 +1,5 @@
 import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   queryWritableDB,
@@ -244,14 +245,14 @@ describeWithSnowplow(
 );
 
 describe("permissions", () => {
-  it("should not snow you upload buttons if you are a sandboxed user", () => {
+  it("should not show you upload buttons if you are a sandboxed user", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
     setTokenFeatures("all");
     enableUploads("postgres");
 
-    //Deny access for all users to wriable DB
+    //Deny access for all users to writable DB
     cy.updatePermissionsGraph({
       1: {
         [WRITABLE_DB_ID]: {
@@ -321,6 +322,63 @@ describe("permissions", () => {
       });
     },
   );
+});
+
+describe("Upload Table Cleanup/Management", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/ee/upload-management/tables").as(
+      "getUploadTables",
+    );
+    restore("postgres-12");
+    cy.signInAsAdmin();
+    enableUploads("postgres");
+    setTokenFeatures("all");
+  });
+
+  it("should allow a user to delete an upload table", () => {
+    headlessUpload(validTestFiles[0]);
+    headlessUpload(validTestFiles[0]);
+    headlessUpload(validTestFiles[0]);
+
+    headlessUpload(validTestFiles[1]);
+    headlessUpload(validTestFiles[1]);
+
+    cy.visit("/admin/settings/uploads");
+    cy.wait("@getUploadTables");
+
+    cy.findByTestId("upload-tables-table").within(() => {
+      cy.findAllByText(/dog_breeds/i).should("have.length", 3);
+      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
+
+      // single delete
+      cy.findAllByLabelText("trash icon").first().click();
+    });
+
+    modal().button("Delete").click();
+    cy.wait("@getUploadTables");
+
+    cy.findByTestId("undo-list").findByText(/1 table deleted/i);
+
+    cy.findByTestId("upload-tables-table").within(() => {
+      cy.findAllByText(/dog_breeds/i).should("have.length", 2);
+      cy.findAllByText(/star_wars_characters/i).should("have.length", 2);
+
+      // multiple delete
+      cy.findAllByRole("checkbox").first().click();
+      cy.findAllByRole("checkbox").last().click();
+    });
+
+    cy.findByTestId("toast-card").button("Delete").click();
+    modal().button("Delete").click();
+    cy.wait("@getUploadTables");
+
+    cy.findByTestId("undo-list").findByText(/2 tables deleted/i);
+
+    cy.findByTestId("upload-tables-table").within(() => {
+      cy.findAllByText(/dog_breeds/i).should("have.length", 1);
+      cy.findAllByText(/star_wars_characters/i).should("have.length", 1);
+    });
+  });
 });
 
 function uploadFile(testFile, valid = true) {
@@ -425,12 +483,32 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
   }
 }
 
+function headlessUpload(file) {
+  cy.fixture(`${FIXTURE_PATH}/${file.fileName}`)
+    .then(file => Cypress.Blob.binaryStringToBlob(file))
+    .then(blob => {
+      const formData = new FormData();
+      formData.append("file", blob, file.fileName);
+      formData.append("collection_id", FIRST_COLLECTION_ID);
+
+      cy.request({
+        url: "/api/card/from-csv",
+        method: "POST",
+        headers: {
+          "content-type": "multipart/form-data",
+        },
+        body: formData,
+      });
+    });
+}
+
 function enableUploads(dialect) {
   const settings = {
-    "uploads-enabled": true,
-    "uploads-database-id": WRITABLE_DB_ID,
-    "uploads-schema-name": dialect === "postgres" ? "public" : null,
-    "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
+    "uploads-settings": {
+      db_id: WRITABLE_DB_ID,
+      schema_name: dialect === "postgres" ? "public" : null,
+      table_prefix: dialect === "mysql" ? "upload_" : null,
+    },
   };
 
   cy.request("PUT", "/api/setting", settings);

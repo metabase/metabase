@@ -13,11 +13,11 @@
     (testing "DW connection pool diagnostic info should be captured correctly"
       (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
         ;; sanity check
-        (is (= "Red Medicine"
-               (-> (mt/formatted-rows [str]
-                     (mt/run-mbql-query venues
-                       {:fields [$name]
-                        :filter [:= $id 1]}))
+        (is (= 1
+               (-> (mt/formatted-rows [int]
+                     (mt/run-mbql-query checkins
+                                        {:fields [$id]
+                                         :filter [:= $id 1]}))
                    ffirst)))
         ;; now, check the actual diagnostic info map
         (let [diag-info (diag-info-fn)]

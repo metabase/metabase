@@ -5,6 +5,7 @@ import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -66,6 +67,7 @@ const setup = ({
     collections: [EDITABLE_ROOT_COLLECTION],
     rootCollection: EDITABLE_ROOT_COLLECTION,
   });
+  setupRecentViewsEndpoints([]);
 
   fetchMock.post("path:/api/mt/gtap/validate", 204);
   fetchMock.get("path:/api/permissions/group/1", {});

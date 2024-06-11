@@ -4,8 +4,7 @@
    [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [medley.core :as m]
-   [metabase.actions :as actions]
-   [metabase.actions.execution :as actions.execution]
+   [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -285,6 +284,7 @@
    card-id     ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (process-query-for-dashcard
      :dashboard-id  dashboard-id
@@ -301,7 +301,7 @@
    parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
-  (actions.execution/fetch-values
+  (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
@@ -334,7 +334,7 @@
           ;; you're by definition allowed to run it without a perms check anyway
           (binding [api/*current-user-permissions-set* (delay #{"/"})]
             ;; Undo middleware string->keyword coercion
-            (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
+            (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
@@ -606,6 +606,7 @@
    dashcard-id ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (process-query-for-dashcard
      :dashboard-id  dashboard-id
@@ -654,7 +655,7 @@
                                                                                      :type      (:type action)
                                                                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
-            (actions.execution/execute-action! action (update-keys parameters name))))))))
+            (actions/execute-action! action (update-keys parameters name))))))))
 
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------

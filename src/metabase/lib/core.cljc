@@ -13,6 +13,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.database :as lib.database]
    [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -22,10 +23,10 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
-   [metabase.lib.legacy-metric :as lib.legacy-metric]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
+   [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
@@ -56,7 +57,7 @@
          lib.filter/keep-me
          lib.filter.update/keep-me
          lib.join/keep-me
-         lib.legacy-metric/keep-me
+         lib.metric/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
@@ -120,6 +121,8 @@
  [lib.drill-thru
   available-drill-thrus
   drill-thru]
+ [lib.drill-thru.column-extract
+  extractions-for-drill]
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]
@@ -172,12 +175,15 @@
   ltrim
   rtrim
   upper
-  lower]
+  lower
+  offset]
  [lib.extraction
   column-extractions
-  extract]
+  extract
+  extraction-expression]
  [lib.fe-util
   dependent-metadata
+  table-or-card-dependent-metadata
   expression-clause
   expression-parts
   filter-args-display-name]
@@ -236,8 +242,9 @@
   with-join-fields
   with-join-strategy
   with-join-conditions]
- [lib.legacy-metric
-  available-legacy-metrics]
+ [lib.metric
+  available-metrics
+  metric-based?]
  [lib.limit
   current-limit
   limit]
@@ -278,11 +285,13 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-preview
   can-run
   can-save
+  preview-query
   query
   stage-count
-  uses-legacy-metric?
+  uses-metric?
   uses-segment?
   with-different-table]
  [lib.ref

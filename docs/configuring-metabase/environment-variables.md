@@ -1364,10 +1364,10 @@ Set the system files channel used by Metabase to store images. This channel has 
 ### `MB_JETTY_SKIP_SNI`
 
 Type: string<br>
-Default: `"true"`<br>
+Default: `"false"`<br>
 Since: v48.4
 
-Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
+Setting `MB_JETTY_SKIP_SNI=false` (the default setting) enables the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this default enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=true`, or use another SSL certificate that exactly matches the domain name of the server.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 

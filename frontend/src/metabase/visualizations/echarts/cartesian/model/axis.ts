@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   getObjectEntries,
   getObjectKeys,
@@ -33,6 +34,7 @@ import type {
   NumericXAxisModel,
   ShowWarning,
   NumericAxisScaleTransforms,
+  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
@@ -251,16 +253,43 @@ export function computeSplit(
 
 const getYAxisSplit = (
   seriesModels: SeriesModel[],
+  stackModels: StackModel[],
   seriesExtents: SeriesExtents,
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
 ) => {
+  const stackedKeys = new Set(
+    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+  );
+  const nonStackedKeys = new Set(
+    seriesModels
+      .map(seriesModel => seriesModel.dataKey)
+      .filter(seriesKey => !stackedKeys.has(seriesKey)),
+  );
+
+  const stackedSeriesAxis = stackModels.every(
+    stackModel => stackModel.axis === "right",
+  )
+    ? "right"
+    : "left";
+
+  if (settings["stackable.stack_type"] === "normalized") {
+    return stackedSeriesAxis === "left"
+      ? [stackedKeys, nonStackedKeys]
+      : [nonStackedKeys, stackedKeys];
+  }
+
   const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
     const seriesSettings: SeriesSettings = settings.series(
       seriesModel.legacySeriesSettingsObjectKey,
     );
 
-    acc[seriesModel.dataKey] = seriesSettings?.["axis"];
+    const seriesStack = stackModels.find(stackModel =>
+      stackModel.seriesKeys.includes(seriesModel.dataKey),
+    );
+
+    acc[seriesModel.dataKey] =
+      seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
     return acc;
   }, {} as Record<DataKey, string | undefined>);
 
@@ -360,9 +389,11 @@ const NORMALIZED_RANGE: Extent = [0, 1];
 const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
+  stackType: StackType,
   renderingContext: RenderingContext,
+  formattingOptions?: OptionsType,
 ): AxisFormatter => {
-  const isNormalized = settings["stackable.stack_type"] === "normalized";
+  const isNormalized = stackType === "normalized";
 
   if (isNormalized) {
     return (value: RowValue) =>
@@ -380,6 +411,7 @@ const getYAxisFormatter = (
     return renderingContext.formatValue(value, {
       column,
       ...(settings.column?.(column) ?? {}),
+      ...formattingOptions,
     });
   };
 };
@@ -405,8 +437,33 @@ const getYAxisLabel = (
   return seriesNames[0];
 };
 
+function findWidestRange(extents: Extent[]): Extent {
+  if (extents.length === 0) {
+    throw new Error("The array of extents cannot be empty.");
+  }
+
+  let min = Infinity;
+  let max = -Infinity;
+
+  extents.forEach(([start, end]) => {
+    if (start < min) {
+      min = start;
+    }
+    if (end > max) {
+      max = end;
+    }
+  });
+
+  if (min === Infinity || max === -Infinity) {
+    return [0, 0];
+  }
+
+  return [min, max];
+}
+
 function getYAxisExtent(
   seriesKeys: DataKey[],
+  stackModels: StackModel[],
   dataset: ChartDataset,
   stackType?: StackType,
 ): Extent {
@@ -418,29 +475,43 @@ function getYAxisExtent(
     return NORMALIZED_RANGE;
   }
 
-  return stackType === "stacked"
-    ? calculateStackedExtent(seriesKeys, dataset)
-    : calculateNonStackedExtent(seriesKeys, dataset);
+  const stacksExtents = stackModels.map(stackModel =>
+    calculateStackedExtent(stackModel.seriesKeys, dataset),
+  );
+
+  const nonStackedKeys = seriesKeys.filter(seriesKey =>
+    stackModels.every(stackModel => !stackModel.seriesKeys.includes(seriesKey)),
+  );
+  const nonStackedExtent = calculateNonStackedExtent(nonStackedKeys, dataset);
+
+  return findWidestRange([...stacksExtents, nonStackedExtent]);
 }
 
 export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
+  stackModels: StackModel[],
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
+  stackType: StackType,
   renderingContext: RenderingContext,
+  formattingOptions?: OptionsType,
 ): YAxisModel | null {
   if (seriesKeys.length === 0) {
     return null;
   }
 
-  const stackType = settings["stackable.stack_type"];
-
-  const extent = getYAxisExtent(seriesKeys, dataset, stackType);
+  const extent = getYAxisExtent(seriesKeys, stackModels, dataset, stackType);
   const column = columnByDataKey[seriesKeys[0]];
   const label = getYAxisLabel(seriesNames, settings);
-  const formatter = getYAxisFormatter(column, settings, renderingContext);
+  const formatter = getYAxisFormatter(
+    column,
+    settings,
+    stackType,
+    renderingContext,
+    formattingOptions,
+  );
 
   return {
     seriesKeys,
@@ -448,6 +519,7 @@ export function getYAxisModel(
     column,
     label,
     formatter,
+    isNormalized: stackType === "normalized",
   };
 }
 
@@ -457,6 +529,8 @@ export function getYAxesModels(
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
+  stackModels: StackModel[],
+  compactSeriesDataKeys: DataKey[],
   renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
@@ -464,6 +538,7 @@ export function getYAxesModels(
 
   const [leftAxisSeriesKeysSet, rightAxisSeriesKeysSet] = getYAxisSplit(
     seriesModels,
+    stackModels,
     extents,
     settings,
     isAutoSplitSupported,
@@ -485,24 +560,70 @@ export function getYAxesModels(
     }
   });
 
+  const [leftStackModels, rightStackModels] = _.partition(
+    stackModels,
+    stackModel => stackModel.axis === "left",
+  );
+
+  const leftAxisFormattingOptions = getYAxisFormattingOptions({
+    compactSeriesDataKeys,
+    axisSeriesKeysSet: leftAxisSeriesKeysSet,
+    settings,
+  });
+  const rightAxisFormattingOptions = getYAxisFormattingOptions({
+    compactSeriesDataKeys,
+    axisSeriesKeysSet: rightAxisSeriesKeysSet,
+    settings,
+  });
+
   return {
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
+      leftStackModels,
       dataset,
       settings,
       columnByDataKey,
+      settings["stackable.stack_type"] ?? null,
       renderingContext,
+      leftAxisFormattingOptions,
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
+      rightStackModels,
       dataset,
       settings,
       columnByDataKey,
+      settings["stackable.stack_type"] === "normalized"
+        ? null
+        : settings["stackable.stack_type"] ?? null,
       renderingContext,
+      rightAxisFormattingOptions,
     ),
   };
+}
+
+type GetYAxisFormattingOptions = {
+  compactSeriesDataKeys: DataKey[];
+  axisSeriesKeysSet: Set<string>;
+  settings: ComputedVisualizationSettings;
+};
+
+export function getYAxisFormattingOptions({
+  compactSeriesDataKeys,
+  axisSeriesKeysSet,
+  settings,
+}: GetYAxisFormattingOptions): OptionsType {
+  const isCompact =
+    settings["graph.label_value_formatting"] === "compact" ||
+    compactSeriesDataKeys.some(dataKey => axisSeriesKeysSet.has(dataKey));
+
+  if (isCompact) {
+    return { compact: isCompact };
+  }
+
+  return {};
 }
 
 export function getTimeSeriesXAxisModel(

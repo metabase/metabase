@@ -11,3 +11,6 @@ export const findLastSelectedItem = <Item, Query>(
   }
   return undefined;
 };
+
+export const generateKey = <Query>(query?: Query) =>
+  JSON.stringify(query ?? "root");

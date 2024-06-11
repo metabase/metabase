@@ -19,8 +19,6 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
-  ListCollectionsResponse,
-  Metric,
   NativeQuerySnippet,
   ModelCacheRefreshStatus,
   PopularItem,
@@ -34,12 +32,14 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
+  DashboardMetadata,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
   COLLECTION_ITEM_MODELS,
   SEARCH_MODELS,
 } from "metabase-types/api";
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -82,7 +82,7 @@ export function provideActivityItemListTags(
 export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
 export function provideAlertListTags(
@@ -134,6 +134,12 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
   ];
 }
 
+export function provideCloudMigrationTags(
+  migration: CloudMigration,
+): TagDescription<TagType>[] {
+  return [idTag("cloud-migration", migration.id)];
+}
+
 export function provideCollectionItemListTags(
   items: CollectionItem[],
   models: CollectionItemModel[] = Array.from(COLLECTION_ITEM_MODELS),
@@ -150,19 +156,19 @@ export function provideCollectionItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
+export function provideCollectionListTags(
+  collections: Collection[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("collection"),
+    ...collections.flatMap(collection => provideCollectionTags(collection)),
+  ];
+}
+
 export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
-}
-
-export function provideCollectionListTags(
-  collections: ListCollectionsResponse,
-): TagDescription<TagType>[] {
-  return [
-    listTag("collection"),
-    ...collections.map(collection => idTag("collection", collection.id)),
-  ];
 }
 
 export function provideDatabaseCandidateListTags(
@@ -220,6 +226,16 @@ export function provideDashboardTags(
   ];
 }
 
+export function provideDashboardMetadataTags(
+  metadata: DashboardMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
+  ];
+}
+
 export function provideFieldListTags(
   fields: Field[],
 ): TagDescription<TagType>[] {
@@ -271,19 +287,6 @@ export function provideFieldDimensionTags(
 
 export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
-}
-
-export function provideMetricListTags(
-  metrics: Metric[],
-): TagDescription<TagType>[] {
-  return [listTag("metric"), ...metrics.flatMap(provideMetricTags)];
-}
-
-export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
-  return [
-    idTag("metric", metric.id),
-    ...(metric.table ? provideTableTags(metric.table) : []),
-  ];
 }
 
 export function providePermissionsGroupListTags(
@@ -414,7 +417,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
-    ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
 }
 

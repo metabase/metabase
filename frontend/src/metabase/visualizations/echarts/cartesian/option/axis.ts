@@ -4,7 +4,7 @@ import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTyp
 import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   DataKey,
   Extent,
   NumericAxisScaleTransforms,
@@ -51,11 +51,9 @@ export const getYAxisRange = (
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
 ) => {
-  const isNormalized = settings["stackable.stack_type"] === "normalized";
   const isAutoRangeEnabled = settings["graph.y_axis.auto_range"];
-
   if (isAutoRangeEnabled) {
-    return isNormalized ? NORMALIZED_RANGE : {};
+    return axisModel.isNormalized ? NORMALIZED_RANGE : {};
   }
 
   const { customMin, customMax } = getScaledMinAndMax(
@@ -109,7 +107,7 @@ export const getDimensionTicksDefaultOption = (
 };
 
 const getHistogramTicksOptions = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
 ) => {
@@ -187,7 +185,7 @@ const getCommonDimensionAxisOptions = (
 };
 
 export const buildDimensionAxis = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   width: number,
   settings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
@@ -310,7 +308,7 @@ export const buildTimeSeriesDimensionAxis = (
 };
 
 export const buildCategoricalDimensionAxis = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   originalSettings: ComputedVisualizationSettings,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
@@ -374,7 +372,7 @@ export const buildMetricAxis = (
 
   return {
     show: !isBlurred,
-    scale: !settings["graph.y_axis.auto_range_include_zero"],
+    scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
     ...range,
     ...getAxisNameDefaultOption(
@@ -413,7 +411,7 @@ export const buildMetricAxis = (
 };
 
 const buildMetricsAxes = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
   hoveredSeriesDataKey: DataKey | null,
@@ -457,7 +455,7 @@ const buildMetricsAxes = (
 };
 
 export const buildAxes = (
-  chartModel: BaseCartesianChartModel,
+  chartModel: CartesianChartModel,
   width: number,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,

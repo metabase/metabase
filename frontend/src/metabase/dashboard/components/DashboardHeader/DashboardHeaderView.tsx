@@ -1,6 +1,5 @@
 import cx from "classnames";
-import type { Location } from "history";
-import type * as React from "react";
+import type { JSX, ReactNode } from "react";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
@@ -36,9 +35,8 @@ interface DashboardHeaderViewProps {
   editingSubtitle?: string;
   editingButtons?: JSX.Element[];
   editWarning?: string;
-  headerButtons?: React.ReactNode[];
+  headerButtons?: ReactNode[];
   headerClassName: string;
-  location: Location;
   isEditing: boolean;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
@@ -60,7 +58,6 @@ export function DashboardHeaderComponent({
   editWarning,
   headerButtons = [],
   headerClassName = cx(CS.py1, CS.lgPy2, CS.xlPy3, CS.wrapper),
-  location,
   isEditing,
   isNavBarOpen,
   dashboard,
@@ -179,11 +176,7 @@ export function DashboardHeaderComponent({
             isNavBarOpen={isNavBarOpen}
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <DashboardTabs
-              dashboardId={dashboard.id}
-              location={location}
-              isEditing={isEditing}
-            />
+            <DashboardTabs dashboardId={dashboard.id} isEditing={isEditing} />
           </HeaderFixedWidthContainer>
         </HeaderRow>
       </HeaderContainer>

@@ -55,39 +55,6 @@ export const DataBucketList = styled(SelectList)`
   padding: ${space(0)} ${space(1)} 12px ${space(1)};
 `;
 
-export const CollectionDatasetSelectList = styled(SelectList)`
-  width: 300px;
-  max-width: 300px;
-  padding: 0.5rem;
-`;
-
-Object.assign(CollectionDatasetSelectList, { Item: SelectList.Item });
-
-export const CollectionDatasetAllDataLink = styled(SelectList.BaseItem)`
-  padding: 0.5rem;
-
-  color: ${color("text-light")};
-  font-weight: bold;
-  cursor: pointer;
-
-  :hover {
-    color: ${color("brand")};
-  }
-`;
-
-const CollectionDatasetAllDataContent = styled.span`
-  display: flex;
-  align-items: center;
-
-  .Icon {
-    margin-left: ${space(0)};
-  }
-`;
-
-Object.assign(CollectionDatasetAllDataLink, {
-  Content: CollectionDatasetAllDataContent,
-});
-
 export const EmptyStateContainer = styled.div`
   width: 300px;
   padding: 80px 60px;
@@ -118,7 +85,7 @@ export const TriggerContainerIcon = styled.div`
   height: 100%;
 `;
 
-export const TextSchema = styled(Text)`
+export const TextSchema = styled(Text)<React.PropsWithChildren>`
   font-size: 0.75em;
   color: ${color("text-light")};
   line-height: 0.75rem;

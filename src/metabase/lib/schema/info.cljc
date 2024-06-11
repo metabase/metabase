@@ -59,6 +59,9 @@
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    [:metadata/model-metadata {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
+   ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
+   ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
+   [:pivot/original-query    {:optional true} [:maybe [:map-of :any :any]]]
    ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
    ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
    ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them

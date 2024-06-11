@@ -43,6 +43,7 @@
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"
+   "CloudMigration"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
@@ -78,4 +79,5 @@
    "TablePrivileges"
    "TaskHistory"
    "User"
+   "UserParameterValue"
    "ViewLog"])

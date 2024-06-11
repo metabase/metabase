@@ -160,27 +160,29 @@
            xform)
      (completing conj #(t2/hydrate % :collection))
      []
-     (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
-                                            [{:select   [:status]
-                                              :from     [:moderation_review]
-                                              :where    [:and
-                                                         [:= :moderated_item_type "card"]
-                                                         [:= :moderated_item_id :report_card.id]
-                                                         [:= :most_recent true]]
-                                              :order-by [[:id :desc]]
-                                              :limit    1}
-                                             :moderated_status]]
-                                 :from     [:report_card]
-                                 :where    (into [:and
-                                                  [:not= :result_metadata nil]
-                                                  [:= :archived false]
-                                                  [:= :type (u/qualified-name card-type)]
-                                                  [:in :database_id ids-of-dbs-that-support-source-queries]
-                                                  (collection/visible-collection-ids->honeysql-filter-clause
-                                                   (collection/permissions-set->visible-collection-ids
-                                                    @api/*current-user-permissions-set*))]
-                                                 additional-constraints)
-                                 :order-by [[:%lower.name :asc]]}))))
+     (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
+                                     :result_metadata :type
+                                     [{:select   [:status]
+                                       :from     [:moderation_review]
+                                       :where    [:and
+                                                  [:= :moderated_item_type "card"]
+                                                  [:= :moderated_item_id :report_card.id]
+                                                  [:= :most_recent true]]
+                                       :order-by [[:id :desc]]
+                                       :limit    1}
+                                      :moderated_status]]
+                          :from     [:report_card]
+                          :where    (into [:and
+                                           [:not= :result_metadata nil]
+                                           [:= :archived false]
+                                           ;; always return metrics for now
+                                                  [:in :type [(u/qualified-name card-type) "metric"]]
+                                           [:in :database_id ids-of-dbs-that-support-source-queries]
+                                           (collection/visible-collection-ids->honeysql-filter-clause
+                                            (collection/permissions-set->visible-collection-ids
+                                             @api/*current-user-permissions-set*))]
+                                          additional-constraints)
+                          :order-by [[:%lower.name :asc]]}))))
 
 (mu/defn ^:private source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -243,13 +245,16 @@
   [db]
   (driver/database-supports? (driver.u/database->driver db) :uploads db))
 
+(defn- add-can-upload
+  "Adds :can_upload boolean, which is true if the user can create a new upload to this DB."
+  [db]
+  (assoc db :can_upload (upload/can-create-upload? db (:uploads_schema_name db))))
+
 (defn- add-can-upload-to-dbs
   "Add an entry to each DB about whether the user can upload to it."
   [dbs]
-  (let [uploads-db-id (public-settings/uploads-database-id)]
-    (for [db dbs]
-      (assoc db :can_upload (and (= (:id db) uploads-db-id)
-                                 (upload/can-create-upload? db (public-settings/uploads-schema-name)))))))
+  (for [db dbs]
+    (add-can-upload db)))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -343,28 +348,10 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(defn- add-can-upload
-  "Add an entry about whether the user can upload to this DB."
-  [db]
-  (assoc db :can_upload (and (= (u/the-id db) (public-settings/uploads-database-id))
-                             (upload/can-create-upload? db (public-settings/uploads-schema-name)))))
-
-(api/defendpoint GET "/:id"
-  "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-  belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
-  (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
-  returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
-
-  Passing include_editable_data_model will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-  and tables, with no additional metadata."
-  [id include include_editable_data_model exclude_uneditable_details]
-  {id      ms/PositiveInt
-   include [:maybe [:enum "tables" "tables.fields"]]}
-  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
-        exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
-        filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
+(defn get-database
+  "Get a single Database with `id`."
+  [id {:keys [include include-editable-data-model? exclude-uneditable-details?]}]
+  (let [filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
         database                     (api/check-404 (t2/select-one Database :id id))]
     (cond-> database
       filter-by-data-access?       api/read-check
@@ -374,8 +361,25 @@
       true                         add-can-upload
       include-editable-data-model? check-db-data-model-perms
       (mi/can-write? database)     (->
-                                    secret/expand-db-details-inferred-secret-values
-                                    (assoc :can-manage true)))))
+                                     secret/expand-db-details-inferred-secret-values
+                                     (assoc :can-manage true)))))
+
+(api/defendpoint GET "/:id"
+  "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
+   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
+   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
+   returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
+
+   Passing include_editable_data_model will only return tables for which the current user has data model editing
+   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
+   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
+   and tables, with no additional metadata."
+  [id include include_editable_data_model exclude_uneditable_details]
+  {id      ms/PositiveInt
+   include [:maybe [:enum "tables" "tables.fields"]]}
+  (get-database id {:include include
+                    :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
+                    :exclude-uneditable-details? (Boolean/parseBoolean exclude_uneditable_details)}))
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
@@ -393,29 +397,25 @@
   {:arglists '([model database-id table-ids])}
   (fn [model _database-id _table-ids] (keyword model)))
 
-(defmethod database-usage-query :question
-  [_ db-id _table-ids]
-  {:select [[:%count.* :question]]
+(defn- card-query
+  [db-id model type-str]
+  {:select [[:%count.* model]]
    :from   [:report_card]
    :where  [:and
             [:= :database_id db-id]
-            [:= :type "question"]]})
+            [:= :type type-str]]})
+
+(defmethod database-usage-query :question
+  [_ db-id _table-ids]
+  (card-query db-id :question "question"))
 
 (defmethod database-usage-query :dataset
   [_model db-id _table-ids]
-  {:select [[:%count.* :dataset]]
-   :from   [:report_card]
-   :where  [:and
-            [:= :database_id db-id]
-            [:= :type "model"]]})
+  (card-query db-id :dataset "model"))
 
 (defmethod database-usage-query :metric
-  [_ _db-id table-ids]
-  {:select [[:%count.* :metric]]
-   :from   [:metric]
-   :where  (if table-ids
-             [:in :table_id table-ids]
-             always-false-hsql-expr)})
+  [_ db-id _table-ids]
+  (card-query db-id :metric "metric"))
 
 (defmethod database-usage-query :segment
   [_ _db-id table-ids]
@@ -453,15 +453,14 @@
   []
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
+(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (t2/hydrate [:tables [:fields
-                                     :has_field_values
-                                     [:target :has_field_values]]
-                            :segments
-                            :metrics]))
+               (t2/hydrate
+                (if skip-fields?
+                  [:tables :segments :metrics]
+                  [:tables [:fields :has_field_values [:target :has_field_values]] :segments :metrics])))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -498,15 +497,17 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model remove_inactive]
+  [id include_hidden include_editable_data_model remove_inactive skip_fields]
   {id                          ms/PositiveInt
    include_hidden              [:maybe ms/BooleanValue]
    include_editable_data_model [:maybe ms/BooleanValue]
-   remove_inactive             [:maybe ms/BooleanValue]}
+   remove_inactive             [:maybe ms/BooleanValue]
+   skip_fields                 [:maybe ms/BooleanValue]}
   (db-metadata id
                include_hidden
                include_editable_data_model
-               remove_inactive))
+               remove_inactive
+               skip_fields))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -1116,35 +1117,41 @@
          (vec)
          (sort))))
 
+(defn database-schemas
+  "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
+  [id {:keys [include-editable-data-model? include-hidden?]}]
+  (let [filter-schemas (fn [schemas]
+                         (if include-editable-data-model?
+                           (if-let [f (u/ignore-exceptions
+                                        (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                        (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
+                             schemas)
+                           (filter (partial can-read-schema? id) schemas)))]
+    (if include-editable-data-model?
+      (api/check-404 (t2/select-one Database id))
+      (api/read-check Database id))
+    (->> (t2/select-fn-set :schema Table
+                           :db_id id :active true
+                           (merge
+                             {:order-by [[:%lower.schema :asc]]}
+                             (when-not include-hidden?
+                               ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                               {:where [:= :visibility_type nil]})))
+         filter-schemas
+         ;; for `nil` schemas return the empty string
+         (map #(if (nil? %) "" %))
+         distinct
+         sort)))
+
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [id include_editable_data_model include_hidden]
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanValue]
    include_hidden              [:maybe ms/BooleanValue]}
-  (let [filter-schemas (fn [schemas]
-                         (if include_editable_data_model
-                           (if-let [f (u/ignore-exceptions
-                                       (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                       (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                             schemas)
-                           (filter (partial can-read-schema? id) schemas)))]
-    (if include_editable_data_model
-      (api/check-404 (t2/select-one Database id))
-      (api/read-check Database id))
-    (->> (t2/select-fn-set :schema Table
-                           :db_id id :active true
-                           (merge
-                            {:order-by [[:%lower.schema :asc]]}
-                            (when-not include_hidden
-                              ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                              {:where [:= :visibility_type nil]})))
-         filter-schemas
-         ;; for `nil` schemas return the empty string
-         (map #(if (nil? %) "" %))
-         distinct
-         sort)))
+  (database-schemas id {:include-editable-data-model? include_editable_data_model
+                        :include-hidden? include_hidden}))
 
 (api/defendpoint GET ["/:virtual-db/schemas"
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]

@@ -1,14 +1,15 @@
 (ns metabase.lib.test-util.metadata-providers.merged-mock
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock
     :as lib.tu.metadata-providers.mock]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -25,11 +26,11 @@
    [:tables   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/table]]]]]
    [:fields   {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/field]]]]]
    [:cards    {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]]
-   [:metrics  {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/legacy-metric]]]]]
+   [:metrics  {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/metric]]]]]
    [:segments {:optional true} [:maybe [:sequential [:map [:id ::lib.schema.id/segment]]]]]])
 
 (mu/defn ^:private merged-metadata-map :- lib.tu.metadata-providers.mock/MockMetadata
-  [parent-metadata-provider :- lib.metadata/MetadataProvider
+  [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
    properties               :- MergeableProperties]
   (into {}
         (map (fn [[object-type x]]
@@ -39,11 +40,11 @@
                   :tables   (merge-metadatas parent-metadata-provider lib.metadata/table x)
                   :fields   (merge-metadatas parent-metadata-provider lib.metadata/field x)
                   :cards    (merge-metadatas parent-metadata-provider lib.metadata/card x)
-                  :metrics  (merge-metadatas parent-metadata-provider lib.metadata/legacy-metric x)
+                  :metrics  (merge-metadatas parent-metadata-provider lib.metadata/metric x)
                   :segments (merge-metadatas parent-metadata-provider lib.metadata/segment x))]))
         properties))
 
-(mu/defn merged-mock-metadata-provider :- lib.metadata/MetadataProvider
+(mu/defn merged-mock-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Takes a `parent-metadata-provider` and merges in the `properties` when you fetch specific objects, based on their
   `:id`. `properties` has the same syntax as [[mock-metadata-provider]]. This is useful if you want use existing data
   but mock specific properties, e.g. change the `:base-type` of a certain Field but otherwise use its existing
@@ -53,7 +54,7 @@
      meta/metadata-provider
      {:fields [{:id        (meta/id :checkins :date)
                 :base-type :type/TimeWithLocalTZ}]})"
-  [parent-metadata-provider :- lib.metadata/MetadataProvider
+  [parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
    properties               :- MergeableProperties]
   (lib.tu.metadata-providers.mock/mock-metadata-provider
    parent-metadata-provider

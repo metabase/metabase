@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
-import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
+import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
 import { MoveModal } from "metabase/containers/MoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -130,7 +130,7 @@ class QueryModals extends Component<QueryModalsProps> {
             onCreate={async question => {
               await this.props.onCreate(question);
               const type = question.type();
-              if (type === "model") {
+              if (type === "model" || type === "metric") {
                 onCloseModal();
                 setQueryBuilderMode("view");
               } else {
@@ -171,13 +171,11 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.ADD_TO_DASHBOARD:
         return (
-          <Modal onClose={onCloseModal}>
-            <ConnectedAddToDashSelectDashModal
-              card={this.props.card}
-              onClose={onCloseModal}
-              onChangeLocation={this.props.onChangeLocation}
-            />
-          </Modal>
+          <AddToDashSelectDashModal
+            card={this.props.card}
+            onClose={onCloseModal}
+            onChangeLocation={this.props.onChangeLocation}
+          />
         );
       case MODAL_TYPES.CREATE_ALERT:
         return (

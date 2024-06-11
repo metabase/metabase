@@ -15,7 +15,7 @@ import { SidebarLink } from "./SidebarItems";
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
 
-  border-right: 1px solid ${color("border")};
+  border-inline-end: 1px solid ${color("border")};
 
   ${breakpointMaxSmall} {
     width: 90vw;
@@ -44,7 +44,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   ${breakpointMaxSmall} {
     position: absolute;
     top: 0;
-    left: 0;
+    inline-start: 0;
   }
 `;
 
@@ -85,8 +85,8 @@ export const SidebarContentRoot = styled.div`
 export const SidebarSection = styled.div`
   margin-top: ${space(1)};
   margin-bottom: ${space(2)};
-  padding-left: ${space(2)};
-  padding-right: ${space(2)};
+  padding-inline-start: ${space(2)};
+  padding-inline-end: ${space(2)};
 `;
 
 export const SidebarHeadingWrapper = styled.div`
@@ -101,12 +101,12 @@ export const SidebarHeading = styled.h4`
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.45px;
-  padding-left: ${space(2)};
+  padding-inline-start: ${space(2)};
 `;
 
 export const CollectionsMoreIconContainer = styled.button`
-  margin-left: auto;
-  margin-right: ${space(1)};
+  margin-inline-start: auto;
+  margin-inline-end: ${space(1)};
   cursor: pointer;
 `;
 
@@ -140,7 +140,7 @@ export const LoadingAndErrorTitle = styled.h2`
 `;
 
 export const PaddedSidebarLink = styled(SidebarLink)`
-  padding-left: 12px;
+  padding-inline-start: 12px;
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`

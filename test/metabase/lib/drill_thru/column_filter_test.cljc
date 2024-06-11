@@ -17,8 +17,9 @@
   (testing "column-filter is available for any header click, and nothing else"
     (canned/canned-test
       :drill-thru/column-filter
-      (fn [_test-case context {:keys [click]}]
+      (fn [test-case context {:keys [click]}]
         (and (= click :header)
+             (not (:native? test-case))
              (not (lib.types.isa/structured? (:column context))))))))
 
 (def ^:private key-ops

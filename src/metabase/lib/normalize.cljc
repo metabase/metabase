@@ -16,15 +16,15 @@
 
 ;;; TODO -- we are missing some stuff for sure.
 (def ^:private lib-type->schema
-  {:mbql/query             ::lib.schema/query
-   :mbql.stage/mbql        ::lib.schema/stage.mbql
-   :mbql.stage/native      ::lib.schema/stage.native
-   :metadata/database      ::lib.schema.metadata/database
-   :metadata/table         ::lib.schema.metadata/table
-   :metadata/column        ::lib.schema.metadata/column
-   :metadata/card          ::lib.schema.metadata/card
-   :metadata/segment       ::lib.schema.metadata/segment
-   :metadata/legacy-metric ::lib.schema.metadata/legacy-metric})
+  {:mbql/query        ::lib.schema/query
+   :mbql.stage/mbql   ::lib.schema/stage.mbql
+   :mbql.stage/native ::lib.schema/stage.native
+   :metadata/database ::lib.schema.metadata/database
+   :metadata/table    ::lib.schema.metadata/table
+   :metadata/column   ::lib.schema.metadata/column
+   :metadata/card     ::lib.schema.metadata/card
+   :metadata/segment  ::lib.schema.metadata/segment
+   :metadata/metric   ::lib.schema.metadata/metric})
 
 (defn- infer-schema [x]
   (cond

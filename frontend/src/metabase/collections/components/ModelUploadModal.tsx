@@ -114,10 +114,6 @@ export function ModelUploadModal({
     <Modal
       opened={opened}
       title={t`Select upload destination`}
-      styles={{
-        header: { padding: "2.5rem 2.5rem 1.5rem 2.5rem" },
-        body: { padding: "0 2.5rem 2.5rem 2.5rem" },
-      }}
       onClose={onClose}
     >
       <Stack mb="lg">

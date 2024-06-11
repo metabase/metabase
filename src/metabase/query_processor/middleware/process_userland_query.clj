@@ -24,11 +24,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *save-execution-metadata-async*
-  "Whether to save execution metadata like QueryExecution or FieldUsage asynchronously.
-  It's true by default and should only be changed for testing purposes"
-  true)
-
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
@@ -58,23 +53,21 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (let [execution-info (add-running-time execution-info)
-        ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-        ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-        ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-        ;;
-        ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-        ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-        ;;    attempt to use closed DB connections
-        f              (fn []
-                         (log/trace "Saving QueryExecution info")
-                         (try
-                          (save-execution-metadata!* execution-info field-usages)
-                          (catch Throwable e
-                            (log/error e "Error saving query execution info"))))]
-    (if *save-execution-metadata-async*
-      (.submit clojure.lang.Agent/pooledExecutor ^Runnable f)
-      (f))))
+  (qp.util/with-execute-async
+    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+    ;;
+    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+    ;;    attempt to use closed DB connections
+    (fn []
+      (let [execution-info (add-running-time execution-info)]
+        (log/trace "Saving QueryExecution info")
+        (try
+          (save-execution-metadata!* execution-info field-usages)
+          (catch Throwable e
+            (log/error e "Error saving query execution info")))))))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows field-usages]
   (let [qe-map (assoc query-execution
@@ -132,26 +125,32 @@
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys [executed-by query-hash context action-id card-id dashboard-id pulse-id]} :info
-    database-id                                                                      :database
-    query-type                                                                       :type
-    :as                                                                              query}]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+     :pivot/keys [original-query]} :info
+    database-id                    :database
+    query-type                     :type
+    :as                            query}]
   {:pre [(bytes? query-hash)]}
-  {:database_id       database-id
-   :executor_id       executed-by
-   :action_id         action-id
-   :card_id           card-id
-   :dashboard_id      dashboard-id
-   :pulse_id          pulse-id
-   :context           context
-   :hash              query-hash
-   :native            (= (keyword query-type) :native)
-   :json_query        (cond-> (dissoc query :info)
-                        (empty? (:parameters query)) (dissoc :parameters))
-   :started_at        (t/zoned-date-time)
-   :running_time      0
-   :result_rows       0
-   :start_time_millis (System/currentTimeMillis)})
+  (let [json-query (if original-query
+                     (-> original-query
+                         (dissoc :info)
+                         (assoc :was-pivot true))
+                     (cond-> (dissoc query :info)
+                       (empty? (:parameters query)) (dissoc :parameters)))]
+    {:database_id       database-id
+     :executor_id       executed-by
+     :action_id         action-id
+     :card_id           card-id
+     :dashboard_id      dashboard-id
+     :pulse_id          pulse-id
+     :context           context
+     :hash              query-hash
+     :native            (= (keyword query-type) :native)
+     :json_query        json-query
+     :started_at        (t/zoned-date-time)
+     :running_time      0
+     :result_rows       0
+     :start_time_millis (System/currentTimeMillis)}))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.

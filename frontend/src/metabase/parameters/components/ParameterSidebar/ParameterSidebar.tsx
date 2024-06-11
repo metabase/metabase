@@ -3,9 +3,10 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { getEmbeddedParameterVisibility } from "metabase/dashboard/selectors";
 import { slugify } from "metabase/lib/formatting";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Tabs } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
+import { Tabs, Text } from "metabase/ui";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -54,9 +55,6 @@ export interface ParameterSidebarProps {
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
-  getEmbeddedParameterVisibility: (
-    slug: string,
-  ) => EmbeddingParameterVisibility | null;
 }
 
 export const ParameterSidebar = ({
@@ -74,13 +72,16 @@ export const ParameterSidebar = ({
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
-  getEmbeddedParameterVisibility,
   hasMapping,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState<"filters" | "settings">(tabs[0].value);
   const prevParameterId = usePrevious(parameterId);
+
+  const embeddedParameterVisibility = useSelector(state =>
+    getEmbeddedParameterVisibility(state, parameter.slug),
+  );
 
   useEffect(() => {
     if (prevParameterId !== parameterId) {
@@ -183,28 +184,40 @@ export const ParameterSidebar = ({
     >
       <Tabs radius={0} value={tab} onTabChange={handleTabChange}>
         <Tabs.List grow>
-          {tabs.map(tab => {
-            return (
-              <Tabs.Tab
-                pl={0}
-                pr={0}
-                pt="md"
-                pb="md"
-                value={tab.value}
-                key={tab.value}
-              >
-                {tab.name}
-              </Tabs.Tab>
-            );
-          })}
+          {tabs.length > 1 &&
+            tabs.map(tab => {
+              return (
+                <Tabs.Tab
+                  pl={0}
+                  pr={0}
+                  pt="md"
+                  pb="md"
+                  value={tab.value}
+                  key={tab.value}
+                >
+                  {tab.name}
+                </Tabs.Tab>
+              );
+            })}
+          {tabs.length === 1 && (
+            <Text
+              lh="1rem"
+              pb="md"
+              pt="md"
+              fz="md"
+              fw="bold"
+              w="100%"
+              ta="center"
+            >
+              {tabs[0].name}
+            </Text>
+          )}
         </Tabs.List>
 
         <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
           <ParameterSettings
             parameter={parameter}
-            embeddedParameterVisibility={getEmbeddedParameterVisibility(
-              parameter.slug,
-            )}
+            embeddedParameterVisibility={embeddedParameterVisibility}
             isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeType={handleTypeChange}

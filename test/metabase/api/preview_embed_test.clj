@@ -1,6 +1,9 @@
 (ns metabase.api.preview-embed-test
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.preview-embed :as api.preview-embed]
@@ -9,6 +12,7 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
@@ -531,3 +535,45 @@
                 (is (= [[1]]
                        (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
                        (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x"))))))))))))
+
+;;; ------------------------------------------------ Chain filtering -------------------------------------------------
+
+(defn random-embedding-secret-key [] (crypto-random/hex 32))
+
+(def ^:dynamic *secret-key* nil)
+
+(defn sign [claims] (jwt/sign claims *secret-key*))
+
+(defn do-with-new-secret-key [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (mt/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
+(defmacro with-new-secret-key {:style/indent 0} [& body]
+  `(do-with-new-secret-key (fn [] ~@body)))
+
+(defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
+  `(mt/with-temporary-setting-values [~'enable-embedding true]
+     (with-new-secret-key
+       ~@body)))
+
+(defn dash-token
+  [dash-or-id & [additional-token-params]]
+  (sign (merge {:resource {:dashboard (u/the-id dash-or-id)}
+                :params   {}}
+               additional-token-params)))
+
+(deftest params-with-static-list-test
+  (testing "embedding with parameter that has source is a static list"
+    (with-embedding-enabled-and-new-secret-key
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding true
+                                                    :embedding_params {"static_category"       "enabled"
+                                                                       "static_category_label" "enabled"}})
+        (let [signed-token (dash-token dashboard)
+              url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
+          (testing "Should work if the param we're fetching values for is enabled"
+            (testing "\nGET /api/preview-embed/dashboard/:token/params/:param-key/values"
+              (is (= {:values          [["African"] ["American"] ["Asian"]]
+                      :has_more_values false}
+                     (mt/user-http-request :rasta :get 200 url))))))))))

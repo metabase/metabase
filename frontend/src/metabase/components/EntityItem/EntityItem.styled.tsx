@@ -16,7 +16,7 @@ function getForeground(model: string, disabled: boolean) {
     : color("brand");
 }
 
-const getItemPadding = (variant: string) => {
+const getItemPadding = (variant?: string) => {
   switch (variant) {
     case "list":
       return "1rem";
@@ -42,8 +42,8 @@ export const EntityIconWrapper = styled(IconButtonWrapper)<{
 `;
 
 export const EntityItemWrapper = styled.div<{
-  variant: string;
-  disabled: boolean;
+  variant?: string;
+  disabled?: boolean;
 }>`
   display: flex;
   align-items: center;

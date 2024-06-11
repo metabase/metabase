@@ -17,8 +17,9 @@
   (testing "distribution is available only for header clicks on non-aggregate, non-breakout columns which are not PKs, JSON, comments or descriptions"
     (canned/canned-test
       :drill-thru/distribution
-      (fn [_test-case context {:keys [click column-kind column-type]}]
+      (fn [test-case context {:keys [click column-kind column-type]}]
         (and (= click :header)
+             (not (:native? test-case))
              (not (#{:aggregation :breakout} column-kind))
              (not= column-type :pk)
              (not (#{:type/Comment :type/Description} (:semantic-type (:column context))))

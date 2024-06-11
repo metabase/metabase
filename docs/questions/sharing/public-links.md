@@ -61,9 +61,12 @@ You can simulate drill-through on a public dashboard by setting up a [custom cli
 4. On your primary dashboard, create a [custom destination](../../dashboards/interactive.md#custom-destinations) with type "URL".
 5. Set the custom destination to the destination dashboard's public link.
 6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
-  ```
-  /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
-  ```
+
+```
+{%raw%}
+/public/dashboard/?child_filter_name={{parent_column_name}}
+{%endraw%}
+```
 
 For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:
 
@@ -95,14 +98,14 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
 
-| Parameter name          | Possible values                                  |
-| ----------------------- | ------------------------------------------------ |
-| bordered                | true, false                                      |
-| titled                  | true, false                                      |
-| theme                   | null, transparent, night                         |
-| hide_parameters         | [filter name](#filter-parameters)                |
-| font¹                   | [font name](../../configuring-metabase/fonts.md) |
-| hide_download_button²   | true, false                                      |
+| Parameter name        | Possible values                                  |
+| --------------------- | ------------------------------------------------ |
+| bordered              | true, false                                      |
+| titled                | true, false                                      |
+| theme                 | null, transparent, night                         |
+| hide_parameters       | [filter name](#filter-parameters)                |
+| font¹                 | [font name](../../configuring-metabase/fonts.md) |
+| hide_download_button² | true, false                                      |
 
 ¹ Available on [paid plans](https://www.metabase.com/pricing).
 
@@ -197,6 +200,12 @@ Admins can view and deactivate all public links for a Metabase.
 3. Go to the **Settings** tab.
 4. Go to the **Public sharing** tab in the left sidebar.
 5. For each item you want to deactivate, click on the **X** to revoke its public link.
+
+## See all publicly shared content
+
+Admins can see all publicly shared questions, dashboards, and actions in **Admin Settings > Public Sharing**.
+
+![See shared content](../images/see-shared-content.png)
 
 ## Further reading
 

@@ -26,6 +26,8 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
+  entityPickerModal,
+  filterWidget,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -963,6 +965,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
 
+      cy.log("reset filter state");
+
+      filterWidget().icon("close").click();
+
       testChangingBackToDefaultBehavior();
     });
 
@@ -1311,6 +1317,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT);
+
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -1399,6 +1406,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
             parseSpecialCharSequences: false,
           });
+          customLinkTextInput.blur();
+
           cy.button("Done").click();
         });
 
@@ -2148,7 +2157,10 @@ const clickLineChartPoint = () => {
 const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
-  modal().findByText(TARGET_DASHBOARD.name).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Dashboards/ })
+    .click();
+  entityPickerModal().findByText(TARGET_DASHBOARD.name).click();
 };
 
 const addUrlDestination = () => {
@@ -2159,7 +2171,10 @@ const addUrlDestination = () => {
 const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
-  modal().findByText(TARGET_QUESTION.name).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Questions/ })
+    .click();
+  entityPickerModal().findByText(TARGET_QUESTION.name).click();
 };
 
 const addSavedQuestionCreatedAtParameter = () => {

@@ -11,6 +11,7 @@
 
   Extra constraints:
 
+  - MBQL stages only
   - Database must support `:regex` feature for the URL and Email extractions to work."
   (:require
    [medley.core :as m]
@@ -20,6 +21,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -39,13 +41,20 @@
   [query                       :- ::lib.schema/query
    stage-number                :- :int
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
-  (when (and column (nil? value))
+  (when (and column
+             (nil? value)
+             (lib.drill-thru.common/mbql-stage? query stage-number))
     (when-let [drill (column-extract-drill-for-column query column)]
       (merge drill
              {:lib/type :metabase.lib.drill-thru/drill-thru
               :type     :drill-thru/column-extract}
              (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                query stage-number column column-ref :expression)))))
+
+(mu/defn extractions-for-drill :- [:sequential ::lib.schema.extraction/extraction]
+  "Returns the extractions from a given drill."
+  [drill :- ::lib.schema.drill-thru/drill-thru.column-extract]
+  (:extractions drill))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-extract
   [query stage-number drill]

@@ -206,12 +206,7 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.StringFilterOperatorName>([
-      "is-null",
-      "not-null",
-      "is-empty",
-      "not-empty",
-    ])(
+    it.each<Lib.StringFilterOperatorName>(["is-empty", "not-empty"])(
       'should be able to create and destructure a string filter with "%s" operator without values',
       operator => {
         const { filterParts, columnInfo } = addStringFilter(
@@ -310,12 +305,7 @@ describe("filter", () => {
       },
     );
 
-    it.each<Lib.StringFilterOperatorName>([
-      "is-null",
-      "not-null",
-      "is-empty",
-      "not-empty",
-    ])(
+    it.each<Lib.StringFilterOperatorName>(["is-empty", "not-empty"])(
       'should ignore case sensitivity options as they are not supported by "%s" operator without values',
       operator => {
         const { filterParts, columnInfo } = addStringFilter(
@@ -338,17 +328,35 @@ describe("filter", () => {
       },
     );
 
-    it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = addStringFilter(
-        query,
-        Lib.expressionClause("concat", [
-          findColumn(query, tableName, columnName),
-          "A",
-        ]),
-      );
+    it.each<Lib.ExpressionOperatorName>(["is-null", "not-null"])(
+      "should ignore expressions with unsupported %s operator without values",
+      operator => {
+        const { filterParts } = addStringFilter(
+          query,
+          Lib.expressionClause(operator, [
+            findColumn(query, tableName, columnName),
+            "A",
+          ]),
+        );
 
-      expect(filterParts).toBeNull();
-    });
+        expect(filterParts).toBeNull();
+      },
+    );
+
+    it.each<Lib.ExpressionOperatorName>(["concat"])(
+      "should ignore expressions with unsupported %s operator with a value",
+      operator => {
+        const { filterParts } = addStringFilter(
+          query,
+          Lib.expressionClause(operator, [
+            findColumn(query, tableName, columnName),
+            "A",
+          ]),
+        );
+
+        expect(filterParts).toBeNull();
+      },
+    );
 
     it("should ignore expressions without first column", () => {
       const { filterParts } = addStringFilter(

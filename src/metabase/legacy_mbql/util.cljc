@@ -10,25 +10,19 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #?@(:clj
        [[metabase.models.dispatch :as models.dispatch]
         [metabase.util.i18n]])))
 
-(defn qualified-name
-  "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
-  [x]
-  (if (and (keyword? x) (namespace x))
-    (str (namespace x) "/" (name x))
-    (name x)))
-
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (-> (qualified-name token)
+  (-> (u/qualified-name token)
       str/lower-case
       (str/replace #"_" "-")
       keyword))
@@ -240,17 +234,28 @@
      [:relative-datetime n unit]]))
 
 (defn desugar-does-not-contain
-  "Rewrite `:does-not-contain` filter clauses as simpler `:not` clauses."
+  "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
+
+  Note that [[desugar-multi-argument-comparisons]] will have already desugared any 3+ argument `:does-not-contain` to
+  several `[:and [:does-not-contain ...] [:does-not-contain ...] ...]` clauses, which then get rewritten here into
+  `[:and [:not [:contains ...]] [:not [:contains ...]]]`."
   [m]
   (lib.util.match/replace m
     [:does-not-contain & args]
     [:not (into [:contains] args)]))
 
-(defn desugar-equals-and-not-equals-with-extra-args
-  "`:=` and `!=` clauses with more than 2 args automatically get rewritten as compound filters.
+(defn desugar-multi-argument-comparisons
+  "`:=`, `!=`, `:contains`, `:does-not-contain`, `:starts-with` and `:ends-with` clauses with more than 2 args
+  automatically get rewritten as compound filters.
 
-     [:= field x y]  -> [:or  [:=  field x] [:=  field y]]
-     [:!= field x y] -> [:and [:!= field x] [:!= field y]]"
+     [:= field x y]                -> [:or  [:=  field x] [:=  field y]]
+     [:!= field x y]               -> [:and [:!= field x] [:!= field y]]
+     [:does-not-contain field x y] -> [:and [:does-not-contain field x] [:does-not-contain field y]]
+
+  Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
+  `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
+  Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
+  `[:contains {} field x y z]`."
   [m]
   (lib.util.match/replace m
     [:= field x y & more]
@@ -259,7 +264,16 @@
 
     [:!= field x y & more]
     (apply vector :and (for [x (concat [x y] more)]
-                         [:!= field x]))))
+                         [:!= field x]))
+
+    [(op :guard #{:contains :does-not-contain :starts-with :ends-with})
+     (opts :guard map?)
+     field x y & more]
+    (let [tail (when (seq opts) [opts])]
+      (apply vector
+           (if (= op :does-not-contain) :and :or)
+           (for [x (concat [x y] more)]
+             (into [op field x] tail))))))
 
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
@@ -437,7 +451,7 @@
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
-      desugar-equals-and-not-equals-with-extra-args
+      desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
       desugar-is-null-and-not-null
@@ -549,9 +563,9 @@
    (dispatch-by-clause-name-or-class x)))
 
 (mu/defn expression-with-name :- ::mbql.s/FieldOrExpressionDef
-  "Return the `Expression` referenced by a given `expression-name`."
+  "Return the expression referenced by a given `expression-name`."
   [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
-  (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
+  (let [allowed-names [(u/qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
        ;; look for either string or keyword version of `expression-name` in `expressions`
@@ -562,13 +576,13 @@
            (recur source-query found)
            ;; failing that throw an Exception with detailed info about what we tried and what the actual expressions
            ;; were
-           (throw (ex-info (i18n/tru "No expression named ''{0}''" (qualified-name expression-name))
+           (throw (ex-info (i18n/tru "No expression named ''{0}''" (u/qualified-name expression-name))
                            {:type            :invalid-query
                             :expression-name expression-name
                             :tried           allowed-names
                             :found           found}))))))))
 
-(mu/defn aggregation-at-index :- mbql.s/Aggregation
+(mu/defn aggregation-at-index :- ::mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
@@ -584,20 +598,6 @@
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
      ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
      (recur {:query (get-in query [:query :source-query])} index (dec nesting-level)))))
-
-(defn ga-id?
-  "Is this ID (presumably of a Metric or Segment) a GA one?"
-  [id]
-  (boolean
-   (when ((some-fn string? keyword?) id)
-     (re-find #"^ga(id)?:" (name id)))))
-
-(defn ga-metric-or-segment?
-  "Is this metric or segment clause not a Metabase Metric or Segment, but rather a GA one? E.g. something like `[:metric
-  ga:users]`. We want to ignore those because they're not the same thing at all as MB Metrics/Segments and don't
-  correspond to objects in our application DB."
-  [[_ id]]
-  (ga-id? id))
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
@@ -752,7 +752,7 @@
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.legacy-mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (lib.util.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
@@ -767,7 +767,7 @@
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
   [aggregation->name-fn :- fn?
-   aggregations         :- [:sequential mbql.s/Aggregation]]
+   aggregations         :- [:sequential ::mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 

@@ -829,7 +829,8 @@
                    :limit    3}))))))))
 
 (deftest filter-on-specific-date-test
-  (testing "Filtering on a specific date should work correctly regardless of report timezone/DB timezone support (#39769)"
+  (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
+                " timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
@@ -847,24 +848,84 @@
           ;; really expect DateTime-specific stuff to work correctly. MongoDB is one example, since BSON only has the
           ;; one `org.bson.BsonDateTime` type, and checkins.date is created as a `:type/Instant`
           (when (isa? (:base-type checkins-date) :type/Date)
-            (testing (format "\nCheckins.date type info:\n%s"
+            (testing (format "\ncheckins.date type info:\n%s"
                              (u/pprint-to-str
                               (select-keys checkins-date [:base-type :effective-type :database-type])))
               (testing "\nPreprocessing should give us a [:= field date] filter, not [:between field datetime datetime]"
                 (is (=? {:query {:filter [:=
-                                          [:field (mt/id :checkins :date) {:base-type :type/Date, :temporal-unit :default}]
+                                          [:field (mt/id :checkins :date) {:base-type #(isa? % :type/Date), :temporal-unit :default}]
                                           [:absolute-datetime #t "2014-05-08" :default]]}}
                         preprocessed)))
               (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
                 (mt/with-native-query-testing-context query
                   (testing "Results: should return correct rows"
+                    (is (= [[629 "2014-05-08T00:00:00-07:00"]
+                            [733 "2014-05-08T00:00:00-07:00"]
+                            [813 "2014-05-08T00:00:00-07:00"]]
+                           ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
+                           (mt/formatted-rows
+                            [int str]
+                            (qp/process-query query))))))))))))))
+
+(deftest filter-on-specific-date-timestamptz-test
+  (testing (str "Filtering on a specific date (TIMESTAMP WITH TIME ZONE column) should work correctly regardless of"
+                " report timezone/DB timezone support (#39769)")
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+        (let [metadata-provider (lib.tu/merged-mock-metadata-provider
+                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 {:database {:timezone "US/Pacific"}})
+              orders            (lib.metadata/table metadata-provider (mt/id :orders))
+              orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
+              orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+              query             (-> (lib/query metadata-provider orders)
+                                    (lib/filter (lib/= orders-created-at "2019-02-11"))
+                                    (lib/order-by orders-id)
+                                    (lib/with-fields [orders-id orders-created-at]))
+              preprocessed      (qp.preprocess/preprocess query)]
+          ;; only bother testing this on databases that have an actual `:type/DateTimeWithTZ` type e.g. `timestamp with
+          ;; time zone`, we're not testing anything interesting in things like SQLite that just create regular datetime
+          ;; columns here.
+          (when (isa? (:base-type orders-created-at) :type/DateTimeWithTZ)
+            (testing (format "\norders.created_at type info:\n%s"
+                             (u/pprint-to-str
+                              (select-keys orders-created-at [:base-type :effective-type :database-type])))
+              (testing "\nPreprocessing should give us an optimized temporal filter"
+                (is (=? {:query {:filter [:and
+                                          [:>=
+                                           [:field (:id orders-created-at) {:temporal-unit :default}]
+                                           [:absolute-datetime #t "2019-02-11T00:00-08:00" :default]]
+                                          [:<
+                                           [:field (:id orders-created-at) {:temporal-unit :default}]
+                                           [:absolute-datetime #t "2019-02-12T00:00-08:00" :default]]]}}
+                        preprocessed)))
+              (testing (format "\nPreprocessed =\n%s" (u/pprint-to-str preprocessed))
+                (mt/with-native-query-testing-context query
+                  (testing "Results: should return correct rows"
                     (let [results (qp/process-query query)]
-                      (is (= [[629 "2014-05-08T00:00:00-07:00"]
-                              [733 "2014-05-08T00:00:00-07:00"]
-                              [813 "2014-05-08T00:00:00-07:00"]]
-                             ;; WRONG => [[991 "2014-05-09T00:00:00-07:00"]]
-                             (mt/formatted-rows [int str]
-                               results))))))))))))))
+                      (is (= [[1     "2019-02-11T13:40:27.892-08:00"]
+                              [1560  "2019-02-11T05:35:50.709-08:00"]
+                              [1768  "2019-02-11T16:22:03.679-08:00"]
+                              [3057  "2019-02-11T11:01:05.112-08:00"]
+                              [5334  "2019-02-11T07:20:25.814-08:00"]
+                              [5902  "2019-02-11T01:16:45.812-08:00"]
+                              [8154  "2019-02-11T07:31:06.657-08:00"]
+                              [8592  "2019-02-11T06:00:37.007-08:00"]
+                              [12089 "2019-02-11T04:08:01.067-08:00"]
+                              [12560 "2019-02-11T18:05:40.702-08:00"]
+                              [13398 "2019-02-11T07:53:09.529-08:00"]
+                              [13404 "2019-02-11T23:47:23.748-08:00"]
+                              [13528 "2019-02-11T23:39:11.61-08:00"]
+                              [13771 "2019-02-11T19:55:32.041-08:00"]
+                              [14334 "2019-02-11T13:49:10.115-08:00"]
+                              [14607 "2019-02-11T06:31:17.147-08:00"]
+                              [14615 "2019-02-11T05:04:04.546-08:00"]
+                              [15385 "2019-02-11T07:17:31.071-08:00"]
+                              [16099 "2019-02-11T02:40:38.227-08:00"]
+                              [18503 "2019-02-11T08:57:06.93-08:00"]]
+                             (mt/formatted-rows
+                              [int str]
+                              results))))))))))))))
 
 (deftest ^:parallel date-filter-on-datetime-column-test
   (testing "Filtering a DATETIME expression by a DATE literal string should do something sane (#17807)"

@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders } from "__support__/ui";
 import { color } from "metabase/lib/colors";
+import type { ParameterValueOrArray } from "metabase-types/api";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Text } from "../Text";
 
@@ -21,8 +24,19 @@ const defaultProps = {
   isMobile: false,
 };
 
-const setup = (options = {}) => {
-  render(<Text {...defaultProps} {...options} />);
+interface SetupOpts {
+  settings?: Settings;
+  parameterValues?: Record<string, ParameterValueOrArray>;
+}
+
+const setup = ({ parameterValues, ...options }: SetupOpts = {}) => {
+  renderWithProviders(<Text {...defaultProps} {...options} />, {
+    storeInitialState: {
+      dashboard: createMockDashboardState({
+        parameterValues,
+      }),
+    },
+  });
 };
 
 describe("Text", () => {

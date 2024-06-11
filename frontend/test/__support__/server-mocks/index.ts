@@ -14,7 +14,6 @@ export * from "./field";
 export * from "./group";
 export * from "./impersonation";
 export * from "./metabot";
-export * from "./metric";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./revision";

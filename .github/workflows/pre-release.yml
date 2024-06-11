@@ -114,11 +114,16 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
+        folder: [onboarding, search]
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_REPLAYIO_ENABLED: 1
+      # disabled because of out of memory issues
+      # probably related to https://github.com/cypress-io/cypress/issues/27415
+      CYPRESS_NO_COMMAND_LOG: 1
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TERM: xterm
@@ -158,7 +163,7 @@ jobs:
       - name: Run a few important Cypress tests as sanity check
         run: |
           mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
-          yarn test-cypress-run --folder onboarding
+          yarn test-cypress-run --folder ${{ matrix.folder }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

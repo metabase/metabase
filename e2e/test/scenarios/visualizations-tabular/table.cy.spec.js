@@ -20,6 +20,9 @@ import {
   moveDnDKitElement,
   selectFilterOperator,
   expressionEditorWidget,
+  entityPickerModal,
+  entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -31,7 +34,10 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
-    popover().findByText(table).click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText(table).click();
+    });
   }
 
   function selectFromDropdown(option, clickOpts) {
@@ -47,7 +53,7 @@ describe("scenarios > visualizations > table", () => {
     visualize();
 
     // Rename the first ID column, and make sure the second one is not updated
-    headerCells().findByText("ID").click();
+    tableHeaderClick("ID");
     popover().within(() => {
       cy.findByText("Filter by this column");
       cy.icon("gear").click();
@@ -74,13 +80,16 @@ describe("scenarios > visualizations > table", () => {
 
     cy.get("@total")
       .trigger("mousedown", 0, 0, { force: true })
+      .wait(200)
       .trigger("mousemove", 5, 5, { force: true })
+      .wait(200)
       .trigger("mousemove", -220, 0, { force: true })
+      .wait(200)
       .trigger("mouseup", -220, 0, { force: true });
 
     headerCells().eq(1).should("contain.text", "TOTAL");
 
-    headerCells().contains("QUANTITY").click();
+    tableHeaderClick("QUANTITY");
     popover().icon("eye_crossed_out").click();
 
     headerCells().contains("QUANTITY").should("not.exist");
@@ -89,8 +98,7 @@ describe("scenarios > visualizations > table", () => {
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
+    tableHeaderClick("City");
 
     popover().within(() => {
       cy.icon("gear").click();
@@ -318,7 +326,7 @@ describe("scenarios > visualizations > table", () => {
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
     openPeopleTable();
-    headerCells().filter(":contains('Password')").click();
+    tableHeaderClick("Password");
 
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Is");
@@ -418,7 +426,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .should("contain.text", "is less than 6");
 
       cy.findByRole("button", { name: /add a rule/i }).click();
-      cy.findByRole("button", { name: /choose a column/i }).click();
+      // popover should open automatically
       popover().findByText("Subtotal").click();
       cy.realPress("Escape");
       cy.findByRole("button", { name: /is equal to/i }).click();
@@ -539,7 +547,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     );
 
     // Open the formatting menu
-    cy.findByTestId("field-info-popover").click();
+    tableHeaderClick("CREATION_TIME");
 
     popover().icon("gear").click();
 

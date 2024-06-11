@@ -111,8 +111,7 @@ export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-export const isDimension = col =>
-  col && col.source !== "aggregation" && !isDescription(col);
+export const isDimension = col => col && col.source !== "aggregation";
 export const isMetric = col =>
   col && col.source !== "breakout" && isSummable(col);
 

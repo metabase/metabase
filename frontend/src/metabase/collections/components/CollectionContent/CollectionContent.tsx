@@ -1,24 +1,23 @@
-import _ from "underscore";
+import { useCallback } from "react";
 
 import {
-  useCollectionQuery,
-  useCollectionListQuery,
-  useDatabaseListQuery,
   useBookmarkListQuery,
+  useCollectionListQuery,
+  useCollectionQuery,
+  useDatabaseListQuery,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Bookmark from "metabase/entities/bookmarks";
 import Databases from "metabase/entities/databases";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type {
-  CollectionId,
   BookmarkId,
   BookmarkType,
+  CollectionId,
 } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
@@ -43,14 +42,12 @@ export function CollectionContent({
     id: collectionId,
   });
 
-  const uploadDbId = useSelector(state =>
-    getSetting(state, "uploads-database-id"),
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
   );
-  const uploadsEnabled = useSelector(state =>
-    getSetting(state, "uploads-enabled"),
-  );
+  const uploadsEnabled = !!uploadDbId;
 
-  const canUploadToDb = useSelector(
+  const canCreateUploadInDb = useSelector(
     state =>
       uploadDbId &&
       Databases.selectors
@@ -61,7 +58,6 @@ export function CollectionContent({
   );
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const isNavbarOpen = useSelector(getIsNavbarOpen);
 
   const dispatch = useDispatch();
 
@@ -70,16 +66,13 @@ export function CollectionContent({
   const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
     dispatch(Bookmark.actions.delete({ id, type }));
 
-  const uploadFile = ({
-    file,
-    modelId,
-    collectionId,
-    tableId,
-    uploadMode,
-  }: UploadFileProps) =>
-    dispatch(
-      uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
-    );
+  const uploadFile = useCallback(
+    ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
+      dispatch(
+        uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
+      ),
+    [dispatch],
+  );
 
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;
@@ -102,10 +95,9 @@ export function CollectionContent({
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}
       isAdmin={isAdmin}
-      isNavbarOpen={isNavbarOpen}
       uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
-      canUploadToDb={canUploadToDb}
+      canCreateUploadInDb={canCreateUploadInDb}
     />
   );
 }

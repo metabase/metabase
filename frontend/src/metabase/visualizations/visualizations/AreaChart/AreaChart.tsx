@@ -20,7 +20,6 @@ import {
   LEGEND_SETTINGS,
 } from "../../lib/settings/graph";
 import type {
-  ComputedVisualizationSettings,
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "../../types";
@@ -46,12 +45,6 @@ Object.assign(
       ...TOOLTIP_SETTINGS,
       ...LEGEND_SETTINGS,
     } as any as VisualizationSettingsDefinitions,
-    onDisplayUpdate: (settings: ComputedVisualizationSettings) => {
-      if (settings["stackable.stack_display"]) {
-        settings["stackable.stack_display"] = "area";
-      }
-      return settings;
-    },
   }),
 );
 

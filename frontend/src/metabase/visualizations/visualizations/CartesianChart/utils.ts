@@ -1,9 +1,9 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts/core";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import type {
-  BaseCartesianChartModel,
+  CartesianChartModel,
   DataKey,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -57,7 +57,7 @@ export const getGridSizeAdjustedSettings = (
 
 export const MAX_SERIES = 100;
 
-export const validateChartModel = (chartModel: BaseCartesianChartModel) => {
+export const validateChartModel = (chartModel: CartesianChartModel) => {
   if (chartModel.seriesModels.length > MAX_SERIES) {
     throw new Error(
       t`This chart type doesn't support more than ${MAX_SERIES} series of data.`,
@@ -79,7 +79,7 @@ export const getHoveredSeriesDataKey = (
 
 export const getHoveredEChartsSeriesIndex = (
   seriesModels: SeriesModel[],
-  option: EChartsOption,
+  option: EChartsCoreOption,
   hovered: HoveredObject | undefined,
 ): number | null => {
   const hoveredSeriesDataKey = getHoveredSeriesDataKey(seriesModels, hovered);

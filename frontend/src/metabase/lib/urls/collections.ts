@@ -1,6 +1,9 @@
 import slugg from "slugg";
 
-import { isRootPersonalCollection } from "metabase/collections/utils";
+import {
+  isRootPersonalCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import type {
   Collection as BaseCollection,
   CollectionId,
@@ -12,7 +15,7 @@ export const otherUsersPersonalCollections = () => "/collection/users";
 
 type Collection = Pick<
   BaseCollection,
-  "id" | "name" | "originalName" | "personal_owner_id"
+  "id" | "name" | "originalName" | "personal_owner_id" | "type"
 >;
 
 function slugifyPersonalCollection(collection: Collection) {
@@ -35,13 +38,19 @@ function slugifyPersonalCollection(collection: Collection) {
   return slug;
 }
 
-export function collection(collection?: Pick<Collection, "id" | "name">) {
+export function collection(
+  collection?: Pick<Collection, "id" | "type" | "name">,
+) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";
 
   if (isSystemCollection) {
     const id = collection && collection.id ? collection.id : "root";
     return `/collection/${id}`;
+  }
+
+  if (isRootTrashCollection(collection)) {
+    return `/trash`;
   }
 
   const slug = isRootPersonalCollection(collection)

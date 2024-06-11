@@ -36,7 +36,7 @@ const propTypes = {
   showSchemaInHeader: PropTypes.bool,
 };
 
-const TableBrowser = ({
+export const TableBrowser = ({
   database,
   tables,
   getTableUrl,

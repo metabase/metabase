@@ -181,7 +181,7 @@
 
   IMPORTANT: this function takes `data-source` but not `liquibase` because `.listUnrunChangeSets` is buggy. See #38257."
   [^DataSource data-source]
-  (with-liquibase [liquibase (.getConnection data-source)]
+  (with-liquibase [liquibase data-source]
     (.listUnrunChangeSets liquibase nil (LabelExpression.))))
 
 (defn- migration-lock-exists?

@@ -12,6 +12,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.merged-mock :as providers.merged-mock]
@@ -72,11 +73,18 @@
    (providers.mock/mock-metadata-provider cards)))
 
 (def metadata-provider-with-model
-  "[[meta/metadata-provider]], but with a Card with ID 1."
+  "[[meta/metadata-provider]], but with a Model with ID 1."
   (lib/composed-metadata-provider
    meta/metadata-provider
    (providers.mock/mock-metadata-provider
     (assoc-in cards [:cards 0 :type] :model))))
+
+(def metadata-provider-with-metric
+  "[[meta/metadata-provider]], but with a Metric with ID 1."
+  (lib/composed-metadata-provider
+   meta/metadata-provider
+   (providers.mock/mock-metadata-provider
+    (assoc-in cards [:cards 0 :type] :metric))))
 
 (def query-with-source-card
   "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
@@ -266,11 +274,30 @@
   (merge (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables)))
          (make-mock-cards-special-cases meta/metadata-provider)))
 
-(defn metadata-provider-with-mock-card [card]
-  (lib/composed-metadata-provider
-    meta/metadata-provider
-    (mock-metadata-provider
-      {:cards [card]})))
+(defn metadata-provider-with-mock-card
+  ([card]
+   (metadata-provider-with-mock-card meta/metadata-provider card))
+  ([metadata-provider card]
+   (lib/composed-metadata-provider
+     metadata-provider
+     (mock-metadata-provider
+       {:cards [card]}))))
+
+(defn metadata-provider-with-card-from-query
+  "A metadata provider with a card created from query and given id."
+  ([id query]
+   (metadata-provider-with-card-from-query meta/metadata-provider id query))
+  ([metadata-provider id query & [card-details]]
+   (metadata-provider-with-mock-card
+     metadata-provider
+     (merge {:lib/type        :metadata/card
+             :id              id
+             :database-id     (:id (lib.metadata/database metadata-provider))
+             :dataset-query   (lib.convert/->legacy-MBQL query)
+             :name            (str (gensym))
+             :result-metadata (->> (lib/returned-columns query)
+                                   (sort-by :id))}
+            card-details))))
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
@@ -302,7 +329,7 @@
 
   This is mostly around for historic reasons; consider using [[metabase.lib.core/query]] instead, which is closer to
   real-life usage."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    {mbql-query :dataset-query, metadata :result-metadata} :- [:map
                                                               [:dataset-query :map]
                                                               [:result-metadata [:sequential {:min 1} :map]]]]

@@ -26,7 +26,8 @@ export const CollectionBreadcrumbs = ({
 
   const ancestors = collection.effective_ancestors || [];
   const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
-  const parts = hasRoot ? ancestors.splice(0, 1) : ancestors;
+  const [_, ...crumbsWithoutRoot] = ancestors;
+  const parts = hasRoot ? crumbsWithoutRoot : ancestors;
 
   const content =
     parts.length > 1 && !isExpanded ? (

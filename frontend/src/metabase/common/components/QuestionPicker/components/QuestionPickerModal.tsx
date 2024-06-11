@@ -12,6 +12,7 @@ import type {
   QuestionPickerOptions,
   QuestionPickerModel,
   QuestionPickerValueItem,
+  QuestionPickerValue,
 } from "../types";
 
 import {
@@ -24,7 +25,7 @@ interface QuestionPickerModalProps {
   onChange: (item: QuestionPickerValueItem) => void;
   onClose: () => void;
   options?: QuestionPickerOptions;
-  value?: Pick<QuestionPickerItem, "id" | "model">;
+  value?: QuestionPickerValue;
   models?: QuestionPickerModel[];
 }
 
@@ -32,9 +33,11 @@ const canSelectItem = (
   item: QuestionPickerItem | null,
 ): item is QuestionPickerValueItem => {
   return (
-    !!item &&
+    item != null &&
     item.can_write !== false &&
-    (item.model === "card" || item.model === "dataset")
+    (item.model === "card" ||
+      item.model === "dataset" ||
+      item.model === "metric")
   );
 };
 
@@ -100,6 +103,19 @@ export const QuestionPickerModal = ({
         />
       ),
     },
+    {
+      displayName: t`Metrics`,
+      model: "metric",
+      icon: "metric",
+      element: (
+        <QuestionPicker
+          onItemSelect={handleItemSelect}
+          initialValue={value}
+          options={options}
+          models={["metric"]}
+        />
+      ),
+    },
   ];
 
   const filteredTabs = tabs.filter(tab =>
@@ -117,6 +133,13 @@ export const QuestionPickerModal = ({
       initialValue={value}
       tabs={filteredTabs}
       options={options}
+      searchParams={
+        options.showRootCollection === false
+          ? { filter_items_in_personal_collection: "only" }
+          : options.showPersonalCollections === false
+          ? { filter_items_in_personal_collection: "exclude" }
+          : undefined
+      }
       searchResultFilter={results => results}
       actionButtons={[]}
     />

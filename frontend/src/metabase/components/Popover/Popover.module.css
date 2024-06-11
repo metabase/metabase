@@ -17,8 +17,8 @@
 
 .PopoverBody.PopoverBodyWithBackground {
   border: 1px solid #edf2f5;
-  box-shadow: 0 4px 10px var(--color-shadow);
-  background-color: var(--color-bg-white);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  background-color: var(--mb-color-bg-white);
   border-radius: 6px;
   overflow: auto;
 }
@@ -33,13 +33,13 @@
 :global(.tippy-box[data-theme~="tooltip"]) {
   color: white;
   font-weight: bold;
-  background-color: var(--color-bg-black);
+  background-color: var(--mb-color-bg-black);
   border: none;
   pointer-events: none;
   line-height: 1.26;
   font-size: 12px;
   border-radius: 6px;
-  box-shadow: 0 4px 10px var(--color-shadow);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
   overflow-wrap: break-word;
 }
 
@@ -53,9 +53,9 @@
 
 :global(.tippy-box[data-theme~="popover"]) {
   font-size: inherit;
-  border: 1px solid var(--color-border);
-  box-shadow: 0 4px 10px var(--color-shadow);
-  background-color: var(--color-bg-white);
+  border: 1px solid var(--mb-color-border);
+  box-shadow: 0 4px 10px var(--mb-color-shadow);
+  background-color: var(--mb-color-bg-white);
   border-radius: 6px;
   overflow: auto;
 }
@@ -101,7 +101,7 @@
   background: white;
   position: absolute;
   bottom: 0;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--mb-color-border);
   border-bottom-right-radius: 6px;
   border-bottom-left-radius: 6px;
   padding-top: 8px;
@@ -115,25 +115,25 @@
 /* create a slightly larger arrow on the top for border purposes */
 :global(.tether-element-attached-top) .PopoverBodyWithArrow::before {
   top: -20px;
-  border-bottom-color: var(--color-border);
+  border-bottom-color: var(--mb-color-border);
 }
 
 /* create a smaller inset arrow on the top */
 :global(.tether-element-attached-top) .PopoverBodyWithArrow::after {
   top: -18px;
-  border-bottom-color: var(--color-bg-white);
+  border-bottom-color: var(--mb-color-bg-white);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
 :global(.tether-element-attached-bottom) .PopoverBodyWithArrow::before {
   bottom: -20px;
-  border-top-color: var(--color-border);
+  border-top-color: var(--mb-color-border);
 }
 
 /* create a smaller inset arrow on the bottom */
 :global(.tether-element-attached-bottom) .PopoverBodyWithArrow::after {
   bottom: -18px;
-  border-top-color: var(--color-bg-white);
+  border-top-color: var(--mb-color-bg-white);
 }
 
 /* if the tether element is attached right, move our arrows right */

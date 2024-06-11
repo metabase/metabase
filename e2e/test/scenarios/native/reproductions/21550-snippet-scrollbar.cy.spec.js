@@ -25,9 +25,10 @@ describe("issue 21550", () => {
       cy.wait("@rootCollection");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("people").realHover();
-    cy.get(".Icon-chevrondown").click({ force: true });
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("people").realHover();
+      cy.icon("chevrondown").click({ force: true });
+    });
 
     cy.get("pre").then($pre => {
       const preWidth = $pre[0].getBoundingClientRect().width;

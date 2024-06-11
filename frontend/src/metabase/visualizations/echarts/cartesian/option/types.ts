@@ -1,7 +1,12 @@
-import type { RegisteredSeriesOption } from "echarts";
+import type {
+  CustomSeriesOption,
+  LineSeriesOption,
+  BarSeriesOption,
+  ScatterSeriesOption,
+} from "echarts/charts";
 
 export type EChartsSeriesOption =
-  | RegisteredSeriesOption["line"]
-  | RegisteredSeriesOption["bar"]
-  | RegisteredSeriesOption["scatter"]
-  | RegisteredSeriesOption["custom"];
+  | LineSeriesOption
+  | BarSeriesOption
+  | ScatterSeriesOption
+  | CustomSeriesOption;

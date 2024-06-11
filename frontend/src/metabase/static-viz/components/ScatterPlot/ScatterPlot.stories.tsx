@@ -133,3 +133,10 @@ GoalLine.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const PinToZero = Template.bind({});
+PinToZero.args = {
+  rawSeries: data.pinToZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};

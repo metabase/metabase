@@ -22,13 +22,11 @@
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.models.timeline :as timeline]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
@@ -86,8 +84,14 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when (some? archived)
-                         [:= :archived archived])
+                       (case archived
+                         nil nil
+                         false [:and
+                                [:not= :id (collection/trash-collection-id)]
+                                [:not :archived]]
+                         true [:or
+                               [:= :id (collection/trash-collection-id)]
+                               :archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (when personal-only
@@ -100,7 +104,10 @@
                         (collection/permissions-set->visible-collection-ids permissions-set))]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                          [[[:case [:= :type nil] 0 :else 1]] :asc]
+                          [[[:case
+                             [:= :type nil] 0
+                             [:= :type collection/trash-collection-type] 1
+                             :else 2]] :asc]
                           [:%lower.name :asc]]})
    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -121,7 +128,7 @@
    namespace                      [:maybe ms/NonBlankString]
    personal-only                  [:maybe ms/BooleanValue]}
   (as->
-   (select-collections {:archived                       archived
+   (select-collections {:archived                       (boolean archived)
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
@@ -202,12 +209,16 @@
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                          (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                                          (update acc (case (keyword card-type)
+                                                       :model :dataset
+                                                       :metric :metric
+                                                       :card) conj collection-id))
                                         {:dataset #{}
+                                         :metric  #{}
                                          :card    #{}}
-                                        (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
+                                        (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                             :from            [:report_card]
+                                                             :where           [:= :archived false]}))
             collections-with-details (map collection/personal-collection-with-ui-details collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -218,6 +229,7 @@
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
   #{"card"       ; SavedQuestion
     "dataset"    ; Model. TODO : update this
+    "metric"
     "collection"
     "dashboard"
     "pulse"      ; I think the only kinds of Pulses we still have are Alerts?
@@ -373,11 +385,17 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :c.trashed_from_collection_id
+                     :c.archived
                      :c.dataset_query
-                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [(h2x/literal (case card-type
+                                     :model "dataset"
+                                     :metric  "metric"
+                                     "card"))
+                      :model]
                      [:u.id :last_edit_user]
                      [:u.email :last_edit_email]
                      [:u.first_name :last_edit_first_name]
@@ -394,7 +412,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    dataset?
+                    (= :model card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -405,15 +423,30 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
-      (cond-> dataset?
+                   (case card-type
+                     :model
+                     [:= :c.type (h2x/literal "model")]
+
+                     :metric
+                     [:= :c.type (h2x/literal "metric")]
+
+                     [:= :c.type (h2x/literal "question")])]}
+      (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
-  (card-query true collection options))
+  (card-query :model collection options))
+
+(defmethod collection-children-query :metric
+  [_ collection options]
+  (card-query :metric collection options))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query :question collection options))
 
 (defmethod post-process-collection-children :dataset
   [_ collection rows]
@@ -424,10 +457,6 @@
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
          (post-process-collection-children :card collection))))
-
-(defmethod collection-children-query :card
-  [_ collection options]
-  (card-query false collection options))
 
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
@@ -464,25 +493,36 @@
       false)))
 
 (defn- fully-parameterized-query? [row]
-  (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
+  (let [parsed-query (-> row :dataset_query json/parse-string)
+        ;; TODO TB handle pMBQL native queries
+        native-query (when (contains? parsed-query "native")
+                       (-> parsed-query mbql.normalize/normalize :native))]
     (if-let [template-tags (:template-tags native-query)]
       (fully-parameterized-text? (:query native-query) template-tags)
       true)))
 
 (defn- post-process-card-row [row]
-  (-> row
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+  (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
+      (update :archived api/bit->boolean)
+      (t2/hydrate :can_write :can_restore)
+      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ _ rows]
   (map post-process-card-row rows))
 
+(defmethod post-process-collection-children :metric
+  [_ _ rows]
+  (map post-process-card-row rows))
+
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                   :d.trashed_from_collection_id
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
+                   :archived
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
@@ -502,12 +542,16 @@
   [_ collection options]
   (dashboard-query collection options))
 
+(defn- post-process-dashboard [dashboard]
+  (-> (t2/instance :model/Dashboard dashboard)
+      (update :archived api/bit->boolean)
+      (t2/hydrate :can_write :can_restore)
+      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+              :dataset_query :table_id :query_type :is_upload)))
+
 (defmethod post-process-collection-children :dashboard
   [_ _ rows]
-  (map #(dissoc %
-                :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
-                :dataset_query :table_id :query_type :is_upload)
-       rows))
+  (map post-process-dashboard rows))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
@@ -522,12 +566,15 @@
   [collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
-              [:= :archived archived?]
+              (if archived?
+                [:or [:= :archived true] [:= :id (collection/trash-collection-id)]]
+                [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])
               (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
              :select [:id
+                      :archived
                       :name
                       :description
                       :entity_id
@@ -556,14 +603,18 @@
 
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                  (update acc (if (= (keyword card-type) :model) :dataset :card) conj collection-id))
+                  (update acc (case (keyword card-type)
+                               :model :dataset
+                               :metric :metric
+                               :card) conj collection-id))
                 {:dataset #{}
+                 :metric  #{}
                  :card    #{}}
-                (mdb.query/reducible-query {:select-distinct [:collection_id :type]
-                                            :from            [:report_card]
-                                            :where           [:and
-                                                              [:= :archived false]
-                                                              [:in :collection_id descendant-collection-ids]]}))
+                (t2/reducible-query {:select-distinct [:collection_id :type]
+                                     :from            [:report_card]
+                                     :where           [:and
+                                                       [:= :archived false]
+                                                       [:in :collection_id descendant-collection-ids]]}))
 
         collections-containing-dashboards
         (->> (t2/query {:select-distinct [:collection_id]
@@ -605,7 +656,10 @@
               (assoc row :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
               (dissoc row :personal_owner_id)))]
     (for [row (annotate-collections parent-collection rows)]
-      (-> (t2/hydrate (t2/instance :model/Collection row) :can_write :effective_location)
+      (-> (t2/instance :model/Collection row)
+          collection/maybe-localize-trash-name
+          (update :archived api/bit->boolean)
+          (t2/hydrate :can_write :effective_location :collection/can_restore)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
@@ -628,7 +682,37 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking))
+  (dissoc row :collection_type :model_ranking :trashed_from_collection_id))
+
+(defn- model-name->toucan-model [model-name]
+  (case (keyword model-name)
+    :collection :model/Collection
+    :card       :model/Card
+    :dataset    :model/Card
+    :metric     :model/Card
+    :dashboard  :model/Dashboard
+    :pulse      :model/Pulse
+    :snippet    :model/NativeQuerySnippet
+    :timeline   :model/Timeline))
+
+(defn- can-read-in-trash? [collection row]
+  (mi/can-write?
+   (t2/instance
+    (model-name->toucan-model (:model row))
+    (assoc (select-keys row [:id :trashed_from_collection_id :archived])
+           :collection_id (:id collection)))))
+
+(defn- maybe-check-permissions
+  "Generally, if you have permission to read a collection, you have permission to read everything in it.
+  This is *not* true for the Trash collection. This contains all trashed items. In this case, we need to filter the
+  list down to those items for which the user actually has permissions.
+
+  Because this is the trash collection, we only want to show the user items which they could move out of the trash if
+  desired. Therefore, we want *write* permissions, not just read."
+  [collection rows]
+  (cond->> rows
+    (collection/is-trash? collection)
+    (filter #(can-read-in-trash? collection %))))
 
 (defn- post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -636,24 +720,15 @@
   [collection rows]
   (->> (map-indexed (fn [i row] (vary-meta row assoc ::index i)) rows) ;; keep db sort order
        (map #(assoc % :collection_id (:id collection)))
-       (map remove-unwanted-keys)
+       (maybe-check-permissions collection)
        (group-by :model)
        (into []
              (comp (map (fn [[model rows]]
                           (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
+       (map remove-unwanted-keys)
        (sort-by (comp ::index meta))))
-
-(defn- model-name->toucan-model [model-name]
-  (case (keyword model-name)
-    :collection Collection
-    :card       Card
-    :dataset    Card
-    :dashboard  Dashboard
-    :pulse      Pulse
-    :snippet    NativeQuerySnippet
-    :timeline   Timeline))
 
 (defn- select-name
   "Takes a honeysql select column and returns a keyword of which column it is.
@@ -675,7 +750,8 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type
+   :collection_type [:archived :boolean]
+   [:trashed_from_collection_id :integer]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -695,10 +771,11 @@
   (let [rankings {:dashboard  1
                   :pulse      2
                   :dataset    3
-                  :card       4
-                  :snippet    5
-                  :collection 6
-                  :timeline   7}]
+                  :metric     4
+                  :card       5
+                  :snippet    6
+                  :collection 7
+                  :timeline   8}]
     (conj select-clause [[:inline (get rankings model 100)]
                          :model_ranking])))
 
@@ -706,7 +783,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
+        (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 
@@ -716,7 +793,10 @@
   [sort-info db-type]
   ;; always put "Metabase Analytics" last
   (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-         [[[:case [:= :collection_type nil] 0 :else 1]] :asc]]
+         [[[:case
+            [:= :collection_type nil] 0
+            [:= :collection_type collection/trash-collection-type] 1
+            :else 2]] :asc]]
         (case sort-info
           nil                     [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]
@@ -800,7 +880,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet :timeline]
+  (let [valid-models (for [model-kw [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -822,13 +902,19 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal :collection/can_restore)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
   {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
+
+(api/defendpoint GET "/trash"
+  "Fetch the trash collection, as in `/api/collection/:trash-id`"
+  []
+  {}
+  (collection-detail (api/read-check (collection/trash-collection))))
 
 (api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
@@ -866,7 +952,7 @@
         collection (api/read-check Collection id)]
     (u/prog1 (collection-children collection
                                   {:models       model-kwds
-                                   :archived?    archived
+                                   :archived?    (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state (keyword pinned_state)
                                    :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                                   (or (some-> sort_direction normalize-sort-choice) :asc)]})
@@ -926,11 +1012,11 @@
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
      root-collection
-     {:models       model-kwds
-      :archived?    archived
-      :pinned-state (keyword pinned_state)
-      :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                     (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+     {:archived?      (boolean archived)
+      :models         model-kwds
+      :pinned-state   (keyword pinned_state)
+      :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
+                       (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -954,16 +1040,16 @@
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
     (api/check-superuser))
   ;; Now create the new Collection :)
-  (first
-    (t2/insert-returning-instances!
-      Collection
-      (merge
-        {:name        name
-         :description description
-         :authority_level authority_level
-         :namespace   namespace}
-        (when parent_id
-          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
+  (u/prog1 (t2/insert-returning-instance!
+            :model/Collection
+            (merge
+             {:name            name
+              :description     description
+              :authority_level authority_level
+              :namespace       namespace}
+             (when parent_id
+               {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))
+    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
 (api/defendpoint POST "/"
   "Create a new Collection."
@@ -975,15 +1061,21 @@
    authority_level [:maybe collection/AuthorityLevel]}
   (create-collection! body))
 
-;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
-;; while archiving is handled automatically as part of the `pre-update` logic when you change a Collection's
-;; `archived` value. They are both recursive operations; couldn't we just have moving happen automatically when you
-;; change a `:location` as well?
-(defn- move-collection-if-needed!
+(defn- maybe-send-archived-notifications!
+  "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
+  which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
+  users just as if they had be archived individually via the card API."
+  [& {:keys [collection-before-update collection-updates actor]}]
+  (when (api/column-will-change? :archived collection-before-update collection-updates)
+    (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
+                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
+      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
+
+(defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do
   appropriate permissions checks and move it (and its descendants)."
   [collection-before-update collection-updates]
-  ;; is a [new] parent_id update specified in the PUT request?
+  ;; sanity check: a [new] parent_id update specified in the PUT request?
   (when (contains? collection-updates :parent_id)
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
@@ -1000,27 +1092,43 @@
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
-(defn- check-allowed-to-archive-or-unarchive
-  "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should change the `archived`
-  status of a Collection, do appropriate permissions checks. (Actual recurisve (un)archiving logic is handled by
-  Collection's `pre-update`, so we do not need to manually call `collection/archive-collection!` and the like in this
-  namespace.)"
+(defn- archive-collection!
+  "If input to the `PUT /api/collection/:id` endpoint specifies that we should archive a collection, do the appropriate
+  permissions checks and then move it to the trash."
   [collection-before-update collection-updates]
+  ;; sanity check
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    ;; Check that we have approprate perms
+    (collection/archive-or-unarchive-collection!
+     collection-before-update
+     (select-keys collection-updates [:parent_id :archived]))
+
+    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
+                                         :collection-updates       collection-updates
+                                         :actor                    @api/*current-user*})))
+
+(defn- move-or-archive-collection-if-needed!
+  "If input to the `PUT /api/collection/:id` endpoint (`collection-updates`) specifies that we should either move or
+  archive the collection (archiving means 'moving to the trash' so it makes sense to deal with them together), do the
+  appropriate permissions checks and changes."
+  [collection-before-update collection-updates]
+  (condp #(api/column-will-change? %1 collection-before-update %2) collection-updates
+    ;; note that archiving includes a move. So if they include `archived` (with or without `parent_id`), that's an
+    ;; archive/unarchive. If they only include `parent_id`, that's a move.
+    :archived (archive-collection! collection-before-update collection-updates)
+    :parent_id (move-collection! collection-before-update collection-updates)
+    :no-op))
+
+(api/defendpoint DELETE "/:id"
+  "Delete a collection entirely."
+  [id]
+  {id ms/PositiveInt}
+  (let [collection-before-delete (t2/select-one :model/Collection :id id)]
     (api/check-403
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-       (collection/perms-for-archiving collection-before-update)))))
-
-(defn- maybe-send-archived-notifications!
-  "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
-  which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
-  users just as if they had be archived individually via the card API."
-  [& {:keys [collection-before-update collection-updates actor]}]
-  (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
+                                              (collection/perms-for-archiving collection-before-delete)))
+    ;; we can only delete archived collections
+    (api/check-400 (:archived collection-before-delete))
+    (t2/delete! :model/Collection :id id)))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -1032,9 +1140,7 @@
    parent_id       [:maybe ms/PositiveInt]
    authority_level [:maybe collection/AuthorityLevel]}
   ;; do we have perms to edit this Collection?
-  (let [collection-before-update (api/write-check Collection id)]
-    ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
-    (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
+  (let [collection-before-update (t2/hydrate (api/write-check Collection id) :parent_id)]
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
@@ -1042,15 +1148,12 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
         (t2/update! Collection id updates)))
-    ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
-    (move-collection-if-needed! collection-before-update collection-updates)
-    ;; if we *did* end up archiving this Collection, we most post a few notifications
-    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
-                                         :collection-updates       collection-updates
-                                         :actor                    @api/*current-user*}))
+    ;; if we're trying to move or archive the Collection, go ahead and do that
+    (move-or-archive-collection-if-needed! collection-before-update collection-updates)
+    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 

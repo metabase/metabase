@@ -1,0 +1,70 @@
+import { Box } from "metabase/ui";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { ReduxProvider } from "__support__/storybook";
+import { _UpsellPill } from "./UpsellPill";
+
+export const args = {
+  children: "Metabase Enterprise is so great",
+  link: "https://www.metabase.com",
+  campaign: "enterprise",
+  source: "enterprise-page-footer",
+};
+
+export const argTypes = {
+  children: {
+    control: { type: "text" },
+  },
+  link: {
+    control: { type: "text" },
+  },
+  campaign: {
+    control: { type: "text" },
+  },
+  source: {
+    control: { type: "text" },
+  },
+};
+
+<Meta
+  title="Upsells/Pill"
+  component={_UpsellPill}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Upsell Pill
+
+
+## Examples
+
+export const DefaultTemplate = (args) => (
+  <ReduxProvider>
+    <Box>
+      <_UpsellPill {...args} />
+    </Box>
+  </ReduxProvider>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+
+export const NarrowTemplate = (args) => (
+  <ReduxProvider>
+    <Box style={{ maxWidth: "10rem"}}>
+      <_UpsellPill {...args} />
+    </Box>
+  </ReduxProvider>
+);
+
+export const Narrow = NarrowTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+
+<Canvas>
+  <Story name="Multiline">{Narrow}</Story>
+</Canvas>
+
+

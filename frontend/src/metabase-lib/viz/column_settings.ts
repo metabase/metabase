@@ -87,6 +87,7 @@ function syncTableColumnSettings(
     fieldRef: col.field_ref,
     enabled: true,
   }));
+
   return {
     ...settings,
     "table.columns": [...existingColumnSettings, ...addedColumnSettings],

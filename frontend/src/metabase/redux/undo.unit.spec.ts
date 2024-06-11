@@ -1,5 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 
+import type { Dispatch } from "metabase-types/store";
+
 import undoReducer, {
   addUndo,
   dismissAllUndo,
@@ -77,8 +79,9 @@ describe("metabase/redux/undo", () => {
 });
 
 const createMockStore = () => {
-  return configureStore({
+  const store = configureStore({
     // @ts-expect-error undo is still not converted to TS
     reducer: { undo: undoReducer },
   });
+  return store as typeof store & { dispatch: Dispatch };
 };

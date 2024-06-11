@@ -21,6 +21,7 @@ interface Props {
   query: Lib.Query;
   stageIndex: number;
   onSubmit: (name: string, clause: Lib.ExpressionClause) => void;
+  width?: number;
 }
 
 type State = {
@@ -31,11 +32,7 @@ type State = {
 
 const initialDefaultSeparator = " ";
 
-export function CombineColumns({
-  query: originalQuery,
-  stageIndex: originalStageIndex,
-  onSubmit,
-}: Props) {
+export function CombineColumns({ query, stageIndex, onSubmit, width }: Props) {
   const [state, setState] = useState<State>({
     columnsAndSeparators: [
       {
@@ -52,11 +49,6 @@ export function CombineColumns({
   });
 
   const { columnsAndSeparators, isUsingDefaultSeparator } = state;
-
-  const { query, stageIndex } = Lib.asReturned(
-    originalQuery,
-    originalStageIndex,
-  );
 
   const expressionableColumns = Lib.expressionableColumns(query, stageIndex);
 
@@ -146,7 +138,7 @@ export function CombineColumns({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Box maw="100vw" p="lg" pt={0}>
+      <Box maw="100vw" w={width} p="lg" pt={0}>
         <Stack spacing="lg" mt="lg">
           <Stack spacing="md">
             <Box>

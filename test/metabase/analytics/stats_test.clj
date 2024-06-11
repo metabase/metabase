@@ -211,7 +211,7 @@
                            Pulse        p2 {}
                            Pulse        p3 {}
                            PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly", :channel_type "email"}
+                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly" :schedule_day "sun", :channel_type "email"}
                            PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
                            ;; Pulse 1 gets 2 Cards (1 CSV)
                            PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}

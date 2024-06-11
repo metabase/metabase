@@ -217,14 +217,7 @@ class MetabaseSettings {
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   uploadsEnabled() {
-    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
-  }
-
-  /**
-   * @deprecated use getSetting(state, "ga-enabled")
-   */
-  googleAnalyticsEnabled() {
-    return this.get("ga-enabled") || false;
+    return !!this.get("uploads-settings")?.db_id;
   }
 
   /**

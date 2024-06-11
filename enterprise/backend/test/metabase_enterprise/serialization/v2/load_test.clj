@@ -55,7 +55,7 @@
       (ts/with-dbs [source-db dest-db]
         (testing "extraction succeeds"
           (ts/with-db source-db
-            (ts/create! Collection :name "Basic Collection" :entity_id eid1)
+            (ts/create! :model/Collection :name "Basic Collection" :entity_id eid1)
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id eid1)))
@@ -64,7 +64,8 @@
         (testing "loading into an empty database succeeds"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select Collection)]
+            ;; the trash is serialized and loaded, so restrict to nil type
+            (let [colls (t2/select :model/Collection :type nil)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
@@ -72,7 +73,7 @@
         (testing "loading again into the same database does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (let [colls (t2/select Collection)]
+            (let [colls (t2/select :model/Collection :type nil)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
@@ -107,7 +108,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (t2/count Collection)))
+              (is (= 4 (t2/count Collection :type nil)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))
@@ -125,7 +126,8 @@
           t1s        (atom nil)
           t2s        (atom nil)
           f1s        (atom nil)
-          f2s        (atom nil)]
+          f2s        (atom nil)
+          f3s        (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the two databases"
           (ts/with-db source-db
@@ -135,6 +137,7 @@
             (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
             (reset! f1s  (ts/create! Field    :name "Target Field" :table_id (:id @t1s)))
             (reset! f2s  (ts/create! Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
+            (reset! f3s  (ts/create! Field    :name "Nested Field"   :table_id (:id @t1s) :parent_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "serialization of databases is based on the :name"
@@ -151,10 +154,16 @@
         (testing "foreign key references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
                  (->> @serialized
-                      (filter #(-> % :serdes/meta last :model (= "Field")))
-                      (filter #(-> % :table_id (= ["db2" nil "posts"])))
-                      (keep :fk_target_field_id)
-                      first))))
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Foreign Key"))))
+                      :fk_target_field_id))))
+
+        (testing "Parent field references are serialized as a field path"
+          (is (= ["db1" nil "posts" "Target Field"]
+                 (->> @serialized
+                      (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
+                                    (-> % :name (= "Nested Field"))))
+                      :parent_id))))
 
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-db dest-db
@@ -169,7 +178,11 @@
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
             (is (t2/exists? Table :name "posts" :db_id (:id @db1d)))
-            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))))))))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))
+            (is (= (t2/select-one-fn :id Field :name (:name @f1s))
+                   (t2/select-one-fn :fk_target_field_id Field :name (:name @f2s))))
+            (is (= (t2/select-one-fn :id Field :name (:name @f1s))
+                   (t2/select-one-fn :parent_id Field :name (:name @f3s))))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -1222,4 +1235,37 @@
             (is (thrown? clojure.lang.ExceptionInfo
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
             (is (= (str "qwe_" (:name coll))
-                   (t2/select-one-fn :name Collection :id (:id card))))))))))
+                   (t2/select-one-fn :name Collection :id (:id coll))))))))))
+
+(deftest circular-links-test
+  (mt/with-empty-h2-app-db
+    (let [coll  (ts/create! Collection :name "coll")
+          card  (ts/create! Card :name "card" :collection_id (:id coll))
+          dash1 (ts/create! Dashboard :name "dash1" :collection_id (:id coll))
+          dash2 (ts/create! Dashboard :name "dash2" :collection_id (:id coll))
+          dash3 (ts/create! Dashboard :name "dash3" :collection_id (:id coll))
+          dc1   (ts/create! DashboardCard :dashboard_id (:id dash1) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash2)}})
+          dc2   (ts/create! DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash3)}})
+          dc3   (ts/create! DashboardCard :dashboard_id (:id dash2) :card_id (:id card)
+                            :visualization_settings {:click_behavior {:type     "link"
+                                                                      :linkType "dashboard"
+                                                                      :targetId (:id dash1)}})
+          ser   (atom nil)]
+      (reset! ser (into [] (serdes.extract/extract {:no-settings   true
+                                                    :no-data-model true})))
+      (t2/delete! DashboardCard :id [:in (map :id [dc1 dc2 dc3])])
+      (testing "Circular dependencies are loaded correctly"
+        (is (serdes.load/load-metabase! (ingestion-in-memory @ser)))
+        (let [select-target #(-> % :visualization_settings :click_behavior :targetId)]
+          (is (= (:id dash2)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc1))))
+          (is (= (:id dash3)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
+          (is (= (:id dash1)
+                 (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
