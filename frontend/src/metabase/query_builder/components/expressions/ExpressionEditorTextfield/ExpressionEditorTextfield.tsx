@@ -217,7 +217,7 @@ class ExpressionEditorTextfield extends React.Component<
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
   helpTextTarget = React.createRef<HTMLDivElement>();
-  popupMenuTarget = React.createRef<HTMLDivElement>();
+  popupMenuTarget = React.createRef<HTMLUListElement>();
 
   static defaultProps = {
     expression: "",
