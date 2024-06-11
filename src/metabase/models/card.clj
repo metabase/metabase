@@ -554,7 +554,7 @@
 ;; Maybe this should be after-delete, but that doesn't exist for toucan yet
 (t2/define-before-delete :model/Card
   [card]
-  (search.impl/index {:change-type  :insert
+  (search.impl/index {:change-type  :update
                       :id           (:id card)
                       :search-model "card"}))
 
@@ -606,11 +606,11 @@
   [card]
   (u/prog1 card
     (when (contains? (t2/changes card) :dataset_query)
-      (query-field/update-query-fields-for-card! card)))
-  (search.impl/index {:change-type  :update
-                      :id           (:id card)
-                      :search-model "card"
-                      :values       card}))
+      (query-field/update-query-fields-for-card! card))
+    (search.impl/index {:change-type  :update
+                        :id           (:id card)
+                        :search-model "card"
+                        :values       card})))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
