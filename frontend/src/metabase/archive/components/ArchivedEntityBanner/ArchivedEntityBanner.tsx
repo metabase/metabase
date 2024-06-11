@@ -44,9 +44,9 @@ export const ArchivedEntityBanner = ({
               style={{ marginInlineEnd: "1rem" }}
               display={{ base: "none", sm: "block" }}
             >
-              <FixedSizeIcon color="white" name="trash_filled" />
+              <FixedSizeIcon color="text-white" name="trash_filled" />
             </Box>
-            <Text color="white" size="md" lh="1rem">
+            <Text color="text-white" size="md" lh="1rem">
               {c(
                 "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
               ).t`This ${entityType} is in the trash.`}

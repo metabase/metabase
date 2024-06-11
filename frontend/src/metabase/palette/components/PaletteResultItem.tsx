@@ -39,7 +39,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         flexBasis: 0,
       }}
       bg={active ? color("brand") : "none"}
-      c={active ? color("white") : color("text-dark")}
+      c={active ? color("text-white") : color("text-dark")}
       aria-label={item.name}
     >
       {/** Icon Container */}
@@ -74,7 +74,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {item.extra?.isVerified && (
             <Icon
               name="verified_filled"
-              color={active ? color("white") : color("brand")}
+              color={active ? color("text-white") : color("brand")}
               style={{
                 verticalAlign: "sub",
                 marginLeft: "0.25rem",
@@ -94,7 +94,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         </Box>
         <Text
           component="span"
-          color={active ? "white" : "text-light"}
+          color={active ? "text-white" : "text-light"}
           fw="normal"
           style={{
             textOverflow: "ellipsis",

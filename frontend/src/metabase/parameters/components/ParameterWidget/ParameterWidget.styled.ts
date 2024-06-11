@@ -50,9 +50,9 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
   min-width: 170px;
   margin: 0.25rem 0.5rem 0.25rem 0;
   padding: 0.5rem;
-  color: ${props => props.isEditingParameter && color("white")};
+  color: ${props => props.isEditingParameter && color("text-white")};
   background-color: ${props =>
-    props.isEditingParameter ? color("brand") : color("white")};
+    props.isEditingParameter ? color("brand") : color("bg-white")};
 `;
 
 export const SettingsIcon = styled(Icon)`

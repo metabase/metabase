@@ -34,7 +34,7 @@ export const AlertRoot = styled.div<AlertRootProps>`
   align-items: center;
   padding: 1.25rem 1rem;
   line-height: 1.4rem;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   ${props =>
     props.hasBorder
       ? css`

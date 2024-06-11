@@ -18,9 +18,8 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
     alpha(color(props.admin ? "accent7" : "brand"), 0.85)};
 
   .${ButtonsS.Button} {
-    color: ${color("text-white")};
-    background-color: ${({ theme }) =>
-      alpha(theme.fn.themeColor("bg-white"), 0.1)};
+    color: var(--mb-color-text-white);
+    background-color: ${() => alpha(color("bg-white"), 0.1)};
 
     border: none;
     font-size: 1em;
@@ -33,23 +32,23 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
   }
 
   .${ButtonsS.Button}:hover {
-    color: ${color("text-white")};
+    color: var(--mb-color-text-white);
     background-color: ${props => color(props.admin ? "accent7" : "brand")};
   }
 `;
 
 export const EditIcon = styled(Icon)`
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   margin-right: 0.5rem;
 `;
 
 export const Title = styled.span`
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   font-weight: 700;
 `;
 
 export const Subtitle = styled.span`
-  color: ${alpha(color("text-white"), 0.5)};
+  color: ${() => alpha(color("text-white"), 0.5)};
   margin-left: 0.5rem;
   margin-right: 0.5rem;
 `;

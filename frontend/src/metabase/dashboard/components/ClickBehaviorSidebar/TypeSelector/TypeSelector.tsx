@@ -45,7 +45,7 @@ export const BehaviorOption = ({
     >
       <BehaviorOptionIcon
         name={selected ? "check" : icon}
-        color={selected ? color("white") : color("brand")}
+        color={selected ? color("text-white") : color("brand")}
         isSelected={selected}
       />
       <SidebarItem.Content>

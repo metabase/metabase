@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import UserAvatar from "metabase/components/UserAvatar";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const UserPickerRoot = styled.div`
@@ -16,7 +15,7 @@ export const UserPickerOption = styled.div`
 `;
 
 export const UserPickerAvatar = styled(UserAvatar)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;
 
 export const UserPickerText = styled.div`

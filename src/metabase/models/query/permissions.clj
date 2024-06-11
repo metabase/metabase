@@ -74,11 +74,17 @@
        (:source-table m)
        (query->source-table-ids (dissoc m :source-table)))))))
 
+(def ^:dynamic *card-instances*
+  "A map from card IDs to card instances with the collection_id (possibly nil).
+  Useful when bulk loading cards from different databases."
+  nil)
+
 (mu/defn ^:private card-instance :- [:and
                                      (ms/InstanceOf :model/Card)
                                      [:map [:collection_id [:maybe ms/PositiveInt]]]]
   [card-id :- ::lib.schema.id/card]
-  (or (if (qp.store/initialized?)
+  (or (get *card-instances* card-id)
+      (if (qp.store/initialized?)
         (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
           (t2/instance :model/Card {:collection_id collection-id}))
         (t2/select-one [:model/Card :collection_id] :id card-id))

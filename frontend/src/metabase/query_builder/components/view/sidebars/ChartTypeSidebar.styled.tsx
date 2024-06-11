@@ -9,7 +9,7 @@ export interface OptionRootProps {
 
 const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
   if (isSelected) {
-    return color("white");
+    return color("text-white");
   } else {
     return color("brand");
   }
@@ -43,7 +43,7 @@ export interface OptionIconContainerProps {
 
 export const OptionText = styled.div`
   margin-top: 0.5rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   font-size: 0.75rem;
 `;
@@ -56,7 +56,7 @@ export const SettingsButton = styled(Button)`
   border: 1px solid var(--mb-color-border);
 
   border-radius: 50px;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   opacity: 0;
 `;
 
@@ -84,7 +84,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
 `;
 
 export const OptionLabel = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   font-size: 0.75rem;
   text-transform: uppercase;

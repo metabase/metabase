@@ -211,6 +211,9 @@ describe("issue 8030 + 32444", () => {
 
         setFilter("Text or Category", "Is");
         selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
+
+        undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
         cy.findAllByTestId("dashcard")
           .eq(1)
           .findByLabelText("Disconnect")
@@ -923,21 +926,19 @@ describe("issue 19494", () => {
 
     connectFilterToCard({ filterName: "Card 1 Filter", cardPosition: 0 });
     setDefaultFilter("Doohickey");
-    undoToast().findByText("Undo auto-connection").click();
 
     connectFilterToCard({ filterName: "Card 2 Filter", cardPosition: -1 });
     setDefaultFilter("Gizmo");
-    undoToast().findByText("Undo auto-connection").click();
 
     saveDashboard();
 
     checkAppliedFilter("Card 1 Filter", "Doohickey");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("148.23");
+
+    getDashboardCard(0).should("contain", "148.23");
 
     checkAppliedFilter("Card 2 Filter", "Gizmo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("110.93");
+
+    getDashboardCard(1).should("contain", "110.93");
   });
 });
 

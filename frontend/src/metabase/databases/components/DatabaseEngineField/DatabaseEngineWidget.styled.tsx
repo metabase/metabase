@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -35,7 +35,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   padding: 1rem;
   border: 1px solid var(--mb-color-bg-medium);
   border-radius: 0.375rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   cursor: pointer;
   outline: ${props => props.isActive && `2px solid var(--mb-color-focus)`};
 
@@ -46,12 +46,12 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
 `;
 
 export const EngineCardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   margin-top: 0.5rem;
 `;
 
 export const EngineCardIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 1rem;
   height: 1rem;
   padding: 0.5rem;
@@ -72,12 +72,12 @@ export const EngineEmptyStateRoot = styled.div`
 `;
 
 export const EngineEmptyIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 0.5rem;
 `;
 
 export const EngineEmptyText = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 26rem;

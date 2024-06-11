@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 
 export const NudgeCard = styled.div`
   background-color: var(--mb-color-bg-light);
@@ -31,7 +30,7 @@ export const ProLink = styled(ExternalLink)`
   width: fit-content;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;
