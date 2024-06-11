@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { Api, databaseApi } from "metabase/api";
-import { DatabaseSchema } from "metabase/schema";
+import { Api, tableApi } from "metabase/api";
+import { TableSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -35,33 +35,31 @@ const getApiState = createSelector(
 );
 
 const getApiDatabases = createSelector(getApiState, state => {
-  const entries = databaseApi.util
+  const entries = tableApi.util
     .selectInvalidatedBy(state, ["database"])
     .filter(entry => entry.endpointName === "listDatabases");
 
   return entries.flatMap(entry => {
-    const selector = databaseApi.endpoints.listDatabases.select(
-      entry.originalArgs,
-    );
+    const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
     const { data } = selector(state);
-    return data?.data ?? [];
+    return data ?? [];
   });
 });
 
-const getApiEntities = createSelector([getApiDatabases], databases => {
+const getApiEntities = createSelector([getApiDatabases], tables => {
   const data = {
-    databases,
+    tables,
   };
   const schema = {
-    databases: [DatabaseSchema],
+    tables: [TableSchema],
   };
   const { entities } = normalize(data, schema);
   return entities;
 });
 
-const getNormalizedDatabases = createSelector(
+const getNormalizedTables = createSelector(
   [getApiEntities],
-  entities => entities.databases ?? {},
+  entities => entities.tables ?? {},
 );
 
 type TableSelectorOpts = {
@@ -74,7 +72,7 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-// const getNormalizedDatabases = (state: State) => state.entities.databases;
+const getNormalizedDatabases = (state: State) => state.entities.databases;
 
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
@@ -83,17 +81,17 @@ const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
 const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
   !!props?.includeHiddenTables;
 
-const getNormalizedTables = createSelector(
-  [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
-  (tables, includeHiddenTables) =>
-    includeHiddenTables
-      ? tables
-      : Object.fromEntries(
-          Object.entries(tables).filter(
-            ([, table]) => table.visibility_type == null,
-          ),
-        ),
-);
+// const getNormalizedTables = createSelector(
+//   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
+//   (tables, includeHiddenTables) =>
+//     includeHiddenTables
+//       ? tables
+//       : Object.fromEntries(
+//           Object.entries(tables).filter(
+//             ([, table]) => table.visibility_type == null,
+//           ),
+//         ),
+// );
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
 const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
