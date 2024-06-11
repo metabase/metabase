@@ -109,6 +109,8 @@ describe("scenarios > collection items listing", () => {
         });
 
         visitRootCollection();
+        // We're waiting for the loading spinner to disappear from the main sidebar.
+        // Otherwise, this causes the page re-render and the flaky test.
         cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
 
         getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
@@ -239,6 +241,8 @@ describe("scenarios > collection items listing", () => {
 function toggleSortingFor(columnName) {
   const testId = "items-table-head";
   cy.findByTestId(testId).findByText(columnName).click();
+  // These random waits are really discouraged, but I couldn't find a reliable
+  // way to prevent the flaky sorting test without it.
   cy.wait(50);
 }
 
