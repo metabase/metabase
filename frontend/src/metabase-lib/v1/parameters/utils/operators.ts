@@ -93,7 +93,6 @@ export function buildTemporalUnitOption(): ParameterMappingOptions {
     name: t`Unit of Time`,
     type: "temporal-unit",
     sectionId: "temporal-unit",
-    temporalUnits: ["day", "week", "month", "quarter", "year"],
   };
 }
 

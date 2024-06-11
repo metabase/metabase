@@ -50,7 +50,6 @@ export function createParameter(
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
-    temporal_units: option.temporalUnits,
   };
 
   return setParameterName(parameter, name);

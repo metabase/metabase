@@ -113,7 +113,6 @@ export type ParameterMappingOptions = {
   combinedName?: string;
   menuName?: string;
   type: string;
-  temporalUnits?: TemporalUnit[];
 };
 
 export type ParameterQueryObject = {
