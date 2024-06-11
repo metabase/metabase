@@ -157,10 +157,8 @@ describe("Filters > DefaultPicker", () => {
     const query = makeQuery({ filter: [">", ["field", PRODUCTS.ID, null], 1] });
     const { setValueSpy } = await setup({ filter: query.filters()[0] });
 
-    const combobox = screen.getByRole("combobox");
-    const input = getInput(combobox);
-
-    await userEvent.type(input, "{backspace}125");
+    const input = screen.getByRole("textbox");
+    await userEvent.type(input, "25");
 
     // index, value
     expect(setValueSpy).toHaveBeenLastCalledWith(0, 125);
