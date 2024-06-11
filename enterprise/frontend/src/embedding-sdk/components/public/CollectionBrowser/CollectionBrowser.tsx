@@ -49,9 +49,9 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
-  const [currentCollectionId, setCurrentCollectionId] = useState<CollectionId>(
-    collectionId === 0 ? "root" : collectionId,
-  );
+  const baseCollectionId = collectionId === 0 ? "root" : collectionId;
+  const [currentCollectionId, setCurrentCollectionId] =
+    useState<CollectionId>(baseCollectionId);
 
   const onClickItem = (item: CollectionItem) => {
     if (onClick) {
@@ -76,7 +76,7 @@ export const CollectionBrowserInner = ({
       <CollectionBreadcrumbs
         collectionId={currentCollectionId}
         onClick={onClickBreadcrumbItem}
-        baseCollectionId={collectionId}
+        baseCollectionId={baseCollectionId}
       />
       <CollectionItemsTable
         collectionId={currentCollectionId}
