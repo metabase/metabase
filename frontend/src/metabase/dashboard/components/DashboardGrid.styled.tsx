@@ -37,7 +37,7 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     right: 0;
     border-radius: 8px;
 
-    ${getDashboardCardShadowOrBorder}
+    ${({theme}) => getDashboardCardShadowOrBorder(theme)}
   }
 
   ${props =>
