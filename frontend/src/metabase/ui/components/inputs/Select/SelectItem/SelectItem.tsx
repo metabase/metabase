@@ -4,12 +4,10 @@ import { forwardRef, type HTMLAttributes, type Ref } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 
-import S from "./CustomSelectItem.module.css";
+import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
-interface CustomSelectItemProps
-  extends HTMLAttributes<HTMLDivElement>,
-    BoxProps {
+interface SelectItemProps extends HTMLAttributes<HTMLDivElement>, BoxProps {
   value: string;
   label?: string;
   size?: MantineSize;
@@ -18,7 +16,7 @@ interface CustomSelectItemProps
   disabled?: boolean;
 }
 
-export const CustomSelectItem = forwardRef(function CustomSelectItem(
+export const SelectItem = forwardRef(function SelectItem(
   {
     className,
     value,
@@ -28,7 +26,7 @@ export const CustomSelectItem = forwardRef(function CustomSelectItem(
     selected,
     disabled,
     ...props
-  }: CustomSelectItemProps,
+  }: SelectItemProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (

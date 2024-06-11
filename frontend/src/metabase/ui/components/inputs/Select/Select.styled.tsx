@@ -9,20 +9,16 @@ import {
   px,
 } from "@mantine/core";
 
-import { CustomSelectDropdown } from "./CustomSelectDropdown";
-import {
-  CustomSelectItem,
-  getItemFontSize,
-  getItemLineHeight,
-} from "./CustomSelectItem";
+import { SelectDropdown } from "./SelectDropdown";
+import { SelectItem, getItemFontSize, getItemLineHeight } from "./SelectItem";
 
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
   Select: {
     defaultProps: () => ({
       size: "md",
       withinPortal: true,
-      dropdownComponent: CustomSelectDropdown,
-      itemComponent: CustomSelectItem,
+      dropdownComponent: SelectDropdown,
+      itemComponent: SelectItem,
       maxDropdownHeight: 512,
       clearButtonProps: {
         color: "text-dark",

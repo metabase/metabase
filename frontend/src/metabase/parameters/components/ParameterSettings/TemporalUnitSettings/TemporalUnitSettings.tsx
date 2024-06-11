@@ -2,11 +2,12 @@ import { t } from "ttag";
 
 import {
   Box,
+  Button,
   Checkbox,
   Divider,
+  Icon,
   Popover,
   Text,
-  CustomSelect,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
@@ -32,7 +33,14 @@ export function TemporalUnitSettings({
   return (
     <Popover width="target">
       <Popover.Target>
-        <CustomSelect value={getSelectedText(selectedUnits, isAll, isNone)} />
+        <Button
+          fw="normal"
+          rightIcon={<Icon name="chevrondown" />}
+          fullWidth
+          styles={{ inner: { justifyContent: "space-between" } }}
+        >
+          {getSelectedText(selectedUnits, isAll, isNone)}
+        </Button>
       </Popover.Target>
       <Popover.Dropdown>
         <TemporalUnitDropdown

@@ -4,12 +4,12 @@ import type {
 } from "@mantine/core";
 import { getSize, rem } from "@mantine/core";
 
-import { CustomSelectDropdown } from "../Select/CustomSelectDropdown";
-import { CustomSelectItem } from "../Select/CustomSelectItem";
 import {
   getSelectInputOverrides,
   getSelectItemsOverrides,
 } from "../Select/Select.styled";
+import { SelectDropdown } from "../Select/SelectDropdown";
+import { SelectItem } from "../Select/SelectItem";
 
 const SIZES = {
   xs: rem(30),
@@ -28,8 +28,8 @@ export const getMultiSelectOverrides =
         size: "md",
         variant: "default",
         withinPortal: true,
-        dropdownComponent: CustomSelectDropdown,
-        itemComponent: CustomSelectItem,
+        dropdownComponent: SelectDropdown,
+        itemComponent: SelectItem,
         clearButtonProps: {
           color: "text-dark",
         },
