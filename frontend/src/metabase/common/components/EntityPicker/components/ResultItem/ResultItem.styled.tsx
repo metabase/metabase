@@ -11,17 +11,17 @@ export const ChunkyListItem = styled.button<{
   cursor: pointer;
 
   background-color: ${({ isSelected }) =>
-    isSelected ? "var(--mb-color-brand)" : color("white")};
+    isSelected ? color("brand") : color("bg-white")};
 
   color: ${({ isSelected }) =>
-    isSelected ? color("white") : color("text-dark")};
+    isSelected ? color("text-white") : color("text-dark")};
 
   &:hover {
     ${({ isSelected }) =>
       !isSelected &&
       css`
         background-color: var(--mb-color-brand-lighter);
-        color: ${color("text-dark")};
+        color: var(--mb-color-text-dark);
       `}
   }
 

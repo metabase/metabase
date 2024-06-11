@@ -1,8 +1,10 @@
+import { t } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
   CompareAggregations,
-  getTitle,
+  getOffsetPeriod,
 } from "metabase/query_builder/components/CompareAggregations";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
 import type { LegacyDrill } from "metabase/visualizations/types";
@@ -83,4 +85,20 @@ export const CompareAggregationsAction: LegacyDrill = ({
       popover: Popover,
     },
   ];
+};
+
+export const getTitle = (
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation?: Lib.AggregationClause | Lib.ExpressionClause,
+): string => {
+  const period = getOffsetPeriod(query, stageIndex);
+
+  if (!aggregation) {
+    return t`Compare to previous ${period}`;
+  }
+
+  const info = Lib.displayInfo(query, stageIndex, aggregation);
+
+  return t`Compare “${info.displayName}” to previous ${period}`;
 };

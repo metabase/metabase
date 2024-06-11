@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const PathContainer = styled.div`
   display: flex;
@@ -12,7 +11,7 @@ export const PathContainer = styled.div`
 export const PathSeparator = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-size: 0.8em;
   font-weight: bold;
   margin-left: 0.5rem;
@@ -26,10 +25,10 @@ export const ExpandButton = styled(Button)`
   padding: 0.25rem;
   background-color: var(--mb-color-bg-light);
   border-radius: 2px;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
-    color: ${color("text-white")};
+    color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
   }
 `;

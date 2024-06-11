@@ -18,7 +18,7 @@ export const PromptSection = styled.div`
 
 export const PromptUserAvatar = styled(UserAvatar)`
   flex-shrink: 0;
-  background-color: ${color("accent2")};
+  background-color: ${() => color("accent2")};
 `;
 
 export const PromptRunButton = styled(RunButton)`

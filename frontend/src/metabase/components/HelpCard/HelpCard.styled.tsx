@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 const CardRootMixin = css`
@@ -10,7 +9,7 @@ const CardRootMixin = css`
   padding: 1.5rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.375rem;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   box-shadow: 0 1px 6px var(--mb-color-shadow);
   box-sizing: border-box;
 `;
@@ -56,7 +55,7 @@ export const CardIcon = styled(Icon)`
 
 export const CardMessage = styled.div`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1.25rem;
 
   p {

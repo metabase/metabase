@@ -26,14 +26,14 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
             },
 
             backgroundColor: theme.fn.themeColor("brand"),
-            color: "white",
+            color: theme.fn.themeColor("text-white"),
 
             "& .emotion-NavLink-label": {
-              color: "white",
+              color: theme.fn.themeColor("text-white"),
             },
 
             "& .emotion-NavLink-icon": {
-              color: "white",
+              color: theme.fn.themeColor("text-white"),
             },
           },
         },

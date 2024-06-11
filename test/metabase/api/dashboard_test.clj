@@ -200,29 +200,29 @@
                                                                    :parameters "abc"})))))
 
 (def ^:private dashboard-defaults
-  {:archived                   false
-   :caveats                    nil
-   :collection_id              nil
-   :collection_position        nil
-   :collection                 true
-   :created_at                 true ; assuming you call dashboard-response on the results
-   :description                nil
-   :embedding_params           nil
-   :enable_embedding           false
-   :initially_published_at     nil
-   :entity_id                  true
-   :made_public_by_id          nil
-   :parameters                 []
-   :points_of_interest         nil
-   :cache_ttl                  nil
-   :position                   nil
-   :width                      "fixed"
-   :public_uuid                nil
-   :auto_apply_filters         true
-   :show_in_getting_started    false
-   :updated_at                 true
-   :view_count                 0
-   :trashed_from_collection_id nil})
+  {:archived                false
+   :caveats                 nil
+   :collection_id           nil
+   :collection_position     nil
+   :collection              true
+   :created_at              true ; assuming you call dashboard-response on the results
+   :description             nil
+   :embedding_params        nil
+   :enable_embedding        false
+   :initially_published_at  nil
+   :entity_id               true
+   :made_public_by_id       nil
+   :parameters              []
+   :points_of_interest      nil
+   :cache_ttl               nil
+   :position                nil
+   :width                   "fixed"
+   :public_uuid             nil
+   :auto_apply_filters      true
+   :show_in_getting_started false
+   :updated_at              true
+   :view_count              0
+   :archived_directly        false})
 
 (deftest create-dashboard-test
   (testing "POST /api/dashboard"
@@ -288,9 +288,10 @@
      :model/Dashboard {crowberto-dash-id :id
                        :as               crowberto-dash}    {:creator_id    (mt/user->id :crowberto)
                                                              :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
-     :model/Dashboard {archived-dash-id :id} {:archived                   true
-                                              :trashed_from_collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
-                                              :creator_id                 (mt/user->id :crowberto)}]
+     :model/Dashboard {archived-dash-id :id} {:archived          true
+                                              :archived_directly true
+                                              :collection_id     (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                              :creator_id        (mt/user->id :crowberto)}]
     (testing "should include creator info and last edited info"
       (revision/push-revision!
        {:entity       :model/Dashboard
@@ -4484,16 +4485,6 @@
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
         (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
         (is (false? (can-restore? dash-id :rasta)))))
-    (testing "I can't restore a trashed dashboard if the collection it was from was deleted"
-      (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
-                               :model/Dashboard {dash-id :id} {:name          "My Dashboard"
-                                                               :collection_id coll-id}]
-        (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
-        (t2/delete! :model/Collection :id coll-id)
-        ;; rasta can no longer view the dashboard at all, because we can't check perms on it
-        (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 (str "dashboard/" dash-id))))
-        ;; even the mighty crowberto can't restore it!
-        (is (false? (can-restore? dash-id :crowberto)))))
     (testing "I can't restore a trashed dashboard if it isn't archived in the first place"
       (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
                                :model/Dashboard {dash-id :id} {:name          "My Dashboard"

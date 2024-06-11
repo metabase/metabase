@@ -9,7 +9,7 @@ import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import { getDashcardData } from "metabase/dashboard/selectors";
+import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
@@ -25,11 +25,11 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 import type {
   Card,
   CardId,
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
-  VisualizationSettings,
   VirtualCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
@@ -38,8 +38,8 @@ import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPane
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
-  NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  NavigateToNewCardFromDashboardOpts,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -112,6 +112,7 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
+  const href = useSelector(state => getDashcardHref(state, dashcard.id));
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -254,26 +255,18 @@ function DashCardInner({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler = useMemo(() => {
-    if (!navigateToNewCardFromDashboard) {
-      return null;
-    }
-
-    const handler: DashCardOnChangeCardAndRunHandler = ({
-      nextCard,
-      previousCard,
-      objectId,
-    }) => {
-      navigateToNewCardFromDashboard({
-        nextCard,
-        previousCard,
-        dashcard,
-        objectId,
-      });
-    };
-
-    return handler;
-  }, [dashcard, navigateToNewCardFromDashboard]);
+  const changeCardAndRunHandler =
+    useCallback<DashCardOnChangeCardAndRunHandler>(
+      ({ nextCard, previousCard, objectId }) => {
+        return navigateToNewCardFromDashboard?.({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      },
+      [dashcard, navigateToNewCardFromDashboard],
+    );
 
   return (
     <ErrorBoundary>
@@ -327,6 +320,7 @@ function DashCardInner({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          href={navigateToNewCardFromDashboard ? href : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
           isXray={isXray}
@@ -343,7 +337,9 @@ function DashCardInner({
           isPublicOrEmbedded={isPublicOrEmbedded}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onChangeCardAndRun={changeCardAndRunHandler}
+          onChangeCardAndRun={
+            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
+          }
           onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>

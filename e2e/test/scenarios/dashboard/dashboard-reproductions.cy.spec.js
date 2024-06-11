@@ -990,7 +990,9 @@ describe("should not redirect users to other pages when linking an entity (metab
     restore();
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/search?q=*").as("search");
-    cy.intercept("GET", "/api/activity/recent_views").as("recentViews");
+    cy.intercept("GET", "/api/activity/recents?context=views").as(
+      "recentViews",
+    );
   });
 
   it("should not redirect users to recent item", () => {

@@ -13,6 +13,7 @@ type ArchivedEntityBannerProps = {
   entityType: string;
   canWrite: boolean;
   canRestore: boolean;
+  canDelete: boolean;
   onUnarchive: () => void;
   onMove: (collection: CollectionPickerValueItem) => void;
   onDeletePermanently: () => void;
@@ -23,11 +24,13 @@ export const ArchivedEntityBanner = ({
   entityType,
   canRestore,
   canWrite,
+  canDelete,
   onUnarchive,
   onMove,
   onDeletePermanently,
 }: ArchivedEntityBannerProps) => {
   const [modal, setModal] = useState<"move" | "delete" | null>(null);
+  const hasAction = canWrite || canDelete || canRestore;
 
   return (
     <>
@@ -44,27 +47,34 @@ export const ArchivedEntityBanner = ({
               style={{ marginInlineEnd: "1rem" }}
               display={{ base: "none", sm: "block" }}
             >
-              <FixedSizeIcon color="white" name="trash_filled" />
+              <FixedSizeIcon color="text-white" name="trash_filled" />
             </Box>
-            <Text color="white" size="md" lh="1rem">
+            <Text color="text-white" size="md" lh="1rem">
               {c(
                 "{0} is the entity in the trash, e.g. collection, dashboard, etc.",
               ).t`This ${entityType} is in the trash.`}
             </Text>
           </Flex>
-          {canWrite && (
+          {hasAction && (
             <Flex gap={{ base: "sm", sm: "md" }}>
               {canRestore && (
                 <BannerButton iconName="revert" onClick={onUnarchive}>
                   {t`Restore`}
                 </BannerButton>
               )}
-              <BannerButton iconName="move" onClick={() => setModal("move")}>
-                {t`Move`}
-              </BannerButton>
-              <BannerButton iconName="trash" onClick={() => setModal("delete")}>
-                {t`Delete permanently`}
-              </BannerButton>
+              {canWrite && (
+                <BannerButton iconName="move" onClick={() => setModal("move")}>
+                  {t`Move`}
+                </BannerButton>
+              )}
+              {canDelete && (
+                <BannerButton
+                  iconName="trash"
+                  onClick={() => setModal("delete")}
+                >
+                  {t`Delete permanently`}
+                </BannerButton>
+              )}
             </Flex>
           )}
         </Flex>

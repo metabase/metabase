@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export interface DownloadPopoverRootProps {
   isExpanded?: boolean;
 }
@@ -39,19 +37,19 @@ export const DownloadButtonRoot = styled.button`
 `;
 
 export const DownloadButtonText = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
 
   ${DownloadButtonRoot}:hover & {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 `;
 
 export const DownloadButtonSecondaryText = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: bold;
 
   ${DownloadButtonRoot}:hover & {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 `;

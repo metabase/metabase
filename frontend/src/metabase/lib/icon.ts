@@ -33,7 +33,7 @@ const modelIconMap: Record<IconModel, IconName> = {
   dashboard: "dashboard",
   card: "table",
   segment: "segment",
-  metric: "funnel",
+  metric: "metric",
   snippet: "unknown",
 };
 

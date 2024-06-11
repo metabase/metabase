@@ -19,5 +19,5 @@ export function usePalette(): ColorPalette {
       "text-dark": theme.fn.themeColor("text-dark"),
       "text-white": theme.fn.themeColor("text-white"),
     };
-  }, [theme.fn]);
+  }, [theme]);
 }
