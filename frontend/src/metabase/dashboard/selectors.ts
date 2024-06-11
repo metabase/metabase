@@ -31,6 +31,7 @@ import type {
   EditParameterSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase-types/store";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
@@ -142,15 +143,18 @@ export const getDashboard = createSelector(
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
-export const getDashCardById = (state: State, dashcardId: DashCardId) => {
+export const getDashCardById = (
+  state: State,
+  dashcardId: DashCardId,
+): StoreDashcard | undefined => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
 };
 
 export const getDashcardHref = createWeakSelector(
-  [getDashboard, getParameterValues, getMetadata, getDashCardById],
-  (dashboard, parameterValues, metadata, dashcard) => {
-    if (!isQuestionDashCard(dashcard) || !dashboard) {
+  [getMetadata, getDashboard, getParameterValues, getDashCardById],
+  (metadata, dashboard, parameterValues, dashcard) => {
+    if (!dashboard || !dashcard || !isQuestionDashCard(dashcard)) {
       return undefined;
     }
 
