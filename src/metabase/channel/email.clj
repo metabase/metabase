@@ -37,12 +37,6 @@
 ;;                                           Alerts                                                ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- alert-condition-type->description [condition-type]
-  (case (keyword condition-type)
-    :meets (trs "reached its goal")
-    :below (trs "gone below its goal")
-    :rows  (trs "results")))
-
 (defn- find-goal-value
   "The goal value can come from a progress goal or a graph goal_value depending on it's type"
   [card]
@@ -67,9 +61,10 @@
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [card pulse payload channel]} recipients]
   (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
-        email-subject             (trs "Alert: {0} has {1}"
-                                       (:name card)
-                                       (alert-condition-type->description condition-kwd))
+        email-subject             (case condition-kwd
+                                    :meets (trs "Alert: {0} has reached its goal")
+                                    :below (trs "Alert: {0} has gone below its goal")
+                                    :rows  (trs "Alert: {0} has results"))
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (defaulted-timezone card)

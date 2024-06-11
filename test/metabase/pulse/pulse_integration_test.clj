@@ -12,6 +12,7 @@
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.pulse]
+   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -59,25 +60,25 @@
   "Simulate sending the pulse email, get the html body of the response, then return the last columns of each pulse body
   element. In our test cases that's the Tax Rate column."
   [pulse]
-  (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
-      (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
-    (let [html-body  (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
-          doc        (-> html-body hik/parse hik/as-hickory)
-          data-tables (hik.s/select
-                        (hik.s/class "pulse-body")
-                        doc)]
-      (map
-        (fn [data-table]
-          (->> (hik.s/select
-                 (hik.s/child
-                   (hik.s/tag :tbody)
-                   (hik.s/tag :tr)
-                   hik.s/last-child)
-                 data-table)
-               (map (comp first :content))))
-        data-tables))))
+  (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                           (with-redefs [email/bcc-enabled? (constantly false)]
+                             (mt/with-test-user nil
+                               (metabase.pulse/send-pulse! pulse))))
+        html-body  (-> channel-messages :channel/email first :message first :content)
+        doc        (-> html-body hik/parse hik/as-hickory)
+        data-tables (hik.s/select
+                     (hik.s/class "pulse-body")
+                     doc)]
+    (map
+     (fn [data-table]
+       (->> (hik.s/select
+             (hik.s/child
+              (hik.s/tag :tbody)
+              (hik.s/tag :tr)
+              hik.s/last-child)
+             data-table)
+            (map (comp first :content))))
+     data-tables)))
 
 (def ^:private all-pct-2d?
   "Is every element in the sequence percent formatted with 2 significant digits?"
@@ -134,7 +135,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The data from the first question is just numbers."
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name            "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  base-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -145,7 +147,8 @@
           (is (all-float? (first (run-pulse-and-return-last-data-columns pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  model-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -156,7 +159,8 @@
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  question-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -209,7 +213,7 @@
                                                                 :card_id      question-card-id}
                      Pulse {pulse-id :id
                             :as      pulse} {:name         "Test Pulse"
-                            :dashboard_id dash-id}
+                                             :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           base-card-id
                                   :dashboard_card_id base-dash-card-id}

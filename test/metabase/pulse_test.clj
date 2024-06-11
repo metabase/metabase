@@ -3,7 +3,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.channel.core :as channel]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -30,7 +29,7 @@
 ;;; |                                               Util Fns & Macros                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- rasta-alert-email-2
+(defn- rasta-alert-message
   [& [data]]
   (merge {:subject    "Alert: Test card has results"
           :recipients ["rasta@metabase.com"]
@@ -176,7 +175,7 @@
     :assert
     {:email
      (fn [_ [email]]
-       (is (= (rasta-alert-email-2)
+       (is (= (rasta-alert-message)
               (mt/summarize-multipart-single-email email test-card-regex))))
 
      :slack
@@ -206,7 +205,7 @@
      :assert
      {:email
       (fn [_ [email]]
-        (is (= (rasta-alert-email-2 {:message [{pulse.test-util/card-name                            true
+        (is (= (rasta-alert-message {:message [{pulse.test-util/card-name                            true
                                                 "More results have been included"                    false
                                                 "ID</th>"                                            true
                                                 "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
@@ -247,7 +246,7 @@
      :assert
      {:email
       (fn [_ [email]]
-        (is (= (rasta-alert-email-2 {:message [{pulse.test-util/card-name         true
+        (is (= (rasta-alert-message {:message [{pulse.test-util/card-name         true
                                                 "More results have been included" false
                                                 "ID</th>"                         true}
                                                pulse.test-util/png-attachment]})
@@ -268,7 +267,7 @@
      :assert
      {:email
       (fn [_ [email]]
-        (is (= (rasta-alert-email-2 {:message [test-card-result
+        (is (= (rasta-alert-message {:message [test-card-result
                                                pulse.test-util/png-attachment
                                                pulse.test-util/png-attachment
                                                pulse.test-util/csv-attachment]})
@@ -281,7 +280,7 @@
      {:email
       (fn [_ [email]]
         ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-        (is (= (rasta-alert-email-2 {:message [{pulse.test-util/card-name true} pulse.test-util/png-attachment]})
+        (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true} pulse.test-util/png-attachment]})
                (mt/summarize-multipart-single-email email test-card-regex))))}}))
 
 (deftest xls-test
@@ -295,7 +294,7 @@
       {:email
        (fn [_ [email]]
          (is (= ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-                (rasta-alert-email-2 {:message [{pulse.test-util/card-name true}
+                (rasta-alert-message {:message [{pulse.test-util/card-name true}
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
@@ -313,7 +312,7 @@
       :assert
       {:email
        (fn [_ [email]]
-         (is (= (rasta-alert-email-2 {:message [{pulse.test-util/card-name true}
+         (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
@@ -383,7 +382,7 @@
       :assert
       {:email
        (fn [_ emails]
-         (is (= [(rasta-alert-email-2 {:recipients ["rasta@metabase.com" "crowberto@metabase.com"]})]
+         (is (= [(rasta-alert-message {:recipients ["rasta@metabase.com" "crowberto@metabase.com"]})]
                 (map #(mt/summarize-multipart-single-email % test-card-regex) emails))))}})))
 
 ;; this should be in dashboard subscriptions
@@ -417,7 +416,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:message [{pulse.test-util/card-name true
+          (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true
                                                   "More results have been included" false}
                                                  pulse.test-util/png-attachment
                                                  pulse.test-util/png-attachment]})
@@ -454,7 +453,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:message [{pulse.test-util/card-name         true
+          (is (= (rasta-alert-message {:message [{pulse.test-util/card-name         true
                                                   "More results have been included" false
                                                   "ID</th>"                         true}
                                                  pulse.test-util/png-attachment]})
@@ -474,7 +473,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:message [test-card-result
+          (is (= (rasta-alert-message {:message [test-card-result
                                                  pulse.test-util/png-attachment
                                                  pulse.test-util/png-attachment
                                                  pulse.test-util/csv-attachment
@@ -493,7 +492,7 @@
      :assert
      {:email
       (fn [{pulse-id :pulse-id} [email]]
-        (is (= (rasta-alert-email-2)
+        (is (= (rasta-alert-message)
                (mt/summarize-multipart-single-email email test-card-regex))) ;#"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
@@ -530,7 +529,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:subject "Alert: Test card has reached its goal"})
+          (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"})
                  (mt/summarize-multipart-single-email email test-card-regex))))}}
 
       "no data"
@@ -559,7 +558,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:subject "Alert: Test card has reached its goal"})
+          (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"})
                  (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
@@ -580,7 +579,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:subject "Alert: Test card has gone below its goal"})
+          (is (= (rasta-alert-message {:subject "Alert: Test card has gone below its goal"})
                  (mt/summarize-multipart-single-email email test-card-regex))))}}
 
       "with no satisfying data"
@@ -610,7 +609,7 @@
        :assert
        {:email
         (fn [_ [email]]
-          (is (= (rasta-alert-email-2 {:subject "Alert: Test card has gone below its goal"})
+          (is (= (rasta-alert-message {:subject "Alert: Test card has gone below its goal"})
                  (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ^:parallel goal-met-test
