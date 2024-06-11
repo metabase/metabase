@@ -467,7 +467,7 @@
   ;; and we'll compile it for each backend into a `specific-query`.
   (let [compile (fn [q]
                   {:select :*
-                   :from   :search
+                   :from   (keyword search-table-name)
                    :where  q})
         specific-query (compile general-query)]
     (map #(into {} %) (t2/query specific-query))))
