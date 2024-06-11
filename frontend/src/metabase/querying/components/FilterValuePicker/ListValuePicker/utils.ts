@@ -1,9 +1,9 @@
-import type { SelectItemData } from "metabase/ui";
+import type { SelectOption } from "metabase/ui";
 
 export function searchOptions(
-  options: SelectItemData[],
+  options: SelectOption[],
   searchText: string,
-): SelectItemData[] {
+): SelectOption[] {
   const searchValue = searchText.toLowerCase();
   return options.filter(
     ({ label }) => label != null && label.toLowerCase().includes(searchValue),
