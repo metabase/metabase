@@ -75,6 +75,7 @@ import { normalize, denormalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
+import { Api } from "metabase/api";
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import {
   combineReducers,
@@ -400,6 +401,7 @@ export function createEntity(def) {
 
   const getEntities = state => state.entities;
   const getSettings = state => state.settings;
+  const getApiState = state => state[Api.reducerPath];
 
   // OBJECT SELECTORS
 
@@ -443,13 +445,16 @@ export function createEntity(def) {
   );
 
   const getList = createCachedSelector(
-    [getEntities, getEntityIds, getSettings],
+    [getEntities, getEntityIds, getSettings, getApiState],
     // delegate to getObject
-    (entities, entityIds, settings) =>
+    (entities, entityIds, settings, apiState) =>
       entityIds &&
       entityIds
         .map(entityId =>
-          entity.selectors.getObject({ entities, settings }, { entityId }),
+          entity.selectors.getObject(
+            { entities, settings, [Api.reducerPath]: apiState },
+            { entityId },
+          ),
         )
         .filter(e => e != null), // deleted entities might remain in lists,
   )((state, { entityQuery } = {}) =>
