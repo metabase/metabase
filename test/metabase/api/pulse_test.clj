@@ -913,7 +913,7 @@
                (is (= {:message [{"Daily Sad Toucans" true}
                                  pulse.test-util/png-attachment]
                        :message-type :attachments,
-                       :recipients ["rasta@metabase.com"]
+                       :recipients #{"rasta@metabase.com"}
                        :subject "Daily Sad Toucans"}
                       (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
@@ -988,7 +988,7 @@
           (is (= {:message [{"Daily Sad Toucans" true}
                             pulse.test-util/png-attachment]
                   :message-type :attachments,
-                  :recipients ["rasta@metabase.com"]
+                  :recipients #{"rasta@metabase.com"}
                   :subject "Daily Sad Toucans"}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
