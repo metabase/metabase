@@ -31,21 +31,15 @@
 
 (defn- rasta-alert-message
   [& [data]]
-  (merge {:subject    "Alert: Test card has results"
-          :recipients ["rasta@metabase.com"]
+  (merge {:subject      "Alert: Test card has results"
+          :recipients   #{"rasta@metabase.com"}
           :message-type :attachments,
-          :message    [{pulse.test-util/card-name true}
-                       ;; card static-viz
-                       pulse.test-util/png-attachment
-                       ;; icon
-                       pulse.test-util/png-attachment]}
+          :message      [{pulse.test-util/card-name true}
+                         ;; card static-viz
+                         pulse.test-util/png-attachment
+                         ;; icon
+                         pulse.test-util/png-attachment]}
          data))
-
-(defn- rasta-alert-email
-  [subject email-body]
-  (mt/email-to :rasta {:subject subject
-                       :body    email-body
-                       :bcc?    true}))
 
 (defn do-with-pulse-for-card
   "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
@@ -384,9 +378,9 @@
 
       :assert
       {:email
-       (fn [_ emails]
-         (is (= [(rasta-alert-message {:recipients ["rasta@metabase.com" "crowberto@metabase.com"]})]
-                (map #(mt/summarize-multipart-single-email % test-card-regex) emails))))}})))
+       (fn [_ [email]]
+         (is (= (rasta-alert-message {:recipients #{"rasta@metabase.com" "crowberto@metabase.com"}})
+                (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 ;; this should be in dashboard subscriptions
 #_(deftest empty-results-test
@@ -650,7 +644,6 @@
         (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
         (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
-;; TODO rewrite with our helpers
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
     (t2.with-temp/with-temp [Card {card-id :id} {:name                   "Test card"
@@ -667,11 +660,10 @@
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
-        (pulse.test-util/email-test-setup
-         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
-         (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                   [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
-                (mt/summarize-multipart-email test-card-regex))))))))
+        (let [channel-messsages (pulse.test-util/with-captured-channel-send-messages!
+                                  (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id)))]
+          (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"})
+                 (mt/summarize-multipart-single-email (-> channel-messsages :channel/email first) test-card-regex))))))))
 
 ;; TODO should be in dashboard subscription test
 #_(deftest dashboard-description-markdown-test

@@ -18,7 +18,6 @@
             User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
    [metabase.public-settings :as public-settings]
    [metabase.pulse]
    [metabase.pulse.render.body :as body]
@@ -148,18 +147,10 @@
     (testing message
       (do-test! (merge-with merge common m)))))
 
-(defn- rasta-pulse-email [& [email]]
-  (mt/email-to :rasta (merge {:subject "Aviary KPIs"
-                              :body    [{"Aviary KPIs" true}
-                                        pulse.test-util/png-attachment]
-                              :bcc?    true}
-                             email)))
-
-
 (defn- rasta-dashsub-message
   [& [data]]
   (merge {:subject    "Aviary KPIs"
-          :recipients ["rasta@metabase.com"]
+          :recipients #{"rasta@metabase.com"}
           :message-type :attachments,
           :message    [{"Aviary KPIs" true}
                        pulse.test-util/png-attachment]}

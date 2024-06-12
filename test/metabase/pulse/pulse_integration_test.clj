@@ -181,25 +181,26 @@
         name-parts (butlast (str/split fname #"_"))]
     (format "%s.%s" (str/join "_" name-parts) ext)))
 
-(defn- run-pulse-and-return-attached-csv-data
+(defn- run-pulse-and-return-attached-csv-data!
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
   [pulse]
-  (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
-      (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
-    (->>
-     (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-     (keep
-      (fn [{:keys [type content-type file-name content]}]
-        (when (and
-               (= :attachment type)
-               (= "text/csv" content-type))
-          [(strip-timestamp file-name)
-           (let [[h & r] (csv/read-csv (slurp content))]
-             (zipmap h (apply mapv vector r)))])))
-     (into {}))))
+  (with-redefs [email/bcc-enabled? (constantly false)]
+    (->> (mt/with-test-user nil
+           (pulse.test-util/with-captured-channel-send-messages!
+             (metabase.pulse/send-pulse! pulse)))
+         :channel/email
+         first
+         :message
+         (keep
+          (fn [{:keys [type content-type file-name content]}]
+            (when (and
+                   (= :attachment type)
+                   (= "text/csv" content-type))
+              [(strip-timestamp file-name)
+               (let [[h & r] (csv/read-csv (slurp content))]
+                 (zipmap h (apply mapv vector r)))])))
+         (into {}))))
 
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
@@ -228,7 +229,7 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+        (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
           (testing "The base model has no special formatting"
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
           (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
@@ -241,7 +242,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The attached data from the first question is just numbers."
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  base-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -249,11 +251,12 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  model-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -261,11 +264,12 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  question-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -273,7 +277,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -390,7 +394,7 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
+        (let [attached-data     (run-pulse-and-return-attached-csv-data! pulse)
               get-res           #(-> (get attached-data %)
                                      (update-vals first)
                                      (dissoc "X"))

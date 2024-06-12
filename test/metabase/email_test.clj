@@ -200,10 +200,11 @@
                                            (email-body->regex-boolean email-part)
                                            (summarize-attachment email-part)))))]
     (cond-> email
-      (:to email)      (update :to set)
-      (:bcc email)     (update :bcc set)
-      (:message email) (update :message body-or-content)
-      (:body email)    (update :body body-or-content))))
+      (:recipients email) (update :recipients set)
+      (:to email)         (update :to set)
+      (:bcc email)        (update :bcc set)
+      (:message email)    (update :message body-or-content)
+      (:body email)       (update :body body-or-content))))
 
 (defn summarize-multipart-email
   "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will
