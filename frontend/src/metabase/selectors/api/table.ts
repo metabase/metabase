@@ -1,10 +1,17 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { cardApi, databaseApi, datasetApi, tableApi } from "metabase/api";
+import {
+  automagicDashboardsApi,
+  cardApi,
+  databaseApi,
+  datasetApi,
+  tableApi,
+} from "metabase/api";
 import type { Table } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
 import type {
+  AutomagicDashboardsEndpointName,
   CardEndpointName,
   DatabaseEndpointName,
   DatasetEndpointName,
@@ -41,6 +48,15 @@ const getCardTableEntries = (
   endpointName: CardEndpointName,
 ) => {
   return cardApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
+const getAutomagicDashboardTableEntries = (
+  state: ApiState,
+  endpointName: AutomagicDashboardsEndpointName,
+) => {
+  return automagicDashboardsApi.util
     .selectInvalidatedBy(state, ["table"])
     .filter(entry => entry.endpointName === endpointName);
 };
@@ -117,6 +133,23 @@ const getFromGetCardQueryMetadata = createSelector(
   },
 );
 
+const getFromAutomagicDashboardTableEntries = createSelector(
+  getApiState,
+  (state): Table[] => {
+    return getAutomagicDashboardTableEntries(
+      state,
+      "getXrayDashboardQueryMetadata",
+    ).flatMap(entry => {
+      const selector =
+        automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata.select(
+          entry.originalArgs,
+        );
+      const { data } = selector(state);
+      return data?.tables ?? [];
+    });
+  },
+);
+
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
@@ -125,6 +158,7 @@ export const getApiTables = createSelector(
     getFromGetTableQueryMetadata,
     getFromGetAdhocQueryMetadata,
     getFromGetCardQueryMetadata,
+    getFromAutomagicDashboardTableEntries,
   ],
   zipEntitySources,
 );

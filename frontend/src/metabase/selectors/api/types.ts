@@ -1,4 +1,13 @@
-import type { cardApi, databaseApi, datasetApi, tableApi } from "metabase/api";
+import type {
+  automagicDashboardsApi,
+  cardApi,
+  databaseApi,
+  datasetApi,
+  tableApi,
+} from "metabase/api";
+
+export type AutomagicDashboardsEndpointName =
+  keyof typeof automagicDashboardsApi.endpoints;
 
 export type CardEndpointName = keyof typeof cardApi.endpoints;
 

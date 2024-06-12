@@ -1,2 +1,2 @@
-export * from "./databases";
-export * from "./tables";
+export * from "./database";
+export * from "./table";
