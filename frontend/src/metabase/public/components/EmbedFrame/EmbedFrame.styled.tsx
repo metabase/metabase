@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import { color } from "metabase/lib/colors";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -170,4 +171,11 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   ${breakpointMinLarge} {
     padding: 1.5rem;
   }
+`;
+
+export const TitleAndButtonsContainer = styled(FixedWidthContainer)`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
 `;
