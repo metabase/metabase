@@ -457,7 +457,45 @@
                            (map (juxt (comp u/lower-case-en :name) identity))))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
-                     (count (rows-for-table table)))))))))))
+                     (count (rows-for-table table))))))))))
+  (testing "uploading a csv when one of the separators errors works end to end (#44034)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (with-upload-table!
+          [table (create-from-csv-and-sync-with-defaults!
+                  :file (csv-file-with ["\"c1\",\"c2\""
+                                        "\"a,b,c\",\"d\""])
+                  :auxiliary-sync-steps :synchronous)]
+          (testing "Table and Fields exist after sync"
+            (is (=? (cond->> [["c1" {:effective_type :type/Text}]
+                              ["c2" {:effective_type :type/Text}]]
+                      (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                      (cons ["_mb_row_id" {:semantic_type     :type/PK
+                                           :base_type         :type/BigInteger}]))
+                    (->> (t2/select :model/Field :table_id (:id table))
+                         (sort-by :database_position)
+                         (map (juxt (comp u/lower-case-en :name) identity))))))
+          (testing "Check the data was uploaded into the table"
+            (is (= 1 (count (rows-for-table table))))))))))
+
+(deftest infer-separator-test
+  (testing "doesn't error when checking alternative separators (#44034)"
+    (let [file (csv-file-with ["\"c1\",\"c2\""
+                               "\"a,b,c\",\"d\""])]
+      (is (= \, (#'upload/infer-separator file)))))
+  (doseq [[separator lines] example-files]
+    (testing (str "inferring " separator)
+      (let [f (csv-file-with lines)
+            s ({:tab \tab :semi-colon \; :comma \,} separator)]
+        (is (= s (#'upload/infer-separator f))))))
+  ;; it's actually decently hard to make it not stumble on comma or semicolon. The strategy here is that the data
+  ;; column count is greater than the header column count regardless of the separators we choose
+  (let [lines [","
+               ",,,;;;\t\t"]]
+    (testing "throws an error if there's no clear winner"
+      (let [f (csv-file-with lines)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
+                              (#'upload/infer-separator f)))))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
