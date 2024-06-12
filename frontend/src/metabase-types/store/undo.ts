@@ -11,6 +11,8 @@ export type UndoState = {
   toastColor?: string;
   actionLabel?: string;
   canDismiss?: boolean;
+  startedAt?: number;
+  pausedAt?: number;
   dismissIconColor?: string;
   _domId?: string | number;
 }[];

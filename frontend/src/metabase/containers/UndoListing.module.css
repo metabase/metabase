@@ -1,0 +1,24 @@
+@keyframes animated-progress {
+  0% {
+    transform: scaleX(1);
+  }
+
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+.progress {
+  /* it must be in sync with AUTO_WIRE_TOAST_TIMEOUT */
+  animation: animated-progress 12s linear;
+  transform-origin: left;
+  width: 100%;
+  /* override Progress's position */
+  position: absolute !important;
+  top: 0;
+  left: 0;
+}
+
+.toast:hover .progress {
+  animation-play-state: paused;
+}

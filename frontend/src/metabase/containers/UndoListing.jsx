@@ -5,12 +5,17 @@ import { t } from "ttag";
 
 import BodyComponent from "metabase/components/BodyComponent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { AUTO_WIRE_TOAST_TIMEOUT } from "metabase/dashboard/actions/auto-wire-parameters/constants";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useSelector, useDispatch } from "metabase/lib/redux";
-import { dismissUndo, performUndo } from "metabase/redux/undo";
+import {
+  dismissUndo,
+  pauseUndo,
+  performUndo,
+  resumeUndo,
+} from "metabase/redux/undo";
 import { Progress, Transition } from "metabase/ui";
 
+import CS from "./UndoListing.module.css";
 import {
   CardContent,
   CardContentSide,
@@ -60,21 +65,33 @@ const slideIn = {
   transitionProperty: "transform, opacity",
 };
 
-const scaleX = {
-  in: { transform: "scaleX(0)" },
-  out: { transform: "scaleX(1)" },
-  common: { transformOrigin: "left" },
-  transitionProperty: "transform",
-};
-
 const TOAST_TRANSITION_DURATION = 300;
 
 function UndoToast({ undo, onUndo, onDismiss }) {
+  const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useMount(() => {
     setMounted(true);
   });
+
+  const handleMouseEnter = () => {
+    if (!undo.showProgress) {
+      return;
+    }
+    setPaused(true);
+    dispatch(pauseUndo(undo));
+  };
+
+  const handleMouseLeave = () => {
+    if (!undo.showProgress) {
+      return;
+    }
+
+    setPaused(false);
+    dispatch(resumeUndo(undo));
+  };
 
   return (
     <Transition
@@ -91,8 +108,18 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           role="status"
           noBorder={undo.showProgress}
           style={styles}
+          className={CS.toast}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
-          {undo.showProgress && <UndoProgress />}
+          {undo.showProgress && (
+            <Progress
+              size="sm"
+              color={paused ? "bg-dark" : "brand"}
+              value={100}
+              className={CS.progress}
+            />
+          )}
           <CardContent>
             <CardContentSide maw="75ch">
               {undo.icon && <CardIcon name={undo.icon} color="text-white" />}
@@ -135,37 +162,6 @@ function UndoListingInner() {
         />
       ))}
     </UndoList>
-  );
-}
-
-function UndoProgress() {
-  const [mounted, setMounted] = useState(false);
-
-  useMount(() => {
-    setMounted(true);
-  });
-
-  return (
-    <Transition
-      mounted={mounted}
-      transition={scaleX}
-      duration={AUTO_WIRE_TOAST_TIMEOUT - TOAST_TRANSITION_DURATION}
-      timingFunction="linear"
-    >
-      {styles => (
-        <Progress
-          size="sm"
-          value={100}
-          style={{
-            ...styles,
-            width: "100%",
-            position: "absolute",
-            top: 0,
-            left: 0,
-          }}
-        />
-      )}
-    </Transition>
   );
 }
 
