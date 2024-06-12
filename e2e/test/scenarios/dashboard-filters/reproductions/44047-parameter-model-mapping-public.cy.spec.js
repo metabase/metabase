@@ -9,13 +9,13 @@ import {
   visitPublicDashboard,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "Question",
   type: "question",
   query: {
-    "source-table": ORDERS_ID,
+    "source-table": REVIEWS_ID,
     limit: 100,
   },
 };
@@ -24,7 +24,7 @@ const modelDetails = {
   name: "Model",
   type: "model",
   query: {
-    "source-table": ORDERS_ID,
+    "source-table": REVIEWS_ID,
     limit: 100,
   },
 };
@@ -33,10 +33,10 @@ const sourceQuestionDetails = {
   name: "Source question",
   type: "question",
   query: {
-    "source-table": ORDERS_ID,
+    "source-table": REVIEWS_ID,
     fields: [
-      ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-      ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+      ["field", REVIEWS.ID, { "base-type": "type/BigInteger" }],
+      ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
     ],
   },
 };
@@ -63,7 +63,7 @@ function getQuestionDashcardDetails(dashboard, card) {
         parameter_id: parameterDetails.id,
         target: [
           "dimension",
-          ["field", ORDERS.QUANTITY, { type: "type/Integer" }],
+          ["field", REVIEWS.RATING, { type: "type/Integer" }],
         ],
       },
     ],
@@ -78,7 +78,7 @@ function getModelDashcardDetails(dashboard, card) {
       {
         card_id: card.id,
         parameter_id: parameterDetails.id,
-        target: ["dimension", ["field", "QUANTITY", { type: "type/Integer" }]],
+        target: ["dimension", ["field", "RATING", { type: "type/Integer" }]],
       },
     ],
   };
@@ -88,15 +88,15 @@ describe("44047", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
       semantic_type: "type/Category",
     });
-    cy.request("POST", `/api/field/${ORDERS.QUANTITY}/dimension`, {
+    cy.request("POST", `/api/field/${REVIEWS.RATING}/dimension`, {
       type: "internal",
       name: "Rating",
     });
-    cy.request("POST", `/api/field/${ORDERS.QUANTITY}/values`, {
-      values: [[0, "Remapped"]],
+    cy.request("POST", `/api/field/${REVIEWS.RATING}/values`, {
+      values: [[1, "Remapped"]],
     });
   });
 
