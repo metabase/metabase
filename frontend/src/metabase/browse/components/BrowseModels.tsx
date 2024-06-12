@@ -83,10 +83,6 @@ export const BrowseModels = () => {
     !modelsResult.isLoading &&
     !filteredModels.length;
 
-  // FIXME: remove
-  // modelsResult.isLoading = true
-  // recentModelsResult.isLoading = true
-
   return (
     <BrowseContainer>
       <BrowseHeader>
