@@ -117,7 +117,7 @@ function PinnedItemCard({
         <Body>
           <Header>
             <ItemIcon name={icon as unknown as IconName} />
-            <ActionsContainer>
+            <ActionsContainer h={item ? undefined : "2.5rem"}>
               {item?.model === "dataset" && <ModelDetailLink model={item} />}
               {hasActions && (
                 <ActionMenu

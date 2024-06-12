@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { RawMaybeLink } from "metabase/components/Badge/Badge.styled";
 import Card from "metabase/components/Card";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
-import { Icon } from "metabase/ui";
+import { Box, type BoxProps, Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
 
@@ -27,7 +27,7 @@ export const ItemIcon = styled(Icon)`
   width: 1.5rem;
 `;
 
-export const ActionsContainer = styled.div`
+export const ActionsContainer = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -72,5 +72,4 @@ export const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 2.5rem;
 `;
