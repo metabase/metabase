@@ -4,10 +4,8 @@ import { databaseApi, tableApi } from "metabase/api";
 import type { Table } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
+import type { DatabaseEndpointName, TableEndpointName } from "./types";
 import { zipEntitySources } from "./utils";
-
-type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
-type TableEndpointName = keyof typeof tableApi.endpoints;
 
 const getDatabaseEntries = (
   state: ApiState,
@@ -23,6 +21,21 @@ const getTableEntries = (state: ApiState, endpointName: TableEndpointName) => {
     .selectInvalidatedBy(state, ["table"])
     .filter(entry => entry.endpointName === endpointName);
 };
+
+const getFromListDatabaseSchemaTables = createSelector(
+  getApiState,
+  (state): Table[] => {
+    return getDatabaseEntries(state, "listDatabaseSchemaTables").flatMap(
+      entry => {
+        const selector = databaseApi.endpoints.listDatabaseSchemaTables.select(
+          entry.originalArgs,
+        );
+        const { data } = selector(state);
+        return data ?? [];
+      },
+    );
+  },
+);
 
 const getFromListTables = createSelector(getApiState, (state): Table[] => {
   return getTableEntries(state, "listTables").flatMap(entry => {
@@ -53,27 +66,12 @@ const getFromGetTableQueryMetadata = createSelector(
   },
 );
 
-const getFromListDatabaseSchemaTables = createSelector(
-  getApiState,
-  (state): Table[] => {
-    return getDatabaseEntries(state, "listDatabaseSchemaTables").flatMap(
-      entry => {
-        const selector = databaseApi.endpoints.listDatabaseSchemaTables.select(
-          entry.originalArgs,
-        );
-        const { data } = selector(state);
-        return data ?? [];
-      },
-    );
-  },
-);
-
 export const getApiTables = createSelector(
   [
-    getFromGetTable,
-    getFromListTables,
-    getFromGetTableQueryMetadata,
     getFromListDatabaseSchemaTables,
+    getFromListTables,
+    getFromGetTable,
+    getFromGetTableQueryMetadata,
   ],
   zipEntitySources,
 );

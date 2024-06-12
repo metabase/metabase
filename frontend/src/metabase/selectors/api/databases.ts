@@ -4,9 +4,8 @@ import { databaseApi } from "metabase/api";
 import type { Database } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
+import type { DatabaseEndpointName } from "./types";
 import { zipEntitySources } from "./utils";
-
-type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
 
 const getDatabaseEntries = (
   state: ApiState,
