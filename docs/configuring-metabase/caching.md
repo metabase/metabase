@@ -49,7 +49,7 @@ Use a query’s average execution time to determine how long to cache the query'
 
 
 - **Minimum query duration**: Metabase will cache this question if it has an average query execution time greater than this many seconds.
-- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10s to return results. If you set a multiplier of 100, Metabase will store the cache for 1000 seconds (~16 minutes).
+- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10 seconds to return results, and you set a multiplier of 100, Metabase will store the cache for 10 x 100 seconds: 1,000 seconds (~16 minutes).
 
 On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md).
 
