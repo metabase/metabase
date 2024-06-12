@@ -31,6 +31,7 @@ export type EmbeddingDisplayOptions = {
   bordered: boolean;
   titled: boolean;
   hide_download_button: boolean | null;
+  downloads: boolean | null;
 };
 
 export type CodeSampleParameters = {
