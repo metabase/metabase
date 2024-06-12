@@ -19,10 +19,14 @@ import {
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  isFilterParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -38,6 +42,7 @@ import {
   SettingLabelError,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
+import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
@@ -51,6 +56,7 @@ export interface ParameterSettingsProps {
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onChangeRequired: (value: boolean) => void;
+  onChangeTemporalUnits: (temporalUnits: TemporalUnit[]) => void;
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
 
@@ -72,6 +78,7 @@ export const ParameterSettings = ({
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeRequired,
+  onChangeTemporalUnits,
   embeddedParameterVisibility,
   hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
@@ -161,7 +168,7 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      {sectionId && !isTemporalUnitParameter(parameter) && (
+      {sectionId && isFilterParameter(parameter) && (
         <>
           <Box mb="xl">
             <SettingLabel>{t`Filter type`}</SettingLabel>
@@ -183,7 +190,15 @@ export const ParameterSettings = ({
           )}
         </>
       )}
-
+      {isTemporalUnitParameter(parameter) && (
+        <Box mb="xl">
+          <SettingLabel>{t`Unit of Time options`}</SettingLabel>
+          <TemporalUnitSettings
+            parameter={parameter}
+            onChangeTemporalUnits={onChangeTemporalUnits}
+          />
+        </Box>
+      )}
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
