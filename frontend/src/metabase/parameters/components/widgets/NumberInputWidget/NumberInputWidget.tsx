@@ -60,7 +60,7 @@ export function NumberInputWidget({
 
   function shouldCreate(value: string | number) {
     const res = parseNumberValue(value);
-    return res !== null;
+    return res !== null && res.toString() === value;
   }
 
   const filteredUnsavedArrayValue = useMemo(

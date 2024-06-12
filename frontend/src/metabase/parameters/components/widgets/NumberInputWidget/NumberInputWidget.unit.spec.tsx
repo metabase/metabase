@@ -205,12 +205,11 @@ describe("NumberInputWidget", () => {
         pointerEventsCheck: 0,
       });
 
-      expect(getValue(combobox, 123)).toBeInTheDocument();
       expect(getValue(combobox, 456)).toBeInTheDocument();
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith([123, 456]);
+      expect(mockSetValue).toHaveBeenCalledWith([456]);
     });
 
     it("should be unsettable", async () => {
