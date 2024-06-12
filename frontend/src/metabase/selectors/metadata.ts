@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { Api, tableApi } from "metabase/api";
-import { TableSchema } from "metabase/schema";
+import { Api, databaseApi, tableApi } from "metabase/api";
+import { DatabaseSchema, TableSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -34,6 +34,20 @@ const getApiState = createSelector(
   state => ({ [Api.reducerPath]: state }),
 );
 
+const getApiDatabases = createSelector(getApiState, state => {
+  const entries = databaseApi.util
+    .selectInvalidatedBy(state, ["database"])
+    .filter(entry => entry.endpointName === "listDatabases");
+
+  return entries.flatMap(entry => {
+    const selector = databaseApi.endpoints.listDatabases.select(
+      entry.originalArgs,
+    );
+    const { data } = selector(state);
+    return data?.data ?? [];
+  });
+});
+
 const getApiTables = createSelector(getApiState, state => {
   const entries = tableApi.util
     .selectInvalidatedBy(state, ["table"])
@@ -46,16 +60,21 @@ const getApiTables = createSelector(getApiState, state => {
   });
 });
 
-const getApiEntities = createSelector([getApiTables], tables => {
-  const data = {
-    tables,
-  };
-  const schema = {
-    tables: [TableSchema],
-  };
-  const { entities } = normalize(data, schema);
-  return entities;
-});
+const getApiEntities = createSelector(
+  [getApiDatabases, getApiTables],
+  (databases, tables) => {
+    const data = {
+      databases,
+      tables,
+    };
+    const schema = {
+      databases: [DatabaseSchema],
+      tables: [TableSchema],
+    };
+    const { entities } = normalize(data, schema);
+    return entities;
+  },
+);
 
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
@@ -67,7 +86,10 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
+const getNormalizedDatabases = createSelector(
+  [getApiEntities],
+  entities => entities.databases ?? {},
+);
 
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
