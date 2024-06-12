@@ -502,7 +502,7 @@ export function FieldValuesWidgetInner({
         ) : !isSimpleInput ? (
           <MultiAutocomplete
             onSearchChange={onInputChange}
-            onChange={onChange}
+            onChange={values => onChange(values.map(parseFreeformValue))}
             value={value.filter(v => v !== null && v !== undefined)}
             data={options.map(renderStringOption)}
             renderValue={value => optionRenderer?.([value])}
@@ -510,7 +510,6 @@ export function FieldValuesWidgetInner({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             prefix={prefix}
-            parseValue={parseFreeformValue}
           />
         ) : (
           <TokenField
