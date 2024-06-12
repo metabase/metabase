@@ -6,7 +6,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection as CollectionType,
   CollectionId,
-  CollectionEssentials,
 } from "metabase-types/api";
 import type { WrappedEntity } from "metabase-types/entities";
 import type { State } from "metabase-types/store";
