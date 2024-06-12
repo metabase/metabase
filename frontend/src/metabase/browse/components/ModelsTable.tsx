@@ -1,12 +1,17 @@
-import { useEffect, useState } from "react";
+import {
+  type PropsWithChildren,
+  useEffect,
+  useState,
+  type CSSProperties,
+} from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
-  ItemLink,
   ItemNameCell,
+  MaybeItemLink,
   Table,
   TableColumn,
   TBody,
@@ -18,7 +23,14 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
-import { Flex, Icon, type IconProps } from "metabase/ui";
+import {
+  Flex,
+  Icon,
+  type IconProps,
+  type IconName,
+  Skeleton,
+} from "metabase/ui";
+import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { trackModelClick } from "../analytics";
@@ -29,6 +41,7 @@ import {
   CollectionBreadcrumbsWithTooltip,
   SimpleCollectionDisplay,
 } from "./CollectionBreadcrumbsWithTooltip";
+import { CollectionsIcon } from "./CollectionBreadcrumbsWithTooltip.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import {
   ModelCell,
@@ -38,7 +51,9 @@ import {
 import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
-  models: ModelResult[];
+  models?: ModelResult[];
+  /** True if this component is just rendering a loading skeleton */
+  skeleton?: boolean;
 }
 
 export const itemsTableContainerName = "ItemsTableContainer";
@@ -60,14 +75,18 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
 
 const LARGE_DATASET_THRESHOLD = 500;
 
-export const ModelsTable = ({ models }: ModelsTableProps) => {
+export const ModelsTable = ({
+  models = [],
+  skeleton = false,
+}: ModelsTableProps) => {
   const locale = useSelector(getLocale);
   const localeCode: string | undefined = locale?.code;
 
   // for large datasets, we need to simplify the display to avoid performance issues
   const isLargeDataset = models.length > LARGE_DATASET_THRESHOLD;
 
-  const [showLoading, setShowLoading] = useState(isLargeDataset);
+  const [showLoadingManyRows, setShowLoadingManyRows] =
+    useState(isLargeDataset);
 
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
@@ -79,20 +98,22 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   const collectionWidth = 38.5;
   const descriptionWidth = 100 - collectionWidth;
 
-  const handleUpdateSortOptions = (newSortingOptions: SortingOptions) => {
-    if (isLargeDataset) {
-      setShowLoading(true);
-    }
-    setSortingOptions(newSortingOptions);
-  };
+  const handleUpdateSortOptions = skeleton
+    ? undefined
+    : (newSortingOptions: SortingOptions) => {
+        if (isLargeDataset) {
+          setShowLoadingManyRows(true);
+        }
+        setSortingOptions(newSortingOptions);
+      };
 
   useEffect(() => {
     // we need a better virtualized table solution for large datasets
     // for now, we show loading text to make this component feel more responsive
-    if (isLargeDataset && showLoading) {
-      setTimeout(() => setShowLoading(false), 10);
+    if (isLargeDataset && showLoadingManyRows) {
+      setTimeout(() => setShowLoadingManyRows(false), 10);
     }
-  }, [isLargeDataset, showLoading, sortedModels]);
+  }, [isLargeDataset, showLoadingManyRows, sortedModels]);
 
   return (
     <Table>
@@ -149,8 +170,12 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
         </tr>
       </thead>
       <TBody>
-        {showLoading ? (
+        {showLoadingManyRows ? (
           <TableLoader />
+        ) : skeleton ? (
+          <Repeat times={7}>
+            <TBodyRowSkeleton />
+          </Repeat>
         ) : (
           sortedModels.map((model: ModelResult) => (
             <TBodyRow
@@ -168,9 +193,11 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
 const TBodyRow = ({
   model,
   simpleDisplay,
+  skeleton,
 }: {
   model: ModelResult;
   simpleDisplay: boolean;
+  skeleton?: boolean;
 }) => {
   const icon = getIcon(model);
   const containerName = `collections-path-for-${model.id}`;
@@ -180,6 +207,9 @@ const TBodyRow = ({
   return (
     <ModelTableRow
       onClick={(e: React.MouseEvent) => {
+        if (skeleton) {
+          return;
+        }
         const url = Urls.model({ id, name });
         if ((e.ctrlKey || e.metaKey) && e.button === 0) {
           window.open(url, "_blank");
@@ -195,6 +225,9 @@ const TBodyRow = ({
         model={model}
         icon={icon}
         onClick={() => {
+          if (skeleton) {
+            return;
+          }
           trackModelClick(model.id);
         }}
       />
@@ -236,21 +269,21 @@ const NameCell = ({
   testIdPrefix = "table",
   onClick,
   icon,
-}: {
-  model: ModelResult;
+  children,
+}: PropsWithChildren<{
+  model?: ModelResult;
   testIdPrefix?: string;
   onClick?: () => void;
   icon: IconProps;
-}) => {
-  const { id, name } = model;
-  const headingId = `model-${id}-heading`;
+}>) => {
+  const headingId = `model-${model?.id || "dummy"}-heading`;
   return (
     <ItemNameCell
       data-testid={`${testIdPrefix}-name`}
       aria-labelledby={headingId}
     >
-      <ItemLink
-        to={Urls.model({ id, name })}
+      <MaybeItemLink
+        to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
         onClick={onClick}
         style={{
           // To align the icons with "Name" in the <th>
@@ -264,8 +297,14 @@ const NameCell = ({
           color={color("brand")}
           style={{ flexShrink: 0 }}
         />
-        <EntityItem.Name name={model.name} variant="list" id={headingId} />
-      </ItemLink>
+        {children || (
+          <EntityItem.Name
+            name={model?.name || ""}
+            variant="list"
+            id={headingId}
+          />
+        )}
+      </MaybeItemLink>
     </ItemNameCell>
   );
 };
@@ -279,3 +318,35 @@ const TableLoader = () => (
     </td>
   </tr>
 );
+
+const CellTextSkeleton = () => {
+  return <Skeleton natural h="16.8px" />;
+};
+
+const TBodyRowSkeleton = ({ style }: { style?: CSSProperties }) => {
+  const icon = { name: "model" as IconName };
+  return (
+    <ModelTableRow skeleton style={style}>
+      {/* Name */}
+      <NameCell icon={icon}>
+        <CellTextSkeleton />
+      </NameCell>
+
+      {/* Collection */}
+      <ModelCell {...collectionProps}>
+        <Flex>
+          <CollectionsIcon name="folder" />
+          <CellTextSkeleton />
+        </Flex>
+      </ModelCell>
+
+      {/* Description */}
+      <ModelCell {...descriptionProps}>
+        <CellTextSkeleton />
+      </ModelCell>
+
+      {/* Adds a border-radius to the table */}
+      <Columns.RightEdge.Cell />
+    </ModelTableRow>
+  );
+};
