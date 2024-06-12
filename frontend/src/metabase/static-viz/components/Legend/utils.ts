@@ -178,6 +178,20 @@ export const calculateLegendRowsWithColumns = ({
     fontSize,
     fontWeight,
   );
+
+  if (numRows === 1) {
+    return calculateLegendRows({
+      items,
+      width,
+      horizontalPadding,
+      verticalPadding,
+      lineHeight,
+      fontSize,
+      fontWeight,
+      isReversed,
+    });
+  }
+
   const colWidth = Math.floor(availableTotalWidth / numCols);
   const rows: PositionedLegendItem[][] = [...Array(numRows).keys()].map(
     _ => [],
