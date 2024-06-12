@@ -25,6 +25,7 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
+  Table as ApiTable,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -53,17 +54,33 @@ const zipSources = <
   return result;
 };
 
+type ApiState = ReturnType<typeof getApiState>;
+
+type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
+type TableEndpointName = keyof typeof tableApi.endpoints;
+
+const getDatabaseEntries = (
+  state: ApiState,
+  endpointName: DatabaseEndpointName,
+) => {
+  return databaseApi.util
+    .selectInvalidatedBy(state, ["database"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
+const getTableEntries = (state: ApiState, endpointName: TableEndpointName) => {
+  return tableApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
 const getApiState = createSelector(
   (state: any) => state[Api.reducerPath],
   state => ({ [Api.reducerPath]: state }),
 );
 
 const getApiDatabases = createSelector(getApiState, state => {
-  const entries = databaseApi.util
-    .selectInvalidatedBy(state, ["database"])
-    .filter(entry => entry.endpointName === "listDatabases");
-
-  return entries.flatMap(entry => {
+  return getDatabaseEntries(state, "listDatabases").flatMap(entry => {
     const selector = databaseApi.endpoints.listDatabases.select(
       entry.originalArgs,
     );
@@ -72,38 +89,32 @@ const getApiDatabases = createSelector(getApiState, state => {
   });
 });
 
-const getTablesFromGetTable = createSelector(getApiState, state => {
-  const entries = tableApi.util
-    .selectInvalidatedBy(state, ["table"])
-    .filter(entry => entry.endpointName === "getTable");
+const getTablesFromListTables = createSelector(
+  getApiState,
+  (state): ApiTable[] => {
+    return getTableEntries(state, "listTables").flatMap(entry => {
+      const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
+      const { data } = selector(state);
+      return data ?? [];
+    });
+  },
+);
 
-  return entries.flatMap(entry => {
-    const selector = tableApi.endpoints.getTable.select(entry.originalArgs);
-    const { data } = selector(state);
-    return data ? [data] : [];
-  });
-});
-
-const getTablesFromListTables = createSelector(getApiState, state => {
-  const entries = tableApi.util
-    .selectInvalidatedBy(state, ["table"])
-    .filter(entry => entry.endpointName === "listTables");
-
-  return entries.flatMap(entry => {
-    const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
-    const { data } = selector(state);
-    return data ?? [];
-  });
-});
+const getTablesFromGetTable = createSelector(
+  getApiState,
+  (state): ApiTable[] => {
+    return getTableEntries(state, "getTable").flatMap(entry => {
+      const selector = tableApi.endpoints.getTable.select(entry.originalArgs);
+      const { data } = selector(state);
+      return data ? [data] : [];
+    });
+  },
+);
 
 const getTablesFromGetTableQueryMetadata = createSelector(
   getApiState,
-  state => {
-    const entries = tableApi.util
-      .selectInvalidatedBy(state, ["table"])
-      .filter(entry => entry.endpointName === "getTableQueryMetadata");
-
-    return entries.flatMap(entry => {
+  (state): ApiTable[] => {
+    return getTableEntries(state, "getTableQueryMetadata").flatMap(entry => {
       const selector = tableApi.endpoints.getTableQueryMetadata.select(
         entry.originalArgs,
       );
