@@ -72,6 +72,18 @@ const getApiDatabases = createSelector(getApiState, state => {
   });
 });
 
+const getTablesFromGetTable = createSelector(getApiState, state => {
+  const entries = tableApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === "getTable");
+
+  return entries.flatMap(entry => {
+    const selector = tableApi.endpoints.getTable.select(entry.originalArgs);
+    const { data } = selector(state);
+    return data ? [data] : [];
+  });
+});
+
 const getTablesFromListTables = createSelector(getApiState, state => {
   const entries = tableApi.util
     .selectInvalidatedBy(state, ["table"])
@@ -102,7 +114,11 @@ const getTablesFromGetTableQueryMetadata = createSelector(
 );
 
 const getApiTables = createSelector(
-  [getTablesFromListTables, getTablesFromGetTableQueryMetadata],
+  [
+    getTablesFromGetTable,
+    getTablesFromListTables,
+    getTablesFromGetTableQueryMetadata,
+  ],
   zipSources,
 );
 
