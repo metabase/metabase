@@ -17,11 +17,12 @@ import {
   createApiKey,
 } from "e2e/support/helpers";
 
-const { normal, admin, nocollection } = USERS;
+const { sandboxed, normal, admin, nodata, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { COLLECTION_GROUP } = USER_GROUPS;
 
 const TEST_USER = {
   first_name: "Testy",
@@ -33,6 +34,8 @@ const TEST_USER = {
 const adminUserName = getFullName(admin);
 const noCollectionUserName = getFullName(nocollection);
 const normalUserName = getFullName(normal);
+
+const totalUsers = Object.keys(USERS).length;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -601,6 +604,259 @@ describeEE("scenarios > admin > people", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(FULL_NAME);
+  });
+});
+
+describeEE("scenarios > admin > people > group managers", () => {
+  function confirmLosingAbilityToManageGroup() {
+    modal().within(() => {
+      cy.findByText(
+        "You will not be able to manage users of this group anymore.",
+      );
+      cy.button("Confirm").click();
+    });
+  }
+
+  function removeFirstGroup() {
+    cy.icon("ellipsis").eq(0).click();
+    cy.findByText("Remove Group").click();
+    cy.button("Remove group").click();
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    cy.visit("/admin/people");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(normalUserName)
+      .closest("tr")
+      .findByText("2 other groups")
+      .click();
+
+    cy.findAllByTestId("user-type-toggle").click({ multiple: true });
+
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.icon("gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Admin settings").click();
+  });
+
+  describe("group managers", () => {
+    it("can manage groups from the group page", () => {
+      cy.findByTestId("admin-left-nav-pane").within(() => {
+        cy.findByTextEnsureVisible("Groups").click();
+      });
+
+      // Edit group name
+      cy.icon("ellipsis").eq(0).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Edit Name").click();
+      cy.get("input").type(" updated");
+      cy.button("Done").click();
+
+      // Click on the group with the new name
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("collection updated").click();
+
+      // Add "No Collection" user as a member
+      cy.button("Add members").click();
+      cy.focused().type("No");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(noCollectionUserName).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Add").click();
+
+      // Find user row
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(noCollectionUserName).closest("tr").as("userRow");
+
+      // Promote to manager and demote back to member
+      cy.get("@userRow").within(() => {
+        cy.findByText("Member").realHover();
+        cy.findAllByTestId("user-type-toggle").click();
+
+        cy.findByText("Manager").realHover();
+        cy.findAllByTestId("user-type-toggle").click();
+
+        cy.findByText("Member");
+      });
+
+      // Delete the user
+      cy.get("@userRow").within(() => {
+        cy.icon("close").click();
+      });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(noCollectionUserName).should("not.exist");
+
+      // Demote myself
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(normalUserName)
+        .closest("tr")
+        .within(() => {
+          cy.findByText("Manager").realHover();
+          cy.findAllByTestId("user-type-toggle").click();
+        });
+      confirmLosingAbilityToManageGroup();
+
+      // Redirected to the groups list
+      cy.url().should("match", /\/admin\/people\/groups$/);
+
+      // Open another group
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("data").click();
+
+      // Remove myself
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(normalUserName)
+        .closest("tr")
+        .within(() => {
+          cy.icon("close").click();
+        });
+      confirmLosingAbilityToManageGroup();
+
+      // Redirected to the home page
+      cy.url().should("match", /\/$/);
+    });
+
+    it("can manage members from the people page", () => {
+      // Open membership select for a user
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(noCollectionUserName)
+        .closest("tr")
+        .as("userRow")
+        .within(() => {
+          cy.findByText("data").click();
+        });
+
+      // Add the user to a group
+      popover().within(() => {
+        cy.findByText("collection").click();
+      });
+      cy.get("@userRow").within(() => {
+        cy.findByText("2 other groups");
+      });
+
+      // Remove the user from the group
+      popover().within(() => {
+        cy.findByText("collection").click();
+      });
+      cy.get("@userRow").within(() => {
+        cy.findByText("data");
+      });
+
+      // Promote and then demote the user
+      popover().within(() => {
+        cy.icon("arrow_up").click();
+        cy.icon("arrow_down").click();
+      });
+
+      // Find own row
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(normalUserName)
+        .closest("tr")
+        .within(() => {
+          cy.findByText("2 other groups").click();
+        });
+
+      // Demote myself from being manager
+      popover().within(() => {
+        cy.icon("arrow_down").eq(0).click();
+      });
+      confirmLosingAbilityToManageGroup();
+
+      // Remove myself from another group
+      popover().within(() => {
+        cy.findByText("data").click();
+      });
+      confirmLosingAbilityToManageGroup();
+
+      // Redirected to the home page
+      cy.url().should("match", /\/$/);
+    });
+  });
+
+  it("after removing the last group redirects to the home page", () => {
+    cy.findByTestId("admin-left-nav-pane").findByText("Groups").click();
+
+    removeFirstGroup();
+    cy.url().should("match", /\/admin\/people\/groups$/);
+
+    removeFirstGroup();
+    cy.url().should("match", /\/$/);
+  });
+});
+
+describeEE("issue 23689", () => {
+  function findUserByFullName(user) {
+    const { first_name, last_name } = user;
+    return cy.findByText(`${first_name} ${last_name}`);
+  }
+
+  function visitGroupPermissionsPage(groupId) {
+    cy.visit(`/admin/people/groups/${groupId}`);
+    cy.wait("@membership");
+  }
+  beforeEach(() => {
+    // TODO: remove the next line when this issue gets fixed
+    cy.skipOn(true);
+
+    cy.intercept("GET", "/api/permissions/membership").as("membership");
+
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+
+    visitGroupPermissionsPage(COLLECTION_GROUP);
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("3 members");
+
+    findUserByFullName(normal);
+    findUserByFullName(nodata);
+
+    // Make sandboxed user a group manager
+    findUserByFullName(sandboxed)
+      .closest("tr")
+      .findByTestId("user-type-toggle")
+      .click({ force: true });
+
+    // Sanity check instead of waiting for the PUT request
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Manager");
+
+    cy.sandboxTable({
+      table_id: ORDERS_ID,
+      attribute_remappings: {
+        attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+      },
+    });
+
+    cy.signOut();
+    cy.signInAsSandboxedUser();
+  });
+
+  it("sandboxed group manager should see all other members (metabase#23689)", () => {
+    visitGroupPermissionsPage(COLLECTION_GROUP);
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("3 members");
+
+    findUserByFullName(sandboxed);
+    findUserByFullName(normal);
+    findUserByFullName(nodata);
+
+    cy.visit("/admin/people");
+    cy.wait("@membership");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(`${totalUsers} people found`);
+    findUserByFullName(sandboxed);
+    findUserByFullName(normal);
+    findUserByFullName(nodata);
+    findUserByFullName(nocollection);
   });
 });
 
