@@ -10,34 +10,22 @@ const shimmerAnimation = keyframes`
 `;
 
 export const getSkeletonOverrides = (): MantineThemeOverride["components"] => {
-  const win = window as {
-    shimmerSkeletons?: boolean;
-  };
-  win.shimmerSkeletons ??= true;
   return {
     Skeleton: {
       styles: _theme => {
         return {
-          root: win.shimmerSkeletons
-            ? {
-                "background-color": "rgba(0, 0, 0, .03)",
-                "&::before": {
-                  background:
-                    "linear-gradient(100deg, transparent, rgba(0, 0, 0, .03) 50%, transparent) ! important",
-                  animation: `${shimmerAnimation} 1.4s linear infinite`,
-                },
-                "&::after": {
-                  display: "none",
-                },
-              }
-            : {
-                "&::before": {
-                  background: "rgba(0, 0, 0, .03) ! important",
-                },
-                "&::after": {
-                  background: "rgba(0, 0, 0, .06) ! important",
-                },
-              },
+          // We replace Mantine's pulsing animation with a shimmer animation
+          root: {
+            "background-color": "rgba(0, 0, 0, .03)",
+            "&::before": {
+              background:
+                "linear-gradient(100deg, transparent, rgba(0, 0, 0, .03) 50%, transparent) ! important",
+              animation: `${shimmerAnimation} 1.4s linear infinite`,
+            },
+            "&::after": {
+              display: "none",
+            },
+          },
         };
       },
     },
