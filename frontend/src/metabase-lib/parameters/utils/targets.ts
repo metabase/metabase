@@ -48,7 +48,10 @@ export function getParameterTargetField(
     const metadata = question.metadata();
     const dimension = Dimension.parseMBQL(target[1], metadata, query);
 
-    return dimension?.field();
+    const field = dimension?.field();
+    if (typeof field?.id === "number") {
+      return field;
+    }
   }
 
   return null;
