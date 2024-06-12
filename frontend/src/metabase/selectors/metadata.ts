@@ -57,11 +57,6 @@ const getApiEntities = createSelector([getApiDatabases], tables => {
   return entities;
 });
 
-const getNormalizedTables = createSelector(
-  [getApiEntities],
-  entities => entities.tables ?? {},
-);
-
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
 };
@@ -81,17 +76,22 @@ const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
 const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
   !!props?.includeHiddenTables;
 
-// const getNormalizedTables = createSelector(
-//   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
-//   (tables, includeHiddenTables) =>
-//     includeHiddenTables
-//       ? tables
-//       : Object.fromEntries(
-//           Object.entries(tables).filter(
-//             ([, table]) => table.visibility_type == null,
-//           ),
-//         ),
-// );
+const getNormalizedTables = createSelector(
+  [getApiEntities, getIncludeHiddenTables],
+  (entities, includeHiddenTables) => {
+    const tables = entities.tables ?? {};
+
+    if (includeHiddenTables) {
+      return tables;
+    }
+
+    return Object.fromEntries(
+      Object.entries(tables).filter(
+        ([, table]) => table.visibility_type == null,
+      ),
+    );
+  },
+);
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
 const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
