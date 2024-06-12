@@ -26,7 +26,7 @@ export function RecentModels({
       my="lg"
       role="grid"
       aria-labelledby={headingId}
-      mah={skeleton ? "10.25rem" : undefined}
+      mah={skeleton ? "11rem" : undefined}
       style={skeleton ? { overflow: "hidden" } : undefined}
     >
       <Text
