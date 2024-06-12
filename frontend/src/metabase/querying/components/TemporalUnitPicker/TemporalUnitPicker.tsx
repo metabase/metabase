@@ -7,7 +7,7 @@ import type { TemporalUnit } from "metabase-types/api";
 const MIN_WIDTH = 180;
 const INITIAL_VISIBLE_ITEMS_COUNT = 7;
 
-interface TemporalUnitItem {
+export interface TemporalUnitItem {
   value: TemporalUnit;
   label: string;
 }
