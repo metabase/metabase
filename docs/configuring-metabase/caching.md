@@ -7,8 +7,6 @@ redirect_from:
 
 # Caching query results
 
-{% include plans-blockquote.html feature="Advanced caching control" %}
-
 If your question results don't change frequently, you may want to store the results so that the next time anyone visits the question, Metabase can retrieve the stored results rather than query the database again.
 
 For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
