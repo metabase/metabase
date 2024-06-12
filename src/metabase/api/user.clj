@@ -345,7 +345,6 @@
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
-  (check-not-internal-user id)
   (-> (api/check-404 (fetch-user :id id, :is_active true))
       (t2/hydrate :user_group_memberships)))
 
