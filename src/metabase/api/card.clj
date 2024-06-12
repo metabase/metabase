@@ -211,13 +211,17 @@
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
-  [id ignore_view]
+  [id ignore_view context]
   {id ms/PositiveInt
-   ignore_view [:maybe :boolean]}
+   ignore_view [:maybe :boolean]
+   context [:maybe [:enum :collection]]}
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
+        (events/publish-event! :event/card-read
+                               {:object-id (:id <>)
+                                :user-id api/*current-user-id*
+                                :context (or context :question)})))))
 
 (defn- dataset-query->query [metadata-provider dataset-query]
   (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]

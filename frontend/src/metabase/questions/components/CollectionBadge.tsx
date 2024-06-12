@@ -6,6 +6,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection as CollectionType,
   CollectionId,
+  CollectionEssentials,
 } from "metabase-types/api";
 import type { WrappedEntity } from "metabase-types/entities";
 import type { State } from "metabase-types/store";
@@ -23,12 +24,14 @@ type CollectionBadgeProps = {
   className?: string;
   collection: WrappedEntity<CollectionType>;
   isSingleLine?: boolean;
+  onClick?: () => void;
 };
 
 const CollectionBadgeInner = ({
   className,
   collection,
   isSingleLine,
+  onClick,
 }: CollectionBadgeProps) => {
   if (!collection) {
     return null;
@@ -39,14 +42,16 @@ const CollectionBadgeInner = ({
     ...collection.getIcon(),
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
+
+  const clickActionProps = onClick ? { onClick } : { to: collection.getUrl() };
   return (
     <Badge
       className={className}
-      to={collection.getUrl()}
       icon={icon}
       activeColor={icon.color}
       inactiveColor="text-light"
       isSingleLine={isSingleLine}
+      {...clickActionProps}
     >
       {collection.getName()}
     </Badge>
@@ -60,9 +65,9 @@ export const CollectionBadge = Collection.load({
   loadingAndErrorWrapper: false,
   properties: ["name", "authority_level"],
 })(CollectionBadgeInner) as ComponentType<
-  PropsWithChildren<{
-    collectionId?: CollectionId;
-    isSingleLine?: boolean;
-    className?: string;
-  }>
+  PropsWithChildren<
+    {
+      collectionId?: CollectionId;
+    } & Omit<CollectionBadgeProps, "collection">
+  >
 >;

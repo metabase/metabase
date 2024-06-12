@@ -22,6 +22,9 @@ export const store = getStore(sdkReducers, null, {
   embed: {
     isEmbeddingSdk: true,
   },
+  app: {
+    isDndAvailable: false,
+  },
 }) as unknown as Store<SdkStoreState, AnyAction>;
 
 export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = useSelector;
