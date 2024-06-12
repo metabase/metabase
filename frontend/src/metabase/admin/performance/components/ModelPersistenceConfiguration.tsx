@@ -140,7 +140,6 @@ export const ModelPersistenceConfiguration = () => {
         </p>
         <p>
           {c(
-            // eslint-disable-next-line no-literal-metabase-strings -- This string provides context for translators
             '{0} is either "Metabase" or the customized name of the application.',
           )
             .t`This will create a table for each of your models in a dedicated schema. ${applicationName} will refresh them on a schedule. Questions and queries that use your models will query these tables.`}
