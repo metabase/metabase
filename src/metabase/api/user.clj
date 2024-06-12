@@ -19,7 +19,7 @@
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.models.user :as user :refer [User]]
+   [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -64,7 +64,7 @@
            [400 (tru "Not able to modify the internal user")]))
 
 (defn- fetch-user [& query-criteria]
-  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) :type :personal query-criteria))
+  (apply t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) query-criteria))
 
 (defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
   (when (and new-groups-or-ids
@@ -198,7 +198,7 @@
         group-id-clause     (when group_id [group_id])
         clauses             (user-clauses status query group-id-clause include_deactivated)]
     {:data (cond-> (t2/select
-                    (vec (cons User (user-visible-columns)))
+                    (vec (cons :model/User (user-visible-columns)))
                     (cond-> clauses
                       (and (some? group_id) group-id-clause) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
                       true             (sql.helpers/order-by [:%lower.first_name :asc]
@@ -247,7 +247,7 @@
   ;; defining these functions so the branching logic below can be as clear as possible
   (letfn [(all [] (let [clauses (-> (user-clauses nil nil nil nil)
                                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-                    {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+                    {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  mw.offset-paging/*limit*
                      :offset mw.offset-paging/*offset*}))
@@ -255,7 +255,7 @@
                                  clauses  (cond-> (user-clauses nil nil nil nil)
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-                             {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
+                             {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                               :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                               :limit  mw.offset-paging/*limit*
                               :offset mw.offset-paging/*offset*}))
@@ -292,7 +292,7 @@
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
   [{:keys [id] :as user}]
   (if (premium-features/enable-any-sso?)
-    (assoc user :sso_source (t2/select-one-fn :sso_source User :id id))
+    (assoc user :sso_source (t2/select-one-fn :sso_source :model/User :id id))
     user))
 
 (defn- add-has-question-and-dashboard
@@ -345,7 +345,7 @@
    (check-self-or-superuser id)
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-group-manager)))
-  (-> (api/check-404 (fetch-user :id id, :is_active true))
+  (-> (api/check-404 (fetch-user :id id))
       (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -361,7 +361,7 @@
    user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
    login_attributes       [:maybe user/LoginAttributes]}
   (api/check-superuser)
-  (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
+  (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
   (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id (user/create-and-invite-user!
@@ -433,7 +433,7 @@
       (api/checkp (valid-name-update? user-before-update :last_name last_name)
         "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (t2/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
+    (api/checkp (not (t2/exists? :model/User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
     (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
@@ -446,8 +446,8 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! User id changes)
-          (events/publish-event! :event/user-update {:object (t2/select-one User :id id)
+          (t2/update! :model/User id changes)
+          (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body))
@@ -460,7 +460,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (t2/update! User (u/the-id existing-user)
+  (t2/update! :model/User (u/the-id existing-user)
               {:is_active     true
                :is_superuser  false
                ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
@@ -498,7 +498,7 @@
   {id       ms/PositiveInt
    password ms/ValidPassword}
   (check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password],
+  (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
                                     :id id,
                                     :type :personal,
                                     :is_active true)]
@@ -528,8 +528,8 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (api/check-500
-   (when (pos? (t2/update! User id {:type :personal} {:is_active false}))
-     (events/publish-event! :event/user-deactivated {:object (t2/select-one User :id id) :user-id api/*current-user-id*})))
+   (when (pos? (t2/update! :model/User id {:type :personal} {:is_active false}))
+     (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -549,7 +549,7 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (pos? (t2/update! User id {:type :personal} {k false}))))
+    (api/check-500 (pos? (t2/update! :model/User id {:type :personal} {k false}))))
   {:success true})
 
 (api/defendpoint POST "/:id/send_invite"
@@ -558,7 +558,7 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (check-not-internal-user id)
-  (when-let [user (t2/select-one User :id id, :is_active true, :type :personal)]
+  (when-let [user (t2/select-one :model/User :id id, :is_active true, :type :personal)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
