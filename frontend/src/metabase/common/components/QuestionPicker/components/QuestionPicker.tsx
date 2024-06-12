@@ -64,7 +64,7 @@ const useGetInitialCollection = (
   const { data: currentCollection, error: collectionError } =
     useGetCollectionQuery(
       !isQuestion || !!currentQuestion
-        ? (isValidCollectionId(collectionId) && collectionId) || "root"
+        ? { id: (isValidCollectionId(collectionId) && collectionId) || "root" }
         : skipToken,
     );
 

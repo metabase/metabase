@@ -94,7 +94,7 @@ function MainNavbarContainer({
     data: trashCollection,
     isLoading,
     error,
-  } = useGetCollectionQuery("trash");
+  } = useGetCollectionQuery({ id: "trash" });
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
