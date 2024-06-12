@@ -1,6 +1,3 @@
-import type { SkeletonProps } from "@mantine/core";
-import { Skeleton as MantineSkeleton } from "@mantine/core";
-
-export const Skeleton = (props: SkeletonProps) => (
-  <MantineSkeleton {...props} />
-);
+export type { SkeletonProps } from "@mantine/core";
+export { Skeleton } from "@mantine/core";
+export { getSkeletonOverrides } from "./Skeleton.styled";
