@@ -17,7 +17,7 @@ const getDatabaseEntries = (
     .filter(entry => entry.endpointName === endpointName);
 };
 
-export const getFromListDatabases = createSelector(
+const getFromListDatabases = createSelector(
   getApiState,
   (state): Database[] => {
     return getDatabaseEntries(state, "listDatabases").flatMap(entry => {
