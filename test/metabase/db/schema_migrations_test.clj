@@ -1495,7 +1495,7 @@
 
 (deftest cache-config-migration-test
   (testing "Caching config is correctly copied over"
-    (impl/test-migrations ["v50.2024-06-12T12:33:08"] [migrate!]
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
       ;; to hit it
       (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
@@ -1548,7 +1548,7 @@
                   :config   {:duration 30 :unit "hours"}}]
                 (t2/select :model/CacheConfig))))))
   (testing "And not copied if caching is disabled"
-    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
+    (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
       (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "false"}))
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
       (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
@@ -1561,6 +1561,32 @@
       (migrate!)
       (is (= []
              (t2/select :model/CacheConfig))))))
+
+(deftest cache-config-mysql-update-test
+  (when (= (mdb/db-type) :mysql)
+    (testing "Root cache config for mysql is updated with correct values"
+      (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+        (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
+        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+
+        ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
+        ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config
+        ;; contains zeros, we assume human did not touch it yet and update with existing (decrypted thanks to
+        ;; `v50.2024-06-12T12:33:07`) settings
+        (mdb.query/update-or-insert! :model/CacheConfig {:model "root" :model_id 0}
+                                     (constantly {:strategy "ttl"
+                                                  :config   {:multiplier      0
+                                                             :min_duration_ms 0}}))
+
+        (migrate!)
+
+        (is (=? [{:model    "root"
+                  :model_id 0
+                  :strategy :ttl
+                  :config   {:multiplier      100
+                             :min_duration_ms 123}}]
+                (t2/select :model/CacheConfig)))))))
 
 (deftest split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
