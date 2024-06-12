@@ -315,23 +315,21 @@ describe("scenarios > question > filter", () => {
 
     enterCustomColumnDetails({ formula: "c", blur: false });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("case")
-      .closest("li")
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .filter(":contains('case')")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
 
     cy.get("@formula").type("{downarrow}");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("case")
-      .closest("li")
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .filter(":contains('case')")
       .should("have.css", "background-color")
       .and("eq", transparent);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("ceil")
-      .closest("li")
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .filter(":contains('ceil')")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
   });
