@@ -33,6 +33,7 @@
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
@@ -1498,10 +1499,10 @@
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
       ;; to hit it
-      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}])
       (encryption-test/with-secret-key "whateverwhatever"
-        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"})))
+        (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                              {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
 
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
@@ -1531,27 +1532,28 @@
 
         (is (=? [{:model    "root"
                   :model_id 0
-                  :strategy :ttl
+                  :strategy "ttl"
                   :config   {:multiplier      100
                              :min_duration_ms 123}}
                  {:model    "database"
                   :model_id db
-                  :strategy :duration
+                  :strategy "duration"
                   :config   {:duration 10 :unit "hours"}}
                  {:model    "dashboard"
                   :model_id dash
-                  :strategy :duration
+                  :strategy "duration"
                   :config   {:duration 20 :unit "hours"}}
                  {:model    "question"
                   :model_id card
-                  :strategy :duration
+                  :strategy "duration"
                   :config   {:duration 30 :unit "hours"}}]
-                (t2/select :model/CacheConfig))))))
+                (->> (t2/select :cache_config)
+                     (mapv #(update % :config json/decode true))))))))
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
-      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "false"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
 
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
@@ -1560,33 +1562,35 @@
                                                       (assoc :cache_ttl 10)))
       (migrate!)
       (is (= []
-             (t2/select :model/CacheConfig))))))
+             (t2/select :cache_config))))))
 
 (deftest cache-config-mysql-update-test
   (when (= (mdb/db-type) :mysql)
     (testing "Root cache config for mysql is updated with correct values"
-      (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
-        (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
-        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+      (encryption-test/with-secret-key "whateverwhatever"
+        (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+          (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                                {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                                {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
 
-        ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
-        ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config
-        ;; contains zeros, we assume human did not touch it yet and update with existing (decrypted thanks to
-        ;; `v50.2024-06-12T12:33:07`) settings
-        (mdb.query/update-or-insert! :model/CacheConfig {:model "root" :model_id 0}
-                                     (constantly {:strategy "ttl"
-                                                  :config   {:multiplier      0
-                                                             :min_duration_ms 0}}))
+          ;; the idea here is that `v50.2024-04-12T12:33:09` during execution with partially encrypted data (see
+          ;; `cache-config-migration-test`) instead of throwing an error just silently put zeros in config. If config
+          ;; contains zeros, we assume human did not touch it yet and update with existing (decrypted thanks to
+          ;; `v50.2024-06-12T12:33:07`) settings
+          (t2/insert! :cache_config {:model    "root"
+                                     :model_id 0
+                                     :strategy "ttl"
+                                     :config   (json/encode {:multiplier      0
+                                                             :min_duration_ms 0})})
+          (migrate!)
 
-        (migrate!)
-
-        (is (=? [{:model    "root"
-                  :model_id 0
-                  :strategy :ttl
-                  :config   {:multiplier      100
-                             :min_duration_ms 123}}]
-                (t2/select :model/CacheConfig)))))))
+          (is (=? {:model    "root"
+                   :model_id 0
+                   :strategy "ttl"
+                   :config {:multiplier      100
+                            :min_duration_ms 123}}
+                  (-> (t2/select-one :cache_config)
+                      (update :config json/decode true)))))))))
 
 (deftest split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"

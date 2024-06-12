@@ -16,7 +16,6 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
-   [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
@@ -2000,9 +1999,9 @@
 (deftest decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
     (encryption-test/with-secret-key "whateverwhatever"
-      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"})))
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
 
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
