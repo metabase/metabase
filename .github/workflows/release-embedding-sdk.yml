@@ -212,11 +212,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        run: |
-          gh pr merge --auto --squash
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+      #   run: |
+      #     gh pr merge --auto --squash
+      #   env:
+      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
@@ -228,7 +228,7 @@ jobs:
         run: |
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish
+          npm publish --dry-run
 
   git-tag:
     needs: publish-npm
