@@ -1,4 +1,6 @@
-import type { databaseApi, datasetApi, tableApi } from "metabase/api";
+import type { cardApi, databaseApi, datasetApi, tableApi } from "metabase/api";
+
+export type CardEndpointName = keyof typeof cardApi.endpoints;
 
 export type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
 

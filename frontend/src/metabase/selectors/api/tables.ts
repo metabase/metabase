@@ -1,10 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { databaseApi, datasetApi, tableApi } from "metabase/api";
+import { cardApi, databaseApi, datasetApi, tableApi } from "metabase/api";
 import type { Table } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
 import type {
+  CardEndpointName,
   DatabaseEndpointName,
   DatasetEndpointName,
   TableEndpointName,
@@ -31,6 +32,15 @@ const getDatasetTableEntries = (
   endpointName: DatasetEndpointName,
 ) => {
   return datasetApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
+const getCardTableEntries = (
+  state: ApiState,
+  endpointName: CardEndpointName,
+) => {
+  return cardApi.util
     .selectInvalidatedBy(state, ["table"])
     .filter(entry => entry.endpointName === endpointName);
 };
@@ -94,6 +104,19 @@ const getFromGetAdhocQueryMetadata = createSelector(
   },
 );
 
+const getFromGetCardQueryMetadata = createSelector(
+  getApiState,
+  (state): Table[] => {
+    return getCardTableEntries(state, "getCardQueryMetadata").flatMap(entry => {
+      const selector = cardApi.endpoints.getCardQueryMetadata.select(
+        entry.originalArgs,
+      );
+      const { data } = selector(state);
+      return data?.tables ?? [];
+    });
+  },
+);
+
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
@@ -101,6 +124,7 @@ export const getApiTables = createSelector(
     getFromGetTable,
     getFromGetTableQueryMetadata,
     getFromGetAdhocQueryMetadata,
+    getFromGetCardQueryMetadata,
   ],
   zipEntitySources,
 );
