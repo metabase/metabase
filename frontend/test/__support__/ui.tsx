@@ -1,4 +1,4 @@
-import { css, Global } from "@emotion/react";
+import { Global } from "@emotion/react";
 import type { MantineThemeOverride } from "@mantine/core";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
@@ -23,7 +23,7 @@ import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import { baseStyle } from "metabase/css/core/base.styled";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -162,20 +162,9 @@ export function renderWithProviders(
 
 /**
  * A minimal version of the GlobalStyles component, for use in Storybook stories.
- * Contains just the root and base styles to act as CSS resets, without font files.
+ * Contains strictly only the base styles to act as CSS resets, without font files.
  **/
-const GlobalStylesForTest = () => {
-  const styles = css`
-    body {
-      font-size: 0.875em;
-      ${rootStyle}
-    }
-
-    ${baseStyle}
-  `;
-
-  return <Global styles={styles} />;
-};
+const GlobalStylesForTest = () => <Global styles={baseStyle} />;
 
 export function TestWrapper({
   children,
