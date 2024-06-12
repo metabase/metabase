@@ -1,6 +1,13 @@
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import { useState, useRef, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  forwardRef,
+} from "react";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
@@ -26,7 +33,8 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import { MultiAutocomplete, type SelectItem } from "metabase/ui";
+import type { SelectItemProps, SelectItem } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -445,21 +453,44 @@ export function FieldValuesWidgetInner({
     return true;
   };
 
-  const renderStringOption = function (option: FieldValue): SelectItem {
-    const value = option[0];
-    const column = fields[0];
-    const label =
-      formatValue(value, {
-        ...formatOptions,
-        column,
-        remap: showRemapping(fields),
-        jsx: false,
-        maximumFractionDigits: 20,
-        // we know it is string | number because we are passing jsx: false
-      })?.toString() ?? "<null>";
+  const renderStringOption = useCallback(
+    function (option: FieldValue): SelectItem {
+      const value = option[0];
+      const column = fields[0];
+      const label =
+        formatValue(value, {
+          ...formatOptions,
+          column,
+          remap: showRemapping(fields),
+          jsx: false,
+          maximumFractionDigits: 20,
+          // we know it is string | number because we are passing jsx: false
+        })?.toString() ?? "<null>";
 
-    return { value: value?.toString() ?? "", label };
-  };
+      return { value: value?.toString() ?? "", label };
+    },
+    [fields, formatOptions],
+  );
+
+  const CustomItemComponent = useMemo(
+    () =>
+      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
+        props,
+        ref,
+      ) {
+        const customLabel =
+          props.value !== undefined && renderStringOption([props.value]).label;
+
+        return (
+          <ItemWrapper
+            ref={ref}
+            {...props}
+            label={customLabel ?? (props.label || "")}
+          />
+        );
+      }),
+    [renderStringOption],
+  );
 
   const isSimpleInput =
     !multi && (!parameter || parameter.values_query_type === "none");
@@ -504,11 +535,11 @@ export function FieldValuesWidgetInner({
               .map(value => value?.toString())
               .filter((v): v is string => v !== null && v !== undefined)}
             data={options.map(renderStringOption)}
-            renderValue={value => optionRenderer?.([value])}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
+            itemComponent={CustomItemComponent}
           />
         ) : (
           <TokenField
@@ -678,3 +709,13 @@ function renderValue({
     />
   );
 }
+
+export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
+  function ItemWrapper({ label, value, ...others }, ref) {
+    return (
+      <div ref={ref} {...others}>
+        {label || value}
+      </div>
+    );
+  },
+);
