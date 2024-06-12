@@ -1,15 +1,14 @@
-import PropTypes from "prop-types";
+import type { ComponentType, PropsWithChildren } from "react";
 
-import Badge from "metabase/components/Badge";
+import { Badge } from "metabase/components/Badge";
 import Collection from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-
-const propTypes = {
-  className: PropTypes.string,
-  collection: PropTypes.object,
-  isSingleLine: PropTypes.bool,
-  onClick: PropTypes.func,
-};
+import type {
+  Collection as CollectionType,
+  CollectionId,
+} from "metabase-types/api";
+import type { WrappedEntity } from "metabase-types/entities";
+import type { State } from "metabase-types/store";
 
 const IRREGULAR_ICON_WIDTH = 16;
 const IRREGULAR_ICON_PROPS = {
@@ -20,7 +19,19 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
-function CollectionBadge({ className, collection, isSingleLine, onClick }) {
+type CollectionBadgeProps = {
+  className?: string;
+  collection: WrappedEntity<CollectionType>;
+  isSingleLine?: boolean;
+  onClick?: () => void;
+};
+
+const CollectionBadgeInner = ({
+  className,
+  collection,
+  isSingleLine,
+  onClick,
+}: CollectionBadgeProps) => {
   if (!collection) {
     return null;
   }
@@ -44,13 +55,18 @@ function CollectionBadge({ className, collection, isSingleLine, onClick }) {
       {collection.getName()}
     </Badge>
   );
-}
+};
 
-CollectionBadge.propTypes = propTypes;
-
-export default Collection.load({
-  id: (state, props) => props.collectionId || "root",
+export const CollectionBadge = Collection.load({
+  id: (state: State, props: { collectionId?: CollectionId }) =>
+    props.collectionId || "root",
   wrapped: true,
   loadingAndErrorWrapper: false,
   properties: ["name", "authority_level"],
-})(CollectionBadge);
+})(CollectionBadgeInner) as ComponentType<
+  PropsWithChildren<
+    {
+      collectionId?: CollectionId;
+    } & Omit<CollectionBadgeProps, "collection">
+  >
+>;

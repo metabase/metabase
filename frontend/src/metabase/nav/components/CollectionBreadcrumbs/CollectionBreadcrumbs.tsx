@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import type {
   Collection,
   CollectionEssentials,
@@ -42,9 +42,8 @@ export const CollectionBreadcrumbs = ({
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          inactiveColor="text-medium"
           isSingleLine
-          onClick={onClick ? () => onClick(parts[0]) : undefined}
+          onClick={onClick ? () => onClick(collection) : undefined}
         />
         <PathSeparator>/</PathSeparator>
         <ExpandButton
@@ -61,7 +60,6 @@ export const CollectionBreadcrumbs = ({
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            inactiveColor="text-medium"
             isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
@@ -75,7 +73,6 @@ export const CollectionBreadcrumbs = ({
       {content}
       <CollectionBadge
         collectionId={collection.id}
-        inactiveColor="text-medium"
         isSingleLine
         onClick={onClick ? () => onClick(collection) : undefined}
       />
