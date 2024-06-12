@@ -33,6 +33,7 @@
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1494,10 +1495,13 @@
 
 (deftest cache-config-migration-test
   (testing "Caching config is correctly copied over"
-    (impl/test-migrations "v50.2024-04-12T12:33:09" [migrate!]
+    (impl/test-migrations ["v50.2024-06-12T12:33:08"] [migrate!]
+      ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
+      ;; to hit it
       (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
-      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"}))
+      (encryption-test/with-secret-key "whateverwhatever"
+        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+        (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"})))
 
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
@@ -1521,7 +1525,9 @@
                                            :database_id            db
                                            :created_at             :%now
                                            :updated_at             :%now})]
-        (migrate!)
+
+        (encryption-test/with-secret-key "whateverwhatever"
+          (migrate! :up))
 
         (is (=? [{:model    "root"
                   :model_id 0

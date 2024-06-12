@@ -16,6 +16,7 @@
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
+   [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
    [metabase.models.database :as database]
@@ -1995,3 +1996,21 @@
           :date_joined   :%now})
         (migrate!)
         (is (false? (sample-content-created?)))))))
+
+(deftest decrypt-cache-settings-test
+  (impl/test-migrations "v50.2024-06-12T12:33:08" [migrate!]
+    (encryption-test/with-secret-key "whateverwhatever"
+      (mdb.query/update-or-insert! :model/Setting {:key "enable-query-caching"} (constantly {:value "true"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-ttl-ratio"} (constantly {:value "100"}))
+      (mdb.query/update-or-insert! :model/Setting {:key "query-caching-min-ttl"} (constantly {:value "123"})))
+
+    (testing "Values were indeed encrypted"
+      (is (not= "true" (t2/select-one-fn :value :model/Setting :key "enable-query-caching"))))
+
+    (encryption-test/with-secret-key "whateverwhatever"
+      (migrate!))
+
+    (testing "But not anymore"
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-query-caching")))
+      (is (= "100" (t2/select-one-fn :value :model/Setting :key "query-caching-ttl-ratio")))
+      (is (= "123" (t2/select-one-fn :value :model/Setting :key "query-caching-min-ttl"))))))
