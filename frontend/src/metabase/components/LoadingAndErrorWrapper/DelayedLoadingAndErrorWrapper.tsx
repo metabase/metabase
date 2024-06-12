@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { Transition } from "metabase/ui";
-import { useRerenderOnShortcut } from "metabase/ui/components/feedback/Skeleton/hooks";
 
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 
@@ -44,12 +43,6 @@ export const DelayedLoadingAndErrorWrapper = ({
   // If delay is zero show the wrapper immediately. Otherwise, apply a timeout
   const [showWrapper, setShowWrapper] = useState(delay === 0);
 
-  // FIXME: remove this
-  loading ||= (window as { stayLoading?: boolean }).stayLoading;
-
-  // FIXME: remove this
-  const key = useRerenderOnShortcut();
-
   props.loadingMessages ??= [];
 
   useEffect(() => {
@@ -71,7 +64,6 @@ export const DelayedLoadingAndErrorWrapper = ({
       transition="fade"
       duration={200}
       timingFunction="ease"
-      key={key}
     >
       {styles => (
         <div style={styles}>

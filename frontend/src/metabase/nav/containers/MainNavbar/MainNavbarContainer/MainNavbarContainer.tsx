@@ -1,5 +1,5 @@
 import type { LocationDescriptor } from "history";
-import React, { useCallback, useMemo, useState, memo } from "react";
+import { useCallback, useMemo, useState, memo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
@@ -22,7 +22,6 @@ import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { useRerenderOnShortcut } from "metabase/ui/components/feedback/Skeleton/hooks";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -96,7 +95,6 @@ function MainNavbarContainer({
     isLoading,
     error,
   } = useGetCollectionQuery("trash");
-  const key = useRerenderOnShortcut();
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -178,7 +176,7 @@ function MainNavbarContainer({
   }
 
   return (
-    <React.Fragment key={key}>
+    <>
       <MainNavbarView
         {...props}
         bookmarks={bookmarks}
@@ -196,7 +194,7 @@ function MainNavbarContainer({
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
-    </React.Fragment>
+    </>
   );
 }
 
