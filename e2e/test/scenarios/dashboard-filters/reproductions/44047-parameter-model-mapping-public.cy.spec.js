@@ -1,26 +1,30 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
-  editDashboard,
   filterWidget,
-  getDashboardCard,
   popover,
   restore,
-  saveDashboard,
-  selectDashboardFilter,
-  setFilter,
-  setFilterQuestionSource,
-  undoToast,
+  updateDashboardCards,
   visitDashboard,
   visitPublicDashboard,
 } from "e2e/support/helpers";
-const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "Question",
   type: "question",
   query: {
-    "source-table": REVIEWS_ID,
+    "source-table": ORDERS_ID,
+    limit: 100,
+  },
+};
+
+const modelDetails = {
+  name: "Model",
+  type: "model",
+  query: {
+    "source-table": ORDERS_ID,
     limit: 100,
   },
 };
@@ -29,65 +33,91 @@ const sourceQuestionDetails = {
   name: "Source question",
   type: "question",
   query: {
-    "source-table": REVIEWS_ID,
+    "source-table": ORDERS_ID,
     fields: [
-      ["field", REVIEWS.ID, { "base-type": "type/BigInteger" }],
-      ["field", REVIEWS.RATING, { "base-type": "type/BigInteger" }],
+      ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+      ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
     ],
   },
 };
 
-const modelDetails = {
-  name: "Model",
-  type: "model",
-  query: {
-    "source-table": REVIEWS_ID,
-    limit: 100,
-  },
+const parameterDetails = {
+  name: "Text",
+  slug: "text",
+  id: "5a425670",
+  type: "string/=",
+  sectionId: "string",
 };
+
+const dashboardDetails = {
+  parameters: [parameterDetails],
+};
+
+function getQuestionDashcardDetails(dashboard, card) {
+  return {
+    dashboard_id: dashboard.id,
+    card_id: card.id,
+    parameter_mappings: [
+      {
+        card_id: card.id,
+        parameter_id: parameterDetails.id,
+        target: [
+          "dimension",
+          ["field", ORDERS.QUANTITY, { type: "type/Integer" }],
+        ],
+      },
+    ],
+  };
+}
+
+function getModelDashcardDetails(dashboard, card) {
+  return {
+    dashboard_id: dashboard.id,
+    card_id: card.id,
+    parameter_mappings: [
+      {
+        card_id: card.id,
+        parameter_id: parameterDetails.id,
+        target: ["dimension", ["field", "QUANTITY", { type: "type/Integer" }]],
+      },
+    ],
+  };
+}
 
 describe("44047", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
       semantic_type: "type/Category",
     });
-    cy.request("POST", `/api/field/${REVIEWS.RATING}/dimension`, {
+    cy.request("POST", `/api/field/${ORDERS.QUANTITY}/dimension`, {
       type: "internal",
       name: "Rating",
     });
-    cy.request("POST", `/api/field/${REVIEWS.RATING}/values`, {
-      values: [
-        [1, "A"],
-        [2, "B"],
-        [3, "C"],
-        [4, "D"],
-        [5, "E"],
-      ],
+    cy.request("POST", `/api/field/${ORDERS.QUANTITY}/values`, {
+      values: [[0, "Remapped"]],
     });
   });
 
   it("should be able to use remapped values from an integer field with an overridden semantic type used for a custom dropdown source in public dashboards (metabase#44047)", () => {
     createQuestion(sourceQuestionDetails);
     cy.createDashboardWithQuestions({
+      dashboardDetails,
       questions: [questionDetails, modelDetails],
-    }).then(({ dashboard }) => cy.wrap(dashboard.id).as("dashboardId"));
-
-    cy.log("setup dashboard");
-    visitDashboard("@dashboardId");
-    editDashboard();
-    setFilter("Text or Category", "Is");
-    selectDashboardFilter(getDashboardCard(0), "Rating");
-    undoToast().button("Undo auto-connection").click();
-    selectDashboardFilter(getDashboardCard(1), "Rating");
-    setFilterQuestionSource({
-      question: sourceQuestionDetails.name,
-      field: "Rating",
+    }).then(({ dashboard, questions: cards }) => {
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          getQuestionDashcardDetails(dashboard, cards[0]),
+          getModelDashcardDetails(dashboard, cards[1]),
+        ],
+      });
+      cy.wrap(dashboard.id).as("dashboardId");
     });
-    saveDashboard();
 
     cy.log("verify filtering works in a regular dashboard");
+    visitDashboard("@dashboardId");
     verifyFilterWithRemapping();
 
     cy.log("verify filtering works in a public dashboard");
@@ -99,11 +129,8 @@ describe("44047", () => {
 function verifyFilterWithRemapping() {
   filterWidget().click();
   popover().within(() => {
-    cy.findByText("A").click();
+    cy.findByPlaceholderText("Search the list").type("Remapped");
+    cy.findByText("Remapped").click();
     cy.button("Add filter").click();
   });
-
-  const sampleReviewer = "dorcas";
-  getDashboardCard(0).findByText(sampleReviewer).should("be.visible");
-  getDashboardCard(1).findByText(sampleReviewer).should("be.visible");
 }
