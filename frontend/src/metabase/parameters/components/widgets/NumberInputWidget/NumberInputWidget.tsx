@@ -71,7 +71,7 @@ export function NumberInputWidget({
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" || arity === 1 ? (
+      {arity === "n" ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
             onChange={(values: string[]) =>
@@ -83,7 +83,6 @@ export function NumberInputWidget({
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            maxSelectedValues={typeof arity === "number" ? arity : undefined}
           />
         </TokenFieldWrapper>
       ) : (
