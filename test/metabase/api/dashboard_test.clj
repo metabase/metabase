@@ -4578,3 +4578,13 @@
               (update :fields #(map (fn [x] (select-keys x [:id])) %))
               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
               (update :tables #(map (fn [x] (select-keys x [:id :name])) %)))))))
+
+(deftest dashboard-query-metadata-no-tables-test
+  (testing "Don't throw an error if users doesn't have access to any tables #44043"
+    (let [original-can-read? mi/can-read?]
+      (mt/with-temp [:model/Dashboard dash {}]
+       (with-redefs [mi/can-read? (fn [& args]
+                                    (if (= :model/Table (apply mi/dispatch-on-model args))
+                                      false
+                                      (apply original-can-read? args)))]
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
