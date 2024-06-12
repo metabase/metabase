@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useMount } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
@@ -171,7 +172,10 @@ export const EmbedFrame = ({
   // TODO: pass this as headerActions  from PublicDashboard ?
   const saveAsPDF = async () => {
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    await saveDashboardPdf(cardNodeSelector, name!).then(() => {
+    await saveDashboardPdf(
+      cardNodeSelector,
+      name ?? t`Exported dashboard`,
+    ).then(() => {
       // TODO: tracking
       // trackExportDashboardToPDF(dashboard.id);
     });
