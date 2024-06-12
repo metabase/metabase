@@ -31,7 +31,6 @@ export function MultiAutocomplete({
   onSearchChange,
   onFocus,
   onBlur,
-  prefix,
   renderValue,
   ...props
 }: MultiAutocompleteProps) {
@@ -207,7 +206,6 @@ export function MultiAutocomplete({
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
       rightSection={info}
-      icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
       itemComponent={CustomItemComponent}
     />
   );
