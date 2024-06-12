@@ -83,6 +83,7 @@ export function NumberInputWidget({
             placeholder={placeholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
+            data={[]}
           />
         </TokenFieldWrapper>
       ) : (
