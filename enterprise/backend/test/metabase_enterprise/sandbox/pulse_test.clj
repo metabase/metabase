@@ -3,10 +3,8 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
-   [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
@@ -21,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest sandboxed-pulse-test
+(deftest sandboxed-alert-test
   (testing "Pulses should get sent with the row-level restrictions of the User that created them."
     (letfn [(send-pulse-created-by-user! [user-kw]
               (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
@@ -36,8 +34,8 @@
       (is (= [[10]]
              (send-pulse-created-by-user! :rasta))))))
 
-(defn- pulse-results
-  "Results for creating and running a Pulse."
+(defn- alert-results
+  "Results for creating and running an Alert"
   [query]
   (mt/with-temp [Card                  pulse-card {:name          "Test card"
                                                    :dataset_query query}
@@ -71,7 +69,7 @@
                     :subject "Pulse: Test Pulse"}]
                   (:channel/email channel-messages)))))))
 
-(deftest pulse-send-event-test
+(deftest dashboard-subscription-send-event-test
   (testing "When we send a pulse, we also log the event:"
     (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp
@@ -102,7 +100,7 @@
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test
-  (testing "When we send a pulse, we also log the event:"
+  (testing "When we send an alert, we also log the event:"
     (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
                                Pulse                 pulse {:creator_id (mt/user->id :crowberto)
@@ -144,7 +142,7 @@
         (testing "GTAPs should apply to Pulses — they should get the same results as if running that query normally"
           (is (= [[3 13]]
                  (mt/rows
-                  (pulse-results query)))))))))
+                  (alert-results query)))))))))
 
 (defn- html->row-count [html]
   (or (some->> html (re-find #"of <strong.+>(\d+)</strong> rows") second Integer/parseUnsignedInt)
@@ -173,7 +171,7 @@
 
             (testing "Pulse should be sandboxed"
               (is (= 22
-                     (count (mt/rows (pulse-results query))))))))))))
+                     (count (mt/rows (alert-results query))))))))))))
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
@@ -213,8 +211,9 @@
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp [Card                 {card-id :id}  {:dataset_query query}
-                         Pulse                {pulse-id :id} {:name          "Pulse Name"
-                                                              :skip_if_empty false}
+                         Pulse                {pulse-id :id} {:name            "Pulse Name"
+                                                              :skip_if_empty   false
+                                                              :alert_condition "rows"}
                          PulseCard             _             {:pulse_id pulse-id
                                                               :card_id  card-id
                                                               :position 0
@@ -224,7 +223,7 @@
                                                               :pulse_channel_id pc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
-                (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
+                (metabase.pulse/send-pulse! (pulse/retrieve-alert pulse-id)))
               (let [email-results                           @mt/inbox
                     [{html :content} {_icon :attachment} {attachment :content}] (get-in email-results ["rasta@metabase.com" 0 :body])]
                 (testing "email"
@@ -269,7 +268,8 @@
 (deftest sandboxed-users-cant-delete-pulse-recipients
   (testing "When sandboxed users update a pulse, Metabase users in the recipients list are not deleted, even if they
            are not included in the request."
-    (mt/with-temp [Pulse        {pulse-id :id} {:name "my pulse"}
+    (mt/with-temp [Pulse        {pulse-id :id} {:name            "my pulse"
+                                                :alert_condition "rows"}
                    PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
                                                     :channel_type :email
                                                     :details      {:emails "asdf@metabase.com"}}
@@ -284,7 +284,7 @@
 
         ;; Check that both Rasta and Crowberto are still recipients
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
-               (->> (api.alert/email-channel (pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort)))
+               (->> (api.alert/email-channel (pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
 
         (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
@@ -294,4 +294,4 @@
 
           ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
-                 (->> (api.alert/email-channel (pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort))))))))
+                 (->> (api.alert/email-channel (pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))

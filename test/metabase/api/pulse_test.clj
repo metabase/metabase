@@ -875,13 +875,7 @@
                      PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc)
                                                   :user_id          (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection [pulse]
-          (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))
-
-    (testing "should 404 for an Alert"
-      (t2.with-temp/with-temp [Pulse {pulse-id :id} {:alert_condition "rows"}]
-        (is (= "Not found."
-               (with-pulses-in-readable-collection [pulse-id]
-                 (mt/user-http-request :rasta :get 404 (str "pulse/" pulse-id)))))))))
+          (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))))
 
 (deftest send-test-pulse-test
   ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]
@@ -891,27 +885,37 @@
       (mt/with-fake-inbox
         (mt/dataset sad-toucan-incidents
           (mt/with-temp [Collection collection {}
+                         Dashboard {dashboard-id :id} {:name       "Daily Sad Toucans"
+                                                       :parameters [{:name    "X"
+                                                                     :slug    "x"
+                                                                     :id      "__X__"
+                                                                     :type    "category"
+                                                                     :default 3}]}
                          Card       card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (api.card-test/with-cards-in-readable-collection [card]
-              (is (= {:ok true}
-                     (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                                          :collection_id (u/the-id collection)
-                                                                          :cards         [{:id                (u/the-id card)
-                                                                                           :include_csv       false
-                                                                                           :include_xls       false
-                                                                                           :dashboard_card_id nil}]
-                                                                          :channels      [{:enabled       true
-                                                                                           :channel_type  "email"
-                                                                                           :schedule_type "daily"
-                                                                                           :schedule_hour 12
-                                                                                           :schedule_day  nil
-                                                                                           :recipients    [(mt/fetch-user :rasta)]}]
-                                                                          :skip_if_empty false})))
-              (is (= (mt/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                                          :body    {"Daily Sad Toucans" true}
-                                          :bcc?    true})
-                     (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
+              (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                      (is (= {:ok true}
+                                             (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                                   {:name          (mt/random-name)
+                                                                    :dashboard_id  dashboard-id
+                                                                    :cards         [{:id                (:id card)
+                                                                                     :include_csv       false
+                                                                                     :include_xls       false
+                                                                                     :dashboard_card_id nil}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
+                                                                    :skip_if_empty false}))))]
+               (is (= {:message [{"Daily Sad Toucans" true}
+                                 pulse.test-util/png-attachment]
+                       :message-type :attachments,
+                       :recipients ["rasta@metabase.com"]
+                       :subject "Daily Sad Toucans"}
+                      (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
@@ -953,7 +957,8 @@
                                                                                        :display-name "X"
                                                                                        :type         :number
                                                                                        :required     true}}}}}
-                   Dashboard {dashboard-id :id} {:parameters [{:name    "X"
+                   Dashboard {dashboard-id :id} {:name       "Daily Sad Toucans"
+                                                 :parameters [{:name    "X"
                                                                :slug    "x"
                                                                :id      "__X__"
                                                                :type    "category"
@@ -964,95 +969,28 @@
                                                           :card_id      card-id
                                                           :target       [:variable [:template-tag "x"]]}]}]
       (mt/with-fake-inbox
-        (is (= {:ok true}
-               (mt/user-http-request :rasta :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                                    :dashboard_id  dashboard-id
-                                                                    :cards         [{:id                card-id
-                                                                                     :include_csv       false
-                                                                                     :include_xls       false
-                                                                                     :dashboard_card_id nil}]
-                                                                    :channels      [{:enabled       true
-                                                                                     :channel_type  "email"
-                                                                                     :schedule_type "daily"
-                                                                                     :schedule_hour 12
-                                                                                     :schedule_day  nil
-                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
-                                                                    :skip_if_empty false})))
-        (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
-                                    :body    {"Daily Sad Toucans" true}
-                                    :bcc?    true})
-               (mt/regex-email-bodies #"Daily Sad Toucans")))))))
-
-;; TODO does this really needed?
-#_(deftest send-placeholder-card-test-pulse-test
-    (testing "POST /api/pulse/test should work with placeholder cards"
-      (mt/with-temp [Dashboard {dashboard-id :id} {}]
-        (mt/with-fake-inbox
-          (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
-                                   (is (= {:ok true}
-                                          (mt/user-http-request :rasta :post 200 "pulse/test"
-                                                                {:name          (mt/random-name)
-                                                                 :dashboard_id  dashboard-id
-                                                                 :cards         [{:display           "placeholder"
-                                                                                  :name              "Daily Sad Toucans"
-                                                                                  :dataset_query     (mt/mbql-query venues {:limit 1})
-                                                                                  :id                nil
-                                                                                  :include_csv       false
-                                                                                  :include_xls       false
-                                                                                  :dashboard_card_id nil}]
-                                                                 :channels      [{:enabled       true
-                                                                                  :channel_type  "email"
-                                                                                  :schedule_type "daily"
-                                                                                  :schedule_hour 12
-                                                                                  :schedule_day  nil
-                                                                                  :recipients    [(mt/fetch-user :rasta)]}]
-                                                                 :skip_if_empty false}))))]
-            (is (=? {:subject    "Daily Sad Toucans"
-                     :recipients ["rasta@metabase.com"]
-                     :message    {"Daily Sad Toucans" true}}
-                    (mt/summarize-multipart-single-email (first (:channel/email channel-messages)) #"Daily Sad Toucans"))))))))
-
-;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
-;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
-;; of the same format that the pulse GET returns
-(deftest update-flow-test
-  (mt/with-temp [Card card-1 {:dataset_query
-                              {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}}}
-                 Card card-2 {:dataset_query
-                              {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}}}]
-
-    (api.card-test/with-cards-in-readable-collection [card-1 card-2]
-      (mt/with-fake-inbox
-        (mt/with-model-cleanup [Pulse]
-          (t2.with-temp/with-temp [Collection collection]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-            ;; First create the pulse
-            (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse"
-                                                       {:name          "A Pulse"
-                                                        :collection_id (u/the-id collection)
-                                                        :skip_if_empty false
-                                                        :cards         [{:id                (u/the-id card-1)
-                                                                         :include_csv       false
-                                                                         :include_xls       false
-                                                                         :dashboard_card_id nil}
-                                                                        {:id                (u/the-id card-2)
-                                                                         :include_csv       false
-                                                                         :include_xls       false
-                                                                         :dashboard_card_id nil}]
-
-                                                        :channels      [(assoc daily-email-channel :recipients [(mt/fetch-user :rasta)
-                                                                                                                (mt/fetch-user :crowberto)])]})
-                  ;; Retrieve the pulse via GET
-                  result        (mt/user-http-request :rasta :get 200 (str "pulse/" pulse-id))
-                  ;; Change our fetched copy of the pulse to only have Rasta for the recipients
-                  email-channel (assoc (-> result :channels first) :recipients [(mt/fetch-user :rasta)])]
-              ;; Don't update the pulse, but test the pulse with the updated recipients
-              (is (= {:ok true}
-                     (mt/user-http-request :rasta :post 200 "pulse/test" (assoc result :channels [email-channel]))))
-              (is (= (mt/email-to :rasta {:subject "Pulse: A Pulse"
-                                          :body    {"A Pulse" true}
-                                          :bcc?    true})
-                     (mt/regex-email-bodies #"A Pulse"))))))))))
+        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                 (is (= {:ok true}
+                                        (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                              {:name          (mt/random-name)
+                                                               :dashboard_id  dashboard-id
+                                                               :cards         [{:id                card-id
+                                                                                :include_csv       false
+                                                                                :include_xls       false
+                                                                                :dashboard_card_id nil}]
+                                                               :channels      [{:enabled       true
+                                                                                :channel_type  "email"
+                                                                                :schedule_type "daily"
+                                                                                :schedule_hour 12
+                                                                                :schedule_day  nil
+                                                                                :recipients    [(mt/fetch-user :rasta)]}]
+                                                               :skip_if_empty false}))))]
+          (is (= {:message [{"Daily Sad Toucans" true}
+                            pulse.test-util/png-attachment]
+                  :message-type :attachments,
+                  :recipients ["rasta@metabase.com"]
+                  :subject "Daily Sad Toucans"}
+                 (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
 (deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"

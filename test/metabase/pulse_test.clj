@@ -117,9 +117,12 @@
                                :channel    channel-type}]
           (letfn [(thunk* []
                     (f {:card-id card-id, :pulse-id pulse-id}
-                       (with-redefs [metabase.pulse/send-retrying! (fn [_ message]
-                                                                     message)]
-                         (flatten (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))))))
+                       ((if (= :email channel-type)
+                          :channel/email
+                          :channel/slack)
+                        (pulse.test-util/with-captured-channel-send-messages!
+                          (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+                            (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                   (thunk []
                     (if fixture
                       (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)

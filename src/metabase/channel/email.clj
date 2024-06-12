@@ -62,9 +62,9 @@
   [_channel-type {:keys [card pulse payload channel]} recipients]
   (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (case condition-kwd
-                                    :meets (trs "Alert: {0} has reached its goal")
-                                    :below (trs "Alert: {0} has gone below its goal")
-                                    :rows  (trs "Alert: {0} has results"))
+                                    :meets (trs "Alert: {0} has reached its goal" (:name card))
+                                    :below (trs "Alert: {0} has gone below its goal" (:name card))
+                                    :rows  (trs "Alert: {0} has results" (:name card)))
         {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (defaulted-timezone card)

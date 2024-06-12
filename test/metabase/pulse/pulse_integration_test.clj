@@ -371,7 +371,8 @@
                      DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
                                                                  :card_id      meta-model-card-id}
                      Pulse {pulse-id :id
-                            :as      pulse} {:name "Consistent Time Formatting Pulse"}
+                            :as      pulse} {:name "Consistent Time Formatting Pulse"
+                                             :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           native-card-id
                                   :dashboard_card_id base-dash-card-id
@@ -540,7 +541,8 @@
                        DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
                                                                   :card_id      question-card-id}
                        Pulse {pulse-id :id
-                              :as      pulse} {:name "Consistent Column Names"}
+                              :as      pulse} {:name "Consistent Column Names"
+                                               :dashboard_id dash-id}
                        PulseCard _ {:pulse_id          pulse-id
                                     :card_id           base-card-id
                                     :dashboard_card_id base-dash-card-id

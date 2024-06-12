@@ -145,6 +145,9 @@
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
             (t2/update! :model/Pulse {:dashboard_id dashboard-id}
+                        ;; TODO we probably don't need this anymore
+                        ;; pulse.name is no longer used for generating title.
+                        ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
                         {:name (:name dashboard)
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
