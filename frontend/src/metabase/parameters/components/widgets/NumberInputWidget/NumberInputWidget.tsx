@@ -73,12 +73,15 @@ export function NumberInputWidget({
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
-          <MultiAutocomplete<number>
-            onChange={setUnsavedArrayValue}
-            value={filteredUnsavedArrayValue}
+          <MultiAutocomplete
+            onChange={(values: string[]) =>
+              setUnsavedArrayValue(
+                values.map(value => parseNumberValue(value) ?? undefined),
+              )
+            }
+            value={filteredUnsavedArrayValue.map(value => value?.toString())}
             placeholder={placeholder}
             shouldCreate={shouldCreate}
-            parseValue={parseNumberValue}
             autoFocus={autoFocus}
             maxSelectedValues={typeof arity === "number" ? arity : undefined}
           />

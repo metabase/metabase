@@ -26,7 +26,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import { MultiAutocomplete } from "metabase/ui";
+import { MultiAutocomplete, type SelectItem } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -445,10 +445,7 @@ export function FieldValuesWidgetInner({
     return true;
   };
 
-  const renderStringOption = function (option: FieldValue): {
-    label: string;
-    value: RowValue;
-  } {
+  const renderStringOption = function (option: FieldValue): SelectItem {
     const value = option[0];
     const column = fields[0];
     const label =
@@ -461,7 +458,7 @@ export function FieldValuesWidgetInner({
         // we know it is string | number because we are passing jsx: false
       })?.toString() ?? "<null>";
 
-    return { value, label };
+    return { value: value?.toString() ?? "", label };
   };
 
   const isSimpleInput =
@@ -503,7 +500,9 @@ export function FieldValuesWidgetInner({
           <MultiAutocomplete
             onSearchChange={onInputChange}
             onChange={values => onChange(values.map(parseFreeformValue))}
-            value={value.filter(v => v !== null && v !== undefined)}
+            value={value
+              .map(value => value?.toString())
+              .filter((v): v is string => v !== null && v !== undefined)}
             data={options.map(renderStringOption)}
             renderValue={value => optionRenderer?.([value])}
             placeholder={tokenFieldPlaceholder}

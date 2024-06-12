@@ -1,4 +1,8 @@
-import type { MultiSelectProps, SelectItemProps } from "@mantine/core";
+import type {
+  MultiSelectProps,
+  SelectItemProps,
+  SelectItem,
+} from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent, ReactNode } from "react";
@@ -8,24 +12,18 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
-import type { Base, SelectItem, FilterFn } from "./types";
 import { parseValues, unique } from "./utils";
 
-export type MultiAutocompleteProps<TValue extends Base> = Omit<
+export type MultiAutocompleteProps = Omit<
   MultiSelectProps,
-  "shouldCreate" | "data" | "filter" | "defaultValue" | "value" | "onChange"
+  "shouldCreate" | "data"
 > & {
-  shouldCreate?: (value: TValue, selectedValues: TValue[]) => boolean;
-  filter?: FilterFn<TValue>;
-  data?: ReadonlyArray<TValue | SelectItem<TValue>>;
-  defaultValue?: TValue[];
-  parseValue?: (str: string) => TValue | null;
-  value?: TValue[];
-  onChange?: (value: TValue[]) => void;
-  renderValue?: (value: TValue) => ReactNode;
+  data?: (string | SelectItem)[];
+  shouldCreate?: (value: string, selectedValues: string[]) => boolean;
+  renderValue?: (value: string) => ReactNode;
 };
 
-export function MultiAutocomplete<TValue extends Base>({
+export function MultiAutocomplete({
   data = [],
   value: controlledValue,
   defaultValue,
@@ -39,11 +37,10 @@ export function MultiAutocomplete<TValue extends Base>({
   onBlur,
   prefix,
   filter = defaultFilter,
-  parseValue = defaultParseValue,
   renderValue,
   ...props
-}: MultiAutocompleteProps<TValue>) {
-  const [selectedValues, setSelectedValues] = useUncontrolled<TValue[]>({
+}: MultiAutocompleteProps) {
+  const [selectedValues, setSelectedValues] = useUncontrolled<string[]>({
     value: controlledValue,
     defaultValue,
     finalValue: [],
@@ -56,7 +53,7 @@ export function MultiAutocomplete<TValue extends Base>({
   });
 
   const [lastSelectedValues, setLastSelectedValues] =
-    useState<TValue[]>(selectedValues);
+    useState<string[]>(selectedValues);
 
   const [isFocused, setIsFocused] = useState(false);
   const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
@@ -66,7 +63,7 @@ export function MultiAutocomplete<TValue extends Base>({
     [data, lastSelectedValues],
   );
 
-  const handleChange = (newValues: TValue[]) => {
+  const handleChange = (newValues: string[]) => {
     const values = unique(newValues);
     setSelectedValues(values);
     setLastSelectedValues(values);
@@ -78,7 +75,7 @@ export function MultiAutocomplete<TValue extends Base>({
     onFocus?.(event);
   };
 
-  function isValid(value: TValue | null) {
+  function isValid(value: string | null) {
     return (
       value !== null &&
       value !== "" &&
@@ -90,7 +87,7 @@ export function MultiAutocomplete<TValue extends Base>({
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
 
-    const values = parseValues(searchValue, parseValue);
+    const values = parseValues(searchValue);
     const validValues = values.filter(isValid);
 
     setSearchValue("");
@@ -117,7 +114,7 @@ export function MultiAutocomplete<TValue extends Base>({
     const pasted = event.clipboardData.getData("text");
     const text = `${before}${pasted}${after}`;
 
-    const values = parseValues(text, parseValue);
+    const values = parseValues(text);
     const validValues = values.filter(isValid);
 
     if (values.length > 0) {
@@ -137,7 +134,7 @@ export function MultiAutocomplete<TValue extends Base>({
     setSearchValue(newSearchValue);
 
     if (newSearchValue !== "") {
-      const values = parseValues(newSearchValue, parseValue);
+      const values = parseValues(newSearchValue);
       if (values.length >= 1) {
         const value = values[0];
         if (isValid(value)) {
@@ -157,7 +154,7 @@ export function MultiAutocomplete<TValue extends Base>({
       last === "\n" ||
       (first === '"' && last === '"')
     ) {
-      const values = parseValues(newSearchValue, parseValue);
+      const values = parseValues(newSearchValue);
       const validValues = values.filter(isValid);
 
       if (values.length > 0) {
@@ -196,7 +193,7 @@ export function MultiAutocomplete<TValue extends Base>({
         ref,
       ) {
         const customLabel =
-          props.value !== undefined && renderValue?.(props.value as TValue);
+          props.value !== undefined && renderValue?.(props.value);
         return (
           <ItemWrapper
             ref={ref}
@@ -211,16 +208,12 @@ export function MultiAutocomplete<TValue extends Base>({
   return (
     <MultiSelect
       {...props}
-      // @ts-expect-error: Mantine's types expects a string value,
-      // but does not depend on it being a string
       data={items}
-      // @ts-expect-error: see above
       value={visibleValues}
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
       autoFocus={autoFocus}
-      // @ts-expect-error: see above
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
@@ -228,22 +221,15 @@ export function MultiAutocomplete<TValue extends Base>({
       onPaste={handlePaste}
       rightSection={info}
       icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-      // @ts-expect-error: see above
-      filter={filter as FilterFn<TValue>}
+      filter={filter}
       itemComponent={CustomItemComponent}
     />
   );
 }
 
-function getSelectItem<TValue extends Base>(
-  item: TValue | SelectItem<TValue>,
-): SelectItem<TValue> {
+function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
     return { value: item, label: item };
-  }
-
-  if (typeof item === "number" || typeof item === "boolean" || item === null) {
-    return { value: item, label: item?.toString() ?? "" };
   }
 
   if (!item.label) {
@@ -253,9 +239,9 @@ function getSelectItem<TValue extends Base>(
   return item;
 }
 
-function getAvailableSelectItems<TValue extends Base>(
-  data: ReadonlyArray<TValue | SelectItem<TValue>>,
-  selectedValues: TValue[],
+function getAvailableSelectItems(
+  data: ReadonlyArray<string | SelectItem>,
+  selectedValues: string[],
 ) {
   const all = [...data, ...selectedValues].map(getSelectItem);
   const seen = new Set();
@@ -270,10 +256,7 @@ function getAvailableSelectItems<TValue extends Base>(
   });
 }
 
-function defaultShouldCreate<TValue extends Base>(
-  value: TValue,
-  selectedValues: TValue[],
-) {
+function defaultShouldCreate(value: string, selectedValues: string[]) {
   if (
     typeof value === "number" ||
     typeof value === "boolean" ||
@@ -288,20 +271,15 @@ function defaultShouldCreate<TValue extends Base>(
   );
 }
 
-function defaultFilter<TValue extends Base>(
+function defaultFilter(
   query: string,
   selected: boolean,
-  item: SelectItem<TValue>,
+  item: SelectItem,
 ): boolean {
   if (selected || !item.label) {
     return false;
   }
   return item.label.toLowerCase().trim().includes(query.toLowerCase().trim());
-}
-
-function defaultParseValue<TValue extends Base>(str: string): TValue | null {
-  // @ts-expect-error: for the default case we ignore the type
-  return str;
 }
 
 export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
