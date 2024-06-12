@@ -114,7 +114,7 @@ export const calculateLegendRows = ({
   };
 };
 
-function calculateNumCols(
+function calculateNumRowsCols(
   items: LegendItem[],
   width: number,
   fontSize: number,
@@ -125,7 +125,7 @@ function calculateNumCols(
 
   do {
     if (numCols >= items.length) {
-      return items.length;
+      return { numRows: 1, numCols: items.length };
     }
 
     colWidth = Math.floor(width / ++numCols);
@@ -137,8 +137,18 @@ function calculateNumCols(
         colWidth,
     )
   );
+  numCols--; // This value failed the test, so we decrement to the last passing value
 
-  return numCols - 1;
+  const numRows = Math.ceil(items.length / numCols);
+
+  // If the last column will end up empty, reduce the number of columns
+  const numSlots = numRows * numCols;
+  const numEmptySlots = numSlots - items.length;
+  if (numEmptySlots === numRows) {
+    numCols--;
+  }
+
+  return { numRows, numCols };
 }
 
 export const calculateLegendRowsWithColumns = ({
@@ -162,33 +172,30 @@ export const calculateLegendRowsWithColumns = ({
 
   const availableTotalWidth = width - 2 * horizontalPadding;
 
-  const numCols = calculateNumCols(
+  const { numRows, numCols } = calculateNumRowsCols(
     orderedItems,
     availableTotalWidth,
     fontSize,
     fontWeight,
   );
   const colWidth = Math.floor(availableTotalWidth / numCols);
-  const numRows = Math.ceil(items.length / numCols);
-  const rows: PositionedLegendItem[][] = [];
+  const rows: PositionedLegendItem[][] = [...Array(numRows).keys()].map(
+    _ => [],
+  );
 
-  for (let rowIndex = 0; rowIndex < numRows; rowIndex++) {
-    const currentRow: PositionedLegendItem[] = [];
-
-    for (let colIndex = 0; colIndex < numCols; colIndex++) {
-      const itemIndex = rowIndex * numCols + colIndex;
+  for (let colIndex = 0; colIndex < numCols; colIndex++) {
+    for (let rowIndex = 0; rowIndex < numRows; rowIndex++) {
+      const itemIndex = colIndex * numRows + rowIndex;
       if (itemIndex >= orderedItems.length) {
         break;
       }
 
-      currentRow.push({
+      rows[rowIndex].push({
         ...orderedItems[itemIndex],
         left: colIndex * colWidth + horizontalPadding,
         top: rowIndex * lineHeight + verticalPadding,
       });
     }
-
-    rows.push(currentRow);
   }
 
   const height = rows.length * lineHeight + verticalPadding * 2;
