@@ -45,7 +45,7 @@ export function NumberInputWidget({
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
   const isValid =
-    (arity === "n" || unsavedArrayValue.length === arity) &&
+    (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
 
   const onClick = () => {
@@ -71,7 +71,7 @@ export function NumberInputWidget({
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
-      {arity === "n" ? (
+      {arity === "n" || arity === 1 ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
             onChange={(values: string[]) =>

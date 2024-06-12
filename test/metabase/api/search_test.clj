@@ -743,14 +743,14 @@
 (defn- archived-collection [m]
   (assoc m
          :archived true
-         :trashed_from_location "/"
-         :location (collection/trash-path)))
+         :archived_directly true
+         :archive_operation_id (str (random-uuid))))
 
 (defn- archived-with-trashed-from-id [m]
   (assoc m
          :archived true
-         :trashed_from_collection_id (:collection_id m)
-         :collection_id (collection/trash-collection-id)))
+         :archived_directly true
+         :collection_id (:collection_id m)))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"

@@ -149,6 +149,7 @@ export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   category: "any",
   id: "any",
   location: ["=", "!="],
+  number: ["=", "!="],
 };
 
 export const FIELD_FILTER_PARAMETER_TYPES = [

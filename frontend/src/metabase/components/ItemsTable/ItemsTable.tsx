@@ -1,8 +1,9 @@
 import PinDropZone from "metabase/collections/components/PinDropZone";
+import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import CS from "metabase/css/core/index.css";
 import type { CollectionItem } from "metabase-types/api";
 
-import type { BaseItemsTableProps, ItemRendererProps } from "./BaseItemsTable";
+import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
 import { ItemsTableRoot } from "./ItemsTable.styled";
 

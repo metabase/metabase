@@ -231,8 +231,10 @@ export const useChartEvents = (
           ? settings.series(seriesModel.legacySeriesSettingsObjectKey)
               .display === "bar"
           : false;
+      const shouldHighlightEntireSeries =
+        isBarSeries && chartModel.seriesModels.length > 1;
 
-      if (originalDatumIndex != null && !isBarSeries) {
+      if (originalDatumIndex != null && !shouldHighlightEntireSeries) {
         // (issue #40215)
         // since some transformed datasets have indexes differing from
         // the original datasets indexes and ECharts uses the transformedDataset

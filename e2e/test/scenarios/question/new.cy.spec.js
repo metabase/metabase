@@ -8,6 +8,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   openOrdersTable,
+  tabsShouldBe,
   popover,
   restore,
   visualize,
@@ -61,15 +62,8 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 4);
-        entityPickerModalTab("Recents").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        entityPickerModalTab("Models").should("exist");
-        entityPickerModalTab("Tables").should("exist");
-        entityPickerModalTab("Saved questions").should("exist");
+        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+
         entityPickerModalTab("Search").should("not.exist");
 
         cy.findByPlaceholderText("Search…").type("  ").blur();
@@ -96,14 +90,7 @@ describe("scenarios > question > new", () => {
         // Discarding the search query should take us back to the original tab
         cy.findByPlaceholderText("Search…").clear().blur();
         entityPickerModalTab("Search").should("not.exist");
-        entityPickerModalTab("Recents").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        entityPickerModalTab("Models").should("exist");
-        entityPickerModalTab("Tables").should("exist");
-        entityPickerModalTab("Saved questions").should("exist");
+        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
 
         entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders, Count").click();
@@ -417,6 +404,7 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
+        entityPickerModalTab("Dashboards").click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );
@@ -444,6 +432,8 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
+
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
         cy.findByText("Bobby Tables's Personal Collection").should(
           "be.visible",
         );

@@ -41,7 +41,11 @@ const PinnedQuestionLoader = ({
   const questionRef = useRef<Question>();
 
   return (
-    <Questions.Loader id={id} loadingAndErrorWrapper={false}>
+    <Questions.Loader
+      id={id}
+      loadingAndErrorWrapper={false}
+      entityQuery={{ context: "collection" }}
+    >
       {({ loading, question: loadedQuestion }: QuestionLoaderProps) => {
         if (loading !== false) {
           return children({ loading: true });
