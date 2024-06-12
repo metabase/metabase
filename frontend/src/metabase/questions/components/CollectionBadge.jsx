@@ -8,6 +8,7 @@ const propTypes = {
   className: PropTypes.string,
   collection: PropTypes.object,
   isSingleLine: PropTypes.bool,
+  onClick: PropTypes.func,
 };
 
 const IRREGULAR_ICON_WIDTH = 16;
@@ -19,7 +20,7 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
-function CollectionBadge({ className, collection, isSingleLine }) {
+function CollectionBadge({ className, collection, isSingleLine, onClick }) {
   if (!collection) {
     return null;
   }
@@ -29,14 +30,16 @@ function CollectionBadge({ className, collection, isSingleLine }) {
     ...collection.getIcon(),
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
+
+  const clickActionProps = onClick ? { onClick } : { to: collection.getUrl() };
   return (
     <Badge
       className={className}
-      to={collection.getUrl()}
       icon={icon}
       activeColor={icon.color}
       inactiveColor="text-light"
       isSingleLine={isSingleLine}
+      {...clickActionProps}
     >
       {collection.getName()}
     </Badge>
