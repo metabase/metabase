@@ -12,6 +12,10 @@ export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
 
+export function echartsTriggerBlur() {
+  return echartsContainer().realHover({ position: "right" });
+}
+
 export function ensureEchartsContainerHasSvg() {
   return echartsContainer().should(root => {
     // Check if there's an SVG child within the element

@@ -1,11 +1,6 @@
-import {
-  useCallback,
-  useMemo,
-  type HTMLAttributes,
-  type PropsWithChildren,
-} from "react";
+import type { HTMLAttributes, PropsWithChildren } from "react";
+import { useMemo } from "react";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -14,28 +9,28 @@ import type {
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
 import { isTrashedCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import { color } from "metabase/lib/colors";
+import { BaseItemsTableBody } from "metabase/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
+import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
+import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import {
+  type SortColumn,
+  SortDirection,
+  type SortingOptions,
+} from "metabase-types/api/sorting";
 
 import {
   ColumnHeader,
   SortingControlContainer,
   SortingIcon,
   Table,
-  TBody,
-} from "./BaseItemsTable.styled";
-import { Columns, SortDirection } from "./Columns";
-import type { ResponsiveProps } from "./utils";
-
-export type SortingOptions = {
-  sort_column: string;
-  sort_direction: SortDirection;
-};
+} from "../BaseItemsTable.styled";
+import { Columns } from "../Columns";
+import type { ResponsiveProps } from "../utils";
 
 export type SortableColumnHeaderProps = {
-  name?: string;
+  name?: SortColumn;
   sortingOptions?: SortingOptions;
   onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
   columnHeaderProps?: Partial<HTMLAttributes<HTMLTableHeaderCellElement>>;
@@ -109,8 +104,8 @@ export type BaseItemsTableProps = {
   selectedItems?: CollectionItem[];
   hasUnselected?: boolean;
   isPinned?: boolean;
-  sortingOptions: SortingOptions;
-  onSortingOptionsChange: (newSortingOptions: SortingOptions) => void;
+  sortingOptions?: SortingOptions;
+  onSortingOptionsChange?: (newSortingOptions: SortingOptions) => void;
   onToggleSelected?: OnToggleSelectedWithItem;
   onSelectAll?: () => void;
   onSelectNone?: () => void;
@@ -123,7 +118,9 @@ export type BaseItemsTableProps = {
   isInDragLayer?: boolean;
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
-} & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy">>;
+  onClick?: (item: CollectionItem) => void;
+  showActionMenu?: boolean;
+} & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
   databases,
@@ -148,9 +145,12 @@ export const BaseItemsTable = ({
   isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
+  showActionMenu = true,
+  onClick,
   ...props
 }: BaseItemsTableProps) => {
-  const canSelect = !!collection?.can_write;
+  const canSelect =
+    collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
 
   return (
@@ -162,7 +162,7 @@ export const BaseItemsTable = ({
           <Columns.Name.Col isInDragLayer={isInDragLayer} />
           <Columns.LastEditedBy.Col />
           <Columns.LastEditedAt.Col />
-          <Columns.ActionMenu.Col />
+          {showActionMenu && <Columns.ActionMenu.Col />}
           <Columns.RightEdge.Col />
         </colgroup>
       )}
@@ -199,119 +199,31 @@ export const BaseItemsTable = ({
               onSortingOptionsChange={onSortingOptionsChange}
               isTrashed={isTrashed}
             />
-            <Columns.ActionMenu.Header />
+            {showActionMenu && <Columns.ActionMenu.Header />}
             <Columns.RightEdge.Header />
           </tr>
         </thead>
       )}
-      <TBody>
-        {items.map((item: CollectionItem) => {
-          const isSelected = getIsSelected(item);
-
-          const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
-          const key = `${item.model}-${item.id}`;
-          return (
-            <ItemDragSource
-              item={item}
-              collection={collection}
-              isSelected={isSelected}
-              selected={selectedItems}
-              onDrop={onDrop}
-              key={`item-drag-source-${key}`}
-            >
-              <tr data-testid={testIdPrefix} style={{ height: 48 }}>
-                <ItemComponent
-                  testIdPrefix={testIdPrefix}
-                  item={item}
-                  isSelected={isSelected}
-                  databases={databases}
-                  bookmarks={bookmarks}
-                  createBookmark={createBookmark}
-                  deleteBookmark={deleteBookmark}
-                  collection={collection}
-                  isPinned={isPinned}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                  onToggleSelected={onToggleSelected}
-                />
-              </tr>
-            </ItemDragSource>
-          );
-        })}
-      </TBody>
+      <BaseItemsTableBody
+        items={items}
+        getIsSelected={getIsSelected}
+        isPinned={isPinned}
+        collection={collection}
+        selectedItems={selectedItems}
+        onDrop={onDrop}
+        ItemComponent={ItemComponent}
+        databases={databases}
+        bookmarks={bookmarks}
+        createBookmark={createBookmark}
+        deleteBookmark={deleteBookmark}
+        onCopy={onCopy}
+        onMove={onMove}
+        onToggleSelected={onToggleSelected}
+        onClick={onClick}
+        showActionMenu={showActionMenu}
+      />
     </Table>
   );
 };
 
-export type ItemRendererProps = {
-  item: CollectionItem;
-  isSelected?: boolean;
-  isPinned?: boolean;
-  onToggleSelected?: OnToggleSelectedWithItem;
-  collection?: Collection;
-  draggable?: boolean;
-  testIdPrefix?: string;
-  databases?: Database[];
-  bookmarks?: Bookmark[];
-} & ActionMenuProps;
-
-const DefaultItemRenderer = ({
-  item,
-  isSelected,
-  isPinned,
-  onToggleSelected,
-  collection,
-  onCopy,
-  onMove,
-  createBookmark,
-  deleteBookmark,
-  databases,
-  bookmarks,
-  testIdPrefix = "item",
-}: ItemRendererProps) => {
-  const canSelect =
-    collection?.can_write && typeof onToggleSelected === "function";
-
-  const icon = item.getIcon();
-  if (item.model === "card" || item.archived) {
-    icon.color = color("text-light");
-  }
-
-  const handleSelectionToggled = useCallback(() => {
-    onToggleSelected?.(item);
-  }, [item, onToggleSelected]);
-
-  return (
-    <>
-      {canSelect && (
-        <Columns.Select.Cell
-          testIdPrefix={testIdPrefix}
-          icon={icon}
-          isPinned={isPinned}
-          isSelected={isSelected}
-          handleSelectionToggled={handleSelectionToggled}
-        />
-      )}
-      <Columns.Type.Cell
-        testIdPrefix={testIdPrefix}
-        icon={icon}
-        isPinned={isPinned}
-      />
-      <Columns.Name.Cell item={item} testIdPrefix={testIdPrefix} />
-      <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />
-      <Columns.LastEditedAt.Cell item={item} testIdPrefix={testIdPrefix} />
-      <Columns.ActionMenu.Cell
-        item={item}
-        collection={collection}
-        databases={databases}
-        bookmarks={bookmarks}
-        onCopy={onCopy}
-        onMove={onMove}
-        createBookmark={createBookmark}
-        deleteBookmark={deleteBookmark}
-      />
-      <Columns.RightEdge.Cell />
-    </>
-  );
-};
 BaseItemsTable.Item = DefaultItemRenderer;

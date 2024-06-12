@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
@@ -56,14 +57,15 @@
        :model/Segment   _              {:table_id table-id
                                         :name     (str "segment 3 " search-string)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [do-search (fn []
-                          (search.impl/search {:search-string      search-string
-                                               :archived?          false
-                                               :models             search.config/all-models
-                                               :current-user-id    (mt/user->id :crowberto)
-                                               :current-user-perms #{"/"}
-                                               :model-ancestors?   false
-                                               :limit-int          100}))]
+        (binding [config/*request-id* (random-uuid)]
+          (let [do-search (fn []
+                            (search.impl/search {:search-string      search-string
+                                                 :archived?          false
+                                                 :models             search.config/all-models
+                                                 :current-user-id    (mt/user->id :crowberto)
+                                                 :current-user-perms #{"/"}
+                                                 :model-ancestors?   false
+                                                 :limit-int          100}))]
           ;; warm it up, in case the DB call depends on the order of test execution and it needs to
           ;; do some initialization
           (do-search)
@@ -72,7 +74,7 @@
             ;; the call count number here are expected to change if we change the search api
             ;; we have this test here just to keep tracks this number to remind us to put effort
             ;; into keep this number as low as we can
-            (is (= 6 (call-count)))))))))
+            (is (= 6 (call-count))))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"

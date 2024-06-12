@@ -1,36 +1,39 @@
-import { Box, Button } from "metabase/ui";
+import { Box, SelectItem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { Parameter, TemporalUnit } from "metabase-types/api";
 
 const MIN_WIDTH = 180;
 
 interface TemporalUnitWidgetProps {
-  setValue: (unit: string) => void;
+  parameter: Parameter;
+  value?: TemporalUnit;
+  setValue: (unit: TemporalUnit) => void;
   onClose: () => void;
 }
 
 export function TemporalUnitWidget({
+  parameter,
+  value,
   setValue,
   onClose,
 }: TemporalUnitWidgetProps) {
-  const units = Lib.availableTemporalUnits();
+  const availableUnits =
+    parameter.temporal_units ?? Lib.availableTemporalUnits();
 
-  const handleSelect = (unit: string) => {
+  const handleSelect = (unit: TemporalUnit) => {
     setValue(unit);
     onClose();
   };
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {units.map(unit => (
-        <Button
+      {availableUnits.map(unit => (
+        <SelectItem
           key={unit}
-          c="text-dark"
-          display="block"
-          variant="subtle"
+          value={Lib.describeTemporalUnit(unit)}
+          selected={value === unit}
           onClick={() => handleSelect(unit)}
-        >
-          {Lib.describeTemporalUnit(unit)}
-        </Button>
+        />
       ))}
     </Box>
   );

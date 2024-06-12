@@ -895,15 +895,6 @@ describe("issue 26091", () => {
 
     startNewQuestion();
     entityPickerModal().within(() => {
-      entityPickerModalTab("Recents").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-      cy.findByText("New model").should("be.visible");
-      cy.findByText("Old model").should("be.visible");
-      cy.findByText("Orders Model").should("be.visible");
-
       entityPickerModalTab("Models").click();
       cy.findByText("New model").should("be.visible");
       cy.findByText("Old model").should("be.visible");

@@ -53,7 +53,7 @@ Open the **three dot** (...) menu to:
 Click the **info** icon to:
 
 - Add a description
-- Edit the [cache duration](../../configuring-metabase/caching.md#caching-per-question)\*
+- Edit the [cache duration](../../configuring-metabase/caching.md#question-caching-policy)\*
 - View [revision history](../../exploration-and-organization/history.md)
 
 \* Available on [paid plans](https://www.metabase.com/pricing/).
@@ -74,7 +74,7 @@ To use a saved question as the basis for another question, you can:
 
 {% include plans-blockquote.html feature="Caching question results" %}
 
-See [Caching per question](../../configuring-metabase/caching.md#caching-per-question).
+See [Caching per question](../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Sharing questions with public links
 

@@ -93,6 +93,9 @@ function setup({
       storeInitialState: {
         dashboard: createMockDashboardState({
           dashcardData,
+          dashcards: {
+            [tableDashcard.id]: tableDashcard,
+          },
         }),
       },
     },
