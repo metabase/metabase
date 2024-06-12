@@ -14,17 +14,13 @@ import { Icon } from "metabase/ui";
 
 import { parseValues, unique } from "./utils";
 
-export type MultiAutocompleteProps = Omit<
-  MultiSelectProps,
-  "shouldCreate" | "data"
-> & {
-  data?: (string | SelectItem)[];
+export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (value: string, selectedValues: string[]) => boolean;
   renderValue?: (value: string) => ReactNode;
 };
 
 export function MultiAutocomplete({
-  data = [],
+  data,
   value: controlledValue,
   defaultValue,
   searchValue: controlledSearchValue,
@@ -36,11 +32,10 @@ export function MultiAutocomplete({
   onFocus,
   onBlur,
   prefix,
-  filter = defaultFilter,
   renderValue,
   ...props
 }: MultiAutocompleteProps) {
-  const [selectedValues, setSelectedValues] = useUncontrolled<string[]>({
+  const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
     defaultValue,
     finalValue: [],
@@ -51,10 +46,7 @@ export function MultiAutocomplete({
     finalValue: "",
     onChange: onSearchChange,
   });
-
-  const [lastSelectedValues, setLastSelectedValues] =
-    useState<string[]>(selectedValues);
-
+  const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
   const [isFocused, setIsFocused] = useState(false);
   const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
@@ -75,13 +67,8 @@ export function MultiAutocomplete({
     onFocus?.(event);
   };
 
-  function isValid(value: string | null) {
-    return (
-      value !== null &&
-      value !== "" &&
-      !Number.isNaN(value) &&
-      shouldCreate?.(value, lastSelectedValues)
-    );
+  function isValid(value: string) {
+    return value !== "" && shouldCreate?.(value, lastSelectedValues);
   }
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -221,7 +208,6 @@ export function MultiAutocomplete({
       onPaste={handlePaste}
       rightSection={info}
       icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-      filter={filter}
       itemComponent={CustomItemComponent}
     />
   );
@@ -256,30 +242,10 @@ function getAvailableSelectItems(
   });
 }
 
-function defaultShouldCreate(value: string, selectedValues: string[]) {
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    value === null
-  ) {
-    return !selectedValues.some(selectedValue => selectedValue === value);
-  }
-
+function defaultShouldCreate(query: string, selectedValues: string[]) {
   return (
-    value.trim().length > 0 &&
-    !selectedValues.some(selectedValue => selectedValue === value)
+    query.trim().length > 0 && !selectedValues.some(value => value === query)
   );
-}
-
-function defaultFilter(
-  query: string,
-  selected: boolean,
-  item: SelectItem,
-): boolean {
-  if (selected || !item.label) {
-    return false;
-  }
-  return item.label.toLowerCase().trim().includes(query.toLowerCase().trim());
 }
 
 export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
