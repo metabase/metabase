@@ -976,3 +976,43 @@
                     (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                   :channel/email first :message first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
+
+
+(deftest attachments-test
+  (tests!
+   {:card (pulse.test-util/checkins-query-card {})}
+   "csv"
+   {:pulse-card {:include_csv true}
+    :assert
+    {:email
+     (fn [_ [email]]
+       (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
+                                                pulse.test-util/png-attachment
+                                                pulse.test-util/csv-attachment]})
+              (-> (mt/summarize-multipart-single-email email
+                                                       #"Aviary KPIs")))))}}
+
+   "xlsx"
+   {:pulse-card {:include_xls true}
+    :assert
+    {:email
+     (fn [_ [email]]
+       (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
+                                                pulse.test-util/png-attachment
+                                                pulse.test-util/xls-attachment]})
+              (-> (mt/summarize-multipart-single-email email
+                                                       #"Aviary KPIs")))))}}
+
+   "no result should not include csv"
+   {:card {:dataset_query (mt/mbql-query venues {:filter [:= $id -1]})}
+    :pulse-card {:include_csv true}
+    :assert
+    {:email
+     (fn [_ [email]]
+       (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
+                                                ;; no result
+                                                pulse.test-util/png-attachment
+                                                ;; icon
+                                                pulse.test-util/png-attachment]})
+              (-> (mt/summarize-multipart-single-email email
+                                                       #"Aviary KPIs")))))}}))
