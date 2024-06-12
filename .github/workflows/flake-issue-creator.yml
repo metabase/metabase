@@ -21,13 +21,13 @@ jobs:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       with:
         script: | # js
-          const { checkFlakes } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { updateFlakeIssues } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           if (!process.env.SLACK_BOT_TOKEN) {
             throw new Error('SLACK_BOT_TOKEN is required');
           }
 
-          await checkFlakes({
+          await updateFlakeIssues({
             github,
             owner: context.repo.owner,
             repo: context.repo.repo,

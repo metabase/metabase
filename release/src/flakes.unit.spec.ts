@@ -1,5 +1,6 @@
-import type { FlakeData} from './flakes';
-import { assignToTeam } from './flakes';
+import type { FlakeData} from './flakes-helpers';
+import { assignToTeam, countIssuesByTeam } from './flakes-helpers';
+import type { Issue } from './types';
 
 const createFlakeIssue = (data: Partial<FlakeData>): FlakeData => {
   return {
@@ -33,5 +34,73 @@ describe('flake issue creator', () => {
     it.each(testData)('should assign the flake to the correct team: %s : %s', (data, team) => {
       expect(assignToTeam(createFlakeIssue(data))).toEqual(team);
     });
-  })
+  });
+
+  describe('countIssuesByTeam', () => {
+    it('groups issues by team', () => {
+      const testIssues = [
+        { labels: [ { name: '.Team/a' }]},
+        { labels: [ { name: '.Team/a' }]},
+        { labels: [ { name: '.Team/b' }]},
+        { labels: [ { name: '.Team/b' }]},
+      ] as Issue[];
+
+      const groupedIssues = countIssuesByTeam(testIssues);
+
+      expect(groupedIssues).toEqual([
+        ['.Team/a', 2],
+        ['.Team/b', 2],
+      ]);
+    });
+
+    it('sorts teams by most -> least issues', () => {
+      const testIssues = [
+        { labels: [ { name: '.Team/one' }]},
+        { labels: [ { name: '.Team/two' }]},
+        { labels: [ { name: '.Team/two' }]},
+        { labels: [ { name: '.Team/three' }]},
+        { labels: [ { name: '.Team/three' }]},
+        { labels: [ { name: '.Team/three' }]},
+      ] as Issue[];
+
+      const groupedIssues = countIssuesByTeam(testIssues);
+
+      expect(groupedIssues).toEqual([
+        ['.Team/three', 3],
+        ['.Team/two', 2],
+        ['.Team/one', 1],
+      ]);
+    });
+
+    it('classifies issues without a team tag as unknown', () => {
+      const testIssues = [
+        { labels: [ { name: '.Team/one' }]},
+        { labels: [ { name: 'othertag' }]},
+      ] as Issue[];
+
+      const groupedIssues = countIssuesByTeam(testIssues);
+
+      expect(groupedIssues).toEqual([
+        ['.Team/one', 1],
+        ['.Team/Unknown Team', 1]
+      ]);
+    });
+
+    it('is unaffected by other non-team tags', () => {
+      const testIssues = [
+        { labels: [ { name: 'othertag' }, { name: '.Team/one' }]},
+        { labels: [ { name: 'mytag' }, { name: '.Team/one' }]},
+        { labels: [ { name: '.Team/two' }, { name: 'othertag' },]},
+      ] as Issue[];
+
+      const groupedIssues = countIssuesByTeam(testIssues);
+
+      expect(groupedIssues).toEqual([
+        ['.Team/one', 2],
+        ['.Team/two', 1],
+      ]);
+    })
+  });
+
+
 })
