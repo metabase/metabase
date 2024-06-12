@@ -17,7 +17,7 @@ export function TemporalUnitWidget({
   setValue,
   onClose,
 }: TemporalUnitWidgetProps) {
-  const availableTemporalUnits =
+  const availableUnits =
     parameter.temporal_units ?? Lib.availableTemporalUnits();
 
   const handleSelect = (unit: TemporalUnit) => {
@@ -27,7 +27,7 @@ export function TemporalUnitWidget({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
-      {availableTemporalUnits.map(unit => (
+      {availableUnits.map(unit => (
         <SelectItem
           key={unit}
           value={Lib.describeTemporalUnit(unit)}
