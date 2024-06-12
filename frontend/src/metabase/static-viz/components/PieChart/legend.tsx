@@ -12,11 +12,7 @@ export function getPieChartLegend(
   width: number,
   top: number,
 ) {
-  if (!settings["pie.show_legend"] || chartModel.slices.length <= 1) {
-    return { legendHeight: 0, Legend: () => null };
-  }
-
-  const legendRows = calculateLegendRowsWithColumns({
+  const { height: legendHeight, items } = calculateLegendRowsWithColumns({
     items: chartModel.slices.map(s => {
       const label =
         s.key === "Other" ? s.key : formatters.formatDimension(s.key);
@@ -35,8 +31,6 @@ export function getPieChartLegend(
     }),
     width,
   });
-
-  const { height: legendHeight, items } = legendRows;
 
   return {
     legendHeight,
