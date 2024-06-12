@@ -4,7 +4,7 @@ import { databaseApi } from "metabase/api";
 import type { Database } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
-import { zipSources } from "./utils";
+import { zipEntitySources } from "./utils";
 
 type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
 
@@ -32,5 +32,5 @@ export const getFromListDatabases = createSelector(
 
 export const getApiDatabases = createSelector(
   [getFromListDatabases],
-  zipSources,
+  zipEntitySources,
 );

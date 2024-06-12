@@ -4,7 +4,7 @@ import { tableApi } from "metabase/api";
 import type { Table } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
-import { zipSources } from "./utils";
+import { zipEntitySources } from "./utils";
 
 type TableEndpointName = keyof typeof tableApi.endpoints;
 
@@ -45,5 +45,5 @@ const getFromGetTableQueryMetadata = createSelector(
 
 export const getApiTables = createSelector(
   [getFromGetTable, getFromListTables, getFromGetTableQueryMetadata],
-  zipSources,
+  zipEntitySources,
 );

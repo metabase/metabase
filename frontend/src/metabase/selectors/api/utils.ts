@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-export const zipSources = <
+export const zipEntitySources = <
   Id extends string | number,
   Entity extends { id: Id; updated_at: string },
 >(
