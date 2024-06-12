@@ -34,10 +34,10 @@ const getApiState = createSelector(
   state => ({ [Api.reducerPath]: state }),
 );
 
-const getApiDatabases = createSelector(getApiState, state => {
+const getApiTables = createSelector(getApiState, state => {
   const entries = tableApi.util
-    .selectInvalidatedBy(state, ["database"])
-    .filter(entry => entry.endpointName === "listDatabases");
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === "listTables");
 
   return entries.flatMap(entry => {
     const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
@@ -46,7 +46,7 @@ const getApiDatabases = createSelector(getApiState, state => {
   });
 });
 
-const getApiEntities = createSelector([getApiDatabases], tables => {
+const getApiEntities = createSelector([getApiTables], tables => {
   const data = {
     tables,
   };
