@@ -1,8 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
-import dayjs from "dayjs";
 import { normalize } from "normalizr";
 
-import { Api, databaseApi, tableApi } from "metabase/api";
 import { DatabaseSchema, TableSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -25,113 +23,11 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  Table as ApiTable,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { getApiDatabases, getApiTables } from "./api";
 import { getSettings } from "./settings";
-
-const zipSources = <
-  Id extends string | number,
-  Entity extends { id: Id; updated_at: string },
->(
-  ...sources: Entity[][]
-): Partial<Record<Id, Entity>> => {
-  const result: Partial<Record<Id, Entity>> = {};
-  const entities = sources.flat();
-
-  for (const entity of entities) {
-    const existing = result[entity.id];
-    const isNew = !existing;
-    const isMoreRecent =
-      existing && dayjs(entity.updated_at).isAfter(existing.updated_at);
-
-    if (isNew || isMoreRecent) {
-      result[entity.id] = entity;
-    }
-  }
-
-  return result;
-};
-
-type ApiState = ReturnType<typeof getApiState>;
-
-type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
-type TableEndpointName = keyof typeof tableApi.endpoints;
-
-const getDatabaseEntries = (
-  state: ApiState,
-  endpointName: DatabaseEndpointName,
-) => {
-  return databaseApi.util
-    .selectInvalidatedBy(state, ["database"])
-    .filter(entry => entry.endpointName === endpointName);
-};
-
-const getTableEntries = (state: ApiState, endpointName: TableEndpointName) => {
-  return tableApi.util
-    .selectInvalidatedBy(state, ["table"])
-    .filter(entry => entry.endpointName === endpointName);
-};
-
-const getApiState = createSelector(
-  (state: any) => state[Api.reducerPath],
-  state => ({ [Api.reducerPath]: state }),
-);
-
-const getApiDatabases = createSelector(getApiState, state => {
-  return getDatabaseEntries(state, "listDatabases").flatMap(entry => {
-    const selector = databaseApi.endpoints.listDatabases.select(
-      entry.originalArgs,
-    );
-    const { data } = selector(state);
-    return data?.data ?? [];
-  });
-});
-
-const getTablesFromListTables = createSelector(
-  getApiState,
-  (state): ApiTable[] => {
-    return getTableEntries(state, "listTables").flatMap(entry => {
-      const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
-      const { data } = selector(state);
-      return data ?? [];
-    });
-  },
-);
-
-const getTablesFromGetTable = createSelector(
-  getApiState,
-  (state): ApiTable[] => {
-    return getTableEntries(state, "getTable").flatMap(entry => {
-      const selector = tableApi.endpoints.getTable.select(entry.originalArgs);
-      const { data } = selector(state);
-      return data ? [data] : [];
-    });
-  },
-);
-
-const getTablesFromGetTableQueryMetadata = createSelector(
-  getApiState,
-  (state): ApiTable[] => {
-    return getTableEntries(state, "getTableQueryMetadata").flatMap(entry => {
-      const selector = tableApi.endpoints.getTableQueryMetadata.select(
-        entry.originalArgs,
-      );
-      const { data } = selector(state);
-      return data ?? [];
-    });
-  },
-);
-
-const getApiTables = createSelector(
-  [
-    getTablesFromGetTable,
-    getTablesFromListTables,
-    getTablesFromGetTableQueryMetadata,
-  ],
-  zipSources,
-);
 
 const getApiEntities = createSelector(
   [getApiDatabases, getApiTables],
