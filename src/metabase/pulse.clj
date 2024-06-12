@@ -329,20 +329,18 @@
                                            :user-id (:creator_id pulse)
                                            :object  {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}})
-        (u/prog1 (doall
-                  (for [channel channels]
-                    (try
-                      (let [channel-type (if (= :email (keyword (:channel_type channel)))
-                                           :channel/email
-                                           :channel/slack)
-                            messages     (channel/render-notification channel-type
-                                                                      (get-notification-info pulse parts channel)
-                                                                      (channels-to-channel-recipients channel))]
-                        (doall
-                         (for [message messages]
-                           (send-retrying! channel-type message))))
-                      (catch Exception e
-                        (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type channel))))))
+        (u/prog1 (doseq [channel channels]
+                   (try
+                     (let [channel-type (if (= :email (keyword (:channel_type channel)))
+                                          :channel/email
+                                          :channel/slack)
+                           messages     (channel/render-notification channel-type
+                                                                     (get-notification-info pulse parts channel)
+                                                                     (channels-to-channel-recipients channel))]
+                       (doseq [message messages]
+                         (send-retrying! channel-type message)))
+                     (catch Exception e
+                       (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type channel)))))
           (when (:alert_first_only pulse)
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))

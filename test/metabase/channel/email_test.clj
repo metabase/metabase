@@ -11,6 +11,8 @@
       (with-redefs [email/send-email! (fn [_ message]
                                         (reset! sent-message message))]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"
+                                           email-smtp-host    " ake_smtp_host"
+                                           email-smtp-port    587
                                            bcc-enabled?       false]
           (channel/send! :channel/email {:subject      "Test"
                                          :recipients   ["ngoc@metabase.com"]
@@ -18,5 +20,3 @@
                                          :message      "Test message"})
           (is (=? {:to ["ngoc@metabase.com"]}
                   @sent-message)))))))
-
-;; TODO: add more render-notification tests

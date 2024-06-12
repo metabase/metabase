@@ -49,26 +49,6 @@
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (-> (#'metabase.pulse/execute-pulse (pulse/retrieve-pulse pulse) nil) first :result))))
 
-;; TODO this should be a channel test, not a pulse test
-#_(deftest bcc-enabled-pulse-test
-    (testing "When bcc is not enabled, return an email that uses to:"
-      (mt/with-temp [Card                  pulse-card {:name "Test card"
-                                                       :dataset_query (mt/mbql-query venues {:limit 1})}
-                     Pulse                 pulse {:name "Test Pulse"
-                                                  :alert_condition "rows"}
-                     PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
-                     PulseChannel          pc {:channel_type :email
-                                               :pulse_id     (:id pulse)
-                                               :enabled      true}
-                     PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                              :user_id          (mt/user->id :rasta)}]
-        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
-                                 (metabase.pulse/send-pulse! pulse))]
-          (is (=? [{:from    "Alert: Test card has results"
-                    :to      ["rasta@metabase.com"]
-                    :subject "Pulse: Test Pulse"}]
-                  (:channel/email channel-messages)))))))
-
 (deftest dashboard-subscription-send-event-test
   (testing "When we send a pulse, we also log the event:"
     (mt/with-premium-features #{:audit-app}
