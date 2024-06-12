@@ -12,8 +12,6 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
-import { DashCard } from "../DashCard/DashCard";
-
 export const DashboardLoadingAndErrorWrapper = styled(
   ({
     isFullscreen,
@@ -162,11 +160,6 @@ export const ParametersAndCardsContainer = styled.div<{
 
     ${CardsContainer} {
       padding-bottom: 20px;
-    }
-
-    ${DashCard.root} {
-      box-shadow: none;
-      border: 1px solid var(--mb-color-border);
     }
   }
 `;
