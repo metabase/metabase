@@ -1,6 +1,7 @@
 import type {
   automagicDashboardsApi,
   cardApi,
+  dashboardApi,
   databaseApi,
   datasetApi,
   tableApi,
@@ -8,6 +9,8 @@ import type {
 
 export type AutomagicDashboardsEndpointName =
   keyof typeof automagicDashboardsApi.endpoints;
+
+export type DashboardEndpointName = keyof typeof dashboardApi.endpoints;
 
 export type CardEndpointName = keyof typeof cardApi.endpoints;
 

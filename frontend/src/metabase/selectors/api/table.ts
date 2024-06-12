@@ -3,6 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import {
   automagicDashboardsApi,
   cardApi,
+  dashboardApi,
   databaseApi,
   datasetApi,
   tableApi,
@@ -13,6 +14,7 @@ import { getApiState, type ApiState } from "./state";
 import type {
   AutomagicDashboardsEndpointName,
   CardEndpointName,
+  DashboardEndpointName,
   DatabaseEndpointName,
   DatasetEndpointName,
   TableEndpointName,
@@ -57,6 +59,15 @@ const getAutomagicDashboardTableEntries = (
   endpointName: AutomagicDashboardsEndpointName,
 ) => {
   return automagicDashboardsApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
+const getDashboardTableEntries = (
+  state: ApiState,
+  endpointName: DashboardEndpointName,
+) => {
+  return dashboardApi.util
     .selectInvalidatedBy(state, ["table"])
     .filter(entry => entry.endpointName === endpointName);
 };
@@ -150,6 +161,22 @@ const getFromAutomagicDashboardTableEntries = createSelector(
   },
 );
 
+const getFromDashboardTableEntries = createSelector(
+  getApiState,
+  (state): Table[] => {
+    return getDashboardTableEntries(state, "getDashboardQueryMetadata").flatMap(
+      entry => {
+        const selector =
+          dashboardApi.endpoints.getDashboardQueryMetadata.select(
+            entry.originalArgs,
+          );
+        const { data } = selector(state);
+        return data?.tables ?? [];
+      },
+    );
+  },
+);
+
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
@@ -159,6 +186,7 @@ export const getApiTables = createSelector(
     getFromGetAdhocQueryMetadata,
     getFromGetCardQueryMetadata,
     getFromAutomagicDashboardTableEntries,
+    getFromDashboardTableEntries,
   ],
   zipEntitySources,
 );
