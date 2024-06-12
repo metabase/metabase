@@ -211,6 +211,10 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
   },
 );
 
+export const getIsDndAvailable = (state: State) => {
+  return state.app.isDndAvailable;
+};
+
 export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   user => user?.custom_homepage?.dashboard_id || null,

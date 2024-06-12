@@ -442,7 +442,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByLabelText("Month").click();
       dashboardParameterSidebar().findByText("No default").should("not.exist");
 
-      cy.log("exclude the temporal unit used used for the default value");
+      cy.log("exclude the temporal unit used for the default value");
       popover().findByLabelText("Year").click();
       dashboardParameterSidebar().findByText("No default").should("be.visible");
     });

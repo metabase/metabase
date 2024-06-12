@@ -26,6 +26,7 @@ interface LocationChangeAction {
 }
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
+
 export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
@@ -99,4 +100,10 @@ const isNavbarOpen = handleActions(
 export default combineReducers({
   errorPage,
   isNavbarOpen,
+  isDndAvailable: initValue => {
+    if (typeof initValue === "boolean") {
+      return initValue;
+    }
+    return true;
+  },
 });
