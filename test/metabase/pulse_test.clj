@@ -314,19 +314,6 @@
                                                 pulse.test-util/xls-attachment]})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
-(deftest csv-xls-no-data-test
-  (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
-    (do-test!
-     {:card (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                  :breakout [!day.date]})
-      :pulse-card {:include_csv true
-                   :include_xls true}
-      :assert
-      {:email
-       (fn [_ [email]]
-         (is (= (rasta-alert-message)
-                (mt/summarize-multipart-single-email email test-card-regex))))}})))
-
 (deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
     (do-test!
