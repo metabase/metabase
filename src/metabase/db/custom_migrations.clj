@@ -1447,3 +1447,10 @@
       (->> settings
            (filter :value)
            (t2/insert! :setting)))))
+
+(define-migration DecryptCacheSettings
+  (let [decrypt! (fn [k]
+                   (t2/update! :setting :key k {:value (raw-setting-value k)}))]
+    (run! decrypt! ["query-caching-ttl-ratio"
+                    "query-caching-min-ttl"
+                    "enable-query-caching"])))

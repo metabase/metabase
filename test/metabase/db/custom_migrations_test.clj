@@ -2049,3 +2049,21 @@
           :date_joined   :%now})
         (migrate!)
         (is (false? (sample-content-created?)))))))
+
+(deftest decrypt-cache-settings-test
+  (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
+    (encryption-test/with-secret-key "whateverwhatever"
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
+
+    (testing "Values were indeed encrypted"
+      (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
+
+    (encryption-test/with-secret-key "whateverwhatever"
+      (migrate!))
+
+    (testing "But not anymore"
+      (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
+      (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
+      (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
