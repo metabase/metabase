@@ -309,7 +309,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
 
       cy.createTimelineWithEvents({
-        timeline: { name: "Timeline for collection", collection_id: 1 },
+        timeline: { name: "Timeline for collection", collection_id: 2 },
         events: [
           { name: "TC1", timestamp: "2022-05-20T00:00:00Z", icon: "warning" },
         ],
