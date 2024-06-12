@@ -1,12 +1,8 @@
-import type {
-  MultiSelectProps,
-  SelectItemProps,
-  SelectItem,
-} from "@mantine/core";
+import type { MultiSelectProps, SelectItem } from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
-import type { ClipboardEvent, FocusEvent, ReactNode } from "react";
-import { useMemo, useState, forwardRef } from "react";
+import type { ClipboardEvent, FocusEvent } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -16,7 +12,6 @@ import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (value: string, selectedValues: string[]) => boolean;
-  renderValue?: (value: string) => ReactNode;
 };
 
 export function MultiAutocomplete({
@@ -31,7 +26,6 @@ export function MultiAutocomplete({
   onSearchChange,
   onFocus,
   onBlur,
-  renderValue,
   ...props
 }: MultiAutocompleteProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
@@ -172,25 +166,6 @@ export function MultiAutocomplete({
     <span />
   );
 
-  const CustomItemComponent = useMemo(
-    () =>
-      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
-        props,
-        ref,
-      ) {
-        const customLabel =
-          props.value !== undefined && renderValue?.(props.value);
-        return (
-          <ItemWrapper
-            ref={ref}
-            {...props}
-            label={customLabel ?? props.label}
-          />
-        );
-      }),
-    [renderValue],
-  );
-
   return (
     <MultiSelect
       {...props}
@@ -206,7 +181,6 @@ export function MultiAutocomplete({
       onSearchChange={handleSearchChange}
       onPaste={handlePaste}
       rightSection={info}
-      itemComponent={CustomItemComponent}
     />
   );
 }
@@ -245,13 +219,3 @@ function defaultShouldCreate(query: string, selectedValues: string[]) {
     query.trim().length > 0 && !selectedValues.some(value => value === query)
   );
 }
-
-export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
-  function ItemWrapper({ label, value, ...others }, ref) {
-    return (
-      <div ref={ref} {...others}>
-        {label || value}
-      </div>
-    );
-  },
-);
