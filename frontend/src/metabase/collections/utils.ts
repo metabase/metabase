@@ -189,10 +189,6 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   );
 }
 
-export function canDeleteItem(item: CollectionItem, collection?: Collection) {
-  return item.archived && (item.can_write ?? collection?.can_write ?? true);
-}
-
 export function canCopyItem(item: CollectionItem) {
   return item.copy && !item.archived;
 }

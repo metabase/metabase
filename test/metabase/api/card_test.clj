@@ -62,31 +62,31 @@
 
 (def card-defaults
   "The default card params."
-  {:archived                   false
-   :collection_id              nil
-   :collection_position        nil
-   :collection_preview         true
-   :dataset_query              {}
-   :type                       "question"
-   :description                nil
-   :display                    "scalar"
-   :enable_embedding           false
-   :initially_published_at     nil
-   :entity_id                  nil
-   :embedding_params           nil
-   :made_public_by_id          nil
-   :parameters                 []
-   :parameter_mappings         []
-   :moderation_reviews         ()
-   :public_uuid                nil
-   :query_type                 nil
-   :cache_ttl                  nil
-   :average_query_time         nil
-   :last_query_start           nil
-   :result_metadata            nil
-   :cache_invalidated_at       nil
-   :view_count                 0
-   :trashed_from_collection_id nil})
+  {:archived               false
+   :collection_id          nil
+   :collection_position    nil
+   :collection_preview     true
+   :dataset_query          {}
+   :type                   "question"
+   :description            nil
+   :display                "scalar"
+   :enable_embedding       false
+   :initially_published_at nil
+   :entity_id              nil
+   :embedding_params       nil
+   :made_public_by_id      nil
+   :parameters             []
+   :parameter_mappings     []
+   :moderation_reviews     ()
+   :public_uuid            nil
+   :query_type             nil
+   :cache_ttl              nil
+   :average_query_time     nil
+   :last_query_start       nil
+   :result_metadata        nil
+   :cache_invalidated_at   nil
+   :view_count             0
+   :archived_directly      false})
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
