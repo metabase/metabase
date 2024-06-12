@@ -28,6 +28,9 @@ export const FONT_SIZES = {
  * such as charts, data tables and popovers.
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
+  collectionBrowser: {
+    backgroundColor: "var(--mb-color-bg-white)",
+  },
   dashboard: {
     backgroundColor: "var(--mb-color-bg-white)",
     card: {

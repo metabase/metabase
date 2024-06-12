@@ -79,6 +79,9 @@ export type MetabaseColor = keyof MetabaseColors;
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
 export interface MetabaseComponentTheme {
+  collectionBrowser: {
+    backgroundColor: string;
+  };
   dashboard: {
     backgroundColor: string;
 
