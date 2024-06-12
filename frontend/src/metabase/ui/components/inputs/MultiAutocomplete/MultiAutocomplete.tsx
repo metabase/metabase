@@ -11,7 +11,7 @@ import { Icon } from "metabase/ui";
 import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
-  shouldCreate?: (value: string, selectedValues: string[]) => boolean;
+  shouldCreate?: (query: string, selectedValues: string[]) => boolean;
 };
 
 export function MultiAutocomplete({
