@@ -1,13 +1,17 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { databaseApi, tableApi } from "metabase/api";
+import { databaseApi, datasetApi, tableApi } from "metabase/api";
 import type { Table } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
-import type { DatabaseEndpointName, TableEndpointName } from "./types";
+import type {
+  DatabaseEndpointName,
+  DatasetEndpointName,
+  TableEndpointName,
+} from "./types";
 import { zipEntitySources } from "./utils";
 
-const getDatabaseEntries = (
+const getDatabaseTableEntries = (
   state: ApiState,
   endpointName: DatabaseEndpointName,
 ) => {
@@ -22,10 +26,19 @@ const getTableEntries = (state: ApiState, endpointName: TableEndpointName) => {
     .filter(entry => entry.endpointName === endpointName);
 };
 
+const getDatasetTableEntries = (
+  state: ApiState,
+  endpointName: DatasetEndpointName,
+) => {
+  return datasetApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
 const getFromListDatabaseSchemaTables = createSelector(
   getApiState,
   (state): Table[] => {
-    return getDatabaseEntries(state, "listDatabaseSchemaTables").flatMap(
+    return getDatabaseTableEntries(state, "listDatabaseSchemaTables").flatMap(
       entry => {
         const selector = databaseApi.endpoints.listDatabaseSchemaTables.select(
           entry.originalArgs,
@@ -66,12 +79,28 @@ const getFromGetTableQueryMetadata = createSelector(
   },
 );
 
+const getFromGetAdhocQueryMetadata = createSelector(
+  getApiState,
+  (state): Table[] => {
+    return getDatasetTableEntries(state, "getAdhocQueryMetadata").flatMap(
+      entry => {
+        const selector = datasetApi.endpoints.getAdhocQueryMetadata.select(
+          entry.originalArgs,
+        );
+        const { data } = selector(state);
+        return data?.tables ?? [];
+      },
+    );
+  },
+);
+
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
     getFromListTables,
     getFromGetTable,
     getFromGetTableQueryMetadata,
+    getFromGetAdhocQueryMetadata,
   ],
   zipEntitySources,
 );
