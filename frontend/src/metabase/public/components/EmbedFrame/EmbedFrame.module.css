@@ -15,7 +15,7 @@ body {
 .ThemeNight.EmbedFrame,
 /* this is to make it work when exporting to pdfs,
 where the EmbedFrame is not part of the exported dom */
-.ThemeNight.EmbedFrame > div {
+.ThemeNight.EmbedFrame > .WithThemeBackground {
   background-color: var(--mb-color-bg-black);
   border-color: var(--mb-color-bg-dark);
 }

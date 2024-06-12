@@ -193,7 +193,10 @@ export const EmbedFrame = ({
       data-testid="embed-frame"
       data-embed-theme={theme}
     >
-      <ContentContainer id={DASHBOARD_PDF_EXPORT_ROOT_ID}>
+      <ContentContainer
+        id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+        className={EmbedFrameS.WithThemeBackground}
+      >
         {hasHeader && (
           <Header
             className={cx(
