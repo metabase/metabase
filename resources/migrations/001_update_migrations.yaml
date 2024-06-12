@@ -7227,25 +7227,6 @@ databaseChangeLog:
                   defaultValue: false
 
   - changeSet:
-      id: v50.2024-04-12T12:33:09
-      author: piranha
-      comment: 'Copy old cache configurations to cache_config table'
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: custom_sql/fill_cache_config.pg.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: custom_sql/fill_cache_config.my.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: custom_sql/fill_cache_config.h2.sql
-            relativeToChangelogFile: true
-      rollback: # no rollback necessary, we're not removing the columns yet
-
-  - changeSet:
       id: v50.2024-04-15T16:30:35
       author: qnkhuat
       comment: Add report_card.last_used_at
@@ -7871,6 +7852,46 @@ databaseChangeLog:
             path: trash/mariadb.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:07
+      author: piranha
+      comment: 'Decrypt some settings so the next migration runs well'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DecryptCacheSettings"
+      rollback: # no rollback necessary, they'll be encrypted if you downgrade and touch them
+
+  - changeSet:
+      # this had id `v50.2024-04-12T12:33:09` before #44048
+      id: v50.2024-06-12T12:33:08
+      author: piranha
+      comment: 'Copy old cache configurations to cache_config table'
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: custom_sql/fill_cache_config.pg.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: custom_sql/fill_cache_config.my.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: custom_sql/fill_cache_config.h2.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary, we're not removing the columns yet
+
+  - changeSet:
+      id: v50.2024-06-12T12:33:09
+      author: piranha
+      comment: 'Fix root cache config for mysql if it is wrong'
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: custom_sql/fill_cache_config_root_fix.my.sql
+            relativeToChangelogFile: true
+      rollback: # no rollback necessary here too
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
