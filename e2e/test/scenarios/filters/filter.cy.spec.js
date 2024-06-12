@@ -327,7 +327,6 @@ describe("scenarios > question > filter", () => {
       .should("have.css", "background-color")
       .and("eq", transparent);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findAllByTestId("expression-suggestions-list-item")
       .filter(":contains('ceil')")
       .should("have.css", "background-color")
