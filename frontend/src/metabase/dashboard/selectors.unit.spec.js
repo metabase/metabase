@@ -62,8 +62,8 @@ const STATE = {
     schemas: {},
     tables: {},
     fields: {
-      1: { id: 1 },
-      2: { id: 2 },
+      1: { id: 1, uniqueId: 1 },
+      2: { id: 2, uniqueId: 2 },
     },
     metrics: {},
     segments: {},
