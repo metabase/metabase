@@ -457,26 +457,21 @@
                            (map (juxt (comp u/lower-case-en :name) identity))))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
-                     (count (rows-for-table table))))))))))
-  (testing "uploading a csv when one of the separators errors works end to end (#44034)"
+                     (count (rows-for-table table)))))))))))
+
+(deftest infer-separator-catch-exception-test
+  (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (create-from-csv-and-sync-with-defaults!
                   :file (csv-file-with ["\"c1\",\"c2\""
-                                        "\"a,b,c\",\"d\""])
-                  :auxiliary-sync-steps :synchronous)]
-          (testing "Table and Fields exist after sync"
-            (is (=? (cond->> [["c1" {:effective_type :type/Text}]
-                              ["c2" {:effective_type :type/Text}]]
-                      (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
-                      (cons ["_mb_row_id" {:semantic_type     :type/PK
-                                           :base_type         :type/BigInteger}]))
-                    (->> (t2/select :model/Field :table_id (:id table))
-                         (sort-by :database_position)
-                         (map (juxt (comp u/lower-case-en :name) identity))))))
-          (testing "Check the data was uploaded into the table"
-            (is (= 1 (count (rows-for-table table))))))))))
+                                        "\"a,b,c\",\"d\""]))]
+          (testing "Check the data was uploaded into the table correctly"
+            (is (= (header-with-auto-pk ["c1", "c2"])
+                   (column-names-for-table table)))
+            (is (= (rows-with-auto-pk [["a,b,c" "d"]])
+                   (rows-for-table table)))))))))
 
 (deftest infer-separator-test
   (testing "doesn't error when checking alternative separators (#44034)"
