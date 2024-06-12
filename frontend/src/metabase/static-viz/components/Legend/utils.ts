@@ -141,11 +141,11 @@ function calculateNumRowsCols(
 
   const numRows = Math.ceil(items.length / numCols);
 
-  // If the last column will end up empty, reduce the number of columns
+  // If the last column(s) will end up empty, reduce the number of columns
   const numSlots = numRows * numCols;
   const numEmptySlots = numSlots - items.length;
-  if (numEmptySlots === numRows) {
-    numCols--;
+  if (numEmptySlots >= numRows) {
+    numCols -= Math.floor(numEmptySlots / numRows);
   }
 
   return { numRows, numCols };
