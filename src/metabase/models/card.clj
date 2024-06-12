@@ -53,7 +53,8 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate])
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.history.atom :as a-history])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)))
 
@@ -511,7 +512,8 @@
   (public-settings/remove-public-uuid-if-public-sharing-is-disabled
    (dissoc card :dataset_query_metrics_v2_migration_backup)))
 
-(t2/define-before-insert :model/Card
+(defn before-insert
+  "Before inserting a Card, populate the `metabase_version` field and normalize the query."
   [card]
   (-> card
       (assoc :metabase_version config/mb-version-string)
@@ -520,7 +522,10 @@
       pre-insert
       populate-query-fields))
 
-(t2/define-after-insert :model/Card
+(t2/define-before-insert :model/Card [card] (before-insert card))
+
+(defn after-insert
+  "After inserting a Card, update the FieldValues for any Fields referenced by the Card's template tag parameters."
   [card]
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
@@ -529,14 +534,18 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
     (query-field/update-query-fields-for-card! card)))
 
-(t2/define-before-update :model/Card
+(t2/define-after-insert :model/Card [card] (after-insert card))
+
+(defn before-update
+  "Remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
+   they were written pre-Toucan 2 and don't know about [[t2/changes]]...
+
+   We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
+   https://github.com/camsaul/toucan2/issues/145 .
+   TODO: ^ that's been fixed, this could be refactored"
+
   [{:keys [verified-result-metadata?] :as card}]
-  ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
-  ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
-  ;;
-  ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
-  ;; https://github.com/camsaul/toucan2/issues/145 .
-  ;; TODO: ^ that's been fixed, this could be refactored
+
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -550,6 +559,8 @@
       populate-query-fields
       maybe-populate-initially-published-at
       (dissoc :id)))
+
+(t2/define-before-update :model/Card [card] (before-update card))
 
 (t2/define-after-update :model/Card
   [card]
@@ -662,6 +673,15 @@ saved later when it is ready."
                       (log/infof "Metadata updated asynchronously for card %s" id))
                   (log/infof "Not updating metadata asynchronously for card %s because query has changed" id))))))))
 
+(defn- insert-card! [card-data metadata timed-out?]
+  (t2/with-transaction [_conn]
+    ;; Adding a new card at `collection_position` could cause other cards in this
+    ;; collection to change position, check that and fix it if needed
+    (api/maybe-reconcile-collection-position! card-data)
+    (t2/insert-returning-instance! :model/Card (cond-> card-data
+                                                 (and metadata (not timed-out?))
+                                                 (assoc :result_metadata metadata)))))
+
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready.
@@ -671,9 +691,12 @@ saved later when it is ready."
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
   ([card creator] (create-card! card creator false))
-  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event?]
-   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
+  ([card creator delay-event?] (create-card! card creator delay-event? false))
+  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event? allow-id-override?]
+   (let [data-keys            (remove nil?
+                                      [(when allow-id-override? :id)
+                                       :dataset_query :description :display :name :visualization_settings
+                                       :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type])
          ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required
          ;; by `api/maybe-reconcile-collection-position!`
          card-data            (-> (zipmap data-keys (map card-data data-keys))
@@ -689,13 +712,12 @@ saved later when it is ready."
          metadata-timeout     (a/timeout metadata-sync-wait-ms)
          [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
          timed-out?           (= port metadata-timeout)
-         card                 (t2/with-transaction [_conn]
-                                ;; Adding a new card at `collection_position` could cause other cards in this
-                                ;; collection to change position, check that and fix it if needed
-                                (api/maybe-reconcile-collection-position! card-data)
-                                (t2/insert-returning-instance! Card (cond-> card-data
-                                                                      (and metadata (not timed-out?))
-                                                                      (assoc :result_metadata metadata))))]
+         card                 (if-let [_branch-id (a-history/current-branch)]
+                                (let [card-id (a-history/id!)]
+                                  (a-history/maybe-divert-write :model/Card card-id :create card-data)
+                                  (a-history/maybe-divert-read :model/Card card-id))
+                                (insert-card! card-data metadata timed-out?))]
+
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when timed-out?
@@ -705,6 +727,13 @@ saved later when it is ready."
      (u/prog1 card
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
+
+(comment
+
+  [on-branch
+
+   card]
+  )
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -858,13 +887,12 @@ saved later when it is ready."
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))
   ;; Fetch the updated Card from the DB
-  (let [card (t2/select-one Card :id (:id card-before-update))]
-    (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
+  (u/prog1 (t2/select-one Card :id (:id card-before-update))
+    (delete-alerts-if-needed! :old-card card-before-update, :new-card <>, :actor actor)
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
-    card))
+      (events/publish-event! :event/card-update {:object <> :user-id api/*current-user-id*}))))
 
 (methodical/defmethod mi/to-json :model/Card
   [card json-generator]
@@ -1039,3 +1067,28 @@ saved later when it is ready."
   (merge (select-keys card [:name :description :database_id :table_id])
           ;; Use `model` instead of `dataset` to mirror product terminology
          {:model? (= (keyword card-type) :model)}))
+
+(defmethod a-history/publish! :model/Card [user-id branch-id _model entity-id {:keys [op data]}]
+  (case op
+    :create (create-card! data {:id user-id} false true)
+    :update (let [card-before-update (t2/hydrate (t2/select-one :model/Card entity-id) [:moderation_reviews :moderator_details])
+                  card-updates (merge card-before-update data)]
+              (update-card! {:card-before-update card-before-update
+                             :card-updates card-updates
+                             :actor user-id}))
+    :delete (t2/delete! :model/Card entity-id)))
+
+(defmethod a-history/divert-write [:create :model/Card] [branch-id model entity-id _op & [data]]
+  (a-history/add-delta-to-branch! branch-id model (or entity-id (a-history/id!)) {:op :create :data (before-insert data)}))
+
+(defmethod a-history/divert-write [:delete :model/Card] [branch-id model entity-id op & [data]]
+  (a-history/add-delta-to-branch! branch-id model entity-id {:op :delete}))
+
+(defmethod a-history/divert-write [:update :model/Card] [branch-id model entity-id op & [data]]
+  (def state @a-history/*entity-store)
+  (def branch-id branch-id)
+  (def model model)
+  (def entity-id entity-id)
+  (def op op)
+  (def data data)
+  (a-history/add-delta-to-branch! branch-id model entity-id {:op :update :data data}))

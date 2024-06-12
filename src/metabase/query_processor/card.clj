@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   #_:clj-kondo/ignore
+   [metabase.history.atom :as a-history]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -26,7 +28,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -176,7 +177,7 @@
    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
      (qp (update query :info merge info) rff))))
 
-(mu/defn process-query-for-card
+(defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
   returned as the result of an API endpoint fn, but you can return something different by passing a different `:run`
@@ -190,7 +191,7 @@
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
   options."
-  [card-id :- ::lib.schema.id/card
+  [card-id
    export-format
    & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
@@ -203,10 +204,15 @@
   (let [dash-viz (when (and (not= context :question)
                             dashcard-id)
                    (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card     (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
-                                                 :type :result_metadata :visualization_settings :display
-                                                 :cache_invalidated_at]
-                                                :id card-id))
+        card     (api/read-check
+                  (a-history/maybe-divert-read
+                   :model/Card card-id nil
+                   (fn []
+                     (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
+                                     :type :result_metadata :visualization_settings :display
+                                     :cache_invalidated_at]
+                                    :id card-id))))
+        _ (def card card)
         query    (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                      (update :viz-settings (fn [viz] (merge viz dash-viz)))
                      (update :middleware (fn [middleware]

@@ -47,7 +47,7 @@
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]
-   [metabase.history.atom :as history]))
+   [metabase.history.atom :as a-history]))
 
 (set! *warn-on-reflection* true)
 
@@ -176,28 +176,30 @@
   returned by all API endpoints where the card entity is cached (i.e. GET, PUT, POST) since the frontend replaces the Card
   it currently has with returned one -- See #4283"
   [{card-id :id :as card}]
-  (span/with-span!
-    {:name       "hydrate-card-details"
-     :attributes {:card/id card-id}}
-    (-> card
-        (t2/hydrate :based_on_upload
-                    :creator
-                    :dashboard_count
-                    :can_write
-                    :average_query_time
-                    :last_query_start
-                    :parameter_usage_count
-                    :can_restore
-                    [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
-        (cond->                                             ; card
-          (card/model? card) (t2/hydrate :persisted)))))
+  (try (span/with-span!
+         {:name       "hydrate-card-details"
+          :attributes {:card/id card-id}}
+         (-> card
+             (t2/hydrate :based_on_upload
+                         :creator
+                         :dashboard_count
+                         :can_write
+                         :average_query_time
+                         :last_query_start
+                         :parameter_usage_count
+                         :can_restore
+                         [:collection :is_personal]
+                         [:moderation_reviews :moderator_details])
+             (cond->                                             ; card
+                 (card/model? card) (t2/hydrate :persisted))))
+       (catch Exception e (do (def card card) (def e e) (throw e)))))
 
 (defn get-card
   "Get `Card` with ID."
   [id]
-  (let [raw-card (t2/select-one Card :id id)]
-    (-> raw-card
+  (let [raw-card (t2/select-one Card :id id)
+        maybe-branch-card (a-history/maybe-divert-read :model/Card id raw-card)]
+    (-> maybe-branch-card
         api/read-check
         hydrate-card-details
         ;; Cal 2023-11-27: why is last-edit-info hydrated differently for GET vs PUT and POST
@@ -510,46 +512,12 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(require '[metabase.history.atom :as history])
-
-(comment
-  ;; FIDDLE WITH BRANCHES
-  (history/set-current-branch! nil))
-
-(comment
-  ;; TODO: run through a whole test
-  (def branch (history/create-branch! "My card update Branch" {}))
-
-  (history/set-current-branch! branch)
-
-  (history/current-branch)
-  )
-
-(api/defendpoint PUT "/:id"
-  "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl collection_preview type]
-            :as   card-updates} :body}]
-  {id                     ms/PositiveInt
-   name                   [:maybe ms/NonBlankString]
-   parameters             [:maybe [:sequential ms/Parameter]]
-   dataset_query          [:maybe ms/Map]
-   type                   [:maybe ::card-type]
-   display                [:maybe ms/NonBlankString]
-   description            [:maybe :string]
-   visualization_settings [:maybe ms/Map]
-   archived               [:maybe :boolean]
-   enable_embedding       [:maybe :boolean]
-   embedding_params       [:maybe ms/EmbeddingParams]
-   collection_id          [:maybe ms/PositiveInt]
-   collection_position    [:maybe ms/PositiveInt]
-   result_metadata        [:maybe analyze/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]
-   collection_preview     [:maybe :boolean]}
-  (check-if-card-can-be-saved dataset_query type)
-  (let [card-before-update     (t2/hydrate (api/write-check Card id)
-                                           [:moderation_reviews :moderator_details])
+(defn- update-card! [id card-updates type dataset_query result_metadata]
+  (let [card-before-update     (or
+                                (and (a-history/current-branch)
+                                     (a-history/maybe-divert-read :model/Card id))
+                                (t2/hydrate (api/write-check :model/Card id)
+                                            [:moderation_reviews :moderator_details]))
         card-updates           (api/move-on-archive-or-unarchive card-before-update card-updates (collection/trash-collection-id))
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
@@ -575,18 +543,49 @@
           card-updates          (cond-> card-updates
                                   (not timed-out?)
                                   (assoc :result_metadata fresh-metadata
-                                         :verified-result-metadata? true))]
+                                         :verified-result-metadata? true))
+          raw (if (a-history/current-branch)
+                          (do
+                            (a-history/maybe-divert-write :model/Card id :update card-updates)
+                            (a-history/maybe-divert-read :model/Card id))
+                          (card/update-card! {:card-before-update card-before-update
+                                              :card-updates       card-updates
+                                              :actor              @api/*current-user*}))
+          _ (def raw raw)
+          card-data (-> raw
 
-      (u/prog1 (-> (if-let [branch-id (history/current-branch)]
-                     (history/divert-write branch-id :model/Card id :update card-updates)
-                     (card/update-card! {:card-before-update card-before-update
-                                         :card-updates       card-updates
-                                         :actor              @api/*current-user*}))
-                   hydrate-card-details
-                   (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
-        (when timed-out?
-          (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (card/schedule-metadata-saving result-metadata-chan <>))))))
+                        hydrate-card-details
+                        (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+      (when timed-out?
+        (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
+        (card/schedule-metadata-saving result-metadata-chan card-data))
+      card-data)))
+
+(api/defendpoint PUT "/:id"
+  "Update a `Card`."
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
+                   collection_position enable_embedding embedding_params result_metadata parameters
+                   cache_ttl collection_preview type]
+            :as   card-updates} :body}]
+  {id                     ms/PositiveInt
+   name                   [:maybe ms/NonBlankString]
+   parameters             [:maybe [:sequential ms/Parameter]]
+   dataset_query          [:maybe ms/Map]
+   type                   [:maybe ::card-type]
+   display                [:maybe ms/NonBlankString]
+   description            [:maybe :string]
+   visualization_settings [:maybe ms/Map]
+   archived               [:maybe :boolean]
+   enable_embedding       [:maybe :boolean]
+   embedding_params       [:maybe ms/EmbeddingParams]
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe analyze/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]
+   collection_preview     [:maybe :boolean]}
+  (def id id)
+  (check-if-card-can-be-saved dataset_query type)
+  (update-card! id card-updates type dataset_query result_metadata))
 
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -596,8 +595,8 @@
   [id]
   {id ms/PositiveInt}
   (let [card (api/write-check Card id)]
-    (if-let [branch-id (history/current-branch)]
-      (history/add-delta-to-branch! branch-id :model/Card id {:op :delete})
+    (if-let [branch-id (a-history/current-branch)]
+      (a-history/add-delta-to-branch! branch-id :model/Card id {:op :delete})
       (t2/delete! Card :id id))
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
