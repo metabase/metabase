@@ -54,7 +54,7 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
 import {
-  exportTabAsPdfButtonText,
+  getExportTabAsPdfButtonText,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -530,7 +530,7 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
       });
 
       extraButtons.push({
-        title: exportTabAsPdfButtonText(dashboard.tabs),
+        title: getExportTabAsPdfButtonText(dashboard.tabs),
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {

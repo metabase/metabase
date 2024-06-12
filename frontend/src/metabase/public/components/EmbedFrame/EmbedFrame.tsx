@@ -25,7 +25,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import {
-  exportTabAsPdfButtonText,
+  getExportTabAsPdfButtonText,
   saveDashboardPdf,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type Question from "metabase-lib/v1/Question";
@@ -224,7 +224,7 @@ export const EmbedFrame = ({
                       color="text-dark"
                       onClick={saveAsPDF}
                     >
-                      {exportTabAsPdfButtonText(dashboard.tabs)}
+                      {getExportTabAsPdfButtonText(dashboard.tabs)}
                     </Button>
                   )}
                 </TitleAndButtonsContainer>

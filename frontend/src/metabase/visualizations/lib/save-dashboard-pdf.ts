@@ -48,7 +48,7 @@ export const saveDashboardPdf = async (
   pdf.save(fileName);
 };
 
-export const exportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
+export const getExportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
   return Array.isArray(tabs) && tabs.length > 1
     ? t`Export tab as PDF`
     : t`Export as PDF`;
