@@ -56,7 +56,7 @@
                                                                   :query    {:source-table (format "card__%s" ~model-card-id)}}}]
        ~@body)))
 
-(defn- run-pulse-and-return-last-data-columns
+(defn- run-pulse-and-return-last-data-columns!
   "Simulate sending the pulse email, get the html body of the response, then return the last columns of each pulse body
   element. In our test cases that's the Tax Rate column."
   [pulse]
@@ -118,7 +118,7 @@
                                               :user_id          (mt/user->id :rasta)}]
         (let [[base-data-row
                model-data-row
-               question-data-row] (run-pulse-and-return-last-data-columns pulse)]
+               question-data-row] (run-pulse-and-return-last-data-columns! pulse)]
           (testing "The data from the first question is just numbers."
             (is (all-float? base-data-row)))
           (testing "The data from the second question (a model) is percent formatted"
@@ -144,7 +144,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-float? (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-float? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"
@@ -156,7 +156,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"
@@ -168,7 +168,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse)))))))))
 
 (defn- strip-timestamp
   "Remove the timestamp portion of attachment filenames.

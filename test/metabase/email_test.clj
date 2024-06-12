@@ -278,21 +278,21 @@
         (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
-      (let [calls (atom nil)]
-           (let [retry-config (assoc (#'retry/retry-configuration)
-                                 :max-attempts 1
-                                 :initial-interval-millis 1)
-                 test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-            (with-redefs [prometheus/inc    #(swap! calls conj %)
-                          retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                          email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
-              (email/send-message!
-               :subject      "101 Reasons to use Metabase"
-               :recipients   ["test@test.com"]
-               :message-type :html
-               :message      "101. Metabase will make you a better person"))
-            (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-            (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
+      (let [calls        (atom nil)
+            retry-config (assoc (#'retry/retry-configuration)
+                                :max-attempts 1
+                                :initial-interval-millis 1)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [prometheus/inc    #(swap! calls conj %)
+                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
+                      email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+          (email/send-message!
+           :subject      "101 Reasons to use Metabase"
+           :recipients   ["test@test.com"]
+           :message-type :html
+           :message      "101. Metabase will make you a better person"))
+        (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
+        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

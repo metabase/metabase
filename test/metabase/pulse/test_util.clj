@@ -91,7 +91,8 @@
       @channel-messages)))
 
 (defmacro with-captured-channel-send-messages!
-  "Macro that captures all messages sent to channels in the body of the macro."
+  "Macro that captures all messages sent to channels in the body of the macro.
+  Returns a map of channel-type -> messages sent to that channel."
   [& body]
   `(do-with-captured-channel-send-messages!
       (fn []

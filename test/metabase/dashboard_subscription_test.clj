@@ -952,3 +952,27 @@
     (let [tmp (#'messages/create-temp-file ".tmp")
           {:keys [file-name]} (#'messages/create-result-attachment-map :csv "テストSQL質問" tmp)]
       (is (= "テストSQL質問" (first (str/split file-name #"_")))))))
+
+(deftest dashboard-description-markdown-test
+  (testing "Dashboard description renders markdown"
+    (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :native
+                                                                        :native   {:query "select * from checkins"}}
+                                                        :display       :table}
+                   Dashboard             {dashboard-id :id} {:description "# dashboard description"}
+                   DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}
+                   Pulse                 {pulse-id :id} {:name         "Pulse Name"
+                                                         :dashboard_id dashboard-id}
+                   PulseCard             _ {:pulse_id          pulse-id
+                                            :card_id           card-id
+                                            :dashboard_card_id dashboard-card-id}
+                   PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                            :pulse_channel_id pc-id}]
+      (is (= "<h1>dashboard description</h1>"
+             (->> (pulse.test-util/with-captured-channel-send-messages!
+                    (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                  :channel/email first :message first :content
+                  (re-find #"<h1>dashboard description</h1>")))))))
