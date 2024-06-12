@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import dayjs from "dayjs";
 import { normalize } from "normalizr";
 
 import { Api, databaseApi, tableApi } from "metabase/api";
@@ -29,6 +30,29 @@ import type { State } from "metabase-types/store";
 
 import { getSettings } from "./settings";
 
+const zipSources = <
+  Id extends string | number,
+  Entity extends { id: Id; updated_at: string },
+>(
+  ...sources: Entity[][]
+): Partial<Record<Id, Entity>> => {
+  const result: Partial<Record<Id, Entity>> = {};
+  const entities = sources.flat();
+
+  for (const entity of entities) {
+    const existing = result[entity.id];
+    const isNew = !existing;
+    const isMoreRecent =
+      existing && dayjs(entity.updated_at).isAfter(existing.updated_at);
+
+    if (isNew || isMoreRecent) {
+      result[entity.id] = entity;
+    }
+  }
+
+  return result;
+};
+
 const getApiState = createSelector(
   (state: any) => state[Api.reducerPath],
   state => ({ [Api.reducerPath]: state }),
@@ -48,7 +72,7 @@ const getApiDatabases = createSelector(getApiState, state => {
   });
 });
 
-const getApiTables = createSelector(getApiState, state => {
+const getTablesFromListTables = createSelector(getApiState, state => {
   const entries = tableApi.util
     .selectInvalidatedBy(state, ["table"])
     .filter(entry => entry.endpointName === "listTables");
@@ -59,6 +83,28 @@ const getApiTables = createSelector(getApiState, state => {
     return data ?? [];
   });
 });
+
+const getTablesFromGetTableQueryMetadata = createSelector(
+  getApiState,
+  state => {
+    const entries = tableApi.util
+      .selectInvalidatedBy(state, ["table"])
+      .filter(entry => entry.endpointName === "getTableQueryMetadata");
+
+    return entries.flatMap(entry => {
+      const selector = tableApi.endpoints.getTableQueryMetadata.select(
+        entry.originalArgs,
+      );
+      const { data } = selector(state);
+      return data ?? [];
+    });
+  },
+);
+
+const getApiTables = createSelector(
+  [getTablesFromListTables, getTablesFromGetTableQueryMetadata],
+  zipSources,
+);
 
 const getApiEntities = createSelector(
   [getApiDatabases, getApiTables],
