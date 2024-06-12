@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export type BorderSide = "top" | "right" | "bottom" | "left";
 
@@ -26,7 +26,7 @@ export const NotebookCellItemContainer = styled.div<{
   display: flex;
   align-items: center;
   font-weight: bold;
-  color: ${props => (props.inactive ? props.color : "white")};
+  color: ${props => (props.inactive ? props.color : color("text-white"))};
   border-radius: 6px;
 
   border: 2px solid transparent;
@@ -75,7 +75,10 @@ export const NotebookCellItemContentContainer = styled.div<{
   ${props =>
     !!props.border &&
     css`
-    border-${props.border}: 1px solid ${alpha("white", 0.25)};
+    border-${props.border}: 1px solid ${alpha(
+      props.theme.fn.themeColor("bg-white"),
+      0.25,
+    )};
   `}
 
   ${props =>

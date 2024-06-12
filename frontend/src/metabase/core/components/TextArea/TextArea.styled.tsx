@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/core/style/input";
-import { color } from "metabase/lib/colors";
 
 export interface TextAreaRootProps {
   readOnly?: boolean;
@@ -14,7 +13,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   padding: 0.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;

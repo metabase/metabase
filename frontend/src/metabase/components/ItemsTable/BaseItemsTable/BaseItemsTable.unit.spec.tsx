@@ -11,10 +11,10 @@ import {
 import type { IconName } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
+import { SortDirection } from "metabase-types/api/sorting";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
-import { SortDirection } from "./Columns";
 
 const timestamp = "2021-06-03T19:46:52.128";
 
@@ -110,6 +110,7 @@ describe("BaseItemsTable", () => {
       hasUnselected: true,
       onSelectAll,
       collection: createMockCollection({ can_write: true }),
+      onToggleSelected: jest.fn(),
     });
 
     await userEvent.click(screen.getByLabelText("Select all items"));
@@ -123,6 +124,7 @@ describe("BaseItemsTable", () => {
       hasUnselected: false,
       onSelectNone,
       collection: createMockCollection({ can_write: true }),
+      onToggleSelected: jest.fn(),
     });
 
     await userEvent.click(screen.getByLabelText("Select all items"));

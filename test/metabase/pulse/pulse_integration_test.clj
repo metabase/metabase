@@ -703,11 +703,13 @@
                   PulseCard ~'_ {:pulse_id          ~'pulse-id
                                  :card_id           ~'base-card-id
                                  :dashboard_card_id ~'base-dash-card-id
-                                 :include_csv       true}
+                                 :include_csv       true
+                                 :position          1}
                   PulseCard ~'_ {:pulse_id          ~'pulse-id
                                  :card_id           ~'empty-card-id
                                  :dashboard_card_id ~'empty-dash-card-id
-                                 :include_csv       true}
+                                 :include_csv       true
+                                 :position          2}
                   PulseChannel {~'pulse-channel-id :id} {:channel_type :email
                                                          :pulse_id     ~'pulse-id
                                                          :enabled      true}

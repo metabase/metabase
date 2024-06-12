@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const BillingInfoCard = styled(Card)`
@@ -39,7 +38,7 @@ export const BillingExternalLinkIcon = styled(Icon)`
 export const StoreButtonLink = styled(ExternalLink)`
   display: inline-flex;
   background-color: var(--mb-color-brand);
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   align-items: center;
   font-weight: bold;
   padding: 0.75rem 1rem;

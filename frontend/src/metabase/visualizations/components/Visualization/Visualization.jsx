@@ -75,6 +75,7 @@ const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
+    href: undefined,
     hovered: null,
     clicked: null,
     error: null,
@@ -151,6 +152,7 @@ class Visualization extends PureComponent {
     const computedSettings = !this.isLoading(series)
       ? getComputedSettingsForSeries(series)
       : {};
+
     this.setState({
       hovered: null,
       error: null,
@@ -341,6 +343,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
+      href,
       errorMessageOverride,
       showTitle,
       isDashboard,
@@ -488,6 +491,7 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
+                href={href}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun
@@ -540,6 +544,7 @@ class Visualization extends PureComponent {
                 onRender={this.onRender}
                 onActionDismissal={this.hideActions}
                 gridSize={gridSize}
+                href={href}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun
                     ? this.handleOnChangeCardAndRun

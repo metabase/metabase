@@ -35,33 +35,33 @@
     (let [q (fn [sql]
               (#'query-analyzer/field-ids-for-sql (mt/native-query {:query sql})))]
       (testing "simple query matches"
-        (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
+        (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                (q "select id from venues"))))
       (testing "quotes stop case matching"
         ;; MySQL does case-insensitive string comparisons by default; quoting does not make it consider case
         ;; in field names either, so it's consistent behavior
         (if (= (mdb.connection/db-type) :mysql)
-          (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
+          (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                  (q "select \"id\" from venues")))
-          (is (= {:direct nil :indirect nil}
+          (is (= {:explicit nil :implicit nil}
                  (q "select \"id\" from venues"))))
-        (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
+        (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                (q "select \"ID\" from venues"))))
       (testing "you can mix quoted and unquoted names"
-        (is (= {:direct #{(mt/id :venues :id) (mt/id :venues :name)} :indirect nil}
+        (is (= {:explicit #{(mt/id :venues :id) (mt/id :venues :name)} :implicit nil}
                (q "select v.\"ID\", v.name from venues")))
-        (is (= {:direct #{(mt/id :venues :id) (mt/id :venues :name)} :indirect nil}
+        (is (= {:explicit #{(mt/id :venues :id) (mt/id :venues :name)} :implicit nil}
                (q "select v.`ID`, v.name from venues"))))
       (testing "It will find all relevant columns if query is not specific"
-        (is (= {:direct #{(mt/id :venues :id) (mt/id :checkins :id)} :indirect nil}
+        (is (= {:explicit #{(mt/id :venues :id) (mt/id :checkins :id)} :implicit nil}
                (q "select id from venues join checkins"))))
       (testing "But if you are specific - then it's a concrete field"
-        (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
+        (is (= {:explicit #{(mt/id :venues :id)} :implicit nil}
                (q "select v.id from venues v join checkins"))))
       (testing "And wildcards are matching everything"
         (is (= 10
                (-> (q "select * from venues v join checkins")
-                   :indirect count)))
+                   :implicit count)))
         (is (= 6
                (-> (q "select v.* from venues v join checkins")
-                   :indirect count)))))))
+                   :implicit count)))))))

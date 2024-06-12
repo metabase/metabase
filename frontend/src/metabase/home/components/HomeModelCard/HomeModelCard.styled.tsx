@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
@@ -11,7 +10,7 @@ export const CardIcon = styled(Icon)`
 `;
 
 export const CardTitle = styled(Ellipsified)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   font-weight: bold;
   margin-left: 1rem;

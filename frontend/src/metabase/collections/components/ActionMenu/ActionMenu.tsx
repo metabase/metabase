@@ -18,7 +18,6 @@ import {
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
-  canDeleteItem,
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -100,8 +99,8 @@ function ActionMenu({
   const canMove = canMoveItem(item, collection);
   const canArchive = canArchiveItem(item, collection);
   const canRestore = item.can_restore;
-  const canDelete = canDeleteItem(item, collection);
-  const canCopy = canCopyItem(item);
+  const canDelete = item.can_delete;
+  const canCopy = onCopy && canCopyItem(item);
   const canUseMetabot =
     database != null && canUseMetabotOnDatabase(database) && isMetabotEnabled;
 

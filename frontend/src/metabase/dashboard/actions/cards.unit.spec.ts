@@ -9,7 +9,6 @@ import {
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
-import { checkNotNull } from "metabase/lib/types";
 import { mainReducers } from "metabase/reducers-main";
 import { CardApi } from "metabase/services";
 import type {
@@ -45,9 +44,14 @@ import {
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";
-import { getDashCardById, getDashcards } from "../selectors";
+import { getDashboardById, getDashCardById, getDashcards } from "../selectors";
 
-import { addSectionToDashboard, replaceCard } from "./cards-typed";
+import type { AddCardToDashboardOpts } from "./cards-typed";
+import {
+  addCardToDashboard,
+  addSectionToDashboard,
+  replaceCard,
+} from "./cards-typed";
 
 const DATE_PARAMETER = createMockParameter({
   id: "1",
@@ -264,17 +268,8 @@ describe("dashboard/actions/cards", () => {
       );
     });
 
-    it("should auto-wire parameters", async () => {
+    it("should not auto-wire parameters", async () => {
       const nextCardId = ORDERS_LINE_CHART_CARD.id;
-      const otherCardParameterMappings = checkNotNull(
-        PIE_CHART_DASHCARD.parameter_mappings,
-      );
-      const expectedParameterMappings = otherCardParameterMappings.map(
-        mapping => ({
-          ...mapping,
-          card_id: nextCardId,
-        }),
-      );
 
       const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
@@ -282,9 +277,21 @@ describe("dashboard/actions/cards", () => {
         dashcards: [...DASHCARDS, PIE_CHART_DASHCARD],
       });
 
-      expect(nextDashCard.parameter_mappings).toEqual(
-        expectedParameterMappings,
-      );
+      expect(nextDashCard.parameter_mappings).toEqual([]);
+    });
+  });
+
+  describe("addCardToDashboard", () => {
+    it("should not auto-wire parameters", async () => {
+      const { nextDashCard } = await runAddCardToDashboard({
+        dashId: DASHBOARD.id,
+        cardId: ORDERS_LINE_CHART_CARD.id,
+        tabId: null,
+        // for auto-wiring
+        dashcards: [...DASHCARDS, PIE_CHART_DASHCARD],
+      });
+
+      expect(nextDashCard.parameter_mappings).toEqual([]);
     });
   });
 });
@@ -336,5 +343,30 @@ async function runReplaceCardAction({
     nextDashCard: getDashCardById(nextState, dashcardId),
     dispatchSpy,
     cardQueryEndpointSpy,
+  };
+}
+
+async function runAddCardToDashboard({
+  dashId,
+  tabId,
+  cardId,
+  ...opts
+}: SetupOpts & AddCardToDashboardOpts) {
+  const { store } = setup(opts);
+
+  await addCardToDashboard({
+    dashId,
+    tabId,
+    cardId,
+  })(store.dispatch, store.getState);
+  const nextState = store.getState();
+
+  const tempDashCardId =
+    getDashboardById(nextState, dashId).dashcards.find(
+      dashcardId => dashcardId < 0,
+    ) ?? -1;
+
+  return {
+    nextDashCard: getDashCardById(nextState, tempDashCardId),
   };
 }

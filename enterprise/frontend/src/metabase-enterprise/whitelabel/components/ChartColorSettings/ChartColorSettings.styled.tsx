@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const TableHeader = styled.div`
@@ -17,7 +17,7 @@ export const TableHeader = styled.div`
 `;
 
 export const TableTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   font-weight: bold;
 `;

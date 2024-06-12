@@ -23,6 +23,8 @@ import {
   echartsContainer,
   entityPickerModal,
   testPairedTooltipValues,
+  editDashboard,
+  saveDashboard,
 } from "e2e/support/helpers";
 
 const {
@@ -285,34 +287,31 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
     createDashboardWithQuestion({}, dashboardId => {
       visitDashboard(dashboardId);
-      cy.icon("pencil").click();
+      editDashboard();
       showDashboardCardActions();
-      cy.findByTestId("dashboardcard-actions-panel").within(() => {
-        cy.icon("click").click();
-      });
+      cy.findByTestId("dashboardcard-actions-panel")
+        .icon("click")
+        .should("be.visible")
+        .click();
 
-      cy.findByText("On-click behavior for each column")
-        .parent()
-        .parent()
-        .within(() => cy.findByText("MY_NUMBER").click());
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("URL").click();
+      sidebar().within(() => {
+        cy.findByText("MY_NUMBER").click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("URL").click();
+      });
 
       modal().within(() => {
         cy.get("input")
           .first()
-          .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`);
-        cy.get("input").last().type("Click behavior").blur();
-        cy.findByText("Done").click();
+          .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`, { delay: 0 });
+        cy.get("input").last().type("Click behavior", { delay: 0 }).blur();
+        cy.button("Done").click();
       });
 
-      cy.intercept("GET", "/api/dashboard/*").as("dashboard");
+      saveDashboard();
 
-      cy.findByText("Save").click();
-
-      cy.wait("@dashboard");
-
-      cy.findByText("Click behavior").click();
+      cy.findByTestId("dashcard").findByText("Click behavior").click();
+      cy.get("fieldset").should("contain", "Aaron Hand");
 
       cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
       cy.location("search").should("eq", "?my_param=Aaron%20Hand");
