@@ -20,12 +20,12 @@
 (deftest refresh-scim-api-key!-test
   (testing "Can create a new SCIM API key"
     (t2/delete! :model/ApiKey :scope :scim)
-    (let [key1 (#'scim/refresh-scim-api-key! (mt/user->id :rasta))]
-      (is (=? (scim-api-key-shape :rasta) key1))
+    (let [key1 (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))]
+      (is (=? (scim-api-key-shape :crowberto) key1))
 
       (testing "The same function will refresh an existing SCIM API key"
-        (let [key2 (#'scim/refresh-scim-api-key! (mt/user->id :rasta))]
-          (is (=? (scim-api-key-shape :rasta) key2))
+        (let [key2 (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))]
+          (is (=? (scim-api-key-shape :crowberto) key2))
          (is (not= (:key key1) (:key key2)))
          (is (= 1 (t2/count :model/ApiKey :scope :scim))))))))
 
@@ -42,7 +42,14 @@
               (is (not= key1 key2))))))
 
       (testing "A non-admin cannot create a SCIM API key"
-        (mt/user-http-request :rasta :post 403 "ee/scim/api_key")))))
+        (mt/user-http-request :rasta :post 403 "ee/scim/api_key"))
+
+      (testing "Users and Groups have entity IDs backfilled when a new SCIM key is generated"
+        (mt/with-temp [:model/User             user {:entity_id nil}
+                       :model/PermissionsGroup group {:entity_id nil}]
+          (mt/user-http-request :crowberto :post 200 "ee/scim/api_key")
+          (is (not (nil? (t2/select-one-fn :entity_id :model/User :id (:id user)))))
+          (is (not (nil? (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))))))))))
 
 (deftest delete-api-key-test
   (testing "DELETE /api/ee/scim/api_key"
