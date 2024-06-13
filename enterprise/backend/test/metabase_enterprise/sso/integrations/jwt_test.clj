@@ -159,7 +159,11 @@
                                                                   :first_name "Rasta"
                                                                   :last_name  "Toucan"
                                                                   :extra      "keypairs"
-                                                                  :are        "also present"}
+                                                                  :are        "also present"
+                                                                  ;; registerd claims should not be synced as login attributes
+                                                                  :iss        "issuer"
+                                                                  :exp        (+ (buddy-util/now) 3600)
+                                                                  :iat        (buddy-util/now)}
                                                                  default-jwt-secret))]
         (is (saml-test/successful-login? response))
         (testing "redirect URI"
