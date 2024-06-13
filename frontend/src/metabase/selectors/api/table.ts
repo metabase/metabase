@@ -244,7 +244,7 @@ export const getApiTables = createSelector(
     getFromGetTable,
     getFromGetTableQueryMetadata,
     getFromGetAdhocQueryMetadata,
-    getFromGetCardQueryMetadata,
+    getFromGetCardQueryMetadata, // TODO: presence of this breaks the simple repro
     getFromGetXrayDashboardQueryMetadata,
     getFromGetDashboardQueryMetadata,
     getFromListSegments,
