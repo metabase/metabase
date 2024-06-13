@@ -178,9 +178,11 @@ export const getMetadata: (
       schema.database = hydrateSchemaDatabase(schema, metadata);
     });
     Object.values(metadata.tables).forEach(table => {
+      const rawTable = apiEntities.tables[table.id];
+
       table.db = hydrateTableDatabase(table, metadata);
       table.schema = hydrateTableSchema(table, metadata);
-      table.fields = hydrateTableFields(apiEntities.tables, table, metadata);
+      table.fields = rawTable ? hydrateTableFields(rawTable, metadata) : [];
       table.fks = hydrateTableForeignKeys(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
@@ -348,14 +350,9 @@ function hydrateTableSchema(
   return metadata.schema(schemaId) ?? undefined;
 }
 
-function hydrateTableFields(
-  tables: Record<ApiTable["id"], ApiTable>,
-  table: Table,
-  metadata: Metadata,
-): Field[] {
-  const rawTable = tables[table.id];
-  const rawFields = rawTable?.fields ?? [];
-  return rawFields.map(rawField => {
+function hydrateTableFields(table: ApiTable, metadata: Metadata): Field[] {
+  const fields = table?.fields ?? [];
+  return fields.map(rawField => {
     const field = new Field(rawField);
     field.metadata = metadata;
     return field;
