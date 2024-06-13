@@ -1,6 +1,8 @@
 import twoBarsTwoAreasOneLineLinear from "./2-bars-2-areas-1-line-linear.json";
 import twoBarsTwoAreasOneLineLog from "./2-bars-2-areas-1-line-log.json";
 import twoBarsTwoAreasOneLinePower from "./2-bars-2-areas-1-line-power.json";
+import areaChartSteppedNullsInterpolated from "./area-chart-stepped-nulls-interpolated.json";
+import areaChartSteppedNullsSkipped from "./area-chart-stepped-nulls-skipped.json";
 import areaFullyNullDimension37902 from "./area-fully-null-dimension-37902.json";
 import areaOverBar from "./area-over-bar-40209.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
@@ -216,4 +218,6 @@ export const data = {
   barMinHeightLimit,
   comboDataLabelsAutoCompactnessPropagatesFromLine,
   comboDataLabelsAutoCompactnessPropagatesFromTotals,
+  areaChartSteppedNullsInterpolated,
+  areaChartSteppedNullsSkipped,
 };
