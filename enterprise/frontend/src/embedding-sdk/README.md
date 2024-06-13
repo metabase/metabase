@@ -287,6 +287,41 @@ export default function App() {
 }
 ```
 
+### Embedding the collection browser
+
+With the Collection Browser, you can browse the items in your Metabase instance from your application.
+
+#### Parameters
+
+- **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will start at the root `Our analytics` collection, which is ID = 0.
+- **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
+- **pageSize**: `number` – The number of items to display per page. The default is 25.
+- **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be visible. If not provided, all entities will be shown. 
+
+```tsx
+import React from "react";
+import { CollectionBrowser } from "metabase-types/api";
+
+export default function App() {
+  const collectionId = 123; // This is the collection ID you want to browse
+  const handleItemClick = (item) => {
+    console.log("Clicked item:", item);
+  };
+
+  // Define the collection item types you want to be visible
+  const visibleEntityTypes = ["dashboard", "question"];
+
+  return (
+    <CollectionBrowser
+      collectionId={collectionId}
+      onClick={handleItemClick}
+      pageSize={10}
+      visibleEntityTypes={visibleEntityTypes}
+    />
+  );
+}
+```
+
 
 ### Customizing appearance
 

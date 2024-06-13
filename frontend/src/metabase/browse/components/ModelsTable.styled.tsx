@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 
 import {
   ItemLink,
-  TableColumn,
   hideResponsively,
+  TableColumn,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { breakpoints } from "metabase/ui/theme";

@@ -118,6 +118,7 @@ export type DashboardProps = {
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
+  setParameterTemporalUnits: (id: ParameterId, value: boolean) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -543,6 +544,7 @@ function DashboardInner(props: DashboardProps) {
                   props.setParameterFilteringParameters
                 }
                 setParameterRequired={props.setParameterRequired}
+                setParameterTemporalUnits={props.setParameterTemporalUnits}
                 isFullscreen={props.isFullscreen}
                 params={props.params}
                 sidebar={props.sidebar}

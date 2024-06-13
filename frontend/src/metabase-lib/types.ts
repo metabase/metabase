@@ -7,6 +7,7 @@ import type {
   RowValue,
   TableId,
   SchemaId,
+  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -115,21 +116,8 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
-export type BucketName =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year"
-  | "day-of-week"
-  | "month-of-year"
-  | "quarter-of-year"
-  | "hour-of-day";
-
 export type BucketDisplayInfo = {
-  shortName: BucketName;
+  shortName: TemporalUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;

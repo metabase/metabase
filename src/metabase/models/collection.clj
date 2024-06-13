@@ -1635,7 +1635,8 @@
   [items]
   (when (seq items)
     (for [item items]
-      (assoc item :can_delete (if (or (= :model/Collection (t2/model item))
-                                      (collection.root/is-root-collection? item))
-                                false
-                                (mi/can-write? item))))))
+      (assoc item :can_delete (and
+                               (not (or (= :model/Collection (t2/model item))
+                                        (collection.root/is-root-collection? item)))
+                               (:archived item)
+                               (mi/can-write? item))))))
