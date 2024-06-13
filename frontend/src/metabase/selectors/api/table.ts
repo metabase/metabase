@@ -6,6 +6,7 @@ import {
   dashboardApi,
   databaseApi,
   datasetApi,
+  segmentApi,
   tableApi,
 } from "metabase/api";
 import type { Table } from "metabase-types/api";
@@ -17,6 +18,7 @@ import type {
   DashboardEndpointName,
   DatabaseEndpointName,
   DatasetEndpointName,
+  SegmentEndpointName,
   TableEndpointName,
 } from "./types";
 import { zipEntitySources } from "./utils";
@@ -68,6 +70,15 @@ const getDashboardTableEntries = (
   endpointName: DashboardEndpointName,
 ) => {
   return dashboardApi.util
+    .selectInvalidatedBy(state, ["table"])
+    .filter(entry => entry.endpointName === endpointName);
+};
+
+const getSegmentTableEntries = (
+  state: ApiState,
+  endpointName: SegmentEndpointName,
+) => {
+  return segmentApi.util
     .selectInvalidatedBy(state, ["table"])
     .filter(entry => entry.endpointName === endpointName);
 };
@@ -169,7 +180,7 @@ const getFromGetCardQueryMetadata = createSelector(
   },
 );
 
-const getFromAutomagicDashboardTableEntries = createSelector(
+const getFromGetXrayDashboardQueryMetadata = createSelector(
   getApiState,
   (state): Table[] => {
     return getAutomagicDashboardTableEntries(
@@ -186,7 +197,7 @@ const getFromAutomagicDashboardTableEntries = createSelector(
   },
 );
 
-const getFromDashboardTableEntries = createSelector(
+const getFromGetDashboardQueryMetadata = createSelector(
   getApiState,
   (state): Table[] => {
     return getDashboardTableEntries(state, "getDashboardQueryMetadata").flatMap(
@@ -202,6 +213,28 @@ const getFromDashboardTableEntries = createSelector(
   },
 );
 
+const getFromListSegments = createSelector(getApiState, (state): Table[] => {
+  return getSegmentTableEntries(state, "listSegments").flatMap(entry => {
+    const selector = segmentApi.endpoints.listSegments.select(
+      entry.originalArgs,
+    );
+    const { data } = selector(state);
+    return data
+      ? data
+          .map(segment => segment.table)
+          .filter((table): table is Table => table != null)
+      : [];
+  });
+});
+
+const getFromGetSegment = createSelector(getApiState, (state): Table[] => {
+  return getSegmentTableEntries(state, "getSegment").flatMap(entry => {
+    const selector = segmentApi.endpoints.getSegment.select(entry.originalArgs);
+    const { data } = selector(state);
+    return data?.table ? [data.table] : [];
+  });
+});
+
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
@@ -212,8 +245,10 @@ export const getApiTables = createSelector(
     getFromGetTableQueryMetadata,
     getFromGetAdhocQueryMetadata,
     getFromGetCardQueryMetadata,
-    getFromAutomagicDashboardTableEntries,
-    getFromDashboardTableEntries,
+    getFromGetXrayDashboardQueryMetadata,
+    getFromGetDashboardQueryMetadata,
+    getFromListSegments,
+    getFromGetSegment,
   ],
   zipEntitySources,
 );

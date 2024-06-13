@@ -4,6 +4,7 @@ import type {
   dashboardApi,
   databaseApi,
   datasetApi,
+  segmentApi,
   tableApi,
 } from "metabase/api";
 
@@ -17,5 +18,7 @@ export type CardEndpointName = keyof typeof cardApi.endpoints;
 export type DatabaseEndpointName = keyof typeof databaseApi.endpoints;
 
 export type DatasetEndpointName = keyof typeof datasetApi.endpoints;
+
+export type SegmentEndpointName = keyof typeof segmentApi.endpoints;
 
 export type TableEndpointName = keyof typeof tableApi.endpoints;
