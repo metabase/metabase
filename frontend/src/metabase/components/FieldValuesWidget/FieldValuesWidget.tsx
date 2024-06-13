@@ -482,7 +482,12 @@ export function FieldValuesWidgetInner({
         ref,
       ) {
         const customLabel =
-          props.value !== undefined && renderStringOption([props.value]).label;
+          props.value !== undefined &&
+          renderValue({
+            fields,
+            formatOptions,
+            value: props.value,
+          });
 
         return (
           <ItemWrapper
@@ -492,7 +497,7 @@ export function FieldValuesWidgetInner({
           />
         );
       }),
-    [renderStringOption],
+    [fields, formatOptions],
   );
 
   const isSimpleInput =
