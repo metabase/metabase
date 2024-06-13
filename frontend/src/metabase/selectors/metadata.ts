@@ -62,16 +62,17 @@ const getNormalizedDatabases = createSelector(
 
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
-const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
+const getNormalizedTablesUnfiltered = createSelector(
+  getApiEntities,
+  entities => entities.tables ?? {},
+);
 
 const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
   !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
-  [getApiEntities, getIncludeHiddenTables],
-  (entities, includeHiddenTables) => {
-    const tables = entities.tables ?? {};
-
+  [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
+  (tables, includeHiddenTables) => {
     if (includeHiddenTables) {
       return tables;
     }
