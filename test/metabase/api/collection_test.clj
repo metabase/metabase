@@ -76,6 +76,7 @@
                  :authority_level     nil
                  :is_personal         false
                  :id                  "root"
+                 :can_restore         false
                  :can_delete          false}
                 (assoc (into {:is_personal false} collection) :can_write true :can_delete false)]
                (filter #(#{(:id collection) "root"} (:id %))
@@ -640,6 +641,7 @@
                 [{:collection_id       (:id collection)
                   :can_write           true
                   :can_delete          false
+                  :can_restore         false
                   :id                  card-id
                   :archived            false
                   :location            nil
@@ -1423,6 +1425,7 @@
       (is (= {:name                "Our analytics"
               :id                  "root"
               :can_write           true
+              :can_restore         false
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
