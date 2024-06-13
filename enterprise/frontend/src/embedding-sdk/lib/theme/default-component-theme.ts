@@ -40,10 +40,10 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
-      textColor: "text-dark",
+      textColor: "var(--mb-color-text-dark)",
     },
     idColumn: {
-      textColor: "brand",
+      textColor: "var(--mb-color-brand)",
     },
   },
   pivotTable: {

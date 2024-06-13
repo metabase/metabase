@@ -639,7 +639,7 @@
         (is (= (mt/obj->json->obj
                 [{:collection_id       (:id collection)
                   :can_write           true
-                  :can_delete          true
+                  :can_delete          false
                   :id                  card-id
                   :archived            false
                   :location            nil
