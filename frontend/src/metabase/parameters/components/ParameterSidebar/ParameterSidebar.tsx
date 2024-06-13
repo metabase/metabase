@@ -13,6 +13,7 @@ import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/par
 import type {
   Parameter,
   ParameterId,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -54,6 +55,10 @@ export interface ParameterSidebarProps {
     filteringParameters: string[],
   ) => void;
   onChangeRequired: (parameterId: ParameterId, value: boolean) => void;
+  onChangeTemporalUnits: (
+    parameterId: ParameterId,
+    temporalUnits: TemporalUnit[],
+  ) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
@@ -71,6 +76,7 @@ export const ParameterSidebar = ({
   onChangeSourceConfig,
   onChangeFilteringParameters,
   onChangeRequired,
+  onChangeTemporalUnits,
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
@@ -164,6 +170,9 @@ export const ParameterSidebar = ({
   const handleChangeRequired = (value: boolean) =>
     onChangeRequired(parameterId, value);
 
+  const handleChangeTemporalUnits = (temporalUnits: TemporalUnit[]) =>
+    onChangeTemporalUnits(parameterId, temporalUnits);
+
   const handleTabChange = (newTab: string | null) => {
     if (!newTab || (newTab !== "settings" && newTab !== "filters")) {
       return;
@@ -229,6 +238,7 @@ export const ParameterSidebar = ({
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
             onChangeRequired={handleChangeRequired}
+            onChangeTemporalUnits={handleChangeTemporalUnits}
             hasMapping={hasMapping}
           />
         </Tabs.Panel>

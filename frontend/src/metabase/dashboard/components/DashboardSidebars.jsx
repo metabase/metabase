@@ -36,6 +36,7 @@ DashboardSidebars.propTypes = {
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
   setParameterRequired: PropTypes.func.isRequired,
+  setParameterTemporalUnits: PropTypes.func.isRequired,
   isFullscreen: PropTypes.bool.isRequired,
   onCancel: PropTypes.func.isRequired,
   params: PropTypes.object,
@@ -66,6 +67,7 @@ export function DashboardSidebars({
   setParameterSourceConfig,
   setParameterFilteringParameters,
   setParameterRequired,
+  setParameterTemporalUnits,
   isFullscreen,
   onCancel,
   params,
@@ -150,6 +152,7 @@ export function DashboardSidebars({
           onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
           onChangeRequired={setParameterRequired}
+          onChangeTemporalUnits={setParameterTemporalUnits}
           hasMapping={hasMapping(parameter, dashboard)}
         />
       );

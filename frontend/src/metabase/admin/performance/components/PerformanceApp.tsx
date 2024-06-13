@@ -2,12 +2,12 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
-import { PLUGIN_CACHING } from "metabase/plugins";
 import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
 import { PerformanceTabId } from "../types";
 
+import { ModelPersistenceConfiguration } from "./ModelPersistenceConfiguration";
 import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
@@ -61,7 +61,9 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
         >
           {t`Database caching settings`}
         </Tab>
-        <PLUGIN_CACHING.ModelPersistenceTab />
+        <Tab key="ModelPersistence" value={PerformanceTabId.ModelPersistence}>
+          {t`Model persistence`}
+        </Tab>
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
         {tabId === PerformanceTabId.DataCachingSettings && (
@@ -71,7 +73,7 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
         )}
         {tabId === PerformanceTabId.ModelPersistence && (
           <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
-            <PLUGIN_CACHING.ModelPersistenceConfiguration />
+            <ModelPersistenceConfiguration />
           </Flex>
         )}
       </TabsPanel>

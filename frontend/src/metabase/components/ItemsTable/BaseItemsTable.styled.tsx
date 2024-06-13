@@ -1,12 +1,14 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type { HTMLAttributes } from "react";
 
 import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
-import { FixedSizeIcon } from "metabase/ui";
+import type { TextProps } from "metabase/ui";
+import { Text, FixedSizeIcon } from "metabase/ui";
 
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";
@@ -78,7 +80,7 @@ export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
   height: 3em;
 `;
 
-export const ItemLink = styled(Link)`
+const itemLinkStyle = css`
   display: flex;
   grid-gap: 0.5rem;
   align-items: center;
@@ -88,15 +90,21 @@ export const ItemLink = styled(Link)`
   }
 `;
 
+export const ItemButton = styled(Text)<
+  TextProps & HTMLAttributes<HTMLDivElement>
+>(itemLinkStyle);
+
+export const ItemLink = styled(Link)(itemLinkStyle);
+
 export const ItemNameCell = styled.td`
   padding: 0 !important;
 
-  ${ItemLink} {
+  ${ItemLink}, ${ItemButton} {
     padding: 1em;
   }
 
   &:hover {
-    ${ItemLink} {
+    ${ItemLink}, ${ItemButton} {
       color: var(--mb-color-brand);
     }
 

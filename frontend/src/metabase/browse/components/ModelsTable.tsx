@@ -3,10 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import EntityItem from "metabase/components/EntityItem";
-import {
-  SortableColumnHeader,
-  type SortingOptions,
-} from "metabase/components/ItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
   ItemLink,
   ItemNameCell,
@@ -14,7 +11,7 @@ import {
   TableColumn,
   TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
+import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
@@ -22,6 +19,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocale } from "metabase/setup/selectors";
 import { Flex, Icon, type IconProps } from "metabase/ui";
+import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";

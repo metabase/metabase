@@ -459,6 +459,39 @@
               (is (= 2
                      (count (rows-for-table table)))))))))))
 
+(deftest infer-separator-catch-exception-test
+  (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (with-upload-table!
+          [table (create-from-csv-and-sync-with-defaults!
+                  :file (csv-file-with ["\"c1\",\"c2\""
+                                        "\"a,b,c\",\"d\""]))]
+          (testing "Check the data was uploaded into the table correctly"
+            (is (= (header-with-auto-pk ["c1", "c2"])
+                   (column-names-for-table table)))
+            (is (= (rows-with-auto-pk [["a,b,c" "d"]])
+                   (rows-for-table table)))))))))
+
+(deftest infer-separator-test
+  (testing "doesn't error when checking alternative separators (#44034)"
+    (let [file (csv-file-with ["\"c1\",\"c2\""
+                               "\"a,b,c\",\"d\""])]
+      (is (= \, (#'upload/infer-separator file)))))
+  (doseq [[separator lines] example-files]
+    (testing (str "inferring " separator)
+      (let [f (csv-file-with lines)
+            s ({:tab \tab :semi-colon \; :comma \,} separator)]
+        (is (= s (#'upload/infer-separator f))))))
+  ;; it's actually decently hard to make it not stumble on comma or semicolon. The strategy here is that the data
+  ;; column count is greater than the header column count regardless of the separators we choose
+  (let [lines [","
+               ",,,;;;\t\t"]]
+    (testing "throws an error if there's no clear winner"
+      (let [f (csv-file-with lines)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
+                              (#'upload/infer-separator f)))))))
+
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
