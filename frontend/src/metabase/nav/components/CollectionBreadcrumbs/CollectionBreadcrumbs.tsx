@@ -58,7 +58,7 @@ export const CollectionBreadcrumbs = ({
           isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
-
+        {separator}
         <ExpandButton
           small
           borderless
