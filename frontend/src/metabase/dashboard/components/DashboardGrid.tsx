@@ -304,15 +304,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       minH = minSize.height;
     }
 
-    let w = dashcard.size_x || initialSize.width;
-    let h = dashcard.size_y || initialSize.height;
+    const w = dashcard.size_x || initialSize.width;
+    const h = dashcard.size_y || initialSize.height;
 
     if (w < minW) {
-      w = minW;
+      minW = w;
     }
 
     if (h < minH) {
-      h = minH;
+      minH = h;
     }
 
     return {
