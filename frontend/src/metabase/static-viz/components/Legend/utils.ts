@@ -45,7 +45,7 @@ export const calculateLegendRows = ({
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
   isReversed,
 }: CalculateLegendInput): { items: PositionedLegendItem[]; height: number } => {
-  if (items.length <= 1) {
+  if (items.length === 0) {
     return {
       items: [],
       height: 0,
@@ -161,7 +161,7 @@ export const calculateLegendRowsWithColumns = ({
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
   isReversed,
 }: CalculateLegendInput): { items: PositionedLegendItem[]; height: number } => {
-  if (items.length <= 1) {
+  if (items.length === 0) {
     return {
       items: [],
       height: 0,

@@ -15,6 +15,7 @@ import relativeDateDimension from "./relative-date-dimension.json";
 import showPercentagesOff from "./show-percentages-off.json";
 import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json";
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
+import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import sortedMetricCol from "./sorted-metric-col.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
@@ -42,6 +43,7 @@ export const data = {
   relativeDateDimension,
   nullDimension,
   unaggregatedDimension,
+  singleDimension,
   sortedMetricCol,
   tinySlicesDisappear43766,
 };
