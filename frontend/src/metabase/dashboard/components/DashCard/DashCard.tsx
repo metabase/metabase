@@ -22,6 +22,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
@@ -52,7 +53,7 @@ export interface DashCardProps {
   gridItemWidth: number;
   totalNumGridCols: number;
   slowCards: Record<CardId, boolean>;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
 

@@ -39,6 +39,7 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   BaseDashboardCard,
   Card,
@@ -134,7 +135,7 @@ type OwnProps = {
   isFullscreen: boolean;
   isNightMode: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
   // public dashboard passes it explicitly
   width?: number;
   // public dashboard passes it as noop

@@ -16,12 +16,14 @@ import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEm
 import { Box } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
-type StaticDashboardProps = {
+export type StaticDashboardProps = {
   dashboardId: DashboardId;
   initialParameterValues?: Query;
   withTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
+
+  navigateToNewCardFromDashboard?: (params: any) => void; // TODO: should not be part of publicly exposed api
 };
 
 const _StaticDashboard = ({
@@ -30,6 +32,7 @@ const _StaticDashboard = ({
   withTitle: titled = true,
   withDownloads = true,
   hiddenParameters = [],
+  navigateToNewCardFromDashboard,
 }: StaticDashboardProps) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
@@ -80,6 +83,7 @@ const _StaticDashboard = ({
         setRefreshElapsedHook={setRefreshElapsedHook}
         font={font}
         bordered={options.bordered}
+        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       />
     </Box>
   );

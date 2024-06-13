@@ -43,7 +43,7 @@ import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -80,6 +80,8 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
+
+  navigateToNewCardFromDashboard?: () => void; // TODO: should not be part of publicly exposed api
 };
 
 type DisplayProps = Pick<
@@ -202,6 +204,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       theme,
       hideDownloadButton,
       hideParameters,
+      navigateToNewCardFromDashboard,
     } = this.props;
 
     const buttons = !isWithinIframe()
@@ -265,7 +268,11 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                 <DashboardGridConnected
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
                   isPublicOrEmbedded
-                  mode={PublicMode as unknown as Mode}
+                  mode={
+                    navigateToNewCardFromDashboard
+                      ? EmbeddingSdkMode
+                      : PublicMode
+                  }
                   selectedTabId={this.props.selectedTabId}
                   slowCards={this.props.slowCards}
                   isEditing={false}
@@ -274,6 +281,9 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   isFullscreen={isFullscreen}
                   isNightMode={isNightMode}
                   clickBehaviorSidebarDashcard={null}
+                  navigateToNewCardFromDashboard={
+                    navigateToNewCardFromDashboard
+                  }
                   width={0}
                 />
               </DashboardContainer>
