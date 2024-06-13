@@ -169,14 +169,7 @@ export const ErrorDiagnosticModalTrigger = () => {
           <Text align="center">
             {c(
               "indicates an email address to which to send diagnostic information",
-            )
-              .jt`Click the button below to download diagnostic information to send
-            to
-            ${(
-              <Link key="email" variant="brand" to="mailto:help@metabase.com">
-                {t`help@metabase.com`}
-              </Link>
-            )}`}
+            ).jt`Click the button below to download diagnostic information`}
           </Text>
         </Box>
         <Button
