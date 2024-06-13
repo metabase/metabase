@@ -1,4 +1,4 @@
-import { Fragment, type PropsWithChildren, type ReactNode } from "react";
+import { Fragment } from "react";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
@@ -19,18 +19,12 @@ export interface CollectionBreadcrumbsProps {
   collection?: Collection;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
-  PathSeparator?: string | ((props: { children?: string }) => ReactNode);
 }
-
-const DefaultPathSeparator = ({ children = "/" }: PropsWithChildren) => {
-  return <BreadcrumbsPathSeparator>{children}</BreadcrumbsPathSeparator>;
-};
 
 export const CollectionBreadcrumbs = ({
   collection,
   onClick,
   baseCollectionId = null,
-  PathSeparator = DefaultPathSeparator,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
@@ -43,12 +37,7 @@ export const CollectionBreadcrumbs = ({
     collection,
   });
 
-  const separator =
-    typeof PathSeparator === "string" ? (
-      <BreadcrumbsPathSeparator>{PathSeparator}</BreadcrumbsPathSeparator>
-    ) : (
-      <PathSeparator />
-    );
+  const separator = <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>;
 
   const content =
     parts.length > 1 && !isExpanded ? (
