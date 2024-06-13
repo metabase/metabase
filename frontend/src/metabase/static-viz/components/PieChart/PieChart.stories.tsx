@@ -171,6 +171,13 @@ UnaggregatedDimension.args = {
   renderingContext,
 };
 
+export const SingleDimension = Template.bind({});
+SingleDimension.args = {
+  rawSeries: data.singleDimension as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SortedMetricCol = Template.bind({});
 SortedMetricCol.args = {
   rawSeries: data.sortedMetricCol as any,
