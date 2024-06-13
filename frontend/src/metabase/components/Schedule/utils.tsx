@@ -20,21 +20,29 @@ export const addScheduleComponents = (
 
 const addBlanks = (arr: ReactNode[]) => {
   const result: ReactNode[] = [];
-  const addBlank = () => result.push(<Box></Box>);
+  const addBlank = () => result.push(<Box key={result.length}></Box>);
   for (let c = 0; c < arr.length; c++) {
     const curr = arr[c];
     const next = arr[c + 1];
     const isLastItemString = c === arr.length - 1 && typeof curr === "string";
     if (isLastItemString) {
       addBlank();
-      result.push(<Box mt="-.5rem">{curr}</Box>);
+      result.push(
+        <Box key={result.length} mt="-.5rem">
+          {curr}
+        </Box>,
+      );
     } else {
       const isFirstItemString = c === 0 && typeof curr !== "string";
       if (isFirstItemString) {
         addBlank();
       }
       if (typeof curr === "string") {
-        const wrappedCurr = <Box style={{ textAlign: "end" }}>{curr}</Box>;
+        const wrappedCurr = (
+          <Box key={result.length} style={{ textAlign: "end" }}>
+            {curr}
+          </Box>
+        );
         result.push(wrappedCurr);
       } else {
         result.push(curr);
@@ -46,7 +54,7 @@ const addBlanks = (arr: ReactNode[]) => {
         curr.props.longestLabel.length + next.props.longestLabel.length < 24;
       if (canSelectsProbablyFitOnOneLine) {
         result[result.length - 1] = (
-          <Group spacing="xs">
+          <Group spacing="xs" key={result.length}>
             {result[result.length - 1]}
             {next}
           </Group>
