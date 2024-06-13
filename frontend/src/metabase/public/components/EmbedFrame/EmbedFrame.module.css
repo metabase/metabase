@@ -19,18 +19,18 @@ body {
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
-  color: color-mod(var(--mb-color-text-white) alpha(-14%));
+  color: var(--mb-color-text-light-alpha-86);
   background-color: var(--mb-color-bg-black);
   border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .fullscreenNightText {
-  color: color-mod(var(--mb-color-text-white) alpha(-14%));
+  color: var(--mb-color-text-white-alpha-86);
   transition: color 1s linear;
 }
 
 .ThemeNight.EmbedFrame svg text {
-  fill: color-mod(var(--mb-color-text-white) alpha(-14%)) !important;
+  fill: var(--mb-color-text-white-alpha-86) !important;
   stroke: none !important;
 }
 

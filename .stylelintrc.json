@@ -6,7 +6,7 @@
     "custom-property-pattern": null,
     "function-no-unknown": [
       true,
-      { "ignoreFunctions": ["color-mod", "alpha", "blackness"] }
+      { "ignoreFunctions": ["alpha", "blackness"] }
     ],
     "import-notation": "string",
     "media-feature-range-notation": "prefix",

@@ -42,6 +42,26 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-text-medium: ${color("text-medium")};
       --mb-color-text-white: ${color("text-white")};
       --mb-color-warning: ${color("warning")};
+      --mb-color-border-alpha-30: color-mix(
+        in srgb,
+        var(--mb-color-border) 30%,
+        transparent
+      );
+      --mb-color-text-light-alpha-86: color-mix(
+        in srgb,
+        var(--mb-color-text-white) 86%,
+        transparent
+      );
+      --mb-color-bg-black-alpha-60: color-mix(
+        in srgb,
+        var(--mb-color-bg-black) 60%,
+        transparent
+      );
+      --mb-color-bg-white-alpha-15: color-mix(
+        in srgb,
+        var(--mb-color-bg-white) 15%,
+        transparent
+      );
 
       /*
         Theming-specific CSS variables.

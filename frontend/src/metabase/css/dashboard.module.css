@@ -19,12 +19,12 @@
 }
 
 .Dashboard.DashboardNight.DashboardFullscreen .fullscreenNightText {
-  color: color-mod(var(--mb-color-text-white) alpha(-14%));
+  color: var(--mb-color-text-white-alpha-86);
   transition: color 1s linear;
 }
 
 .Dashboard.DashboardNight .DashCard .Card svg text {
-  fill: color-mod(var(--mb-color-text-white) alpha(-14%)) !important;
+  fill: var(--mb-color-text-white-alpha-86) !important;
   stroke: none !important;
 }
 
@@ -190,11 +190,11 @@
 
 /* when in night mode code snippets should have a more readable background-color */
 .DashboardNight pre code {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .DashboardNight :global(.text-card-markdown code) {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-86%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .Dashboard :global(text.value-label),
