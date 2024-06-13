@@ -104,7 +104,7 @@ export type MetabaseComponentTheme = {
   table: {
     cell: {
       /** Text color of cells, defaults to `text-primary`. */
-      textColor?: string;
+      textColor: string;
 
       /** Default background color of cells, defaults to `background` */
       backgroundColor?: string;
