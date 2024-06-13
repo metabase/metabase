@@ -33,7 +33,7 @@ export const setupSdkState = ({
   }),
   ...stateOpts
 }: {
-  currentUser: User;
+  currentUser?: User;
   settingValues?: EnterpriseSettings;
   tokenFeatures?: TokenFeatures;
   settingDefinitions?: SettingDefinition[];

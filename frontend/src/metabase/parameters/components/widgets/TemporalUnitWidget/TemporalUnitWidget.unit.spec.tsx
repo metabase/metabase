@@ -31,12 +31,20 @@ function setup({
 }
 
 describe("TemporalUnitWidget", () => {
-  it("should show all temporal units by default", () => {
+  it("should make all temporal units available by default", async () => {
     setup();
-
     expect(screen.getByRole("option", { name: "Day" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Month" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Year" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Day of month" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("option", { name: "More…" }));
+    expect(screen.getByRole("option", { name: "Year" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Day of month" }),
+    ).toBeInTheDocument();
   });
 
   it("should show only the allowed temporal units when specified", () => {
@@ -51,6 +59,9 @@ describe("TemporalUnitWidget", () => {
     expect(screen.getByRole("option", { name: "Year" })).toBeInTheDocument();
     expect(
       screen.queryByRole("option", { name: "Day" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "More…" }),
     ).not.toBeInTheDocument();
   });
 
