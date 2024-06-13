@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type PropsWithChildren, type ReactNode } from "react";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
@@ -11,7 +11,7 @@ import type {
 import {
   ExpandButton,
   PathContainer,
-  PathSeparator,
+  BreadcrumbsPathSeparator,
 } from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
 
@@ -19,12 +19,18 @@ export interface CollectionBreadcrumbsProps {
   collection?: Collection;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
+  PathSeparator?: string | ((props: { children?: string }) => ReactNode);
 }
+
+const DefaultPathSeparator = ({ children = "/" }: PropsWithChildren) => {
+  return <BreadcrumbsPathSeparator>{children}</BreadcrumbsPathSeparator>;
+};
 
 export const CollectionBreadcrumbs = ({
   collection,
   onClick,
   baseCollectionId = null,
+  PathSeparator = DefaultPathSeparator,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
@@ -37,6 +43,13 @@ export const CollectionBreadcrumbs = ({
     collection,
   });
 
+  const separator =
+    typeof PathSeparator === "string" ? (
+      <BreadcrumbsPathSeparator>{PathSeparator}</BreadcrumbsPathSeparator>
+    ) : (
+      <PathSeparator />
+    );
+
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
@@ -45,7 +58,7 @@ export const CollectionBreadcrumbs = ({
           isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
-        <PathSeparator>/</PathSeparator>
+
         <ExpandButton
           small
           borderless
@@ -53,7 +66,7 @@ export const CollectionBreadcrumbs = ({
           onlyIcon
           onClick={toggle}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
       </>
     ) : (
       parts.map(collection => (
@@ -63,7 +76,7 @@ export const CollectionBreadcrumbs = ({
             isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
-          <PathSeparator>/</PathSeparator>
+          {separator}
         </Fragment>
       ))
     );

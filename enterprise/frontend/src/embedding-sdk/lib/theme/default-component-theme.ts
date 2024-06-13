@@ -28,6 +28,16 @@ export const FONT_SIZES = {
  * such as charts, data tables and popovers.
  */
 export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
+  collectionBrowser: {
+    breadcrumbs: {
+      expandButton: {
+        backgroundColor: "var(--mb-color-bg-light)",
+        hoverBackgroundColor: "var(--mb-color-brand)",
+        hoverTextColor: "var(--mb-color-text-white)",
+        textColor: "var(--mb-color-text-medium)",
+      },
+    },
+  },
   dashboard: {
     backgroundColor: "var(--mb-color-bg-white)",
     card: {
@@ -64,23 +74,33 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
  * Default theme options, with overrides specific to the
  * Embedding SDK environment to provide nicer defaults.
  */
-export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge(
-  DEFAULT_METABASE_COMPONENT_THEME,
-  {
-    table: {
-      cell: {
-        fontSize: FONT_SIZES.tableCell.em,
-        backgroundColor: "bg-white",
-      },
+export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
+  MetabaseComponentTheme,
+  Partial<MetabaseComponentTheme>
+>(DEFAULT_METABASE_COMPONENT_THEME, {
+  table: {
+    cell: {
+      fontSize: FONT_SIZES.tableCell.em,
+      backgroundColor: "bg-white",
     },
-    cartesian: {
-      label: { fontSize: FONT_SIZES.label.em },
-      goalLine: {
-        label: { fontSize: FONT_SIZES.goalLabel.em },
+  },
+  cartesian: {
+    label: { fontSize: FONT_SIZES.label.em },
+    goalLine: {
+      label: { fontSize: FONT_SIZES.goalLabel.em },
+    },
+  },
+  collectionBrowser: {
+    breadcrumbs: {
+      expandButton: {
+        backgroundColor: "transparent",
+        hoverBackgroundColor: "var(--mb-color-brand)",
+        hoverTextColor: "var(--mb-color-text-white)",
+        textColor: "var(--mb-color-text-medium)",
       },
     },
   },
-);
+});
 
 export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =
   {
