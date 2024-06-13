@@ -62,10 +62,20 @@ const useGetInitialCollection = (
   const { data: currentQuestion, isLoading: isQuestionLoading } =
     useGetCardQuery(cardId ? { id: cardId } : skipToken);
 
+  const {
+    data: currentQuestionCollection,
+    isLoading: isCurrentQuestionCollectionLoading,
+  } = useGetCollectionQuery(
+    currentQuestion ? currentQuestion.collection_id ?? "root" : skipToken,
+  );
+
   return {
     currentQuestion: currentQuestion,
-    currentCollection: currentQuestion?.collection ?? currentCollection,
-    isLoading: isQuestionLoading || isCollectionLoading,
+    currentCollection: currentQuestionCollection ?? currentCollection,
+    isLoading:
+      isCollectionLoading ||
+      isQuestionLoading ||
+      isCurrentQuestionCollectionLoading,
   };
 };
 
