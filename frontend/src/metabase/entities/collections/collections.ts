@@ -72,7 +72,7 @@ const Collections = createEntity({
     },
     get: (entityQuery: { id: number }, options: unknown, dispatch: Dispatch) =>
       entityCompatibleQuery(
-        entityQuery.id,
+        entityQuery,
         dispatch,
         collectionApi.endpoints.getCollection,
       ),
