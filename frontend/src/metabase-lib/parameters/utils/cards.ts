@@ -8,6 +8,7 @@ import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/param
 import { getParameterTargetField } from "metabase-lib/parameters/utils/targets";
 import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
 export function getCardUiParameters(
   card: Card,
@@ -42,6 +43,9 @@ export function getCardUiParameters(
       };
     }
 
-    return { ...parameter, hasVariableTemplateTagTarget: true };
+    return {
+      ...parameter,
+      hasVariableTemplateTagTarget: !isDimensionTarget(target),
+    };
   });
 }

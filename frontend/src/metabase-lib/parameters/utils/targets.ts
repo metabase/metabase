@@ -1,9 +1,9 @@
 import * as Lib from "metabase-lib";
-import type { TemplateTagDimension } from "metabase-lib/Dimension";
-import Dimension from "metabase-lib/Dimension";
+import Dimension, { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { isTemplateTagReference } from "metabase-lib/references";
 import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import type {
   ConcreteFieldReference,
@@ -41,14 +41,46 @@ export function getParameterTargetField(
   target: ParameterTarget,
   question: Question,
 ) {
-  if (isDimensionTarget(target)) {
-    const query = question.legacyQuery({ useStructuredQuery: true }) as
-      | NativeQuery
-      | StructuredQuery;
-    const metadata = question.metadata();
-    const dimension = Dimension.parseMBQL(target[1], metadata, query);
+  if (!isDimensionTarget(target)) {
+    return null;
+  }
 
+  const fieldRef = target[1];
+  const metadata = question.metadata();
+
+  // native queries
+  if (isTemplateTagReference(fieldRef)) {
+    const dimension = TemplateTagDimension.parseMBQL(
+      fieldRef,
+      metadata,
+      question.legacyQuery() as NativeQuery,
+    );
     return dimension?.field();
+  }
+
+  if (isConcreteFieldReference(fieldRef)) {
+    const [_type, fieldIdOrName] = fieldRef;
+    const fields = metadata.fieldsList();
+    // we can match by id directly without finding this column via query
+    if (typeof fieldIdOrName === "number") {
+      return fields.find(field => field.id === fieldIdOrName);
+    }
+
+    const query = question.legacyQuery({
+      useStructuredQuery: true,
+    }) as StructuredQuery;
+    const dimension = Dimension.parseMBQL(target[1], metadata, query);
+    const field = dimension?.field();
+    // in embedding MLv1 fails to find the correct field because there is no `query` available
+    // in this case MLv1 syntheses a field that is not originated from a BE endpoint
+    // we need to ignore it here and try to match by name instead
+    if (field && field._comesFromEndpoint) {
+      return field;
+    }
+
+    return fields.find(
+      field => typeof field.id == "number" && field.name === fieldIdOrName,
+    );
   }
 
   return null;

@@ -99,6 +99,7 @@ class FieldInner extends Base {
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
+  _comesFromEndpoint?: boolean;
 
   getPlainObject(): IField {
     return this._plainObject;
