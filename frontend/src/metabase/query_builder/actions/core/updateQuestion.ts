@@ -2,7 +2,7 @@ import { assocIn } from "icepick";
 import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { syncVizSettingsWithQueryResults } from "metabase/visualizations/lib/sync-settings";
+import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -135,7 +135,13 @@ export const updateQuestion = (
 
     const queryResult = getFirstQueryResult(getState());
     newQuestion = newQuestion.setSettings(
-      syncVizSettingsWithQueryResults(newQuestion.settings(), queryResult),
+      syncVizSettingsWithSeries(newQuestion.settings(), [
+        {
+          card: newQuestion.card(),
+          data: queryResult?.data,
+          error: queryResult?.error,
+        },
+      ]),
     );
 
     if (!newQuestion.canAutoRun()) {
