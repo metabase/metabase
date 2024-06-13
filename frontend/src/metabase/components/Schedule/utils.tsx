@@ -20,7 +20,8 @@ export const addScheduleComponents = (
 
 const addBlanks = (arr: ReactNode[]) => {
   const result: ReactNode[] = [];
-  const addBlank = () => result.push(<Box key={result.length}></Box>);
+  const addBlank = () =>
+    result.push(<Box key={`blank-${result.length}`}></Box>);
   for (let c = 0; c < arr.length; c++) {
     const curr = arr[c];
     const next = arr[c + 1];
@@ -28,7 +29,7 @@ const addBlanks = (arr: ReactNode[]) => {
     if (isLastItemString) {
       addBlank();
       result.push(
-        <Box key={result.length} mt="-.5rem">
+        <Box key={curr} mt="-.5rem">
           {curr}
         </Box>,
       );
@@ -39,7 +40,7 @@ const addBlanks = (arr: ReactNode[]) => {
       }
       if (typeof curr === "string") {
         const wrappedCurr = (
-          <Box key={result.length} style={{ textAlign: "end" }}>
+          <Box key={`wrapped-${curr}`} style={{ textAlign: "end" }}>
             {curr}
           </Box>
         );
@@ -54,7 +55,7 @@ const addBlanks = (arr: ReactNode[]) => {
         curr.props.longestLabel.length + next.props.longestLabel.length < 24;
       if (canSelectsProbablyFitOnOneLine) {
         result[result.length - 1] = (
-          <Group spacing="xs" key={result.length}>
+          <Group spacing="xs" key={`selects-on-one-line`}>
             {result[result.length - 1]}
             {next}
           </Group>
