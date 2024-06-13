@@ -128,6 +128,10 @@ export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
     status: 403,
     body: PERMISSION_ERROR,
   });
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 }
 
 export function setupCollectionByIdEndpoint({
