@@ -1246,8 +1246,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       })();
     });
 
-    // replay browser crashing on this test consistently
-    it.skip("should allow setting dashboard tab with parameter for a column", () => {
+    it("should allow setting dashboard tab with parameter for a column", () => {
       cy.createQuestion(TARGET_QUESTION);
 
       const dashboard = {
@@ -1332,8 +1331,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
     });
-
-    it("should allow setting URL as custom destination and updating dashboard filters for different columns", () => {
+    // replay browser crashing on this test consistently
+    it.skip("should allow setting URL as custom destination and updating dashboard filters for different columns", () => {
       cy.createQuestion(TARGET_QUESTION);
       cy.createDashboard(
         {
