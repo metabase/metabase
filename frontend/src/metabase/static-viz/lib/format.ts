@@ -49,7 +49,10 @@ const getRemappedValue = (
 // click behavior, any html formatting, any code uses globals or that imports packages which use globals.
 // The reason for that is inability to use highly-coupled formatting code from the main app for static viz
 // because it crashes while using it in the GraalVM SSR
-export const formatStaticValue = (value: unknown, options: OptionsType) => {
+export const formatStaticValue = (
+  value: unknown,
+  options: OptionsType = {},
+) => {
   const { prefix, suffix, column } = options;
 
   let formattedValue = null;

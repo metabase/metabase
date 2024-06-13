@@ -4,7 +4,11 @@ import { Provider } from "react-redux";
 import type { MetabaseTheme } from "embedding-sdk";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { mainReducers } from "metabase/reducers-main";
-import type { MantineThemeOverride } from "metabase/ui";
+import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
+import { createStaticRenderingContext } from "metabase/static-viz/lib/static-rendering-context";
+import { Box, type MantineThemeOverride } from "metabase/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type { TimelineEvent, VisualizationSettings } from "metabase-types/api";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { getStore } from "./entities-store";
@@ -41,6 +45,41 @@ export const VisualizationWrapper = ({
     >
       {children}
     </TestWrapper>
+  );
+};
+
+export interface IsomorphicVisualizationStoryProps {
+  // Use any instead of RawSeries for convenience since we use raw series json snapshots
+  rawSeries: any;
+  dashcardSettings?: VisualizationSettings;
+  timelineEvents?: TimelineEvent[];
+}
+
+export const IsomorphicVisualizationStory = ({
+  rawSeries,
+  timelineEvents,
+  dashcardSettings,
+}: IsomorphicVisualizationStoryProps) => {
+  return (
+    <Box display="inline-block">
+      <Box style={{ border: "1px solid black" }} display="inline-block">
+        <StaticVisualization
+          isStorybook
+          rawSeries={rawSeries}
+          dashcardSettings={dashcardSettings ?? {}}
+          renderingContext={createStaticRenderingContext()}
+        />
+      </Box>
+      <Box w={1000} h={600} style={{ border: "1px solid black" }} mt={4}>
+        <VisualizationWrapper>
+          <Visualization
+            rawSeries={rawSeries}
+            width={500}
+            timelineEvents={timelineEvents}
+          />
+        </VisualizationWrapper>
+      </Box>
+    </Box>
   );
 };
 

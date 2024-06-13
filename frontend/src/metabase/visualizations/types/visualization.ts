@@ -68,6 +68,7 @@ export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   dashcardSettings: VisualizationSettings;
   renderingContext: RenderingContext;
+  isStorybook?: boolean;
 }
 
 export interface VisualizationProps {
