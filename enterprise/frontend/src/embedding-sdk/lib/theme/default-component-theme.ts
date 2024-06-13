@@ -2,6 +2,7 @@ import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import type { DeepPartial } from "embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
@@ -76,11 +77,10 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
  */
 export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   MetabaseComponentTheme,
-  Partial<MetabaseComponentTheme>
+  DeepPartial<MetabaseComponentTheme>
 >(DEFAULT_METABASE_COMPONENT_THEME, {
   table: {
     cell: {
-      textColor: "text-primary",
       fontSize: FONT_SIZES.tableCell.em,
       backgroundColor: "bg-white",
     },
@@ -97,7 +97,6 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
         backgroundColor: "transparent",
         hoverBackgroundColor: "var(--mb-color-brand)",
         hoverTextColor: "var(--mb-color-text-white)",
-        textColor: "var(--mb-color-text-medium)",
       },
     },
   },
