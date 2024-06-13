@@ -351,7 +351,7 @@ function hydrateTableSchema(
 }
 
 function hydrateTableFields(table: ApiTable, metadata: Metadata): Field[] {
-  const fields = table?.fields ?? [];
+  const fields = table.fields ?? [];
   return fields.map(rawField => {
     const field = new Field(rawField);
     field.metadata = metadata;
