@@ -19,8 +19,8 @@ import {
 import { ErrorPageRoot } from "./ErrorPages.styled";
 
 export const GenericError = ({
-  title = t`Something's gone wrong`,
-  message = t`We've run into an error. You can try refreshing the page, or just go back.`,
+  title = t`Something’s gone wrong.`,
+  message = t`We’ve run into an error. You can try refreshing the page, or just go back.`,
   details,
 }: {
   title?: string;
@@ -87,7 +87,7 @@ export const Archived = ({
 );
 
 export const SmallGenericError = ({
-  message = t`Something's gone wrong.`,
+  message = t`Something’s gone wrong.`,
   bordered = true,
 }: {
   message?: string;

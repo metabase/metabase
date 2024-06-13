@@ -13,16 +13,7 @@ import {
 import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
 import { getIsEmbedded } from "metabase/selectors/embed";
-import {
-  Button,
-  Box,
-  Icon,
-  Loader,
-  Text,
-  Stack,
-  Modal,
-  Flex,
-} from "metabase/ui";
+import { Button, Icon, Loader, Text, Stack, Modal, Flex } from "metabase/ui";
 
 import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
@@ -164,13 +155,6 @@ export const ErrorDiagnosticModalTrigger = () => {
   return (
     <ErrorBoundary>
       <Stack justify="center" my="lg">
-        <Box>
-          <Text align="center">
-            {c(
-              "indicates an email address to which to send diagnostic information",
-            ).jt`Click the button below to download diagnostic information`}
-          </Text>
-        </Box>
         <Button
           leftIcon={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
