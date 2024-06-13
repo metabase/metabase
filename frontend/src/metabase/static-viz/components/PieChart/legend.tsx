@@ -1,3 +1,4 @@
+import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -9,10 +10,12 @@ export function getPieChartLegend(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
   settings: ComputedVisualizationSettings,
-  width: number,
-  top: number,
 ) {
-  const { height: legendHeight, items } = calculateLegendRowsWithColumns({
+  const {
+    height: legendHeight,
+    width: legendWidth,
+    items,
+  } = calculateLegendRowsWithColumns({
     items: chartModel.slices.map(s => {
       const label =
         s.key === "Other" ? s.key : formatters.formatDimension(s.key);
@@ -27,11 +30,23 @@ export function getPieChartLegend(
         key: String(s.key),
       };
     }),
-    width,
+    width: DIMENSIONS.maxSideLength,
+    horizontalPadding: DIMENSIONS.padding.side,
   });
 
   return {
     legendHeight,
-    Legend: () => <Legend items={items} top={top} />,
+    Legend: () => (
+      <Legend
+        items={items}
+        top={DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend}
+        left={
+          (DIMENSIONS.maxSideLength -
+            DIMENSIONS.padding.side * 2 -
+            legendWidth) /
+          2
+        }
+      />
+    ),
   };
 }

@@ -88,7 +88,7 @@ export function getPieChartOption(
 
   // Sizing
   const innerSideLength = Math.min(
-    sideLength - DIMENSIONS.padding.side,
+    sideLength - DIMENSIONS.padding.side * 2,
     DIMENSIONS.maxSideLength,
   );
   seriesOption.radius = getRadiusOption(innerSideLength);

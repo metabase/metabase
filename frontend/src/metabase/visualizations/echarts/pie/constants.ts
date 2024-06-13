@@ -2,7 +2,7 @@ export const DIMENSIONS = {
   maxSideLength: 550,
   padding: {
     legend: 16,
-    side: 24,
+    side: 12,
   },
   slice: {
     innerRadiusRatio: 3 / 5,

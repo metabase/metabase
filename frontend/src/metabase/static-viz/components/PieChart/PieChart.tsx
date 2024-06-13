@@ -43,8 +43,6 @@ export function PieChart({
     chartModel,
     formatters,
     computedVizSettings,
-    DIMENSIONS.maxSideLength,
-    DIMENSIONS.maxSideLength + DIMENSIONS.padding.legend,
   );
 
   const chart = init(null, null, {
