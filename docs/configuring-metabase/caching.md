@@ -7,11 +7,9 @@ redirect_from:
 
 # Caching query results
 
-{% include plans-blockquote.html feature="Advanced caching controls" %}
-
 If your question results don't change frequently, you may want to store the results so that the next time anyone visits the question, Metabase can retrieve the stored results rather than query the database again.
 
-For example, if your data only updates once a day, there's no point in querying the database more than once a day, as they data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
+For example, if your data only updates once a day, there's no point in querying the database more than once a day, as the data won't have changed. Returning cached results can be significantly faster, as the database won't have to recompute the results to load your question.
 
 ## Cache invalidation policies
 
@@ -47,19 +45,16 @@ We do not yet support lunar cycles.
 
 Use a query’s average execution time to determine how long to cache the query's results.
 
-
 - **Minimum query duration**: Metabase will cache this question if it has an average query execution time greater than this many seconds.
-- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10s to return results. If you set a multiplier of 100, Metabase will store the cache for 1000 seconds (~16 minutes).
+- **Multiplier**: Metabase will cache questions with an average query execution time greater than this many seconds. For example, if a question takes on average 10 seconds to return results, and you set a multiplier of 100, Metabase will store the cache for 10 x 100 seconds: 1,000 seconds (~16 minutes).
 
-On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md).
+On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection.
 
 ### Don’t cache results
 
 Always re-run the query to refresh results.
 
 ## Set caching policies at different levels
-
-{% include plans-blockquote.html feature="Advanced caching controls" %}
 
 You can set up caching at different levels, from largest to smallest scope. Policies set at more restricted scopes override policies set at larger scopes. So a policy set on a question will take precedence over a dashboard, database, or default policy.
 
@@ -72,21 +67,21 @@ _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://
 
 ### Default caching policy
 
-![Data caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
+![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
 
-To set up a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Data caching settings**.
+To set up a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
 
 ### Database caching policy
 
-{% include plans-blockquote.html feature="Database caching controls" %}
+{% include plans-blockquote.html feature="Database caching" %}
 
 Same as the default caching policy, though you can set a caching policy for specific databases.
 
 ### Dashboard caching policy
 
-{% include plans-blockquote.html feature="Dashboard caching controls" %}
+{% include plans-blockquote.html feature="Dashboard caching" %}
 
 To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
 
@@ -98,7 +93,7 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 
 ### Question caching policy
 
-{% include plans-blockquote.html feature="Question caching controls" %}
+{% include plans-blockquote.html feature="Question caching" %}
 
 To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
 
@@ -110,7 +105,10 @@ To set a caching policy for a question, you must have [curate access](../permiss
 
 ## Clearing the cache
 
-To clear the cache for a question or dashboard and refresh the results: click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
+To clear the cache and refresh the results:
+
+- **Questions and dashboards**: Vist the item and click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
+- **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching settings**. Select your database and click the **Clear cache** button (at the bottom of the page).
 
 ## Caching location
 

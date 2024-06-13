@@ -1,22 +1,30 @@
 import { Fragment } from "react";
 
-import { isRootCollection } from "metabase/collections/utils";
 import { useToggle } from "metabase/hooks/use-toggle";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import type { Collection } from "metabase-types/api";
+import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
+import type {
+  Collection,
+  CollectionEssentials,
+  CollectionId,
+} from "metabase-types/api";
 
 import {
   ExpandButton,
   PathContainer,
   PathSeparator,
 } from "./CollectionBreadcrumbs.styled";
+import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
+  onClick?: (collection: CollectionEssentials) => void;
+  baseCollectionId: CollectionId | null;
 }
 
 export const CollectionBreadcrumbs = ({
   collection,
+  onClick,
+  baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
@@ -24,18 +32,18 @@ export const CollectionBreadcrumbs = ({
     return null;
   }
 
-  const ancestors = collection.effective_ancestors || [];
-  const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
-  const [_, ...crumbsWithoutRoot] = ancestors;
-  const parts = hasRoot ? crumbsWithoutRoot : ancestors;
+  const parts = getCollectionList({
+    baseCollectionId,
+    collection,
+  });
 
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          inactiveColor="text-medium"
           isSingleLine
+          onClick={onClick ? () => onClick(collection) : undefined}
         />
         <PathSeparator>/</PathSeparator>
         <ExpandButton
@@ -52,8 +60,8 @@ export const CollectionBreadcrumbs = ({
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            inactiveColor="text-medium"
             isSingleLine
+            onClick={onClick ? () => onClick(collection) : undefined}
           />
           <PathSeparator>/</PathSeparator>
         </Fragment>
@@ -65,8 +73,8 @@ export const CollectionBreadcrumbs = ({
       {content}
       <CollectionBadge
         collectionId={collection.id}
-        inactiveColor="text-medium"
         isSingleLine
+        onClick={onClick ? () => onClick(collection) : undefined}
       />
     </PathContainer>
   );

@@ -1,5 +1,5 @@
-import { SortDirection } from "metabase/components/ItemsTable/Columns";
 import { createMockCollection } from "metabase-types/api/mocks";
+import { SortDirection } from "metabase-types/api/sorting";
 
 import { createMockModelResult } from "../test-utils";
 import type { ModelResult } from "../types";
@@ -73,7 +73,7 @@ describe("sortModels", () => {
     const sortingOptions = {
       sort_column: "name",
       sort_direction: SortDirection.Asc,
-    };
+    } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["A", "B", "C"]);
   });
@@ -82,7 +82,7 @@ describe("sortModels", () => {
     const sortingOptions = {
       sort_column: "name",
       sort_direction: SortDirection.Desc,
-    };
+    } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["C", "B", "A"]);
   });
@@ -91,7 +91,7 @@ describe("sortModels", () => {
     const sortingOptions = {
       sort_column: "collection",
       sort_direction: SortDirection.Asc,
-    };
+    } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["B", "A", "C"]);
   });
@@ -100,7 +100,7 @@ describe("sortModels", () => {
     const sortingOptions = {
       sort_column: "collection",
       sort_direction: SortDirection.Desc,
-    };
+    } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["C", "A", "B"]);
   });
@@ -127,7 +127,7 @@ describe("sortModels", () => {
       const sortingOptions = {
         sort_column: "collection",
         sort_direction: SortDirection.Asc,
-      };
+      } as const;
       const sorted = sortModels(mockSearchResults, sortingOptions);
       expect(sorted).toEqual([
         modelMap["model named B, with collection path D / E / F"],
@@ -142,7 +142,7 @@ describe("sortModels", () => {
       const sortingOptions = {
         sort_column: "collection",
         sort_direction: SortDirection.Desc,
-      };
+      } as const;
       const sorted = sortModels(mockSearchResults, sortingOptions);
       expect(sorted).toEqual([
         modelMap["model named C, with collection path Z"],

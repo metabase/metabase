@@ -28,7 +28,6 @@ import type {
   DashboardId,
   DashCardId,
   DatabaseId,
-  Dataset,
   DatasetData,
   DatasetQuery,
   Parameter as ParameterObject,
@@ -480,26 +479,6 @@ class Question {
 
     const query = this.composeQuestion().query();
     return Question.create({ metadata: this.metadata() }).setQuery(query);
-  }
-
-  syncColumnsAndSettings(
-    queryResults?: Dataset,
-    prevQueryResults?: Dataset,
-    options?: Lib.SettingsSyncOptions,
-  ) {
-    const settings = this.settings();
-    const newSettings = Lib.syncColumnSettings(
-      settings,
-      queryResults,
-      prevQueryResults,
-      options,
-    );
-
-    if (newSettings !== settings) {
-      return this.setSettings(newSettings);
-    } else {
-      return this;
-    }
   }
 
   /**
