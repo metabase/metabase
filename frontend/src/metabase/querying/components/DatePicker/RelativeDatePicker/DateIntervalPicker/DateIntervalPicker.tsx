@@ -120,6 +120,7 @@ export function DateIntervalPicker({
           </Menu.Dropdown>
         </Menu>
       </Flex>
+      <Flex p="md">{t`Include ${getIncludeCurrentLabel(value.unit)}`}</Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
         <Group c="text-medium" spacing="sm">
