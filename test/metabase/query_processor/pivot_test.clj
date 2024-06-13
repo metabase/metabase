@@ -254,6 +254,65 @@
                      :row_count 156}
                     (qp.pivot/run-pivot-query (assoc query :info {:visualization-settings viz-settings}))))))))))
 
+(deftest ^:parallel nested-question-pivot-aggregation-names-test
+  (testing "#43993"
+    (mt/dataset
+      test-data
+      (testing "Column aliasing needs to work even with joins and across stages"
+        (let [query        (mt/mbql-query
+                             orders {:source-query {:source-table $$orders
+                                                    :joins        [{:source-table $$people
+                                                                    :alias        "People - User"
+                                                                    :condition
+                                                                    [:= $orders.user_id
+                                                                     [:field %people.id {:join-alias "People - User"}]]}]
+                                                    :aggregation  [[:sum $subtotal]]
+                                                    :breakout     [!month.created_at
+                                                                   [:field %people.id {:join-alias "People - User"}]]}
+                                     :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
+                                     :breakout     [[:field "ID" {:base-type :type/Number}]]})
+              viz-settings (mt/$ids orders {:pivot_table.column_split
+                                            {:columns     [[:field "ID" {:base-type :type/Number}]]}})]
+          (testing "for a regular query"
+            (is (=? {:status :completed}
+                    (qp/process-query query))))
+          (testing "and a pivot query"
+            (is (=? {:status    :completed
+                     :row_count 1747}
+                    (-> query
+                        (assoc :info {:visualization-settings viz-settings})
+                        qp.pivot/run-pivot-query)))))))))
+
+(deftest model-with-aggregations-nested-pivot-aggregation-names-test
+  (testing "#43993"
+    (let [model (mt/mbql-query orders
+                               {:source-table $$orders
+                                :joins        [{:source-table $$people
+                                                :alias        "People - User"
+                                                :condition
+                                                [:= $orders.user_id
+                                                 [:field %people.id {:join-alias "People - User"}]]}]
+                                :aggregation  [[:sum $subtotal]]
+                                :breakout     [!month.created_at
+                                               [:field %people.id {:join-alias "People - User"}]]})]
+      (mt/with-temp [Card card {:dataset_query model, :type :model}]
+        (testing "Column aliasing needs to work even with aggregations over a model"
+          (let [query        (mt/mbql-query
+                               orders {:source-table (str "card__" (u/the-id card))
+                                       :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
+                                       :breakout     [[:field "ID" {:base-type :type/Number}]]})
+                viz-settings (mt/$ids orders {:pivot_table.column_split
+                                              {:columns     [[:field "ID" {:base-type :type/Number}]]}})]
+            (testing "for a regular query"
+              (is (=? {:status :completed}
+                      (qp/process-query query))))
+            (testing "and a pivot query"
+              (is (=? {:status    :completed
+                       :row_count 1747}
+                      (-> query
+                          (assoc :info {:visualization-settings viz-settings})
+                          qp.pivot/run-pivot-query))))))))))
+
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
     (let [results (qp.pivot/run-pivot-query (test-query))
