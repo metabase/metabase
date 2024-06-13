@@ -87,6 +87,31 @@ const getFromListDatabaseSchemaTables = createSelector(
   },
 );
 
+const getFromGetDatabase = createSelector(getApiState, (state): Table[] => {
+  return getDatabaseTableEntries(state, "getDatabase").flatMap(entry => {
+    const selector = databaseApi.endpoints.getDatabase.select(
+      entry.originalArgs,
+    );
+    const { data } = selector(state);
+    return data?.tables ?? [];
+  });
+});
+
+const getFromGetDatabaseMetadata = createSelector(
+  getApiState,
+  (state): Table[] => {
+    return getDatabaseTableEntries(state, "getDatabaseMetadata").flatMap(
+      entry => {
+        const selector = databaseApi.endpoints.getDatabaseMetadata.select(
+          entry.originalArgs,
+        );
+        const { data } = selector(state);
+        return data?.tables ?? [];
+      },
+    );
+  },
+);
+
 const getFromListTables = createSelector(getApiState, (state): Table[] => {
   return getTableEntries(state, "listTables").flatMap(entry => {
     const selector = tableApi.endpoints.listTables.select(entry.originalArgs);
@@ -180,6 +205,8 @@ const getFromDashboardTableEntries = createSelector(
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
+    getFromGetDatabase,
+    getFromGetDatabaseMetadata,
     getFromListTables,
     getFromGetTable,
     getFromGetTableQueryMetadata,
