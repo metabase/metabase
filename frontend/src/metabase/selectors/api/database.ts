@@ -177,7 +177,7 @@ export const getApiDatabases = createSelector(
     getFromGetCardQueryMetadata,
     getFromGetXrayDashboardQueryMetadata,
     getFromGetDashboardQueryMetadata,
-    getFromTables,
+    getFromTables, // TODO: do we need cross-references?
   ],
   zipEntitySources,
 );

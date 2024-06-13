@@ -238,8 +238,8 @@ const getFromGetSegment = createSelector(getApiState, (state): Table[] => {
 export const getApiTables = createSelector(
   [
     getFromListDatabaseSchemaTables,
-    getFromGetDatabase,
-    getFromGetDatabaseMetadata,
+    getFromGetDatabase, // TODO: do we need cross-references?
+    getFromGetDatabaseMetadata, // TODO: do we need cross-references?
     getFromListTables,
     getFromGetTable,
     getFromGetTableQueryMetadata,
