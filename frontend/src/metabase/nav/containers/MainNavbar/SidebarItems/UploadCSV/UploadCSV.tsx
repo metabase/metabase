@@ -53,7 +53,9 @@ export default function UploadCSV({
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    trackSchemaEvent("csv_upload_clicked", "left_nav");
+    trackSchemaEvent("csvupload", "1-0-4", {
+      event: "csv_upload_left_nav_clicked",
+    });
 
     const file = event.target.files?.[0];
     if (file !== undefined) {

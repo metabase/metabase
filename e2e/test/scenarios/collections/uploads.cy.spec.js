@@ -19,18 +19,21 @@ const FIXTURE_PATH = "../../e2e/support/assets";
 
 const validTestFiles = [
   {
+    valid: true,
     fileName: "dog_breeds.csv",
     tableName: "dog_breeds",
     humanName: "Dog Breeds",
     rowCount: 97,
   },
   {
+    valid: true,
     fileName: "star_wars_characters.csv",
     tableName: "star_wars_characters",
     humanName: "Star Wars Characters",
     rowCount: 87,
   },
   {
+    valid: true,
     fileName: "pokedex.tsv",
     tableName: "pokedex",
     humanName: "Pokedex",
@@ -40,6 +43,7 @@ const validTestFiles = [
 
 const invalidTestFiles = [
   {
+    valid: false,
     fileName: "invalid.csv",
   },
 ];
@@ -95,7 +99,7 @@ describeWithSnowplow(
 
       cy.wait(["@saveSettings", "@databaseList"]);
 
-      uploadFile(testFile, "postgres");
+      uploadFile(testFile);
 
       const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
@@ -160,7 +164,7 @@ describeWithSnowplow(
 
         invalidTestFiles.forEach(testFile => {
           it(`Cannot upload ${testFile.fileName} to a collection`, () => {
-            uploadFile(testFile, false);
+            uploadFile(testFile);
 
             expectGoodSnowplowEvent({
               event: "csv_upload_failed",
@@ -381,7 +385,7 @@ describe("Upload Table Cleanup/Management", () => {
   });
 });
 
-function uploadFile(testFile, valid = true) {
+function uploadFile(testFile) {
   cy.get("@collectionId").then(collectionId =>
     cy.visit(`/collection/${collectionId}`),
   );
@@ -397,7 +401,7 @@ function uploadFile(testFile, valid = true) {
     );
   });
 
-  if (valid) {
+  if (testFile.valid) {
     cy.findByTestId("status-root-container")
       .should("contain", "Uploading data to")
       .and("contain", testFile.fileName);

@@ -1,20 +1,11 @@
-// import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-// import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
-  // queryWritableDB,
-  // popover,
-  // describeWithSnowplow,
-  // expectGoodSnowplowEvent,
-  // expectNoBadSnowplowEvents,
-  // resetSnowplow,
-  // enableTracking,
-  setTokenFeatures,
-  // modal,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  resetSnowplow,
+  enableTracking,
 } from "e2e/support/helpers";
-
-// const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
 const FIXTURE_PATH = "../../e2e/support/assets";
 
@@ -47,63 +38,63 @@ const testFiles = [
 ];
 
 describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
-  // describeWithSnowplow("Upload CSV button in Sidebar", () => {
-  testFiles.forEach(testFile => {
-    it(`${testFile.valid ? "Can" : "Cannot"} upload ${
-      testFile.fileName
-    } to "Our analytics" using DWH`, () => {
-      cy.intercept("GET", "/api/session/properties").as("getSessionProperties");
-      cy.intercept("POST", "/api/card/from-csv").as("uploadCSV");
+  before(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
 
-      restore("postgres-12");
-      cy.signInAsAdmin();
+    enableUploads("postgres");
+  });
 
-      setTokenFeatures("all");
-      enableUploads("postgres");
-
-      cy.updatePermissionsGraph({
-        1: {
-          [WRITABLE_DB_ID]: {
-            "view-data": "unrestricted",
-            "create-queries": "query-builder",
-          },
-        },
+  beforeEach(() => {
+    cy.intercept({ method: "GET", url: "/api/session/properties" }, request => {
+      request.on("response", response => {
+        if (typeof response.body === "object") {
+          // Setting the DWH feature
+          const tokenFeatures = response.body["token-features"];
+          response.body = {
+            ...response.body,
+            "token-features": { ...tokenFeatures, attached_dwh: true },
+          };
+        }
       });
+    }).as("getSessionProperties");
+    cy.intercept("POST", "/api/card/from-csv").as("uploadCSV");
 
-      cy.request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-        ({ body: tables }) => {
-          cy.request("GET", `/api/database/${WRITABLE_DB_ID}/fields`).then(
-            ({ body: fields }) => {
-              // Sandbox a table so that the sandboxed user will have read access to a table
-              cy.sandboxTable({
-                table_id: tables[0].id,
-                attribute_remappings: {
-                  attr_uid: ["dimension", ["field", fields[0].id, null]],
-                },
-              });
-            },
-          );
-        },
-      );
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+    cy.visit("/");
+  });
 
-      cy.signInAsSandboxedUser();
-      cy.visit("/");
+  describeWithSnowplow("Upload CSV button in Sidebar", () => {
+    testFiles.forEach(testFile => {
+      it(`${testFile.valid ? "Can" : "Cannot"} upload ${
+        testFile.fileName
+      } to "Our analytics" using DWH`, () => {
+        // Upload CSV button
+        cy.findByTestId("main-navbar-root").within(() => {
+          cy.findByText("Upload CSV", { timeout: 15000 });
+        });
 
-      // Upload CSV button
-      cy.findByTestId("main-navbar-root").within(() => {
-        cy.findByText("Upload CSV", { timeout: 30000 });
+        // Upload file
+        uploadFile(testFile);
+
+        // Snowplow
+        expectGoodSnowplowEvent({
+          event: "csv_upload_left_nav_clicked",
+        });
+        if (testFile.valid) {
+          expectGoodSnowplowEvent({
+            event: "csv_upload_successful",
+          });
+        } else {
+          expectGoodSnowplowEvent({
+            event: "csv_upload_failed",
+          });
+        }
       });
-
-      // Upload file
-      uploadFile(testFile);
-
-      // // Snowplow
-      // expectGoodSnowplowEvent({
-      //   event: "csv_upload_successful",
-      // });
     });
   });
-  // });
 });
 
 function enableUploads(dialect) {
