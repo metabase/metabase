@@ -7,9 +7,7 @@ import type { DisplayTheme } from "metabase/public/lib/types";
 
 import type { EmbedThemeControls } from "../types";
 
-export const useEmbedTheme = (
-  themeName: DisplayTheme = "light",
-): EmbedThemeControls => {
+export const useEmbedTheme = (): EmbedThemeControls => {
   const dispatch = useDispatch();
 
   const theme = useSelector(getDisplayTheme);
@@ -30,10 +28,8 @@ export const useEmbedTheme = (
   const hasNightModeToggle = theme !== "transparent";
 
   useEffect(() => {
-    if (themeName) {
-      setTheme(themeName);
-    }
-  }, [themeName, setTheme]);
+    setTheme("light");
+  }, [setTheme]);
 
   return {
     theme,
