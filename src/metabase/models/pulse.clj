@@ -230,7 +230,7 @@
   [_model k pulses]
   (mi/instances-with-hydrated-data
    pulses k
-   #(group-by :pulse_id (t2/select :model/PulseChannel :pulse_id [:in (map :id pulses)]))
+   #(group-by :pulse_id (t2/select :model/PulseChannel :pulse_id [:in (map :id pulses)] :enabled true))
    :id
    {:default []}))
 
