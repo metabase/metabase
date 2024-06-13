@@ -3,26 +3,17 @@ import {
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import type {
-  Dataset,
-  DatasetColumn,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
-export type SettingsSyncOptions = {
-  column: DatasetColumn;
-};
-
-export function syncColumnSettings(
+export function syncVizSettingsWithQueryResults(
   settings: VisualizationSettings,
   queryResults?: Dataset,
   prevQueryResults?: Dataset,
-  options?: SettingsSyncOptions,
 ): VisualizationSettings {
   let newSettings = settings;
 
   if (queryResults && !queryResults.error) {
-    newSettings = syncTableColumnSettings(newSettings, queryResults, options);
+    newSettings = syncTableColumnSettings(newSettings, queryResults);
 
     if (prevQueryResults && !prevQueryResults.error) {
       newSettings = syncGraphMetricSettings(
@@ -30,15 +21,6 @@ export function syncColumnSettings(
         queryResults,
         prevQueryResults,
       );
-
-      if (options) {
-        newSettings = moveNewTableColumnsAfterColumn(
-          newSettings,
-          queryResults,
-          prevQueryResults,
-          options,
-        );
-      }
     }
   }
 
@@ -48,12 +30,11 @@ export function syncColumnSettings(
 function syncTableColumnSettings(
   settings: VisualizationSettings,
   { data }: Dataset,
-  options?: SettingsSyncOptions,
 ): VisualizationSettings {
   // "table.columns" receive a value only if there are custom settings
   // e.g. some columns are hidden. If it's empty, it means everything is visible
   const columnSettings = settings["table.columns"] ?? [];
-  if (columnSettings.length === 0 && !options?.column) {
+  if (columnSettings.length === 0) {
     return settings;
   }
 
@@ -67,12 +48,12 @@ function syncTableColumnSettings(
     cols,
     columnSettings,
   );
-  const addedColumns = cols.filter((col, colIndex) => {
+  const addedColumns = cols.filter((_, colIndex) => {
     const hasVizSettings = columnSettingIndexes[colIndex] >= 0;
     return !hasVizSettings;
   });
   const existingColumnSettings = columnSettings.filter(
-    (setting, settingIndex) => columnIndexes[settingIndex] >= 0,
+    (_, settingIndex) => columnIndexes[settingIndex] >= 0,
   );
   const noColumnsRemoved =
     existingColumnSettings.length === columnSettings.length;
@@ -91,47 +72,6 @@ function syncTableColumnSettings(
   return {
     ...settings,
     "table.columns": [...existingColumnSettings, ...addedColumnSettings],
-  };
-}
-
-function moveNewTableColumnsAfterColumn(
-  settings: VisualizationSettings,
-  { data: { cols } }: Dataset,
-  { data: { cols: prevCols } }: Dataset,
-  { column }: SettingsSyncOptions,
-): VisualizationSettings {
-  const columnSettings = settings["table.columns"];
-  if (!column || !columnSettings) {
-    return settings;
-  }
-
-  const prevColumnNames = new Set(prevCols.map(col => col.name));
-  const addedColumns = cols.filter(col => !prevColumnNames.has(col.name));
-  const addedColumnSettingIndexes = findColumnSettingIndexesForColumns(
-    addedColumns,
-    columnSettings,
-  );
-  const addedColumnSettings = addedColumnSettingIndexes.map(
-    index => columnSettings[index],
-  );
-  const existingColumnSettings = columnSettings.filter(
-    (_, index) => !addedColumnSettingIndexes.includes(index),
-  );
-  const [columnSettingIndex] = findColumnSettingIndexesForColumns(
-    [column],
-    existingColumnSettings,
-  );
-  if (columnSettingIndex < 0) {
-    return settings;
-  }
-
-  return {
-    ...settings,
-    "table.columns": [
-      ...existingColumnSettings.slice(0, columnSettingIndex + 1), // before and including the selected column
-      ...addedColumnSettings,
-      ...existingColumnSettings.slice(columnSettingIndex + 1), // after the selected column
-    ],
   };
 }
 

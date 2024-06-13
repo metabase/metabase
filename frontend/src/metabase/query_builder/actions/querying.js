@@ -8,6 +8,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { syncVizSettingsWithQueryResults } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
@@ -188,9 +189,12 @@ export const queryCompleted = (
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      question = question.syncColumnsAndSettings(
-        queryResults[0],
-        prevQueryResults?.[0],
+      question = question.setSettings(
+        syncVizSettingsWithQueryResults(
+          question.settings(),
+          queryResults[0],
+          prevQueryResults?.[0],
+        ),
       );
 
       question = question.maybeResetDisplay(
