@@ -129,17 +129,21 @@ describeEE("scenarios > question > snippets (EE)", () => {
     cy.findByText("snippet 1");
   });
 
-  it("should display nested snippets in their folder", () => {
-    createNestedSnippet();
+  ["admin", "nocollection"].map(user => {
+    it("should display nested snippets in their folder", () => {
+      createNestedSnippet();
 
-    // Open editor and sidebar
-    openNativeEditor();
-    cy.icon("snippet").click();
+      cy.signIn(user);
 
-    // Confirm snippet is in folder
-    rightSidebar().within(() => {
-      cy.findByText("Snippet Folder").click();
-      cy.findByText("snippet 1").click();
+      // Open editor and sidebar
+      openNativeEditor();
+      cy.icon("snippet").click();
+
+      // Confirm snippet is in folder
+      rightSidebar().within(() => {
+        cy.findByText("Snippet Folder").click();
+        cy.findByText("snippet 1").click();
+      });
     });
   });
 
