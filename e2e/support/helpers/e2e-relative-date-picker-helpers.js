@@ -47,8 +47,9 @@ function addStartingFrom({ value, unit }) {
 }
 
 function toggleCurrentInterval() {
-  popover().findByLabelText("Options").click();
-  popover().last().findByTestId("include-current-interval-option").click();
+  popover()
+    .findByTestId("include-current-interval-option")
+    .click({ force: true });
 }
 
 export const relativeDatePicker = {
