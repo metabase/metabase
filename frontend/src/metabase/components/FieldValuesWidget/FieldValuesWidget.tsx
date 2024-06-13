@@ -33,7 +33,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
-import type { SelectItemProps, SelectItem } from "metabase/ui";
+import type { SelectItemProps } from "metabase/ui";
 import { MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -454,7 +454,10 @@ export function FieldValuesWidgetInner({
   };
 
   const renderStringOption = useCallback(
-    function (option: FieldValue): SelectItem {
+    function (option: FieldValue): {
+      label: string;
+      value: string;
+    } {
       const value = option[0];
       const column = fields[0];
       const label =
