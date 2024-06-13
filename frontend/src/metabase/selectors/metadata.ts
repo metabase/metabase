@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { DatabaseSchema, TableSchema } from "metabase/schema";
+import { TableSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
@@ -27,22 +27,17 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { getApiDatabases, getApiTables } from "./api";
+import { getApiTables } from "./api";
 import { getSettings } from "./settings";
 
-const getApiEntities = createSelector(
-  [getApiDatabases, getApiTables],
-  (databases, tables) => {
-    return {
-      databases,
-      tables,
-    };
-  },
-);
+const getApiEntities = createSelector([getApiTables], tables => {
+  return {
+    tables,
+  };
+});
 
 const getNormalizedApiEntities = createSelector([getApiEntities], data => {
   const schema = {
-    databases: [DatabaseSchema],
     tables: [TableSchema],
   };
   const { entities } = normalize(data, schema);
@@ -59,10 +54,7 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = createSelector(
-  [getNormalizedApiEntities],
-  entities => entities.databases ?? {},
-);
+const getNormalizedDatabases = (state: State) => state.entities.databases;
 
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
