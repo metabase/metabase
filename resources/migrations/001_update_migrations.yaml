@@ -7948,7 +7948,18 @@ databaseChangeLog:
 #
 # ADVICE:
 #
-# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - If you need data migration, do you really need to? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
+#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
+#    - Prefer SQL migrations over custom migrations.
+#    - Postgres and MySQL have their differences. Make sure your migration works on both.
+#    - Custom migrations demand a high level of reliability. They should only use code from the standard library. Requiring code
+#      from the Metabase codebase is a bad idea because it can change and break your migration.
+#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#
+# 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
@@ -7957,7 +7968,7 @@ databaseChangeLog:
 #       automatically and the migrations linter will check for the presence of rollback where required as
 #       much as possible.
 #
-# 2) Migration IDs should follow the format
+# 3) Migration IDs should follow the format
 #
 #    vMM.TIMESTAMP
 #
