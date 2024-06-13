@@ -50,11 +50,12 @@ export const calculateLegendRows = ({
   fontSize = DEFAULT_LEGEND_FONT_SIZE,
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
   isReversed,
-}: CalculateLegendInput): { items: PositionedLegendItem[]; height: number } => {
+}: CalculateLegendInput) => {
   if (items.length === 0) {
     return {
       items: [],
       height: 0,
+      width: 0,
     };
   }
 
@@ -112,10 +113,23 @@ export const calculateLegendRows = ({
     }
   }
 
+  const renderedWidth = Math.max(
+    ...rows.map(row =>
+      row.reduce(
+        (currRowWidth, item) =>
+          currRowWidth +
+          calculateItemWidth(item, fontSize, fontWeight) +
+          LEGEND_ITEM_MARGIN_RIGHT,
+        0,
+      ),
+    ),
+  );
+
   const height = rows.length * lineHeight + verticalPadding * 2;
 
   return {
     height,
+    width: renderedWidth,
     items: rows.flat(),
   };
 };
@@ -166,11 +180,12 @@ export const calculateLegendRowsWithColumns = ({
   fontSize = DEFAULT_LEGEND_FONT_SIZE,
   fontWeight = DEFAULT_LEGEND_FONT_WEIGHT,
   isReversed,
-}: CalculateLegendInput): { items: PositionedLegendItem[]; height: number } => {
+}: CalculateLegendInput) => {
   if (items.length === 0) {
     return {
       items: [],
       height: 0,
+      width: 0,
     };
   }
 
@@ -219,10 +234,20 @@ export const calculateLegendRowsWithColumns = ({
     }
   }
 
+  const lastColumnWidth = Math.max(
+    ...rows.map(row => {
+      if (row.length < numCols) {
+        return 0;
+      }
+      return calculateItemWidth(row[numCols - 1], fontSize, fontWeight);
+    }),
+  );
+  const renderedWidth = colWidth * (numCols - 1) + lastColumnWidth;
   const height = rows.length * lineHeight + verticalPadding * 2;
 
   return {
     height,
+    width: renderedWidth,
     items: rows.flat(),
   };
 };
