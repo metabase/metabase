@@ -247,8 +247,8 @@ export const getApiTables = createSelector(
     getFromGetCardQueryMetadata, // TODO: presence of this breaks the simple repro
     getFromGetXrayDashboardQueryMetadata,
     getFromGetDashboardQueryMetadata,
-    getFromListSegments,
-    getFromGetSegment,
+    getFromListSegments, // TODO: do we need cross-references?
+    getFromGetSegment, // TODO: do we need cross-references?
   ],
   zipEntitySources,
 );
