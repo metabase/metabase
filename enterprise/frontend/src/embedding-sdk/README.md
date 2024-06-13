@@ -256,6 +256,7 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
 - **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
+- **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 
@@ -296,7 +297,7 @@ With the Collection Browser, you can browse the items in your Metabase instance 
 - **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will start at the root `Our analytics` collection, which is ID = 0.
 - **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
 - **pageSize**: `number` – The number of items to display per page. The default is 25.
-- **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be visible. If not provided, all entities will be shown. 
+- **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be visible. If not provided, all entities will be shown.
 
 ```tsx
 import React from "react";
@@ -395,6 +396,24 @@ const theme = {
   },
 
   components: {
+    // Dashboard
+    dashboard: {
+      card: {
+        // Background color for all dashboard cards
+        backgroundColor: "#2D2D30",
+
+        // Apply a border color instead of shadow for dashboard cards.
+        // Unset by default.
+        border: "1px solid #EEECEC",
+      }
+    },
+
+    // Question
+    question: {
+      // Background color for all questions
+      backgroundColor: "#2D2D30",
+    },
+
     // Data table
     table: {
       cell: {
