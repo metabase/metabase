@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Alert from "metabase/core/components/Alert";
-import Link from "metabase/core/components/Link";
 import {
   Form,
   FormCheckbox,
@@ -259,12 +258,7 @@ export const ErrorExplanationModal = ({
       </Text>
       <Text my="md">
         {c("indicates an email address to which to send diagnostic information")
-          .jt`If the error persists, you can download diagnostic information to send to
-        ${(
-          <Link key="email" variant="brand" to="mailto:help@metabase.com">
-            {t`help@metabase.com`}
-          </Link>
-        )}`}
+          .jt`If the error persists, you can download diagnostic information`}
       </Text>
       <Flex justify="flex-end">
         <Button variant="filled" onClick={openDiagnosticModal}>
