@@ -83,15 +83,9 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
         expectGoodSnowplowEvent({
           event: "csv_upload_left_nav_clicked",
         });
-        if (testFile.valid) {
-          expectGoodSnowplowEvent({
-            event: "csv_upload_successful",
-          });
-        } else {
-          expectGoodSnowplowEvent({
-            event: "csv_upload_failed",
-          });
-        }
+        expectGoodSnowplowEvent({
+          event: testFile.valid ? "csv_upload_successful" : "csv_upload_failed",
+        });
       });
     });
   });
