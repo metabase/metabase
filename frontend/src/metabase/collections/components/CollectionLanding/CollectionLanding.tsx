@@ -23,7 +23,7 @@ const CollectionLanding = ({
   children,
 }: CollectionLandingProps) => {
   const dispatch = useDispatch();
-  const { data: trashCollection } = useGetCollectionQuery("trash");
+  const { data: trashCollection } = useGetCollectionQuery({ id: "trash" });
 
   const collectionId = extractCollectionId(slug);
 
