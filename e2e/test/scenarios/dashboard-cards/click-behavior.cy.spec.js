@@ -1246,7 +1246,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       })();
     });
 
-    it("should allow setting dashboard tab with parameter for a column", () => {
+    // replay browser crashing on this test consistently
+    it.skip("should allow setting dashboard tab with parameter for a column", () => {
       cy.createQuestion(TARGET_QUESTION);
 
       const dashboard = {
