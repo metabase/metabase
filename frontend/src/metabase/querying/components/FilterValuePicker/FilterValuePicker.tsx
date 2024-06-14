@@ -1,9 +1,8 @@
-import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetFieldValuesQuery } from "metabase/api";
+import { skipToken, useGetFieldValuesQuery } from "metabase/api";
 import { checkNotNull } from "metabase/lib/types";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
