@@ -74,17 +74,18 @@
                                           :dashcard dashcard
                                           :type     :card
                                           :result   (qp.dashboard/process-query-for-dashcard
-                                                     :dashboard-id  dashboard-id
-                                                     :card-id       card-id
-                                                     :dashcard-id   (u/the-id dashcard)
-                                                     :context       :dashboard-subscription
-                                                     :export-format :api
-                                                     :parameters    parameters
-                                                     :middleware    {:process-viz-settings? true
-                                                                     :js-int-to-string?     false}
-                                                     :run           (^:once fn* [query info]
-                                                                     (qp/process-query
-                                                                      (qp/userland-query-with-default-constraints query info))))})
+                                                      :dashboard-id  dashboard-id
+                                                      :card-id       card-id
+                                                      :dashcard-id   (u/the-id dashcard)
+                                                      :context       :dashboard-subscription
+                                                      :export-format :api
+                                                      :parameters    parameters
+                                                      :middleware    {:process-viz-settings? true
+                                                                      :js-int-to-string?     false}
+                                                      :make-run      (fn [qp _export-format]
+                                                                       (^:once fn* [query info]
+                                                                               (qp
+                                                                                 (qp/userland-query-with-default-constraints query info)))))})
           result                       (result-fn card-id)
           series-results               (map (comp result-fn :id) multi-cards)]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
