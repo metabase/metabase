@@ -12,6 +12,7 @@ import {
   sidebar,
   entityPickerModal,
   modal,
+  openNavigationSidebar,
   navigationSidebar,
   restore,
   entityPickerModalTab,
@@ -624,6 +625,53 @@ describe("scenarios > collections > trash", () => {
       cy.findByText(CURATEABLE_NAME).should("be.visible");
     });
   });
+
+  it("should highlight the trash in the navbar when viewing root trash collection or an entity in the trash", () => {
+    createCollection({ name: "Collection A" }, true).as("collection");
+    createDashboard({ name: "Dashboard A" }, true).as("dashboard");
+    createNativeQuestion(
+      {
+        name: "Question A",
+        native: { query: "select 1;" },
+      },
+      true,
+    ).as("question");
+
+    cy.log("Make sure trash is selected for root trash collection");
+    cy.visit("/trash");
+    assertTrashSelectinInNavigationSidebar();
+
+    cy.log("Make sure trash is selected for a trashed collection");
+    cy.get("@collection").then(collection => {
+      cy.intercept("GET", `/api/collection/${collection.id}`).as(
+        "getCollection",
+      );
+      cy.visit(`/collection/${collection.id}-collection-a`);
+      cy.wait("@getCollection");
+      assertTrashSelectinInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed dashboard");
+    cy.get("@dashboard").then(dashboard => {
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
+      cy.visit(`/dashboard/${dashboard.id}-dashboard-a`);
+      cy.wait("@getDashboard");
+      openNavigationSidebar();
+      assertTrashSelectinInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed question");
+    cy.get("@question").then(question => {
+      cy.log(question.id);
+      cy.intercept("POST", `/api/card/${question.id}/query`).as(
+        "getQuestionResult",
+      );
+      cy.visit(`/question/${question.id}-question-a`);
+      cy.wait("@getQuestionResult");
+      openNavigationSidebar();
+      assertTrashSelectinInNavigationSidebar();
+    });
+  });
 });
 
 function toggleEllipsisMenuFor(item) {
@@ -700,4 +748,12 @@ function selectItem(name) {
   cy.findByText(name)
     .closest("tr")
     .within(() => cy.findByRole("checkbox").click());
+}
+
+function assertTrashSelectinInNavigationSidebar() {
+  navigationSidebar().within(() => {
+    cy.findByText("Trash")
+      .parents("li")
+      .should("have.attr", "aria-selected", "true");
+  });
 }

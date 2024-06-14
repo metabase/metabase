@@ -4,17 +4,18 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { useQuestionQuery } from "metabase/common/hooks";
+import { useCollectionQuery, useQuestionQuery } from "metabase/common/hooks";
 import { getDashboard } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type Question from "metabase-lib/v1/Question";
-import type { Dashboard } from "metabase-types/api";
+import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
 import getSelectedItems, {
+  isCollectionPath,
   isModelPath,
   isQuestionPath,
 } from "./getSelectedItems";
@@ -31,6 +32,7 @@ interface EntityLoaderProps {
 interface StateProps {
   dashboard?: Dashboard;
   questionId?: number;
+  collectionId?: CollectionId;
 }
 
 interface DispatchProps extends MainNavbarDispatchProps {
@@ -50,6 +52,7 @@ function mapStateToProps(state: State, props: MainNavbarOwnProps) {
     dashboard: getDashboard(state),
 
     questionId: maybeGetQuestionId(state, props),
+    collectionId: maybeGetCollectionId(state, props),
   };
 }
 
@@ -64,6 +67,7 @@ function MainNavbar({
   location,
   params,
   questionId,
+  collectionId,
   dashboard,
   openNavbar,
   closeNavbar,
@@ -72,6 +76,10 @@ function MainNavbar({
 }: Props) {
   const { data: question } = useQuestionQuery({
     id: questionId,
+  });
+
+  const { data: collection } = useCollectionQuery({
+    id: collectionId,
   });
 
   useEffect(() => {
@@ -97,9 +105,10 @@ function MainNavbar({
         pathname: location.pathname,
         params,
         question,
+        collection,
         dashboard,
       }),
-    [location, params, question, dashboard],
+    [location, params, question, dashboard, collection],
   );
 
   return (
@@ -131,6 +140,15 @@ function maybeGetQuestionId(
 ) {
   const { pathname } = location;
   const canFetchQuestion = isQuestionPath(pathname) || isModelPath(pathname);
+  return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+}
+
+function maybeGetCollectionId(
+  state: State,
+  { location, params }: MainNavbarOwnProps,
+) {
+  const { pathname } = location;
+  const canFetchQuestion = isCollectionPath(pathname);
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 

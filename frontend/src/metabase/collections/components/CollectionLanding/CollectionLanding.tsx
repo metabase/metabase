@@ -29,11 +29,12 @@ const CollectionLanding = ({
 
   useEffect(
     function redirectIfTrashCollection() {
-      if (trashCollection?.id === collectionId) {
+      // redirect /collection/trash and /collection/<trash-collection-id> to /trash
+      if (slug === "trash" || trashCollection?.id === collectionId) {
         dispatch(replace("/trash"));
       }
     },
-    [dispatch, trashCollection?.id, collectionId],
+    [dispatch, slug, trashCollection?.id, collectionId],
   );
 
   if (!isNotNull(collectionId)) {
