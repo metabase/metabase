@@ -47,7 +47,10 @@ export default class BarChart extends LineAreaBarChart {
 
   static onDisplayUpdate = settings => {
     if (settings["stackable.stack_display"]) {
-      settings["stackable.stack_display"] = "bar";
+      return {
+        ...settings,
+        "stackable.stack_display": "bar",
+      };
     }
     return settings;
   };
