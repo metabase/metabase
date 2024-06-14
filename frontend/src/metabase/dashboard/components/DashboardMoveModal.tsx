@@ -66,7 +66,7 @@ const DashboardMoveToast = ({
       .jt`Dashboard moved to ${(
       <Collection.Link
         id={collectionId}
-        style={{ marginInlineStart: "0.25rem" }}
+        style={{ marginInlineStart: ".25em" }}
         color={color("brand")}
       />
     )}`}
