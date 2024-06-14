@@ -2,12 +2,17 @@ import { useState } from "react";
 
 import { useSearchQuery } from "metabase/api";
 import { Card, Input, Tabs } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
 
 import { VisualizerMetricsList } from "./VisualizerMetricsList";
 import { VisualizerModelsList } from "./VisualizerModelsList";
 import { VisualizerRecentsList } from "./VisualizerRecentsList";
 
-export function VisualizerMenu() {
+export function VisualizerMenu({
+  setUsed,
+}: {
+  setUsed: (used: SearchResult) => void;
+}) {
   const [searchQuery, setSearchQuery] = useState<string>();
   const { data: searchResults } = useSearchQuery({
     q: searchQuery,
@@ -37,10 +42,10 @@ export function VisualizerMenu() {
               <VisualizerMetricsList />
             </Tabs.Panel>
             <Tabs.Panel value="models">
-              <VisualizerModelsList />
+              <VisualizerModelsList onClick={setUsed} />
             </Tabs.Panel>
             <Tabs.Panel value="recents">
-              <VisualizerRecentsList />
+              <VisualizerRecentsList onClick={setUsed} />
             </Tabs.Panel>
           </Tabs>
         </>
