@@ -5,21 +5,21 @@ const FIXTURE_PATH = "../../e2e/support/assets";
 export const VALID_CSV_FILES = [
   {
     valid: true,
-    fileName: `${FIXTURE_PATH}/dog_breeds.csv`,
+    fileName: "dog_breeds.csv",
     tableName: "dog_breeds",
     humanName: "Dog Breeds",
     rowCount: 97,
   },
   {
     valid: true,
-    fileName: `${FIXTURE_PATH}/star_wars_characters.csv`,
+    fileName: "star_wars_characters.csv",
     tableName: "star_wars_characters",
     humanName: "Star Wars Characters",
     rowCount: 87,
   },
   {
     valid: true,
-    fileName: `${FIXTURE_PATH}/pokedex.tsv`,
+    fileName: "pokedex.tsv",
     tableName: "pokedex",
     humanName: "Pokedex",
     rowCount: 202,
@@ -29,7 +29,7 @@ export const VALID_CSV_FILES = [
 export const INVALID_CSV_FILES = [
   {
     valid: false,
-    fileName: `${FIXTURE_PATH}/invalid.csv`,
+    fileName: "invalid.csv",
   },
 ];
 
@@ -48,7 +48,7 @@ export function enableUploads(dialect) {
 }
 
 export function uploadFile(inputId, collectionName, testFile) {
-  cy.fixture(testFile.fileName).then(file => {
+  cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
     cy.get(inputId).selectFile(
       {
         contents: Cypress.Buffer.from(file),
