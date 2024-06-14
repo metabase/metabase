@@ -28,8 +28,6 @@ export const getPlan = (features?: TokenFeatures | null): Plan => {
     if (features.hosting) {
       return features.attached_dwh ? "starter-with-dwh" : "starter";
     }
-
-    return "oss";
   }
 
   if (features.hosting) {
