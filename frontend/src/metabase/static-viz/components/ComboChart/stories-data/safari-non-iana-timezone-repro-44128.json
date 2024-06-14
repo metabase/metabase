@@ -167,7 +167,7 @@
         "query": "SELECT CURRENT_DATE, 10 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+1, 20 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+2, 5 AS VALUE FROM DUAL"
       },
       "format-rows?": true,
-      "results_timezone": "+01:00",
+      "results_timezone": "+01:15",
       "results_metadata": {
         "columns": [
           {

@@ -2,7 +2,6 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
 
-import { getIanaTimezone } from "metabase/lib/time";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
 import type {
@@ -250,10 +249,28 @@ export function getLargestInterval(intervals: TimeSeriesInterval[]) {
   });
 }
 
+const isTimezoneInOffsetFormat = (timezone: string) => {
+  const offsetPattern = /^[+-]\d{2}:\d{2}$/;
+  return offsetPattern.test(timezone);
+};
+
+const parseOffsetMinutes = (offsetString: string) => {
+  const offsetSign = offsetString[0];
+  const offsetHours = parseInt(offsetString.substring(1, 3));
+  const offsetMinutes = parseInt(offsetString.substring(4, 6));
+  const totalOffsetMinutes =
+    (offsetHours * 60 + offsetMinutes) * (offsetSign === "+" ? 1 : -1);
+
+  return totalOffsetMinutes;
+};
+
 // We should always have results_timezone, but just in case we fallback to UTC
 export const DEFAULT_TIMEZONE = "Etc/UTC";
 
-export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
+export function getTimezoneOrOffset(
+  series: RawSeries,
+  showWarning?: ShowWarning,
+): { timezone?: string; offsetMinutes?: number } {
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
     new Set(series.map(s => s.data.results_timezone)),
@@ -269,5 +286,15 @@ export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
     );
   }
 
-  return getIanaTimezone(results_timezone || DEFAULT_TIMEZONE);
+  const offsetMinutes =
+    results_timezone != null && isTimezoneInOffsetFormat(results_timezone)
+      ? parseOffsetMinutes(results_timezone)
+      : undefined;
+  const timezone =
+    offsetMinutes == null ? results_timezone || DEFAULT_TIMEZONE : undefined;
+
+  return {
+    timezone,
+    offsetMinutes,
+  };
 }
