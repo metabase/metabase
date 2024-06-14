@@ -8,21 +8,25 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getFontFiles } from "metabase/styled-components/selectors";
+import { useThemeSpecificSelectors } from "metabase/styled-components/theme/theme";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import type { FontFile } from "metabase-types/api";
 
 interface SdkContentWrapperProps {
   baseUrl?: string;
 }
+
 export function SdkContentWrapper({
   baseUrl,
   ...divProps
 }: SdkContentWrapperProps & HTMLAttributes<HTMLDivElement>) {
   const fontFiles = useSelector(getFontFiles);
+  const themeSpecificSelectors = useThemeSpecificSelectors();
   return (
     <SdkContentWrapperInner
       baseUrl={baseUrl}
       fontFiles={fontFiles}
+      themeSpecificSelectors={themeSpecificSelectors}
       {...divProps}
     />
   );
@@ -31,6 +35,7 @@ export function SdkContentWrapper({
 const SdkContentWrapperInner = styled.div<
   SdkContentWrapperProps & {
     fontFiles: FontFile[] | null;
+    themeSpecificSelectors: string;
   }
 >`
   --mb-default-font-family: "${({ theme }) => theme.fontFamily}";
@@ -73,12 +78,7 @@ const SdkContentWrapperInner = styled.div<
     These CSS variables are not part of the core design system colors.
     Do NOT add them to [palette.ts] and [colors.ts].
   */
-  --mb-color-bg-dashboard: ${({ theme }) =>
-    theme.other.dashboard.backgroundColor};
-  --mb-color-bg-dashboard-card: ${({ theme }) =>
-    theme.other.dashboard.card.backgroundColor};
-  --mb-color-bg-question: ${({ theme }) =>
-    theme.other.question.backgroundColor};
+  ${({ themeSpecificSelectors }) => themeSpecificSelectors}
 
   font-size: ${({ theme }) => theme.other.fontSize};
 

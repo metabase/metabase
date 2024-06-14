@@ -90,6 +90,34 @@ jobs:
 
           return versions;
 
+  publish-start-message:
+    runs-on: ubuntu-22.04
+    needs: [check-version]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send publish start message
+        uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendPublishStartMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendPublishStartMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+            }).catch(console.error);
+
+
   download-uberjar:
     needs: check-version
     runs-on: ubuntu-22.04
@@ -500,6 +528,42 @@ jobs:
               }
             });
 
+  trigger-cloud-issues:
+    needs: push-tags
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ vars.OPS_REPO }}',
+              event_type: 'create-release-issues',
+              client_payload: {
+                version: '${{ inputs.version }}'
+              }
+            });
+
+  trigger-ee-extra-pr:
+    needs: verify-s3-download
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: | # js
+            github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'metabase-ee-extra',
+              event_type: 'update-ee-extra-build',
+              client_payload: {
+                version: '${{ inputs.version }}'
+              }
+            });
+
   draft-release-notes:
     if: ${{ inputs.skip-release-notes != true }}
     needs: push-tags
@@ -610,6 +674,34 @@ jobs:
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
+
+  publish-complete-message:
+    runs-on: ubuntu-22.04
+    needs: [draft-release-notes, verify-docker-pull, verify-s3-download, publish-version-info]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send publish complete message
+        uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendPublishCompleteMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              generalChannelName: 'general',
+            }).catch(console.error);
 
   manage-milestones:
     permissions: write-all

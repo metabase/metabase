@@ -11,7 +11,7 @@ import type {
 import {
   ExpandButton,
   PathContainer,
-  PathSeparator,
+  BreadcrumbsPathSeparator,
 } from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
 
@@ -37,6 +37,8 @@ export const CollectionBreadcrumbs = ({
     collection,
   });
 
+  const separator = <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>;
+
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
@@ -45,7 +47,7 @@ export const CollectionBreadcrumbs = ({
           isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
         <ExpandButton
           small
           borderless
@@ -53,7 +55,7 @@ export const CollectionBreadcrumbs = ({
           onlyIcon
           onClick={toggle}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
       </>
     ) : (
       parts.map(collection => (
@@ -63,7 +65,7 @@ export const CollectionBreadcrumbs = ({
             isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
-          <PathSeparator>/</PathSeparator>
+          {separator}
         </Fragment>
       ))
     );

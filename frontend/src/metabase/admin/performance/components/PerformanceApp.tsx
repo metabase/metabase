@@ -1,7 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
@@ -15,10 +17,13 @@ const validTabIds = new Set(Object.values(PerformanceTabId).map(String));
 const isValidTabId = (tab: TabsValue): tab is PerformanceTabId =>
   !!tab && validTabIds.has(tab);
 
-export const PerformanceApp = ({ route }: { route: Route }) => {
-  const [tabId, setTabId] = useState<PerformanceTabId>(
-    PerformanceTabId.DataCachingSettings,
-  );
+export const PerformanceApp = ({
+  tabId = PerformanceTabId.Databases,
+  route,
+}: {
+  tabId: PerformanceTabId;
+  route: Route;
+}) => {
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -39,12 +44,20 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
     };
   }, [tabsRef, setTabsHeight]);
 
+  const dispatch = useDispatch();
+
   return (
     <Tabs
       value={tabId}
       onTabChange={value => {
         if (isValidTabId(value)) {
-          setTabId(value);
+          dispatch(
+            push(
+              `/admin/performance/${
+                value === PerformanceTabId.Databases ? "" : value
+              }`,
+            ),
+          );
         } else {
           console.error("Invalid tab value", value);
         }
@@ -56,22 +69,22 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
     >
       <TabsList>
         <Tab
-          key={PerformanceTabId.DataCachingSettings}
-          value={PerformanceTabId.DataCachingSettings}
+          key={PerformanceTabId.Databases}
+          value={PerformanceTabId.Databases}
         >
           {t`Database caching settings`}
         </Tab>
-        <Tab key="ModelPersistence" value={PerformanceTabId.ModelPersistence}>
+        <Tab key={PerformanceTabId.Models} value={PerformanceTabId.Models}>
           {t`Model persistence`}
         </Tab>
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
-        {tabId === PerformanceTabId.DataCachingSettings && (
+        {tabId === PerformanceTabId.Databases && (
           <Flex style={{ flex: 1, overflow: "hidden" }} bg="bg-light" h="100%">
             <StrategyEditorForDatabases route={route} />
           </Flex>
         )}
-        {tabId === PerformanceTabId.ModelPersistence && (
+        {tabId === PerformanceTabId.Models && (
           <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
             <ModelPersistenceConfiguration />
           </Flex>

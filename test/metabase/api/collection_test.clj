@@ -76,6 +76,7 @@
                  :authority_level     nil
                  :is_personal         false
                  :id                  "root"
+                 :can_restore         false
                  :can_delete          false}
                 (assoc (into {:is_personal false} collection) :can_write true :can_delete false)]
                (filter #(#{(:id collection) "root"} (:id %))
@@ -640,6 +641,7 @@
                 [{:collection_id       (:id collection)
                   :can_write           true
                   :can_delete          false
+                  :can_restore         false
                   :id                  card-id
                   :archived            false
                   :location            nil
@@ -667,6 +669,16 @@
               (filter (fn [item]
                         (= (:id item) (:id card))))
               first))))))
+
+(deftest collection-items-returns-collections-with-correct-collection-id-test
+  (testing "GET /api/collection/:id/items?model=collection"
+    (testing "check that the ID and collection_id don't match"
+      (t2.with-temp/with-temp [:model/Collection parent {}
+                               :model/Collection child {:location (collection/children-location parent)}]
+        (is (= {:id (:id child)
+                :collection_id (:id parent)}
+               (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?model=collection"))))
+                            [:id :collection_id])))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -1423,6 +1435,7 @@
       (is (= {:name                "Our analytics"
               :id                  "root"
               :can_write           true
+              :can_restore         false
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil

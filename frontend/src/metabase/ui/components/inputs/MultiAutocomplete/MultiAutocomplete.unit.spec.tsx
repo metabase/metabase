@@ -282,4 +282,17 @@ describe("MultiAutocomplete", () => {
     expect(onChange).toHaveBeenLastCalledWith(["כּטץ", "ףקמ"]);
     expect(input).toHaveValue("");
   });
+
+  it("should be possible to customize what values get filtered", async () => {
+    const { input } = setup({
+      data: EXAMPLE_DATA,
+      filter: (_query, _selected, item) => !item.label?.endsWith(")"),
+    });
+
+    await userEvent.type(input, "Ba", {
+      pointerEventsCheck: 0,
+    });
+
+    expect(screen.queryByText("Bar (2)")).not.toBeInTheDocument();
+  });
 });

@@ -753,8 +753,9 @@
                           (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
-       (map #(api/present-in-trash-if-archived-directly % (collection/trash-collection-id)))
        (map remove-unwanted-keys)
+       ;; the collection these are presented "in" is the ID of the collection we're getting `/items` on.
+       (map #(assoc % :collection_id (:id collection)))
        (sort-by (comp ::index meta))))
 
 (defn- select-name
