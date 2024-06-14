@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
+   [metabase-enterprise.scim.v2.api :as scim-api]
    [metabase.http-client :as client]
    [metabase.test :as mt]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (def ^:private scim-api-key
@@ -42,3 +44,33 @@
               :emails   [{:value "rasta@metabase.com"}]
               :active   true}
              (scim-client :get 200 (format "ee/scim/v2/Users/%d" (mt/user->id :rasta))))))))
+
+(deftest list-users-test
+  (mt/with-premium-features #{:scim}
+    (testing "Fetch users with default pagination"
+      (let [response (scim-client :get 200 "ee/scim/v2/Users")]
+        (is (malli= scim-api/SCIMUserList response))))
+
+    (testing "Fetch users with custom pagination"
+      (let [response (scim-client :get 200 (format "ee/scim/v2/Users?startIndex=%d&count=%d" 1 2))]
+        (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
+        (is (integer? (get response :totalResults)))
+        (is (= 1 (get response :startIndex)))
+        (is (= 2 (get response :itemsPerPage)))
+        (is (= 2 (count (get response :Resources))))))
+
+    (testing "Fetch user by email"
+      (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
+                                                   (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
+        (is (malli= scim-api/SCIMUserList response))
+        (is (= 1 (count (get response :Resources))))))
+
+    (testing "Fetch non-existant user by email"
+      (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
+                                                   (codec/url-encode "userName eq \"newuser@metabase.com\"")))]
+        (is (malli= scim-api/SCIMUserList response))
+        (is (= 0 (count (get response :Resources))))))
+
+    (testing "Error if unsupported filter operation is provided"
+      (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
+                                    (codec/url-encode "id ne \"newuser@metabase.com\""))))))
