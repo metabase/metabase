@@ -6,6 +6,7 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { useThemeSpecificSelectors } from "metabase/styled-components/theme/theme";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -13,6 +14,8 @@ import { getFont, getFontFiles } from "../../selectors";
 export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
+
+  const themeSpecificSelectors = useThemeSpecificSelectors();
 
   const sitePath = getSitePath();
 
@@ -43,12 +46,7 @@ export const GlobalStyles = (): JSX.Element => {
       --mb-color-text-white: ${color("text-white")};
       --mb-color-warning: ${color("warning")};
 
-      /*
-        Theming-specific CSS variables.
-        These CSS variables are not part of the core design system colors.
-      **/
-      --mb-color-bg-dashboard: var(--mb-color-bg-white);
-      --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
+      ${themeSpecificSelectors}
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}

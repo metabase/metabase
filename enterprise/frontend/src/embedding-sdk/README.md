@@ -453,6 +453,17 @@ const theme = {
         backgroundColor: "#95A5A6",
       },
     },
+    
+    collectionBrowser: {
+       breadcrumbs: {
+         expandButton: {
+           textColor: "#8118F4";
+           backgroundColor: "#767D7C";
+           hoverTextColor: "#CE8C8C";
+           hoverBackgroundColor: "#69264B";
+         };
+       };
+     };
   },
 };
 ```
