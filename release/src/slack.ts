@@ -241,7 +241,6 @@ export async function sendPreReleaseMessage({
   userName: string,
 }) {
   const title = getReleaseTitle(version);
-  const space = "\n";
 
   const milestone = await findMilestone({ version, github, owner, repo });
   console.log("Milestone", milestone);
@@ -266,10 +265,7 @@ export async function sendPreReleaseMessage({
     userName ? `started by ${mentionUserByGithubLogin(userName)}` : null
   ].filter(Boolean).join(" - ");
 
-  const message = [
-    title,
-    preReleaseMessage,
-  ].join(space);
+  const message = `${title}\n${preReleaseMessage}`;
 
   await sendSlackMessage({ message, channelName });
 }
