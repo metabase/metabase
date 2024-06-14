@@ -50,8 +50,8 @@
    :name     {:givenName  (:first_name user)
               :familyName (:last_name user)}
    :emails   [{:value (:email user)}]
-   :active   (:is_active user)
-   :groups   {}})
+   :active   (:is_active user)})
+   ; :groups   {}})
 
 (def ^:private user-cols
   [:id :first_name :last_name :email :is_active :entity_id])
