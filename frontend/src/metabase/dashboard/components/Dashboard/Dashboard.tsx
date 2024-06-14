@@ -408,6 +408,9 @@ function DashboardInner(props: DashboardProps) {
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
+        // downloads are always enabled on internal dashboards
+        // you will still need to have permissions to download the data
+        downloadsEnabled={true}
       />
     );
   };

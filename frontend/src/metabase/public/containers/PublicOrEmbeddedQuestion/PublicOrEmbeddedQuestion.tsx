@@ -9,6 +9,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
+import { PLUGIN_DOWNLOADS_ENABLED } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -55,6 +56,8 @@ export const PublicOrEmbeddedQuestion = ({
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
+
+  const downloadsEnabled = PLUGIN_DOWNLOADS_ENABLED.areDownloadsEnabled();
 
   useMount(async () => {
     if (uuid) {
@@ -175,15 +178,16 @@ export const PublicOrEmbeddedQuestion = ({
 
   const question = new Question(card, metadata);
 
-  const actionButtons = result && (
-    <QueryDownloadWidget
-      className={cx(CS.m1, CS.textMediumHover)}
-      question={question}
-      result={result}
-      uuid={uuid}
-      token={token}
-    />
-  );
+  const actionButtons =
+    result && downloadsEnabled ? (
+      <QueryDownloadWidget
+        className={cx(CS.m1, CS.textMediumHover)}
+        question={question}
+        result={result}
+        uuid={uuid}
+        token={token}
+      />
+    ) : null;
 
   const { bordered, hide_download_button, hide_parameters, theme, titled } =
     useEmbedFrameOptions({ location });

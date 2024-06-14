@@ -140,6 +140,7 @@ type OwnProps = {
   // public dashboard passes it as noop
   navigateToNewCardFromDashboard?: () => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
+  downloadsEnabled: boolean;
 };
 
 type DashboardGridProps = OwnProps &
@@ -478,10 +479,12 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       isMobile,
       gridItemWidth,
       totalNumGridCols,
+      downloadsEnabled,
     }: {
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
+      downloadsEnabled: boolean;
     },
   ) {
     return (
@@ -515,6 +518,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
+        downloadsEnabled={downloadsEnabled}
       />
     );
   }
@@ -563,6 +567,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           isMobile: breakpoint === "mobile",
           gridItemWidth,
           totalNumGridCols,
+          downloadsEnabled: this.props.downloadsEnabled,
         })}
       </DashboardCardContainer>
     );

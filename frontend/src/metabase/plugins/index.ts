@@ -480,3 +480,7 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
 export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
 };
+
+export const PLUGIN_DOWNLOADS_ENABLED = {
+  areDownloadsEnabled: () => true,
+};

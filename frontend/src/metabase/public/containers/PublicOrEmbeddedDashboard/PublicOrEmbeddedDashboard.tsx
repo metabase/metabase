@@ -41,6 +41,7 @@ import { isActionDashCard } from "metabase/dashboard/utils";
 import title from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import { PLUGIN_DOWNLOADS_ENABLED } from "metabase/plugins";
 import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicOrEmbeddedDashboard/WithPublicDashboardEndpoints";
 import { setErrorPage } from "metabase/redux/app";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -223,6 +224,8 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       dashcard => !isActionDashCard(dashcard),
     );
 
+    const downloadsEnabled = PLUGIN_DOWNLOADS_ENABLED.areDownloadsEnabled();
+
     return (
       <EmbedFrame
         name={dashboard && dashboard.name}
@@ -275,6 +278,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   isNightMode={isNightMode}
                   clickBehaviorSidebarDashcard={null}
                   width={0}
+                  downloadsEnabled={downloadsEnabled}
                 />
               </DashboardContainer>
             ) : null

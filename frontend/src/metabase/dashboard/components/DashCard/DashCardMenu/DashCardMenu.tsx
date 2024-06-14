@@ -33,6 +33,7 @@ interface OwnProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
+  downloadsEnabled: boolean;
 }
 
 interface TriggerProps {
@@ -61,13 +62,13 @@ const DashCardMenu = ({
   token,
   onEditQuestion,
   onDownloadResults,
+  downloadsEnabled,
 }: DashCardMenuProps) => {
   const store = useStore();
 
   const [{ loading }, handleDownload] = useAsyncFn(
     async (opts: { type: string; enableFormatting: boolean }) => {
       const params = getParameterValuesBySlugMap(store.getState());
-
       await onDownloadResults({
         ...opts,
         question,
@@ -97,21 +98,34 @@ const DashCardMenu = ({
   );
 
   const menuItems = useMemo(
-    () => [
-      canEditQuestion(question) && {
-        title: `Edit question`,
-        icon: "pencil",
-        action: () => onEditQuestion(question),
-      },
-      canDownloadResults(result) && {
-        title: loading ? t`Downloading…` : t`Download results`,
-        icon: "download",
-        disabled: loading,
-        content: handleMenuContent,
-      },
+    () =>
+      [
+        canEditQuestion(question) && {
+          title: `Edit question`,
+          icon: "pencil",
+          action: () => onEditQuestion(question),
+        },
+        downloadsEnabled &&
+          canDownloadResults(result) && {
+            title: loading ? t`Downloading…` : t`Download results`,
+            icon: "download",
+            disabled: loading,
+            content: handleMenuContent,
+          },
+      ].filter(Boolean),
+    [
+      question,
+      result,
+      loading,
+      handleMenuContent,
+      onEditQuestion,
+      downloadsEnabled,
     ],
-    [question, result, loading, handleMenuContent, onEditQuestion],
   );
+
+  if (menuItems.length === 0) {
+    return null;
+  }
 
   return (
     <CardMenuRoot
@@ -133,7 +147,6 @@ interface QueryDownloadWidgetOpts {
   question: Question;
   result?: Dataset;
   isXray?: boolean;
-  isEmbed: boolean;
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
@@ -155,7 +168,6 @@ DashCardMenu.shouldRender = ({
   question,
   result,
   isXray,
-  isEmbed,
   isPublicOrEmbedded,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
@@ -165,12 +177,11 @@ DashCardMenu.shouldRender = ({
     question.datasetQuery(),
   );
 
-  if (isEmbed) {
-    return isEmbed;
+  if (isPublicOrEmbedded) {
+    return isPublicOrEmbedded;
   }
   return (
     !isInternalQuery &&
-    !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))
