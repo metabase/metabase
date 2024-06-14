@@ -44,8 +44,7 @@ import {
   ModalErrorMessage,
   ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
-
-const NEW_LINE = "\n";
+import { getValuesText, getStaticValues } from "./utils";
 
 interface ModalOwnProps {
   parameter: UiParameter;
@@ -409,19 +408,8 @@ const ListSourceModal = ({
   );
 };
 
-const getValuesText = (values: string[] = []) => {
-  return values.join(NEW_LINE);
-};
-
 const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
-};
-
-const getStaticValues = (value: string) => {
-  return value
-    .split(NEW_LINE)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
