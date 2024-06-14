@@ -1,21 +1,26 @@
 import { useEffect, useState } from "react";
 
+import type { SdkClickActionPluginsConfig } from "embedding-sdk";
 import { InteractiveQuestionResult } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestionResult";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { initializeQBRaw } from "metabase/query_builder/actions";
 import { getQueryResults } from "metabase/query_builder/selectors";
 
 interface InteractiveAdHocQuestionProps {
-  questionUrl: string;
+  questionPath: string;
   onNavigateBack: () => void;
 
   withTitle?: boolean;
+  height?: number;
+  plugins?: SdkClickActionPluginsConfig;
 }
 
 export const InteractiveAdHocQuestion = ({
-  questionUrl,
+  questionPath,
   onNavigateBack,
-  withTitle,
+  withTitle = true,
+  height,
+  plugins,
 }: InteractiveAdHocQuestionProps) => {
   const dispatch = useDispatch();
 
@@ -39,8 +44,8 @@ export const InteractiveAdHocQuestion = ({
   };
 
   useEffect(() => {
-    loadQuestion(dispatch, questionUrl);
-  }, [dispatch, questionUrl]);
+    loadQuestion(dispatch, questionPath);
+  }, [dispatch, questionPath]);
 
   useEffect(() => {
     if (queryResults) {
@@ -52,8 +57,8 @@ export const InteractiveAdHocQuestion = ({
     <InteractiveQuestionResult
       isQuestionLoading={isQuestionLoading}
       onNavigateBack={onNavigateBack}
-      // height={height}
-      // componentPlugins={plugins}
+      height={height}
+      componentPlugins={plugins}
       withResetButton
       onResetButtonClick={onNavigateBack}
       withTitle={withTitle}
@@ -61,8 +66,10 @@ export const InteractiveAdHocQuestion = ({
   );
 };
 
-const getQuestionParameters = (questionUrl: string) => {
-  const url = new URL(`http://metabase.com${questionUrl}`);
+const getQuestionParameters = (questionPath: string) => {
+  const url = new URL(`http://metabase.com${questionPath}`);
+  const pathSections = questionPath.split("/").slice(1); // remove first empty section
+  const entityId = pathSections.length > 1 ? pathSections[1] : null;
 
   return {
     location: {
@@ -70,6 +77,6 @@ const getQuestionParameters = (questionUrl: string) => {
       hash: url.hash,
       pathname: url.pathname,
     },
-    params: {},
+    params: entityId ? { slug: entityId } : {},
   };
 };

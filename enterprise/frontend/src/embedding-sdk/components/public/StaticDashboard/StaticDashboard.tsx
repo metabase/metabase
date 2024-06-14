@@ -2,6 +2,8 @@ import type { Query } from "history";
 import { pick } from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import CS from "metabase/css/core/index.css";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   DEFAULT_EMBED_DISPLAY_OPTIONS,
   useDashboardFullscreen,
@@ -23,7 +25,9 @@ export type StaticDashboardProps = {
   withDownloads?: boolean;
   hiddenParameters?: string[];
 
-  navigateToNewCardFromDashboard?: (params: any) => void; // TODO: should not be part of publicly exposed api
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void; // TODO: should not be part of publicly exposed api
 };
 
 const _StaticDashboard = ({
@@ -65,7 +69,7 @@ const _StaticDashboard = ({
   const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" ref={ref} style={{ overflow: "auto" }}>
+    <Box w="100%" ref={ref} className={CS.overflowAuto}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}

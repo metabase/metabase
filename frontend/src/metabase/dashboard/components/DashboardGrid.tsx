@@ -17,6 +17,7 @@ import Modal from "metabase/components/Modal";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   isQuestionDashCard,
   getVisibleCardIds,
@@ -139,7 +140,9 @@ type OwnProps = {
   // public dashboard passes it explicitly
   width?: number;
   // public dashboard passes it as noop
-  navigateToNewCardFromDashboard?: () => void;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
 };
 

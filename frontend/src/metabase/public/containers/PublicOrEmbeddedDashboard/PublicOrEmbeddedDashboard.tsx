@@ -1,8 +1,7 @@
 import cx from "classnames";
 import type { Query } from "history";
 import { assoc } from "icepick";
-import type { ComponentType } from "react";
-import { Component } from "react";
+import { type ComponentType, Component } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -19,6 +18,8 @@ import {
   setParameterValue,
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
@@ -45,7 +46,7 @@ import { WithPublicDashboardEndpoints } from "metabase/public/containers/PublicO
 import { setErrorPage } from "metabase/redux/app";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
@@ -81,7 +82,9 @@ type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
-  navigateToNewCardFromDashboard?: () => void; // TODO: should not be part of publicly exposed api
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void; // TODO: should not be part of publicly exposed api
 };
 
 type DisplayProps = Pick<
@@ -205,6 +208,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       hideDownloadButton,
       hideParameters,
       navigateToNewCardFromDashboard,
+      selectedTabId,
     } = this.props;
 
     const buttons = !isWithinIframe()
@@ -225,6 +229,13 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
     const visibleDashcards = (dashboard?.dashcards ?? []).filter(
       dashcard => !isActionDashCard(dashcard),
     );
+
+    const dashboardHasCards = dashboard && visibleDashcards.length > 0;
+
+    const tabHasCards =
+      visibleDashcards.filter(
+        (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
+      ).length > 0;
 
     return (
       <EmbedFrame
@@ -262,8 +273,20 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
           })}
           loading={!dashboard}
         >
-          {() =>
-            dashboard ? (
+          {() => {
+            if (!dashboard) {
+              return null;
+            }
+
+            if (!dashboardHasCards || !tabHasCards) {
+              return (
+                <DashboardEmptyStateWithoutAddPrompt
+                  isNightMode={isNightMode}
+                />
+              );
+            }
+
+            return (
               <DashboardContainer>
                 <DashboardGridConnected
                   dashboard={assoc(dashboard, "dashcards", visibleDashcards)}
@@ -273,7 +296,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                       ? EmbeddingSdkMode
                       : PublicMode
                   }
-                  selectedTabId={this.props.selectedTabId}
+                  selectedTabId={selectedTabId}
                   slowCards={this.props.slowCards}
                   isEditing={false}
                   isEditingParameter={false}
@@ -287,8 +310,8 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   width={0}
                 />
               </DashboardContainer>
-            ) : null
-          }
+            );
+          }}
         </LoadingAndErrorWrapper>
       </EmbedFrame>
     );
