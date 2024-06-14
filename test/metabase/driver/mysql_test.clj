@@ -356,8 +356,8 @@
 
 (defn- create-enums-table! [db]
   (let [spec (sql-jdbc.conn/connection-details->spec :mysql (:details db))]
-    (doseq [sql ["CREATE TABLE birds (name VARCHAR(50) PRIMARY KEY, bird_type ENUM('toucan', 'pigeon', 'turkey'));"
-                 "INSERT INTO birds (name, bird_type) VALUES ('Rasta', 'toucan');"]]
+    (doseq [sql ["CREATE TABLE birds (id INTEGER PRIMARY KEY AUTO_INCREMENT, bird_type ENUM('toucan', 'pigeon', 'turkey'));"
+                 "INSERT INTO birds (id, bird_type) VALUES (1, 'toucan');"]]
       (jdbc/execute! spec sql))))
 
 (deftest enums-test
@@ -386,13 +386,13 @@
                                       :parameters
                                       (map :id)
                                       set)]
-              (is (= columns action-targets))))
+              (is (= (disj columns "id") action-targets))))
           (testing "Can create new records with an enum value"
-            (is (= {:created-row {:name "Lucky", :bird_type "pigeon"}}
+            (is (= {:created-row {:id 2, :bird_type "pigeon"}}
                    (mt/user-http-request :crowberto
                                          :post 200
                                          (format "action/%s/execute" action-id)
-                                         {:parameters {"name" "Lucky", "bird_type" "pigeon"}})))))))))
+                                         {:parameters {"bird_type" "pigeon"}})))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
