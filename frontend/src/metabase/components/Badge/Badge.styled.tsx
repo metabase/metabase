@@ -9,12 +9,12 @@ import { Icon } from "metabase/ui";
 
 interface RawMaybeLinkProps {
   to?: string;
-  activeColor: string;
-  inactiveColor: string;
-  isSingleLine: boolean;
+  activeColor?: string;
+  inactiveColor?: string;
+  isSingleLine?: boolean;
 }
 
-function RawMaybeLink({
+export function RawMaybeLink({
   to,
   activeColor,
   inactiveColor,
@@ -26,7 +26,7 @@ function RawMaybeLink({
 
 const hoverStyle = (props: RawMaybeLinkProps) => css`
   cursor: pointer;
-  color: ${color(props.activeColor)};
+  ${props.activeColor ? `color: ${color(props.activeColor)};` : ""}
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -34,7 +34,8 @@ export const MaybeLink = styled(RawMaybeLink)`
   align-items: center;
   font-size: 0.875em;
   font-weight: bold;
-  color: ${props => color(props.inactiveColor)};
+  ${props =>
+    props.inactiveColor ? `color: ${color(props.inactiveColor)};` : ""}
   min-width: ${props => (props.isSingleLine ? 0 : "")};
 
   :hover {

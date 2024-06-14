@@ -133,6 +133,7 @@ type OwnProps = {
   isXray?: boolean;
   isFullscreen: boolean;
   isNightMode: boolean;
+  withCardTitle?: boolean;
   clickBehaviorSidebarDashcard: DashboardCard | null;
   mode?: Mode;
   // public dashboard passes it explicitly
@@ -174,6 +175,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     width: 0,
     isEditing: false,
     isEditingParameter: false,
+    withCardTitle: true,
   };
 
   componentDidMount() {
@@ -301,12 +303,24 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       minW = minSize.width;
       minH = minSize.height;
     }
+
+    const w = dashcard.size_x || initialSize.width;
+    const h = dashcard.size_y || initialSize.height;
+
+    if (w < minW) {
+      minW = w;
+    }
+
+    if (h < minH) {
+      minH = h;
+    }
+
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
       y: dashcard.row || 0,
-      w: dashcard.size_x || initialSize.width,
-      h: dashcard.size_y || initialSize.height,
+      w,
+      h,
       dashcard: dashcard,
       minW,
       minH,
@@ -498,6 +512,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isMobile={isMobile}
         isPublicOrEmbedded={this.props.isPublicOrEmbedded}
         isXray={this.props.isXray}
+        withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
         onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
@@ -598,6 +613,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   render() {
     const { dashboard, width } = this.props;
+
     return (
       <DashboardGridContainer
         data-testid="dashboard-grid"

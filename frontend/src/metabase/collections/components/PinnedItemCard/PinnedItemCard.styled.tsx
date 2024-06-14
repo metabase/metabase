@@ -1,15 +1,24 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { RawMaybeLink } from "metabase/components/Badge/Badge.styled";
 import Card from "metabase/components/Card";
-import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
-import { Icon } from "metabase/ui";
+import { Box, type BoxProps, Icon } from "metabase/ui";
 
 export const ItemCard = styled(Card)``;
 
-export const ItemLink = styled(Link)`
+export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
   display: block;
   height: min-content;
+  ${props =>
+    props.to
+      ? ""
+      : css`
+          ${Body} {
+            cursor: default;
+          }
+        `}
 `;
 
 export const ItemIcon = styled(Icon)`
@@ -18,7 +27,7 @@ export const ItemIcon = styled(Icon)`
   width: 1.5rem;
 `;
 
-export const ActionsContainer = styled.div`
+export const ActionsContainer = styled(Box)<BoxProps>`
   display: flex;
   align-items: center;
   gap: 0.5rem;

@@ -57,7 +57,7 @@ const useGetInitialCollection = (
     : undefined;
 
   const { data: currentCollection, isLoading: isCollectionLoading } =
-    useGetCollectionQuery(collectionId ? collectionId : skipToken);
+    useGetCollectionQuery(collectionId ? { id: collectionId } : skipToken);
 
   const { data: currentQuestion, isLoading: isQuestionLoading } =
     useGetCardQuery(cardId ? { id: cardId } : skipToken);
@@ -66,7 +66,9 @@ const useGetInitialCollection = (
     data: currentQuestionCollection,
     isLoading: isCurrentQuestionCollectionLoading,
   } = useGetCollectionQuery(
-    currentQuestion ? currentQuestion.collection_id ?? "root" : skipToken,
+    currentQuestion
+      ? { id: currentQuestion.collection_id ?? "root" }
+      : skipToken,
   );
 
   return {

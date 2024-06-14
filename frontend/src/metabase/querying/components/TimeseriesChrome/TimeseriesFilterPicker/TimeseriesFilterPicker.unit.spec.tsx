@@ -76,13 +76,11 @@ describe("TimeseriesFilterPicker", () => {
 
     await userEvent.click(screen.getByText("All time"));
     await userEvent.click(await screen.findByDisplayValue("All time"));
-    await userEvent.click(await screen.findByText("Is empty"));
+    await userEvent.click(await screen.findByText("Current"));
     await userEvent.click(screen.getByText("Apply"));
 
     expect(getNextFilterParts()).toMatchObject({
-      operator: "is-null",
-      column: expect.anything(),
-      values: [],
+      value: "current",
     });
   });
 
