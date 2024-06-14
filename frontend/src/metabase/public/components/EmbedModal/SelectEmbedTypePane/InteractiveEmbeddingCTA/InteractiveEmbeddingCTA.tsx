@@ -3,7 +3,8 @@ import { t } from "ttag";
 import { getPlan } from "metabase/common/utils/plan";
 import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
-import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
+import { PLUGIN_EMBEDDING } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import { Text, Group, Stack, Box } from "metabase/ui";
 
 import {
@@ -14,12 +15,14 @@ import {
 } from "./InteractiveEmbeddingCTA.styled";
 
 const useCTAText = () => {
-  const isPaidPlan = useSelector(getIsPaidPlan);
+  const isInteractiveEmbeddingEnabled = useSelector(
+    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
+  );
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
 
-  if (isPaidPlan) {
+  if (isInteractiveEmbeddingEnabled) {
     return {
       showProBadge: false,
       description: t`Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.`,
