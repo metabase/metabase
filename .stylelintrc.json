@@ -4,10 +4,6 @@
     "alpha-value-notation": null,
     "color-function-notation": null,
     "custom-property-pattern": null,
-    "function-no-unknown": [
-      true,
-      { "ignoreFunctions": ["alpha", "blackness"] }
-    ],
     "import-notation": "string",
     "media-feature-range-notation": "prefix",
     "no-descending-specificity": null,

@@ -47,9 +47,9 @@ export const GlobalStyles = (): JSX.Element => {
         var(--mb-color-border) 30%,
         transparent
       );
-      --mb-color-text-light-alpha-86: color-mix(
+      --mb-color-text-white-alpha-85: color-mix(
         in srgb,
-        var(--mb-color-text-white) 86%,
+        var(--mb-color-text-white) 85%,
         transparent
       );
       --mb-color-bg-black-alpha-60: color-mix(
