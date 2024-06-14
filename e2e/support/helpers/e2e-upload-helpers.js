@@ -1,5 +1,7 @@
 import { WRITABLE_DB_ID } from "../cypress_data";
 
+import { modal } from "./e2e-ui-elements-helpers";
+
 export const FIXTURE_PATH = "../../e2e/support/assets";
 
 export const VALID_CSV_FILES = [
@@ -47,7 +49,17 @@ export function enableUploads(dialect) {
   cy.request("PUT", "/api/setting", settings);
 }
 
-export function uploadFile(inputId, collectionName, testFile) {
+// Upload mode: upload, append OR replace
+export function uploadFile(
+  inputId,
+  collectionName,
+  testFile,
+  uploadMode = "upload",
+) {
+  cy.intercept("POST", "/api/card/from-csv").as("uploadCSV");
+  cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
+  cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
+
   cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
     cy.get(inputId).selectFile(
       {
@@ -64,7 +76,7 @@ export function uploadFile(inputId, collectionName, testFile) {
       .should("contain", "Uploading data to")
       .and("contain", testFile.fileName);
 
-    cy.wait("@uploadCSV");
+    cy.wait(`@${uploadMode}CSV`);
 
     cy.findAllByRole("status")
       .last()
@@ -72,10 +84,31 @@ export function uploadFile(inputId, collectionName, testFile) {
         timeout: 10 * 1000,
       });
   } else {
-    cy.wait("@uploadCSV");
+    cy.wait(`@${uploadMode}CSV`);
 
     cy.findByTestId("status-root-container").findByText(
       "Error uploading your file",
     );
+
+    modal().findByText("Upload error details");
   }
+}
+
+export function headlessUpload(collectionId, file) {
+  cy.fixture(`${FIXTURE_PATH}/${file.fileName}`)
+    .then(file => Cypress.Blob.binaryStringToBlob(file))
+    .then(blob => {
+      const formData = new FormData();
+      formData.append("file", blob, file.fileName);
+      formData.append("collection_id", collectionId);
+
+      cy.request({
+        url: "/api/card/from-csv",
+        method: "POST",
+        headers: {
+          "content-type": "multipart/form-data",
+        },
+        body: formData,
+      });
+    });
 }

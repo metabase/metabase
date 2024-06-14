@@ -16,6 +16,7 @@ import {
   INVALID_CSV_FILES,
   VALID_CSV_FILES,
   FIXTURE_PATH,
+  headlessUpload,
 } from "e2e/support/helpers";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
@@ -26,7 +27,6 @@ describeWithSnowplow(
   () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.intercept("POST", "/api/card/from-csv").as("uploadCSV");
       cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
       cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
     });
@@ -174,7 +174,7 @@ describeWithSnowplow(
 
             uploadToExisting({
               testFile: VALID_CSV_FILES[1],
-              valid: false,
+              identicalSchema: false,
               uploadMode: "append",
             });
             cy.findByTestId("view-footer").findByText(
@@ -207,7 +207,7 @@ describeWithSnowplow(
 
             uploadToExisting({
               testFile: VALID_CSV_FILES[1],
-              valid: false,
+              identicalSchema: false,
               uploadMode: "replace",
             });
             cy.findByTestId("view-footer").findByText(
@@ -312,12 +312,12 @@ describe("Upload Table Cleanup/Management", () => {
   });
 
   it("should allow a user to delete an upload table", () => {
-    headlessUpload(VALID_CSV_FILES[0]);
-    headlessUpload(VALID_CSV_FILES[0]);
-    headlessUpload(VALID_CSV_FILES[0]);
+    headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
+    headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
+    headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
 
-    headlessUpload(VALID_CSV_FILES[1]);
-    headlessUpload(VALID_CSV_FILES[1]);
+    headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
+    headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[1]);
 
     cy.visit("/admin/settings/uploads");
     cy.wait("@getUploadTables");
@@ -381,7 +381,11 @@ function uploadFileToCollection(testFile) {
   }
 }
 
-function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
+function uploadToExisting({
+  testFile,
+  identicalSchema = true,
+  uploadMode = "append",
+}) {
   // assumes we're already looking at an uploadable model page
   cy.findByTestId("qb-header").icon("upload").click();
 
@@ -408,19 +412,18 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
     );
   });
 
-  if (valid) {
+  if (identicalSchema) {
     cy.findByTestId("status-root-container")
       .should("contain", "Uploading data to")
       .and("contain", testFile.fileName);
 
     cy.wait(uploadEndpoints[uploadMode]);
 
-    cy.findByTestId("status-root-container").findByText(
-      /Data (added|replaced)/i,
-      {
+    cy.findAllByRole("status")
+      .last()
+      .findByText(/Data (added|replaced)/i, {
         timeout: 10 * 1000,
-      },
-    );
+      });
   } else {
     cy.wait(uploadEndpoints[uploadMode]);
 
@@ -430,23 +433,4 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
 
     modal().findByText("Upload error details");
   }
-}
-
-function headlessUpload(file) {
-  cy.fixture(`${FIXTURE_PATH}/${file.fileName}`)
-    .then(file => Cypress.Blob.binaryStringToBlob(file))
-    .then(blob => {
-      const formData = new FormData();
-      formData.append("file", blob, file.fileName);
-      formData.append("collection_id", FIRST_COLLECTION_ID);
-
-      cy.request({
-        url: "/api/card/from-csv",
-        method: "POST",
-        headers: {
-          "content-type": "multipart/form-data",
-        },
-        body: formData,
-      });
-    });
 }
