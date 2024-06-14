@@ -376,7 +376,7 @@
       (mt/with-actions-test-data-and-actions-enabled
         (create-enums-table! (mt/db))
         (sync/sync-database! (mt/db))
-        (mt/with-actions [model {:type          :model
+        (mt/with-actions [model {:dataset       true
                                  :dataset_query (mt/mbql-query birds)}
                           {action-id :action-id} {:type :implicit
                                                   :kind "row/create"}]
