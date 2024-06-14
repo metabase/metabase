@@ -1018,15 +1018,20 @@
                            {:param       (get (:resolved-params dashboard) param-key)
                             :status-code 400})))
        (try
-         (let [results         (map (if (seq query)
+         (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
+               results         (map (if (seq query)
                                       #(chain-filter/chain-filter-search % constraints query :limit result-limit)
                                       #(chain-filter/chain-filter % constraints :limit result-limit))
-                                    field-ids)
-               values          (distinct (mapcat :values results))
+                                 field-ids)
+               ;; merge values with remapped values taking priority
+               values          (->> (mapcat :values results)
+                                    (sort-by count)
+                                    (m/index-by first)
+                                    (vals))
                has_more_values (boolean (some true? (map :has_more_values results)))]
-           ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
            {:values          (cond->> values
                                       (seq values)
+                                      ;; sort by remapped values only if all values are remapped
                                       (sort-by (case (count (first values))
                                                  2 second
                                                  1 first)))
