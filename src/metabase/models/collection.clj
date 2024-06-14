@@ -1596,9 +1596,7 @@
                                                      (perms-for-archiving coll)))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
-  (for [{collection :collection
-         :as item*} (t2/hydrate items :collection)
-        :let [item (dissoc item* :collection)]]
+  (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
     (assoc item :can_restore (boolean
                               (and
                                ;; the item is archived
