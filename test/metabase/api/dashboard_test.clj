@@ -107,6 +107,7 @@
                  (dissoc :id)
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
+                 (update :last_viewed_at boolean)
                  (update :entity_id boolean)
                  (update :collection_id boolean)
                  (update :collection boolean)
@@ -206,6 +207,7 @@
    :collection_position     nil
    :collection              true
    :created_at              true ; assuming you call dashboard-response on the results
+   :last_viewed_at          true
    :description             nil
    :embedding_params        nil
    :enable_embedding        false
