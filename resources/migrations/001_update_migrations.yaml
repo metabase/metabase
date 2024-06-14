@@ -8001,6 +8001,104 @@ databaseChangeLog:
             indexName: idx_user_id_device_id
 
 
+  - changeSet:
+      id: v51.2024-06-13T11:22:39
+      author: johnswanson
+      comment: Add `last_viewed_at` to dashboards
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: last_viewed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this dashboard was last viewed
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-06-14T06:45:35
+      author: johnswanson
+      comment: Populate `last_viewed_at` for dashboards
+      rollback: # not needed, will be removed
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE report_dashboard
+              LEFT JOIN (
+                   SELECT
+                     report_dashboardcard.dashboard_id AS dashboard_id,
+                     MAX(last_used_at) AS last_card_used_at
+                   FROM report_card
+                   JOIN report_dashboardcard
+                     ON report_dashboardcard.card_id = report_card.id
+                   GROUP BY report_dashboardcard.dashboard_id
+              ) AS last_card_used ON last_card_used.dashboard_id = report_dashboard.id
+              SET last_viewed_at = COALESCE(
+                last_card_used.last_card_used_at,
+                NOW()
+              );
+        - sql:
+            dbms: h2
+            sql: >-
+              WITH card_last_viewed_at AS (
+                   SELECT
+                     report_dashboardcard.dashboard_id AS dashboard_id,
+                     MAX(last_used_at) AS last_card_used_at
+                   FROM report_card
+                   JOIN report_dashboardcard
+                     ON report_dashboardcard.card_id = report_card.id
+                   GROUP BY report_dashboardcard.dashboard_id
+              )
+              UPDATE report_dashboard
+              SET last_viewed_at = COALESCE(
+                (
+                   SELECT
+                     MAX(last_used_at) AS last_card_used_at
+                   FROM report_card
+                   JOIN report_dashboardcard
+                     ON report_dashboardcard.card_id = report_card.id
+                   WHERE report_dashboardcard.dashboard_id = report_dashboard.id
+                ),
+                NOW()
+              )
+        - sql:
+            dbms: postgresql
+            sql: >-
+              WITH card_last_viewed_at AS (
+                   SELECT
+                     report_dashboardcard.dashboard_id AS dashboard_id,
+                     MAX(last_used_at) AS last_card_used_at
+                   FROM report_card
+                   JOIN report_dashboardcard
+                     ON report_dashboardcard.card_id = report_card.id
+                   GROUP BY report_dashboardcard.dashboard_id
+              )
+              UPDATE report_dashboard
+              SET last_viewed_at = card_last_viewed_at.last_card_used_at
+              FROM card_last_viewed_at
+              WHERE report_dashboard.id = card_last_viewed_at.dashboard_id;
+
+              UPDATE report_dashboard SET last_viewed_at = NOW() WHERE last_viewed_at IS NULL;
+
+  - changeSet:
+      id: v51.2024-06-14T09:15:36
+      author: johnswanson
+      comment: >-
+        Add NOT NULL constraint to report_dashboard.last_viewed_at
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboard
+            columnName: last_viewed_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+      rollback:
+        - dropNotNullConstraint:
+            tableName: report_dashboard
+            columnName: last_viewed_at
+            columnDataType: ${timestamp_type}
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
