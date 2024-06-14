@@ -94,6 +94,7 @@
     "react-motion": "0.5.2",
     "react-redux": "^8.0.5",
     "react-resizable": "^3.0.5",
+    "react-resizable-panels": "^2.0.19",
     "react-router": "3",
     "react-router-redux": "^4.0.8",
     "react-textarea-autosize": "^5.2.1",

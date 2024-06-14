@@ -20,7 +20,7 @@ export function VisualizerMenu({
   });
 
   return (
-    <Card>
+    <Card h="100%">
       <Input
         placeholder="Search"
         value={searchQuery}

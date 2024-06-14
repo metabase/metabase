@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 
-import { Box, Flex, Group } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 import { VisualizerCanvas } from "./VisualizerCanvas";
@@ -14,17 +14,52 @@ export function Visualizer() {
     setUsed([item]);
   }
   return (
-    <Group align="top" p="xl">
-      {/* TODO - allow for snap resizing to set this width */}
-      <Box w={340} h="90vh">
-        <VisualizerMenu setUsed={onSetUsed} />
-        <Box mt="md">
-          <VisualizerUsed used={used} />
-        </Box>
-      </Box>
-      <Flex style={{ flex: 1 }}>
+    <PanelGroup direction="horizontal" style={{ padding: 20 }}>
+      <Panel defaultSize={25} minSize={15}>
+        <PanelGroup direction="vertical">
+          <Panel defaultSize={70} minSize={20} maxSize={80}>
+            <VisualizerMenu setUsed={onSetUsed} />
+          </Panel>
+          <PanelResizeHandle
+            style={{
+              margin: 4,
+              display: "flex",
+            }}
+          >
+            <span
+              style={{
+                width: 20,
+                height: 4,
+                backgroundColor: "#ddd",
+                borderRadius: 99,
+                margin: "0 auto",
+              }}
+            ></span>
+          </PanelResizeHandle>
+          <Panel defaultSize={30}>
+            <VisualizerUsed used={used} />
+          </Panel>
+        </PanelGroup>
+      </Panel>
+      <PanelResizeHandle
+        style={{
+          display: "flex",
+          margin: 4,
+        }}
+      >
+        <span
+          style={{
+            width: 4,
+            height: 20,
+            backgroundColor: "#ddd",
+            borderRadius: 99,
+            margin: "auto 0",
+          }}
+        ></span>
+      </PanelResizeHandle>
+      <Panel defaultSize={75} minSize={60}>
         <VisualizerCanvas used={used} />
-      </Flex>
-    </Group>
+      </Panel>
+    </PanelGroup>
   );
 }

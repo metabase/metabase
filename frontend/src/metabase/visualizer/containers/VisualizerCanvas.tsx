@@ -7,6 +7,8 @@ export function VisualizerCanvas({
   used: SearchResult[] | undefined;
 }) {
   return (
-    <Card w="100%">Visualizer canvas would show {used?.map(u => u.name)}</Card>
+    <Card w="100%" h="100%">
+      Visualizer canvas would show {used?.map(u => u.name)}
+    </Card>
   );
 }
