@@ -53,6 +53,7 @@ import {
 } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 
+import { PerformanceTabId } from "./performance/types";
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 
 const UserCanAccessTools = connectedReduxRedirect({
@@ -167,6 +168,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         component={createAdminRouteGuard("performance")}
       >
         <IndexRoute title={t`Performance`} path="" component={PerformanceApp} />
+        <Route
+          title={t`Model persistence`}
+          path={PerformanceTabId.Models}
+          component={() => <PerformanceApp tabId={PerformanceTabId.Models} />}
+        />
       </Route>
       <Route
         path="tools"
