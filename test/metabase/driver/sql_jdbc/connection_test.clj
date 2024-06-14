@@ -129,7 +129,7 @@
                 (update :host str/replace "127.0.0.1" "localhost")
 
                 :else
-                (assoc :additional-options "some=value"))))))
+                (assoc :new-config "something"))))))
 
 (deftest connection-pool-invalidated-on-details-change
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
