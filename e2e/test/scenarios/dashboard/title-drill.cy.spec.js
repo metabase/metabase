@@ -1,13 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  addOrUpdateDashboardCard,
-  appBar,
   filterWidget,
-  getDashboardCard,
   popover,
   queryBuilderMain,
   restore,
   visitDashboard,
+  addOrUpdateDashboardCard,
+  getDashboardCard,
+  appBar,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -319,7 +320,7 @@ describe("scenarios > dashboard > title drill", () => {
         // update the parameter filter to a new value
         filterWidget().contains("Doohickey").click();
         popover().within(() => {
-          cy.get("input").type("{backspace}Gadget{enter}");
+          multiAutocompleteInput().type("{backspace}Gadget,");
           cy.findByText("Update filter").click();
         });
 
@@ -339,7 +340,7 @@ describe("scenarios > dashboard > title drill", () => {
         // make sure the unset id parameter works
         filterWidget().last().click();
         popover().within(() => {
-          cy.get("input").type("5{enter}");
+          multiAutocompleteInput().type("5");
           cy.findByText("Add filter").click();
         });
 
