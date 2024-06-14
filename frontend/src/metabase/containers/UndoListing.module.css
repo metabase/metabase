@@ -1,7 +1,0 @@
-.progress {
-  width: 100%;
-  /* override Progress's position */
-  position: absolute !important;
-  top: 0;
-  left: 0;
-}

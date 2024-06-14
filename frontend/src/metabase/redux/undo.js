@@ -37,13 +37,19 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
 const PAUSE_UNDO = "metabase/questions/PAUSE_UNDO";
 export const pauseUndo = createAction(PAUSE_UNDO, undo => {
   clearTimeout(undo.timeoutId);
+  const pausedAt = Date.now();
 
-  return { ...undo, pausedAt: Date.now(), timeoutId: null };
+  return {
+    ...undo,
+    pausedAt,
+    // progress: 1 - (pausedAt - undo.startedAt) / undo.timeout,
+    timeoutId: null,
+  };
 });
 
 const RESUME_UNDO = "metabase/questions/RESUME_UNDO";
 export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
-  const restTime = undo.timeout - (undo.pausedAt - undo.startedAt);
+  const restTime = undo.initialTimeout - undo.spent;
 
   return dispatch => {
     return {
@@ -52,7 +58,8 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
         () => dispatch(dismissUndo(undo.id, false)),
         restTime,
       ),
-      timeout: restTime,
+      progress: restTime / undo.timeout,
+      // timeout: restTime,
     };
   };
 });
@@ -103,6 +110,7 @@ export default function (state = [], { type, payload, error }) {
 
     const undo = {
       ...payload,
+      initialTimeout: payload.timeout,
       // normalize "action" to "actions"
       actions: payload.action ? [payload.action] : payload.actions || [],
       action: null,
@@ -151,6 +159,7 @@ export default function (state = [], { type, payload, error }) {
           ...undo,
           pausedAt: Date.now(),
           timeoutId: null,
+          spent: (undo.spent ?? 0) + (Date.now() - payload.startedAt),
         };
       }
 
@@ -158,13 +167,13 @@ export default function (state = [], { type, payload, error }) {
     });
   } else if (type === RESUME_UNDO) {
     return state.map(undo => {
+      // console.log("resumed", payload.);
       if (undo.id === payload.id) {
         return {
           ...undo,
           timeoutId: payload.timeoutId,
           pausedAt: null,
           startedAt: Date.now(),
-          timeout: payload.timeout,
         };
       }
 

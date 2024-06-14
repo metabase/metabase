@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { useInterval, useMount } from "react-use";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import BodyComponent from "metabase/components/BodyComponent";
@@ -13,9 +13,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Progress, Transition } from "metabase/ui";
-
-import CS from "./UndoListing.module.css";
+import { Transition } from "metabase/ui";
 import {
   CardContent,
   CardContentSide,
@@ -27,6 +25,7 @@ import {
   UndoButton,
   UndoList,
 } from "./UndoListing.styled";
+import { UndoProgress } from "./UndoProgress";
 
 DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
@@ -93,6 +92,8 @@ function UndoToast({ undo, onUndo, onDismiss }) {
     dispatch(resumeUndo(undo));
   };
 
+  console.log({ undo });
+
   return (
     <Transition
       mounted={mounted}
@@ -112,7 +113,11 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           onMouseLeave={handleMouseLeave}
         >
           {undo.showProgress && (
-            <UndoProgress paused={paused} timeout={undo.timeout} />
+            <UndoProgress
+              paused={paused}
+              progress={(undo.spent ?? 0) / undo.initialTimeout}
+              timeout={undo.timeout}
+            />
           )}
           <CardContent>
             <CardContentSide maw="75ch">
@@ -158,44 +163,5 @@ function UndoListingInner() {
     </UndoList>
   );
 }
-
-function UndoProgress({ paused, timeout: initialTimeout }) {
-  const [value, setValue] = useState(100);
-  // timeout of undo will change after pause/resume, but it shouldn't affect
-  // progress bar step
-  const [timeout] = useState(initialTimeout);
-  const [isRunning, setIsRunning] = useState(true);
-  const transitionTime = 100; // default value in Progress in v7
-  const step = 100 / (timeout / transitionTime);
-
-  useInterval(
-    () => {
-      setValue(value => {
-        const newValue = value - step;
-
-        if (newValue <= 0) {
-          setIsRunning(false);
-        }
-
-        return newValue;
-      });
-    },
-    isRunning && !paused ? transitionTime : null,
-  );
-
-  return (
-    <Progress
-      size="sm"
-      color={paused ? "bg-dark" : "brand"}
-      value={value}
-      className={CS.progress}
-    />
-  );
-}
-
-UndoProgress.propTypes = {
-  paused: PropTypes.bool.isRequired,
-  timeout: PropTypes.number.isRequired,
-};
 
 export const UndoListing = BodyComponent(UndoListingInner);
