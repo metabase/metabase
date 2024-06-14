@@ -697,6 +697,6 @@ export async function entityCompatibleQuery(
   try {
     return await action.unwrap();
   } finally {
-    // action.unsubscribe();
+    action.unsubscribe();
   }
 }
