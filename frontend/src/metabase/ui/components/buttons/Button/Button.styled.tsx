@@ -23,6 +23,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           fontSize: theme.fontSizes.md,
           lineHeight: theme.lineHeight,
           overflow: "hidden",
+          ":active": { transform: "none" }, // Remove Mantine's default pressed effect
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {

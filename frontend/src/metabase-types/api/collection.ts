@@ -137,6 +137,11 @@ export interface CollectionListQuery {
   tree?: boolean;
 }
 
+export type getCollectionRequest = {
+  id: CollectionId;
+  namespace?: "snippets";
+};
+
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
