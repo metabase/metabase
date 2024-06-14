@@ -91,7 +91,7 @@ const setup = async (
 
   setupRecentViewsAndSelectionsEndpoints([]);
 
-  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
+  const settings = mockSettings();
 
   const state = createMockState({
     settings,

@@ -102,10 +102,7 @@ const DashboardInfoSidebarBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
   const isCacheable = isDashboardCacheable(dashboard);
 
-  const showCaching =
-    canWrite &&
-    PLUGIN_CACHING.isEnabled() &&
-    MetabaseSettings.get("enable-query-caching");
+  const showCaching = canWrite && PLUGIN_CACHING.isEnabled();
 
   return (
     <>

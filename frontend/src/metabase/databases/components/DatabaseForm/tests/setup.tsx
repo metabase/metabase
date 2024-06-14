@@ -85,20 +85,17 @@ const TEST_ENGINES: Record<string, Engine> = {
 
 export interface SetupOpts {
   settings?: Settings;
-  isCachingEnabled?: boolean;
   hasEnterprisePlugins?: boolean;
 }
 
 export const setup = ({
   settings,
-  isCachingEnabled,
   hasEnterprisePlugins,
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({
       ...settings,
       engines: TEST_ENGINES,
-      "enable-query-caching": isCachingEnabled,
     }),
   });
 
