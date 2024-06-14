@@ -7941,6 +7941,42 @@ databaseChangeLog:
             oldColumnName: direct_reference
             newColumnName: explicit_reference
 
+  - changeSet:
+      id: v51.2024-06-12T18:53:02
+      author: noahmoss
+      comment: Drop incorrect index on login_history
+      changes:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+      rollback:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: session_id
+              - column:
+                  name: device_id
+
+  - changeSet:
+      id: v51.2024-06-12T18:53:03
+      author: noahmoss
+      comment: Create index on login_history (user_id, device_id)
+      changes:
+        - createIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: device_id
+      rollback:
+        - dropIndex:
+            tableName: login_history
+            indexName: idx_user_id_device_id
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

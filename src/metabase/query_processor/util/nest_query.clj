@@ -46,19 +46,33 @@
     {:table_id (:table-id field)
      :name     (:name field)}))
 
+(defn- ->nominal-ref
+  "Transforms a ref into a simplified version of the form it would take as a nominal ref in a later stage.
+
+  Nominal refs use the `desired-alias` as its `id-or-name`, and have `::add/source-table ::add/source` in the options.
+
+  Other options (`:position`, `:join-alias`, other aliases) are dropped, since those are internal to the stage where the
+  column joined the party, not to later stages.
+
+  Refs which are either missing `::add/desired-alias`, or which are coming directly from a table or join, are skipped.
+  We want to pick up the usages only, not anything from `:fields` lists."
+  [[_tag _id-or-name {::add/keys [source-alias source-table]}]]
+  (when (and source-alias
+             (= source-table ::add/source))
+    [:field source-alias {::add/source-table ::add/source}]))
+
 (defn- remove-unused-fields [inner-query source]
-  (let [used-fields (into #{}
-                          (map keep-source+alias-props)
-                          (lib.util.match/match inner-query #{:field :expression}))
-        nfc-roots (into #{} (keep nfc-root) used-fields)]
-    (log/debugf "Used fields:\n%s" (u/pprint-to-str used-fields))
-    (letfn [(used? [[_tag id-or-name {::add/keys [desired-alias], :as opts}, :as field]]
+  (let [usages         (lib.util.match/match inner-query #{:field :expression})
+        used-fields    (into #{} (map keep-source+alias-props) usages)
+        nominal-fields (into #{} (keep ->nominal-ref) usages)
+        nfc-roots      (into #{} (keep nfc-root) used-fields)]
+    (letfn [(used? [[_tag id-or-name {::add/keys [source-table]}, :as field]]
               (or (contains? used-fields (keep-source+alias-props field))
-                  ;; we should also consider a Field to be used if we're referring to it with a nominal field literal
+                  ;; We should also consider a Field to be used if we're referring to it with a nominal field literal
                   ;; ref in the next stage -- that's actually how you're supposed to be doing it anyway.
-                  (when (integer? id-or-name)
-                    (let [nominal-ref (keep-source+alias-props [:field desired-alias opts])]
-                      (contains? used-fields nominal-ref)))
+                  (and (integer? id-or-name)
+                       (= source-table ::add/source)
+                       (contains? nominal-fields (->nominal-ref field)))
                   (contains? nfc-roots (field-id-props field))))
             (used?* [field]
               (u/prog1 (used? field)
@@ -135,6 +149,12 @@
                            desired-alias (assoc ::add/source-alias desired-alias
                                                 ::add/desired-alias desired-alias))])
 
+    ;; Some refs in the outer stage might be referring to these fields by `:name` (eg. ID) and not
+    ;; properly by their `desired-alias`/this ref's `source-alias` (eg. "People - User__ID")
+    ;; Since these refs are across stages, there's no need to adjust `:expression` refs.
+    [:field (id-or-name :guard string?) (opts :guard ::add/source-alias)]
+    [:field (::add/source-alias opts) opts]
+
     ;; when recursing into joins use the refs from the parent level.
     (m :guard (every-pred map? :joins))
     (let [{:keys [joins]} m]
@@ -172,7 +192,7 @@
     (if-not (should-nest-expressions? inner-query)
       inner-query
       (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
-            inner-query                                   (rewrite-fields-and-expressions inner-query)
+            inner-query                             (rewrite-fields-and-expressions inner-query)
             source-query                            (assoc source-query :expressions expressions)]
         (-> inner-query
             (dissoc :source-query :expressions)

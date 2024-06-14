@@ -1,35 +1,109 @@
+import { isNotNull } from "metabase/lib/types";
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+  hasGraphDataSettings,
+} from "metabase/visualizations";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
-export function syncVizSettingsWithQueryResults(
+import { getSingleSeriesDimensionsAndMetrics } from "./utils";
+
+export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
-  queryResults?: Dataset,
-  prevQueryResults?: Dataset,
+  _series?: Series | null,
+  _previousSeries?: Series | null,
 ): VisualizationSettings {
   let newSettings = settings;
 
-  if (queryResults && !queryResults.error) {
-    newSettings = syncTableColumnSettings(newSettings, queryResults);
+  const series = _series?.[0];
+  const previousSeries = _previousSeries?.[0];
 
-    if (prevQueryResults && !prevQueryResults.error) {
+  if (series && !series.error) {
+    newSettings = syncTableColumnSettings(newSettings, series);
+
+    if (previousSeries && !previousSeries.error) {
       newSettings = syncGraphMetricSettings(
         newSettings,
-        queryResults,
-        prevQueryResults,
+        series,
+        previousSeries,
       );
+
+      if (hasGraphDataSettings(series.card.display)) {
+        newSettings = ensureMetricsAndDimensions(
+          newSettings,
+          series,
+          previousSeries,
+        );
+      }
     }
   }
 
   return newSettings;
 }
 
+function ensureMetricsAndDimensions(
+  settings: VisualizationSettings,
+  series: SingleSeries,
+  previousSeries: SingleSeries,
+) {
+  const hasExplicitGraphDataSettings =
+    "graph.dimensions" in settings || "graph.metrics" in settings;
+
+  if (hasExplicitGraphDataSettings) {
+    return settings;
+  }
+
+  const nextSettings = { ...settings };
+
+  const availableColumnNames = series.data.cols.map(col => col.name);
+  const maxDimensions = getMaxDimensionsSupported(series.card.display);
+  const maxMetrics = getMaxMetricsSupported(series.card.display);
+
+  const { dimensions: currentDimensions, metrics: currentMetrics } =
+    getSingleSeriesDimensionsAndMetrics(series, maxDimensions, maxMetrics);
+  const { dimensions: previousDimensions, metrics: previousMetrics } =
+    getSingleSeriesDimensionsAndMetrics(
+      previousSeries,
+      maxDimensions,
+      maxMetrics,
+    );
+
+  const dimensions =
+    currentDimensions.filter(isNotNull).length > 0
+      ? currentDimensions
+      : previousDimensions.filter((columnName: string) =>
+          availableColumnNames.includes(columnName),
+        );
+
+  const metrics =
+    currentMetrics.filter(isNotNull).length > 0
+      ? currentMetrics
+      : previousMetrics.filter((columnName: string) =>
+          availableColumnNames.includes(columnName),
+        );
+
+  if (dimensions.length > 0) {
+    nextSettings["graph.dimensions"] = dimensions;
+  }
+  if (metrics.length > 0) {
+    nextSettings["graph.metrics"] = metrics;
+  }
+
+  return nextSettings;
+}
+
 function syncTableColumnSettings(
   settings: VisualizationSettings,
-  { data }: Dataset,
+  { data }: SingleSeries,
 ): VisualizationSettings {
   // "table.columns" receive a value only if there are custom settings
   // e.g. some columns are hidden. If it's empty, it means everything is visible
@@ -77,8 +151,8 @@ function syncTableColumnSettings(
 
 function syncGraphMetricSettings(
   settings: VisualizationSettings,
-  { data: { cols } }: Dataset,
-  { data: { cols: prevCols } }: Dataset,
+  { data: { cols } }: SingleSeries,
+  { data: { cols: prevCols } }: SingleSeries,
 ): VisualizationSettings {
   const graphMetrics = settings["graph.metrics"];
   if (!graphMetrics) {
