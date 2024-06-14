@@ -38,7 +38,7 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
-  getTimezone,
+  getTimezoneOrOffset,
   minTimeseriesUnit,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
@@ -644,7 +644,11 @@ export function getTimeSeriesXAxisModel(
     dimensionModel,
     showWarning,
   );
-  const { interval: dataTimeSeriesInterval, timezone } = timeSeriesInfo;
+  const {
+    interval: dataTimeSeriesInterval,
+    timezone,
+    offsetMinutes,
+  } = timeSeriesInfo;
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
       unit ??
@@ -674,7 +678,13 @@ export function getTimeSeriesXAxisModel(
     if (!date) {
       return null;
     }
-    return date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
+
+    const dateInTimezone =
+      offsetMinutes != null
+        ? date.add(offsetMinutes, "minute")
+        : date.tz(timezone);
+
+    return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     return dayjs.utc(rawValue);
@@ -863,7 +873,10 @@ function getTimeSeriesXAxisInfo(
       .map(column => (isAbsoluteDateTimeUnit(column.unit) ? column.unit : null))
       .filter(isNotNull),
   );
-  const timezone = getTimezone(rawSeries, showWarning);
+  const { timezone, offsetMinutes } = getTimezoneOrOffset(
+    rawSeries,
+    showWarning,
+  );
   const interval = (computeTimeseriesDataInverval(xValues, unit) ?? {
     count: 1,
     unit: "day",
@@ -883,7 +896,7 @@ function getTimeSeriesXAxisInfo(
     intervalsCount = Math.ceil(max.diff(min, interval.unit) / interval.count);
   }
 
-  return { interval, timezone, intervalsCount, range, unit };
+  return { interval, timezone, offsetMinutes, intervalsCount, range, unit };
 }
 
 export function getScaledMinAndMax(
