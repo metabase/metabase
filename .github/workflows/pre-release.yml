@@ -316,5 +316,5 @@ jobs:
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              testsStatus: allJobsSuccessful ? 'success' : 'failure',
+              testStatus: allJobsSuccessful ? 'success' : 'failure',
             }).catch(console.error);
