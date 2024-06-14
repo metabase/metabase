@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useSearchQuery } from "metabase/api";
 import { Card, Input, Tabs } from "metabase/ui";
+import { VisualizerMenuItem } from "metabase/visualizer/components/VisualizerMenuItem";
 import type { SearchResult } from "metabase-types/api";
 
 import { VisualizerMetricsList } from "./VisualizerMetricsList";
@@ -28,7 +29,9 @@ export function VisualizerMenu({
 
       {searchQuery ? (
         <div>
-          <pre>{JSON.stringify(searchResults?.data, null, 2)}</pre>
+          {searchResults?.data.map((item, index) => (
+            <VisualizerMenuItem item={item} key={index} onClick={setUsed} />
+          ))}
         </div>
       ) : (
         <>
