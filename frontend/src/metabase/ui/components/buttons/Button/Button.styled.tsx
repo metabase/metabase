@@ -5,8 +5,6 @@ import type {
 } from "@mantine/core";
 import { getStylesRef, rem } from "@mantine/core";
 
-import type { ExtraButtonProps } from ".";
-
 export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
     defaultProps: {
@@ -17,10 +15,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
         color: "currentColor",
       },
     },
-    styles: (
-      theme: MantineTheme,
-      { compact, animate }: ButtonStylesParams & ExtraButtonProps,
-    ) => {
+    styles: (theme: MantineTheme, { compact }: ButtonStylesParams) => {
       return {
         root: {
           height: "auto",
@@ -28,6 +23,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           fontSize: theme.fontSizes.md,
           lineHeight: theme.lineHeight,
           overflow: "hidden",
+          ":active": { transform: "none" }, // Remove Mantine's default pressed effect
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
@@ -37,7 +33,6 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               marginLeft: 0,
             },
           },
-          ...(animate ? {} : { "&:active": { transform: "none" } }),
         },
         label: {
           ref: getStylesRef("label"),

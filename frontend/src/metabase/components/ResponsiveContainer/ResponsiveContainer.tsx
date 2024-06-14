@@ -1,11 +1,8 @@
 import styled from "@emotion/styled";
 
 import type { RefProp } from "metabase/browse/types";
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { Box, type BoxProps } from "metabase/ui";
-
-const doNotForwardProps = (...propNamesToBlock: string[]) => ({
-  shouldForwardProp: (propName: string) => !propNamesToBlock.includes(propName),
-});
 
 /** Helps with @container queries in CSS */
 export const ResponsiveContainer = styled(

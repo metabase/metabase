@@ -2,7 +2,7 @@ import { parse } from "csv-parse/browser/esm/sync";
 
 export function parseValues(str: string): string[] {
   try {
-    return parse(str, {
+    const strings = parse(str, {
       delimiter: [",", "\t", "\n"],
       skip_empty_lines: true,
       relax_column_count: true,
@@ -11,6 +11,8 @@ export function parseValues(str: string): string[] {
       quote: '"',
       escape: "\\",
     }).flat();
+
+    return strings;
   } catch (err) {
     return [];
   }

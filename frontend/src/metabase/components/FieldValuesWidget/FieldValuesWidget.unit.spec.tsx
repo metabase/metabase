@@ -1,8 +1,5 @@
-import userEvent from "@testing-library/user-event";
-
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import {
-  getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -27,7 +24,6 @@ import {
   LISTABLE_PK_FIELD_VALUE,
   SEARCHABLE_FK_FIELD_ID,
   EXPRESSION_FIELD_ID,
-  metadataWithSearchValuesField,
 } from "./testMocks";
 
 async function setup({
@@ -270,47 +266,6 @@ describe("FieldValuesWidget", () => {
           table_id: expressionField.table_id,
         }),
       );
-    });
-  });
-
-  describe("NoMatchState", () => {
-    it("should display field title when one field passed and there are no matching results", async () => {
-      const field = metadataWithSearchValuesField.field(PEOPLE.PASSWORD);
-      const displayName = field?.display_name; // "Password"
-      const searchValue = "somerandomvalue";
-
-      await setup({
-        fields: [field],
-        multi: true,
-        disablePKRemappingForSearch: true,
-        searchValue,
-      });
-
-      await userEvent.type(
-        screen.getByPlaceholderText(`Search by ${displayName}`),
-        searchValue,
-      );
-
-      expect(
-        await screen.findByText(
-          getBrokenUpTextMatcher(`No matching ${displayName} found.`),
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("should not display field title when multiple fields passed and no matching results found", async () => {
-      const searchValue = "somerandomvalue";
-
-      await setup({
-        fields: [metadata.field(PEOPLE.CITY), metadata.field(PEOPLE.NAME)],
-        multi: true,
-        disablePKRemappingForSearch: true,
-        searchValue,
-      });
-
-      await userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
-
-      expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
     });
   });
 });

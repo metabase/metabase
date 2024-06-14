@@ -41,6 +41,7 @@ export type EmbedBorderControls = {
 export type EmbedDisplayParams = {
   bordered: EmbedBordered;
   titled: EmbedTitle;
+  cardTitled: EmbedTitle;
   hideDownloadButton: EmbedHideDownloadButton;
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
