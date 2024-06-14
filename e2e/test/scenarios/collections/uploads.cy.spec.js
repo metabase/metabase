@@ -11,42 +11,13 @@ import {
   enableTracking,
   setTokenFeatures,
   modal,
+  enableUploads,
+  uploadFile,
+  INVALID_CSV_FILES,
+  VALID_CSV_FILES,
 } from "e2e/support/helpers";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
-
-const FIXTURE_PATH = "../../e2e/support/assets";
-
-const validTestFiles = [
-  {
-    valid: true,
-    fileName: "dog_breeds.csv",
-    tableName: "dog_breeds",
-    humanName: "Dog Breeds",
-    rowCount: 97,
-  },
-  {
-    valid: true,
-    fileName: "star_wars_characters.csv",
-    tableName: "star_wars_characters",
-    humanName: "Star Wars Characters",
-    rowCount: 87,
-  },
-  {
-    valid: true,
-    fileName: "pokedex.tsv",
-    tableName: "pokedex",
-    humanName: "Pokedex",
-    rowCount: 202,
-  },
-];
-
-const invalidTestFiles = [
-  {
-    valid: false,
-    fileName: "invalid.csv",
-  },
-];
 
 describeWithSnowplow(
   "CSV Uploading",
@@ -60,7 +31,7 @@ describeWithSnowplow(
     });
 
     it("Can upload a CSV file to an empty postgres schema", () => {
-      const testFile = validTestFiles[0];
+      const testFile = VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
       cy.intercept("PUT", "/api/setting").as("saveSettings");
@@ -99,7 +70,7 @@ describeWithSnowplow(
 
       cy.wait(["@saveSettings", "@databaseList"]);
 
-      uploadFile(testFile);
+      uploadFileToCollection(testFile);
 
       const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
@@ -136,9 +107,9 @@ describeWithSnowplow(
           expectNoBadSnowplowEvents();
         });
 
-        validTestFiles.forEach(testFile => {
+        VALID_CSV_FILES.forEach(testFile => {
           it(`Can upload ${testFile.fileName} to a collection`, () => {
-            uploadFile(testFile);
+            uploadFileToCollection(testFile);
 
             expectGoodSnowplowEvent({
               event: "csv_upload_successful",
@@ -162,9 +133,9 @@ describeWithSnowplow(
           });
         });
 
-        invalidTestFiles.forEach(testFile => {
+        INVALID_CSV_FILES.forEach(testFile => {
           it(`Cannot upload ${testFile.fileName} to a collection`, () => {
-            uploadFile(testFile);
+            uploadFileToCollection(testFile);
 
             expectGoodSnowplowEvent({
               event: "csv_upload_failed",
@@ -180,66 +151,66 @@ describeWithSnowplow(
 
         describe("CSV appends", () => {
           it("Can append a CSV file to an existing table", () => {
-            uploadFile(validTestFiles[0]);
+            uploadFileToCollection(VALID_CSV_FILES[0]);
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
 
             uploadToExisting({
-              testFile: validTestFiles[0],
+              testFile: VALID_CSV_FILES[0],
               uploadMode: "append",
             });
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount * 2} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount * 2} rows`,
             );
           });
 
           it("Cannot append a CSV file to a table with a different schema", () => {
-            uploadFile(validTestFiles[0]);
+            uploadFileToCollection(VALID_CSV_FILES[0]);
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
 
             uploadToExisting({
-              testFile: validTestFiles[1],
+              testFile: VALID_CSV_FILES[1],
               valid: false,
               uploadMode: "append",
             });
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
           });
         });
 
         describe("CSV replacement", () => {
           it("Can replace data in an existing table", () => {
-            uploadFile(validTestFiles[0]);
+            uploadFileToCollection(VALID_CSV_FILES[0]);
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
 
             uploadToExisting({
-              testFile: validTestFiles[0],
+              testFile: VALID_CSV_FILES[0],
               uploadMode: "replace",
             });
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
           });
 
           it("Cannot data in a table with a different schema", () => {
-            uploadFile(validTestFiles[0]);
+            uploadFileToCollection(VALID_CSV_FILES[0]);
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
 
             uploadToExisting({
-              testFile: validTestFiles[1],
+              testFile: VALID_CSV_FILES[1],
               valid: false,
               uploadMode: "replace",
             });
             cy.findByTestId("view-footer").findByText(
-              `Showing ${validTestFiles[0].rowCount} rows`,
+              `Showing ${VALID_CSV_FILES[0].rowCount} rows`,
             );
           });
         });
@@ -340,12 +311,12 @@ describe("Upload Table Cleanup/Management", () => {
   });
 
   it("should allow a user to delete an upload table", () => {
-    headlessUpload(validTestFiles[0]);
-    headlessUpload(validTestFiles[0]);
-    headlessUpload(validTestFiles[0]);
+    headlessUpload(VALID_CSV_FILES[0]);
+    headlessUpload(VALID_CSV_FILES[0]);
+    headlessUpload(VALID_CSV_FILES[0]);
 
-    headlessUpload(validTestFiles[1]);
-    headlessUpload(validTestFiles[1]);
+    headlessUpload(VALID_CSV_FILES[1]);
+    headlessUpload(VALID_CSV_FILES[1]);
 
     cy.visit("/admin/settings/uploads");
     cy.wait("@getUploadTables");
@@ -385,35 +356,14 @@ describe("Upload Table Cleanup/Management", () => {
   });
 });
 
-function uploadFile(testFile) {
+function uploadFileToCollection(testFile) {
   cy.get("@collectionId").then(collectionId =>
     cy.visit(`/collection/${collectionId}`),
   );
 
-  cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
-    cy.get("#upload-csv").selectFile(
-      {
-        contents: Cypress.Buffer.from(file),
-        fileName: testFile.fileName,
-        mimeType: "text/csv",
-      },
-      { force: true },
-    );
-  });
+  uploadFile("#upload-csv", "Uploads Collection", testFile);
 
   if (testFile.valid) {
-    cy.findByTestId("status-root-container")
-      .should("contain", "Uploading data to")
-      .and("contain", testFile.fileName);
-
-    cy.wait("@uploadCSV");
-
-    cy.findAllByRole("status")
-      .last()
-      .findByText("Data added to Uploads Collection", {
-        timeout: 10 * 1000,
-      });
-
     cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
     cy.findByTestId("collection-table").within(() => {
@@ -427,12 +377,6 @@ function uploadFile(testFile) {
 
     cy.url().should("include", "/model/");
     cy.findByTestId("TableInteractive-root");
-  } else {
-    cy.wait("@uploadCSV");
-
-    cy.findByTestId("status-root-container").findByText(
-      "Error uploading your file",
-    );
   }
 }
 
@@ -452,7 +396,7 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
 
   popover().findByText(uploadOptions[uploadMode]).click();
 
-  cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
+  cy.fixture(testFile.fileName).then(file => {
     cy.get("#upload-file-input").selectFile(
       {
         contents: Cypress.Buffer.from(file),
@@ -488,7 +432,7 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
 }
 
 function headlessUpload(file) {
-  cy.fixture(`${FIXTURE_PATH}/${file.fileName}`)
+  cy.fixture(file.fileName)
     .then(file => Cypress.Blob.binaryStringToBlob(file))
     .then(blob => {
       const formData = new FormData();
@@ -504,16 +448,4 @@ function headlessUpload(file) {
         body: formData,
       });
     });
-}
-
-function enableUploads(dialect) {
-  const settings = {
-    "uploads-settings": {
-      db_id: WRITABLE_DB_ID,
-      schema_name: dialect === "postgres" ? "public" : null,
-      table_prefix: dialect === "mysql" ? "upload_" : null,
-    },
-  };
-
-  cy.request("PUT", "/api/setting", settings);
 }

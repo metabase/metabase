@@ -107,7 +107,6 @@ function MainNavbarView({
     [canNavigateHome, onItemSelect],
   );
 
-  // TEMP
   // Can upload CSVs if
   // - properties.token_features.attached_dwh === true
   // - retrieve collection using properties.uploads-settings.db_id
