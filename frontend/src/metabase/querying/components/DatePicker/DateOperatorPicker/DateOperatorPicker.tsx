@@ -1,8 +1,14 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
-import { Group, Stack } from "metabase/ui";
+import { Group, Stack, Flex, Switch } from "metabase/ui";
 
 import { SimpleRelativeDatePicker } from "../RelativeDatePicker";
+import {
+  getIncludeCurrentLabel,
+  getIncludeCurrent,
+  setIncludeCurrent,
+} from "../RelativeDatePicker/DateIntervalPicker/utils";
 import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
 import type { DatePickerOperator, DatePickerValue } from "../types";
 
@@ -35,6 +41,16 @@ export function DateOperatorPicker({
     }
   };
 
+  const includeCurrent = value && getIncludeCurrent(value);
+
+  const handleIncludeCurrentSwitch = () => {
+    if (!value) {
+      return;
+    }
+
+    onChange(setIncludeCurrent(value, !includeCurrent));
+  };
+
   return (
     <Stack>
       <Group>
@@ -43,6 +59,19 @@ export function DateOperatorPicker({
           <SimpleRelativeDatePicker value={value} onChange={onChange} />
         )}
       </Group>
+      {value?.type === "relative" && value?.value !== "current" && (
+        <Flex>
+          <Switch
+            aria-checked={includeCurrent}
+            checked={includeCurrent}
+            data-testid="include-current-interval-option"
+            label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
+            labelPosition="right"
+            onChange={handleIncludeCurrentSwitch}
+            size="sm"
+          />
+        </Flex>
+      )}
       {value?.type === "specific" && (
         <SimpleSpecificDatePicker value={value} onChange={onChange} />
       )}
