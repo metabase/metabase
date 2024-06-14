@@ -9,6 +9,7 @@ import {
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
+  AdaptiveStrategy,
   CacheConfig,
   CacheStrategy,
   CacheStrategyType,
@@ -154,8 +155,15 @@ const defaultSchedule: ScheduleSettings = {
 export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
-export const hourTo24HourFormat = (hour: number, amPm: number) =>
-  hour + amPm * 12;
+export const hourTo24HourFormat = (hour: number, amPm: number): number => {
+  if (amPm === 0) {
+    // AM
+    return hour === 12 ? 0 : hour;
+  } else {
+    // PM
+    return hour === 12 ? 12 : hour + 12;
+  }
+};
 
 type ErrorWithMessage = { data: { message: string } };
 export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
@@ -239,9 +247,7 @@ export const translateConfig = (
 
   if (translated.strategy.type === "ttl") {
     if (direction === "fromAPI") {
-      translated.strategy.min_duration_seconds = Math.ceil(
-        translated.strategy.min_duration_ms / 1000,
-      );
+      translated.strategy = populateMinDurationSeconds(translated.strategy);
     } else {
       translated.strategy.min_duration_ms =
         translated.strategy.min_duration_seconds === undefined
@@ -253,7 +259,15 @@ export const translateConfig = (
   return translated;
 };
 
+export const populateMinDurationSeconds = (strategy: AdaptiveStrategy) => ({
+  ...strategy,
+  min_duration_seconds: Math.ceil(strategy.min_duration_ms / 1000),
+});
+
+/** Translate a config from the API into a format the frontend can use */
 export const translateConfigFromAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "fromAPI");
+
+/** Translate a config from the frontend's format into the API's preferred format */
 export const translateConfigToAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "toAPI");

@@ -87,7 +87,10 @@ export const SelectTime = ({
             radius="sm"
             value={amPm.toString()}
             onChange={value =>
-              updateSchedule("schedule_hour", hour + Number(value) * 12)
+              updateSchedule(
+                "schedule_hour",
+                hourTo24HourFormat(hour, parseInt(value)),
+              )
             }
             data={amAndPM}
           />
