@@ -41,7 +41,7 @@ describe("common/utils/columns", () => {
             attached_dwh: true,
           }),
         ),
-      ).toBe("pro-cloud");
+      ).toBe("pro-cloud-with-dwh");
     });
 
     it("returns `pro-self-hosted` if the token features object have at least one feature except but the `hosting` is disabled", () => {
