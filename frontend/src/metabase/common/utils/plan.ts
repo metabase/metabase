@@ -21,7 +21,8 @@ export const getPlan = (features?: TokenFeatures | null): Plan => {
   }
 
   const hasAnyProFeatures = tokenFeatures.some(
-    feature => feature !== "hosting" && features[feature],
+    feature =>
+      feature !== "hosting" && feature !== "attached_dwh" && features[feature],
   );
 
   if (!hasAnyProFeatures) {
