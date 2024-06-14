@@ -96,6 +96,11 @@ const NewItemMenu = ({
         icon: "folder",
         action: () => dispatch(setOpenModal("collection")),
       },
+      {
+        title: t`Visualization`,
+        icon: "bar",
+        link: Urls.visualizer(),
+      },
     );
 
     if (hasNativeWrite) {

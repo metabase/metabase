@@ -52,6 +52,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { Visualizer } from "metabase/visualizer/containers/Visualizer";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
@@ -230,6 +231,12 @@ export const getRoutes = store => {
               from=":dbId/schema/:schemaName"
               to="databases/:dbId/schema/:schemaName"
             />
+          </Route>
+
+          {/* VISUALIZER */}
+          <Route path="v">
+            <IndexRoute component={Visualizer} />
+            <Route path=":slug" component={Visualizer} />
           </Route>
 
           {/* INDIVIDUAL DASHBOARDS */}
