@@ -2,8 +2,8 @@ import { StringColumn, NumberColumn } from "__support__/visualizations";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import {
   computeTimeseriesDataInverval,
-  getTimezone,
   computeTimeseriesTicksInterval,
+  getTimezoneOrOffset,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -141,29 +141,7 @@ describe("visualization.lib.timeseries", () => {
     });
   });
 
-  describe("getTimezone", () => {
-    const series = [
-      {
-        card: { visualization_settings: {}, display: "bar" },
-        data: {
-          results_timezone: "US/Eastern",
-          cols: [StringColumn({ name: "a" }), NumberColumn({ name: "b" })],
-          rows: [],
-        },
-      },
-    ];
-
-    it("should extract results_timezone", () => {
-      const timezone = getTimezone(series);
-      expect(timezone).toBe("US/Eastern");
-    });
-
-    it("should extract results_timezone after series is transformed", () => {
-      const { series: transformed } = getVisualizationTransformed(series);
-      const timezone = getTimezone(transformed);
-      expect(timezone).toBe("US/Eastern");
-    });
-  });
+  describe("getTimezone", () => {});
 
   describe("computeTimeseriesTicksInterval", () => {
     // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
@@ -241,5 +219,100 @@ describe("visualization.lib.timeseries", () => {
         });
       },
     );
+  });
+
+  describe("getTimezoneOrOffset", () => {
+    const showWarningMock = jest.fn();
+
+    const series = [
+      {
+        card: { visualization_settings: {}, display: "bar" },
+        data: {
+          results_timezone: "US/Eastern",
+          cols: [StringColumn({ name: "a" }), NumberColumn({ name: "b" })],
+          rows: [],
+        },
+      },
+    ];
+
+    beforeEach(() => {
+      showWarningMock.mockClear();
+    });
+
+    it("should extract results_timezone", () => {
+      const { timezone } = getTimezoneOrOffset(series);
+      expect(timezone).toBe("US/Eastern");
+    });
+
+    it("should extract results_timezone after series is transformed", () => {
+      const { series: transformed } = getVisualizationTransformed(series);
+      const { timezone } = getTimezoneOrOffset(transformed);
+      expect(timezone).toBe("US/Eastern");
+    });
+
+    it("should return the correct timezone when there is only one timezone", () => {
+      const series = [
+        {
+          data: {
+            results_timezone: "America/New_York",
+            requested_timezone: "America/New_York",
+          },
+        },
+      ];
+      const result = getTimezoneOrOffset(series, showWarningMock);
+      expect(result).toEqual({
+        timezone: "America/New_York",
+        offsetMinutes: undefined,
+      });
+      expect(showWarningMock).not.toHaveBeenCalled();
+    });
+
+    it("should return the default timezone when results_timezone is undefined", () => {
+      const series = [
+        {
+          data: {
+            results_timezone: undefined,
+            requested_timezone: undefined,
+          },
+        },
+      ];
+      const result = getTimezoneOrOffset(series, showWarningMock);
+      expect(result).toEqual({
+        timezone: "Etc/UTC",
+        offsetMinutes: undefined,
+      });
+      expect(showWarningMock).not.toHaveBeenCalled();
+    });
+
+    it("should return offsetMinutes when results_timezone is in offset format", () => {
+      const series = [
+        { data: { results_timezone: "+05:30", requested_timezone: "+05:30" } },
+      ];
+      const result = getTimezoneOrOffset(series, showWarningMock);
+      expect(result).toEqual({ timezone: undefined, offsetMinutes: 330 });
+      expect(showWarningMock).not.toHaveBeenCalled();
+    });
+
+    it("should show warning when there are multiple timezones in the series", () => {
+      const series = [
+        { data: { results_timezone: "America/New_York" } },
+        { data: { results_timezone: "Europe/London" } },
+      ];
+      getTimezoneOrOffset(series, showWarningMock);
+      expect(showWarningMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("should show warning when requested_timezone is different from results_timezone", () => {
+      const series = [
+        {
+          data: {
+            results_timezone: "America/New_York",
+            requested_timezone: "Europe/London",
+          },
+        },
+      ];
+      getTimezoneOrOffset(series, showWarningMock);
+      expect(showWarningMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -799,6 +799,13 @@ AreaChartSteppedNullsSkipped.args = {
   renderingContext,
 };
 
+export const SafariNonIanaTimezoneRepro44128 = Template.bind({});
+SafariNonIanaTimezoneRepro44128.args = {
+  rawSeries: data.safariNonIanaTimezoneRepro44128 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
