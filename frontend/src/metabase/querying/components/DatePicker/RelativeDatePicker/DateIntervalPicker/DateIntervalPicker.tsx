@@ -95,6 +95,7 @@ export function DateIntervalPicker({
         {canUseRelativeOffsets && (
           <Tooltip label={t`Starting from…`} position="bottom">
             <Button
+              aria-label={t`Starting from…`}
               c="text-medium"
               variant="subtle"
               leftIcon={<Icon name="arrow_left_to_line" />}
