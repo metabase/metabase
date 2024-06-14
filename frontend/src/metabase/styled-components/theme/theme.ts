@@ -30,18 +30,18 @@ export const useThemeSpecificSelectors = () => {
     --mb-color-bg-dashboard-card: ${getValue("dashboard.card.backgroundColor")};
     --mb-color-bg-question: ${getValue("question.backgroundColor")};
 
+    --mb-color-text-collection-browser-expand-button: ${getValue(
+      "collectionBrowser.breadcrumbs.expandButton.textColor",
+    )};
     --mb-color-bg-collection-browser-expand-button: ${getValue(
       "collectionBrowser.breadcrumbs.expandButton.backgroundColor",
     )};
-    --mb-color-text-collection-browser-expand-button: ${getValue(
-      "collectionBrowser.breadcrumbs.expandButton.textColor",
+    --mb-color-text-collection-browser-expand-button-hover: ${getValue(
+      "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
     )};
     --mb-color-bg-collection-browser-expand-button-hover: ${getValue(
       "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
     )};
     
-    --mb-color-text-collection-browser-expand-button-hover: ${getValue(
-      "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
-    )};
   `;
 };

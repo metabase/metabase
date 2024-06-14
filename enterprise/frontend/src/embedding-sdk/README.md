@@ -435,10 +435,10 @@ const theme = {
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {
-           backgroundColor: "#767D7C";
-           hoverBackgroundColor: "#69264B";
-           hoverTextColor: "#CE8C8C";
            textColor: "#8118F4";
+           backgroundColor: "#767D7C";
+           hoverTextColor: "#CE8C8C";
+           hoverBackgroundColor: "#69264B";
          };
        };
      };

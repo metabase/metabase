@@ -32,10 +32,10 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   collectionBrowser: {
     breadcrumbs: {
       expandButton: {
-        backgroundColor: "var(--mb-color-bg-light)",
-        hoverBackgroundColor: "var(--mb-color-brand)",
-        hoverTextColor: "var(--mb-color-text-white)",
         textColor: "var(--mb-color-text-medium)",
+        backgroundColor: "var(--mb-color-bg-light)",
+        hoverTextColor: "var(--mb-color-text-white)",
+        hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
   },
@@ -95,8 +95,8 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
     breadcrumbs: {
       expandButton: {
         backgroundColor: "transparent",
-        hoverBackgroundColor: "var(--mb-color-brand)",
         hoverTextColor: "var(--mb-color-text-white)",
+        hoverBackgroundColor: "var(--mb-color-brand)",
       },
     },
   },
