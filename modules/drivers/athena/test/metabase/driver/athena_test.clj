@@ -231,12 +231,12 @@
   (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions")
     (mt/test-driver :athena
       (mt/dataset airports
-        (let [catalog "AwsDataCatalog" ; The bug only happens when :Catalog is not nil
+        (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
               details (assoc (:details (mt/db))
                              ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
                              :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
                              :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
-                             :Catalog catalog)]
+                             :catalog catalog)]
           (mt/with-temp [:model/Database db {:engine :athena, :details details}]
             (sync/sync-database! db {:scan :schema})
             (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
