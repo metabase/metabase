@@ -16,7 +16,7 @@
         "csv_upload_failed",
         "csv_append_successful",
         "csv_append_failed",
-        "csv_upload_left_nav_clicked"
+        "csv_upload_clicked"
       ],
       "maxLength": 128
     },

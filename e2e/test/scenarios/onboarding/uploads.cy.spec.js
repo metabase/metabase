@@ -53,7 +53,8 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
 
         // Snowplow
         expectGoodSnowplowEvent({
-          event: "csv_upload_left_nav_clicked",
+          event: "csv_upload_clicked",
+          source: "left_nav",
         });
         expectGoodSnowplowEvent({
           event: testFile.valid ? "csv_upload_successful" : "csv_upload_failed",
