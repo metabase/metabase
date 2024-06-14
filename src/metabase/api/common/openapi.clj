@@ -29,23 +29,26 @@
         (update :properties fix-locations))))
 
 (defn- fix-type
-  "Fix type of params to make it more understandable to Rapidoc."
+  "Change type of params to make it more understandable to Rapidoc."
   [{:keys [schema] :as param}]
   ;; TODO: figure out how to teach rapidoc `[:or [:enum "all"] nat-int?]`
   (cond
     (and (:oneOf schema)
          (= (second (:oneOf schema)) {:type "null"}))
-    (recur
-     (assoc param :required false :schema (first (:oneOf schema))))
+    (let [real-schema (merge (first (:oneOf schema))
+                             (select-keys schema [:description :default]))]
+      (recur
+       (assoc param :required false :schema real-schema)))
 
     (= (:enum schema) ["true" "false" true false])
-    (assoc param :schema {:type "boolean"})
+    (assoc param :schema (-> (dissoc schema :enum) (assoc :type "boolean")))
 
     :else
     param))
 
-(defn- fix-schema ;; TODO: unify this with `fix-type` somehow?
-  "Fix type of request body to make it more understandable to Rapidoc."
+;; TODO: unify this with `fix-type` somehow, but `:required` is making this hard
+(defn- fix-schema
+  "Change type of request body to make it more understandable to Rapidoc."
   [{:keys [required] :as schema}]
   (let [not-required (atom #{})]
     (-> schema
@@ -58,7 +61,8 @@
                                               (= (second (:oneOf v)) {:type "null"}))
                                          (do
                                            (swap! not-required conj k)
-                                           (assoc (first (:oneOf v)) :description (:description v)))
+                                           (merge (first (:oneOf v))
+                                                  (select-keys v [:description :default])))
 
                                          (= (:enum v) ["true" "false" true false])
                                          (-> (dissoc v :enum) (assoc :type "boolean"))
@@ -118,7 +122,7 @@
                 :name        k
                 :required    (contains? required k)
                 :schema      (dissoc param-schema :description)}
-         (:description schema) (assoc :description (:description param-schema)))))))
+         (:description param-schema) (assoc :description (:description param-schema)))))))
 
 (defn- defendpoint->path-item
   "Generate OpenAPI desc for a single handler
@@ -165,4 +169,4 @@
 (comment
   ;; See what is the result of generation, could be helpful debugging what's wrong with display in rapidoc
   ;; `resolve` is to appease clj-kondo which will complain for #'
-  (defendpoint->path-item nil "/path" (resolve 'metabase.api.collection/GET_:id_items)))
+  (defendpoint->path-item nil "/path" (resolve 'metabase-enterprise.serialization.api/POST_export)))
