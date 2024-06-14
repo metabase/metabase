@@ -387,7 +387,7 @@ const theme = {
     // Limitation: this does not affect charts with custom series color
     charts: [
       // can either be a hex code
-      "#9b59b6",
+      "#9B59B6",
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
@@ -398,6 +398,9 @@ const theme = {
   components: {
     // Dashboard
     dashboard: {
+      // Background color for all dashboards
+      backgroundColor: "#2F3640",
+
       card: {
         // Background color for all dashboard cards
         backgroundColor: "#2D2D30",
