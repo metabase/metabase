@@ -15,6 +15,7 @@ import {
   uploadFile,
   INVALID_CSV_FILES,
   VALID_CSV_FILES,
+  FIXTURE_PATH,
 } from "e2e/support/helpers";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
@@ -396,7 +397,7 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
 
   popover().findByText(uploadOptions[uploadMode]).click();
 
-  cy.fixture(testFile.fileName).then(file => {
+  cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
     cy.get("#upload-file-input").selectFile(
       {
         contents: Cypress.Buffer.from(file),
@@ -432,7 +433,7 @@ function uploadToExisting({ testFile, valid = true, uploadMode = "append" }) {
 }
 
 function headlessUpload(file) {
-  cy.fixture(file.fileName)
+  cy.fixture(`${FIXTURE_PATH}/${file.fileName}`)
     .then(file => Cypress.Blob.binaryStringToBlob(file))
     .then(blob => {
       const formData = new FormData();

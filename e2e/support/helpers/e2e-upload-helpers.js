@@ -1,6 +1,6 @@
 import { WRITABLE_DB_ID } from "../cypress_data";
 
-const FIXTURE_PATH = "../../e2e/support/assets";
+export const FIXTURE_PATH = "../../e2e/support/assets";
 
 export const VALID_CSV_FILES = [
   {
