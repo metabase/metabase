@@ -284,3 +284,37 @@ jobs:
       - name: Wait for Metabase to start
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
+
+  tests-complete-message:
+    if: always()
+    runs-on: ubuntu-22.04
+    needs: [run-sanity-check, check-uberjar-health, verify-docker-pull]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send tests complete message
+        uses: actions/github-script@v7
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendTestsCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const allJobsSuccessful =
+              '${{ needs.run-sanity-check.result }}' === 'success' &&
+              '${{ needs.check-uberjar-health.result }}' === 'success' &&
+              '${{ needs.verify-docker-pull.result }}' === 'success';
+
+            await sendTestsCompleteMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: '${{ github.run_id }}',
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              testsStatus: allJobsSuccessful ? 'success' : 'failure',
+            }).catch(console.error);
