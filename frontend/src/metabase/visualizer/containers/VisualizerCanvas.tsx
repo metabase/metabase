@@ -1,14 +1,67 @@
+import { useEffect, useState, useCallback } from "react";
+import { cardApi } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import BaseVisualization from "metabase/visualizations/components/Visualization";
+import type { SearchResult, Series } from "metabase-types/api";
 
 export function VisualizerCanvas({
   used,
 }: {
   used: SearchResult[] | undefined;
 }) {
+  const [chart, setChart] = useState<Series>();
+  const dispatch = useDispatch();
+
+  const handleAddUsed = async (result: SearchResult) => {
+    if (!result) {
+      return;
+    }
+
+    // const { data: cardData } = await dispatch(
+    //   cardApi.endpoints.getCard.initiate({
+    //     id: Number(result.id),
+    //   }),
+    // );
+
+    // if (!cardData) {
+    //   return;
+    // }
+
+    const { data: dataset } = await dispatch(
+      cardApi.endpoints.cardQuery.initiate(Number(result.id)),
+    );
+
+    if (!dataset) {
+      return;
+    }
+
+    const series = {
+      card: {
+        ...result,
+      },
+      data: dataset.data,
+    };
+
+    setChart(series);
+  };
+
+  useEffect(() => {
+    if (!used) {
+      return;
+    }
+    handleAddUsed(used[0]);
+  }, [used]);
+
+  const metadata = useSelector(getMetadata);
+
   return (
     <Card w="100%" h="100%">
-      Visualizer canvas would show {used?.map(u => u.name)}
+      {chart && (
+        <BaseVisualization rawSeries={[{ ...chart }]} metadata={metadata} />
+      )}
     </Card>
   );
 }
