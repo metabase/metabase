@@ -88,6 +88,7 @@ import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
+import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
@@ -220,4 +221,5 @@ export const data = {
   comboDataLabelsAutoCompactnessPropagatesFromTotals,
   areaChartSteppedNullsInterpolated,
   areaChartSteppedNullsSkipped,
+  safariNonIanaTimezoneRepro44128,
 };
