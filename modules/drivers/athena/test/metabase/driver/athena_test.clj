@@ -227,12 +227,13 @@
             (is (string? result))
             (is (str/starts-with? result "SELECT"))))))))
 
-(deftest describe-table-works-without-get-columns-test
-  (testing "`describe-table` still works when the JDBC .getColumns method returns no results (metabase#43980)")
+(deftest describe-table-works-without-get-table-metadata-permission-test
+  (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions")
     (mt/test-driver :athena
       (mt/dataset airports
         (let [catalog "AwsDataCatalog" ; The bug only happens when :Catalog is not nil
               details (assoc (:details (mt/db))
+                             ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
                              :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
                              :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
                              :Catalog catalog)]
