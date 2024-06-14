@@ -9,13 +9,13 @@ Features currently supported:
 - embedding questions - static
 - embedding questions - w/drill-down
 - embedding dashboards - static
+- embedding the collection browser
 - theming with CSS variables
 - plugins for custom actions
 
 Features planned:
 
 - embedding dashboards - w/ drill-down
-- embedding the collection browser
 - subscribing to events
 
 # Prerequisites
