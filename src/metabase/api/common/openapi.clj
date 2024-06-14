@@ -1,6 +1,7 @@
 (ns metabase.api.common.openapi
   "Generate OpenAPI schema for defendpoint routes"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.json-schema :as mjs]
@@ -86,13 +87,30 @@
     (->> (walk {:prefix ""} root)
          (filter #(-> % :route meta :schema)))))
 
+(defn- parse-compojure-bindings
+  "This function is not trying to parse whole compojure syntax, just get the names of query parameters out"
+  [args]
+  (loop [args args params []]
+    (if (empty? args)
+      params
+      (let [[x y] args]
+        (cond
+          ;; we don't care about rest binding
+          (= '& x)    (recur (nnext args) params)
+          ;; and about coercion too
+          (= :<< x)   (recur (nnext args) params)
+          (= :as x)   (recur (nnext args) (into params (when (map? y)
+                                                         (let [qp (:query-params (set/map-invert y))]
+                                                           (or (:strs qp) (:keys qp))))))
+          (symbol? x) (recur (next args) (conj params x)))))))
+
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
   [full-path args schema]
   (let [{:keys [properties required]} (json-schema-transform schema)
         required                      (set required)
         in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
-        in-query?                     (into #{} (map #(if (symbol? %) (keyword %) %) args))]
+        in-query?                     (set (map keyword (parse-compojure-bindings args)))]
     (for [[k param-schema] properties
           :when            (or (in-path? k) (in-query? k))]
       (fix-type
@@ -137,7 +155,10 @@
                           (merge-with into acc {k v}))
                         {}
                         (for [{:keys [path tag route]} (collect-routes root)]
-                          [path (defendpoint->path-item tag path route)]))]
+                          (try
+                            [path (defendpoint->path-item tag path route)]
+                            (catch Exception e
+                              (throw (ex-info (str "Exception at " path) {} e))))))]
       {:paths      paths
        :components {:schemas @*definitions*}})))
 

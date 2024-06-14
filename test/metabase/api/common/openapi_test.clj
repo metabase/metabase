@@ -29,6 +29,14 @@
   {id ms/PositiveInt}
   {:data (get-in raw-params ["file" :tempfile])})
 
+(api/defendpoint POST "/export"
+  "docstring"
+  [:as {{:strs [collection settings]}
+        :query-params}]
+  {collection [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+   settings   [:maybe ms/BooleanValue]}
+  {:collections collection :settings settings})
+
 (api/define-routes)
 
 ;;; tests
@@ -42,7 +50,8 @@
          (#'openapi/path->openapi "/:model/:yyyy-mm"))))
 
 (deftest ^:parallel collect-routes-test
-  (is (=? [{:path "/{id}"}
+  (is (=? [{:path "/export"}
+           {:path "/{id}"}
            {:path "/{id}"}
            {:path "/{id}/upload"}]
           (sort-by :path (#'openapi/collect-routes #'routes)))))
@@ -57,27 +66,40 @@
                                         :minimum 1}}]}}
           (#'openapi/defendpoint->path-item nil "/{id}" #'GET_:id)))
   (is (=? {:post
-           {:parameters  [{:in          :path
-                           :name        :id
-                           :required    true
-                           :description some?
-                           :schema      {:type    "integer"
-                                         :minimum 1}}
-                          {:in :query,
-                           :name :value,
-                           :required true,
-                           :schema {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}}]}}
+           {:parameters [{:in          :path
+                          :name        :id
+                          :required    true
+                          :description some?
+                          :schema      {:type    "integer"
+                                        :minimum 1}}
+                         {:in       :query,
+                          :name     :value,
+                          :required true,
+                          :schema   {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}}]}}
           (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id)))
   (is (=? {:post
-           {:parameters  [{:in          :path
-                           :name        :id
-                           :required    true
-                           :description some?
-                           :schema      {:type    "integer"
-                                         :minimum 1}}]
+           {:parameters [{:in          :path
+                          :name        :id
+                          :required    true
+                          :description some?
+                          :schema      {:type    "integer"
+                                        :minimum 1}}]
             ;; TODO: no :requestBody since we did not spec anything
             }}
-          (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id_upload))))
+          (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id_upload)))
+  (is (=? {:post
+           {:parameters [{:in       :query
+                          :name     :collection
+                          :required false
+                          :schema   {:type "array",
+                                     :items
+                                     {:type    "integer"
+                                      :minimum 1}}}
+                         {:in       :query
+                          :name     :settings
+                          :required false
+                          :schema   {:type "boolean"}}]}}
+          (#'openapi/defendpoint->path-item nil "/export" #'POST_export))))
 
 (deftest ^:parallel openapi-object-test
   (is (=? {:paths      {"/{id}"        {:get  {}
