@@ -5,6 +5,5 @@
  {"athena" {:url "https://s3.amazonaws.com/maven-athena"}}
 
  :deps
- #_{com.amazonaws/aws-java-sdk-core {:mvn/version "1.12.683"}
-  com.metabase/athena-jdbc        {:mvn/version "2.0.35"}}
+ ;; TODO: Following driver contains sdk. Verify that image size with this driver in place.
  {com.metabase/athena-jdbc {:mvn/version "3.2.0"}}}

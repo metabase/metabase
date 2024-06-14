@@ -136,21 +136,21 @@
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                   :CredentialsProvider))))
       (testing "Not specifying access-key will use credential chain"
         (is (contains?
               (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-              :AwsCredentialsProviderClass)))))
+              :CredentialsProvider)))))
   (testing "When hosted"
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                   :CredentialsProvider))))
       (testing "Not specifying access-key will still not use credential chain"
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-                   :AwsCredentialsProviderClass)))))))
+                   :CredentialsProvider)))))))
 
 (deftest ^:parallel page-test
   (testing ":page clause places OFFSET *before* LIMIT"

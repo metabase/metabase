@@ -9,7 +9,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
-   #_[metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -22,7 +22,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData Date ResultSet Time Timestamp Types)
    (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -54,32 +54,11 @@
     (str/starts-with? region "cn-") ".amazonaws.com.cn"
     :else ".amazonaws.com"))
 
-#_(defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
-  (-> (merge
-       {:classname      "com.simba.athena.jdbc.Driver"
-        :subprotocol    "awsathena"
-        :subname        (str "//athena." region (endpoint-for-region region) ":443")
-        :user           access_key
-        :password       secret_key
-        :s3_staging_dir s3_staging_dir
-        :workgroup      workgroup
-        :AwsRegion      region}
-       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
-         {:AwsCredentialsProviderClass "com.simba.athena.amazonaws.auth.DefaultAWSCredentialsProviderChain"})
-       (when-not (str/blank? catalog)
-         {:MetadataRetrievalMethod "ProxyAPI"
-          :Catalog                 catalog})
-       ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
-       ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests.
-       (dissoc details :db :catalog :metabase.driver.athena/schema))
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
-
-;; Athena jdbc 3.2 uses different parameters, class name and subprotocol.
+;; Athena jdbc 3.2 uses different parameters.
 ;; https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-connection-parameters.html
 ;; https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-getting-started.html#jdbc-v3-driver-running-the-driver
 (defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as _details}]
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
@@ -92,12 +71,11 @@
         :LogLevel       "OFF"}
        (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
          {:CredentialsProvider "DefaultChain"})
-       ;; TODO: Why proxy? (In context of "WARN results.PaginatingAsyncQueryResultsBase :: Items requested for query
-       ;;       execution ID, but subscription is cancelled" warning.)
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
           :Catalog                 catalog}))
-      (dissoc :db :catalog :metabase.driver.athena/schema)))
+      (dissoc :db :catalog :metabase.driver.athena/schema)
+      (sql-jdbc.common/handle-additional-options details :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
   [_driver {:keys [catalog], s3-results-bucket :s3_staging_dir}]
@@ -141,7 +119,8 @@
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/VARCHAR]
+;; TODO: Let the tests decide if we may drop this!
+#_(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/VARCHAR]
   [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
   ;; since TIME and TIMESTAMP WITH TIME ZONE are not really real types (or at least not ones that you can store), they
   ;; come back in a weird way -- they come back as a string, but the database type is `time` or `timestamp with time
@@ -164,46 +143,26 @@
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
 
-;; TIMESTAMP WITH TIMEZONE is returned as java.sql.Timestamp
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIMESTAMP_WITH_TIMEZONE]
-  [_driver rs _rs-meta i]
+;; TIMESTAMP WITH TIMEZONE is returned as java.sql.Timestamp, hence missing the timezone information.
+;; TODO: Verify drivers conversion of value with timezone to local timestamp works correctly! Test!
+(defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
+  [_driver ^ResultSet rs _rs-meta ^Long i]
   (fn []
     (t/offset-date-time
-       (.getObject ^java.sql.ResultSet rs ^int i String)
-       (qp.timezone/results-timezone-id))
-    #_(.getObject ^java.sql.ResultSet rs ^int i String)))
+     (.getObject rs i Timestamp)
+     (qp.timezone/results-timezone-id))))
 
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIMESTAMP]
-  [_driver rs _rs-meta i]
-  (fn []
-    (t/local-date-time
-     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Timestamp)
-     #_(t/zone-id "UTC")
-     #_(qp.timezone/results-timezone-id))))
+(defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP]
+  [_driver ^ResultSet rs _rs-meta ^Long i]
+  (fn [] (.toLocalDateTime ^Timestamp (.getObject rs i Timestamp))))
 
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/DATE]
-  [_driver rs _rs-meta i]
-  (fn []
-    (t/local-date-time
-     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Timestamp)
-     #_(t/zone-id "UTC")
-     #_(qp.timezone/results-timezone-id))))
+(defmethod sql-jdbc.execute/read-column-thunk [:athena Types/DATE]
+  [_driver ^ResultSet rs _rs-meta ^Long i]
+  (fn [] (.toLocalDate ^Date (.getObject rs i Date))))
 
-;; [[date-time-zone-functions-test/datetime-math-tests-mongodb]]
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/DATE]
-  [_driver rs _rs-meta i]
-  (fn []
-    (t/local-date
-     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Date))))
-
-;; [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/TIME]
-  [_driver rs _rs-meta i]
-  (fn []
-    (t/local-time
-     (.getObject ^java.sql.ResultSet rs ^int i java.sql.Time))))
-
-;; TODO: Handle time values as well ie. `read-time-and-timestamp-with-time-zone-columns-test`
+(defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIME]
+  [_driver ^ResultSet rs _rs-meta ^Long i]
+  (fn [] (.toLocalTime ^Time (.getObject rs i Time))))
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
@@ -388,9 +347,19 @@
         (distinct)                                     ; driver can return twice the partitioning fields
         (map describe-database->clj)))
 
+;; TODO: Proper docstring!
+(defn- normalize-field-info
+  "With the new driver {:_col0 } items are returned"
+  [raw-field-info]
+  (let [field-info-str (:_col0 raw-field-info)
+        components (map (comp not-empty str/trim) (str/split field-info-str #"\t"))
+        field-info (zipmap [:col_name :data_type :remark] components)]
+    (into {} (remove (fn [[_ v]] (nil? v))) field-info)))
+
 (defn- describe-table-fields-with-nested-fields [database schema table-name]
   (into #{}
-        (comp (remove-invalid-columns)
+        (comp (map normalize-field-info)
+              (remove-invalid-columns)
               (map-indexed (fn [i column-metadata]
                              (assoc column-metadata :database-position i)))
               (map athena.schema-parser/parse-schema))
@@ -447,25 +416,25 @@
                         (catch Throwable _
                           (set nil))))))))
 
+;; TODO: Verify this in CI. It may be that discrepancy is caused by policy differences!
 #_(defn- get-tables
-  "Athena can query EXTERNAL and MANAGED tables."
-  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
-  ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["EXTERNAL_TABLE"
-                                                 "EXTERNAL TABLE"
-                                                 "EXTERNAL"
-                                                 "TABLE"
-                                                 "VIEW"
-                                                 "VIRTUAL_VIEW"
-                                                 "FOREIGN TABLE"
-                                                 "MATERIALIZED VIEW"
-                                                 "MANAGED_TABLE"]))]
-    (vec (jdbc/metadata-result rs))))
+    "Athena can query EXTERNAL and MANAGED tables."
+    [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+    ;; tablePattern "%" = match all tables
+    (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+                               (into-array String ["EXTERNAL_TABLE"
+                                                   "EXTERNAL TABLE"
+                                                   "EXTERNAL"
+                                                   "TABLE"
+                                                   "VIEW"
+                                                   "VIRTUAL_VIEW"
+                                                   "FOREIGN TABLE"
+                                                   "MATERIALIZED VIEW"
+                                                   "MANAGED_TABLE"]))]
+      (vec (jdbc/metadata-result rs))))
 
 ;; Other table types are not available with 3.2 jdbc driver.
 (defn- get-tables
-  "Athena can query EXTERNAL and MANAGED tables."
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
@@ -492,7 +461,6 @@
                                                  (.getObject table-types idx))
                                                (map inc (range (.getColumnCount table-types-meta))))))))]
           [columns rows]))))
-
   )
 
 (defn- fast-active-tables
