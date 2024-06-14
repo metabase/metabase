@@ -5,7 +5,7 @@ import _ from "underscore";
 import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfigAPIResponse,
-  Config,
+  CacheConfig,
   CacheableModel,
 } from "metabase-types/api";
 
@@ -36,7 +36,7 @@ export const useCacheConfigs = ({
 
   const configsFromAPI = configsApiResult.value;
 
-  const [configs, setConfigs] = useState<Config[]>([]);
+  const [configs, setConfigs] = useState<CacheConfig[]>([]);
 
   const rootStrategyOverriddenOnce = configs.some(
     config => config.model_id !== rootId,

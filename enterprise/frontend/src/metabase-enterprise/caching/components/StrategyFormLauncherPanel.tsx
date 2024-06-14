@@ -7,7 +7,7 @@ import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Config } from "metabase-types/api";
+import type { CacheConfig } from "metabase-types/api";
 
 import { useResetToDefaultForm } from "../hooks/useResetToDefaultForm";
 
@@ -27,8 +27,8 @@ export const StrategyFormLauncherPanel = ({
   isStrategyFormDirty,
   shouldShowResetButton,
 }: {
-  configs: Config[];
-  setConfigs: Dispatch<SetStateAction<Config[]>>;
+  configs: CacheConfig[];
+  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
   targetId: number | null;
   updateTargetId: UpdateTargetId;
   databases: Database[];
