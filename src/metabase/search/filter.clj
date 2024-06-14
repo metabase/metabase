@@ -253,9 +253,9 @@
   []
   (merge
    ;; models support search-native-query if dataset_query is one of the searchable columns
-   {:search-native-query (->> (dissoc (methods search.config/searchable-columns-for-model) :default)
+   {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
                               (filter (fn [[k v]]
-                                        (contains? (set (v k)) :dataset_query)))
+                                        (contains? (set (v k true)) :dataset_query)))
                               (map first)
                               set)}
    (->> (dissoc (methods build-optional-filter-query) :default)
