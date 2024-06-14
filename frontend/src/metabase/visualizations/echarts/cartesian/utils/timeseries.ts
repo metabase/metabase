@@ -2,6 +2,7 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import _ from "underscore";
 
+import { getIanaTimezone } from "metabase/lib/time";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
 import type {
@@ -268,5 +269,5 @@ export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
     );
   }
 
-  return results_timezone || DEFAULT_TIMEZONE;
+  return getIanaTimezone(results_timezone || DEFAULT_TIMEZONE);
 }
