@@ -1,6 +1,13 @@
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import { useState, useRef, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  forwardRef,
+} from "react";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
@@ -15,6 +22,7 @@ import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenFie
 import ValueComponent from "metabase/components/Value";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { formatValue } from "metabase/lib/formatting";
 import { parseNumberValue } from "metabase/lib/number";
 import { defer } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
@@ -25,6 +33,8 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
+import type { SelectItemProps } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -90,8 +100,8 @@ export interface IFieldValuesWidgetProps {
   dashboard?: Dashboard;
   question?: Question;
 
-  value: string[];
-  onChange: (value: string[]) => void;
+  value: RowValue[];
+  onChange: (value: RowValue[]) => void;
 
   multi?: boolean;
   autoFocus?: boolean;
@@ -100,7 +110,7 @@ export interface IFieldValuesWidgetProps {
   placeholder?: string;
   checkedColor?: string;
 
-  valueRenderer?: (value: string | number) => JSX.Element;
+  valueRenderer?: (value: RowValue) => JSX.Element;
   optionRenderer?: (option: FieldValue) => JSX.Element;
   layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
 }
@@ -361,7 +371,7 @@ export function FieldValuesWidgetInner({
   };
 
   if (!valueRenderer) {
-    valueRenderer = (value: string | number) =>
+    valueRenderer = (value: RowValue) =>
       renderValue({
         fields,
         formatOptions,
@@ -434,6 +444,65 @@ export function FieldValuesWidgetInner({
       : parseStringValue(value);
   };
 
+  const shouldCreate = (value: RowValue) => {
+    if (typeof value === "string" || typeof value === "number") {
+      const res = parseFreeformValue(value);
+      return res !== null;
+    }
+
+    return true;
+  };
+
+  const renderStringOption = useCallback(
+    function (option: FieldValue): {
+      label: string;
+      value: string;
+    } {
+      const value = option[0];
+      const column = fields[0];
+      const label =
+        formatValue(value, {
+          ...formatOptions,
+          column,
+          remap: showRemapping(fields),
+          jsx: false,
+          maximumFractionDigits: 20,
+          // we know it is string | number because we are passing jsx: false
+        })?.toString() ?? "<null>";
+
+      return { value: value?.toString() ?? "", label };
+    },
+    [fields, formatOptions],
+  );
+
+  const CustomItemComponent = useMemo(
+    () =>
+      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
+        props,
+        ref,
+      ) {
+        const customLabel =
+          props.value !== undefined &&
+          renderValue({
+            fields,
+            formatOptions,
+            value: props.value,
+          });
+
+        return (
+          <ItemWrapper
+            ref={ref}
+            {...props}
+            label={customLabel ?? (props.label || "")}
+          />
+        );
+      }),
+    [fields, formatOptions],
+  );
+
+  const isSimpleInput =
+    !multi && (!parameter || parameter.values_query_type === "none");
+
   return (
     <ErrorBoundary>
       <div
@@ -450,7 +519,7 @@ export function FieldValuesWidgetInner({
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
-            value={value?.filter((v: string) => v != null)}
+            value={value?.filter((v: RowValue) => v != null)}
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
@@ -465,6 +534,20 @@ export function FieldValuesWidgetInner({
             options={options}
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
+          />
+        ) : !isSimpleInput ? (
+          <MultiAutocomplete
+            onSearchChange={onInputChange}
+            onChange={values => onChange(values.map(parseFreeformValue))}
+            value={value
+              .map(value => value?.toString())
+              .filter((v): v is string => v !== null && v !== undefined)}
+            data={options.map(renderStringOption)}
+            placeholder={tokenFieldPlaceholder}
+            shouldCreate={shouldCreate}
+            autoFocus={autoFocus}
+            icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
+            itemComponent={CustomItemComponent}
           />
         ) : (
           <TokenField
@@ -617,8 +700,6 @@ function renderValue({
   fields,
   formatOptions,
   value,
-  autoLoad,
-  compact,
 }: {
   fields: Field[];
   formatOptions: Record<string, any>;
@@ -633,8 +714,16 @@ function renderValue({
       maximumFractionDigits={20}
       remap={showRemapping(fields)}
       {...formatOptions}
-      autoLoad={autoLoad}
-      compact={compact}
     />
   );
 }
+
+export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
+  function ItemWrapper({ label, value, ...others }, ref) {
+    return (
+      <div ref={ref} {...others}>
+        {label || value}
+      </div>
+    );
+  },
+);
