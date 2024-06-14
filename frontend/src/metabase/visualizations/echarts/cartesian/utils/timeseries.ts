@@ -249,17 +249,21 @@ export function getLargestInterval(intervals: TimeSeriesInterval[]) {
   });
 }
 
-const isTimezoneInOffsetFormat = (timezone: string) => {
-  const offsetPattern = /^[+-]\d{2}:\d{2}$/;
-  return offsetPattern.test(timezone);
-};
+// Tests for offsets like +01:15, -09:45
+const OFFSET_PATTERN = /^([+-])(\d{2}):(\d{2})$/;
 
-const parseOffsetMinutes = (offsetString: string) => {
-  const offsetSign = offsetString[0];
-  const offsetHours = parseInt(offsetString.substring(1, 3));
-  const offsetMinutes = parseInt(offsetString.substring(4, 6));
-  const totalOffsetMinutes =
-    (offsetHours * 60 + offsetMinutes) * (offsetSign === "+" ? 1 : -1);
+const tryParseOffsetMinutes = (maybeOffset: string): number | undefined => {
+  const match = maybeOffset.match(OFFSET_PATTERN);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, sign, hours, minutes] = match;
+  const offsetSign = sign === "+" ? 1 : -1;
+  const offsetHours = parseInt(hours, 10);
+  const offsetMinutes = parseInt(minutes, 10);
+  const totalOffsetMinutes = (offsetHours * 60 + offsetMinutes) * offsetSign;
 
   return totalOffsetMinutes;
 };
@@ -287,9 +291,10 @@ export function getTimezoneOrOffset(
   }
 
   const offsetMinutes =
-    results_timezone != null && isTimezoneInOffsetFormat(results_timezone)
-      ? parseOffsetMinutes(results_timezone)
+    results_timezone != null
+      ? tryParseOffsetMinutes(results_timezone)
       : undefined;
+
   const timezone =
     offsetMinutes == null ? results_timezone || DEFAULT_TIMEZONE : undefined;
 
