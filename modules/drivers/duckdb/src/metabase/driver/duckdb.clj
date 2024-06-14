@@ -1,5 +1,6 @@
 (ns metabase.driver.duckdb
   (:require [clojure.string :as str]
+            [java-time.api :as t]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -7,6 +8,7 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.lib.metadata :as lib.metadata]
             [metabase.models.interface :as mi]
             [metabase.query-processor.store :as qp.store]
@@ -26,13 +28,17 @@
 
 (defmethod sql.qp/honey-sql-version :duckdb [_driver] 2)
 
-(defmethod driver/supports? [:duckdb :actions] [_ _] false)
-(defmethod driver/supports? [:duckdb :actions/custom] [_ _] false)
-(defmethod driver/supports? [:duckdb :datetime-diff] [_ _] true)
-(defmethod driver/supports? [:duckdb :foreign-keys] [_ _] (not config/is-test?))
-(defmethod driver/supports? [:duckdb :native-parameters] [_ _] false)
-(defmethod driver/supports? [:duckdb :now] [_ _] true)
-(defmethod driver/supports? [:duckdb :set-timezone] [_ _] false)
+(doseq [[feature supported?] {:actions                  false
+                              :actions/custom           false
+                              :convert-timezone         true
+                              :datetime-diff            true
+                              :foreign-keys             (not config/is-test?)
+                              :native-parameters        false
+                              :now                      true
+                              :set-timezone             false
+                              :uploads                  false}]
+
+  (defmethod driver/database-supports? [:duckdb feature] [_driver _feature _db] supported?))
 
 ;; Matches Postgres driver
 (defmethod driver/db-start-of-week :duckdb [_] :monday)
@@ -59,48 +65,49 @@
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"BOOLEAN"     :type/Boolean]
-    [#"BOOL"        :type/Boolean]
-    [#"LOGICAL"     :type/Boolean]
-    [#"HUGEINT"     :type/BigInteger]
-    [#"BIGINT"      :type/BigInteger]
-    [#"UBIGINT"     :type/BigInteger]
-    [#"INT8"        :type/BigInteger]
-    [#"LONG"        :type/BigInteger]
-    [#"INT"         :type/Integer]
-    [#"INTEGER"     :type/Integer]
-    [#"INT4"        :type/Integer]
-    [#"SIGNED"      :type/Integer]
-    [#"SMALLINT"    :type/Integer]
-    [#"INT2"        :type/Integer]
-    [#"SHORT"       :type/Integer]
-    [#"TINYINT"     :type/Integer]
-    [#"INT1"        :type/Integer]
-    [#"UINTEGER"    :type/Integer]
-    [#"USMALLINT"   :type/Integer]
-    [#"UTINYINT"    :type/Integer]
-    [#"DECIMAL"     :type/Decimal]
-    [#"DOUBLE"      :type/Float]
-    [#"FLOAT8"      :type/Float]
-    [#"NUMERIC"     :type/Float]
-    [#"REAL"        :type/Float]
-    [#"FLOAT4"      :type/Float]
-    [#"FLOAT"       :type/Float]
-    [#"VARCHAR"     :type/Text]
-    [#"CHAR"        :type/Text]
-    [#"BPCHAR"      :type/Text]
-    [#"TEXT"        :type/Text]
-    [#"STRING"      :type/Text]
-    [#"BLOB"        :type/*]
-    [#"BYTEA"       :type/*]
-    [#"BINARY"      :type/*]
-    [#"VARBINARY"   :type/*]
-    [#"UUID"        :type/UUID]
-    [#"TIMESTAMP"   :type/DateTime]
-    [#"DATETIME"    :type/DateTime]
-    [#"TIMESTAMPTZ" :type/DateTimeWithZoneOffset]
-    [#"DATE"        :type/Date]
-    [#"TIME"        :type/Time]]))
+   [[#"BOOLEAN"                  :type/Boolean]
+    [#"BOOL"                     :type/Boolean]
+    [#"LOGICAL"                  :type/Boolean]
+    [#"HUGEINT"                  :type/BigInteger]
+    [#"BIGINT"                   :type/BigInteger]
+    [#"UBIGINT"                  :type/BigInteger]
+    [#"INT8"                     :type/BigInteger]
+    [#"LONG"                     :type/BigInteger]
+    [#"INT"                      :type/Integer]
+    [#"INTEGER"                  :type/Integer]
+    [#"INT4"                     :type/Integer]
+    [#"SIGNED"                   :type/Integer]
+    [#"SMALLINT"                 :type/Integer]
+    [#"INT2"                     :type/Integer]
+    [#"SHORT"                    :type/Integer]
+    [#"TINYINT"                  :type/Integer]
+    [#"INT1"                     :type/Integer]
+    [#"UINTEGER"                 :type/Integer]
+    [#"USMALLINT"                :type/Integer]
+    [#"UTINYINT"                 :type/Integer]
+    [#"DECIMAL"                  :type/Decimal]
+    [#"DOUBLE"                   :type/Float]
+    [#"FLOAT8"                   :type/Float]
+    [#"NUMERIC"                  :type/Float]
+    [#"REAL"                     :type/Float]
+    [#"FLOAT4"                   :type/Float]
+    [#"FLOAT"                    :type/Float]
+    [#"VARCHAR"                  :type/Text]
+    [#"CHAR"                     :type/Text]
+    [#"BPCHAR"                   :type/Text]
+    [#"TEXT"                     :type/Text]
+    [#"STRING"                   :type/Text]
+    [#"BLOB"                     :type/*]
+    [#"BYTEA"                    :type/*]
+    [#"BINARY"                   :type/*]
+    [#"VARBINARY"                :type/*]
+    [#"UUID"                     :type/UUID]
+    [#"TIMESTAMP"                :type/DateTime]
+    [#"DATETIME"                 :type/DateTime]
+    [#"TIMESTAMPTZ"              :type/DateTimeWithZoneOffset]
+    [#"TIMESTAMP WITH TIME ZONE" :type/DateTimeWithZoneOffset]
+    [#"DATE"                     :type/Date]
+    [#"TIME"                     :type/Time]]))
 
 (defmethod sql-jdbc.sync/database-type->base-type :duckdb
   [_driver field-type]
@@ -154,6 +161,12 @@
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [sqlTime (.getObject rs i java.sql.Time)] (.toLocalTime sqlTime))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:duckdb Types/TIMESTAMP]
+   [_ ^ResultSet rs _ ^Integer i]
+    (fn []
+     (when-let [t (.getTimestamp rs i)]
+       (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC")))))
 
 ;;
 ;; Query processor
@@ -243,3 +256,14 @@
 (defmethod sql.qp/->honeysql [:duckdb :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) [:inline 1]])
+
+(defmethod sql.qp/->honeysql [:duckdb :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (sql.qp/->honeysql driver (cond-> arg
+                                                 (string? arg) u.date/parse))
+        timestamptz? (h2x/is-of-type? expr #"(?i)^(timestamptz|timestamp with time zone)$")
+        _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        expr         [:timezone target-timezone (if (not timestamptz?)
+                                                  [:timezone source-timezone expr]
+                                                  expr)]]
+    (h2x/with-database-type-info expr "timestamp")))

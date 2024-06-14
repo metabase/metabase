@@ -1,5 +1,6 @@
-# This driver is based on the community driver with minor modifications:
+# This driver is based on the following community drivers with minor modifications:
 # https://github.com/AlexR2D2/metabase_duckdb_driver
+# https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver
 
 info:
   name: Metabase DuckDB Driver
