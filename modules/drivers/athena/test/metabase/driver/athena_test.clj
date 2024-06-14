@@ -1,5 +1,6 @@
 (ns metabase.driver.athena-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -12,7 +13,14 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]))
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private nested-schema
   [{:col_name "key", :data_type "int"}
@@ -218,3 +226,29 @@
           (let [result (query->native! query)]
             (is (string? result))
             (is (str/starts-with? result "SELECT"))))))))
+
+(deftest describe-table-works-without-get-columns-test
+  (testing "`describe-table` still works when the JDBC .getColumns method returns no results (metabase#43980)")
+    (mt/test-driver :athena
+      (mt/dataset airports
+        (let [catalog "AwsDataCatalog" ; The bug only happens when :Catalog is not nil
+              details (assoc (:details (mt/db))
+                             :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
+                             :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
+                             :Catalog catalog)]
+          (mt/with-temp [:model/Database db {:engine :athena, :details details}]
+            (sync/sync-database! db {:scan :schema})
+            (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
+              (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
+                ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
+                ;; undo the changes in https://github.com/metabase/metabase/pull/44032
+                (is (empty? (sql-jdbc.execute/do-with-connection-with-options
+                             :athena
+                             db
+                             nil
+                             (fn [^Connection conn]
+                               (let [metadata (.getMetaData conn)]
+                                 (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
+                                   (jdbc/metadata-result rs))))))))
+              (testing "`describe-table` returns the fields anyway"
+                (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
