@@ -532,7 +532,7 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.wait("@failedGet");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Something's gone wrong");
+    cy.findByText(/Something.s gone wrong/);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "We've run into an error. You can try refreshing the page, or just go back.",
