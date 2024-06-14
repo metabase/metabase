@@ -1,5 +1,6 @@
 import type { CardId } from "./card";
 import type { RowValue, TemporalUnit } from "./dataset";
+import type { FieldValue } from "./field";
 import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
@@ -65,7 +66,7 @@ export type ValuesQueryType = "list" | "search" | "none";
 export type ValuesSourceType = null | "card" | "static-list";
 
 export interface ValuesSourceConfig {
-  values?: string[];
+  values?: string[] | FieldValue[];
   card_id?: CardId;
   value_field?: unknown[];
 }
