@@ -11,6 +11,7 @@ import {
   NumberInput,
   Select,
   Text,
+  Switch,
 } from "metabase/ui";
 
 import type { DateIntervalValue } from "../types";
@@ -66,7 +67,7 @@ export function DateIntervalPicker({
     onChange(setDefaultOffset(value));
   };
 
-  const handleIncludeCurrentClick = () => {
+  const handleIncludeCurrentSwitch = () => {
     onChange(setIncludeCurrent(value, !includeCurrent));
   };
 
@@ -109,16 +110,19 @@ export function DateIntervalPicker({
                 {t`Starting from…`}
               </Menu.Item>
             )}
-            <Menu.Item
-              icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
-              onClick={handleIncludeCurrentClick}
-              aria-selected={includeCurrent}
-              data-testid="include-current-interval-option"
-            >
-              {t`Include ${getIncludeCurrentLabel(value.unit)}`}
-            </Menu.Item>
           </Menu.Dropdown>
         </Menu>
+      </Flex>
+      <Flex p="md" pt={0}>
+        <Switch
+          aria-checked={includeCurrent}
+          checked={includeCurrent}
+          data-testid="include-current-interval-option"
+          label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
+          labelPosition="right"
+          onChange={handleIncludeCurrentSwitch}
+          size="sm"
+        />
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
