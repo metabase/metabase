@@ -25,6 +25,8 @@
 
 (set! *warn-on-reflection* true)
 
+(set! *warn-on-reflection* true)
+
 (def ^:private nested-schema
   [{:_col0 "key    \tint   \t     "}
    {:_col0 "data    \tstruct<name:string>   \t     "}])
