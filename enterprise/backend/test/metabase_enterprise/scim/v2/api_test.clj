@@ -8,8 +8,7 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
-(def ^:private scim-api-key
-  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto)) :unmasked_key))
+(def ^:private scim-api-key (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto)) :unmasked_key))
 
 (defn- scim-client
   "Wrapper for `metabase.http-client/client` which includes the SCIM key in the Authorization header"
@@ -36,14 +35,18 @@
 
 (deftest fetch-user-test
   (mt/with-premium-features #{:scim}
-    (testing "A single user can be fetched in the SCIM format"
-      (is (= {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
-              :id       (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
-              :userName "rasta@metabase.com"
-              :name     {:givenName "Rasta" :familyName "Toucan"}
-              :emails   [{:value "rasta@metabase.com"}]
-              :active   true}
-             (scim-client :get 200 (format "ee/scim/v2/Users/%d" (mt/user->id :rasta))))))))
+    (testing "A single user can be fetched in the SCIM format by entity ID"
+      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))]
+        (is (= {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                :id       (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
+                :userName "rasta@metabase.com"
+                :name     {:givenName "Rasta" :familyName "Toucan"}
+                :emails   [{:value "rasta@metabase.com"}]
+                :active   true}
+               (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))))))
+
+    (testing "404 is returned when fetching a non-existant user"
+      (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
 (deftest list-users-test
   (mt/with-premium-features #{:scim}
@@ -53,6 +56,7 @@
 
     (testing "Fetch users with custom pagination"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?startIndex=%d&count=%d" 1 2))]
+        (def response response)
         (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
         (is (integer? (get response :totalResults)))
         (is (= 1 (get response :startIndex)))
@@ -63,12 +67,14 @@
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
+        (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
 
     (testing "Fetch non-existant user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"newuser@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
+        (is (= 0 (get response :totalResults)))
         (is (= 0 (count (get response :Resources))))))
 
     (testing "Error if unsupported filter operation is provided"
