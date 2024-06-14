@@ -7949,7 +7949,7 @@ databaseChangeLog:
 # ADVICE:
 #
 # 1) Think through some of these points when writing a migration, learn from our past mistakes:
-#    - If you need data migration, do you really need to? Could the feature work without it? Prefer not to if possible.
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
 #      Data in the wild can be vastly different from what you expect, and it's hard to get right.
 #    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
 #      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
