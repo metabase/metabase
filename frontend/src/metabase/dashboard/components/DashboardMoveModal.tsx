@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { MoveModal } from "metabase/containers/MoveModal";
@@ -57,11 +57,16 @@ const DashboardMoveToast = ({
   collectionId: CollectionId;
 }) => (
   <ToastRoot>
-    <Icon name="collection" className="mr1" color="text-white" />
-    {jt`Dashboard moved to ${(
+    <Icon
+      name="collection"
+      style={{ marginInlineEnd: "0.25rem" }}
+      color="text-white"
+    />
+    {c("{0} is a location where the dashboard was moved to")
+      .jt`Dashboard moved to ${(
       <Collection.Link
         id={collectionId}
-        className="ml1"
+        style={{ marginInlineStart: "0.25rem" }}
         color={color("brand")}
       />
     )}`}
