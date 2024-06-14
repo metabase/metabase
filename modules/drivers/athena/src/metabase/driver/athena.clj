@@ -119,38 +119,26 @@
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
-;; TODO: Let the tests decide if we may drop this!
-#_(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/VARCHAR]
-  [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
-  ;; since TIME and TIMESTAMP WITH TIME ZONE are not really real types (or at least not ones that you can store), they
-  ;; come back in a weird way -- they come back as a string, but the database type is `time` or `timestamp with time
-  ;; zone`, respectively. In those cases we can use `.getObject` to get a
-  ;; `java.time.LocalTime`/`java.time.ZonedDateTime` and it seems to work like we'd expect.
-  (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
-    "time"
-    (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
-
-    ;; Following is redundant in 3.2 jdbc driver
-    "timestamp with time zone"
-    (fn read-column-as-ZonedDateTime []
-      (when-let [s (.getString rs i)]
-        (try
-          (u.date/parse s)
-          ;; better to catch and log the error here than to barf completely, right?
-          (catch Throwable e
-            (log/errorf e "Error parsing timestamp with time zone string %s: %s" (pr-str s) (ex-message e))
-            nil))))
-
-    ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
-
-;; TIMESTAMP WITH TIMEZONE is returned as java.sql.Timestamp, hence missing the timezone information.
-;; TODO: Verify drivers conversion of value with timezone to local timestamp works correctly! Test!
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
   (fn []
-    (t/offset-date-time
-     (.getObject rs i Timestamp)
-     (qp.timezone/results-timezone-id))))
+    ;; Using OffsetDateTime to be consistent with :sql-jdbc implementation
+    (let [^Timestamp timestamp (.getObject rs i Timestamp)
+          timestamp-instant (.toInstant timestamp)
+          results-timezone (qp.timezone/results-timezone-id)]
+      (try
+        (.toOffsetDateTime (t/zoned-date-time timestamp-instant (t/zone-id results-timezone)))
+        (catch Throwable _
+          (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
+                     (pr-str timestamp-instant)
+                     (pr-str results-timezone))
+          (try
+            (t/offset-date-time timestamp-instant results-timezone)
+            (catch Throwable _
+              (log/warnf "Failed to construct OffsetDateTime from `%s` using `%s` offset. Using `Z` fallback."
+                         (pr-str timestamp-instant)
+                         (pr-str results-timezone))
+              (t/offset-date-time timestamp-instant "Z"))))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -349,7 +337,7 @@
 
 ;; TODO: Proper docstring!
 (defn- normalize-field-info
-  "With the new driver {:_col0 } items are returned"
+  "JDBC driver of version 3.2 returns describe as {:_col0 \"<name>\t<typename>\t<remark>\"}."
   [raw-field-info]
   (let [field-info-str (:_col0 raw-field-info)
         components (map (comp not-empty str/trim) (str/split field-info-str #"\t"))
