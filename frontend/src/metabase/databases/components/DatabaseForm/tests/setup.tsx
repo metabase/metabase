@@ -88,10 +88,7 @@ export interface SetupOpts {
   hasEnterprisePlugins?: boolean;
 }
 
-export const setup = ({
-  settings,
-  hasEnterprisePlugins,
-}: SetupOpts = {}) => {
+export const setup = ({ settings, hasEnterprisePlugins }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({
       ...settings,

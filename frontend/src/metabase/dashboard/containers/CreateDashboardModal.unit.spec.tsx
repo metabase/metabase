@@ -49,15 +49,13 @@ const COLLECTION = {
 };
 COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 
-function setup({
-  mockCreateDashboardResponse = true,
-} = {}) {
+function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
   mockScrollBy();
   setupRecentViewsAndSelectionsEndpoints([]);
   const onClose = jest.fn();
 
-  const settings = mockSettings({  });
+  const settings = mockSettings({});
 
   if (mockCreateDashboardResponse) {
     fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
@@ -138,7 +136,6 @@ describe("CreateDashboardModal", () => {
     });
   });
 
-  // FIXME: Is this needed anymore? I don't think we have a cache TTL field anymore
   describe("Cache TTL field", () => {
     describe("OSS", () => {
       it("is not shown", () => {
