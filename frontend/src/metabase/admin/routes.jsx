@@ -168,6 +168,13 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           path={PerformanceTabId.Models}
           component={() => <PerformanceApp tabId={PerformanceTabId.Models} />}
         />
+        <Route
+          title={t`Dashboard and question caching`}
+          path={PerformanceTabId.DashboardsAndQuestions}
+          component={() => (
+            <PerformanceApp tabId={PerformanceTabId.DashboardsAndQuestions} />
+          )}
+        />
       </Route>
       <Route
         path="tools"

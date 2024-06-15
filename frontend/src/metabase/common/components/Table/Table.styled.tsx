@@ -36,5 +36,3 @@ export const StyledTable = styled(Table)`
     padding-inline-start: 1rem;
   }
 ` as typeof Table;
-// we have to cast this because emotion messes up the generic types here
-// see https://github.com/emotion-js/emotion/issues/2342

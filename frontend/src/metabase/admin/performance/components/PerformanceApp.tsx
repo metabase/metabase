@@ -4,13 +4,14 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import type { TabsValue } from "metabase/ui";
-import { Flex, Tabs } from "metabase/ui";
+import { Tabs } from "metabase/ui";
 
 import { PerformanceTabId } from "../types";
 
 import { ModelPersistenceConfiguration } from "./ModelPersistenceConfiguration";
-import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
+import { Tab, TabsList, TabsPanel, TabBody } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 const validTabIds = new Set(Object.values(PerformanceTabId).map(String));
@@ -74,20 +75,28 @@ export const PerformanceApp = ({
         >
           {t`Database caching settings`}
         </Tab>
+        <PLUGIN_CACHING.DashboardAndQuestionCachingTab />
         <Tab key={PerformanceTabId.Models} value={PerformanceTabId.Models}>
           {t`Model persistence`}
         </Tab>
       </TabsList>
       <TabsPanel key={tabId} value={tabId}>
         {tabId === PerformanceTabId.Databases && (
-          <Flex style={{ flex: 1, overflow: "hidden" }} bg="bg-light" h="100%">
+          <TabBody p="1rem 2.5rem" style={{ overflow: "hidden" }}>
             <StrategyEditorForDatabases route={route} />
-          </Flex>
+          </TabBody>
+        )}
+        {tabId === PerformanceTabId.DashboardsAndQuestions && (
+          <TabBody>
+            <PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards
+              route={route}
+            />
+          </TabBody>
         )}
         {tabId === PerformanceTabId.Models && (
-          <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
+          <TabBody p="1rem 2.5rem">
             <ModelPersistenceConfiguration />
-          </Flex>
+          </TabBody>
         )}
       </TabsPanel>
     </Tabs>

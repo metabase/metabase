@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { Tabs } from "metabase/ui";
+import { Tabs, Flex } from "metabase/ui";
 
 import { PerformanceTabId } from "../types";
 
@@ -9,6 +9,7 @@ export const TabsList = styled(Tabs.List)`
   background-color: var(--mb-color-bg-light);
   border-bottom-width: 1px;
   margin-top: 1.5rem;
+  border-bottom-color: var(--mb-color-border);
 `;
 
 export const Tab = styled(Tabs.Tab)`
@@ -29,6 +30,11 @@ export const TabsPanel = styled(Tabs.Panel)<{ value: string }>`
   flex-flow: column nowrap;
   flex: 1;
   justify-content: stretch;
-  padding: 1rem 2.5rem;
   ${props => props.value === PerformanceTabId.Databases && `overflow: hidden;`}
+`;
+
+export const TabBody = styled(Flex)`
+  flex: 1;
+  background-color: color("bg-light");
+  height: 100%;
 `;

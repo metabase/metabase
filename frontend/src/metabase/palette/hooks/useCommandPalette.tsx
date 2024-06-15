@@ -269,7 +269,25 @@ export const useCommandPalette = ({
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
-    return adminPaths.map(adminPath => ({
+    const paths = [
+      ...adminPaths,
+      {
+        name: t`Performance - Database caching settings`,
+        path: "/admin/performance",
+        key: "performance-databases",
+      },
+      {
+        name: t`Performance - Model persistence`,
+        path: "/admin/performance/models",
+        key: "performance-models",
+      },
+      {
+        name: t`Performance - Dashboards and questions`,
+        path: "/admin/performance/dashboards-and-questions",
+        key: "performance-dashboards-and-questions",
+      },
+    ];
+    return paths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
       name: `${adminPath.name}`,
       icon: "gear",
