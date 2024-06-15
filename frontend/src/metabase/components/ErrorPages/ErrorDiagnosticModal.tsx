@@ -238,7 +238,7 @@ export const ErrorExplanationModal = ({
       onClose={onClose}
     >
       <Text my="md">
-        {t`We've run into an error, try to refresh the page or go back.`}
+        {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
       <Text my="md">
         {c("indicates an email address to which to send diagnostic information")
