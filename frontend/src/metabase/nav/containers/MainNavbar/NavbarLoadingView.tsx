@@ -22,7 +22,7 @@ const SectionTitleSkeleton = () => (
 
 export function NavbarLoadingView() {
   return (
-    <div>
+    <div aria-busy data-testid="nav-loader">
       <SidebarSection>
         <NavLinkSkeleton />
       </SidebarSection>

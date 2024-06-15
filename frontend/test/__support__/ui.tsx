@@ -315,7 +315,7 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  */
 export const waitForLoaderToBeRemoved = async () => {
   await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("nav-loader")).not.toBeInTheDocument();
   });
 };
 
