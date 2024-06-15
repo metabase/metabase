@@ -252,10 +252,11 @@
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
   (merge
-   ;; models support search-native-query if dataset_query is one of the searchable columns
+   ;; models support search-native-query if there is additional columns to search when the `search-native-query`
+   ;; argument is true
    {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
-                              (filter (fn [[k v]]
-                                        (contains? (set (v k true)) :dataset_query)))
+                              (filter (fn [[model f]]
+                                        (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)
                               set)}
    (->> (dissoc (methods build-optional-filter-query) :default)
