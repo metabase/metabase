@@ -21,7 +21,6 @@ const setupGranularCacheControls = (opts: SetupOpts) => {
   });
 };
 
-// FIXME: Enable just in EE? And ensure this is hidden in OSS
 describe("QuestionInfoSidebar", () => {
   it("should show caching controls", async () => {
     const card = createMockCard({});
