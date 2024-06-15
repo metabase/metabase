@@ -240,17 +240,18 @@
 (deftest search-native-query-scoring-test
   (testing "Exclude native query matches in search scoring when the search should exclude native queries"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card card-1 {:name "matching", :dataset_query (mt/native-query {:query "also matching"})}
+      (mt/with-temp [;; card-1 has a match in the native query, card-2 does not
+                     :model/Card card-1 {:name "matching", :dataset_query (mt/native-query {:query "also matching"})}
                      :model/Card card-2 {:name "matching", :dataset_query (mt/native-query {:query "doesn't"})}]
         (let [search-string       "matching"
               search-native-query false
-              results             (search-results {:search-string search-string}) ;; note, no search-native-query
+              results             (search-results {:search-string search-string}) ; note :search-native-query is not enabled
               score               (fn [model id]
                                     (let [result (first (filter #(= [(:model %) (:id %)] [model id]) results))]
                                       (float (:score (scoring/score-and-result result {:search-string       search-string
                                                                                        :search-native-query search-native-query})))))
-              [scores-1 scores-2] (map #(score "card" %) [(:id card-1) (:id card-2)])]
-          (is (= scores-1 scores-2)))))))
+              [score-1 score-2]   (map #(score "card" %) [(:id card-1) (:id card-2)])]
+          (is (= score-1 score-2)))))))
 
 (deftest ^:parallel combined-test
   (let [search-string     "custom expression examples"
