@@ -966,6 +966,25 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti incorporate-auth-provider-details
+  "A multimethod for driver specific behavior required to incorporate response of an auth-provider into the DB details.
+   In most cases this means setting the :password and/or :username based on the auth-provider and its response."
+  {:added "0.32.0" :arglists '([driver auth-provider auth-provider-response details])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod incorporate-auth-provider-details :default
+  [_driver _auth-provider _auth-provider-response details]
+  details)
+
+(defmethod incorporate-auth-provider-details :sql-jdbc
+  [_driver auth-provider auth-provider-response details]
+  (case auth-provider
+    :oauth
+    (assoc details :password (:access_token auth-provider-response))
+
+    (merge details auth-provider-response)))
+
 ;;; TODO:
 ;;;
 ;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the

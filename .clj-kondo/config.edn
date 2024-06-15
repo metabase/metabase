@@ -265,6 +265,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
+    metabase.auth-provider         #{metabase.driver}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
