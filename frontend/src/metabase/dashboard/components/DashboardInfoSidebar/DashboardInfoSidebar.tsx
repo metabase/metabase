@@ -15,7 +15,6 @@ import {
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Switch } from "metabase/ui";
