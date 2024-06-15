@@ -70,4 +70,38 @@ describe("formatNumber", () => {
     });
     expect(fullResult).toEqual("-$500,000.00");
   });
+
+  it("should only apply scaling once when negativeInParentheses option is true (metabase#40490)", () => {
+    const numberFormatter = numberFormatterForOptions({});
+
+    const formatOptions = {
+      negativeInParentheses: true,
+      scale: 0.01,
+      jsx: false,
+      field: "1234567",
+      number_style: "decimal",
+      number_separators: ".,",
+      _numberFormatter: numberFormatter,
+      _header_unit: "$",
+      column: {
+        display_name: "1234567",
+        source: "native",
+        field_ref: [
+          "field",
+          "1234567",
+          {
+            "base-type": "type/Integer",
+          },
+        ],
+        name: "1234567",
+        base_type: "type/Integer",
+        effective_type: "type/Integer",
+      },
+      _column_title_full: "1234567",
+    };
+
+    const result = formatNumber(1234567, formatOptions);
+    expect(result).not.toEqual("123.4567");
+    expect(result).toEqual("12,345.67");
+  });
 });

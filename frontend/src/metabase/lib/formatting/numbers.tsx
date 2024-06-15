@@ -63,16 +63,16 @@ export function formatNumber(
 ): any {
   options = { ...getDefaultNumberOptions(options), ...options };
 
-  if (typeof options.scale === "number" && !isNaN(options.scale)) {
-    number = options.scale * number;
-  }
-
   if (number < 0 && options.negativeInParentheses) {
     return (
       "(" +
       formatNumber(-number, { ...options, negativeInParentheses: false }) +
       ")"
     );
+  }
+
+  if (typeof options.scale === "number" && !isNaN(options.scale)) {
+    number = options.scale * number;
   }
 
   if (options.compact) {
