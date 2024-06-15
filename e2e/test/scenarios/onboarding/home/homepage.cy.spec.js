@@ -443,7 +443,9 @@ describe("scenarios > home > custom homepage", () => {
       cy.findByTestId("main-logo-link").click().click();
       navigationSidebar().findByText("Home").click().click();
 
-      main().findByText("Something's gone wrong").should("not.exist");
+      main()
+        .findByText(/Something.s gone wrong/)
+        .should("not.exist");
       cy.get("@getDashboardMetadata.all").should("have.length", 1);
       cy.get("@runDashCardQuery.all").should("have.length", 1);
       cy.location("pathname").should(
