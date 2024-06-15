@@ -41,8 +41,7 @@ function setStartingFrom({ value, unit }) {
  * @param {string} params.unit - interval unit in singular form (e.g. "day", not "days")
  */
 function addStartingFrom({ value, unit }) {
-  popover().findByLabelText("Options").click();
-  popover().last().findByText("Starting from…").click();
+  popover().findByLabelText("Starting from…").click();
   setStartingFrom({ value, unit });
 }
 
