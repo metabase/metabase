@@ -6,7 +6,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.test :as mt]))
 
-(def ^:private default-search-ctx
+(def default-search-ctx
   {:search-string       nil
    :archived?           false
    :models             search.config/all-models

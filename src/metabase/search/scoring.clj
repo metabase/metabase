@@ -256,11 +256,11 @@
      (count model->sort-position)))
 
 (defn- text-scores-with-match
-  [raw-search-string search-native-query result]
-  (if (seq raw-search-string)
+  [result {:keys [search-string search-native-query]}]
+  (if (seq search-string)
     (text-scores-with search-native-query
                       match-based-scorers
-                      (search.util/tokenize (search.util/normalize raw-search-string))
+                      (search.util/tokenize (search.util/normalize search-string))
                       result)
     [{:score 0 :weight 0}]))
 
@@ -354,9 +354,9 @@
 
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
-  [raw-search-string search-native-query result]
-  (let [text-matches     (-> raw-search-string
-                             (text-scores-with-match search-native-query result)
+  [result {:keys [search-string search-native-query]}]
+  (let [text-matches     (-> (text-scores-with-match result {:search-string       search-string
+                                                             :search-native-query search-native-query})
                              (force-weight text-scores-weight))
         all-scores       (into (vec (score-result result)) text-matches)
         relevant-scores  (remove #(= 0 (:score %)) all-scores)
@@ -364,7 +364,7 @@
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
-    (if (or (str/blank? raw-search-string)
+    (if (or (str/blank? search-string)
             (pos? (reduce (fn [acc {:keys [score] :or {score 0}}] (+ acc score))
                           0
                           text-matches)))
