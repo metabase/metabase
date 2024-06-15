@@ -9,6 +9,7 @@ import {
   summarize,
   echartsContainer,
   chartPathWithFillColor,
+  testPairedTooltipValues,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -278,6 +279,31 @@ describe("scenarios > visualizations > waterfall", () => {
       .should("eq", "(2)");
 
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
+  });
+
+  it("should correctly apply column value scaling in tool-tips (metabase#44176)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query:
+            "SELECT * FROM (\nVALUES \n('a',2),\n('b',1),\n('c',-0.5),\n('d',-0.5),\n('e',0.1),\n('f', -2)\n)\n",
+          "template-tags": {},
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "waterfall",
+      visualization_settings: {
+        "graph.show_values": true,
+        column_settings: { '["name","C2"]': { scale: 0.1 } },
+      },
+    });
+
+    getWaterfallDataLabels().first().invoke("text").should("eq", "0.2");
+
+    chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+
+    testPairedTooltipValues("C2:", "0.2");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {
