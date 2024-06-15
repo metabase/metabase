@@ -82,10 +82,11 @@
                                                       :parameters    parameters
                                                       :middleware    {:process-viz-settings? true
                                                                       :js-int-to-string?     false}
-                                                      :make-run      (fn [qp _export-format]
+                                                      :make-run      (fn make-run [qp _export-format]
                                                                        (^:once fn* [query info]
                                                                                (qp
-                                                                                 (qp/userland-query-with-default-constraints query info)))))})
+                                                                                 (qp/userland-query-with-default-constraints query info)
+                                                                                 nil))))})
           result                       (result-fn card-id)
           series-results               (map (comp result-fn :id) multi-cards)]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])

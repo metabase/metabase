@@ -166,7 +166,7 @@
 (mu/defn process-query-for-card-default-qp :- :some
   "Default value of the `:qp` option for [[process-query-for-card]]."
   [query :- ::qp.schema/query
-   rff   :- ::qp.schema/rff]
+   rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
 (defn process-query-for-card-default-run-fn
