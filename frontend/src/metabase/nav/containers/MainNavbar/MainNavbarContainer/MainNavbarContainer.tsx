@@ -171,11 +171,7 @@ function MainNavbarContainer({
   }
 
   const allFetched = props.allFetched && !isLoading;
-  if (
-    !allFetched ||
-    // FIXME: remove
-    (window as { stayLoading?: boolean }).stayLoading
-  ) {
+  if (!allFetched) {
     return <NavbarLoadingView />;
   }
 
