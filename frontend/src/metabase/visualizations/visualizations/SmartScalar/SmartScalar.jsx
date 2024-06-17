@@ -161,7 +161,7 @@ function ScalarPeriod({ period, onClick }) {
         ta="center"
         style={{ overflow: "hidden", cursor: onClick && "pointer" }}
         fw={700}
-        size="1em"
+        size="0.875rem"
         className={cx(
           DashboardS.fullscreenNormalText,
           DashboardS.fullscreenNightText,
@@ -205,7 +205,7 @@ function PreviousValueComparison({
   fontFamily,
   formatOptions,
 }) {
-  const fontSize = "1em";
+  const fontSize = "0.875rem";
 
   const {
     changeType,
