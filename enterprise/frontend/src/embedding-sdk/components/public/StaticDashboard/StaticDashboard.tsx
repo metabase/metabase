@@ -10,7 +10,10 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
-import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import type {
+  EmbedDisplayParams,
+  EmbedThemeControls,
+} from "metabase/dashboard/types";
 import { isNotNull } from "metabase/lib/types";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { Box } from "metabase/ui";
@@ -23,6 +26,7 @@ export type StaticDashboardProps = {
   withCardTitle?: boolean;
   withDownloads?: boolean;
   hiddenParameters?: string[];
+  hasNightModeToggle?: EmbedThemeControls["hasNightModeToggle"];
 };
 
 const _StaticDashboard = ({
@@ -32,6 +36,7 @@ const _StaticDashboard = ({
   withCardTitle = true,
   withDownloads = true,
   hiddenParameters = [],
+  hasNightModeToggle = false,
 }: StaticDashboardProps) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
@@ -58,8 +63,12 @@ const _StaticDashboard = ({
       onRefresh: refreshDashboard,
     });
 
-  const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =
-    useEmbedTheme();
+  const {
+    hasNightModeToggle: defaultHasNightModeToggle,
+    isNightMode,
+    onNightModeChange,
+    theme,
+  } = useEmbedTheme();
 
   const { font } = useEmbedFont();
 
@@ -68,7 +77,7 @@ const _StaticDashboard = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={parameterQueryParams}
-        hasNightModeToggle={hasNightModeToggle}
+        hasNightModeToggle={hasNightModeToggle ?? defaultHasNightModeToggle}
         hideDownloadButton={options.hideDownloadButton}
         hideParameters={options.hideParameters}
         isNightMode={isNightMode}
