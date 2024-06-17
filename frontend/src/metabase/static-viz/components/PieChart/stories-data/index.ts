@@ -9,6 +9,7 @@ import defaultSettings from "./default-settings.json";
 import hideLegend from "./hide-legend.json";
 import hideTotal from "./hide-total.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
+import longDimensionName from "./long-dimension-name.json";
 import nullDimension from "./null-dimension.json";
 import numericDimension from "./numeric-dimension.json";
 import relativeDateDimension from "./relative-date-dimension.json";
@@ -44,6 +45,7 @@ export const data = {
   nullDimension,
   unaggregatedDimension,
   singleDimension,
+  longDimensionName,
   sortedMetricCol,
   tinySlicesDisappear43766,
 };
