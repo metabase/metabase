@@ -8028,6 +8028,14 @@ databaseChangeLog:
               UPDATE report_dashboard
               LEFT JOIN (
                    SELECT
+                     model_id AS dashboard_id,
+                     MAX(timestamp) AS latest_view
+                   FROM recent_views
+                   WHERE model = 'dashboard'
+                   GROUP BY model_id
+              ) AS recent_views ON recent_views.dashboard_id = report_dashboard.id
+              LEFT JOIN (
+                   SELECT
                      report_dashboardcard.dashboard_id AS dashboard_id,
                      MAX(last_used_at) AS last_card_used_at
                    FROM report_card
@@ -8036,23 +8044,21 @@ databaseChangeLog:
                    GROUP BY report_dashboardcard.dashboard_id
               ) AS last_card_used ON last_card_used.dashboard_id = report_dashboard.id
               SET last_viewed_at = COALESCE(
+                recent_views.latest_view,
                 last_card_used.last_card_used_at,
                 NOW()
               );
         - sql:
             dbms: h2
             sql: >-
-              WITH card_last_viewed_at AS (
-                   SELECT
-                     report_dashboardcard.dashboard_id AS dashboard_id,
-                     MAX(last_used_at) AS last_card_used_at
-                   FROM report_card
-                   JOIN report_dashboardcard
-                     ON report_dashboardcard.card_id = report_card.id
-                   GROUP BY report_dashboardcard.dashboard_id
-              )
               UPDATE report_dashboard
-              SET last_viewed_at = COALESCE(
+              SET last_viewed_at = COALESCE(GREATEST(
+                (
+                  SELECT MAX(timestamp)
+                  FROM recent_views
+                  WHERE report_dashboard.id = recent_views.model_id
+                    AND recent_views.model = 'dashboard'
+                ),
                 (
                    SELECT
                      MAX(last_used_at) AS last_card_used_at
@@ -8060,12 +8066,23 @@ databaseChangeLog:
                    JOIN report_dashboardcard
                      ON report_dashboardcard.card_id = report_card.id
                    WHERE report_dashboardcard.dashboard_id = report_dashboard.id
-                ),
-                NOW()
-              )
+                )),
+                NOW())
         - sql:
             dbms: postgresql
             sql: >-
+              WITH dashboard_last_viewed_at AS (
+                  SELECT recent_views.model_id AS dashboard_id,
+                         MAX(timestamp) AS last_viewed_at
+                  FROM recent_views
+                  WHERE recent_views.model = 'dashboard'
+                  GROUP BY recent_views.model_id
+              )
+              UPDATE report_dashboard
+              SET last_viewed_at = dashboard_last_viewed_at.last_viewed_at
+              FROM dashboard_last_viewed_at
+              WHERE dashboard_last_viewed_at.dashboard_id = report_dashboard.id;
+
               WITH card_last_viewed_at AS (
                    SELECT
                      report_dashboardcard.dashboard_id AS dashboard_id,
@@ -8078,7 +8095,9 @@ databaseChangeLog:
               UPDATE report_dashboard
               SET last_viewed_at = card_last_viewed_at.last_card_used_at
               FROM card_last_viewed_at
-              WHERE report_dashboard.id = card_last_viewed_at.dashboard_id;
+              WHERE report_dashboard.id = card_last_viewed_at.dashboard_id
+                AND report_dashboard.last_viewed_at IS NULL
+                OR report_dashboard.last_viewed_at < card_last_viewed_at.last_card_used_at;
 
               UPDATE report_dashboard SET last_viewed_at = NOW() WHERE last_viewed_at IS NULL;
 
