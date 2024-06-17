@@ -480,23 +480,34 @@
                         (mbql-cols source-query results))]
     (qp.util/combine-metadata columns source-metadata)))
 
+(defn- add-aliases-to-legacy-cols [inner-query cols]
+  (let [returned (lib.metadata.calculation/returned-columns (mlv2-query inner-query))
+        aliases  (into {} (for [col returned]
+                            [[(:name col) (:metabase.lib.join/join-alias col)]
+                             (:lib/desired-column-alias col)]))]
+    (mapv (fn [col]
+            (let [k [(:name col) (:source_alias col)]]
+              (m/assoc-some col :desired_column_alias (get aliases k))))
+          cols)))
+
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
   [{:keys [source-metadata source-query :source-query/model? fields], :as inner-query}, results]
-  (let [cols (cols-for-mbql-query inner-query)]
-    (cond
-      (and (empty? cols) source-query)
-      (cols-for-source-query inner-query results)
+  (let [cols     (cols-for-mbql-query inner-query)]
+    (->> (cond
+           (and (empty? cols) source-query)
+           (cols-for-source-query inner-query results)
 
-      source-query
-      (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
+           source-query
+           (flow-field-metadata (cols-for-source-query inner-query results) cols model?)
 
-      (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
-      (maybe-merge-source-metadata source-metadata cols)
+           (every? #(lib.util.match/match-one % [:field (field-name :guard string?) _] field-name) fields)
+           (maybe-merge-source-metadata source-metadata cols)
 
-      :else
-      cols)))
+           :else
+           cols)
+         (add-aliases-to-legacy-cols inner-query))))
 
 (defn- restore-cumulative-aggregations
   [{aggregations :aggregation breakouts :breakout :as inner-query} replaced-indexes]
