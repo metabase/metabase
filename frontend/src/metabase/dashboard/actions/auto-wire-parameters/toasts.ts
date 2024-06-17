@@ -12,6 +12,7 @@ import type {
   DashCardId,
   DashboardParameterMapping,
   Parameter,
+  ParameterId,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -25,11 +26,13 @@ export const showAutoWireParametersToast =
     originalDashcardAttributes,
     columnName,
     hasMultipleTabs,
+    parameterId,
   }: {
     dashcardAttributes: SetMultipleDashCardAttributesOpts;
     originalDashcardAttributes: SetMultipleDashCardAttributesOpts;
     columnName: string;
     hasMultipleTabs: boolean;
+    parameterId: ParameterId;
   }) =>
   (dispatch: Dispatch) => {
     const message = hasMultipleTabs
@@ -76,6 +79,7 @@ export const showAutoWireParametersToast =
           type: "filterAutoConnectDone",
           extraInfo: {
             dashcardIds: dashcardAttributes.map(({ id }) => id),
+            parameterId,
           },
           action: revertConnectAll,
         }),

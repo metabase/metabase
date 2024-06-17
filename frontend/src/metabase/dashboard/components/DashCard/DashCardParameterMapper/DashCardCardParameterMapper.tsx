@@ -7,7 +7,7 @@ import _ from "underscore";
 import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Tooltip from "metabase/core/components/Tooltip";
+import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import {
   isNativeDashCard,
@@ -19,9 +19,9 @@ import {
 import { useDispatch } from "metabase/lib/redux";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { getAutoConnectedUndos } from "metabase/redux/undo";
+import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex, Icon, Text, Transition, Tooltip } from "metabase/ui";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
@@ -90,7 +90,11 @@ const mapStateToProps = (
   metadata: getMetadata(state),
   question: getQuestionByCard(state, props),
   mappingOptions: getDashcardParameterMappingOptions(state, props),
-  autoConnectedUndos: getAutoConnectedUndos(state),
+  // @ts-expect-error rework redux/undo to ts
+  isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
+    state,
+    props.dashcard.id,
+  ),
 });
 
 const mapDispatchToProps = {
@@ -112,7 +116,7 @@ interface DashcardCardParameterMapperProps {
   // virtual cards will not have question
   question?: Question;
   mappingOptions: ParameterMappingOption[];
-  autoConnectedUndos: State["undo"];
+  isRecentlyAutoConnected: boolean;
 }
 
 export function DashCardCardParameterMapper({
@@ -124,7 +128,7 @@ export function DashCardCardParameterMapper({
   isMobile,
   question,
   mappingOptions,
-  autoConnectedUndos,
+  isRecentlyAutoConnected,
 }: DashcardCardParameterMapperProps) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const prevParameter = usePrevious(editingParameter);
@@ -140,16 +144,6 @@ export function DashCardCardParameterMapper({
   const isNative = isQuestionDashCard(dashcard) && isNativeDashCard(dashcard);
   const isTemporalUnit =
     editingParameter != null && isTemporalUnitParameter(editingParameter);
-
-  const autoConnectedDashcardIds = useMemo(() => {
-    return autoConnectedUndos.flatMap(undo =>
-      undo.extraInfo ? (undo.extraInfo.dashcardIds as DashCardId[]) : [],
-    );
-  }, [autoConnectedUndos]);
-
-  const isRecentlyAutoConnected = autoConnectedDashcardIds.includes(
-    dashcard.id,
-  );
 
   useEffect(() => {
     if (!prevParameter || !editingParameter) {
@@ -273,12 +267,12 @@ export function DashCardCardParameterMapper({
       isVirtual,
     ]);
 
-  const headerContent = useMemo(() => {
-    const layoutHeight = isMobile
-      ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
-        MOBILE_DEFAULT_CARD_HEIGHT
-      : dashcard.size_y;
+  const layoutHeight = isMobile
+    ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
+      MOBILE_DEFAULT_CARD_HEIGHT
+    : dashcard.size_y;
 
+  const headerContent = useMemo(() => {
     if (layoutHeight > 2) {
       if (isTemporalUnit) {
         return t`Connect to`;
@@ -289,7 +283,7 @@ export function DashCardCardParameterMapper({
       return t`Variable to map to`;
     }
     return null;
-  }, [dashcard, isVirtual, isNative, isDisabled, isMobile, isTemporalUnit]);
+  }, [layoutHeight, isTemporalUnit, isVirtual, isNative, isDisabled]);
 
   const mappingInfoText =
     (virtualCardType &&
@@ -330,48 +324,77 @@ export function DashCardCardParameterMapper({
               <Ellipsified>{headerContent}</Ellipsified>
             </Header>
           )}
-          <Tooltip tooltip={buttonTooltip}>
-            <TippyPopover
-              visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
-              onClickOutside={() => setIsDropdownVisible(false)}
-              placement="bottom-start"
-              content={
-                <ParameterTargetList
-                  onChange={(target: ParameterTarget) => {
-                    handleChangeTarget(target);
-                    setIsDropdownVisible(false);
-                  }}
-                  target={target}
-                  mappingOptions={mappingOptions}
-                />
-              }
-            >
-              <TargetButton
-                variant={buttonVariant}
-                aria-label={buttonTooltip ?? undefined}
-                aria-haspopup="listbox"
-                aria-expanded={isDropdownVisible}
-                aria-disabled={isDisabled || !hasPermissionsToMap}
-                onClick={() => {
-                  setIsDropdownVisible(true);
-                }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    setIsDropdownVisible(true);
-                  }
-                }}
+          <Flex align="center" justify="center">
+            <DeprecatedTooltip tooltip={buttonTooltip}>
+              <TippyPopover
+                visible={
+                  isDropdownVisible && !isDisabled && hasPermissionsToMap
+                }
+                onClickOutside={() => setIsDropdownVisible(false)}
+                placement="bottom-start"
+                content={
+                  <ParameterTargetList
+                    onChange={(target: ParameterTarget) => {
+                      handleChangeTarget(target);
+                      setIsDropdownVisible(false);
+                    }}
+                    target={target}
+                    mappingOptions={mappingOptions}
+                  />
+                }
               >
-                {buttonText && (
-                  <TargetButtonText>
-                    <Ellipsified>{buttonText}</Ellipsified>
-                  </TargetButtonText>
-                )}
-                {buttonIcon}
-              </TargetButton>
-            </TippyPopover>
-          </Tooltip>
-          {isRecentlyAutoConnected && (
-            <Flex mt="sm" align="center">
+                <TargetButton
+                  variant={buttonVariant}
+                  aria-label={buttonTooltip ?? undefined}
+                  aria-haspopup="listbox"
+                  aria-expanded={isDropdownVisible}
+                  aria-disabled={isDisabled || !hasPermissionsToMap}
+                  onClick={() => {
+                    setIsDropdownVisible(true);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      setIsDropdownVisible(true);
+                    }
+                  }}
+                >
+                  {buttonText && (
+                    <TargetButtonText>
+                      <Ellipsified>{buttonText}</Ellipsified>
+                    </TargetButtonText>
+                  )}
+                  {buttonIcon}
+                </TargetButton>
+              </TippyPopover>
+            </DeprecatedTooltip>
+            {isRecentlyAutoConnected &&
+            layoutHeight <= 3 &&
+            selectedMappingOption ? (
+              <Tooltip label={t`Auto-connected`}>
+                <Icon name="sparkles" />
+              </Tooltip>
+            ) : null}
+          </Flex>
+        </>
+      )}
+      <Transition
+        mounted={
+          isRecentlyAutoConnected && layoutHeight > 3 && !!selectedMappingOption
+        }
+        transition="fade"
+        duration={isRecentlyAutoConnected ? 400 : 0}
+      >
+        {styles => {
+          /* bottom prop is negative as we wanted to keep layout not shifted on hint */
+          return (
+            <Flex
+              opacity={0}
+              mt="sm"
+              align="center"
+              pos="absolute"
+              bottom={-20}
+              style={styles}
+            >
               <Icon name="sparkles" size="16" />
               <Text
                 component="span"
@@ -382,9 +405,9 @@ export function DashCardCardParameterMapper({
                 color="text-light"
               >{t`Auto-connected`}</Text>
             </Flex>
-          )}
-        </>
-      )}
+          );
+        }}
+      </Transition>
       {target && isParameterVariableTarget(target) && (
         <Warning>
           {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.

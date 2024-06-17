@@ -16,6 +16,7 @@ import {
   createMockLinkDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
+  createMockUndo,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -42,7 +43,7 @@ const setup = options => {
       dashcard={createMockDashboardCard({ card })}
       question={new Question(card, metadata)}
       editingParameter={createMockParameter()}
-      autoConnectedUndos={[]}
+      autoConnectedUndos={options.autoConnectedUndos ?? []}
       mappingOptions={[]}
       metadata={metadata}
       setParameterMapping={jest.fn()}
@@ -160,6 +161,46 @@ describe("DashCardParameterMapper", () => {
     });
 
     expect(screen.getByText("Section.Name")).toBeInTheDocument();
+  });
+
+  it("should render 'Auto-connected' message on auto-wire", () => {
+    const card = createMockCard();
+    const dashcard = createMockDashboardCard({ card });
+    const undo = createMockUndo({
+      extraInfo: {
+        dashcardIds: [dashcard.id],
+      },
+    });
+
+    setup({
+      dashcard,
+      card,
+      mappingOptions: [
+        {
+          target: ["dimension", ["field", 1]],
+          sectionName: "Section",
+          name: "Name",
+        },
+      ],
+      target: ["dimension", ["field", 1]],
+      autoConnectedUndos: [undo],
+    });
+
+    expect(screen.getByText("Auto-connected")).toBeInTheDocument();
+  });
+
+  it("should not render 'Auto-connected' message on auto-wire when no dashboards mapped", () => {
+    const card = createMockCard();
+    const dashcard = createMockDashboardCard({ card });
+    const undo = createMockUndo();
+
+    setup({
+      dashcard,
+      card,
+      autoConnectedUndos: [undo],
+    });
+
+    expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
   });
 
   it("should render an error state when a field is not present in the list of options", () => {

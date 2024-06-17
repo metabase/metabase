@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { getEditingParameter } from "metabase/dashboard/selectors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 
@@ -68,10 +69,28 @@ function getUndo(state, undoId) {
   return _.findWhere(state.undo, { id: undoId });
 }
 
-export const getAutoConnectedUndos = createSelector(
-  [state => state.undo],
-  undo => {
-    return undo.filter(undo => undo.type === "filterAutoConnectDone");
+const getAutoConnectedUndos = createSelector([state => state.undo], undos => {
+  return undos.filter(undo => undo.type === "filterAutoConnectDone");
+});
+
+export const getIsRecentlyAutoConnectedDashcard = createSelector(
+  [
+    getAutoConnectedUndos,
+    getEditingParameter,
+    (_state, dashcardId) => dashcardId,
+  ],
+  (undos, parameter, dashcardId) => {
+    const isRecentlyAutoConnected = undos.some(undo => {
+      const isDashcardAutoConnected =
+        undo.extraInfo?.dashcardIds?.includes(dashcardId);
+      const isSameParameterSelected = undo.extraInfo?.parameterId
+        ? undo.extraInfo.parameterId === parameter?.id
+        : true;
+
+      return isDashcardAutoConnected && isSameParameterSelected;
+    });
+
+    return isRecentlyAutoConnected;
   },
 );
 
