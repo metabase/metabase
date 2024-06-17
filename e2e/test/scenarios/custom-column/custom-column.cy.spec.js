@@ -637,9 +637,10 @@ describe("scenarios > question > custom column", () => {
     });
     cy.findByRole("listbox").findByText("years").click();
 
-    popover().findByLabelText("Options").click();
-    popover().last().findByText("Include this year").click();
-    popover().button("Add filter").click();
+    popover().within(() => {
+      cy.findByText("Include this year").click();
+      cy.button("Add filter").click();
+    });
 
     visualize(({ body }) => {
       expect(body.error).to.not.exist;
