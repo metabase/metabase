@@ -51,7 +51,7 @@ describe("setParameterTemporalUnits", () => {
       expectedDefaultValue: null,
     },
     {
-      title: "should reset the default value if outside of the list",
+      title: "should reset the default value if outside the list",
       value: null,
       defaultValue: "quarter",
       temporalUnits: ["minute", "hour", "year"],
@@ -67,7 +67,7 @@ describe("setParameterTemporalUnits", () => {
       expectedDefaultValue: "year",
     },
     {
-      title: "should reset the value if outside of the list",
+      title: "should reset the value if outside the list",
       value: "hour",
       defaultValue: null,
       temporalUnits: ["month", "year"],
@@ -84,7 +84,7 @@ describe("setParameterTemporalUnits", () => {
     },
     {
       title:
-        "should reset both the value and the default value if outside of the list",
+        "should reset both the value and the default value if outside the list",
       value: "year",
       defaultValue: "month",
       temporalUnits: ["hour", "day"],
@@ -93,7 +93,7 @@ describe("setParameterTemporalUnits", () => {
     },
     {
       title:
-        "should reset the value to the default value if the value is outside of the list but the default value is not",
+        "should reset the value to the default value if the value is outside the list but the default value is not",
       value: "year",
       defaultValue: "month",
       temporalUnits: ["hour", "day", "month"],
