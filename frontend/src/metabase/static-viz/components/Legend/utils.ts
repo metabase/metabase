@@ -121,7 +121,7 @@ function calculateNumRowsCols(
   fontWeight: number,
 ) {
   let colWidth: number;
-  let numCols = 0;
+  let numCols = 1;
 
   do {
     if (numCols >= items.length) {
@@ -208,6 +208,7 @@ export const calculateLegendRowsWithColumns = ({
         ...orderedItems[itemIndex],
         left: colIndex * colWidth + horizontalPadding,
         top: rowIndex * lineHeight + verticalPadding,
+        width: colWidth,
       });
     }
   }
