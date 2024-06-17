@@ -1,6 +1,5 @@
 (ns metabase.driver.athena-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -252,7 +251,6 @@
                              nil
                              (fn [^Connection conn]
                                (let [metadata (.getMetaData conn)]
-                                 (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
-                                   (jdbc/metadata-result rs))))))))
+                                 (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
               (testing "`describe-table` returns the fields anyway"
                 (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
