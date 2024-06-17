@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useListRecentItemsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
@@ -59,7 +59,7 @@ export const BrowseModels = () => {
     return { filteredModels };
   }, [actualModelFilters, doVerifiedModelsExist, models]);
 
-  const recentModelsResult = useListRecentItemsQuery(undefined, {
+  const recentModelsResult = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
 
@@ -77,6 +77,11 @@ export const BrowseModels = () => {
     const cap = getMaxRecentModelCount(allModels.length);
     return filteredRecentModels.slice(0, cap);
   }, [filteredRecentModels, allModels.length]);
+
+  const isEmpty =
+    !recentModelsResult.isLoading &&
+    !modelsResult.isLoading &&
+    !filteredModels.length;
 
   return (
     <BrowseContainer>
@@ -106,18 +111,8 @@ export const BrowseModels = () => {
       </BrowseHeader>
       <BrowseMain>
         <BrowseSection>
-          <LoadingAndErrorWrapper
-            error={modelsResult.error || recentModelsResult.error}
-            loading={modelsResult.isLoading || recentModelsResult.isLoading}
-            style={{ flex: 1 }}
-          >
-            {filteredModels.length ? (
-              <Stack mb="lg" spacing="md">
-                <ModelExplanationBanner />
-                <RecentModels models={recentModels} />
-                <ModelsTable models={filteredModels} />
-              </Stack>
-            ) : (
+          <Stack mb="lg" spacing="md" w="100%">
+            {isEmpty ? (
               <CenteredEmptyState
                 title={<Box mb=".5rem">{t`No models here yet`}</Box>}
                 message={
@@ -129,8 +124,35 @@ export const BrowseModels = () => {
                   </Box>
                 }
               />
+            ) : (
+              <>
+                <ModelExplanationBanner />
+                <DelayedLoadingAndErrorWrapper
+                  error={recentModelsResult.error}
+                  loading={
+                    // If the main models result is still pending, the list of recently viewed
+                    // models isn't ready yet, since the number of recently viewed models is
+                    // capped according to the size of the main models result
+                    recentModelsResult.isLoading || modelsResult.isLoading
+                  }
+                  style={{ flex: 1 }}
+                  delay={0}
+                  loader={<RecentModels skeleton />}
+                >
+                  <RecentModels models={recentModels} />
+                </DelayedLoadingAndErrorWrapper>
+                <DelayedLoadingAndErrorWrapper
+                  error={modelsResult.error}
+                  loading={modelsResult.isLoading}
+                  style={{ flex: 1 }}
+                  delay={0}
+                  loader={<ModelsTable skeleton />}
+                >
+                  <ModelsTable models={filteredModels} />
+                </DelayedLoadingAndErrorWrapper>
+              </>
             )}
-          </LoadingAndErrorWrapper>
+          </Stack>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>

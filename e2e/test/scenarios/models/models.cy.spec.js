@@ -521,13 +521,15 @@ describe("scenarios > models", () => {
   it("should automatically pin newly created models", () => {
     visitQuestion(ORDERS_QUESTION_ID);
 
+    cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     turnIntoModel();
+    cy.wait("@cardUpdate");
 
     visitCollection("root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Models");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A model");
+    cy.findByTestId("pinned-items").within(() => {
+      cy.findByText("Models");
+      cy.findByText("A model");
+    });
   });
 
   it("should undo pinning a question if turning into a model was undone", () => {

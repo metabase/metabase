@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color-mod(var(--mb-color-border) blackness(5%));
+  border: 1px solid color-mix(in srgb, var(--mb-color-border), black 5%);
   color: var(--mb-color-text-dark);
   cursor: pointer;
   font-weight: bold;
@@ -18,7 +18,7 @@
 
 .Button:hover {
   color: var(--mb-color-brand);
-  border-color: color-mod(var(--mb-color-border) blackness(12%));
+  border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
   background: var(--mb-color-bg-light);
   transition: all 200ms linear;
   transition-property: color, border-color, background-color;

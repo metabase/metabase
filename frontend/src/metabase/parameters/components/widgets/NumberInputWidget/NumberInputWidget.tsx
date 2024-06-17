@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import TokenField from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { parseNumberValue } from "metabase/lib/number";
@@ -13,6 +12,7 @@ import {
   Footer,
   TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
+import { MultiAutocomplete } from "metabase/ui";
 import type { Parameter } from "metabase-types/api";
 
 export type NumberInputWidgetProps = {
@@ -45,7 +45,7 @@ export function NumberInputWidget({
   const allValuesUnset = unsavedArrayValue.every(_.isUndefined);
   const allValuesSet = unsavedArrayValue.every(_.isNumber);
   const isValid =
-    (arity === "n" || unsavedArrayValue.length === arity) &&
+    (arity === "n" || unsavedArrayValue.length <= arity) &&
     (allValuesUnset || allValuesSet);
 
   const onClick = () => {
@@ -58,22 +58,32 @@ export function NumberInputWidget({
     }
   };
 
+  function shouldCreate(value: string | number) {
+    const res = parseNumberValue(value);
+    return res !== null && res.toString() === value;
+  }
+
+  const filteredUnsavedArrayValue = useMemo(
+    () => unsavedArrayValue.filter((x): x is number => x !== undefined),
+    [unsavedArrayValue],
+  );
+
   return (
     <WidgetRoot className={className}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
-          <TokenField
-            multi
-            updateOnInputChange
-            autoFocus={autoFocus}
-            value={unsavedArrayValue}
-            parseFreeformValue={parseNumberValue}
-            onChange={newValue => {
-              setUnsavedArrayValue(newValue);
-            }}
-            options={[]}
+          <MultiAutocomplete
+            onChange={(values: string[]) =>
+              setUnsavedArrayValue(
+                values.map(value => parseNumberValue(value) ?? undefined),
+              )
+            }
+            value={filteredUnsavedArrayValue.map(value => value?.toString())}
             placeholder={placeholder}
+            shouldCreate={shouldCreate}
+            autoFocus={autoFocus}
+            data={[]}
           />
         </TokenFieldWrapper>
       ) : (
@@ -113,7 +123,7 @@ export function NumberInputWidget({
   );
 }
 
-function normalize(value: number[] | undefined): number[] {
+function normalize(value: number[] | undefined): (number | undefined)[] {
   if (Array.isArray(value)) {
     return value;
   } else {

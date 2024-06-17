@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const HeaderContainer = styled.div`
@@ -43,12 +42,12 @@ export const ActionsWrapper = styled.div`
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   cursor: pointer;
   padding: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

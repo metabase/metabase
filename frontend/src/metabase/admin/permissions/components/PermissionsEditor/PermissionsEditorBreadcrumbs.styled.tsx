@@ -16,6 +16,6 @@ export const BreadcrumbsLink = styled.a`
   transition: color 200ms;
 
   &:hover {
-    color: ${lighten("accent7", 0.2)};
+    color: ${() => lighten("accent7", 0.2)};
   }
 `;

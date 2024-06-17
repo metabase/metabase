@@ -36,7 +36,7 @@ export function clearWidgetValue() {
 }
 
 export function setWidgetStringFilter(value) {
-  popover().find("input").first().type(`${value}{enter}`);
+  popover().find("input").not("[type=hidden]").first().type(`${value}{enter}`);
 }
 
 /**

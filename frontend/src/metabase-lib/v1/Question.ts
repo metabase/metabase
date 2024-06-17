@@ -25,8 +25,9 @@ import type {
   CardDisplayType,
   CardType,
   CollectionId,
+  DashboardId,
+  DashCardId,
   DatabaseId,
-  Dataset,
   DatasetData,
   DatasetQuery,
   Parameter as ParameterObject,
@@ -480,26 +481,6 @@ class Question {
     return Question.create({ metadata: this.metadata() }).setQuery(query);
   }
 
-  syncColumnsAndSettings(
-    queryResults?: Dataset,
-    prevQueryResults?: Dataset,
-    options?: Lib.SettingsSyncOptions,
-  ) {
-    const settings = this.settings();
-    const newSettings = Lib.syncColumnSettings(
-      settings,
-      queryResults,
-      prevQueryResults,
-      options,
-    );
-
-    if (newSettings !== settings) {
-      return this.setSettings(newSettings);
-    } else {
-      return this;
-    }
-  }
-
   /**
    * A user-defined name for the question
    */
@@ -541,7 +522,7 @@ class Question {
     dashboardId,
     dashcardId,
   }:
-    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: DashboardId; dashcardId: DashCardId }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)

@@ -353,14 +353,7 @@
     (t2/reducible-select model {:where [:or
                                         [:in :collection_id collection-set]
                                         (when (contains? collection-set nil)
-                                          [:= :collection_id nil])
-                                        (when (contains? #{:model/Card :model/Dashboard} model)
-                                          [:and
-                                           :archived
-                                           [:or
-                                            [:in :trashed_from_collection_id collection-set]
-                                            (when (contains? collection-set nil)
-                                              [:= :trashed_from_collection_id nil])]])]})
+                                          [:= :collection_id nil])]})
     ;; If collection-set is nil, just select everything.
     (t2/reducible-select model)))
 

@@ -58,11 +58,10 @@ export const TIMESERIES_INTERVALS: (TimeSeriesInterval & {
   { unit: "month", count: 1, testFn: (d: Dayjs) => d.date() }, // (15) 1 month
   { unit: "month", count: 3, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter
   { unit: "year", count: 1, testFn: (d: Dayjs) => d.month() }, // (17) 1 year
-  { unit: "year", count: 2, testFn: (d: Dayjs) => d.year() % 2 }, // (18) 2 years
-  { unit: "year", count: 5, testFn: (d: Dayjs) => d.year() % 5 }, // (19) 5 year
-  { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (20) 10 year
-  { unit: "year", count: 50, testFn: (d: Dayjs) => d.year() % 50 }, // (21) 50 year
-  { unit: "year", count: 100, testFn: (d: Dayjs) => d.year() % 100 }, // (22) 100 year
+  { unit: "year", count: 2, testFn: (d: Dayjs) => d.year() % 2 }, // (18) 2 year
+  { unit: "year", count: 10, testFn: (d: Dayjs) => d.year() % 10 }, // (19) 10 year
+  { unit: "year", count: 50, testFn: (d: Dayjs) => d.year() % 50 }, // (20) 50 year
+  { unit: "year", count: 100, testFn: (d: Dayjs) => d.year() % 100 }, // (21) 100 year
 ];
 
 // mapping from Metabase "unit" to d3 intervals above
@@ -250,10 +249,32 @@ export function getLargestInterval(intervals: TimeSeriesInterval[]) {
   });
 }
 
+// Tests for offsets like +01:15, -09:45
+const OFFSET_PATTERN = /^([+-])(\d{2}):(\d{2})$/;
+
+const tryParseOffsetMinutes = (maybeOffset: string): number | undefined => {
+  const match = maybeOffset.match(OFFSET_PATTERN);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, sign, hours, minutes] = match;
+  const offsetSign = sign === "+" ? 1 : -1;
+  const offsetHours = parseInt(hours, 10);
+  const offsetMinutes = parseInt(minutes, 10);
+  const totalOffsetMinutes = (offsetHours * 60 + offsetMinutes) * offsetSign;
+
+  return totalOffsetMinutes;
+};
+
 // We should always have results_timezone, but just in case we fallback to UTC
 export const DEFAULT_TIMEZONE = "Etc/UTC";
 
-export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
+export function getTimezoneOrOffset(
+  series: RawSeries,
+  showWarning?: ShowWarning,
+): { timezone?: string; offsetMinutes?: number } {
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
     new Set(series.map(s => s.data.results_timezone)),
@@ -269,5 +290,16 @@ export function getTimezone(series: RawSeries, showWarning?: ShowWarning) {
     );
   }
 
-  return results_timezone || DEFAULT_TIMEZONE;
+  const offsetMinutes =
+    results_timezone != null
+      ? tryParseOffsetMinutes(results_timezone)
+      : undefined;
+
+  const timezone =
+    offsetMinutes == null ? results_timezone || DEFAULT_TIMEZONE : undefined;
+
+  return {
+    timezone,
+    offsetMinutes,
+  };
 }

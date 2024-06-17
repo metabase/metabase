@@ -28,7 +28,7 @@ export function getScatterPlotOption(
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  isPlaceholder: boolean,
+  isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -92,7 +92,7 @@ export function getScatterPlotOption(
   }
 
   return {
-    ...getSharedEChartsOptions(isPlaceholder),
+    ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
     },

@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
 
-import { color, darken } from "metabase/lib/colors";
+import { darken } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import { commonLabelStyle } from "./ModelCachingScheduleWidget.styled";
 
 export const CustomScheduleLabel = styled.span`
   ${commonLabelStyle}
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.5rem;
@@ -34,7 +34,7 @@ export const InfoIcon = styled(Icon)`
   right: 1rem;
   top: 33%;
 
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 
   &:hover {
     color: var(--mb-color-brand);

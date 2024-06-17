@@ -1,5 +1,5 @@
 import type { CardId } from "./card";
-import type { RowValue } from "./dataset";
+import type { RowValue, TemporalUnit } from "./dataset";
 import type { ConcreteFieldReference, ExpressionReference } from "./query";
 
 export type StringParameterType =
@@ -51,6 +51,7 @@ export interface Parameter extends ParameterValuesConfig {
   isMultiSelect?: boolean;
   value?: any;
   target?: ParameterTarget;
+  temporal_units?: TemporalUnit[];
 }
 
 export interface ParameterValuesConfig {

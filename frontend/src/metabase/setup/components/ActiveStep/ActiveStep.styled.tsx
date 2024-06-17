@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const StepRoot = styled.section`
@@ -45,6 +44,6 @@ export const StepLabelText = styled.span`
 `;
 
 export const StepDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin: 0.875rem 0;
 `;

@@ -27,7 +27,7 @@ export function isPersonalCollection(
 }
 
 export function isRootTrashCollection(
-  collection: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type">,
 ): boolean {
   return collection?.type === "trash";
 }
@@ -187,10 +187,6 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
     !(isItemCollection(item) && isRootPersonalCollection(item)) &&
     !item.archived
   );
-}
-
-export function canDeleteItem(item: CollectionItem, collection?: Collection) {
-  return item.archived && (item.can_write ?? collection?.can_write ?? true);
 }
 
 export function canCopyItem(item: CollectionItem) {
