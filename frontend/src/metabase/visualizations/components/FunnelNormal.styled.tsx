@@ -37,7 +37,7 @@ export const Head = styled.div<SharedProps>`
   ${props =>
     props.isNarrow
       ? css`
-          font-size: 12px;
+          font-size: 0.85em;
         `
       : null}
 `;
@@ -45,7 +45,7 @@ export const Head = styled.div<SharedProps>`
 export const Info = styled.div<SharedProps>`
   text-align: right;
   padding: 0.5em 0.5em 0 0.5em;
-  font-size: ${props => (props.isNarrow ? "12px" : "16px")};
+  font-size: ${props => (props.isNarrow ? "0.85em" : "1.15em")};
 
   ${Subtitle} {
     font-size: ${props => (props.isNarrow ? "0.875em" : "0.6875em")};
