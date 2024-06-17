@@ -31,19 +31,18 @@ export function getGoalLineSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
-  if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
+  const goalValue = settings["graph.goal_value"];
+
+  if (!settings["graph.show_goal"] || goalValue == null) {
     return null;
   }
 
-  const goalValue = settings["graph.goal_value"];
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {
     id: GOAL_LINE_SERIES_ID,
     type: "custom",
-    data: [
-      [getFirstNonNullXValue(chartModel.dataset), settings["graph.goal_value"]],
-    ],
+    data: [[getFirstNonNullXValue(chartModel.dataset), goalValue]],
     z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
