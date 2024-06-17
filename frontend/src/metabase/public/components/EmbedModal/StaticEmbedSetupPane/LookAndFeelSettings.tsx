@@ -79,7 +79,10 @@ export const LookAndFeelSettings = ({
           >{t`documentation`}</ExternalLink>
         )} for more.`}</Text>
       </StaticEmbedSetupPaneSettingsContentSection>
-      <StaticEmbedSetupPaneSettingsContentSection mt="2rem">
+      <StaticEmbedSetupPaneSettingsContentSection
+        mt="2rem"
+        data-testid="look-and-feel-settings"
+      >
         <Stack spacing="1rem">
           {canWhitelabel ? (
             <Select

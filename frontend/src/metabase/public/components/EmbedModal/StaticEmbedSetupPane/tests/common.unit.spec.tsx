@@ -380,18 +380,16 @@ describe("Static Embed Setup phase", () => {
       }
     });
 
-    describe("Appearance tab", () => {
+    describe("Look and Feel tab", () => {
       it("should render link to documentation", async () => {
         await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
-        expect(
-          screen.getByText("Customizing your embed’s appearance"),
-        ).toBeVisible();
+        expect(screen.getByText("Customizing look and feel")).toBeVisible();
 
         const link = screen.getByRole("link", {
           name: "documentation",
@@ -410,7 +408,7 @@ describe("Static Embed Setup phase", () => {
             resourceType,
             resource,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         expect(screen.getByLabelText("Code")).toBeChecked();
@@ -425,7 +423,7 @@ describe("Static Embed Setup phase", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         await userEvent.click(screen.getByText("Preview"));
@@ -438,7 +436,7 @@ describe("Static Embed Setup phase", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         await userEvent.click(screen.getByText("Transparent"));
@@ -467,7 +465,7 @@ describe("Static Embed Setup phase", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         expect(
@@ -477,7 +475,7 @@ describe("Static Embed Setup phase", () => {
         ).toBeVisible();
 
         const link = within(
-          screen.getByLabelText("Playing with appearance options"),
+          screen.getByTestId("look-and-feel-settings"),
         ).getByRole("link", {
           name: "a paid plan",
         });
@@ -491,7 +489,7 @@ describe("Static Embed Setup phase", () => {
       it('should render "Powered by Metabase" banner caption', async () => {
         await setup({
           props: {},
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         expect(
@@ -530,13 +528,11 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(
       screen.getByRole("tab", {
-        name: "Appearance",
+        name: "Look and Feel",
       }),
     );
 
-    expect(
-      screen.getByText("Customizing your embed’s appearance"),
-    ).toBeVisible();
+    expect(screen.getByText("Customizing look and feel")).toBeVisible();
 
     expect(screen.getByLabelText("Preview")).toBeChecked();
 
@@ -577,7 +573,7 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(
       screen.getByRole("tab", {
-        name: "Appearance",
+        name: "Look and Feel",
       }),
     );
 
@@ -607,7 +603,7 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(
       screen.getByRole("tab", {
-        name: "Appearance",
+        name: "Look and Feel",
       }),
     );
 

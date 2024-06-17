@@ -63,7 +63,7 @@ export async function setup(
     tokenFeatures = createMockTokenFeatures(),
   }: {
     props: Partial<StaticEmbedSetupPaneProps>;
-    activeTab?: "Overview" | "Parameters" | "Appearance";
+    activeTab?: "Overview" | "Parameters" | "Look and Feel";
     hasEnterprisePlugins?: boolean;
     tokenFeatures?: TokenFeatures;
   } = {
