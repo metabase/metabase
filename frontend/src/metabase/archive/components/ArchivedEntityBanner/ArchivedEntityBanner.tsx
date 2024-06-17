@@ -4,6 +4,7 @@ import { c, t } from "ttag";
 import type { CollectionPickerValueItem } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
+import { color } from "metabase/lib/colors";
 import { Box, Flex, FixedSizeIcon, Text } from "metabase/ui";
 
 import { BannerButton } from "./BannerButton";
@@ -46,8 +47,9 @@ export const ArchivedEntityBanner = ({
             <Box
               style={{ marginInlineEnd: "1rem" }}
               display={{ base: "none", sm: "block" }}
+              mt="2px"
             >
-              <FixedSizeIcon color="text-white" name="trash_filled" />
+              <FixedSizeIcon color={color("text-white")} name="trash_filled" />
             </Box>
             <Text color="text-white" size="md" lh="1rem">
               {c(
