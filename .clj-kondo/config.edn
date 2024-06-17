@@ -784,6 +784,7 @@
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.query-validator.models.query-field-test/with-test-setup  macros.metabase-enterprise.query-validator.models.query-field-test/with-test-setup
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -796,7 +797,6 @@
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.query-field-test/with-test-setup                             macros.metabase.models.query-field-test/with-test-setup
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world

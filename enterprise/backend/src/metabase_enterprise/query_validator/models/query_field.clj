@@ -1,9 +1,11 @@
-(ns metabase.models.query-field
+(ns metabase-enterprise.query-validator.models.query-field
+  "A join table connecting queries (both MBQL and native) with the Fields that are referenced within them."
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.native-query-analyzer :as query-analyzer]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -31,12 +33,13 @@
     :mbql/query {:explicit (lib.util/referenced-field-ids query)}
     nil))
 
-(defn update-query-fields-for-card!
+(defenterprise update-query-fields-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
   If you're invoking this from a test, be sure to turn on [[*parse-queries-in-test?*]].
 
   Returns `nil` (and logs the error) if there was a parse error."
+  :feature :query-validator
   [{card-id :id, query :dataset_query}]
   (try
     (let [{:keys [explicit implicit] :as res} (query-field-ids query)

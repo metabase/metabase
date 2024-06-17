@@ -33,7 +33,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
-   [metabase.models.query-field :as query-field]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -543,6 +542,10 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
+(defenterprise update-query-fields-for-card!
+  "The EE feature syncs the QueryFields associated with the card; this OSS stub is a no-op"
+  metabase-enterprise.query-validator.models.query-field
+  [_card])
 
 (t2/define-after-select :model/Card
   [card]
@@ -565,7 +568,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-field/update-query-fields-for-card! card)))
+    (update-query-fields-for-card! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -593,7 +596,7 @@
   [card]
   (u/prog1 card
     (when (contains? (t2/changes card) :dataset_query)
-      (query-field/update-query-fields-for-card! card))))
+      (update-query-fields-for-card! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
