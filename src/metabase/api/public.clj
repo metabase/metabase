@@ -127,7 +127,7 @@
      {:error (tru "An error occurred while running the query.")})))
 
 (defn- process-query-for-card-with-id-run-fn
-  "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
+  "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
@@ -153,7 +153,8 @@
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    :public-question
-              :run        (process-query-for-card-with-id-run-fn qp export-format)
+              :qp         qp
+              :make-run   process-query-for-card-with-id-run-fn
               options)))
 
 (defn ^:private process-query-for-card-with-public-uuid
@@ -267,7 +268,7 @@
                                    (string? parameters) (json/parse-string keyword))
                   :export-format export-format
                   :qp            qp
-                  :run           (process-query-for-card-with-id-run-fn qp export-format)})]
+                  :make-run      process-query-for-card-with-id-run-fn})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
