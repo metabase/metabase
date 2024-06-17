@@ -18,13 +18,11 @@ export function getPieChartLegend(
         s.key === "Other" ? s.key : formatters.formatDimension(s.key);
 
       return {
-        name:
+        name: label,
+        percent:
           settings["pie.percent_visibility"] === "legend"
-            ? `${label} - ${formatters.formatPercent(
-                s.normalizedPercentage,
-                "legend",
-              )}`
-            : label,
+            ? formatters.formatPercent(s.normalizedPercentage, "legend")
+            : undefined,
         color: s.color,
         key: String(s.key),
       };
