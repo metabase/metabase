@@ -1038,7 +1038,9 @@
                                       #(chain-filter/chain-filter % constraints :limit result-limit))
                                     field-ids)
                has_more_values (boolean (some true? (map :has_more_values results)))]
-           {:values          (combine-chained-fitler-results results)
+           {:values          (or (combine-chained-fitler-results results)
+                                 ;; chain filter results can't be nil
+                                 [])
             :has_more_values has_more_values})
          (catch clojure.lang.ExceptionInfo e
            (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
