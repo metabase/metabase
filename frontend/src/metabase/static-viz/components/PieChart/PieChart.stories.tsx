@@ -212,3 +212,10 @@ TinySlicesDisappear43766.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const MissingCurrencyFormatting44086 = Template.bind({});
+MissingCurrencyFormatting44086.args = {
+  rawSeries: data.missingCurrencyFormatting44086 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
