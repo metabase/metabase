@@ -5,14 +5,13 @@ import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EC
 import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
 
 type CartesianChartRootProps = {
-  theme: MantineTheme;
   isQueryBuilder?: boolean;
 };
 
 const getChartPadding = ({
   theme,
   isQueryBuilder,
-}: CartesianChartRootProps) => {
+}: CartesianChartRootProps & { theme: MantineTheme }) => {
   if (isQueryBuilder) {
     return "1rem 1rem 1rem 2rem";
   }
