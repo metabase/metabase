@@ -369,6 +369,8 @@
   Recursively converts CLJS maps and sequences into JS objects and arrays."
   [x]
   (cond
+    ;; `(seqable? nil) ; => true`, so we need to check for it before
+    (nil? x)     nil
     ;; Note that map? is only true for CLJS maps, not JS objects.
     (map? x)     (display-info-map->js x)
     (string? x)  x

@@ -668,3 +668,14 @@
               (is (=? (lib/append-stage agg-only)
                       (.-query obj)))
               (is (=? -1 (.-stageIndex obj))))))))))
+
+(deftest ^:parallel display-info->js-test
+  (testing "all data structures are converted correctly"
+    (is (= #js {:arr     #js ["a" #js {:inner true}]
+                :string  "passed"
+                :keyword "too"
+                :value   nil}
+           (lib.js/display-info->js {:arr     [:a {:inner true}]
+                                     :string  "passed"
+                                     :keyword :too
+                                     :value   nil})))))
