@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 import { setDisplayTheme } from "metabase/dashboard/actions";
 import { getDisplayTheme } from "metabase/dashboard/selectors";
@@ -26,10 +26,6 @@ export const useEmbedTheme = (): EmbedThemeControls => {
   const isNightMode = theme === "night";
 
   const hasNightModeToggle = theme !== "transparent";
-
-  useEffect(() => {
-    setTheme("light");
-  }, [setTheme]);
 
   return {
     theme,
