@@ -7,11 +7,11 @@ import { Icon } from "metabase/ui";
 
 import { SectionRoot } from "./QuestionLastUpdated.styled";
 
-export default function QuestionLastUpdated({ updatedAt, ...props }) {
-  return updatedAt ? (
+export default function QuestionLastUpdated({ result, ...props }) {
+  return result ? (
     <SectionRoot {...props}>
       <Icon name="clock" className={CS.mr1} />
-      {t`Updated ${moment(updatedAt).fromNow()}`}
+      {t`Updated ${moment(result.updated_at).fromNow()}`}
     </SectionRoot>
   ) : null;
 }
