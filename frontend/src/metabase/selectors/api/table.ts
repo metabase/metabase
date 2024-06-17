@@ -83,6 +83,17 @@ const getSegmentTableEntries = (
     .filter(entry => entry.endpointName === endpointName);
 };
 
+const getFromListDatabases = createSelector(getApiState, (state): Table[] => {
+  return getDatabaseTableEntries(state, "listDatabases").flatMap(entry => {
+    const selector = databaseApi.endpoints.listDatabases.select(
+      entry.originalArgs,
+    );
+    const { data } = selector(state);
+    const databases = data?.data ?? [];
+    return databases.flatMap(database => database.tables ?? []);
+  });
+});
+
 const getFromListDatabaseSchemaTables = createSelector(
   getApiState,
   (state): Table[] => {
@@ -239,6 +250,7 @@ const getFromGetSegment = createSelector(getApiState, (state): Table[] => {
 
 export const getApiTables = createSelector(
   [
+    getFromListDatabases,
     getFromListDatabaseSchemaTables,
     getFromGetDatabase, // TODO: do we need cross-references?
     getFromGetDatabaseMetadata, // TODO: do we need cross-references?
