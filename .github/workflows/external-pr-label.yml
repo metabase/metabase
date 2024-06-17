@@ -1,0 +1,28 @@
+name: Mark External PRs
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  on-pr-opened:
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-22.04
+    timeout-minutes: 1
+    if: ${{ !contains(github.event.pull_request.labels.*.name, '.External') }}
+    steps:
+      - uses: tspascoal/get-user-teams-membership@v3
+        id: checkUserMember
+        with:
+          username: ${{ github.actor }}
+          organization: 'metabase'
+          team: 'employees'
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }} # Token with read:org scope
+
+      - name: add labels
+        uses: actions-ecosystem/action-add-labels@v1
+        if: ${{ steps.checkUserMember.outputs.isTeamMember == 'false' }}
+        with:
+          labels: |
+            .External
