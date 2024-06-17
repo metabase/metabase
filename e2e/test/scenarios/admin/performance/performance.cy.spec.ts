@@ -335,46 +335,58 @@ describeEE("EE", () => {
       });
 
       // We've had bugs with specific times so this loop is necessary
-      [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].forEach(time => {
-        ["AM", "PM"].forEach(amPm => {
-          it(`can save a new schedule policy - daily at ${time} ${amPm} - for ${itemName}`, () => {
+      it(`can save a new daily schedule policy for every hour of the day - for ${itemName}`, () => {
+        [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].forEach(time => {
+          ["AM", "PM"].forEach(amPm => {
+            cy.log(`Test daily at ${time} ${amPm}`);
             selectScheduleType("daily");
             cy.findAllByRole("searchbox").eq(1).click();
             cy.findByRole("listbox").findByText(`${time}:00`).click();
             cy.findByLabelText(amPm).next().click();
             save();
             formLauncher("Sample Database", "currently", "Scheduled: daily");
+
+            // reset for next iteration of loop
+            dontCacheResultsRadioButton().click();
+            save({
+              expectedRoute:
+                itemName === "default policy"
+                  ? "@deleteCacheConfig"
+                  : "@putCacheConfig",
+            });
+            scheduleRadioButton().click();
           });
         });
       });
 
-      [
-        ["Sunday", "12:00 AM"],
-        ["Sunday", "1:00 AM"],
-        ["Sunday", "2:00 AM"],
-        ["Monday", "3:00 AM"],
-        ["Monday", "4:00 AM"],
-        ["Monday", "5:00 AM"],
-        ["Tuesday", "6:00 AM"],
-        ["Tuesday", "7:00 AM"],
-        ["Tuesday", "8:00 AM"],
-        ["Wednesday", "9:00 AM"],
-        ["Wednesday", "10:00 AM"],
-        ["Wednesday", "11:00 AM"],
-        ["Thursday", "12:00 PM"],
-        ["Thursday", "1:00 PM"],
-        ["Thursday", "2:00 PM"],
-        ["Friday", "3:00 PM"],
-        ["Friday", "4:00 PM"],
-        ["Friday", "5:00 PM"],
-        ["Saturday", "6:00 PM"],
-        ["Saturday", "7:00 PM"],
-        ["Saturday", "8:00 PM"],
-        ["Sunday", "9:00 PM"],
-        ["Sunday", "10:00 PM"],
-        ["Sunday", "11:00 PM"],
-      ].forEach(([day, time]) => {
-        it(`can save a new schedule policy - weekly on ${day} at ${time} - for ${itemName}`, () => {
+      it(`can save a new weekly schedule policy - for ${itemName}`, () => {
+        [
+          ["Sunday", "12:00 AM"],
+          ["Sunday", "1:00 AM"],
+          ["Sunday", "2:00 AM"],
+          ["Monday", "3:00 AM"],
+          ["Monday", "4:00 AM"],
+          ["Monday", "5:00 AM"],
+          ["Tuesday", "6:00 AM"],
+          ["Tuesday", "7:00 AM"],
+          ["Tuesday", "8:00 AM"],
+          ["Wednesday", "9:00 AM"],
+          ["Wednesday", "10:00 AM"],
+          ["Wednesday", "11:00 AM"],
+          ["Thursday", "12:00 PM"],
+          ["Thursday", "1:00 PM"],
+          ["Thursday", "2:00 PM"],
+          ["Friday", "3:00 PM"],
+          ["Friday", "4:00 PM"],
+          ["Friday", "5:00 PM"],
+          ["Saturday", "6:00 PM"],
+          ["Saturday", "7:00 PM"],
+          ["Saturday", "8:00 PM"],
+          ["Sunday", "9:00 PM"],
+          ["Sunday", "10:00 PM"],
+          ["Sunday", "11:00 PM"],
+        ].forEach(([day, time]) => {
+          cy.log(`testing on ${day} at ${time}`);
           selectScheduleType("weekly");
           cy.findAllByRole("searchbox").eq(1).click();
           cy.findByRole("listbox").findByText(day).click();
@@ -392,6 +404,16 @@ describeEE("EE", () => {
             expect(values).to.deep.equal(["weekly", day, hour]);
           });
           cy.findByRole("radio", { name: amPm }).should("be.checked");
+
+          // reset for next iteration of loop
+          dontCacheResultsRadioButton().click();
+          save({
+            expectedRoute:
+              itemName === "default policy"
+                ? "@deleteCacheConfig"
+                : "@putCacheConfig",
+          });
+          scheduleRadioButton().click();
         });
       });
     });
