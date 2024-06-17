@@ -694,9 +694,19 @@ export async function entityCompatibleQuery(
 ) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
   const action = dispatch(endpoint.initiate(request, { forceRefetch }));
+
   try {
     return await action.unwrap();
+  } catch (error) {
+    return undefined;
   } finally {
-    action.unsubscribe();
+    /**
+     * Do not unsubcribe here as this certainly isn't the right moment to do so.
+     * The only valid place to unsubscribe is when the component that requested the data
+     * gets unmounted - we don't have that information here.
+     * As we migrate more and more API calls from entity framework to RTK Query, this function will
+     * eventually be removed and subscriptions will be automatically managed by RTK Query.
+     **/
+    // action.unsubscribe();
   }
 }
