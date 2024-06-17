@@ -1,9 +1,17 @@
+import {
+  getDefaultCurrency,
+  getDefaultCurrencyInHeader,
+  getDefaultCurrencyStyle,
+  getDefaultNumberSeparators,
+  getDefaultNumberStyle,
+} from "metabase/visualizations/shared/settings/column";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import { isCoordinate, isNumber } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RawSeries,
@@ -30,11 +38,35 @@ const getColumnSettings = (
       normalize(possiblyDenormalizedFieldRef) === getColumnKey(column),
   );
 
-  if (!columnKey) {
-    return { column };
+  const columnSettings = columnKey
+    ? { column, ...settings.column_settings?.[columnKey] }
+    : { column };
+
+  if (isNumber(column) && !isCoordinate(column)) {
+    fillWithDefaultValue(
+      columnSettings,
+      "number_style",
+      getDefaultNumberStyle(column, settings),
+    );
+    fillWithDefaultValue(columnSettings, "currency", getDefaultCurrency());
+    fillWithDefaultValue(
+      columnSettings,
+      "currency_style",
+      getDefaultCurrencyStyle(column, settings),
+    );
+    fillWithDefaultValue(
+      columnSettings,
+      "currency_in_header",
+      getDefaultCurrencyInHeader(),
+    );
+    fillWithDefaultValue(
+      columnSettings,
+      "number_separators",
+      getDefaultNumberSeparators(),
+    );
   }
 
-  return { column, ...settings.column_settings?.[columnKey] };
+  return columnSettings;
 };
 
 export const getCommonStaticVizSettings = (
