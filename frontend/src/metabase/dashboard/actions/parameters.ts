@@ -56,6 +56,7 @@ import {
   getParameterValues,
   getParameterMappingsBeforeEditing,
   getSelectedTabId,
+  getParameterById,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -291,9 +292,7 @@ export const setParameterType = createThunkAction(
   SET_PARAMETER_TYPE,
   (parameterId: ParameterId, type: string, sectionId: string) =>
     (dispatch, getState) => {
-      const parameter = getParameters(getState()).find(
-        ({ id }) => id === parameterId,
-      );
+      const parameter = getParameterById(getState(), parameterId);
 
       if (!parameter) {
         return;
@@ -439,11 +438,11 @@ export const SET_PARAMETER_VALUE_TO_DEFAULT =
 export const setParameterValueToDefault = createThunkAction(
   SET_PARAMETER_VALUE_TO_DEFAULT,
   (parameterId: ParameterId) => (dispatch, getState) => {
-    const parameter = getParameters(getState()).find(
-      ({ id }) => id === parameterId,
-    );
+    const parameter = getParameterById(getState(), parameterId);
     const defaultValue = parameter?.default;
-    dispatch(setParameterValue(parameterId, defaultValue));
+    if (defaultValue) {
+      dispatch(setParameterValue(parameterId, defaultValue));
+    }
   },
 );
 
@@ -452,9 +451,7 @@ export const SET_PARAMETER_REQUIRED =
 export const setParameterRequired = createThunkAction(
   SET_PARAMETER_REQUIRED,
   (parameterId: ParameterId, required: boolean) => (dispatch, getState) => {
-    const parameter = getParameters(getState()).find(
-      ({ id }) => id === parameterId,
-    );
+    const parameter = getParameterById(getState(), parameterId);
 
     if (parameter && parameter.required !== required) {
       updateParameter(dispatch, getState, parameterId, parameter => ({
@@ -501,9 +498,10 @@ export const setParameterTemporalUnits = createThunkAction(
             : undefined,
       }));
 
+      const parameter = getParameterById(getState(), parameterId);
       const parameterValue = getParameterValues(getState())[parameterId];
-      if (!temporalUnits.some(unit => unit === parameterValue)) {
-        dispatch(setParameterValueToDefault(parameterId));
+      if (parameter && !temporalUnits.some(unit => unit === parameterValue)) {
+        dispatch(setParameterValue(parameterId, parameter.default));
       }
 
       return { id: parameterId, temporalUnits };

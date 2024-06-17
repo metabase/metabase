@@ -425,6 +425,10 @@ export const getMissingRequiredParameters = createSelector(
     ),
 );
 
+export function getParameterById(state: State, parameterId: ParameterId) {
+  return getParameters(state).find(({ id }) => id === parameterId);
+}
+
 /**
  * It's a memoized version, it uses LRU cache per card identified by id
  */
