@@ -31,24 +31,28 @@ export function getGoalLineSeriesOption(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
-  const goalValue = settings["graph.goal_value"];
-
-  if (!settings["graph.show_goal"] || goalValue == null) {
+  if (!settings["graph.show_goal"] || settings["graph.goal_value"] == null) {
     return null;
   }
 
+  const scaleTransformedGoalValue =
+    chartModel.yAxisScaleTransforms.toEChartsAxisValue(
+      settings["graph.goal_value"],
+    );
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {
     id: GOAL_LINE_SERIES_ID,
     type: "custom",
-    data: [[getFirstNonNullXValue(chartModel.dataset), goalValue]],
+    data: [
+      [getFirstNonNullXValue(chartModel.dataset), scaleTransformedGoalValue],
+    ],
     z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
     },
     renderItem: (params, api) => {
-      const [_x, y] = api.coord([null, goalValue]);
+      const [_x, y] = api.coord([null, scaleTransformedGoalValue]);
       const coordSys =
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;
