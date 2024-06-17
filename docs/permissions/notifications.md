@@ -36,8 +36,6 @@ People in the admin group can:
 - Add or remove recipients from an existing subscription or alert. Admins can safely add and remove recipients without changing the permissions of the alert or subscription. For example, if an admin adds Anya to a subscription created by Beau, Anya will receive emails with the same data that Beau can see (not what the admin can see).
 - Delete subscriptions or alerts.
 
-Admins can also use Metabase's [auditing tools](../usage-and-performance-tools/audit.md#subscriptions-and-alerts) to manage notifications.
-
 ## What notification recipients can see
 
 Notification **recipients** can see whatever the notification **creator** can see. For example, if:
@@ -57,4 +55,3 @@ On [Enterprise](https://www.metabase.com/product/enterprise) and [Pro](https://w
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Alerts](../questions/sharing/alerts.md)
-- [Auditing](../usage-and-performance-tools/audit.md)
