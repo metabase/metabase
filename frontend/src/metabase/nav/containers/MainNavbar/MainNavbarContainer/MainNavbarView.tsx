@@ -110,9 +110,7 @@ function MainNavbarView({
   // Can upload CSVs if
   // - properties.token_features.attached_dwh === true
   // - retrieve collection using properties.uploads-settings.db_id
-  const hasAttachedDWHFeature = useSelector(
-    state => getSetting(state, "token-features").attached_dwh,
-  );
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
   const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
