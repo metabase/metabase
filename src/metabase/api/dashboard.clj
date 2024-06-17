@@ -738,19 +738,19 @@
                      current-tabs      :tabs
                      :as               hydrated-current-dash} (t2/hydrate current-dash [:dashcards :series :card] :tabs)
                     _                                         (when (and (seq current-tabs)
-                                                       (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
-                                              (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
-                                                              {:status-code 400})))
+                                                                         (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
+                                                                (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
+                                                                                {:status-code 400})))
                     new-tabs                                  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)
                     {:keys [old->new-tab-id
                             deleted-tab-ids]
                      :as   tabs-changes-stats}                (dashboard-tab/do-update-tabs! (:id current-dash) current-tabs new-tabs)
                     deleted-tab-ids                           (set deleted-tab-ids)
                     current-dashcards                         (remove (fn [dashcard]
-                                                      (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
-                                                    current-dashcards)
+                                                                        (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
+                                                                      current-dashcards)
                     new-dashcards                             (cond->> dashcards
-                                              ;; fixup the temporary tab ids with the real ones
+                                                                ;; fixup the temporary tab ids with the real ones
                                                                 (seq old->new-tab-id)
                                                                 (map (fn [card]
                                                                        (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
@@ -759,8 +759,8 @@
                     dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
                 (reset! changes-stats
                         (merge
-                          (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
-                          (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
+                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
+                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards]))))))
           true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
@@ -997,6 +997,20 @@
                                               1 first)))
          :has_more_values has_more_values}))))
 
+(defn- combine-chained-fitler-results
+  [results]
+  (let [;; merge values with remapped values taking priority
+        values (->> (mapcat :values results)
+                    (sort-by count)
+                    (m/index-by first)
+                    vals)]
+    (cond->> values
+      (seq values)
+      ;; sort by remapped values only if all values are remapped
+      (sort-by (case (count (first values))
+                 2 second
+                 1 first)))))
+
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
@@ -1022,19 +1036,9 @@
                results         (map (if (seq query)
                                       #(chain-filter/chain-filter-search % constraints query :limit result-limit)
                                       #(chain-filter/chain-filter % constraints :limit result-limit))
-                                 field-ids)
-               ;; merge values with remapped values taking priority
-               values          (->> (mapcat :values results)
-                                    (sort-by count)
-                                    (m/index-by first)
-                                    (vals))
+                                    field-ids)
                has_more_values (boolean (some true? (map :has_more_values results)))]
-           {:values          (cond->> values
-                                      (seq values)
-                                      ;; sort by remapped values only if all values are remapped
-                                      (sort-by (case (count (first values))
-                                                 2 second
-                                                 1 first)))
+           {:values          (combine-chained-fitler-results results)
             :has_more_values has_more_values})
          (catch clojure.lang.ExceptionInfo e
            (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
