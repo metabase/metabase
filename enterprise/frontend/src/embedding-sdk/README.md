@@ -445,6 +445,12 @@ const theme = {
       },
     },
 
+    // Cartesian chart
+    cartesian: {
+      // Padding around the chart.
+      padding: "0em",
+    },
+
     // Pivot table
     pivotTable: {
       // Pivot row toggle to expand or collapse row
@@ -453,7 +459,7 @@ const theme = {
         backgroundColor: "#95A5A6",
       },
     },
-    
+
     collectionBrowser: {
        breadcrumbs: {
          expandButton: {
