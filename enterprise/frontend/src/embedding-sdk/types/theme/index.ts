@@ -143,7 +143,7 @@ export type MetabaseComponentTheme = {
   /** Cartesian charts */
   cartesian: {
     /** Padding around the chart. */
-    padding: string;
+    padding?: string;
 
     label: {
       /** Labels used in cartesian charts, such as axis ticks and series. */

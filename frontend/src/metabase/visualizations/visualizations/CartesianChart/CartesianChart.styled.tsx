@@ -1,22 +1,12 @@
 import styled from "@emotion/styled";
 
-import type { MantineTheme } from "metabase/ui";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
 
+import { getChartPadding } from "./padding";
+
 type CartesianChartRootProps = {
   isQueryBuilder?: boolean;
-};
-
-const getChartPadding = ({
-  theme,
-  isQueryBuilder,
-}: CartesianChartRootProps & { theme: MantineTheme }) => {
-  if (isQueryBuilder) {
-    return "1rem 1rem 1rem 2rem";
-  }
-
-  return theme.other.cartesian.padding;
 };
 
 export const CartesianChartRoot = styled.div<CartesianChartRootProps>`

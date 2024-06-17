@@ -64,7 +64,6 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   cartesian: {
-    padding: "0.5rem 1rem",
     label: { fontSize: FONT_SIZES.label.px },
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.px },
