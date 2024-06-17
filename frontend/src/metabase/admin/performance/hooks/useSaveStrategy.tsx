@@ -17,18 +17,12 @@ import {
   translateConfigToAPI,
 } from "../utils";
 
-import { useInvalidateTarget } from "./useInvalidateTarget";
-
 export const useSaveStrategy = (
   targetId: number | null,
   configs: CacheConfig[],
   setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
   model: CacheableModel,
 ) => {
-  const invalidateTarget = useInvalidateTarget(targetId, model, {
-    smooth: false,
-    shouldThrowErrors: false,
-  });
   const saveStrategy = useCallback(
     async (values: CacheStrategy) => {
       if (targetId === null) {
@@ -73,17 +67,10 @@ export const useSaveStrategy = (
         const translatedConfig = translateConfigToAPI(newConfig);
         await CacheConfigApi.update(translatedConfig);
 
-        // If we're setting the strategy to "don't cache",
-        // invalidate the cache
-        // TODO: This should be done in the API
-        if (newConfig.strategy.type === "nocache") {
-          await invalidateTarget();
-        }
-
         setConfigs([...otherConfigs, newConfig]);
       }
     },
-    [configs, setConfigs, targetId, model, invalidateTarget],
+    [configs, setConfigs, targetId, model],
   );
   return saveStrategy;
 };
