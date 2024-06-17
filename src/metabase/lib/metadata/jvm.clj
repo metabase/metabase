@@ -340,7 +340,9 @@
   (t2/select :metadata/table
              :db_id           database-id
              :active          true
-             :visibility_type [:not-in #{"hidden" "technical" "cruft"}]))
+             {:where [:or
+                      [:= :visibility_type nil]
+                      [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]}))
 
 (defn- metadatas-for-table [metadata-type table-id]
   (case metadata-type
@@ -348,8 +350,9 @@
     (t2/select :metadata/column
                :table_id        table-id
                :active          true
-               :visibility_type [:not-in #{"sensitive" "retired"}])
-
+               {:where [:or
+                        [:= :field/visibility_type nil]
+                        [:not-in :field/visibility_type #{"sensitive" "retired"}]]})
 
     :metadata/metric
     (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)

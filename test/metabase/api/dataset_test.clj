@@ -441,13 +441,14 @@
                         "Sum of Quantity"
                         "test-expr"]
                        (map :display_name cols)))
-                (is (= {:base_type       "type/Integer"
-                        :effective_type  "type/Integer"
-                        :name            "pivot-grouping"
-                        :display_name    "pivot-grouping"
-                        :expression_name "pivot-grouping"
-                        :field_ref       ["expression" "pivot-grouping"]
-                        :source          "breakout"}
+                (is (= {:base_type            "type/Integer"
+                        :effective_type       "type/Integer"
+                        :name                 "pivot-grouping"
+                        :desired_column_alias "pivot-grouping"
+                        :display_name         "pivot-grouping"
+                        :expression_name      "pivot-grouping"
+                        :field_ref            ["expression" "pivot-grouping"]
+                        :source               "breakout"}
                        (nth cols 3))))
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 

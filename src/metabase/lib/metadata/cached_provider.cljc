@@ -72,7 +72,7 @@
         metadata-ids))
 
 (defn- tables [metadata-provider cache]
-  (let [fetched-tables #(lib.metadata.protocols/tables metadata-provider)]
+  (let [fetched-tables (lib.metadata.protocols/tables metadata-provider)]
     (doseq [table fetched-tables]
       (store-in-cache! cache [:metadata/table (:id table)] table))
     fetched-tables))

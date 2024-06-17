@@ -468,11 +468,13 @@
                                                                         &u.people.source
                                                                         &u.people.longitude
                                                                         &u.people.latitude]
+                                                         :alias        "u"
                                                          :source-table $$people
                                                          :condition    [:= $orders.user_id &u.people.id]}
                                                         {:fields       [&p.products.category
                                                                         &p.products.price]
                                                          :source-table $$products
+                                                         :alias        "p"
                                                          :condition    [:= $orders.product_id &p.products.id]}]
                                          :fields       [$orders.created_at]})}]
           (mt/with-temp
