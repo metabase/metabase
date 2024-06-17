@@ -21,8 +21,13 @@ const setup = ({
   active?: boolean;
   item?: Partial<PaletteActionImpl>;
 }) => {
+  const toggle = jest.fn();
   render(
-    <PaletteResultItem item={mockPaletteActionImpl(item)} active={active} />,
+    <PaletteResultItem
+      item={mockPaletteActionImpl(item)}
+      active={active}
+      togglePalette={toggle}
+    />,
   );
 };
 
