@@ -95,7 +95,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
     },
   },
   cartesian: {
-    padding: "0rem",
+    padding: "0.5rem 1rem",
     label: { fontSize: FONT_SIZES.label.em },
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.em },
