@@ -116,7 +116,11 @@ function UndoToast({ undo, onUndo, onDismiss }) {
             <Progress
               size="sm"
               color={paused ? "bg-dark" : "brand"}
+              /* we intentionally break a11y - css animation is smoother */
               value={100}
+              pos="absolute"
+              top={0}
+              left={0}
               className={CS.progress}
             />
           )}

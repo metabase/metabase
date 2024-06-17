@@ -13,10 +13,6 @@
   animation: animated-progress 12s linear;
   transform-origin: left;
   width: 100%;
-  /* override Progress's position */
-  position: absolute !important;
-  top: 0;
-  left: 0;
 }
 
 .toast:hover .progress {
