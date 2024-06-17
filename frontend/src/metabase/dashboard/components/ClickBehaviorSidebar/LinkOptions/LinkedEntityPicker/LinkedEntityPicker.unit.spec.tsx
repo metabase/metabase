@@ -201,7 +201,6 @@ describe("LinkedEntityPicker", () => {
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
             models: "dashboard",
             q: typedText,
             filter_items_in_personal_collection: "exclude",
@@ -262,7 +261,6 @@ describe("LinkedEntityPicker", () => {
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
             models: "dashboard",
             q: typedText,
           });
@@ -344,7 +342,6 @@ describe("LinkedEntityPicker", () => {
             "dataset",
           ]);
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
             models: ["card", "dataset"],
             q: typedText,
             filter_items_in_personal_collection: "exclude",
@@ -402,7 +399,6 @@ describe("LinkedEntityPicker", () => {
           const urlObject = new URL(checkNotNull(call?.request?.url));
           expect(urlObject.pathname).toEqual("/api/search");
           expect(urlSearchParamsToObject(urlObject.searchParams)).toEqual({
-            context: "entity-picker",
             models: ["card", "dataset"],
             q: typedText,
           });

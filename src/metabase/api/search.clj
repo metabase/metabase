@@ -1,6 +1,7 @@
 (ns metabase.api.search
   (:require
    [compojure.core :refer [GET]]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -59,13 +60,14 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   context                             [:maybe [:enum "search-bar" "search-app" "command-palette"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -74,27 +76,46 @@
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let  [models-set           (if (seq models)
-                                (set models)
-                                search/all-models)]
-    (search/search
-      (search/search-context
-        {:archived                            archived
-         :created-at                          created_at
-         :created-by                          (set created_by)
-         :current-user-id                     api/*current-user-id*
-         :current-user-perms                  @api/*current-user-permissions-set*
-         :filter-items-in-personal-collection filter_items_in_personal_collection
-         :last-edited-at                      last_edited_at
-         :last-edited-by                      (set last_edited_by)
-         :limit                               mw.offset-paging/*limit*
-         :model-ancestors?                    model_ancestors
-         :models                              models-set
-         :offset                              mw.offset-paging/*offset*
-         :search-native-query                 search_native_query
-         :search-string                       q
-         :table-db-id                         table_db_id
-         :verified                            verified}))))
-
+  (let [start-time           (System/currentTimeMillis)
+        models-set           (if (seq models)
+                               (set models)
+                               search/all-models)
+        results              (search/search
+                              (search/search-context
+                               {:archived                            archived
+                                :created-at                          created_at
+                                :created-by                          (set created_by)
+                                :current-user-id                     api/*current-user-id*
+                                :current-user-perms                  @api/*current-user-permissions-set*
+                                :filter-items-in-personal-collection filter_items_in_personal_collection
+                                :last-edited-at                      last_edited_at
+                                :last-edited-by                      (set last_edited_by)
+                                :limit                               mw.offset-paging/*limit*
+                                :model-ancestors?                    model_ancestors
+                                :models                              models-set
+                                :offset                              mw.offset-paging/*offset*
+                                :search-native-query                 search_native_query
+                                :search-string                       q
+                                :table-db-id                         table_db_id
+                                :verified                            verified}))
+        duration             (- (System/currentTimeMillis) start-time)
+        has-advanced-filters (some some?
+                                   [models created_by created_at last_edited_by
+                                    last_edited_at search_native_query verified])]
+    (when (contains? #{"search-app" "search-bar" "command-palette"} context)
+      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id*
+                             {:runtime-milliseconds duration
+                              :context              context})
+      (when has-advanced-filters
+        (snowplow/track-event! ::snowplow/search-results-filtered api/*current-user-id*
+                               {:runtime-milliseconds  duration
+                                :content-type          models
+                                :creator               (some? created_by)
+                                :creation-date         (some? created_at)
+                                :last-editor           (some? last_edited_by)
+                                :last-edit-date        (some? last_edited_at)
+                                :verified-items        (some? verified)
+                                :search-native-queries (some? search_native_query)})))
+    results))
 
 (api/define-routes)

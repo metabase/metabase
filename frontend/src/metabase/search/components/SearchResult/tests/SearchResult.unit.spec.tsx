@@ -47,10 +47,7 @@ const setup = ({ result }: { result: WrappedResult }) => {
   setupUserRecipientsEndpoint({ users: [USER] });
 
   const { history } = renderWithProviders(
-    <Route
-      path="*"
-      component={() => <SearchResult result={result} index={0} />}
-    />,
+    <Route path="*" component={() => <SearchResult result={result} />} />,
     {
       withRouter: true,
       initialRoute: "/",

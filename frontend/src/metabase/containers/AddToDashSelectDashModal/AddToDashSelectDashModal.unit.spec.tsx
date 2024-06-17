@@ -549,7 +549,6 @@ describe("AddToDashSelectDashModal", () => {
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
-        context: "entity-picker",
         models: "dashboard",
         q: typedText,
         filter_items_in_personal_collection: "only",
@@ -578,7 +577,6 @@ describe("AddToDashSelectDashModal", () => {
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
-        context: "entity-picker",
         models: "dashboard",
         q: typedText,
       });

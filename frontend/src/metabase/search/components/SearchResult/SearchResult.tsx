@@ -6,10 +6,8 @@ import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Loader, Icon } from "metabase/ui";
-import type { SearchContext } from "metabase-types/api";
 
 import { InfoText } from "../InfoText";
 
@@ -33,8 +31,6 @@ export function SearchResult({
   isSelected = false,
   onClick,
   className,
-  index,
-  context = "search-app",
 }: {
   result: WrappedResult;
   compact?: boolean;
@@ -42,8 +38,6 @@ export function SearchResult({
   onClick?: (result: WrappedResult) => void;
   isSelected?: boolean;
   className?: string;
-  index: number;
-  context?: SearchContext;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -84,7 +78,7 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick("item", index, context);
+
     onChangeLocation(result.getUrl());
   };
 

@@ -11,17 +11,26 @@ import { getCommandPaletteIcon } from "../utils";
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
   active: boolean;
+  togglePalette: () => void;
 }
 
-export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
+export const PaletteResultItem = ({
+  item,
+  active,
+  togglePalette,
+}: PaletteResultItemProps) => {
   const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
 
   const parentName =
     item.extra?.parentCollection || item.extra?.database || null;
 
-  const handleLinkClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-  }, []);
+  const handleLinkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      togglePalette();
+    },
+    [togglePalette],
+  );
 
   const content = (
     <Flex

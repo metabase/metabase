@@ -59,10 +59,7 @@ export function isDeepMatch(objectOrValue, partialObjectOrValue) {
 
   for (const [key, value] of Object.entries(partialObjectOrValue)) {
     if (Array.isArray(value)) {
-      if (
-        !Array.isArray(objectOrValue[key]) ||
-        !isArrayDeepMatch(objectOrValue[key], value)
-      ) {
+      if (!isArrayDeepMatch(objectOrValue[key], value)) {
         return false;
       }
     } else if (!isDeepMatch(objectOrValue[key], value)) {

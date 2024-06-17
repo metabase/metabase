@@ -48,7 +48,7 @@ const setup = ({ result }: { result: WrappedResult }) => {
 
   setupUserRecipientsEndpoint({ users: [createMockUser()] });
 
-  renderWithProviders(<SearchResult result={result} index={0} />);
+  renderWithProviders(<SearchResult result={result} />);
 };
 
 describe("SearchResult > Collections", () => {

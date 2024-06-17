@@ -40,9 +40,7 @@ const setup = (setupOpts: SetupOpts) => {
   });
 
   const onClick = jest.fn();
-  renderWithProviders(
-    <SearchResult result={result} onClick={onClick} index={0} />,
-  );
+  renderWithProviders(<SearchResult result={result} onClick={onClick} />);
   const link = screen.getByText(result.name);
   return { link, onClick };
 };
