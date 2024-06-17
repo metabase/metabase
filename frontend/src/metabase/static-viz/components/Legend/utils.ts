@@ -16,10 +16,16 @@ const calculateItemWidth = (
   fontSize: number,
   fontWeight: number,
 ) => {
+  const percentTextWidth =
+    item.percent != null
+      ? measureTextWidth(item.percent, fontSize, fontWeight)
+      : 0;
+
   return (
     LEGEND_CIRCLE_SIZE +
     LEGEND_CIRCLE_MARGIN_RIGHT +
-    measureTextWidth(item.name, fontSize, fontWeight)
+    measureTextWidth(item.name, fontSize, fontWeight) +
+    percentTextWidth
   );
 };
 
