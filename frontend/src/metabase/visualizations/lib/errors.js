@@ -49,12 +49,6 @@ export class ChartSettingsError extends Error {
   }
 }
 
-export class PieChartNegativeError extends Error {
-  constructor() {
-    super(t`Pie charts cannot have negative measure values.`);
-  }
-}
-
 export function getGenericErrorMessage() {
   return t`There was a problem displaying this chart.`;
 }

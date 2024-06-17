@@ -15,7 +15,6 @@ import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import {
   ChartSettingsError,
   MinRowsError,
-  PieChartNegativeError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -93,12 +92,6 @@ export default class PieChart extends Component {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
       });
-    }
-    if (
-      settings["pie._metricIndex"] &&
-      rows.some(row => row[settings["pie._metricIndex"]] < 0)
-    ) {
-      throw new PieChartNegativeError();
     }
   }
 

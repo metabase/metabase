@@ -108,6 +108,20 @@ ShowPercentagesOnChartDense.args = {
   renderingContext,
 };
 
+export const AllNegative = Template.bind({});
+AllNegative.args = {
+  rawSeries: data.allNegative as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const MixedPositiveNegative = Template.bind({});
+MixedPositiveNegative.args = {
+  rawSeries: data.mixedPostiiveNegative as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const ColumnFormatting = Template.bind({});
 ColumnFormatting.args = {
   rawSeries: data.columnFormatting as any,
