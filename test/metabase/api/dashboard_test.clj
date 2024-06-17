@@ -403,21 +403,23 @@
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
 
 (deftest get-dashboard-param-fields-has-target-test
-  (mt/with-temp
-    [:model/Card          {orders-card-id :id}   {:database_id   (mt/id)
-                                                  :table_id      (mt/id :orders)
-                                                  :dataset_query (mt/mbql-query orders)}
-     :model/Dashboard     {dash-id :id} {:parameters [{:name "__ID__", :slug "id", :id "a", :type :id}]}
-     :model/DashboardCard _             {:card_id            orders-card-id
-                                         :dashboard_id       dash-id
-                                         :parameter_mappings [{:parameter_id "__ID__"
-                                                               :card_id      orders-card-id
-                                                               :target       [:dimension (mt/$ids orders $product_id)]}]}]
-    (is (=? {(mt/id :orders :product_id) {:id                 (mt/id :orders :product_id)
-                                          :fk_target_field_id (mt/id :products :id)
-                                          :target             {:id (mt/id :products :id)}}}
-            (:param_fields (mt/as-admin
-                            (#'api.dashboard/get-dashboard dash-id)))))))
+  (testing "param-fields for fk has target (#44231)"
+    (mt/with-temp
+      [:model/Card          {orders-card-id :id}   {:database_id   (mt/id)
+                                                    :table_id      (mt/id :orders)
+                                                    :dataset_query (mt/mbql-query orders)}
+       :model/Dashboard     {dash-id :id} {:parameters [{:name "__ID__", :slug "id", :id "a", :type :id}]}
+       :model/DashboardCard _             {:card_id            orders-card-id
+                                           :dashboard_id       dash-id
+                                           :parameter_mappings [{:parameter_id "__ID__"
+                                                                 :card_id      orders-card-id
+                                                                 :target       [:dimension (mt/$ids orders $product_id)]}]}]
+      (is (=? {(mt/id :orders :product_id) {:id                 (mt/id :orders :product_id)
+                                            :semantic_type      :type/FK
+                                            :fk_target_field_id (mt/id :products :id)
+                                            :target             {:id (mt/id :products :id)}}}
+              (:param_fields (mt/as-admin
+                              (#'api.dashboard/get-dashboard dash-id))))))))
 
 (deftest last-used-parameter-value-test
   (mt/dataset test-data
