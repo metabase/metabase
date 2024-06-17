@@ -56,7 +56,6 @@ export const InteractiveAdHocQuestion = ({
   return (
     <InteractiveQuestionResult
       isQuestionLoading={isQuestionLoading}
-      queryResults={queryResults}
       onNavigateBack={onNavigateBack}
       height={height}
       componentPlugins={plugins}
