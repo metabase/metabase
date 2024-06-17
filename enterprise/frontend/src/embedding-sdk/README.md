@@ -447,8 +447,9 @@ const theme = {
 
     // Cartesian chart
     cartesian: {
-      // Padding around the chart.
-      padding: "0em",
+      // Padding around the cartesian charts.
+      // Uses CSS's `padding` property format.
+      padding: "4px 8px",
     },
 
     // Pivot table
