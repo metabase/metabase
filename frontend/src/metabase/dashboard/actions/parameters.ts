@@ -443,9 +443,7 @@ export const setParameterValueToDefault = createThunkAction(
       ({ id }) => id === parameterId,
     );
     const defaultValue = parameter?.default;
-    if (defaultValue) {
-      dispatch(setParameterValue(parameterId, defaultValue));
-    }
+    dispatch(setParameterValue(parameterId, defaultValue));
   },
 );
 
@@ -502,6 +500,11 @@ export const setParameterTemporalUnits = createThunkAction(
             ? parameter.default
             : undefined,
       }));
+
+      const parameterValue = getParameterValues(getState())[parameterId];
+      if (!temporalUnits.some(unit => unit === parameterValue)) {
+        dispatch(setParameterValueToDefault(parameterId));
+      }
 
       return { id: parameterId, temporalUnits };
     },
