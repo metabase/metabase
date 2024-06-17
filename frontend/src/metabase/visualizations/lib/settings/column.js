@@ -30,7 +30,6 @@ import {
 } from "metabase-lib/v1/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 import {
-  getCurrency,
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
   getDefaultCurrencyStyle,
@@ -42,6 +41,17 @@ import {
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
+}
+
+function getCurrency(currency, currencyStyle) {
+  return (0)
+    .toLocaleString("en", {
+      style: "currency",
+      currency: currency,
+      currencyDisplay: currencyStyle,
+    })
+    .replace(/0([.,]0+)?/, "")
+    .trim(); // strip off actual number
 }
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
