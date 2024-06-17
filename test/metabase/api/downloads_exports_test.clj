@@ -137,7 +137,7 @@
               (is (= "Grand Totals"
                      (first (last result)))))))))))
 
-(deftest multi-measure-pivot-tables-headers-test
+(deftest ^:parallel multi-measure-pivot-tables-headers-test
   (testing "Pivot tables with multiple measures correctly include the measure titles in the final header row."
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -170,3 +170,30 @@
                    "Sum of Price"
                    "Average of Rating"]]
                (take 2 result))))))))
+
+(deftest ^:parallel zero-column-pivot-tables-test
+  (testing "Pivot tables with zero columns download correctly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
+                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns []
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          (is (= [["Created At" "Category" "Sum of Price"]
+                  ["2016-05-01T00:00:00Z" "Doohickey" "144.12"]
+                  ["2016-05-01T00:00:00Z" "Gadget" "81.58"]
+                  ["2016-05-01T00:00:00Z" "Gizmo" "75.09"]
+                  ["2016-05-01T00:00:00Z" "Widget" "90.21"]
+                  ["Totals for 2016-05-01T00:00:00Z" "" "391"]]
+                 (take 6 result))))))))
