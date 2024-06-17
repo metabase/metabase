@@ -2,9 +2,6 @@
 export const DEFAULT_CELL_WIDTH = 100;
 export const CELL_HEIGHT = 30;
 
-// styling and cell text measurement depend on this font size
-export const PIVOT_TABLE_FONT_SIZE = "0.85em";
-
 // values for computing header width
 export const ROW_TOGGLE_ICON_WIDTH = 24;
 export const CELL_PADDING = 16;

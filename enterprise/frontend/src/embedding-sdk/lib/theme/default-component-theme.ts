@@ -16,6 +16,7 @@ const units = (px: number) => ({
 
 export const FONT_SIZES = {
   tableCell: units(12.5),
+  pivotTableCell: units(12),
   label: units(12),
   goalLabel: units(14),
 };
@@ -58,6 +59,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   pivotTable: {
+    cell: {
+      fontSize: FONT_SIZES.pivotTableCell.px,
+    },
     rowToggle: {
       textColor: "text-white",
       backgroundColor: "text-light", // TODO: should it be "bg-dark" ?
@@ -83,6 +87,11 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
     cell: {
       fontSize: FONT_SIZES.tableCell.em,
       backgroundColor: "bg-white",
+    },
+  },
+  pivotTable: {
+    cell: {
+      fontSize: FONT_SIZES.pivotTableCell.em,
     },
   },
   cartesian: {

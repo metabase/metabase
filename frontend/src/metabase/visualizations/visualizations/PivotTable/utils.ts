@@ -19,7 +19,6 @@ import {
   CELL_PADDING,
   MIN_HEADER_CELL_WIDTH,
   MAX_HEADER_CELL_WIDTH,
-  PIVOT_TABLE_FONT_SIZE,
   MAX_ROWS_TO_MEASURE,
   LEFT_HEADER_LEFT_SPACING,
   CELL_HEIGHT,
@@ -96,15 +95,17 @@ interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
   leftHeaderItems?: HeaderItem[];
-  fontFamily?: string;
+  font?: { fontFamily?: string; fontSize?: string };
 }
 
 export function getLeftHeaderWidths({
   rowIndexes,
   getColumnTitle,
   leftHeaderItems = [],
-  fontFamily = "Lato",
+  font,
 }: GetLeftHeaderWidthsProps) {
+  const { fontFamily = "Lato", fontSize = "0.75rem" } = font ?? {};
+
   const cellValues = getColumnValues(leftHeaderItems);
 
   const widths = rowIndexes.map((rowIndex, depthIndex) => {
@@ -112,7 +113,7 @@ export function getLeftHeaderWidths({
       measureText(getColumnTitle(rowIndex), {
         weight: "bold",
         family: fontFamily,
-        size: PIVOT_TABLE_FONT_SIZE,
+        size: fontSize,
       }).width + ROW_TOGGLE_ICON_WIDTH,
     );
 
@@ -124,7 +125,7 @@ export function getLeftHeaderWidths({
             measureText(value, {
               weight: "normal",
               family: fontFamily,
-              size: PIVOT_TABLE_FONT_SIZE,
+              size: fontSize,
             }).width +
             (cellValues[rowIndex]?.hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
         ) ?? [0]),
