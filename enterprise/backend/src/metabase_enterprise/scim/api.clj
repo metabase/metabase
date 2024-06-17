@@ -43,10 +43,6 @@
   (backfill-required-entity-ids!)
   (refresh-scim-api-key! api/*current-user-id*))
 
-#_(comment
-    (metabase.test/with-current-user 1
-      (refresh-scim-api-key! api/*current-user-id*)))
-
 (defendpoint DELETE "/api_key"
   "Deletes the SCIM API key, if one exists. Equivalent to disabling SCIM."
   []
