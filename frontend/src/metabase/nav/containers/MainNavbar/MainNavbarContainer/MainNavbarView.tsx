@@ -16,7 +16,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import UploadCSV from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
+import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
 import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";

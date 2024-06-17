@@ -17,10 +17,7 @@ import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { trackButtonClicked } from "./analytics";
 import type { IUploadCSVProps } from "./types";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function UploadCSV({
-  collection,
-}: IUploadCSVProps): ReactElement {
+export function UploadCSV({ collection }: IUploadCSVProps): ReactElement {
   const [
     isModelUploadModalOpen,
     { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
