@@ -1,4 +1,5 @@
 // Storybook helpers
+import { Box } from "@mantine/core";
 import { Provider } from "react-redux";
 
 import type { MetabaseTheme } from "embedding-sdk";
@@ -32,15 +33,17 @@ export const VisualizationWrapper = ({
   const store = getStore(mainReducers, { settings: createMockSettingsState() });
 
   return (
-    <TestWrapper
-      store={store}
-      withRouter={false}
-      withKBar={false}
-      theme={theme}
-      withDND
-    >
-      {children}
-    </TestWrapper>
+    <Box fs="0.875em">
+      <TestWrapper
+        store={store}
+        withRouter={false}
+        withKBar={false}
+        theme={theme}
+        withDND
+      >
+        {children}
+      </TestWrapper>
+    </Box>
   );
 };
 
