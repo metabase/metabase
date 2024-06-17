@@ -31,7 +31,10 @@
     },
     "context": {
       "description": "Source of the search event",
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "enum": [
         "search-app",
         "search-bar",
@@ -150,8 +153,7 @@
     }
   },
   "required": [
-    "event",
-    "context"
+    "event"
   ],
   "additionalProperties": true
 }
