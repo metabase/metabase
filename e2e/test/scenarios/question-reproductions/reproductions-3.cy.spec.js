@@ -1,5 +1,6 @@
 import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   visualize,
@@ -27,8 +28,9 @@ import {
   createQuestion,
   saveQuestion,
   echartsContainer,
+  newButton,
+  appBar,
 } from "e2e/support/helpers";
-import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -700,7 +702,8 @@ describe("issue 44071", () => {
   });
 
   it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
-    startNewQuestion();
+    cy.visit("/");
+    newButton("Question").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
       cy.findByText(/Personal Collection/).click();
@@ -708,6 +711,10 @@ describe("issue 44071", () => {
     });
     getNotebookStep("data")
       .findByText(questionDetails.name)
+      .should("be.visible");
+    saveQuestion();
+    appBar()
+      .findByText(/Personal Collection/)
       .should("be.visible");
   });
 });
