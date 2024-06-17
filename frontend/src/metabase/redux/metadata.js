@@ -231,20 +231,3 @@ export const fetchRemapping = createThunkAction(
     }
   },
 );
-
-const FETCH_REAL_DATABASES_WITH_METADATA =
-  "metabase/metadata/FETCH_REAL_DATABASES_WITH_METADATA";
-export const fetchRealDatabasesWithMetadata = createThunkAction(
-  FETCH_REAL_DATABASES_WITH_METADATA,
-  (reload = false) => {
-    return async (dispatch, getState) => {
-      await dispatch(fetchRealDatabases());
-      const databases = getIn(getState(), ["entities", "databases"]);
-      await Promise.all(
-        Object.values(databases).map(database =>
-          dispatch(fetchDatabaseMetadata(database.id)),
-        ),
-      );
-    };
-  },
-);
