@@ -18,7 +18,7 @@ import type {
   ActionDashboardCard,
   Dashboard,
   ParametersForActionExecution,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -36,7 +36,7 @@ import {
 interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
-  parameterValues: { [id: string]: ParameterValueOrArray };
+  parameterValues: ParameterValuesMap;
 }
 
 interface StateProps {

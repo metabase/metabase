@@ -8,8 +8,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Dashboard,
-  ParameterId,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   QuestionDashboardCard,
   VirtualCard,
 } from "metabase-types/api";
@@ -30,7 +29,7 @@ export const getNewCardUrl = ({
 }: {
   metadata: Metadata;
   dashboard: Dashboard;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues: ParameterValuesMap;
   nextCard: Card | VirtualCard;
   previousCard: Card | VirtualCard;
   dashcard: QuestionDashboardCard;

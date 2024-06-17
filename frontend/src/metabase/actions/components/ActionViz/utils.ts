@@ -1,8 +1,7 @@
 import _ from "underscore";
 
 import { isImplicitDeleteAction } from "metabase/actions/utils";
-import { isNotNull } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import { isNotNull, isNullOrUndefined } from "metabase/lib/types";
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
@@ -10,6 +9,7 @@ import type {
   ParameterId,
   ParametersForActionExecution,
   ParameterValueOrArray,
+  ParameterValuesMap,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
@@ -23,7 +23,7 @@ function formatParameterValue(value: ParameterValueOrArray) {
 function prepareParameter(
   mapping: ActionParametersMapping,
   action: WritebackAction,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ActionParameterTuple | undefined {
   if (!action?.parameters?.length) {
     return;
@@ -37,7 +37,7 @@ function prepareParameter(
   );
 
   // don't return unmapped or empty values
-  if (!actionParameter || isEmpty(parameterValue)) {
+  if (!actionParameter || isNullOrUndefined(parameterValue)) {
     return;
   }
 
@@ -46,7 +46,7 @@ function prepareParameter(
 
 export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ParametersForActionExecution {
   if (
     !dashcard.action ||

@@ -5,7 +5,7 @@ import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
+import type { ParameterValuesMap } from "metabase-types/api";
 
 import type Question from "./Question";
 import type NativeQuery from "./queries/NativeQuery";
@@ -47,7 +47,7 @@ export function getUrl(
 export function getUrlWithParameters(
   question: Question,
   parameters: ParameterWithTarget[],
-  parameterValues: Record<ParameterId, ParameterValueOrArray>,
+  parameterValues: ParameterValuesMap,
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
