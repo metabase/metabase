@@ -178,6 +178,13 @@ SingleDimension.args = {
   renderingContext,
 };
 
+export const LongDimensionName = Template.bind({});
+LongDimensionName.args = {
+  rawSeries: data.longDimensionName as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SortedMetricCol = Template.bind({});
 SortedMetricCol.args = {
   rawSeries: data.sortedMetricCol as any,
