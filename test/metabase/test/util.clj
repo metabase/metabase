@@ -1133,7 +1133,7 @@
     x))
 
 (defmacro with-column-remappings
-  "Execut `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
+  "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
   \"internal\" remappings:
 
   FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
