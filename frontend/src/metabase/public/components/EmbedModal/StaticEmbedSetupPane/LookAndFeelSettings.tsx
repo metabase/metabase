@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
@@ -65,64 +66,17 @@ export const LookAndFeelSettings = ({
   return (
     <>
       <StaticEmbedSetupPaneSettingsContentSection
-        title={t`Customizing your embed’s appearance`}
+        title={t`Customizing look and feel`}
       >
-        <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
+        <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
           <ExternalLink
             key="doc"
             href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
           >{t`documentation`}</ExternalLink>
         )} for more.`}</Text>
       </StaticEmbedSetupPaneSettingsContentSection>
-      <StaticEmbedSetupPaneSettingsContentSection
-        title={t`Playing with appearance options`}
-        mt="2rem"
-      >
+      <StaticEmbedSetupPaneSettingsContentSection mt="2rem">
         <Stack spacing="1rem">
-          <DisplayOptionSection title={t`Background`}>
-            <SegmentedControl
-              value={displayOptions.theme ?? undefined}
-              // `data` type is required to be mutable, but THEME_OPTIONS is const.
-              data={[...THEME_OPTIONS]}
-              fullWidth
-              bg={color("bg-light")}
-              onChange={(value: ThemeOptions) => {
-                onChangeDisplayOptions({
-                  ...displayOptions,
-                  theme: value,
-                });
-              }}
-            />
-          </DisplayOptionSection>
-
-          <Switch
-            label={getTitleLabel(resourceType)}
-            labelPosition="left"
-            size="sm"
-            variant="stretch"
-            checked={displayOptions.titled}
-            onChange={e =>
-              onChangeDisplayOptions({
-                ...displayOptions,
-                titled: e.target.checked,
-              })
-            }
-          />
-
-          <Switch
-            label={t`Border`}
-            labelPosition="left"
-            size="sm"
-            variant="stretch"
-            checked={displayOptions.bordered}
-            onChange={e =>
-              onChangeDisplayOptions({
-                ...displayOptions,
-                bordered: e.target.checked,
-              })
-            }
-          />
-
           <DisplayOptionSection title={t`Font`} titleId={fontControlLabelId}>
             {canWhitelabel ? (
               <Select
@@ -156,6 +110,50 @@ export const LookAndFeelSettings = ({
               )}.`}</Text>
             )}
           </DisplayOptionSection>
+
+          <DisplayOptionSection title={t`Background`}>
+            <SegmentedControl
+              value={displayOptions.theme ?? undefined}
+              // `data` type is required to be mutable, but THEME_OPTIONS is const.
+              data={[...THEME_OPTIONS]}
+              fullWidth
+              bg={color("bg-light")}
+              onChange={(value: ThemeOptions) => {
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  theme: value,
+                });
+              }}
+            />
+          </DisplayOptionSection>
+
+          <Switch
+            label={getBorderTitle(resourceType)}
+            labelPosition="left"
+            size="sm"
+            variant="stretch"
+            checked={displayOptions.bordered}
+            onChange={e =>
+              onChangeDisplayOptions({
+                ...displayOptions,
+                bordered: e.target.checked,
+              })
+            }
+          />
+
+          <Switch
+            label={getTitleLabel(resourceType)}
+            labelPosition="left"
+            size="sm"
+            variant="stretch"
+            checked={displayOptions.titled}
+            onChange={e =>
+              onChangeDisplayOptions({
+                ...displayOptions,
+                titled: e.target.checked,
+              })
+            }
+          />
 
           {canWhitelabel && resourceType === "question" && (
             // We only show the "Download Data" toggle if the users are pro/enterprise
@@ -213,4 +211,12 @@ function getTitleLabel(resourceType: EmbedResourceType) {
   }
 
   return null;
+}
+
+function getBorderTitle(resourceType: EmbedResourceType) {
+  return match(resourceType)
+    .returnType<string>()
+    .with("dashboard", () => t`Dashboard border`)
+    .with("question", () => t`Question border`)
+    .exhaustive();
 }
