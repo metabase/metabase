@@ -37,6 +37,7 @@ type CollectionBrowserProps = {
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
+  EmptyContentComponent?: (() => JSX.Element) | null;
   className?: string;
   style?: CSSProperties;
 };
@@ -46,6 +47,7 @@ export const CollectionBrowserInner = ({
   onClick,
   pageSize = COLLECTION_PAGE_SIZE,
   visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
+  EmptyContentComponent = null,
   className,
   style,
 }: CollectionBrowserProps) => {
@@ -84,6 +86,7 @@ export const CollectionBrowserInner = ({
         pageSize={pageSize}
         models={collectionTypes}
         showActionMenu={false}
+        EmptyContentComponent={EmptyContentComponent}
       />
     </Box>
   );

@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { ColorName } from "metabase/lib/colors/types";
 
 import type { MetabaseFontFamily } from "../fonts";
@@ -135,7 +137,7 @@ export type MetabaseComponentTheme = {
   scalar?: {
     /** The primary numerical value */
     value?: {
-      fontSize?: string;
+      fontSize?: CSSProperties["fontSize"];
       lineHeight?: string;
     };
   };
@@ -162,6 +164,20 @@ export type MetabaseComponentTheme = {
         hoverBackgroundColor: ColorCssVariableOrString;
         textColor: ColorCssVariableOrString;
         hoverTextColor: ColorCssVariableOrString;
+      };
+    };
+    emptyContent: {
+      icon: {
+        width: CSSProperties["width"];
+        height: CSSProperties["width"];
+      };
+      title: {
+        fontSize: CSSProperties["fontSize"];
+        textColor: ColorCssVariableOrString;
+      };
+      subtitle: {
+        fontSize: CSSProperties["fontSize"];
+        textColor: ColorCssVariableOrString;
       };
     };
   };
