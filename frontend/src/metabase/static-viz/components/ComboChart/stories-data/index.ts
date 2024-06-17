@@ -1,6 +1,8 @@
 import twoBarsTwoAreasOneLineLinear from "./2-bars-2-areas-1-line-linear.json";
 import twoBarsTwoAreasOneLineLog from "./2-bars-2-areas-1-line-log.json";
 import twoBarsTwoAreasOneLinePower from "./2-bars-2-areas-1-line-power.json";
+import areaChartSteppedNullsInterpolated from "./area-chart-stepped-nulls-interpolated.json";
+import areaChartSteppedNullsSkipped from "./area-chart-stepped-nulls-skipped.json";
 import areaFullyNullDimension37902 from "./area-fully-null-dimension-37902.json";
 import areaOverBar from "./area-over-bar-40209.json";
 import areaStackAllSeriesWithoutInterpolation from "./area-stack-all-series-without-interpolation.json";
@@ -86,6 +88,7 @@ import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
+import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
@@ -216,4 +219,7 @@ export const data = {
   barMinHeightLimit,
   comboDataLabelsAutoCompactnessPropagatesFromLine,
   comboDataLabelsAutoCompactnessPropagatesFromTotals,
+  areaChartSteppedNullsInterpolated,
+  areaChartSteppedNullsSkipped,
+  safariNonIanaTimezoneRepro44128,
 };

@@ -3,11 +3,16 @@ export type UndoState = {
   id: string | number;
   type?: string;
   action?: () => void;
+  message?: string;
+  timeout?: number;
   actions?: (() => void)[];
-  icon?: string;
+  showProgress?: boolean;
+  icon?: string | null;
   toastColor?: string;
   actionLabel?: string;
   canDismiss?: boolean;
+  startedAt?: number;
+  pausedAt?: number;
   dismissIconColor?: string;
   extraInfo?: Record<string, unknown>;
   _domId?: string | number;

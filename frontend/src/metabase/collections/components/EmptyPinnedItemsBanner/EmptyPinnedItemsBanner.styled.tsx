@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Banner from "metabase/components/Banner";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const EmptyBanner = styled(Banner)`
@@ -9,7 +9,7 @@ export const EmptyBanner = styled(Banner)`
   background-color: ${() => lighten("brand", 0.6)};
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   gap: 0.5rem;
   padding: 1rem;

@@ -271,7 +271,6 @@
     "patch-package": "^8.0.0",
     "pg": "^8.8.0",
     "postcss": "8.4.19",
-    "postcss-color-mod-function": "^3.0.3",
     "postcss-import": "15.1.0",
     "postcss-loader": "7.0.2",
     "postcss-preset-env": "^6.7.0",

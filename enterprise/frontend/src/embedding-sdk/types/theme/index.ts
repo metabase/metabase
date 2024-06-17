@@ -1,3 +1,5 @@
+import type { ColorName } from "metabase/lib/colors/types";
+
 import type { MetabaseFontFamily } from "../fonts";
 import type { DeepPartial } from "../utils";
 
@@ -78,12 +80,19 @@ export type MetabaseColor = keyof MetabaseColors;
  * Every non-optional properties here must have a default value defined
  * in DEFAULT_METABASE_COMPONENT_THEME at [default-component-theme.ts]
  */
-export interface MetabaseComponentTheme {
+export type MetabaseComponentTheme = {
   dashboard: {
     backgroundColor: string;
 
     card: {
       backgroundColor: string;
+
+      /**
+       * Add custom borders to dashboard cards when set.
+       * Value is the same as the border property in CSS, such as "1px solid #ff0000".
+       * This will replace the card's drop shadow.
+       **/
+      border?: string;
     };
   };
 
@@ -145,7 +154,20 @@ export interface MetabaseComponentTheme {
       };
     };
   };
-}
+
+  collectionBrowser: {
+    breadcrumbs: {
+      expandButton: {
+        backgroundColor: ColorCssVariableOrString;
+        hoverBackgroundColor: ColorCssVariableOrString;
+        textColor: ColorCssVariableOrString;
+        hoverTextColor: ColorCssVariableOrString;
+      };
+    };
+  };
+};
+
+type ColorCssVariableOrString = `var(--mb-color-${ColorName})` | string;
 
 export type ChartColor =
   | string

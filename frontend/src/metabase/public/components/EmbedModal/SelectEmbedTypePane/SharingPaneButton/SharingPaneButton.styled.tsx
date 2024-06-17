@@ -16,7 +16,7 @@ export const SharingPaneButtonContent = styled(Paper)<
 `;
 
 export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
-  ${({ disabled, theme }) =>
+  ${({ disabled }) =>
     !disabled
       ? css`
           ${SharingPaneButtonContent}:hover & {
@@ -24,7 +24,7 @@ export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
           }
         `
       : css`
-          color: ${theme.fn.themeColor("text-light")};
+          color: var(--mb-color-text-light);
         `}
 `;
 

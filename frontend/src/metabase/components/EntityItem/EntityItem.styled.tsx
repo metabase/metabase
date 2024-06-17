@@ -66,7 +66,7 @@ export const EntityItemSpinner = styled(LoadingSpinner)`
 export const EntityMenuContainer = styled.div`
   display: flex;
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const EntityItemActions = styled.div`

@@ -32,6 +32,7 @@ import {
   openQuestionsSidebar,
   visitEmbeddedPage,
   createQuestion,
+  multiAutocompleteInput,
   assertQueryBuilderRowCount,
 } from "e2e/support/helpers";
 import {
@@ -177,7 +178,7 @@ describe("issue 8030 + 32444", () => {
             cy.findByText(filterDetails.name).click();
             popover().within(() => {
               // the filter is connected only to the first card
-              cy.get("input").type("1{enter}");
+              multiAutocompleteInput().type("1{enter}");
               cy.findByText("Add filter").click();
             });
             cy.wait("@getCardQuery1");
@@ -546,6 +547,7 @@ describe("issues 15119 and 16112", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(reviewerFilter.name).click();
     popover().contains("adam").click();
+    multiAutocompleteInput().blur();
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");

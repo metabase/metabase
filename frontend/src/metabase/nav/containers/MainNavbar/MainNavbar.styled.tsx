@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
@@ -96,7 +96,7 @@ export const SidebarHeadingWrapper = styled.div`
 `;
 
 export const SidebarHeading = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
@@ -111,7 +111,7 @@ export const CollectionsMoreIconContainer = styled.button`
 `;
 
 export const CollectionsMoreIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const CollectionMenuList = styled.ul`
@@ -134,7 +134,7 @@ export const LoadingAndErrorContent = styled.div`
 `;
 
 export const LoadingAndErrorTitle = styled.h2`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   font-weight: 400;
   margin-top: ${space(1)};
 `;

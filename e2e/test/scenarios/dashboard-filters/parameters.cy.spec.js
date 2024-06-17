@@ -18,6 +18,7 @@ import {
   updateDashboardCards,
   setFilter,
   spyRequestFinished,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -80,18 +81,27 @@ describe("scenarios > dashboard > parameters", () => {
     filterWidget().contains("Text").click();
 
     // After typing "Ga", you should see this name
-    popover().find("input").type("Ga");
+    popover().within(() => multiAutocompleteInput().type("Ga"));
     cy.wait("@dashboard");
-    popover().contains("Gabrielle Considine");
+    popover().last().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
-    popover().find("input").type("d");
+    popover()
+      .first()
+      .within(() => multiAutocompleteInput().type("d"));
     cy.wait("@dashboard");
 
-    popover().within(() => {
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Gadget").click();
+      });
+
+    popover()
+      .first()
+      .within(() => {
+        cy.button("Add filter").click();
+      });
 
     cy.location("search").should("eq", "?text=Gadget");
     cy.findAllByTestId("dashcard-container").first().should("contain", "0");
@@ -720,7 +730,7 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("Antwan Fisher");
+        multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 
@@ -745,7 +755,7 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().click();
 
       popover().within(() => {
-        cy.findByRole("textbox").type("Antwan Fisher");
+        multiAutocompleteInput().type("Antwan Fisher");
         cy.button("Add filter").click();
       });
 

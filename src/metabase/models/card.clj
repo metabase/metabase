@@ -86,7 +86,6 @@
    :type                   mi/transform-keyword})
 
 (doto :model/Card
-  (derive ::mi/has-trashed-from-collection-id)
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive ::perms/use-parent-collection-perms)
@@ -892,7 +891,7 @@ saved later when it is ready."
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :trashed_from_collection_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))
@@ -1036,7 +1035,7 @@ saved later when it is ready."
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings trashed_from_collection_id]}]
+           result_metadata table_id visualization_settings]}]
   (->> (map serdes/mbql-deps parameter_mappings)
        (reduce set/union #{})
        (set/union (serdes/parameters-deps parameters))
@@ -1044,7 +1043,6 @@ saved later when it is ready."
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes/table->path table_id)}))
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (when trashed_from_collection_id #{[{:model "Collection" :id trashed_from_collection_id}]}))
        (set/union (result-metadata-deps result_metadata))
        (set/union (serdes/mbql-deps dataset_query))
        (set/union (serdes/visualization-settings-deps visualization_settings))

@@ -23,9 +23,41 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
     if (timeout) {
       timeoutId = setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
     }
-    return { ...undo, id, _domId: id, icon, canDismiss, timeoutId };
+    return {
+      ...undo,
+      id,
+      _domId: id,
+      icon,
+      canDismiss,
+      timeoutId,
+      startedAt: Date.now(),
+    };
   };
 });
+
+const PAUSE_UNDO = "metabase/questions/PAUSE_UNDO";
+export const pauseUndo = createAction(PAUSE_UNDO, undo => {
+  clearTimeout(undo.timeoutId);
+
+  return { ...undo, pausedAt: Date.now(), timeoutId: null };
+});
+
+const RESUME_UNDO = "metabase/questions/RESUME_UNDO";
+export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
+  const restTime = undo.timeout - (undo.pausedAt - undo.startedAt);
+
+  return dispatch => {
+    return {
+      ...undo,
+      timeoutId: setTimeout(
+        () => dispatch(dismissUndo(undo.id, false)),
+        restTime,
+      ),
+      timeout: restTime,
+    };
+  };
+});
+
 /**
  *
  * @param {import("metabase-types/store").State} state
@@ -120,7 +152,34 @@ export default function (state = [], { type, payload, error }) {
       clearTimeoutForUndo(undo);
     }
     return [];
+  } else if (type === PAUSE_UNDO) {
+    return state.map(undo => {
+      if (undo.id === payload.id) {
+        return {
+          ...undo,
+          pausedAt: Date.now(),
+          timeoutId: null,
+        };
+      }
+
+      return undo;
+    });
+  } else if (type === RESUME_UNDO) {
+    return state.map(undo => {
+      if (undo.id === payload.id) {
+        return {
+          ...undo,
+          timeoutId: payload.timeoutId,
+          pausedAt: null,
+          startedAt: Date.now(),
+          timeout: payload.timeout,
+        };
+      }
+
+      return undo;
+    });
   }
+
   return state;
 }
 

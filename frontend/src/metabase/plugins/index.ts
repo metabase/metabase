@@ -369,8 +369,6 @@ export const PLUGIN_CACHING = {
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
-  ModelPersistenceTab: PluginPlaceholder as any,
-  ModelPersistenceConfiguration: PluginPlaceholder as any,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -447,6 +445,7 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
+  isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {

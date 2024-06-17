@@ -1,11 +1,10 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 export const QuestionPaneDetail = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   display: flex;
   align-items: center;
   padding: 0.25em ${space(1)};

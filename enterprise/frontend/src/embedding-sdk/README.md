@@ -9,13 +9,13 @@ Features currently supported:
 - embedding questions - static
 - embedding questions - w/drill-down
 - embedding dashboards - static
+- embedding the collection browser
 - theming with CSS variables
 - plugins for custom actions
 
 Features planned:
 
 - embedding dashboards - w/ drill-down
-- embedding the collection browser
 - subscribing to events
 
 # Prerequisites
@@ -256,6 +256,7 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
 - **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
+- **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 
@@ -283,6 +284,41 @@ export default function App() {
           hiddenParameters={hideParameters}
         />
     </MetabaseProvider>
+  );
+}
+```
+
+### Embedding the collection browser
+
+With the Collection Browser, you can browse the items in your Metabase instance from your application.
+
+#### Parameters
+
+- **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will start at the root `Our analytics` collection, which is ID = 0.
+- **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
+- **pageSize**: `number` – The number of items to display per page. The default is 25.
+- **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be visible. If not provided, all entities will be shown.
+
+```tsx
+import React from "react";
+import { CollectionBrowser } from "metabase-types/api";
+
+export default function App() {
+  const collectionId = 123; // This is the collection ID you want to browse
+  const handleItemClick = (item) => {
+    console.log("Clicked item:", item);
+  };
+
+  // Define the collection item types you want to be visible
+  const visibleEntityTypes = ["dashboard", "question"];
+
+  return (
+    <CollectionBrowser
+      collectionId={collectionId}
+      onClick={handleItemClick}
+      pageSize={10}
+      visibleEntityTypes={visibleEntityTypes}
+    />
   );
 }
 ```
@@ -351,7 +387,7 @@ const theme = {
     // Limitation: this does not affect charts with custom series color
     charts: [
       // can either be a hex code
-      "#9b59b6",
+      "#9B59B6",
 
       // or a color object. tint and shade represents lighter and darker variations
       // only base color is required, while tint and shade are optional
@@ -360,6 +396,27 @@ const theme = {
   },
 
   components: {
+    // Dashboard
+    dashboard: {
+      // Background color for all dashboards
+      backgroundColor: "#2F3640",
+
+      card: {
+        // Background color for all dashboard cards
+        backgroundColor: "#2D2D30",
+
+        // Apply a border color instead of shadow for dashboard cards.
+        // Unset by default.
+        border: "1px solid #EEECEC",
+      }
+    },
+
+    // Question
+    question: {
+      // Background color for all questions
+      backgroundColor: "#2D2D30",
+    },
+
     // Data table
     table: {
       cell: {
@@ -396,6 +453,17 @@ const theme = {
         backgroundColor: "#95A5A6",
       },
     },
+    
+    collectionBrowser: {
+       breadcrumbs: {
+         expandButton: {
+           textColor: "#8118F4";
+           backgroundColor: "#767D7C";
+           hoverTextColor: "#CE8C8C";
+           hoverBackgroundColor: "#69264B";
+         };
+       };
+     };
   },
 };
 ```
