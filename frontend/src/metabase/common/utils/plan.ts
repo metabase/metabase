@@ -16,26 +16,27 @@ export type Plan =
   | "pro-self-hosted";
 
 export const getPlan = (features?: TokenFeatures | null): Plan => {
-  if (!features) {
-    return "oss";
-  }
+  if (features) {
+    const hasAnyProFeatures = tokenFeatures.some(
+      feature =>
+        feature !== "hosting" &&
+        feature !== "attached_dwh" &&
+        features[feature],
+    );
+    if (hasAnyProFeatures) {
+      if (features.hosting) {
+        return features.attached_dwh ? "pro-cloud-with-dwh" : "pro-cloud";
+      } else {
+        return "pro-self-hosted";
+      }
+    }
 
-  const hasAnyProFeatures = tokenFeatures.some(
-    feature =>
-      feature !== "hosting" && feature !== "attached_dwh" && features[feature],
-  );
-
-  if (!hasAnyProFeatures) {
     if (features.hosting) {
       return features.attached_dwh ? "starter-with-dwh" : "starter";
     }
   }
 
-  if (features.hosting) {
-    return features.attached_dwh ? "pro-cloud-with-dwh" : "pro-cloud";
-  }
-
-  return "pro-self-hosted";
+  return "oss";
 };
 
 const ssoFeatures = ["sso_google", "sso_jwt", "sso_ldap", "sso_saml"] as const;
