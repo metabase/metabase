@@ -2624,9 +2624,9 @@ describe.skip("issue 44288", () => {
     });
     getDashboardCard().within(() => {
       cy.findAllByText("Gadget").should("have.length.above", 1);
-      cy.findByText("Doohickey").should("not.exit");
-      cy.findByText("Gizmo").should("not.exit");
-      cy.findByText("Widget").should("not.exit");
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Widget").should("not.exist");
     });
   }
 
