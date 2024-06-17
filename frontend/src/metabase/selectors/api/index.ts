@@ -4,26 +4,24 @@ import { getApiDatabases as getDatabases } from "./database";
 import { getApiTables as getTables } from "./table";
 import { zipEntities } from "./utils";
 
-const getAllApiDatabases = createSelector(
-  [getDatabases, getTables],
-  (databases, tables) => {
-    const databasesFromTables = Object.values(tables).flatMap(table =>
-      table?.db ? [table.db] : [],
-    );
+const getDatabasesFromTables = createSelector(getTables, tables => {
+  return Object.values(tables).flatMap(table => (table?.db ? [table.db] : []));
+});
 
-    return zipEntities(databases, databasesFromTables);
-  },
+const getTablesFromDatabases = createSelector(getDatabases, databases => {
+  return Object.values(databases).flatMap(database =>
+    database?.tables ? database.tables : [],
+  );
+});
+
+const getAllApiDatabases = createSelector(
+  [getDatabases, getDatabasesFromTables],
+  zipEntities,
 );
 
 const getAllApiTables = createSelector(
-  [getDatabases, getTables],
-  (databases, tables) => {
-    const tablesFromDatabases = Object.values(databases).flatMap(database =>
-      database?.tables ? database.tables : [],
-    );
-
-    return zipEntities(tables, tablesFromDatabases);
-  },
+  [getTables, getTablesFromDatabases],
+  zipEntities,
 );
 
 export const getApiEntities = createSelector(
