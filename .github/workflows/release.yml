@@ -553,7 +553,7 @@ jobs:
     steps:
       - uses: actions/github-script@v7
         with:
-          github_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
             github.rest.repos.createDispatchEvent({
               owner: '${{ github.repository_owner }}',
