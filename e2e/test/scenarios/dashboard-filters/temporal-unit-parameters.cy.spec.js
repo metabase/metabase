@@ -16,6 +16,8 @@ import {
   resetFilterWidgetToDefault,
   restore,
   saveDashboard,
+  selectDashboardFilter,
+  undoToast,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -403,6 +405,68 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
   });
 
+  describe("auto-wiring", () => {
+    it("should not auto-wire to cards without breakout columns", () => {
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [noBreakoutQuestionDetails, singleBreakoutQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      editDashboard();
+      addTemporalUnitParameter();
+
+      cy.log("new mapping");
+      selectDashboardFilter(getDashboardCard(1), "Created At");
+      undoToast().should("not.exist");
+
+      cy.log("new card");
+      addQuestion(noBreakoutQuestionDetails.name);
+      undoToast().should("not.exist");
+    });
+
+    it("should auto-wire to cards with breakouts on column selection", () => {
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [
+          noBreakoutQuestionDetails,
+          singleBreakoutQuestionDetails,
+          multiBreakoutQuestionDetails,
+        ],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      editDashboard();
+      addTemporalUnitParameter();
+
+      selectDashboardFilter(getDashboardCard(1), "Created At");
+      undoToast().button("Auto-connect").click();
+      saveDashboard();
+
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard(1).findByText("Created At: Year").should("exist");
+      getDashboardCard(2).findByText("Created At: Year").should("exist");
+    });
+
+    it("should auto-wire to cards with breakouts after a new card is added", () => {
+      createQuestion(multiBreakoutQuestionDetails);
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [noBreakoutQuestionDetails, singleBreakoutQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      editDashboard();
+      addTemporalUnitParameter();
+
+      selectDashboardFilter(getDashboardCard(1), "Created At");
+      undoToast().should("not.exist");
+      addQuestion(multiBreakoutQuestionDetails.name);
+      undoToast().button("Auto-connect").click();
+      saveDashboard();
+
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard(1).findByText("Created At: Year").should("exist");
+      getDashboardCard(2).findByText("Created At: Year").should("exist");
+    });
+  });
+
   describe("parameter settings", () => {
     it("should be able to set available temporal units", () => {
       createDashboardWithCard().then(dashboard => visitDashboard(dashboard.id));
@@ -565,7 +629,7 @@ function addTemporalUnitParameter() {
 }
 
 function addQuestion(name) {
-  cy.findByLabelText("Add questions").click();
+  cy.findByTestId("dashboard-header").icon("add").click();
   cy.findByTestId("add-card-sidebar").findByText(name).click();
 }
 
