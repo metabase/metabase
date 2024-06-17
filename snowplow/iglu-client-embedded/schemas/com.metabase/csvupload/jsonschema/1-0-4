@@ -64,6 +64,17 @@
       ],
       "minimum": 0,
       "maximum": 2147483647
+    },
+    "source": {
+      "description": "String identifying the location where the event took place",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "left_nav"
+      ],
+      "maxLength": 1024
     }
   },
   "additionalProperties": true,
