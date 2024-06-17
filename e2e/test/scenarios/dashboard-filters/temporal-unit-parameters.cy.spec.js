@@ -17,7 +17,9 @@ import {
   restore,
   saveDashboard,
   selectDashboardFilter,
+  setFilter,
   undoToast,
+  undoToastList,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -464,6 +466,52 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       popover().findByText("Year").click();
       getDashboardCard(1).findByText("Created At: Year").should("exist");
       getDashboardCard(2).findByText("Created At: Year").should("exist");
+    });
+
+    it("should not overwrite parameter mappings for a card when doing auto-wiring", () => {
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [
+          noBreakoutQuestionDetails,
+          singleBreakoutQuestionDetails,
+          multiBreakoutQuestionDetails,
+        ],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      getDashboardCard(1).within(() => {
+        cy.findByText("199").should("not.exist");
+      });
+      editDashboard();
+
+      cy.log("add a regular parameter");
+      setFilter("Text or Category", "Is");
+      selectDashboardFilter(getDashboardCard(0), "Category");
+      undoToast().button("Auto-connect").click();
+
+      cy.log("add a temporal unit parameter");
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(1), "Created At");
+      undoToastList().last().button("Auto-connect").click();
+      saveDashboard();
+
+      cy.log("verify data with 2 parameters");
+      filterWidget().eq(0).click();
+      popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      filterWidget().eq(1).click();
+      popover().findByText("Year").click();
+      getDashboardCard(1).within(() => {
+        cy.findByText("199").should("exist"); // sample filtered data
+        cy.findByText("Created At: Year").should("be.visible");
+      });
+
+      cy.log("verify data without the first parameter");
+      filterWidget().eq(0).icon("close").click();
+      getDashboardCard(1).within(() => {
+        cy.findByText("199").should("not.exist"); // sample filtered data
+        cy.findByText("Created At: Year").should("be.visible");
+      });
     });
   });
 
