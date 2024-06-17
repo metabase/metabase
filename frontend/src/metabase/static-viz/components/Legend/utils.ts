@@ -234,15 +234,21 @@ export const calculateLegendRowsWithColumns = ({
     }
   }
 
-  const lastColumnWidth = Math.max(
-    ...rows.map(row => {
-      if (row.length < numCols) {
-        return 0;
-      }
-      return calculateItemWidth(row[numCols - 1], fontSize, fontWeight);
-    }),
-  );
-  const renderedWidth = colWidth * (numCols - 1) + lastColumnWidth;
+  let renderedWidth;
+  const percentInLegend = items[0].percent != null;
+  if (percentInLegend) {
+    renderedWidth = colWidth * numCols;
+  } else {
+    const lastColumnWidth = Math.max(
+      ...rows.map(row => {
+        if (row.length < numCols) {
+          return 0;
+        }
+        return calculateItemWidth(row[numCols - 1], fontSize, fontWeight);
+      }),
+    );
+    renderedWidth = colWidth * (numCols - 1) + lastColumnWidth;
+  }
   const height = rows.length * lineHeight + verticalPadding * 2;
 
   return {
