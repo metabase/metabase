@@ -101,52 +101,42 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("native-query-editor").should("not.be.visible");
   });
 
-  it(
-    "should display a back to the dashboard button in table x-ray dashboards",
-    { tags: "@slow" },
-    () => {
-      const cardTitle = "Total transactions";
-      cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
-      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
+  it("should display a back to the dashboard button in table x-ray dashboards", () => {
+    const cardTitle = "Total transactions";
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
+    cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
-      getDashboardCards()
-        .filter(`:contains("${cardTitle}")`)
-        .findByText(cardTitle)
-        .click();
-      cy.wait("@dataset");
+    getDashboardCards()
+      .filter(`:contains("${cardTitle}")`)
+      .findByText(cardTitle)
+      .click();
+    cy.wait("@dataset");
 
-      queryBuilderHeader()
-        .findByLabelText(/Back to .*Orders.*/)
-        .click();
+    queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
 
-      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-    },
-  );
+    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+  });
 
-  it(
-    "should display a back to the dashboard button in model x-ray dashboards",
-    { tags: "@slow" },
-    () => {
-      const cardTitle = "Orders by Subtotal";
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-      cy.visit(
-        `/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`,
-      );
-      cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
+  it("should display a back to the dashboard button in model x-ray dashboards", () => {
+    const cardTitle = "Orders by Subtotal";
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`);
+    cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
-      getDashboardCards()
-        .filter(`:contains("${cardTitle}")`)
-        .findByText(cardTitle)
-        .click();
-      cy.wait("@dataset");
+    getDashboardCards()
+      .filter(`:contains("${cardTitle}")`)
+      .findByText(cardTitle)
+      .click();
+    cy.wait("@dataset");
 
-      queryBuilderHeader()
-        .findByLabelText(/Back to .*Orders.*/)
-        .click();
+    queryBuilderHeader()
+      .findByLabelText(/Back to .*Orders.*/)
+      .click();
 
-      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-    },
-  );
+    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+  });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
     createDashboardWithCards();
