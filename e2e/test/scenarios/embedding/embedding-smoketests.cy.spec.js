@@ -152,13 +152,15 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         visitAndEnableSharing(object);
 
         modal().within(() => {
-          cy.findByRole("tab", { name: "Appearance" }).click();
+          cy.findByRole("tab", { name: "Look and Feel" }).click();
 
           cy.findByText("Background");
           cy.findByText(
             object === "dashboard" ? "Dashboard title" : "Question title",
           );
-          cy.findByText("Border");
+          cy.findByText(
+            object === "dashboard" ? "Dashboard border" : "Question border",
+          );
           cy.findByText(
             (_, element) =>
               element.textContent ===
