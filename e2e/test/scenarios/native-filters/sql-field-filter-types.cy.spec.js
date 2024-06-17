@@ -223,6 +223,9 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
   });
 
   it("when set as the default value for a required filter", () => {
+    // Use a bigger viewport to avoid elements being obscured by falling out of the screen.
+    cy.viewport(1280, 1400);
+
     SQLFilter.toggleRequired();
 
     stringFilters.forEach(

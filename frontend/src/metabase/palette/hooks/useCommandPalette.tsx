@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
-import { useListRecentItemsQuery, useSearchQuery } from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Search from "metabase/entities/search";
@@ -73,7 +73,7 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems } = useListRecentItemsQuery(undefined, {
+  const { data: recentItems } = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
 
@@ -85,6 +85,9 @@ export const useCommandPalette = ({
   );
 
   const docsAction = useMemo<PaletteAction[]>(() => {
+    const link = debouncedSearchText
+      ? getDocsSearchUrl({ query: debouncedSearchText })
+      : docsUrl;
     const ret: PaletteAction[] = [
       {
         id: "search_docs",
@@ -95,11 +98,10 @@ export const useCommandPalette = ({
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
         icon: "document",
         perform: () => {
-          if (debouncedSearchText) {
-            window.open(getDocsSearchUrl({ debouncedSearchText }));
-          } else {
-            window.open(docsUrl);
-          }
+          window.open(link);
+        },
+        extra: {
+          href: link,
         },
       },
     ];

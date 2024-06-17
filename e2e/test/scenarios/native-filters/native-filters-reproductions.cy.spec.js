@@ -12,6 +12,7 @@ import {
   queryBuilderMain,
   visitDashboard,
   getDashboardCard,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -1067,7 +1068,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     });
 
     popover().within(() => {
-      cy.icon("close").click();
+      removeMultiAutocompleteValue(0);
       cy.findByText("Update filter").click();
     });
     cy.findByTestId("sidebar-content").within(() => {
@@ -1091,7 +1092,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     filterWidget().click();
 
     popover().within(() => {
-      cy.icon("close").click();
+      removeMultiAutocompleteValue(0);
       cy.findByText("Update filter").click();
     });
 

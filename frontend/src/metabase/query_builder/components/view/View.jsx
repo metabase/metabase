@@ -245,6 +245,7 @@ class View extends Component {
             entityType={card.type}
             canWrite={card.can_write}
             canRestore={card.can_restore}
+            canDelete={card.can_delete}
             onUnarchive={() => onUnarchive(question)}
             onMove={collection => onMove(question, collection)}
             onDeletePermanently={() => onDeletePermanently(card.id)}

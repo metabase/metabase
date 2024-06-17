@@ -7,10 +7,11 @@ import {
   Divider,
   Flex,
   Group,
-  Menu,
   NumberInput,
   Select,
   Text,
+  Switch,
+  Tooltip,
 } from "metabase/ui";
 
 import type { DateIntervalValue } from "../types";
@@ -66,7 +67,7 @@ export function DateIntervalPicker({
     onChange(setDefaultOffset(value));
   };
 
-  const handleIncludeCurrentClick = () => {
+  const handleIncludeCurrentSwitch = () => {
     onChange(setIncludeCurrent(value, !includeCurrent));
   };
 
@@ -91,34 +92,28 @@ export function DateIntervalPicker({
           ml="md"
           onChange={handleUnitChange}
         />
-        <Menu>
-          <Menu.Target>
+        {canUseRelativeOffsets && (
+          <Tooltip label={t`Starting from…`} position="bottom">
             <Button
-              c="text-dark"
+              aria-label={t`Starting from…`}
+              c="text-medium"
               variant="subtle"
-              leftIcon={<Icon name="ellipsis" />}
-              aria-label={t`Options`}
+              leftIcon={<Icon name="arrow_left_to_line" />}
+              onClick={handleStartingFromClick}
             />
-          </Menu.Target>
-          <Menu.Dropdown>
-            {canUseRelativeOffsets && (
-              <Menu.Item
-                icon={<Icon name="arrow_left_to_line" />}
-                onClick={handleStartingFromClick}
-              >
-                {t`Starting from…`}
-              </Menu.Item>
-            )}
-            <Menu.Item
-              icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
-              onClick={handleIncludeCurrentClick}
-              aria-selected={includeCurrent}
-              data-testid="include-current-interval-option"
-            >
-              {t`Include ${getIncludeCurrentLabel(value.unit)}`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+          </Tooltip>
+        )}
+      </Flex>
+      <Flex p="md" pt={0}>
+        <Switch
+          aria-checked={includeCurrent}
+          checked={includeCurrent}
+          data-testid="include-current-interval-option"
+          label={t`Include ${getIncludeCurrentLabel(value.unit)}`}
+          labelPosition="right"
+          onChange={handleIncludeCurrentSwitch}
+          size="sm"
+        />
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">

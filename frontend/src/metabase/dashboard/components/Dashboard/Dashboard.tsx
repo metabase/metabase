@@ -118,6 +118,7 @@ export type DashboardProps = {
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
   setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
+  setParameterTemporalUnits: (id: ParameterId, value: boolean) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -221,6 +222,7 @@ function DashboardInner(props: DashboardProps) {
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
+  const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
@@ -433,6 +435,7 @@ function DashboardInner(props: DashboardProps) {
                 entityType="dashboard"
                 canWrite={canWrite}
                 canRestore={canRestore}
+                canDelete={canDelete}
                 onUnarchive={() => dispatch(setArchivedDashboard(false))}
                 onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}
                 onDeletePermanently={() => {
@@ -541,6 +544,7 @@ function DashboardInner(props: DashboardProps) {
                   props.setParameterFilteringParameters
                 }
                 setParameterRequired={props.setParameterRequired}
+                setParameterTemporalUnits={props.setParameterTemporalUnits}
                 isFullscreen={props.isFullscreen}
                 params={props.params}
                 sidebar={props.sidebar}

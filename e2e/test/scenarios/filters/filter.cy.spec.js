@@ -315,23 +315,20 @@ describe("scenarios > question > filter", () => {
 
     enterCustomColumnDetails({ formula: "c", blur: false });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("case")
-      .closest("li")
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .filter(":contains('case')")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
 
     cy.get("@formula").type("{downarrow}");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("case")
-      .closest("li")
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .filter(":contains('case')")
       .should("have.css", "background-color")
       .and("eq", transparent);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("ceil")
-      .closest("li")
+    cy.findAllByTestId("expression-suggestions-list-item")
+      .filter(":contains('ceil')")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
   });
@@ -525,13 +522,9 @@ describe("scenarios > question > filter", () => {
       cy.findByText("Created At").click();
       cy.findByText("Relative dates…").click();
       cy.findByText("Past").click();
-      cy.findByLabelText("Options").click();
+      cy.findByText(/^Include/).click();
+      cy.button("Add filter").click();
     });
-    popover()
-      .last()
-      .findByText(/^Include/)
-      .click();
-    popover().button("Add filter").click();
 
     getNotebookStep("filter")
       .findByText("Created At is in the previous 30 days")
@@ -548,11 +541,10 @@ describe("scenarios > question > filter", () => {
     getNotebookStep("filter")
       .findByText("Created At is in the previous 30 days")
       .click();
-    popover().findByLabelText("Options").click();
+
     popover()
-      .last()
       .findByTestId("include-current-interval-option")
-      .should("have.attr", "aria-selected", "true");
+      .should("have.attr", "aria-checked", "true");
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {

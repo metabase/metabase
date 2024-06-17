@@ -32,7 +32,9 @@ import {
   openQuestionsSidebar,
   visitEmbeddedPage,
   createQuestion,
+  multiAutocompleteInput,
   assertQueryBuilderRowCount,
+  createNativeQuestion,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -177,7 +179,7 @@ describe("issue 8030 + 32444", () => {
             cy.findByText(filterDetails.name).click();
             popover().within(() => {
               // the filter is connected only to the first card
-              cy.get("input").type("1{enter}");
+              multiAutocompleteInput().type("1{enter}");
               cy.findByText("Add filter").click();
             });
             cy.wait("@getCardQuery1");
@@ -546,6 +548,7 @@ describe("issues 15119 and 16112", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(reviewerFilter.name).click();
     popover().contains("adam").click();
+    multiAutocompleteInput().blur();
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
@@ -2580,5 +2583,92 @@ describe("issue 43799", () => {
       .findByText("People - User → Source is Google")
       .should("be.visible");
     assertQueryBuilderRowCount(4);
+  });
+});
+
+describe.skip("issue 44288", () => {
+  const modelDetails = {
+    name: "SQL model",
+    type: "model",
+    native: { query: "SELECT * FROM PRODUCTS" },
+  };
+
+  const parameterDetails = {
+    name: "Text",
+    slug: "text",
+    id: "27454068",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  function mapFilter() {
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText(parameterDetails.name)
+      .click();
+    selectDashboardFilter(getDashboardCard(), "CATEGORY");
+  }
+
+  function verifyFilter() {
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().within(() => {
+      cy.findAllByText("Gadget").should("have.length.above", 1);
+      cy.findByText("Doohickey").should("not.exist");
+      cy.findByText("Gizmo").should("not.exist");
+      cy.findByText("Widget").should("not.exist");
+    });
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    createNativeQuestion(modelDetails).then(({ body: card }) => {
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [{ card_id: card.id }],
+        });
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+    });
+    cy.signOut();
+  });
+
+  it("should allow filtering a SQL model in a dashboard (metabase#44288)", () => {
+    cy.log("regular dashboards");
+    cy.signInAsNormalUser();
+    visitDashboard("@dashboardId");
+    editDashboard();
+    mapFilter();
+    saveDashboard();
+    verifyFilter();
+    cy.signOut();
+
+    cy.log("public dashboards");
+    cy.signInAsAdmin();
+    cy.get("@dashboardId").then(dashboardId =>
+      visitPublicDashboard(dashboardId),
+    );
+    verifyFilter();
+
+    cy.log("embedded dashboards");
+    cy.get("@dashboardId").then(dashboardId =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    verifyFilter();
   });
 });

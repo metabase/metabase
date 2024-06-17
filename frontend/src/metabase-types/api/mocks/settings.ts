@@ -165,7 +165,6 @@ export const createMockSettings = (
   "enable-embedding": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
-  "enable-query-caching": undefined,
   "expand-browse-in-nav": true,
   "expand-bookmarks-in-nav": true,
   "query-caching-ttl-ratio": 10,

@@ -787,6 +787,27 @@ ComboDataLabelsAutoCompactnessPropagatesFromTotals.args = {
   renderingContext,
 };
 
+export const AreaChartSteppedNullsInterpolated = Template.bind({});
+AreaChartSteppedNullsInterpolated.args = {
+  rawSeries: data.areaChartSteppedNullsInterpolated as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const AreaChartSteppedNullsSkipped = Template.bind({});
+AreaChartSteppedNullsSkipped.args = {
+  rawSeries: data.areaChartSteppedNullsSkipped as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const SafariNonIanaTimezoneRepro44128 = Template.bind({});
+SafariNonIanaTimezoneRepro44128.args = {
+  rawSeries: data.safariNonIanaTimezoneRepro44128 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

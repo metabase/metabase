@@ -18,6 +18,6 @@ export type StrategyData = {
 };
 
 export enum PerformanceTabId {
-  DataCachingSettings = "dataCachingSettings",
-  ModelPersistence = "modelPersistence",
+  Databases = "databases",
+  Models = "models",
 }
