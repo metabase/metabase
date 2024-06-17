@@ -211,7 +211,7 @@
                  (update :stages ->pMBQL))]
     (cond-> join
       (:fields join) (update :fields (fn [fields]
-                                       (if (seqable? fields)
+                                       (if (sequential? fields)
                                          (mapv ->pMBQL fields)
                                          (keyword fields))))
       (not (:alias join)) (assoc :alias legacy-default-join-alias))))
