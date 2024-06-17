@@ -61,7 +61,7 @@ export const FunnelStart = styled.div<SharedProps>`
   flex-grow: 1;
 
   padding-right: 0.5em;
-  font-size: 24px;
+  font-size: 1.72em;
 
   ${Title} {
     font-weight: bold;
