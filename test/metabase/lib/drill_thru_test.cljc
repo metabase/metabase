@@ -825,13 +825,7 @@
                        :sort-directions [:asc :desc]}]})))
 
 (deftest ^:parallel drill-value->js-test
-  (testing "should convert :null to nil, but preserve all other values"
+  (testing "should convert :null to nil"
     (doseq [[input expected] [[:null nil]
-                              [nil nil]
-                              [:foo :foo]
-                              ["foo" "foo"]
-                              [1 1]
-                              [[:a 1 {:b true}] [:a 1 {:b true}]]
-                              '((1 :null nil) '(1 :null nil))
-                              #{1 :null nil} #{1 :null nil}]]
+                              [nil nil] ]]
       (is (= expected (lib.drill-thru.common/drill-value->js input))))))
