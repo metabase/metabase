@@ -14,7 +14,9 @@
       "type": "string",
       "enum": [
         "search_query",
-        "search_click"
+        "search_click",
+        "new_search_query",
+        "search_results_filtered"
       ],
       "maxLength": 1024
     },
