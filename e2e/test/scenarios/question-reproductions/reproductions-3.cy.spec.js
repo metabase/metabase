@@ -28,6 +28,7 @@ import {
   saveQuestion,
   echartsContainer,
 } from "e2e/support/helpers";
+import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -682,5 +683,31 @@ describe("issue 10493", () => {
       cy.findByText("25").should("exist");
       cy.findByText("75").should("exist");
     });
+  });
+});
+
+describe("issue 44071", () => {
+  const questionDetails = {
+    name: "Test",
+    query: { "source-table": ORDERS_ID },
+    collection_id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signIn("nocollection");
+    createQuestion(questionDetails);
+  });
+
+  it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
+    startNewQuestion();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText(/Personal Collection/).click();
+      cy.findByText(questionDetails.name).click();
+    });
+    getNotebookStep("data")
+      .findByText(questionDetails.name)
+      .should("be.visible");
   });
 });

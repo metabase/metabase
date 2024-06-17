@@ -48,6 +48,11 @@ export const NO_DATA_PERSONAL_COLLECTION_ID = _.findWhere(
   { name: "No Data Tableton's Personal Collection" },
 ).id;
 
+export const NO_COLLECTION_PERSONAL_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "No Collection Tableton's Personal Collection" },
+).id;
+
 export const FIRST_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "First collection" },
