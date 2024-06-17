@@ -256,4 +256,5 @@ export type LegendItem = {
   key: string;
   name: string;
   color: string;
+  percent?: string;
 };
