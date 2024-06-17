@@ -1,10 +1,8 @@
-import type { ChangeEvent } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -18,7 +16,14 @@ import {
   getUpgradeUrl,
 } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
+import {
+  Divider,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
 
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
@@ -60,7 +65,6 @@ export const LookAndFeelSettings = ({
   );
   const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
-  const fontControlLabelId = useUniqueId("display-option");
   const downloadDataId = useUniqueId("download-data");
 
   return (
@@ -77,39 +81,41 @@ export const LookAndFeelSettings = ({
       </StaticEmbedSetupPaneSettingsContentSection>
       <StaticEmbedSetupPaneSettingsContentSection mt="2rem">
         <Stack spacing="1rem">
-          <DisplayOptionSection title={t`Font`} titleId={fontControlLabelId}>
-            {canWhitelabel ? (
-              <Select
-                value={displayOptions.font}
-                options={[
-                  {
-                    name: t`Use instance font`,
-                    value: null,
-                  },
-                  ...availableFonts?.map(font => ({
-                    name: font,
-                    value: font,
-                  })),
-                ]}
-                buttonProps={{
-                  "aria-labelledby": fontControlLabelId,
-                }}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    font: e.target.value,
-                  });
-                }}
-              />
-            ) : (
-              <Text>{jt`You can change the font with ${(
-                <ExternalLink
-                  key="fontPlan"
-                  href={upgradePageUrl}
-                >{t`a paid plan`}</ExternalLink>
-              )}.`}</Text>
-            )}
-          </DisplayOptionSection>
+          {canWhitelabel ? (
+            <Select
+              label={
+                <Text fw="bold" mb="0.25rem" lh="1rem">
+                  Font
+                </Text>
+              }
+              value={
+                displayOptions.font === null ? "null" : displayOptions.font
+              }
+              data={[
+                {
+                  label: t`Use instance font`,
+                  value: "null",
+                },
+                ...availableFonts?.map(font => ({
+                  label: font,
+                  value: font,
+                })),
+              ]}
+              onChange={value => {
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  font: value === "null" ? null : value,
+                });
+              }}
+            />
+          ) : (
+            <Text>{jt`You can change the font with ${(
+              <ExternalLink
+                key="fontPlan"
+                href={upgradePageUrl}
+              >{t`a paid plan`}</ExternalLink>
+            )}.`}</Text>
+          )}
 
           <DisplayOptionSection title={t`Background`}>
             <SegmentedControl
