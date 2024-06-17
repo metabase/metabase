@@ -1,13 +1,20 @@
 import dayjs from "dayjs";
 
 export const zipEntitySources = <
-  Id extends string | number,
-  Entity extends { id: Id; updated_at: string },
+  Entity extends { id: string | number; updated_at: string },
 >(
   ...sources: Entity[][]
-): Partial<Record<Id, Entity>> => {
-  const result: Partial<Record<Id, Entity>> = {};
-  const entities = sources.flat();
+): Record<string | number, Entity> => {
+  return zipEntities({}, sources.flat());
+};
+
+export const zipEntities = <
+  Entity extends { id: string | number; updated_at: string },
+>(
+  map: Record<string | number, Entity>,
+  entities: Entity[],
+): Record<string | number, Entity> => {
+  const result: Record<string | number, Entity> = { ...map };
 
   for (const entity of entities) {
     const existing = result[entity.id];

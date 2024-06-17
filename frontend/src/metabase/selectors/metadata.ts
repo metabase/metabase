@@ -27,18 +27,8 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { getApiDatabases, getApiTables } from "./api";
+import { getApiEntities } from "./api";
 import { getSettings } from "./settings";
-
-const getApiEntities = createSelector(
-  [getApiDatabases, getApiTables],
-  (databases, tables) => {
-    return {
-      databases,
-      tables,
-    };
-  },
-);
 
 const getNormalizedApiEntities = createSelector([getApiEntities], data => {
   const schema = {

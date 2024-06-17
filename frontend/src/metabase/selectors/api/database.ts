@@ -10,7 +10,6 @@ import {
 import type { Database } from "metabase-types/api";
 
 import { getApiState, type ApiState } from "./state";
-import { getApiTables } from "./table";
 import type {
   AutomagicDashboardsEndpointName,
   CardEndpointName,
@@ -164,10 +163,6 @@ const getFromGetDashboardQueryMetadata = createSelector(
   },
 );
 
-const getFromTables = createSelector(getApiTables, (tables): Database[] => {
-  return Object.values(tables).flatMap(table => (table?.db ? [table.db] : []));
-});
-
 export const getApiDatabases = createSelector(
   [
     getFromListDatabases,
@@ -177,7 +172,6 @@ export const getApiDatabases = createSelector(
     getFromGetCardQueryMetadata,
     getFromGetXrayDashboardQueryMetadata,
     getFromGetDashboardQueryMetadata,
-    getFromTables, // TODO: do we need cross-references?
   ],
   zipEntitySources,
 );
