@@ -31,8 +31,8 @@ import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
 import { getParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { AppearanceSettings } from "./AppearanceSettings";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
+import { LookAndFeelSettings } from "./LookAndFeelSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
@@ -226,7 +226,7 @@ export const StaticEmbedSetupPane = ({
     const locationMap = {
       overview: "code_overview",
       parameters: "code_params",
-      appearance: "code_appearance",
+      lookAndFeel: "code_appearance",
     } as const;
     trackStaticEmbedCodeCopied({
       artifact: resourceType,
@@ -265,9 +265,9 @@ export const StaticEmbedSetupPane = ({
             onClick={() => setActiveTab(EMBED_MODAL_TABS.Parameters)}
           >{t`Parameters`}</Tabs.Tab>
           <Tabs.Tab
-            value={EMBED_MODAL_TABS.Appearance}
-            onClick={() => setActiveTab(EMBED_MODAL_TABS.Appearance)}
-          >{t`Appearance`}</Tabs.Tab>
+            value={EMBED_MODAL_TABS.LookAndFeel}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.LookAndFeel)}
+          >{t`Look and Feel`}</Tabs.Tab>
         </Tabs.List>
         {/**
          * Please do not add more than one `Tabs.Panel` here.
@@ -330,10 +330,10 @@ export const StaticEmbedSetupPane = ({
                 </>
               }
             />
-          ) : activeTab === EMBED_MODAL_TABS.Appearance ? (
+          ) : activeTab === EMBED_MODAL_TABS.LookAndFeel ? (
             <SettingsTabLayout
               settingsSlot={
-                <AppearanceSettings
+                <LookAndFeelSettings
                   resourceType={resourceType}
                   displayOptions={displayOptions}
                   onChangeDisplayOptions={setDisplayOptions}
@@ -352,7 +352,7 @@ export const StaticEmbedSetupPane = ({
                     isTransparent={displayOptions.theme === "transparent"}
                   />
                   {activePane === "code"
-                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.Appearance)
+                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.LookAndFeel)
                     : null}
                 </>
               }

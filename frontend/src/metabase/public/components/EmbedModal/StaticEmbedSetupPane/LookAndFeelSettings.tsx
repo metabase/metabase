@@ -36,7 +36,7 @@ export interface AppearanceSettingsProps {
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
 }
 
-export const AppearanceSettings = ({
+export const LookAndFeelSettings = ({
   resourceType,
   displayOptions,
   onChangeDisplayOptions,
