@@ -18,17 +18,18 @@ import { FilterHeader } from "metabase/query_builder/components/view/ViewHeader/
 import {
   getCard,
   getFirstQueryResult,
-  getQueryResults,
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { Box, Flex, Group, Loader, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { Dataset } from "metabase-types/api";
 
 const returnNull = () => null;
 
 interface InteractiveQuestionResultProps {
   isQuestionLoading: boolean;
+  queryResults: Dataset[] | null;
   onNavigateBack: () => void;
   withResetButton?: boolean;
   onResetButtonClick: () => void;
@@ -41,6 +42,7 @@ interface InteractiveQuestionResultProps {
 
 export const InteractiveQuestionResult = ({
   isQuestionLoading,
+  queryResults,
   componentPlugins,
   onNavigateBack,
   height,
@@ -56,7 +58,6 @@ export const InteractiveQuestionResult = ({
   const card = useSelector(getCard);
   const result = useSelector(getFirstQueryResult);
   const uiControls = useSelector(getUiControls);
-  const queryResults = useSelector(getQueryResults);
 
   const { isRunning: isQueryRunning } = uiControls;
 

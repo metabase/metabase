@@ -67,6 +67,7 @@ export const _InteractiveQuestion = ({
   return (
     <InteractiveQuestionResult
       isQuestionLoading={isQuestionLoading}
+      queryResults={queryResults}
       onNavigateBack={handleQuestionReset}
       height={height}
       componentPlugins={plugins}
