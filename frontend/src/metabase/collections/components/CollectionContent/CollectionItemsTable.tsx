@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { type JSX, useCallback, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
 
 import {
   ALL_MODELS,
@@ -55,8 +55,22 @@ export type CollectionItemsTableProps = {
   toggleItem: (item: CollectionItem) => void;
   onClick: (item: CollectionItem) => void;
   showActionMenu: boolean;
-  EmptyContentComponent: (() => JSX.Element) | null;
+  EmptyContentComponent?: ComponentType<{
+    collection?: Collection;
+  }>;
 }>;
+
+const DefaultEmptyContentComponent = ({
+  collection,
+}: {
+  collection?: Collection;
+}) => {
+  return (
+    <CollectionEmptyContent>
+      <CollectionEmptyState collection={collection} />
+    </CollectionEmptyContent>
+  );
+};
 
 export const CollectionItemsTable = ({
   collectionId,
@@ -78,7 +92,7 @@ export const CollectionItemsTable = ({
   models = ALL_MODELS,
   onClick,
   showActionMenu = true,
-  EmptyContentComponent = null,
+  EmptyContentComponent = DefaultEmptyContentComponent,
 }: CollectionItemsTableProps) => {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
@@ -159,14 +173,7 @@ export const CollectionItemsTable = ({
           !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
         if (isEmpty && !loadingUnpinnedItems) {
-          if (isEmbeddingSdk && EmptyContentComponent) {
-            return <EmptyContentComponent />;
-          }
-          return (
-            <CollectionEmptyContent>
-              <CollectionEmptyState collection={collection} />
-            </CollectionEmptyContent>
-          );
+          return <EmptyContentComponent collection={collection} />;
         }
 
         return (

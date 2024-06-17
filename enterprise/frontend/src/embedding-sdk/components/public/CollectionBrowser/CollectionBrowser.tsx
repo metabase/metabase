@@ -1,4 +1,4 @@
-import { type CSSProperties, useState } from "react";
+import { type ComponentType, type CSSProperties, useState } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
@@ -37,7 +37,7 @@ type CollectionBrowserProps = {
   onClick?: (item: CollectionItem) => void;
   pageSize?: number;
   visibleEntityTypes?: UserFacingEntityName[];
-  EmptyContentComponent?: (() => JSX.Element) | null;
+  EmptyContentComponent?: ComponentType | null;
   className?: string;
   style?: CSSProperties;
 };
@@ -86,7 +86,7 @@ export const CollectionBrowserInner = ({
         pageSize={pageSize}
         models={collectionTypes}
         showActionMenu={false}
-        EmptyContentComponent={EmptyContentComponent}
+        EmptyContentComponent={EmptyContentComponent ?? undefined}
       />
     </Box>
   );

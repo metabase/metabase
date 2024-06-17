@@ -173,11 +173,9 @@ export type MetabaseComponentTheme = {
       };
       title: {
         fontSize: CSSProperties["fontSize"];
-        textColor: ColorCssVariableOrString;
       };
       subtitle: {
         fontSize: CSSProperties["fontSize"];
-        textColor: ColorCssVariableOrString;
       };
     };
   };

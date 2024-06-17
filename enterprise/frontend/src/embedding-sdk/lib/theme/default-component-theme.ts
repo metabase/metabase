@@ -45,11 +45,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       },
       title: {
         fontSize: "1.5rem",
-        textColor: "var(--mb-color-text-dark)",
       },
       subtitle: {
         fontSize: "1rem",
-        textColor: "var(--mb-color-text-medium)",
       },
     },
   },

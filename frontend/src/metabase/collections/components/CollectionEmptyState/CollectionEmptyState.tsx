@@ -103,7 +103,7 @@ const EmptyStateTitle = ({ children }: PropsWithChildren) => {
   const theme = useMantineTheme();
   return (
     <Box
-      c={theme.other.collectionBrowser.emptyContent.title.textColor}
+      c="text-dark"
       fz={theme.other.collectionBrowser.emptyContent.title.fontSize}
       fw="bold"
       lh="2rem"
@@ -120,7 +120,7 @@ const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   return (
     <Text
       size={theme.other.collectionBrowser.emptyContent.subtitle.fontSize}
-      color={theme.other.collectionBrowser.emptyContent.subtitle.textColor}
+      color="text-medium"
       align="center"
       mb="1.5rem"
     >
