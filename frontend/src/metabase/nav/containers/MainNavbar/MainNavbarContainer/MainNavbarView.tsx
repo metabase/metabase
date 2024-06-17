@@ -13,9 +13,11 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import UploadCSV from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
+import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -108,8 +110,12 @@ function MainNavbarView({
 
   // Can upload CSVs if
   // - properties.token_features.attached_dwh === true
+  // - properties.uploads-settings.db_id exists
   // - retrieve collection using properties.uploads-settings.db_id
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
   const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
@@ -127,7 +133,7 @@ function MainNavbarView({
             {t`Home`}
           </PaddedSidebarLink>
 
-          {hasAttachedDWHFeature && rootCollection && (
+          {hasAttachedDWHFeature && uploadDbId && rootCollection && (
             <UploadCSV collection={rootCollection} />
           )}
         </SidebarSection>
