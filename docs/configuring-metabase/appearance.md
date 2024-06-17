@@ -33,7 +33,7 @@ Appearance settings are split across different tabs:
 In the Branding tab, you can configure your Metabase to match your brand visuals and voice.
 
 - [Color palette](#color-palette)
-- [user interface colors](#user-interface-colors)
+- [User interface colors](#user-interface-colors)
 - [Chart colors](#chart-colors)
 - [Logo](#logo)
 - [Font](#font)

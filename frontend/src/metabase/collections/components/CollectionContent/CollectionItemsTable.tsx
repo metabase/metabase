@@ -34,6 +34,20 @@ import {
   CollectionTable,
 } from "./CollectionContent.styled";
 
+const getDefaultSortingOptions = (
+  collection: Collection | undefined,
+): SortingOptions => {
+  return isRootTrashCollection(collection)
+    ? {
+        sort_column: "last_edited_at",
+        sort_direction: SortDirection.Desc,
+      }
+    : {
+        sort_column: "name",
+        sort_direction: SortDirection.Asc,
+      };
+};
+
 export type CollectionItemsTableProps = {
   collectionId: CollectionId;
 } & Partial<{
@@ -81,10 +95,7 @@ export const CollectionItemsTable = ({
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] =
-    useState<SortingOptions>({
-      sort_column: "name",
-      sort_direction: SortDirection.Asc,
-    });
+    useState<SortingOptions>(() => getDefaultSortingOptions(collection));
 
   const [total, setTotal] = useState<number | null>(null);
 
