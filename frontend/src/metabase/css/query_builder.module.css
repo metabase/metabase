@@ -125,7 +125,11 @@
 }
 
 .Loading {
-  background-color: color-mod(var(--mb-color-bg-white) alpha(-28%));
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-bg-white) 70%,
+    transparent
+  );
   transition: opacity 0.5s;
 }
 
