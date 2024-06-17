@@ -65,17 +65,17 @@
         ;; will be from the columns in the same order as presented in pivot-cols.
         ;; So, if pivot-cols is [0 1], the first col-value-group will have [first-value-from-first-col first-value-from-second-col]
         col-value-groups           (apply math.combo/cartesian-product (concat
-                                                                (map (fn [col-k]
-                                                                       (all-values-for rows col-k false))
-                                                                     pivot-cols)
-                                                                (when (seq measure-titles)
-                                                                  [measure-titles])))
+                                                                        (map (fn [col-k]
+                                                                               (all-values-for rows col-k false))
+                                                                             pivot-cols)
+                                                                        (when (seq measure-titles)
+                                                                          [measure-titles])))
         header-indices             (if (or multiple-measures? (not (seq pivot-cols)))
-                             ;; when there are more than 1 pivot-measures, we need to
-                             ;; add one more header row that holds the titles of the measure columns
-                             ;; and we know it's always just one more row, so we can inc the count.
-                             (range (inc (count pivot-cols)))
-                             (range (count pivot-cols)))]
+                                     ;; when there are more than 1 pivot-measures, we need to
+                                     ;; add one more header row that holds the titles of the measure columns
+                                     ;; and we know it's always just one more row, so we can inc the count.
+                                     (range (inc (count pivot-cols)))
+                                     (range (count pivot-cols)))]
     ;; Each Header (1 header row per pivot-col) will first start with the Pivot Row Titles. There will be (count pivot-rows) entries.
     ;; Then, Get all of the nth entries in the col-value-gropus for the nth header, and then append "Row Totals" label.
     (mapv
@@ -85,6 +85,7 @@
              (map #(nth % col-idx) col-value-groups)
              (if (and
                   multiple-measures?
+                  (seq pivot-cols)
                   (= col-idx (last header-indices)))
                measure-titles
                (when include-row-totals-header?
