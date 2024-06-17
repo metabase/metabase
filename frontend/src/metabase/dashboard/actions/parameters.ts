@@ -83,7 +83,7 @@ function updateParameter(
       index,
       parameterUpdater(dashboard.parameters[index]),
     );
-    dispatch(
+    return dispatch(
       setDashboardAttributes({ id: dashboard.id, attributes: { parameters } }),
     );
   }
@@ -488,14 +488,14 @@ export const SET_PARAMETER_TEMPORAL_UNITS =
 export const setParameterTemporalUnits = createThunkAction(
   SET_PARAMETER_TEMPORAL_UNITS,
   (parameterId: ParameterId, temporalUnits: TemporalUnit[]) =>
-    (dispatch, getState) => {
-      updateParameter(dispatch, getState, parameterId, parameter => ({
+    async (dispatch, getState) => {
+      await updateParameter(dispatch, getState, parameterId, parameter => ({
         ...parameter,
         temporal_units: temporalUnits,
         default:
           parameter.default && temporalUnits.includes(parameter.default)
             ? parameter.default
-            : undefined,
+            : null,
       }));
 
       const parameter = getParameterById(getState(), parameterId);
