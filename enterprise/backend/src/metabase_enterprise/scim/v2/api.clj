@@ -1,6 +1,8 @@
 (ns metabase-enterprise.scim.v2.api
   "/api/ee/scim/v2/ endpoints. These are the endpoints which implement the SCIM protocol, as opposed to SCIM
-  configuration endpoints which are in `metabase-enterprise.scim.api`."
+  configuration endpoints which are in `metabase-enterprise.scim.api`.
+
+  `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
    [compojure.core :refer [GET]]
    [metabase.api.common :as api :refer [defendpoint]]
@@ -12,6 +14,7 @@
    [toucan2.core :as t2]))
 
 (def ^:private user-schema-uri "urn:ietf:params:scim:schemas:core:2.0:User")
+(def ^:private group-schema-uri "urn:ietf:params:scim:schemas:core:2.0:Group")
 (def ^:private list-schema-uri "urn:ietf:params:scim:api:messages:2.0:ListResponse")
 (def ^:private error-schema-uri "urn:ietf:params:scim:api:messages:2.0:Error")
 
@@ -19,7 +22,9 @@
 (def ^:private default-pagination-offset 0)
 
 (def SCIMUser
-  "Malli schema for a SCIM user"
+  "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
+  as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
+  in the latter."
   [:map
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
@@ -43,8 +48,39 @@
    [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
    [:Resources [:sequential SCIMUser]]])
 
+(def SCIMGroup
+  "Malli schema for a SCIM group."
+  [:map
+   [:schemas [:sequential ms/NonBlankString]]
+   [:id {:optional true} ms/NonBlankString]
+   [:displayName ms/NonBlankString]
+   [:members
+    {:optional true}
+    [:sequential [:map
+                  [:value ms/NonBlankString]
+                  [:ref ms/NonBlankString]
+                  [:type [:enum "User"]]]]]])
+
+(def SCIMGroupList
+  "Malli schema for a list of SCIM groups"
+  [:map
+   [:schemas [:sequential ms/NonBlankString]]
+   [:totalResults ms/IntGreaterThanOrEqualToZero]
+   [:startIndex ms/IntGreaterThanOrEqualToZero]
+   [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
+   [:Resources [:sequential SCIMGroup]]])
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               User operations                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private user-cols
+  "Required columns when fetching users for SCIM."
+  [:id :first_name :last_name :email :is_active :entity_id])
+
 (mu/defn mb-user->scim :- SCIMUser
-  "Given a Metabase user, returns a SCIM user"
+  "Given a Metabase user, returns a SCIM user."
   [user]
   {:schemas  [user-schema-uri]
    :id       (:entity_id user)
@@ -52,21 +88,19 @@
    :name     {:givenName  (:first_name user)
               :familyName (:last_name user)}
    :emails   [{:value (:email user)}]
-   :active   (:is_active user)})
+   :active   (:is_active user)
+   :meta     {:resourceType "User"}})
 
-(def ^:private user-cols
-  [:id :first_name :last_name :email :is_active :entity_id])
-
-(defn- filter-clause
+(defn- user-filter-clause
   [filter-parameter]
   (let [[_ match] (re-matches #"^userName eq \"(.*)\"$" filter-parameter)]
     (if match
-      [:= :email match]
+      [:= :%lower.email (u/lower-case-en match)]
       (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
                                                       :status-code 400})))))
 
 (defendpoint GET "/Users"
-  "Fetches a list of users."
+  "Fetch a list of users."
   [:as {{start-index :startIndex c :count filter-param :filter} :params}]
   {start-index  [:maybe ms/IntGreaterThanOrEqualToZero]
    c            [:maybe ms/IntGreaterThanOrEqualToZero]
@@ -75,7 +109,7 @@
         offset         (or start-index default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         where-clause   [:and [:= :type "personal"]
-                             (when filter-param (filter-clause filter-param))]
+                             (when filter-param (user-filter-clause filter-param))]
         users          (t2/select (cons :model/User user-cols)
                                   {:where    where-clause
                                    :limit    limit
@@ -90,22 +124,22 @@
      :Resources    (map mb-user->scim users)}))
 
 (defendpoint GET "/Users/:id"
-  "Fetches a single user"
+  "Fetch a single user."
   [id]
   {id ms/NonBlankString}
   (if-let [user (t2/select-one (cons :model/User user-cols)
                                :entity_id id
                                {:where [:= :type "personal"]})]
     (-> user
-        #_(t2/hydrate :user_group_memberships)
         mb-user->scim)
     (throw (ex-info "User not found"
                     {:schemas     [error-schema-uri]
                      :detail      "User not found"
+                     :status      404
                      :status-code 404}))))
 
 (defendpoint POST "/Users"
-  "Create a single user"
+  "Create a single user."
   [:as {scim-user :body}]
   {scim-user SCIMUser}
   (let [{email :userName name-obj :name is-active? :active} scim-user
@@ -126,6 +160,51 @@
                                         :email (u/lower-case-en email))
                          mb-user->scim))]
       {:status 201
-       :body new-user})))
+       :body   new-user})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Group operations                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(mu/defn mb-group->scim :- SCIMGroup
+  "Given a Metabase permissions group, returns a SCIM group."
+  [group]
+  {:schemas     [group-schema-uri]
+   :id          (:entity_id group)
+   :displayName (:name group)})
+
+(defn- group-filter-clause
+  [filter-parameter]
+  (let [[_ match] (re-matches #"^displayName eq \"(.*)\"$" filter-parameter)]
+    (if match
+      [:= :name match]
+      (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
+                                                      :status-code 400})))))
+
+(defendpoint GET "/Groups"
+  "Fetch a list of groups."
+  [:as {{start-index :startIndex c :count filter-param :filter} :params}]
+  {start-index  [:maybe ms/IntGreaterThanOrEqualToZero]
+   c            [:maybe ms/IntGreaterThanOrEqualToZero]
+   filter-param [:maybe ms/NonBlankString]}
+  (let [limit          (or c default-pagination-limit)
+        offset         (or start-index default-pagination-offset)
+        filter-param   (when filter-param (codec/url-decode filter-param))
+        filter-clause  (if filter-param
+                         (group-filter-clause filter-param)
+                         [])
+        groups         (t2/select [:model/PermissionsGroup :name :entity_id]
+                                  {:where    filter-clause
+                                   :limit    limit
+                                   :offset   offset
+                                   :order-by [[:id :asc]]})
+        results-count  (count groups)
+        items-per-page (if (< results-count limit) results-count limit)]
+    {:schemas      [list-schema-uri]
+     :totalResults (t2/count :model/PermissionsGroup {:where filter-clause})
+     :startIndex   offset
+     :itemsPerPage items-per-page
+     :Resources    (map mb-group->scim groups)}))
 
 (api/define-routes)

@@ -8,7 +8,10 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
-(def ^:private scim-api-key (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto)) :unmasked_key))
+(def ^:private scim-api-key
+  (do
+    (#'scim/backfill-required-entity-ids!)
+    (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto)) :unmasked_key)))
 
 (defn- scim-client
   "Wrapper for `metabase.http-client/client` which includes the SCIM key in the Authorization header"
@@ -42,7 +45,8 @@
                 :userName "rasta@metabase.com"
                 :name     {:givenName "Rasta" :familyName "Toucan"}
                 :emails   [{:value "rasta@metabase.com"}]
-                :active   true}
+                :active   true
+                :meta     {:resourceType "User"}}
                (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))))))
 
     (testing "404 is returned when fetching a non-existant user"
@@ -56,7 +60,6 @@
 
     (testing "Fetch users with custom pagination"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?startIndex=%d&count=%d" 1 2))]
-        (def response response)
         (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
         (is (integer? (get response :totalResults)))
         (is (= 1 (get response :startIndex)))
@@ -80,3 +83,36 @@
     (testing "Error if unsupported filter operation is provided"
       (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                     (codec/url-encode "id ne \"newuser@metabase.com\""))))))
+
+(deftest list-groups-test
+  (mt/with-premium-features #{:scim}
+    (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]
+      (testing "Fetch groups with default pagination"
+        (let [response (scim-client :get 200 "ee/scim/v2/Groups")]
+          (is (malli= scim-api/SCIMGroupList response))))
+
+      (testing "Fetch groups with custom pagination"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?startIndex=%d&count=%d" 1 2))]
+          (is (= ["urn:ietf:params:scim:api:messages:2.0:ListResponse"] (get response :schemas)))
+          (is (integer? (get response :totalResults)))
+          (is (= 1 (get response :startIndex)))
+          (is (= 2 (get response :itemsPerPage)))
+          (is (= 2 (count (get response :Resources))))))
+
+      (testing "Fetch group by name"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                     (codec/url-encode "displayName eq \"Group 1\"")))]
+          (is (malli= scim-api/SCIMGroupList response))
+          (is (= 1 (get response :totalResults)))
+          (is (= 1 (count (get response :Resources))))))
+
+      (testing "Fetch non-existant group by name"
+        (let [response (scim-client :get 200 (format "ee/scim/v2/Groups?filter=%s"
+                                                     (codec/url-encode "displayName eq \"Fake Group\"")))]
+          (is (malli= scim-api/SCIMUserList response))
+          (is (= 0 (get response :totalResults)))
+          (is (= 0 (count (get response :Resources))))))
+
+      (testing "Error if unsupported filter operation is provided"
+        (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
+                                      (codec/url-encode "displayName ne \"Group 1\"")))))))
