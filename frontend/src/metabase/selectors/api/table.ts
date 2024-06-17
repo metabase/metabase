@@ -83,17 +83,6 @@ const getSegmentTableEntries = (
     .filter(entry => entry.endpointName === endpointName);
 };
 
-const getFromListDatabases = createSelector(getApiState, (state): Table[] => {
-  return getDatabaseTableEntries(state, "listDatabases").flatMap(entry => {
-    const selector = databaseApi.endpoints.listDatabases.select(
-      entry.originalArgs,
-    );
-    const { data } = selector(state);
-    const databases = data?.data ?? [];
-    return databases.flatMap(database => database.tables ?? []);
-  });
-});
-
 const getFromListDatabaseSchemaTables = createSelector(
   getApiState,
   (state): Table[] => {
@@ -104,33 +93,6 @@ const getFromListDatabaseSchemaTables = createSelector(
         );
         const { data } = selector(state);
         return data ?? [];
-      },
-    );
-  },
-);
-
-// TODO: add listDatabases
-
-const getFromGetDatabase = createSelector(getApiState, (state): Table[] => {
-  return getDatabaseTableEntries(state, "getDatabase").flatMap(entry => {
-    const selector = databaseApi.endpoints.getDatabase.select(
-      entry.originalArgs,
-    );
-    const { data } = selector(state);
-    return data?.tables ?? [];
-  });
-});
-
-const getFromGetDatabaseMetadata = createSelector(
-  getApiState,
-  (state): Table[] => {
-    return getDatabaseTableEntries(state, "getDatabaseMetadata").flatMap(
-      entry => {
-        const selector = databaseApi.endpoints.getDatabaseMetadata.select(
-          entry.originalArgs,
-        );
-        const { data } = selector(state);
-        return data?.tables ?? [];
       },
     );
   },
@@ -250,19 +212,16 @@ const getFromGetSegment = createSelector(getApiState, (state): Table[] => {
 
 export const getApiTables = createSelector(
   [
-    getFromListDatabases,
     getFromListDatabaseSchemaTables,
-    getFromGetDatabase, // TODO: do we need cross-references?
-    getFromGetDatabaseMetadata, // TODO: do we need cross-references?
     getFromListTables,
     getFromGetTable,
     getFromGetTableQueryMetadata,
     getFromGetAdhocQueryMetadata,
-    getFromGetCardQueryMetadata, // TODO: presence of this breaks the simple repro
+    getFromGetCardQueryMetadata,
     getFromGetXrayDashboardQueryMetadata,
     getFromGetDashboardQueryMetadata,
-    getFromListSegments, // TODO: do we need cross-references?
-    getFromGetSegment, // TODO: do we need cross-references?
+    getFromListSegments, // TODO: remove cross-reference once RTK segments are mapped in this directory as well
+    getFromGetSegment, // TODO: remove cross-reference once RTK segments are mapped in this directory as well
   ],
   zipEntitySources,
 );
