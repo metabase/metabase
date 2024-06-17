@@ -308,7 +308,6 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
                   navigateToNewCardFromDashboard={
                     navigateToNewCardFromDashboard
                   }
-                  width={0}
                 />
               </DashboardContainer>
             );
