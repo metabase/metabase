@@ -671,12 +671,12 @@
 
 (deftest ^:parallel display-info->js-test
   (testing "all data structures are converted correctly"
-    (is (goog.object/equals
-         #js {:arr     #js ["a" #js {:inner true}]
-              :string  "passed"
-              :keyword "too"
-              :value   nil}
-         (lib.js/display-info->js {:arr     [:a {:inner true}]
-                                   :string  "passed"
-                                   :keyword :too
-                                   :value   nil})))))
+    (let [input        {:arr [:a {:inner true}]
+                        :string  "passed"
+                        :keyword :too
+                        :value   nil}
+          expected #js {:arr #js ["a" #js {:inner true}]
+                        :string  "passed"
+                        :keyword "too"
+                        :value   nil}]
+      (is (js= expected (lib.js/display-info->js input))))))
