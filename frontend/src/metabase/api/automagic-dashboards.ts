@@ -21,6 +21,7 @@ export const automagicDashboardsApi = Api.injectEndpoints({
         `/api/automagic-dashboards/${entity}/${entityId}/query_metadata`,
       providesTags: metadata =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+      keepUnusedDataFor: Infinity,
     }),
     listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
       query: id => `/api/automagic-dashboards/database/${id}/candidates`,

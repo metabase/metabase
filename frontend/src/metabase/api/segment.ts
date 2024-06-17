@@ -24,6 +24,7 @@ export const segmentApi = Api.injectEndpoints({
         url: "/api/segment",
       }),
       providesTags: (segments = []) => provideSegmentListTags(segments),
+      keepUnusedDataFor: Infinity,
     }),
     getSegment: builder.query<Segment, SegmentId>({
       query: id => ({
@@ -31,6 +32,7 @@ export const segmentApi = Api.injectEndpoints({
         url: `/api/segment/${id}`,
       }),
       providesTags: segment => (segment ? provideSegmentTags(segment) : []),
+      keepUnusedDataFor: Infinity,
     }),
     createSegment: builder.mutation<Segment, CreateSegmentRequest>({
       query: body => ({

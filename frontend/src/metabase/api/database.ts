@@ -38,6 +38,7 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: response => provideDatabaseListTags(response?.data ?? []),
+      keepUnusedDataFor: Infinity,
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...params }) => ({
@@ -46,6 +47,7 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: database => (database ? provideDatabaseTags(database) : []),
+      keepUnusedDataFor: Infinity,
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -54,6 +56,7 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: database => (database ? provideDatabaseTags(database) : []),
+      keepUnusedDataFor: Infinity,
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -92,6 +95,7 @@ export const databaseApi = Api.injectEndpoints({
         listTag("table"),
         ...tables.map(table => idTag("table", table.id)),
       ],
+      keepUnusedDataFor: Infinity,
     }),
     listVirtualDatabaseTables: builder.query<
       Table[],

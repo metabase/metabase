@@ -29,6 +29,7 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
+      keepUnusedDataFor: Infinity,
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -36,6 +37,7 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: table => (table ? provideTableTags(table) : []),
+      keepUnusedDataFor: Infinity,
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -44,6 +46,7 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: table => (table ? provideTableTags(table) : []),
+      keepUnusedDataFor: Infinity,
     }),
     listTableForeignKeys: builder.query<Field[], TableId>({
       query: id => ({

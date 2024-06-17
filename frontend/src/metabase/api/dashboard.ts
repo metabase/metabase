@@ -54,6 +54,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       providesTags: metadata =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+      keepUnusedDataFor: Infinity,
     }),
     createDashboard: builder.mutation<Dashboard, CreateDashboardRequest>({
       query: body => ({

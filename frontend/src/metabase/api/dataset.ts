@@ -17,6 +17,7 @@ export const datasetApi = Api.injectEndpoints({
       }),
       providesTags: metadata =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+      keepUnusedDataFor: Infinity,
     }),
     getNativeDataset: builder.query<NativeQueryForm, DatasetQuery>({
       query: body => ({

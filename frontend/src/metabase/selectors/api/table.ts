@@ -98,6 +98,8 @@ const getFromListDatabaseSchemaTables = createSelector(
   },
 );
 
+// TODO: add listDatabases
+
 const getFromGetDatabase = createSelector(getApiState, (state): Table[] => {
   return getDatabaseTableEntries(state, "getDatabase").flatMap(entry => {
     const selector = databaseApi.endpoints.getDatabase.select(

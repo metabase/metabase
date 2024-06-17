@@ -44,6 +44,7 @@ export const cardApi = Api.injectEndpoints({
       }),
       providesTags: (metadata, error, id) =>
         metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+      keepUnusedDataFor: Infinity,
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
