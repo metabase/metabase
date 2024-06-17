@@ -537,10 +537,11 @@ describe("issue 25378", () => {
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
-    popover().findByLabelText("Options").click();
-    popover().last().findByText("Starting from…").click();
 
-    popover().button("Add filter").click();
+    popover().within(() => {
+      cy.findByLabelText("Starting from…").click();
+      cy.button("Add filter").click();
+    });
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
