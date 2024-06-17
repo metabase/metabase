@@ -205,7 +205,6 @@ interface InstanceSettings {
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
-  "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;

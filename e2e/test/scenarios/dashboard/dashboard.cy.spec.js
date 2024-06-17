@@ -1249,7 +1249,6 @@ describeEE("scenarios > dashboard > caching", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
   /**

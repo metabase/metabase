@@ -37,22 +37,19 @@ describe("getQuestionsImplicitCacheTTL", () => {
   const DEFAULT_CACHE_TTL_MULTIPLIER = 10;
 
   function setup({
-    cachingEnabled = true,
     avgQueryTime = null,
     databaseCacheTTL = null,
     cacheTTLMultiplier = DEFAULT_CACHE_TTL_MULTIPLIER,
     minCacheThreshold = 60,
   }: {
-    cachingEnabled?: boolean;
     avgQueryTime?: number | null;
     databaseCacheTTL?: number | null;
     cacheTTLMultiplier?: number;
     minCacheThreshold?: number;
   } = {}) {
     mockSettings({
-      "enable-query-caching": cachingEnabled,
-      "query-caching-ttl-ratio": cachingEnabled ? cacheTTLMultiplier : 10,
-      "query-caching-min-ttl": cachingEnabled ? minCacheThreshold : 60,
+      "query-caching-ttl-ratio": cacheTTLMultiplier,
+      "query-caching-min-ttl": minCacheThreshold,
     });
 
     const card = createMockCard({
@@ -95,30 +92,15 @@ describe("getQuestionsImplicitCacheTTL", () => {
     const question = setup({ databaseCacheTTL: 10, avgQueryTime: TEN_MINUTES });
     expect(getQuestionsImplicitCacheTTL(question)).toBe(hoursToSeconds(10));
   });
-
-  it("returns null if caching disabled, but instance level caching parameters are present", () => {
-    const question = setup({
-      avgQueryTime: TEN_MINUTES,
-      cachingEnabled: false,
-    });
-    expect(getQuestionsImplicitCacheTTL(question)).toBe(null);
-  });
-
-  it("returns null if caching disabled, but database has a cache ttl", () => {
-    const question = setup({ databaseCacheTTL: 10, cachingEnabled: false });
-    expect(getQuestionsImplicitCacheTTL(question)).toBe(null);
-  });
 });
 
 describe("hasQuestionCacheSection", () => {
   function setup({
     type = "question",
-    isCachingEnabled = true,
     canWrite = true,
     lastQueryStart = null,
   }: {
     type?: CardType;
-    isCachingEnabled?: boolean;
     canWrite?: boolean;
     lastQueryStart?: string | null;
   }) {
@@ -127,20 +109,13 @@ describe("hasQuestionCacheSection", () => {
       can_write: canWrite,
       last_query_start: lastQueryStart,
     });
-    const settings = createMockSettings({
-      "enable-query-caching": isCachingEnabled,
-    });
+    const settings = createMockSettings();
     const metadata = createMockMetadata({ questions: [card] }, settings);
     return checkNotNull(metadata.question(card.id));
   }
 
   it("should not have the cache section for models", () => {
     const question = setup({ type: "model" });
-    expect(hasQuestionCacheSection(question)).toBe(false);
-  });
-
-  it("should not have the cache section when caching is disabled", () => {
-    const question = setup({ isCachingEnabled: false });
     expect(hasQuestionCacheSection(question)).toBe(false);
   });
 

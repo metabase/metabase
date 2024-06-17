@@ -4550,7 +4550,7 @@
       (t2.with-temp/with-temp [:model/Collection {coll-id :id} {:name "A"}
                                :model/Dashboard {dash-id :id} {:name          "My Dashboard"
                                                                :collection_id coll-id}]
-        (is (nil? (can-restore? dash-id :crowberto)))))))
+        (is (false? (can-restore? dash-id :crowberto)))))))
 
 (deftest dependent-metadata-test
   (mt/with-temp

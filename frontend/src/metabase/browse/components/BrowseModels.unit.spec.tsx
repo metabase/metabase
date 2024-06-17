@@ -279,7 +279,9 @@ describe("BrowseModels", () => {
 
   it("displays the Our Analytics collection if it has a model", async () => {
     setup(25);
-    const modelsTable = await screen.findByRole("table");
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
     expect(modelsTable).toBeInTheDocument();
     expect(
       await screen.findAllByTestId("path-for-collection: Our analytics"),
@@ -297,7 +299,9 @@ describe("BrowseModels", () => {
 
   it("displays collection breadcrumbs", async () => {
     setup(25);
-    const modelsTable = await screen.findByRole("table");
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
     expect(await within(modelsTable).findByText("Model 1")).toBeInTheDocument();
     expect(
       await within(modelsTable).findAllByTestId(

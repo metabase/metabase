@@ -190,7 +190,6 @@ check-for-updates
 experimental-enable-actions
 persisted-model-refresh-cron-schedule
 email-smtp-host
-enable-query-caching
 email-smtp-username
 start-of-week
 email-smtp-password

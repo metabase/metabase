@@ -31,6 +31,7 @@ import {
   dashboardHeader,
   filterWidget,
   getFullName,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -449,7 +450,7 @@ describeEE("issue 24223", () => {
     cy.findByText("Select…").click();
     popover().findByText("Title").click();
     cy.findByText("No default").click();
-    popover().find("input").type("Awesome");
+    popover().within(() => multiAutocompleteInput().type("Awesome"));
     popover().button("Add filter").click();
 
     saveDashboard();

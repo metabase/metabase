@@ -183,18 +183,18 @@
                                                :from   [[(t2/table-name :model/Table) :t]]
                                                :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
                                                :where  (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})))}
-   :exists     {:non-sample-db (t2/exists? :model/Database {:where (mi/exclude-internal-content-hsql :model/Database)})
-                :dashboard     (t2/exists? :model/Dashboard {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
-                :pulse         (t2/exists? :model/Pulse)
-                :hidden-table  (t2/exists? :model/Table {:where [:and
-                                                                 [:not= :visibility_type nil]
-                                                                 (mi/exclude-internal-content-hsql :model/Table)]})
-                :collection    (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-                :model         (t2/exists? :model/Card {:where [:and
-                                                                [:= :type "model"]
-                                                                (mi/exclude-internal-content-hsql :model/Card)]})
+   :exists     {:non-sample-db     (t2/exists? :model/Database {:where (mi/exclude-internal-content-hsql :model/Database)})
+                :dashboard         (t2/exists? :model/Dashboard {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
+                :pulse             (t2/exists? :model/Pulse)
+                :hidden-table      (t2/exists? :model/Table {:where [:and
+                                                                     [:not= :visibility_type nil]
+                                                                     (mi/exclude-internal-content-hsql :model/Table)]})
+                :collection        (t2/exists? :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+                :model             (t2/exists? :model/Card {:where [:and
+                                                                    [:= :type "model"]
+                                                                    (mi/exclude-internal-content-hsql :model/Card)]})
                 :embedded-resource (or (t2/exists? :model/Card :enable_embedding true)
-                          (t2/exists? :model/Dashboard :enable_embedding true))}})
+                                       (t2/exists? :model/Dashboard :enable_embedding true))}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists embedding] :as _info}]

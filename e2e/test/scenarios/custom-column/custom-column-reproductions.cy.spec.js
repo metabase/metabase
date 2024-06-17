@@ -33,6 +33,7 @@ import {
   tableHeaderClick,
   resetTestTable,
   main,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -229,7 +230,7 @@ describe("issue 14843", () => {
     popover().findByText(CC_NAME).click();
     selectFilterOperator("Not equal to");
     popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("3");
+      multiAutocompleteInput().type("3");
       cy.button("Add filter").click();
     });
 
@@ -315,8 +316,10 @@ describe("issue 18747", () => {
 
   function addValueToParameterFilter() {
     filterWidget().click();
-    popover().find("input").type("14");
-    popover().contains("Add filter").click();
+    popover().within(() => {
+      multiAutocompleteInput().type("14");
+      cy.button("Add filter").click();
+    });
   }
 
   beforeEach(() => {
