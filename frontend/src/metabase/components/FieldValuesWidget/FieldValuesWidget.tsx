@@ -457,10 +457,12 @@ export function FieldValuesWidgetInner({
     function (option: FieldValue): {
       label: string;
       value: string;
+      customLabel?: string;
     } {
       const value = option[0];
       const column = fields[0];
       const label =
+        option[1] ??
         formatValue(value, {
           ...formatOptions,
           column,
@@ -468,35 +470,40 @@ export function FieldValuesWidgetInner({
           jsx: false,
           maximumFractionDigits: 20,
           // we know it is string | number because we are passing jsx: false
-        })?.toString() ?? "<null>";
+        })?.toString() ??
+        "<null>";
 
-      return { value: value?.toString() ?? "", label };
+      return {
+        value: value?.toString() ?? "",
+        label,
+        customLabel: option[1],
+      };
     },
     [fields, formatOptions],
   );
 
   const CustomItemComponent = useMemo(
     () =>
-      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
-        props,
-        ref,
-      ) {
-        const customLabel =
-          props.value !== undefined &&
-          renderValue({
-            fields,
-            formatOptions,
-            value: props.value,
-          });
+      forwardRef<HTMLDivElement, SelectItemProps & { customLabel?: string }>(
+        function CustomItem(props, ref) {
+          const customLabel =
+            props.customLabel ??
+            (props.value !== undefined &&
+              renderValue({
+                fields,
+                formatOptions,
+                value: props.value,
+              }));
 
-        return (
-          <ItemWrapper
-            ref={ref}
-            {...props}
-            label={customLabel ?? (props.label || "")}
-          />
-        );
-      }),
+          return (
+            <ItemWrapper
+              ref={ref}
+              {...props}
+              label={customLabel ?? (props.label || "")}
+            />
+          );
+        },
+      ),
     [fields, formatOptions],
   );
 
