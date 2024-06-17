@@ -500,7 +500,11 @@ export const setParameterTemporalUnits = createThunkAction(
 
       const parameter = getParameterById(getState(), parameterId);
       const parameterValue = getParameterValues(getState())[parameterId];
-      if (parameter && !temporalUnits.some(unit => unit === parameterValue)) {
+      if (
+        parameter &&
+        parameterValue &&
+        !temporalUnits.some(unit => unit === parameterValue)
+      ) {
         dispatch(setParameterValue(parameterId, parameter.default));
       }
 

@@ -5,7 +5,7 @@ import promise from "redux-promise";
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 
-export function getStore(reducers, history, intialState) {
+export function getStore(reducers, history, initialState) {
   const reducer = combineReducers({
     ...reducers,
     routing,
@@ -14,7 +14,7 @@ export function getStore(reducers, history, intialState) {
 
   return configureStore({
     reducer,
-    preloadedState: intialState,
+    preloadedState: initialState,
     middleware: getDefaultMiddleware =>
       getDefaultMiddleware({
         immutableCheck: false,

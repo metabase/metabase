@@ -1,4 +1,5 @@
-import type { DashboardState } from "metabase-types/store";
+import { createMockDashboard } from "metabase-types/api/mocks";
+import type { DashboardState, StoreDashboard } from "metabase-types/store";
 
 export const createMockDashboardState = (
   opts: Partial<DashboardState> = {},
@@ -32,4 +33,16 @@ export const createMockDashboardState = (
   tabDeletions: {},
   theme: "light",
   ...opts,
+});
+
+export const createMockStoreDashboard = ({
+  dashcards = [],
+  tabs,
+  isDirty,
+  ...opts
+}: Partial<StoreDashboard> = {}): StoreDashboard => ({
+  ...createMockDashboard(opts),
+  dashcards,
+  tabs,
+  isDirty,
 });
