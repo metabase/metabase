@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { PieChartNegativeError } from "metabase/visualizations/lib/errors";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -75,18 +74,25 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
-  const total = rows.reduce(
-    (currTotal, row) => currTotal + getRowValues(row, colDescs).metricValue,
-    0,
+  // We allow negative values if every single metric value is negative or 0
+  // (`isNonPositive` = true). If the values are mixed between positives and
+  // negatives, we'll simply ignore the negatives in all calculations.
+  const isNonPositive = rows.every(
+    row => getRowValues(row, colDescs).metricValue <= 0,
   );
+
+  const total = rows.reduce((currTotal, row) => {
+    const metricValue = getRowValues(row, colDescs).metricValue;
+    if (!isNonPositive && metricValue < 0) {
+      return currTotal;
+    }
+
+    return currTotal + metricValue;
+  }, 0);
 
   const [slices, others] = _.chain(rows)
     .map((row, index): PieSlice => {
       const { dimensionValue, metricValue } = getRowValues(row, colDescs);
-
-      if (metricValue < 0) {
-        throw new PieChartNegativeError();
-      }
 
       if (!settings["pie.colors"]) {
         throw Error(`"pie.colors" setting is not defined`);
@@ -94,17 +100,19 @@ export function getPieChartModel(
 
       return {
         key: dimensionValue ?? NULL_DISPLAY_VALUE,
-        value: metricValue,
+        value: isNonPositive ? -1 * metricValue : metricValue,
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
         color: settings["pie.colors"][String(dimensionValue)],
       };
     })
+    .filter(slice => isNonPositive || slice.value >= 0)
     .partition(
       slice =>
+        slice != null &&
         slice.normalizedPercentage >=
-        (settings["pie.slice_threshold"] ?? 0) / 100, // stored setting for "pie.slice_threshold" is on 0-100 scale to match user input
+          (settings["pie.slice_threshold"] ?? 0) / 100, // stored setting for "pie.slice_threshold" is on 0-100 scale to match user input
     )
     .value();
 
