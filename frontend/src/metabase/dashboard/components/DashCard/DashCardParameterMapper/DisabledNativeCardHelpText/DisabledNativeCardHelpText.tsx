@@ -1,10 +1,14 @@
 import { t } from "ttag";
 
-import { getNativeDashCardEmptyMappingText } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Question from "metabase-lib/v1/Question";
+import {
+  isDateParameter,
+  isNumberParameter,
+  isStringParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
 
 import {
@@ -60,12 +64,26 @@ function ParameterHelpText({ parameter }: ParameterHelpTextProps) {
   return (
     <NativeCardDefault>
       <NativeCardIcon name="info" />
-      <NativeCardText>
-        {getNativeDashCardEmptyMappingText(parameter)}
-      </NativeCardText>
+      <NativeCardText>{getParameterHelpText(parameter)}</NativeCardText>
       {showMetabaseLinks && (
         <NativeCardLink href={docsUrl}>{t`Learn how`}</NativeCardLink>
       )}
     </NativeCardDefault>
   );
+}
+
+export function getParameterHelpText(parameter: Parameter) {
+  if (isDateParameter(parameter)) {
+    return t`A date variable in this card can only be connected to a time type with the single date option.`;
+  }
+
+  if (isNumberParameter(parameter)) {
+    return t`A number variable in this card can only be connected to a number filter with Equal to operator.`;
+  }
+
+  if (isStringParameter(parameter)) {
+    return t`A text variable in this card can only be connected to a text filter with Is operator.`;
+  }
+
+  return t`Add a variable to this question to connect it to a dashboard filter.`;
 }

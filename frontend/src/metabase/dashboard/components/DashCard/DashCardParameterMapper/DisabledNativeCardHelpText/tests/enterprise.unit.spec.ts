@@ -8,25 +8,23 @@ function setup(opts: SetupOpts) {
 }
 
 describe("DashCardParameterMapper > DisabledNativeCardHelpText (EE without token)", () => {
-  it("should show a help link when `show-metabase-links: true`", () => {
-    setup({ showMetabaseLinks: true });
+  it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
+    "should show a parameter help link when showMetabaseLinks = %s",
+    ({ showMetabaseLinks }) => {
+      setup({ showMetabaseLinks });
+      expect(
+        screen.getByRole("link", { name: "Learn how" }),
+      ).toBeInTheDocument();
+    },
+  );
 
-    expect(
-      screen.getByText(
-        "A text variable in this card can only be connected to a text filter with Is operator.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Learn how")).toBeInTheDocument();
-  });
-
-  it("should show a help link when `show-metabase-links: false`", () => {
-    setup({ showMetabaseLinks: false });
-
-    expect(
-      screen.getByText(
-        "A text variable in this card can only be connected to a text filter with Is operator.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Learn how")).toBeInTheDocument();
-  });
+  it.each([{ showMetabaseLinks: false }, { showMetabaseLinks: true }])(
+    "should show a model help link when `show-metabase-links`: %s",
+    ({ showMetabaseLinks }) => {
+      setup({ cardType: "model", showMetabaseLinks });
+      expect(
+        screen.getByRole("link", { name: "Learn more" }),
+      ).toBeInTheDocument();
+    },
+  );
 });

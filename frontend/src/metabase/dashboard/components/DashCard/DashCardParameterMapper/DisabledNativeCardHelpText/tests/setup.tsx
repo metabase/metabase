@@ -3,7 +3,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { Parameter, TokenFeatures } from "metabase-types/api";
+import type { CardType, Parameter, TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockParameter,
@@ -14,16 +14,17 @@ import { createMockState } from "metabase-types/store/mocks";
 import { DisabledNativeCardHelpText } from "../DisabledNativeCardHelpText";
 
 export interface SetupOpts {
-  question?: Question;
   parameter?: Parameter;
+  cardType?: CardType;
+  isModel?: boolean;
   showMetabaseLinks?: boolean;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 export const setup = ({
-  question = new Question(createMockCard(), SAMPLE_METADATA),
   parameter = createMockParameter(),
+  cardType = "question",
   showMetabaseLinks = true,
   hasEnterprisePlugins,
   tokenFeatures = {},
@@ -34,6 +35,10 @@ export const setup = ({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
+  const question = new Question(
+    createMockCard({ type: cardType }),
+    SAMPLE_METADATA,
+  );
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
