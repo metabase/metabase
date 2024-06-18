@@ -182,7 +182,7 @@ describe("DashCardParameterMapper", () => {
     expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
   });
 
-  it("should render an error state when mapping to a native model and there is no target", () => {
+  it("should render an error state when mapping to a native model", () => {
     const card = createMockCard({
       type: "model",
       dataset_query: createMockNativeDatasetQuery({
@@ -199,28 +199,7 @@ describe("DashCardParameterMapper", () => {
       }),
       mappingOptions: [],
     });
-    expect(screen.queryByText(/unknown field/i)).not.toBeInTheDocument();
-  });
-
-  it("should render an error state when there is a target for a native model and allow to remove the target", () => {
-    const card = createMockCard({
-      type: "model",
-      dataset_query: createMockNativeDatasetQuery({
-        native: {
-          query: "SELECT * FROM ORDERS",
-        },
-      }),
-      display: "table",
-    });
-    setup({
-      card,
-      dashcard: createMockDashboardCard({
-        card,
-      }),
-      mappingOptions: [],
-      target: ["dimension", ["field", 2, null]],
-    });
-    expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
+    expect(screen.getByText(/Models are data sources/)).toBeInTheDocument();
   });
 
   it("should show header content when card is more than 2 units high", () => {

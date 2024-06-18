@@ -2828,7 +2828,7 @@ describe("44288", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to remove a broken mapping to a native model on a dashboard (metabase#44288)", () => {
+  it("should not be able to map a parameter to a native model on a dashboard (metabase#44288)", () => {
     createNativeQuestion(modelDetails).then(({ body: card }) => {
       cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
         updateDashboardCards({
@@ -2844,23 +2844,8 @@ describe("44288", () => {
       .findByText(parameterDetails.name)
       .click();
     getDashboardCard().within(() => {
-      cy.button(/Unknown Field/)
-        .icon("close")
-        .click();
       cy.findByText(/Models are data sources/).should("be.visible");
       cy.findByText("Select…").should("not.exist");
-      cy.button(/Unknown Field/).should("not.exist");
-    });
-    saveDashboard();
-
-    editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText(parameterDetails.name)
-      .click();
-    getDashboardCard().within(() => {
-      cy.findByText(/Models are data sources/).should("be.visible");
-      cy.findByText("Select…").should("not.exist");
-      cy.button(/Unknown Field/).should("not.exist");
     });
   });
 });
