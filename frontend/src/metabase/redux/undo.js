@@ -75,8 +75,8 @@ const getAutoConnectedUndos = createSelector([state => state.undo], undos => {
 export const getIsRecentlyAutoConnectedDashcard = createSelector(
   [
     getAutoConnectedUndos,
-    (_state, dashcardId) => dashcardId,
-    (_state, _dashcardId, parameterId) => parameterId,
+    (_state, props) => props.dashcard.id,
+    (_state, props) => props.editingParameter?.id,
   ],
   (undos, dashcardId, parameterId) => {
     const isRecentlyAutoConnected = undos.some(undo => {

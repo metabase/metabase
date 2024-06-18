@@ -93,8 +93,7 @@ const mapStateToProps = (
   isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
     state,
     // @ts-expect-error redux/undo is not in TS
-    props.dashcard.id,
-    props.editingParameter?.id,
+    props,
   ),
 });
 
