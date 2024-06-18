@@ -23,7 +23,7 @@ import * as Lib from "metabase-lib";
 
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
-import QueryModals from "../QueryModals/QueryModals";
+import QueryModals from "../QueryModals";
 import QueryVisualization from "../QueryVisualization";
 import { SavedQuestionIntroModal } from "../SavedQuestionIntroModal";
 import DataReference from "../dataref/DataReference";
