@@ -7,6 +7,7 @@ import {
   uploadFile,
   CSV_FILES,
   enableUploads,
+  expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 
 describeWithSnowplow(
@@ -39,6 +40,10 @@ describeWithSnowplow(
       cy.signInAsAdmin();
       enableTracking();
       cy.visit("/");
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
     });
 
     CSV_FILES.forEach(testFile => {
