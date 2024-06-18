@@ -67,6 +67,7 @@ export function PublicOrEmbeddedDashboardView({
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
+  downloadsEnabled,
 }: {
   dashboard: Dashboard | null;
   hasNightModeToggle?: boolean;
@@ -98,6 +99,7 @@ export function PublicOrEmbeddedDashboardView({
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
+  downloadsEnabled: boolean;
 }) {
   const buttons = !isWithinIframe()
     ? getDashboardActions({
@@ -194,6 +196,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+                downloadsEnabled={downloadsEnabled}
               />
             </DashboardContainer>
           );

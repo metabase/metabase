@@ -93,7 +93,11 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
       <Route
         path="dashboard/:slug"
         component={() => (
-          <DashCardMenuConnected question={question} result={result} />
+          <DashCardMenuConnected
+            question={question}
+            result={result}
+            downloadsEnabled
+          />
         )}
       />
       <Route path="question/:slug" component={() => <div />} />
