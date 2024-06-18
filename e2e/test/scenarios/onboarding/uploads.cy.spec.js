@@ -53,7 +53,7 @@ describeWithSnowplow(
         });
 
         // Upload file
-        uploadFile("#upload-csv", "Our analytics", testFile);
+        uploadFile("#upload-input", "Our analytics", testFile);
 
         // Snowplow
         expectGoodSnowplowEvent({

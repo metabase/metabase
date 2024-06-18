@@ -362,7 +362,7 @@ function uploadFileToCollection(testFile) {
     cy.visit(`/collection/${collectionId}`),
   );
 
-  uploadFile("#upload-csv", "Uploads Collection", testFile);
+  uploadFile("#upload-input", "Uploads Collection", testFile);
 
   if (testFile.valid) {
     cy.get("main").within(() => cy.findByText("Uploads Collection"));
