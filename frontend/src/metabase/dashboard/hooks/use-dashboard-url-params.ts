@@ -66,16 +66,20 @@ export const useDashboardUrlParams = ({
   });
 
   useEffect(() => {
-    const hashOptions = parseHashOptions(
-      location.hash,
-    ) as DashboardUrlHashOptions;
-    setTitled(hashOptions.titled ?? titled);
-    setBordered(hashOptions.bordered ?? bordered);
-    setFont(hashOptions.font ?? font);
+    const { bordered, titled, font, hide_parameters, hide_download_button } =
+      parseHashOptions(location.hash) as DashboardUrlHashOptions;
+
+    setBordered(prevBordered => bordered ?? prevBordered);
+    setTitled(prevTitled => titled ?? prevTitled);
+    if (font) {
+      setFont(font);
+    }
     setHideDownloadButton(
-      hashOptions.hide_download_button ?? hideDownloadButton,
+      prevHideDownloadButton => hide_download_button ?? prevHideDownloadButton,
     );
-    setHideParameters(hashOptions.hide_parameters ?? hideParameters);
+    setHideParameters(
+      prevHideParameters => hide_parameters ?? prevHideParameters,
+    );
   }, [
     bordered,
     font,

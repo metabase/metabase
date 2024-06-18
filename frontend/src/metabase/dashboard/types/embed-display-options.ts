@@ -1,29 +1,23 @@
+import type { Dispatch, SetStateAction } from "react";
+
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 type EmbedTitle = boolean;
 type EmbedTitledControls = {
   titled: EmbedTitle;
-  setTitled: (titled: EmbedTitle) => void;
+  setTitled: Dispatch<SetStateAction<EmbedTitle>>;
 };
 
 type EmbedHideDownloadButton = boolean | null;
 type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
-  setHideDownloadButton: (hideDownloadButton: EmbedHideDownloadButton) => void;
+  setHideDownloadButton: Dispatch<SetStateAction<EmbedHideDownloadButton>>;
 };
 
 type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
-  setHideParameters: (hideParameters: EmbedHideParameters) => void;
-};
-
-export type EmbedThemeControls = {
-  theme: DisplayTheme;
-  setTheme: (theme: DisplayTheme) => void;
-  hasNightModeToggle?: boolean;
-  onNightModeChange?: (isNightMode: boolean) => void;
-  isNightMode?: boolean;
+  setHideParameters: Dispatch<SetStateAction<EmbedHideParameters>>;
 };
 
 export type EmbedFont = string | null;
@@ -35,7 +29,15 @@ type EmbedFontControls = {
 type EmbedBordered = boolean;
 type EmbedBorderControls = {
   bordered: EmbedBordered;
-  setBordered: (bordered: EmbedBordered) => void;
+  setBordered: Dispatch<SetStateAction<EmbedBordered>>;
+};
+
+export type EmbedThemeControls = {
+  theme: DisplayTheme;
+  setTheme: (theme: DisplayTheme) => void;
+  hasNightModeToggle?: boolean;
+  onNightModeChange?: (isNightMode: boolean) => void;
+  isNightMode?: boolean;
 };
 
 export type EmbedDisplayParams = {

@@ -5,41 +5,49 @@ import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
 import { DEFAULT_EMBED_DISPLAY_OPTIONS } from "metabase/dashboard/hooks/use-embed-display-options";
-import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
 
-const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS: DashboardUrlHashOptions = {
-  ...DEFAULT_EMBED_DISPLAY_OPTIONS,
+type SYNCED_KEY = "refresh" | "fullscreen" | "theme";
+
+const DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS = {
+  theme: DEFAULT_EMBED_DISPLAY_OPTIONS.theme,
   fullscreen: false,
   refresh: null,
 };
 
 // need to type the return value as `any` to satisfy useLocationSync for now
-const getDefaultDisplayOption = (key: keyof DashboardUrlHashOptions): any =>
-  DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[key];
+const getDefaultDisplayOption = <
+  Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
+  Key extends SYNCED_KEY,
+>(
+  key: Key,
+): Value => DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[key] as Value;
 
-const isEmptyOrDefault = (value: any, key: keyof DashboardUrlHashOptions) =>
+const isEmptyOrDefault = (value: any, key: SYNCED_KEY) =>
   isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
 
-export const useLocationSync = <T = any>({
+export const useLocationSync = <
+  Value extends typeof DEFAULT_DASHBOARD_EMBED_DISPLAY_OPTIONS[Key],
+  Key extends SYNCED_KEY = any,
+>({
   key,
   value,
   onChange,
   location,
 }: {
-  key: keyof DashboardUrlHashOptions;
-  value: T;
-  onChange: (value: T | null) => void;
+  key: Key;
+  value: Value;
+  onChange: (value: Value | null) => void;
   location: Location;
 }) => {
   const dispatch = useDispatch();
   const previousValue = usePrevious(value) ?? null;
   const hashOptions = parseHashOptions(location.hash);
-  const hashValue = (hashOptions[key] ?? null) as T | null;
+  const hashValue = (hashOptions[key] ?? null) as Value | null;
 
-  const defaultValue = getDefaultDisplayOption(key);
+  const defaultValue = getDefaultDisplayOption<Value, Key>(key);
 
   const latestValue = useMemo(() => {
     // prioritize the hash value if we're in the initial state
