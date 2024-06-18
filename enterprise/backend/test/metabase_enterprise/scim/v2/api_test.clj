@@ -13,14 +13,24 @@
     (#'scim/backfill-required-entity-ids!)
     (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto)) :unmasked_key)))
 
+(defn- enable-scim
+  [thunk]
+  (mt/with-temporary-setting-values [scim-enabled true]
+    (thunk)))
+
+(use-fixtures :once enable-scim)
+
 (defn- scim-client
   "Wrapper for `metabase.http-client/client` which includes the SCIM key in the Authorization header"
-  [method expected-status-code endpoint]
-  (client/client method
-                 expected-status-code
-                 endpoint
-                 {:request-options
-                  {:headers {"authorization" (format "Bearer %s" scim-api-key)}}}))
+  ([method expected-status-code endpoint]
+   (scim-client method expected-status-code endpoint {}))
+  ([method expected-status-code endpoint body]
+   (client/client method
+                  expected-status-code
+                  endpoint
+                  {:request-options
+                   {:headers {"authorization" (format "Bearer %s" scim-api-key)}}}
+                  body)))
 
 (deftest scim-authentication-test
   (mt/with-premium-features #{:scim}
@@ -83,6 +93,33 @@
     (testing "Error if unsupported filter operation is provided"
       (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                     (codec/url-encode "id ne \"newuser@metabase.com\""))))))
+
+(deftest create-user-test
+  (mt/with-premium-features #{:scim}
+    (testing "Create a new user successfully"
+      ;; Generate random user details via with-temp then delete the user so that we can recreate it with SCIM
+      (mt/with-temp [:model/User user {}]
+        (t2/delete! :model/User :id (:id user))
+        (let [new-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                        :userName (:email user)
+                        :name {:givenName (:first_name user) :familyName (:last_name user)}
+                        :emails [{:value (:email user)}]
+                        :active true}
+              response (scim-client :post 201 "ee/scim/v2/Users" new-user)]
+          (is (malli= scim-api/SCIMUser response))
+          (is (=? (select-keys user [:email :first_name :last_name :is_active])
+                  (t2/select-one [:model/User :email :first_name :last_name :is_active]
+                                 :entity_id (:id response)))))))
+
+    (testing "Error when creating a user with an existing email"
+      (let [existing-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                           :userName "rasta@metabase.com"
+                           :name {:givenName "Rasta" :familyName "Toucan"}
+                           :emails [{:value "rasta@metabase.com"}]
+                           :active true}
+            response      (scim-client :post 409 "ee/scim/v2/Users" existing-user)]
+        (is (= (get response :schemas) ["urn:ietf:params:scim:api:messages:2.0:Error"]))
+        (is (= (get response :detail) "Email address is already in use"))))))
 
 (deftest list-groups-test
   (mt/with-premium-features #{:scim}

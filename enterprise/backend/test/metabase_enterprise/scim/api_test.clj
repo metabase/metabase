@@ -29,6 +29,22 @@
          (is (not= (:key key1) (:key key2)))
          (is (= 1 (t2/count :model/ApiKey :scope :scim))))))))
 
+(deftest get-api-key-test
+  (testing "GET /api/ee/scim/api_key"
+    (mt/with-premium-features #{:scim}
+      (testing "Can fetch a SCIM API key"
+        (let [actual-key  (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
+              fetched-key (mt/user-http-request :crowberto :get 200 "ee/scim/api_key")]
+          (is (nil? (:unmasked_key fetched-key)))
+          (is (= (:key actual-key) (:key fetched-key)))))
+
+      (testing "A non-admin cannot fetch the SCIM API key"
+        (mt/user-http-request :rasta :get 403 "ee/scim/api_key"))
+
+      (testing "A 404 is returned if the key has not yet been created"
+        (t2/delete! :model/ApiKey :scope :scim)
+        (mt/user-http-request :crowberto :get 404 "ee/scim/api_key")))))
+
 (deftest post-api-key-test
   (testing "POST /api/ee/scim/api_key"
     (mt/with-premium-features #{:scim}
@@ -50,15 +66,3 @@
           (mt/user-http-request :crowberto :post 200 "ee/scim/api_key")
           (is (not (nil? (t2/select-one-fn :entity_id :model/User :id (:id user)))))
           (is (not (nil? (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))))))))))
-
-(deftest delete-api-key-test
-  (testing "DELETE /api/ee/scim/api_key"
-    (mt/with-premium-features #{:scim}
-      (testing "An admin can delete the SCIM API key, thereby disabling SCIM"
-        (mt/user-http-request :crowberto :post 200 "ee/scim/api_key")
-        (is (= 1 (t2/count :model/ApiKey :scope :scim)))
-        (mt/user-http-request :crowberto :delete 200 "ee/scim/api_key")
-        (is (= 0 (t2/count :model/ApiKey :scope :scim))))
-
-      (testing "A non-admin cannot delete the SCIM API key"
-        (mt/user-http-request :rasta :delete 403 "ee/scim/api_key")))))
