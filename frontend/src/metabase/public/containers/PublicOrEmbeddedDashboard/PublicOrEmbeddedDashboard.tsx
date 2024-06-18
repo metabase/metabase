@@ -17,8 +17,8 @@ import {
   getDashboardComplete,
   getDraftParameterValues,
   getIsNavigatingBackToDashboard,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";
@@ -28,6 +28,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -177,6 +178,8 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       cardTitled,
     } = this.props;
 
+    const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled();
+
     return (
       <PublicOrEmbeddedDashboardView
         dashboard={dashboard}
@@ -203,6 +206,7 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
         navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
         slowCards={slowCards}
         cardTitled={cardTitled}
+        downloadsEnabled={downloadsEnabled}
       />
     );
   }

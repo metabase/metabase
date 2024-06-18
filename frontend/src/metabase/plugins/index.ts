@@ -479,3 +479,10 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
 export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
 };
+
+export const PLUGIN_RESOURCE_DOWNLOADS = {
+  /**
+   * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
+   */
+  areDownloadsEnabled: () => true,
+};
