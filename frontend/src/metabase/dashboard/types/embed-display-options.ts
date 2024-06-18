@@ -1,18 +1,18 @@
 import type { DisplayTheme } from "metabase/public/lib/types";
 
-export type EmbedTitle = boolean;
-export type EmbedTitledControls = {
+type EmbedTitle = boolean;
+type EmbedTitledControls = {
   titled: EmbedTitle;
   setTitled: (titled: EmbedTitle) => void;
 };
 
-export type EmbedHideDownloadButton = boolean | null;
-export type EmbedHideDownloadButtonControls = {
+type EmbedHideDownloadButton = boolean | null;
+type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
   setHideDownloadButton: (hideDownloadButton: EmbedHideDownloadButton) => void;
 };
 
-export type EmbedHideParameters = string | null;
+type EmbedHideParameters = string | null;
 export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
   setHideParameters: (hideParameters: EmbedHideParameters) => void;
@@ -27,13 +27,13 @@ export type EmbedThemeControls = {
 };
 
 export type EmbedFont = string | null;
-export type EmbedFontControls = {
+type EmbedFontControls = {
   font: EmbedFont;
   setFont: (font: EmbedFont) => void;
 };
 
-export type EmbedBordered = boolean;
-export type EmbedBorderControls = {
+type EmbedBordered = boolean;
+type EmbedBorderControls = {
   bordered: EmbedBordered;
   setBordered: (bordered: EmbedBordered) => void;
 };
