@@ -201,3 +201,70 @@
                             (spreadsheet/select-sheet "pivot")
                             ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
           (is (not (nil? pivot))))))))
+
+(deftest ^:parallel zero-column-native-pivot-tables-test
+  (testing "Pivot tables with zero columns download correctly as xlsx."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
+                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns []
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
+        (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
+              [pivot data] (with-open [in (io/input-stream result)]
+                             (let [wb    (spreadsheet/load-workbook in)
+                                   pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
+                                   data  (->> (spreadsheet/select-sheet "data" wb)
+                                              spreadsheet/row-seq
+                                              (mapv (fn [row] (->> (spreadsheet/cell-seq row)
+                                                                   (mapv spreadsheet/read-cell)))))]
+                               [pivot data]))]
+          (is (not (nil? pivot)))
+          (is (= [["Category" "Created At" "Sum of Price"]
+                  ["Doohickey" #inst "2016-05-01T00:00:00.000-00:00" 144.12]
+                  ["Doohickey" #inst "2016-06-01T00:00:00.000-00:00" 82.92]
+                  ["Doohickey" #inst "2016-07-01T00:00:00.000-00:00" 78.22]
+                  ["Doohickey" #inst "2016-08-01T00:00:00.000-00:00" 71.09]
+                  ["Doohickey" #inst "2016-09-01T00:00:00.000-00:00" 45.65]]
+                 (take 6 data))))))))
+
+(deftest ^:parallel zero-row-native-pivot-tables-test
+  (testing "Pivot tables with zero rows download correctly as xlsx."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    []
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
+              [pivot data] (with-open [in (io/input-stream result)]
+                             (let [wb    (spreadsheet/load-workbook in)
+                                   pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
+                                   data  (->> (spreadsheet/select-sheet "data" wb)
+                                              spreadsheet/row-seq
+                                              (mapv (fn [row] (->> (spreadsheet/cell-seq row)
+                                                                   (mapv spreadsheet/read-cell)))))]
+                               [pivot data]))]
+          (is (not (nil? pivot)))
+          (is (= [["Category" "Sum of Price"]
+                  ["Doohickey" 2185.89]
+                  ["Gadget" 3019.2]
+                  ["Gizmo" 2834.88]
+                  ["Widget" 3109.31]]
+                 (take 6 data))))))))
