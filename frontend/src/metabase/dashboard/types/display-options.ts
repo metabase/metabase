@@ -20,4 +20,6 @@ export type DashboardRefreshPeriodControls = {
 
 export type DashboardDisplayOptionControls = EmbedDisplayControls &
   DashboardFullscreenControls &
-  DashboardRefreshPeriodControls;
+  DashboardRefreshPeriodControls & {
+    downloadsEnabled: boolean | null;
+  };

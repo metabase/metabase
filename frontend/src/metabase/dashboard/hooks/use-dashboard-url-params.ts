@@ -10,6 +10,7 @@ import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
 import { parseHashOptions } from "metabase/lib/browser";
+import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
@@ -24,7 +25,7 @@ export const useDashboardUrlParams = ({
 }) => {
   const { font, setFont } = useEmbedFont();
 
-  const { bordered, titled, hide_parameters, hide_download_button } =
+  const { bordered, titled, hide_parameters, hide_download_button, downloads } =
     useEmbedFrameOptions({ location });
 
   const {
@@ -34,6 +35,11 @@ export const useDashboardUrlParams = ({
     setTheme,
     theme,
   } = useEmbedTheme();
+
+  const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
+    hide_download_button,
+    downloads,
+  });
 
   const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
@@ -81,8 +87,8 @@ export const useDashboardUrlParams = ({
     onRefreshPeriodChange,
     bordered,
     titled,
-    hideDownloadButton: hide_download_button,
     font,
     setFont,
+    downloadsEnabled,
   };
 };

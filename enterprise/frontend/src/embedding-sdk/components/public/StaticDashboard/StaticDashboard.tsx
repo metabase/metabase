@@ -45,7 +45,6 @@ export const StaticDashboardInner = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
-        hideDownloadButton={displayOptions.hideDownloadButton}
         hideParameters={displayOptions.hideParameters}
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
@@ -57,6 +56,7 @@ export const StaticDashboardInner = ({
         setRefreshElapsedHook={setRefreshElapsedHook}
         font={font}
         bordered={displayOptions.bordered}
+        downloads={withDownloads}
       />
     </Box>
   );

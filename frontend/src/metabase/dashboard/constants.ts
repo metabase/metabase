@@ -8,14 +8,14 @@ import type { EmbedDisplayParams } from "./types";
 export const DASHBOARD_DESCRIPTION_MAX_LENGTH = 1500;
 
 export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
-  {
-    addQuestion: "addQuestion",
-    action: "action",
-    clickBehavior: "clickBehavior",
-    editParameter: "editParameter",
-    sharing: "sharing",
-    info: "info",
-  };
+{
+  addQuestion: "addQuestion",
+  action: "action",
+  clickBehavior: "clickBehavior",
+  editParameter: "editParameter",
+  sharing: "sharing",
+  info: "info",
+};
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboardId: null,
@@ -55,8 +55,8 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   bordered: false,
   titled: true,
   cardTitled: true,
-  hideDownloadButton: null,
   hideParameters: null,
   font: null,
   theme: "light",
+  downloads: true,
 };
