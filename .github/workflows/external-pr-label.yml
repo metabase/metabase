@@ -17,7 +17,7 @@ jobs:
         with:
           username: ${{ github.actor }}
           organization: 'metabase'
-          team: 'employees'
+          team: 'employees_delme'
           GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }} # Token with read:org scope
 
       - name: add labels
