@@ -43,8 +43,9 @@
           (is (zero? (get-count (:id c3))))
           (is (zero? (get-count (:id c4))))
           (is (zero? (get-count (:id arch)))))
-        (binding [query-analyzer/*parse-queries-in-test?* true]
-          (#'backfill/backfill-query-fields!))
+        (mt/with-temporary-setting-values [sql-parsing-enabled true]
+          (binding [query-analyzer/*parse-queries-in-test?* true]
+            (#'backfill/backfill-query-fields!)))
         (testing "QueryField is filled now"
           (testing "for a native query"
             (is (pos? (get-count (:id c1)))))

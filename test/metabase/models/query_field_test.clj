@@ -23,19 +23,20 @@
                     :card_id card-id))
 
 (defn- do-with-test-setup [f]
-  (binding [query-analyzer/*parse-queries-in-test?* true]
-    (let [table-id (mt/id :orders)
-          tax-id   (mt/id :orders :tax)
-          total-id (mt/id :orders :total)]
-      (t2.with-temp/with-temp [:model/Card {card-id :id}
-                               {:dataset_query (mt/native-query {:query "SELECT NOT_TAX, TOTAL FROM orders"})}]
-        (try
-          (f {:card-id  card-id
-              :tax-id   tax-id
-              :total-id total-id
-              :table-id table-id})
-          (finally
-            (t2/delete! :model/QueryField :card_id card-id)))))))
+  (mt/with-temporary-setting-values [sql-parsing-enabled true]
+    (binding [query-analyzer/*parse-queries-in-test?* true]
+      (let [table-id (mt/id :orders)
+            tax-id   (mt/id :orders :tax)
+            total-id (mt/id :orders :total)]
+        (t2.with-temp/with-temp [:model/Card {card-id :id}
+                                 {:dataset_query (mt/native-query {:query "SELECT NOT_TAX, TOTAL FROM orders"})}]
+          (try
+            (f {:card-id  card-id
+                :tax-id   tax-id
+                :total-id total-id
+                :table-id table-id})
+            (finally
+              (t2/delete! :model/QueryField :card_id card-id))))))))
 
 (defmacro ^:private with-test-setup
   "Creates a new card that queries one column that exists (TOTAL) and one that does not (NOT_TAX). Anaphorically

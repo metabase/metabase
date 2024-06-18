@@ -31,7 +31,7 @@
            (#'query-analyzer/field-query :f.name "\"Perv\"\"e\"\"rse\"")))))
 
 (deftest ^:parallel field-matching-test
-  (binding [query-analyzer/*parse-queries-in-test?* true]
+  (mt/with-dynamic-redefs [query-analyzer/active? (constantly true)]
     (let [q (fn [sql]
               (#'query-analyzer/field-ids-for-sql (mt/native-query {:query sql})))]
       (testing "simple query matches"
