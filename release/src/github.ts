@@ -7,7 +7,7 @@ import {
   isValidVersionString,
 } from "./version-helpers";
 
-const getMilestones = async ({
+export const getMilestones = async ({
   github,
   owner,
   repo,

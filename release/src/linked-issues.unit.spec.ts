@@ -1,4 +1,4 @@
-import { getLinkedIssues } from "./linked-issues";
+import { getLinkedIssues, getPRsFromCommitMessage } from "./linked-issues";
 
 const closingKeywords = [
   "Close",
@@ -107,3 +107,27 @@ describe("getLinkedIssues", () => {
     });
   });
 });
+
+describe("getPRsFromCommitMessage", () => {
+  it("should return `null` when no PR is found", () => {
+    expect(getPRsFromCommitMessage("")).toBeNull();
+    expect(getPRsFromCommitMessage("Lorem ipsum dolor sit amet.")).toBeNull();
+    expect(getPRsFromCommitMessage("Fix #123.")).toBeNull();
+    expect(getPRsFromCommitMessage("Fix#123.")).toBeNull();
+    expect(getPRsFromCommitMessage("Fix # 123.")).toBeNull();
+    expect(getPRsFromCommitMessage("123 456")).toBeNull();
+    expect(getPRsFromCommitMessage("123 #456)")).toBeNull();
+    expect(getPRsFromCommitMessage("123 (#456")).toBeNull();
+    expect(getPRsFromCommitMessage("123 (#456.99)")).toBeNull();
+  });
+
+  it("should return the PR id for a single pr backport", () => {
+    expect(getPRsFromCommitMessage("Backport (#123)")).toEqual([123]);
+    expect(getPRsFromCommitMessage("Backport (#123456) !")).toEqual([123456]);
+  });
+
+  it("should return the PR id for a message with multiple backport PRs", () => {
+    expect(getPRsFromCommitMessage("Backport (#123) (#456)")).toEqual([123, 456]);
+    expect(getPRsFromCommitMessage("Backport (#1234) and (#4567)")).toEqual([1234, 4567]);
+  });
+})
