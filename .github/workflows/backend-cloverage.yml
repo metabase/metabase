@@ -25,6 +25,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json
           flags: back-end
-
-
-
