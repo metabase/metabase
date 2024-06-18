@@ -4,18 +4,18 @@ import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupMostRecentlyViewedDashboard,
-  setupSearchEndpoints,
-  setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
-  renderWithProviders,
-  screen,
-  waitFor,
   mockGetBoundingClientRect,
   mockScrollBy,
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
@@ -295,9 +295,7 @@ const setup = async ({
   );
 
   if (waitForContent) {
-    await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    });
+    await waitForLoaderToBeRemoved();
   }
 };
 
@@ -612,7 +610,9 @@ describe("AddToDashSelectDashModal", () => {
   });
 });
 
-function assertPath(collections: Collection[]) {
+async function assertPath(collections: Collection[]) {
+  await waitForLoaderToBeRemoved();
+
   return Promise.all(
     collections.map(async collection => {
       return expect(await findPickerItem(collection.name)).toBeInTheDocument();
