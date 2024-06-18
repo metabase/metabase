@@ -2,39 +2,39 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  updateDashboardCards,
-  visitDashboard,
-  filterWidget,
+  addOrUpdateDashboardCard,
+  appBar,
+  assertQueryBuilderRowCount,
+  commandPalette,
+  commandPaletteSearch,
+  createNativeQuestion,
+  createQuestion,
+  dashboardParametersContainer,
   editDashboard,
-  setFilter,
+  filterWidget,
+  getDashboardCard,
+  goToTab,
+  multiAutocompleteInput,
+  navigationSidebar,
+  openNavigationSidebar,
+  openQuestionsSidebar,
+  popover,
+  restore,
   saveDashboard,
   selectDashboardFilter,
+  setFilter,
   sidebar,
-  commandPaletteSearch,
-  commandPalette,
-  addOrUpdateDashboardCard,
   undoToast,
-  getDashboardCard,
-  openNavigationSidebar,
-  appBar,
-  dashboardParametersContainer,
-  navigationSidebar,
-  visitPublicDashboard,
-  goToTab,
-  openQuestionsSidebar,
+  updateDashboardCards,
+  visitDashboard,
   visitEmbeddedPage,
-  createQuestion,
-  multiAutocompleteInput,
-  assertQueryBuilderRowCount,
-  createNativeQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -42,8 +42,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  setQuarterAndYear,
   setAdHocFilter,
+  setQuarterAndYear,
 } from "../native-filters/helpers/e2e-date-filter-helpers";
 
 const {
@@ -2806,23 +2806,6 @@ describe("44288", () => {
     parameters: [parameterDetails],
   };
 
-  function getModelDashcardDetails(dashboard, card) {
-    return {
-      dashboard_id: dashboard.id,
-      card_id: card.id,
-      parameter_mappings: [
-        {
-          card_id: card.id,
-          parameter_id: parameterDetails.id,
-          target: [
-            "dimension",
-            ["field", "TOTAL", { "base-type": "type/Integer" }],
-          ],
-        },
-      ],
-    };
-  }
-
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -2833,7 +2816,12 @@ describe("44288", () => {
       cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
         updateDashboardCards({
           dashboard_id: dashboard.id,
-          cards: [getModelDashcardDetails(dashboard, card)],
+          cards: [
+            {
+              dashboard_id: dashboard.id,
+              card_id: card.id,
+            },
+          ],
         });
         visitDashboard(dashboard.id);
       });
