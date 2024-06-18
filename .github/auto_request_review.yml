@@ -4,7 +4,10 @@
 
 files:
   # migrations related files
-  'resources/**':
+  'resources/migrations/**':
+    - qnkhuat
+      #- team:core-backend-components
+  'src/metabase/db/custom_migrations.clj':
     - qnkhuat
       #- team:core-backend-components
 
