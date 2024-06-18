@@ -10,10 +10,7 @@ import {
 import type { ParameterMappingOption as ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  getParameterColumns,
-  isParameterVariableTarget,
-} from "metabase-lib/v1/parameters/utils/targets";
+import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   BaseDashboardCard,
@@ -57,15 +54,10 @@ export function getMappingOptionByTarget<T extends DashboardCard>(
     return;
   }
 
+  const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isQuestionDashCard(dashcard)
     ? isNativeDashCard(dashcard)
     : false;
-
-  if (!isNative && isParameterVariableTarget(target)) {
-    return;
-  }
-
-  const isVirtual = isVirtualDashCard(dashcard);
   const normalizedTarget = normalize(target);
   const matchedMappingOptions = mappingOptions.filter(mappingOption =>
     _.isEqual(mappingOption.target, normalizedTarget),
