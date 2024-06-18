@@ -70,7 +70,6 @@ Admins get special privileges with alerts.
 
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-- Admins on some [paid plans](https://www.metabase.com/pricing) can view, edit, and delete all dashboard subscriptions and alerts in the [Audit tab](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
 
 ### Everyone
 
@@ -79,7 +78,7 @@ Admins get special privileges with alerts.
 
 ## Avoid changing the name of the alerted channel in Slack
 
-Once you set up an alert to a Slack channel, avoid changing the name of that channel in Slack. If you rename the channel in Slack, but you want Metabase to continue to send alerts to that renamed channel, you'll need to update the alert in Metabase to point to the new channel name. 
+Once you set up an alert to a Slack channel, avoid changing the name of that channel in Slack. If you rename the channel in Slack, but you want Metabase to continue to send alerts to that renamed channel, you'll need to update the alert in Metabase to point to the new channel name.
 
 ## Alert expiration
 
@@ -91,11 +90,11 @@ Some circumstances will automatically delete alerts:
 
 Alerts will continue to work even if the person who set up the alert no longer has an active account. For example, if an alert with multiple recipients (or to a Slack channel) was set up by someone whose account has since been deactivated, that alert will continue to work (though Metabase will stop sending the alerts to the deactivated account).
 
-## Admins can audit alerts
+## Admins can see all alerts
 
-{% include plans-blockquote.html feature="Audit logs" %}
+{% include plans-blockquote.html feature="Usage analytics" %}
 
-Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase. Click on the **gear** icon in the upper right and select **Admin settings** > **Audit** > **Subscriptions & Alerts**. See [Audit](../../usage-and-performance-tools/audit.md#subscriptions-and-alerts).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Metabase analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md#alerts-model).
 
 ## How permissions work with alerts
 
@@ -110,4 +109,4 @@ See [Sending alerts and subscriptions to private Slack channels](../../configuri
 - [Dashboard subscriptions](../../dashboards/subscriptions.md)
 - [Setting up email](../../configuring-metabase/email.md)
 - [Setting up Slack](../../configuring-metabase/slack.md)
-- [Auditing Metabase](../../usage-and-performance-tools/audit.md)
+- [Usage analytics](../../usage-and-performance-tools/usage-analytics.md)

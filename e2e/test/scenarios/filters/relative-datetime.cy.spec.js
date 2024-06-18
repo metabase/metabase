@@ -267,10 +267,8 @@ const openCreatedAt = tab => {
 };
 
 const addStartingFrom = () => {
-  popover().findByLabelText("Options").click();
   popover()
-    .last()
-    .findByText(/Starting from/)
+    .findByLabelText(/Starting from/)
     .click();
 };
 
