@@ -30,13 +30,8 @@
            ;; this is "Perv""e""rse"
            (#'query-analyzer/field-query :f.name "\"Perv\"\"e\"\"rse\"")))))
 
-(defmacro with-parsing-enabled [& body]
-  `(mt/with-temporary-setting-values [sql-parsing-enabled true]
-     (binding [query-analyzer/*parse-queries-in-test?* true]
-       ~@body)))
-
 (deftest ^:parallel field-matching-test
-  (with-parsing-enabled
+  (mt/with-dynamic-redefs [query-analyzer/active? (constantly true)]
     (let [q (fn [sql]
               (#'query-analyzer/field-ids-for-sql (mt/native-query {:query sql})))]
       (testing "simple query matches"
