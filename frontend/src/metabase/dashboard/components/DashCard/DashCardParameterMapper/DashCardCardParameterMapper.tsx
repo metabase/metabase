@@ -84,18 +84,23 @@ function formatSelected({
 const mapStateToProps = (
   state: State,
   props: DashcardCardParameterMapperProps,
-) => ({
-  editingParameter: getEditingParameter(state),
-  target: getParameterTarget(state, props),
-  metadata: getMetadata(state),
-  question: getQuestionByCard(state, props),
-  mappingOptions: getDashcardParameterMappingOptions(state, props),
-  isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
-    state,
-    // @ts-expect-error redux/undo is not in TS
-    props,
-  ),
-});
+) => {
+  const editingParameter = getEditingParameter(state);
+
+  return {
+    editingParameter,
+    target: getParameterTarget(state, props),
+    metadata: getMetadata(state),
+    question: getQuestionByCard(state, props),
+    mappingOptions: getDashcardParameterMappingOptions(state, props),
+    isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
+      state,
+      // @ts-expect-error redux/undo is not in TS
+      props,
+      editingParameter?.id,
+    ),
+  };
+};
 
 const mapDispatchToProps = {
   setParameterMapping,
