@@ -100,7 +100,7 @@ const isNavbarOpen = handleActions(
 export default combineReducers({
   errorPage,
   isNavbarOpen,
-  isDndAvailable: initValue => {
+  isDndAvailable: (initValue: unknown) => {
     if (typeof initValue === "boolean") {
       return initValue;
     }
