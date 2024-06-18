@@ -16,6 +16,11 @@
   []
   (yaml/parse-string (slurp (io/resource "metabase/cmd/resources/config-template.yaml"))))
 
+(defn get-settings
+  "Gets valid config settings."
+  []
+  (dox/filter-env-vars (dox/get-settings)))
+
 (defn- settings-map
   "Converts a list of settings (their names and default values) into a sorted map."
   [settings]
@@ -28,7 +33,7 @@
 (defn- add-settings
   "Adds settings to the configuration template."
   [config]
-  (let [settings (map get-name-and-default (dox/get-settings))
+  (let [settings (map get-name-and-default (get-settings))
         sm (settings-map settings)]
     (assoc-in config [:config :settings] sm)))
 
