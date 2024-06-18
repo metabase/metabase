@@ -39,20 +39,20 @@ const getColumnSettings = (
   );
 
   const columnSettings = columnKey
-    ? { column, ...settings.column_settings?.[columnKey] }
-    : { column };
+    ? { column, ...column.settings, ...settings.column_settings?.[columnKey] }
+    : { column, ...column.settings };
 
   if (isNumber(column) && !isCoordinate(column)) {
     fillWithDefaultValue(
       columnSettings,
       "number_style",
-      getDefaultNumberStyle(column, settings),
+      getDefaultNumberStyle(column, columnSettings),
     );
     fillWithDefaultValue(columnSettings, "currency", getDefaultCurrency());
     fillWithDefaultValue(
       columnSettings,
       "currency_style",
-      getDefaultCurrencyStyle(column, settings),
+      getDefaultCurrencyStyle(column, columnSettings),
     );
     fillWithDefaultValue(
       columnSettings,
