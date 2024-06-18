@@ -7,15 +7,14 @@ reviewers:
     migration-owners:
       - qnkhuat
       - calherries
+      #- team:core-backend-components # can use team, but it needs a PAT, will figure it out later
 
 files:
   # migrations related files
-  #'resources/migrations/**':
-  #  - migration-owners
-      #- team:core-backend-components
+  'resources/migrations/**':
+    - migration-owners
   'src/metabase/db/custom_migrations.clj':
-    - team:core-backend-components
-      #- migration-owners
+    - migration-owners
 
 options:
   ignore_draft: true

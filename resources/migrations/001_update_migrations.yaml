@@ -7977,6 +7977,7 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
 
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
