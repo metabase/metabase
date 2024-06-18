@@ -2,10 +2,10 @@ import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import { Button as MantineButton, type ButtonProps } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
 import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
@@ -60,12 +60,8 @@ export const BackButtonContainer = styled.span`
   margin-right: 0.75rem;
 `;
 
-export const SaveButton = styled(Link)`
-  color: var(--mb-color-brand);
-  font-weight: bold;
-  padding: 0.5rem 1rem;
+export const SaveButton = styled(MantineButton)<ButtonProps>`
   border-radius: 8px;
-  background-color: var(--mb-color-bg-white);
 
   :hover {
     background-color: var(--mb-color-bg-light);

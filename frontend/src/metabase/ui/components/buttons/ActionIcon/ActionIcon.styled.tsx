@@ -13,6 +13,19 @@ export const getActionIconOverrides =
             },
           },
         }),
+        filled: (theme, params) => ({
+          root: {
+            color: theme.fn.themeColor("white"),
+            backgroundColor: theme.fn.themeColor(params.color),
+            border: `1px solid ${theme.fn.themeColor(params.color)}`,
+            transition: "background 300ms linear, border 300ms linear",
+            "&:hover": {
+              backgroundColor: theme.fn.themeColor("white"),
+              border: `1px solid ${theme.fn.themeColor(params.color)}`,
+              color: theme.fn.themeColor(params.color),
+            },
+          },
+        }),
       },
     },
   });

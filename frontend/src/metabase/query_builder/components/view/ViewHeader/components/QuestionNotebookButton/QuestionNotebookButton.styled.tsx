@@ -1,16 +1,29 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type { ButtonHTMLAttributes } from "react";
 
-import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
+import { ActionIcon, type ActionIconProps } from "metabase/ui";
 
-interface ButtonRootProps {
-  isSelected?: boolean;
-}
-
-export const ButtonRoot = styled(Button)<ButtonRootProps>`
-  color: ${props => !props.isSelected && color("text-dark")};
-
-  &:hover {
-    color: ${props => !props.isSelected && color("brand")};
-  }
+export const QuestionNotebookActionIcon = styled(ActionIcon)<
+  {
+    isShowingNotebook?: boolean;
+  } & ActionIconProps &
+    ButtonHTMLAttributes<HTMLButtonElement>
+>`
+  ${({ theme, isShowingNotebook }) => {
+    return (
+      !isShowingNotebook &&
+      css`
+        color: ${theme.fn.themeColor("text-dark")};
+        background-color: transparent;
+        border: 1px solid transparent;
+        transition: background 300ms linear, border 300ms linear;
+        &:hover {
+          color: ${theme.fn.themeColor("brand")};
+          background-color: ${theme.fn.themeColor("bg-medium")};
+          border: 1px solid transparent;
+        }
+      `
+    );
+  }}
 `;

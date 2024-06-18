@@ -1,11 +1,11 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
+import type { ModalType } from "metabase/query_builder/components/QueryModals";
 import {
   SaveButton,
   ViewHeaderActionPanel,
@@ -22,73 +22,85 @@ import {
   ToggleNativeQueryPreview,
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
+import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
-ViewTitleHeaderRightSide.propTypes = {
-  question: PropTypes.object.isRequired,
-  result: PropTypes.object,
-  queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
-  isModelOrMetric: PropTypes.bool,
-  isSaved: PropTypes.bool,
-  isNative: PropTypes.bool,
-  isRunnable: PropTypes.bool,
-  isRunning: PropTypes.bool,
-  isNativeEditorOpen: PropTypes.bool,
-  isShowingSummarySidebar: PropTypes.bool,
-  isDirty: PropTypes.bool,
-  isResultDirty: PropTypes.bool,
-  isActionListVisible: PropTypes.bool,
-  runQuestionQuery: PropTypes.func,
-  updateQuestion: PropTypes.func.isRequired,
-  cancelQuery: PropTypes.func,
-  onOpenModal: PropTypes.func,
-  onEditSummary: PropTypes.func,
-  onCloseSummary: PropTypes.func,
-  setQueryBuilderMode: PropTypes.func,
-  turnDatasetIntoQuestion: PropTypes.func,
-  areFiltersExpanded: PropTypes.bool,
-  onExpandFilters: PropTypes.func,
-  onCollapseFilters: PropTypes.func,
-  isBookmarked: PropTypes.bool,
-  toggleBookmark: PropTypes.func,
-  onOpenQuestionInfo: PropTypes.func,
-  onCloseQuestionInfo: PropTypes.func,
-  isShowingQuestionInfoSidebar: PropTypes.bool,
-  onModelPersistenceChange: PropTypes.func,
-  onQueryChange: PropTypes.func,
+type ViewTitleHeaderRightSideProps = {
+  question: Question;
+  result: Dataset;
+  queryBuilderMode: QueryBuilderMode;
+  isBookmarked: boolean;
+  isModelOrMetric: boolean;
+  isSaved: boolean;
+  isRunnable: boolean;
+  isRunning: boolean;
+  isNativeEditorOpen: boolean;
+  isShowingSummarySidebar: boolean;
+  isDirty: boolean;
+  isResultDirty: boolean;
+  isActionListVisible: boolean;
+  runQuestionQuery: (opts?: {
+    overrideWithQuestion?: Question;
+    shouldUpdateUrl?: boolean;
+    ignoreCache?: boolean;
+  }) => void;
+  cancelQuery: () => void;
+  onOpenModal: (modalType: ModalType) => void;
+  onEditSummary: () => void;
+  onCloseSummary: () => void;
+  setQueryBuilderMode: (
+    mode: QueryBuilderMode,
+    opts?: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: DatasetEditorTab;
+    },
+  ) => void;
+  turnDatasetIntoQuestion: () => void;
+  areFiltersExpanded: boolean;
+  onExpandFilters: () => void;
+  onCollapseFilters: () => void;
+  toggleBookmark: () => void;
+  onOpenQuestionInfo: () => void;
+  onCloseQuestionInfo: () => void;
+  isShowingQuestionInfoSidebar: boolean;
+  onModelPersistenceChange: () => void;
+  isObjectDetail: boolean;
 };
 
-export function ViewTitleHeaderRightSide(props) {
-  const {
-    question,
-    result,
-    queryBuilderMode,
-    isBookmarked,
-    toggleBookmark,
-    isSaved,
-    isModelOrMetric,
-    isRunnable,
-    isRunning,
-    isNativeEditorOpen,
-    isShowingSummarySidebar,
-    isDirty,
-    isResultDirty,
-    isActionListVisible,
-    runQuestionQuery,
-    cancelQuery,
-    onOpenModal,
-    onEditSummary,
-    onCloseSummary,
-    setQueryBuilderMode,
-    turnDatasetIntoQuestion,
-    areFiltersExpanded,
-    onExpandFilters,
-    onCollapseFilters,
-    isShowingQuestionInfoSidebar,
-    onCloseQuestionInfo,
-    onOpenQuestionInfo,
-    onModelPersistenceChange,
-  } = props;
+export function ViewTitleHeaderRightSide({
+  question,
+  result,
+  queryBuilderMode,
+  isBookmarked,
+  isModelOrMetric,
+  isSaved,
+  isRunnable,
+  isRunning,
+  isNativeEditorOpen,
+  isShowingSummarySidebar,
+  isDirty,
+  isResultDirty,
+  isActionListVisible,
+  runQuestionQuery,
+  cancelQuery,
+  onOpenModal,
+  onEditSummary,
+  onCloseSummary,
+  setQueryBuilderMode,
+  turnDatasetIntoQuestion,
+  areFiltersExpanded,
+  onExpandFilters,
+  onCollapseFilters,
+  toggleBookmark,
+  onOpenQuestionInfo,
+  onCloseQuestionInfo,
+  isShowingQuestionInfoSidebar,
+  onModelPersistenceChange,
+  isObjectDetail,
+}: ViewTitleHeaderRightSideProps) {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const { isEditable } = Lib.queryDisplayInfo(question.query());
 
@@ -101,7 +113,7 @@ export function ViewTitleHeaderRightSide(props) {
   // the `type` field is set to "question".
   const hasSaveButton =
     !isModelOrMetric &&
-    !!isDirty &&
+    isDirty &&
     !question.isArchived() &&
     isActionListVisible;
   const isMissingPermissions =
@@ -128,7 +140,11 @@ export function ViewTitleHeaderRightSide(props) {
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {FilterHeaderToggle.shouldRender(props) && (
+      {FilterHeaderToggle.shouldRender({
+        question,
+        queryBuilderMode,
+        isObjectDetail,
+      }) && (
         <FilterHeaderToggle
           className={cx(CS.ml2, CS.mr1)}
           query={question.query()}
@@ -137,13 +153,23 @@ export function ViewTitleHeaderRightSide(props) {
           onCollapse={onCollapseFilters}
         />
       )}
-      {FilterHeaderButton.shouldRender(props) && (
+      {FilterHeaderButton.shouldRender({
+        question,
+        queryBuilderMode,
+        isObjectDetail,
+        isActionListVisible,
+      }) && (
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
         />
       )}
-      {QuestionSummarizeWidget.shouldRender(props) && (
+      {QuestionSummarizeWidget.shouldRender({
+        question,
+        queryBuilderMode,
+        isObjectDetail,
+        isActionListVisible,
+      }) && (
         <QuestionSummarizeWidget
           className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
@@ -151,7 +177,10 @@ export function ViewTitleHeaderRightSide(props) {
           onCloseSummary={onCloseSummary}
         />
       )}
-      {QuestionNotebookButton.shouldRender(props) && (
+      {QuestionNotebookButton.shouldRender({
+        question,
+        isActionListVisible,
+      }) && (
         <ViewHeaderIconButtonContainer>
           <QuestionNotebookButton
             iconSize={16}
@@ -161,9 +190,10 @@ export function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {ToggleNativeQueryPreview.shouldRender(props) && (
-        <ToggleNativeQueryPreview question={question} />
-      )}
+      {ToggleNativeQueryPreview.shouldRender({
+        question,
+        queryBuilderMode,
+      }) && <ToggleNativeQueryPreview question={question} />}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
@@ -195,24 +225,31 @@ export function ViewTitleHeaderRightSide(props) {
         />
       )}
       {hasSaveButton && (
-        <SaveButton
-          role="button"
-          disabled={isSaveDisabled}
-          tooltip={{
-            tooltip: disabledSaveTooltip,
-            isEnabled: isSaveDisabled,
-            placement: "left",
-          }}
-          onClick={() => onOpenModal("save")}
+        <Tooltip
+          label={disabledSaveTooltip}
+          disabled={!isSaveDisabled}
+          position="left"
+          withinPortal
         >
-          {t`Save`}
-        </SaveButton>
+          <SaveButton
+            px="md"
+            py="sm"
+            data-disabled={isSaveDisabled || undefined}
+            variant="subtle"
+            onClick={event => {
+              if (isSaveDisabled) {
+                event.preventDefault();
+              }
+              onOpenModal("save");
+            }}
+          >{t`Save`}</SaveButton>
+        </Tooltip>
       )}
     </ViewHeaderActionPanel>
   );
 }
 
-function getDisabledSaveTooltip(isEditable) {
+function getDisabledSaveTooltip(isEditable: boolean) {
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }

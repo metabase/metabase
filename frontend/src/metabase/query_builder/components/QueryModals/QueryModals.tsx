@@ -14,6 +14,7 @@ import Questions from "metabase/entities/questions";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
+import type { ModalType } from "metabase/query_builder/components/QueryModals/types";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -33,7 +34,7 @@ import type {
   State,
 } from "metabase-types/store";
 
-import type { UpdateQuestionOpts } from "../actions/core/updateQuestion";
+import type { UpdateQuestionOpts } from "../../actions/core/updateQuestion";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
@@ -46,8 +47,6 @@ const mapStateToProps = (state: State, props: QueryModalsProps) => ({
     props,
   ),
 });
-
-type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
 interface QueryModalsProps {
   questionAlerts: Alert[];
