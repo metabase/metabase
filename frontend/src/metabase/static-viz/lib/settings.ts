@@ -43,12 +43,12 @@ const getColumnSettings = (
     : { column, ...column.settings };
 
   if (isNumber(column) && !isCoordinate(column)) {
+    fillWithDefaultValue(columnSettings, "currency", getDefaultCurrency());
     fillWithDefaultValue(
       columnSettings,
       "number_style",
       getDefaultNumberStyle(column, columnSettings),
     );
-    fillWithDefaultValue(columnSettings, "currency", getDefaultCurrency());
     fillWithDefaultValue(
       columnSettings,
       "currency_style",
