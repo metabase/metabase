@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
+import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type {
   ComputedVisualizationSettings,
@@ -99,13 +100,23 @@ export function getPieChartModel(
         throw Error(`"pie.colors" setting is not defined`);
       }
 
+      const colorKey = String(dimensionValue);
+      const storedColor = settings["pie.colors"][colorKey];
+      // sometimes viz settings are malformed and "pie.colors" does not contain
+      // a key for the current dimension value
+      const storedOrDefaultColor =
+        storedColor || getColorsForValues([colorKey])[colorKey];
+      // older viz settings can have hsl values that need to be converted since
+      // batik does not support hsl
+      const color = Color(storedOrDefaultColor).hex();
+
       return {
         key: dimensionValue ?? NULL_DISPLAY_VALUE,
         value: isNonPositive ? -1 * metricValue : metricValue,
         tooltipDisplayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
-        color: Color(settings["pie.colors"][String(dimensionValue)]).hex(),
+        color,
       };
     })
     .filter(slice => isNonPositive || slice.value >= 0)

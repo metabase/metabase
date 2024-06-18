@@ -34,11 +34,17 @@ export function computeStaticPieChartSettings(
     "pie.slice_threshold",
     getDefaultSliceThreshold(),
   );
-  fillWithDefaultValue(
-    settings,
-    "pie.colors",
-    getDefaultColors(rawSeries, settings), // TODO fix type error
-  );
+
+  // If there aleady is an object for the "pie.colors" setting, we still have to
+  // compute the default colors for the dimension values and merge it with the
+  // existing object, because sometimes the saved setting is missing entries for
+  // the current dimension values.
+  const defaultColors = getDefaultColors(rawSeries, settings);
+  if (settings["pie.colors"] != null) {
+    settings["pie.colors"] = { ...settings["pie.colors"], ...defaultColors };
+  } else {
+    settings["pie.colors"] = defaultColors;
+  }
 
   return settings;
 }
