@@ -183,7 +183,6 @@ export function ViewTitleHeaderRightSide({
       }) && (
         <ViewHeaderIconButtonContainer>
           <QuestionNotebookButton
-            iconSize={16}
             question={question}
             isShowingNotebook={isShowingNotebook}
             setQueryBuilderMode={setQueryBuilderMode}
