@@ -1,18 +1,19 @@
 import { parse } from "csv-parse/browser/esm/sync";
 import { stringify } from "csv-stringify/browser/esm/sync";
 
-export const getValuesText = (values: string[] | string[][] = []) => {
-  const res = stringify(values.map(toRow), {
+import type { ParameterValue } from "metabase-types/api";
+
+export const getValuesText = (
+  values: (string | ParameterValue)[] = [],
+): string => {
+  return stringify(values.map(toRow), {
     delimiter: ", ",
     quote: '"',
     escape: "\\",
   });
-  return res;
 };
 
-export const getStaticValues = (
-  value: string,
-): [string, string | undefined][] => {
+export const getStaticValues = (value: string): ParameterValue[] => {
   try {
     const strings = parse(value, {
       delimiter: [","],
@@ -32,7 +33,7 @@ export const getStaticValues = (
   }
 };
 
-function toRow(value: string | string[]): string[] {
+function toRow(value: string | ParameterValue): ParameterValue {
   if (Array.isArray(value)) {
     return value;
   }
@@ -44,7 +45,7 @@ type SelectItem = {
   label?: string;
 };
 
-function toValue(row: SelectItem): [string] | [string, string] {
+function toValue(row: SelectItem): ParameterValue {
   if (row.label) {
     return [row.value, row.label];
   }
