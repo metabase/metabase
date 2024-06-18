@@ -51,7 +51,7 @@ export function setAdHocFilter({
   if (condition) {
     cy.findByText(condition).click({ force: true });
   } else {
-    cy.findByText("Past").click({ force: true });
+    cy.findByText("Previous").click({ force: true });
   }
 
   if (quantity) {

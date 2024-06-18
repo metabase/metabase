@@ -97,6 +97,12 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
   ["X-ray", "Compare to the rest"].forEach(action => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+      if (action === "Compare to the rest") {
+        cy.log(
+          "Skipping Compare to the rest test because it takes 8 minutes in ci",
+        );
+        cy.skipOn(action === "Compare to the rest");
+      }
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
       cy.createNativeQuestion({
