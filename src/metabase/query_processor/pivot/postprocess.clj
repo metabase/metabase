@@ -44,8 +44,10 @@
     (concat (vec (remove nil? all-vals)) (when include-nil? [nil]))))
 
 (mu/defn ^:private pivot-row-titles
-  [{:keys [column-titles pivot-rows]} :- ::pivot-spec]
-  (mapv #(get column-titles %) pivot-rows))
+  [{:keys [column-titles pivot-rows pivot-cols]} :- ::pivot-spec]
+  (if (seq pivot-rows)
+    (mapv #(get column-titles %) pivot-rows)
+    [(get column-titles (first pivot-cols) "")]))
 
 (mu/defn ^:private pivot-measure-titles
   [{:keys [column-titles pivot-measures]} :- ::pivot-spec]
@@ -118,7 +120,9 @@
 
   `(get-in m [[row-idx1 row-idx2] [col-idx1 col-idx2]])`"
   [rows {:keys [pivot-rows pivot-cols pivot-measures] :as pivot-spec} :- ::pivot-spec]
-  (let [rows-groups (group-by (apply juxt (map (fn [k] #(get % k)) pivot-rows)) rows)
+  (let [rows-groups (if (seq pivot-rows)
+                      (group-by (apply juxt (map (fn [k] #(get % k)) pivot-rows)) rows)
+                      {[nil] rows})
         sub-rows-fn (fn [sub-rows]
                       (let [cols-groups     (col-grouper sub-rows pivot-spec)
                             padded-sub-rows (vec
@@ -201,8 +205,10 @@
    - Run the `totals-row-fn` to add the Row totals and Grand totals labels in the right spots."
   [rows {:keys [pivot-rows] :as pivot-spec} :- ::pivot-spec]
   (let [row-groups (row-grouper rows pivot-spec)
-        ks         (mapv vec (concat
-                              (apply math.combo/cartesian-product (map #(all-values-for rows % true) pivot-rows))))]
+        ks         (if (seq pivot-rows)
+                     (mapv vec (concat
+                                (apply math.combo/cartesian-product (map #(all-values-for rows % true) pivot-rows))))
+                     [[nil]])]
     (->> (map (fn [k] (vec (concat k (get row-groups k)))) ks)
          (filter #(< (count pivot-rows) (count %)))
          (map #(totals-row-fn % pivot-spec)))))

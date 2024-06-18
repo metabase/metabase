@@ -198,6 +198,27 @@
                   ["Totals for 2016-05-01T00:00:00Z" "" "391"]]
                  (take 6 result))))))))
 
+(deftest ^:parallel zero-row-pivot-tables-test
+  (testing "Pivot tables with zero rows download correctly."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    []
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :values  [[:aggregation 0]]}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                          csv/read-csv)]
+          (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
+                  ["Grand Totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
+                 result)))))))
+
 (deftest ^:parallel zero-column-multiple-meausres-pivot-tables-test
   (testing "Pivot tables with zero columns and multiple measures download correctly."
     (mt/dataset test-data
