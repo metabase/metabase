@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import type { SdkClickActionPluginsConfig } from "embedding-sdk";
@@ -11,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   navigateToNewCardInsideQB,
+  resetQB,
   updateQuestion,
 } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -60,11 +62,15 @@ export const InteractiveQuestionResult = ({
 
   const { isRunning: isQueryRunning } = uiControls;
 
-  if (isQuestionLoading || isQueryRunning || !queryResults) {
+  useUnmount(() => {
+    dispatch(resetQB());
+  });
+
+  if (isQuestionLoading || isQueryRunning) {
     return <Loader data-testid="loading-spinner" />;
   }
 
-  if (!question) {
+  if (!question || !queryResults) {
     return <SdkError message={t`Question not found`} />;
   }
 
