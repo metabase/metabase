@@ -335,6 +335,14 @@
            (throw (ex-info (str disabled-account-message)
                            {:status-code 401
                             :errors      {:account disabled-account-snippet}}))))))))
+(api/defendpoint POST "/cognito_auth"
+  "Login with Cognito Auth."
+  [:as {{:keys [token]} :body, :as request}]
+  {token ms/NonBlankString}
+  ;; Verify the token is valid with Google
+  (if throttling-disabled?
+    "Hello World!"
+    ))
 
 (defn- +log-all-request-failures [handler]
   (fn [request respond raise]
