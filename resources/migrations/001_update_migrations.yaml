@@ -8096,8 +8096,10 @@ databaseChangeLog:
               SET last_viewed_at = card_last_viewed_at.last_card_used_at
               FROM card_last_viewed_at
               WHERE report_dashboard.id = card_last_viewed_at.dashboard_id
-                AND report_dashboard.last_viewed_at IS NULL
-                OR report_dashboard.last_viewed_at < card_last_viewed_at.last_card_used_at;
+                AND (
+                  report_dashboard.last_viewed_at IS NULL
+                  OR report_dashboard.last_viewed_at < card_last_viewed_at.last_card_used_at
+                );
 
               UPDATE report_dashboard SET last_viewed_at = NOW() WHERE last_viewed_at IS NULL;
 
@@ -8117,6 +8119,17 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: last_viewed_at
             columnDataType: ${timestamp_type}
+
+
+  - changeSet:
+      id: v51.2024-06-18T12:13:03
+      author: johnswanson
+      comment: Add default value to report_dashboard.last_viewed_at
+      changes:
+        - addDefaultValue:
+            defaultValueComputed: current_timestamp
+            tableName: report_dashboard
+            columnName: last_viewed_at
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
