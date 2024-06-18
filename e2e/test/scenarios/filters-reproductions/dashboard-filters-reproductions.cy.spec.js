@@ -2785,6 +2785,86 @@ describe("issue 44231", () => {
   });
 });
 
+describe("44288", () => {
+  const modelDetails = {
+    name: "Model",
+    type: "model",
+    native: {
+      query: "SELECT * FROM ORDERS",
+    },
+  };
+
+  const parameterDetails = {
+    name: "Number",
+    slug: "number",
+    id: "5a425670",
+    type: "number/=",
+    sectionId: "number",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  function getModelDashcardDetails(dashboard, card) {
+    return {
+      dashboard_id: dashboard.id,
+      card_id: card.id,
+      parameter_mappings: [
+        {
+          card_id: card.id,
+          parameter_id: parameterDetails.id,
+          target: [
+            "dimension",
+            ["field", "TOTAL", { "base-type": "type/Integer" }],
+          ],
+        },
+      ],
+    };
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to remove a broken mapping to a native model on a dashboard (metabase#44288)", () => {
+    createNativeQuestion(modelDetails).then(({ body: card }) => {
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [getModelDashcardDetails(dashboard, card)],
+        });
+        visitDashboard(dashboard.id);
+      });
+    });
+
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText(parameterDetails.name)
+      .click();
+    getDashboardCard().within(() => {
+      cy.button(/Unknown Field/)
+        .icon("close")
+        .click();
+      cy.findByText(/Models are data sources/).should("be.visible");
+      cy.findByText("Select…").should("not.exist");
+      cy.button(/Unknown Field/).should("not.exist");
+    });
+    saveDashboard();
+
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText(parameterDetails.name)
+      .click();
+    getDashboardCard().within(() => {
+      cy.findByText(/Models are data sources/).should("be.visible");
+      cy.findByText("Select…").should("not.exist");
+      cy.button(/Unknown Field/).should("not.exist");
+    });
+  });
+});
+
 describe("44047", () => {
   const questionDetails = {
     name: "Question",
