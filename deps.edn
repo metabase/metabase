@@ -665,9 +665,17 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
-  ;; the following aliases are convenience for running tests against certain parts of the codebase.
-  ;;
-  ;;   clj -X:dev:ee:ee-dev:test:test/mbql
+  ;; Migrate CLI:
+  ;;    clojure -M:migrate <command>
+  ;; E.g.
+  ;;    clojure -M:migrate up                       ;; migrate up to the latest
+  ;;    clojure -M:migrate rollback count 2         ;; rollback 2 migrations
+  ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
+  ;;    clojure -M:migrate status                   ;; print the latest migration id
+  :migrate
+  {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
+   :extra-paths ["dev/src"]
+   :main-opts   ["-m" "dev.migrate"]}
 
   ;; run tests against MLv2. Very fast since this is almost all ^:parallel
   :test/mlv2

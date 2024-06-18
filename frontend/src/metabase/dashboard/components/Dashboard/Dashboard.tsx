@@ -183,7 +183,7 @@ function DashboardInner(props: DashboardProps) {
     isEditing,
     isFullscreen,
     isNavigatingBackToDashboard,
-    isNightMode,
+    isNightMode = false,
     isSharing,
     onRefreshPeriodChange,
     parameterValues,
