@@ -80,10 +80,6 @@
   "additionalProperties": true,
   "type": "object",
   "required": [
-    "event",
-    "size_mb",
-    "num_columns",
-    "num_rows",
-    "generated_columns"
+    "event"
   ]
 }
