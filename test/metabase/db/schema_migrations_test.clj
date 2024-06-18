@@ -2190,7 +2190,7 @@
   ;; If a dashboard contains any cards, we know that the dashboard can't have been viewed since the most recent usage
   ;; of any cards that it contains. If it doesn't contain any cards, we fall back to `NOW()`.
   (testing "`last_viewed_at` is set to the most recent usage of cards in the dashboard"
-    (impl/test-migrations ["v51.2024-06-14T06:45:35" "v51.2024-06-14T09:15:36"] [migrate!]
+    (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
       ;; this setup is painful, but:
       ;; - create a database and user-id as prerequisites
       ;; - create two cards with different `last_used_at` dates
@@ -2238,7 +2238,7 @@
         (is (= (str "2022-11-20T02:09Z")
                (str (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))
   (testing "set to NOW() when there are no cards"
-    (impl/test-migrations ["v51.2024-06-14T06:45:35" "v51.2024-06-14T09:15:36"] [migrate!]
+    (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
       ;; - create a user-id as a prerequisite
       ;; - create a dashboard containing no cards
       ;; - run the migration, and
@@ -2263,7 +2263,7 @@
               :h2 ["SELECT (DATEDIFF(SECOND, NOW(), last_viewed_at) < 5) AS diff FROM report_dashboard WHERE id = ?"
                    dashboard-id]))))))))
   (testing "`last_viewed_at` is set to the most recent available from `recent_views` or `card.last_used_at`"
-    (impl/test-migrations ["v51.2024-06-14T06:45:35" "v51.2024-06-14T09:15:36"] [migrate!]
+    (impl/test-migrations ["v51.2024-06-13T11:22:39" "v51.2024-06-18T12:13:03"] [migrate!]
       ;; this setup is painful, but:
       ;; - create a database and user-id as prerequisites
       ;; - create two cards with different `last_used_at` dates
