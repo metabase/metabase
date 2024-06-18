@@ -53,7 +53,7 @@ export const DelayedLoadingAndErrorWrapper = ({
     return <>{children}</>;
   }
   if (!showWrapper) {
-    // make tests aware that things are loading and we need to wait
+    // make tests aware that things are loading
     const blankComponent = <span data-testid="loading-spinner" />;
     return blankComponent;
   }

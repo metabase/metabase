@@ -35,7 +35,7 @@ export const DelayedLoadingSpinner = ({
   });
 
   if (!show) {
-    // make tests aware that things are loading and we need to wait
+    // make tests aware that things are loading
     return <span data-testid="loading-spinner" />;
   }
 
