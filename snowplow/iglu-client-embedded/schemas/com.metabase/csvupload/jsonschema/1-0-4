@@ -40,19 +40,28 @@
     },
     "size_mb": {
       "description": "File size of the CSV in megabytes",
-      "type": "number",
+      "type": [
+        "number",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     },
     "num_columns": {
       "description": "Number of columns in the CSV file (does not include generated columns)",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     },
     "num_rows": {
       "description": "Number of rows in the CSV",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     },
