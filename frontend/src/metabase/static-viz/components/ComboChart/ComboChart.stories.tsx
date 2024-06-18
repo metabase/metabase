@@ -64,6 +64,20 @@ LineLogYScale.args = {
   renderingContext,
 };
 
+export const GoalLineLogYScale = Template.bind({});
+GoalLineLogYScale.args = {
+  rawSeries: data.goalLineLogYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const GoalLinePowYScale = Template.bind({});
+GoalLinePowYScale.args = {
+  rawSeries: data.goalLinePowYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LineLogYScaleNegative = Template.bind({});
 LineLogYScaleNegative.args = {
   rawSeries: data.lineLogYScaleNegative as any,
