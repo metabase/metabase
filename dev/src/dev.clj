@@ -55,7 +55,7 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
-   [dev.migration :as dev.migration]
+   [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [hashp.core :as hashp]
    [honey.sql :as sql]
@@ -102,7 +102,7 @@
   pprint-sql]
  [dev.explain
   explain-query]
- [dev.migration
+ [dev.migrate
   migrate!
   rollback!]
  [model-tracking
