@@ -1,3 +1,4 @@
+# Config is in .github/auto_request_review.yml
 name: Auto Request Review
 
 on:

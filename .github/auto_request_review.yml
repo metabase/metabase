@@ -1,4 +1,4 @@
-# The reviewers configuration for auto request review workflows
+# The reviewers configuration for the auto_request_review workflow
 # See https://github.com/necojackarc/auto-request-review/tree/master?tab=readme-ov-file#reviewers-configuration
 # for the spec
 
@@ -6,7 +6,7 @@ files:
   # migrations related files
   'resources/**':
     - qnkhuat
-    - team:core-backend-components
+      #- team:core-backend-components
 
 options:
   ignore_draft: true
