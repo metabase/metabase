@@ -13,13 +13,13 @@ describe("Static Embed Setup phase - EE, no token", () => {
       resourceType: "question" as const,
     },
   ])("$resourceType", ({ resourceType }) => {
-    describe("Appearance tab", () => {
+    describe("Look and Feel tab", () => {
       it("should not render Font selector", async () => {
         await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
         });
 
@@ -33,7 +33,7 @@ describe("Static Embed Setup phase - EE, no token", () => {
       it('should render "Powered by Metabase" banner caption', async () => {
         await setup({
           props: {},
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
         });
 

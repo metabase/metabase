@@ -70,7 +70,7 @@ features.forEach(feature => {
         .and("contain", "JSX");
 
       modal().within(() => {
-        cy.findByRole("tab", { name: "Appearance" }).click();
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // No download button for dashboards even for pro/enterprise users metabase#23477
         cy.findByLabelText(
@@ -113,7 +113,7 @@ features.forEach(feature => {
             getEmbeddingJsCode({ type: "question", id: ORDERS_QUESTION_ID }),
           );
 
-        cy.findByRole("tab", { name: "Appearance" }).click();
+        cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // set transparent background metabase#23477
         cy.findByText("Transparent").click();

@@ -153,7 +153,7 @@ export function openEmbedModalFromMenu() {
 /**
  * Open Static Embedding setup modal
  * @param {object} params
- * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
+ * @param {("overview"|"parameters"|"lookAndFeel")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
  */
@@ -180,7 +180,7 @@ export function openStaticEmbeddingModal({
       const tabKeyToNameMap = {
         overview: "Overview",
         parameters: "Parameters",
-        appearance: "Appearance",
+        lookAndFeel: "Look and Feel",
       };
 
       cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();

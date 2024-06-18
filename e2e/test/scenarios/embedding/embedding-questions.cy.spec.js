@@ -263,12 +263,12 @@ describeEE("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
 
-        openStaticEmbeddingModal({ activeTab: "appearance" });
+        openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
         );
-        cy.findByLabelText("Playing with appearance options")
+        cy.findByLabelText("Customizing look and feel")
           .should("not.contain", "Download data")
           .and("not.contain", "Enable users to download data from this embed");
 
@@ -323,7 +323,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         visitQuestion(questionId);
 
         openStaticEmbeddingModal({
-          activeTab: "appearance",
+          activeTab: "lookAndFeel",
           acceptTerms: false,
         });
 

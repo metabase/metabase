@@ -1,9 +1,8 @@
-import type { ChangeEvent } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
@@ -17,7 +16,14 @@ import {
   getUpgradeUrl,
 } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
+import {
+  Divider,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  Text,
+} from "metabase/ui";
 
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
@@ -36,7 +42,7 @@ export interface AppearanceSettingsProps {
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
 }
 
-export const AppearanceSettings = ({
+export const LookAndFeelSettings = ({
   resourceType,
   displayOptions,
   onChangeDisplayOptions,
@@ -59,26 +65,56 @@ export const AppearanceSettings = ({
   );
   const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
-  const fontControlLabelId = useUniqueId("display-option");
   const downloadDataId = useUniqueId("download-data");
 
   return (
     <>
       <StaticEmbedSetupPaneSettingsContentSection
-        title={t`Customizing your embed’s appearance`}
-      >
-        <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
-          <ExternalLink
-            key="doc"
-            href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
-          >{t`documentation`}</ExternalLink>
-        )} for more.`}</Text>
-      </StaticEmbedSetupPaneSettingsContentSection>
-      <StaticEmbedSetupPaneSettingsContentSection
-        title={t`Playing with appearance options`}
-        mt="2rem"
+        title={t`Customizing look and feel`}
       >
         <Stack spacing="1rem">
+          <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
+            <ExternalLink
+              key="doc"
+              href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
+            >{t`documentation`}</ExternalLink>
+          )} for more.`}</Text>
+
+          {canWhitelabel ? (
+            <Select
+              label={
+                <Text fw="bold" mb="0.25rem" lh="1rem">
+                  Font
+                </Text>
+              }
+              value={displayOptions.font}
+              data={[
+                {
+                  label: t`Use instance font`,
+                  // @ts-expect-error Mantine v6 and v7 both expect value to be a string
+                  value: null,
+                },
+                ...availableFonts?.map(font => ({
+                  label: font,
+                  value: font,
+                })),
+              ]}
+              onChange={value => {
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  font: value,
+                });
+              }}
+            />
+          ) : (
+            <Text>{jt`You can change the font with ${(
+              <ExternalLink
+                key="fontPlan"
+                href={upgradePageUrl}
+              >{t`a paid plan`}</ExternalLink>
+            )}.`}</Text>
+          )}
+
           <DisplayOptionSection title={t`Background`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
@@ -96,21 +132,7 @@ export const AppearanceSettings = ({
           </DisplayOptionSection>
 
           <Switch
-            label={getTitleLabel(resourceType)}
-            labelPosition="left"
-            size="sm"
-            variant="stretch"
-            checked={displayOptions.titled}
-            onChange={e =>
-              onChangeDisplayOptions({
-                ...displayOptions,
-                titled: e.target.checked,
-              })
-            }
-          />
-
-          <Switch
-            label={t`Border`}
+            label={getBorderTitle(resourceType)}
             labelPosition="left"
             size="sm"
             variant="stretch"
@@ -123,39 +145,19 @@ export const AppearanceSettings = ({
             }
           />
 
-          <DisplayOptionSection title={t`Font`} titleId={fontControlLabelId}>
-            {canWhitelabel ? (
-              <Select
-                value={displayOptions.font}
-                options={[
-                  {
-                    name: t`Use instance font`,
-                    value: null,
-                  },
-                  ...availableFonts?.map(font => ({
-                    name: font,
-                    value: font,
-                  })),
-                ]}
-                buttonProps={{
-                  "aria-labelledby": fontControlLabelId,
-                }}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    font: e.target.value,
-                  });
-                }}
-              />
-            ) : (
-              <Text>{jt`You can change the font with ${(
-                <ExternalLink
-                  key="fontPlan"
-                  href={upgradePageUrl}
-                >{t`a paid plan`}</ExternalLink>
-              )}.`}</Text>
-            )}
-          </DisplayOptionSection>
+          <Switch
+            label={getTitleLabel(resourceType)}
+            labelPosition="left"
+            size="sm"
+            variant="stretch"
+            checked={displayOptions.titled}
+            onChange={e =>
+              onChangeDisplayOptions({
+                ...displayOptions,
+                titled: e.target.checked,
+              })
+            }
+          />
 
           {canWhitelabel && resourceType === "question" && (
             // We only show the "Download Data" toggle if the users are pro/enterprise
@@ -182,6 +184,7 @@ export const AppearanceSettings = ({
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
+
       {!canWhitelabel && (
         <>
           <Divider my="2rem" />
@@ -213,4 +216,12 @@ function getTitleLabel(resourceType: EmbedResourceType) {
   }
 
   return null;
+}
+
+function getBorderTitle(resourceType: EmbedResourceType) {
+  return match(resourceType)
+    .returnType<string>()
+    .with("dashboard", () => t`Dashboard border`)
+    .with("question", () => t`Question border`)
+    .exhaustive();
 }

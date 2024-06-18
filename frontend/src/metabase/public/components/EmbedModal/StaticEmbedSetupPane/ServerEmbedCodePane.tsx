@@ -177,7 +177,7 @@ function getTitle({
       : undefined;
   }
 
-  if (variant === "appearance") {
+  if (variant === "lookAndFeel") {
     return hasAppearanceCodeDiff
       ? t`Here’s the code you’ll need to alter:`
       : undefined;

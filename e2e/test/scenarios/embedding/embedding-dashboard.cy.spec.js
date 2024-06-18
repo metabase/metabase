@@ -628,7 +628,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     cy.wait("@previewEmbed");
 
     modal().within(() => {
-      cy.findByRole("tab", { name: "Appearance" }).click();
+      cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard theme");
@@ -663,7 +663,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         .findByTestId("embed-frame")
         .should("have.css", "border-top-width", "1px");
       // We're getting an input element which is 0x0 in size
-      cy.findByLabelText("Border").click({ force: true });
+      cy.findByLabelText("Dashboard border").click({ force: true });
       getIframeBody()
         .findByTestId("embed-frame")
         .should("have.css", "border-top-width", "0px");
