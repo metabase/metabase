@@ -12,6 +12,7 @@ import hideTotal from "./hide-total.json";
 import largeMinimumSlicePercentage from "./large-min-slice-percentage.json";
 import longDimensionName from "./long-dimension-name.json";
 import missingCurrencyFormatting2 from "./missing-currency-formatting-2.json";
+import missingCurrencyFormatting3 from "./missing-currency-formatting-3.json";
 import missingCurrencyFormatting44086 from "./missing-currency-formatting-44086.json";
 import mixedPostiiveNegative from "./mixed-positive-negative.json";
 import nullDimension from "./null-dimension.json";
@@ -56,4 +57,5 @@ export const data = {
   tinySlicesDisappear43766,
   missingCurrencyFormatting44086,
   missingCurrencyFormatting2,
+  missingCurrencyFormatting3,
 };
