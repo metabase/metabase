@@ -1,14 +1,19 @@
-import { useLoadParameterValuesQuery } from "metabase/api";
+import { useGetParameterValuesQuery } from "metabase/api";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
+  getNonVirtualFields,
   getFields,
   hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
-import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  normalizeParameter,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { ParameterValue } from "metabase-types/api";
 
 type FormattedParameterValueProps = {
   parameter: UiParameter;
@@ -21,8 +26,11 @@ function FormattedParameterValue({
   value,
   placeholder,
 }: FormattedParameterValueProps) {
-  const { data, isLoading } = useLoadParameterValuesQuery(
-    { parameter },
+  const { data, isLoading } = useGetParameterValuesQuery(
+    {
+      parameter: normalizeParameter(parameter),
+      field_ids: getNonVirtualFields(parameter).map(field => Number(field.id)),
+    },
     {
       skip:
         !parameter ||
@@ -42,7 +50,9 @@ function FormattedParameterValue({
 
   const first = Array.isArray(value) ? value[0] : value;
   const values = parameter?.values_source_config?.values ?? data?.values;
-  const displayValue = values?.find(v => v[0] === first?.toString())?.[1];
+  const displayValue = values?.find(
+    value => valueToString(value) === first?.toString(),
+  );
 
   if (
     isFieldFilterUiParameter(parameter) &&
@@ -53,12 +63,21 @@ function FormattedParameterValue({
       <ParameterFieldWidgetValue
         fields={getFields(parameter)}
         value={value}
-        displayValue={displayValue}
+        displayValue={valueToString(displayValue)}
       />
     );
   }
 
   return <span>{formatParameterValue(value, parameter)}</span>;
+}
+
+function valueToString(
+  value: string | ParameterValue | undefined,
+): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0]?.toString();
+  }
+  return value?.toString();
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
