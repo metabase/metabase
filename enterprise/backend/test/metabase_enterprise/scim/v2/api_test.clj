@@ -37,6 +37,10 @@
     (testing "SCIM endpoints require a valid SCIM API key passed in the authorization header"
       (scim-client :get 200 "ee/scim/v2/Users"))
 
+    (testing "SCIM endpoints cannot be used if SCIM is not enabled"
+      (mt/with-temporary-setting-values [scim-enabled false]
+        (scim-client :get 401 "ee/scim/v2/Users")))
+
     (testing "The SCIM API key cannot be used for non-SCIM endpoints"
       (scim-client :get 401 "user"))
 
