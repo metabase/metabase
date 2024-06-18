@@ -130,19 +130,25 @@ export const LookAndFeelSettings = ({
             />
           </DisplayOptionSection>
 
-          <Switch
-            label={getBackgroundLabel(resourceType)}
-            labelPosition="left"
-            size="sm"
-            variant="stretch"
-            checked={displayOptions.background}
-            onChange={e =>
-              onChangeDisplayOptions({
-                ...displayOptions,
-                background: e.target.checked,
-              })
-            }
-          />
+          {/**
+           * We don't offer background options for question embeds because questions are displayed
+           * as a single card, and we want to always show a solid card background on dashboards embeds.
+           */}
+          {resourceType === "dashboard" && (
+            <Switch
+              label={t`Dashboard background`}
+              labelPosition="left"
+              size="sm"
+              variant="stretch"
+              checked={displayOptions.background}
+              onChange={e =>
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  background: e.target.checked,
+                })
+              }
+            />
+          )}
 
           <Switch
             label={getBorderLabel(resourceType)}
@@ -218,14 +224,6 @@ export const LookAndFeelSettings = ({
     </>
   );
 };
-
-function getBackgroundLabel(resourceType: EmbedResourceType) {
-  return match(resourceType)
-    .returnType<string>()
-    .with("dashboard", () => t`Dashboard background`)
-    .with("question", () => t`Question background`)
-    .exhaustive();
-}
 
 function getBorderLabel(resourceType: EmbedResourceType) {
   return match(resourceType)
