@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import { getEditingParameter } from "metabase/dashboard/selectors";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 
@@ -75,15 +76,15 @@ const getAutoConnectedUndos = createSelector([state => state.undo], undos => {
 export const getIsRecentlyAutoConnectedDashcard = createSelector(
   [
     getAutoConnectedUndos,
+    getEditingParameter,
     (_state, props) => props.dashcard.id,
-    (_state, props) => props.editingParameter?.id,
   ],
-  (undos, dashcardId, parameterId) => {
+  (undos, parameter, dashcardId) => {
     const isRecentlyAutoConnected = undos.some(undo => {
       const isDashcardAutoConnected =
         undo.extraInfo?.dashcardIds?.includes(dashcardId);
       const isSameParameterSelected = undo.extraInfo?.parameterId
-        ? undo.extraInfo.parameterId === parameterId
+        ? undo.extraInfo.parameterId === parameter?.id
         : true;
 
       return isDashcardAutoConnected && isSameParameterSelected;

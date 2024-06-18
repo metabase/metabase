@@ -386,7 +386,6 @@ export function DashCardCardParameterMapper({
           /* bottom prop is negative as we wanted to keep layout not shifted on hint */
           return (
             <Flex
-              opacity={0}
               mt="sm"
               align="center"
               pos="absolute"

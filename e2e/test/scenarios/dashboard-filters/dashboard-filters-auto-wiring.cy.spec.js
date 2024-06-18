@@ -44,7 +44,7 @@ const cards = [
     row: 0,
     col: 5,
     size_x: 5,
-    size_y: 4,
+    size_y: 5,
   },
 ];
 
@@ -89,8 +89,8 @@ describe("dashboard filters auto-wiring", () => {
       cy.log("verify auto-connect info is shown");
 
       getDashboardCard(1).within(() => {
-        cy.findByText("Auto-connected").should("exist");
-        cy.icon("sparkles").should("exist");
+        cy.findByText("Auto-connected").should("be.visible");
+        cy.icon("sparkles").should("be.visible");
       });
 
       // do not wait for timeout, but close the toast
