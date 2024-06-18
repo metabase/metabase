@@ -1,0 +1,14 @@
+# The reviewers configuration for auto request review workflows
+# See https://github.com/necojackarc/auto-request-review/tree/master?tab=readme-ov-file#reviewers-configuration
+# for the spec
+
+files:
+  # migrations related files
+  'resources/**':
+    - team:core-backend-components
+
+options:
+  ignore_draft: true
+  ignored_keywords:
+    - DO NOT REVIEW
+  enable_group_assignment: false
