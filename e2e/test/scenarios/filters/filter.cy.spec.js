@@ -521,7 +521,7 @@ describe("scenarios > question > filter", () => {
     popover().within(() => {
       cy.findByText("Created At").click();
       cy.findByText("Relative dates…").click();
-      cy.findByText("Past").click();
+      cy.findByText("Previous").click();
       cy.findByText(/^Include/).click();
       cy.button("Add filter").click();
     });
