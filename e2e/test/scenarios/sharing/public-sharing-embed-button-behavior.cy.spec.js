@@ -469,7 +469,7 @@ describe("#39152 sharing an unsaved question", () => {
 
           cy.log("Assert copying code in Appearance tab");
           modal().within(() => {
-            cy.findByRole("tab", { name: "Appearance" }).click();
+            cy.findByRole("tab", { name: "Look and Feel" }).click();
 
             cy.findByText("Ruby").click();
           });
@@ -480,11 +480,12 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByLabelText("Dark").click({ force: true });
             if (resource === "dashboard") {
               cy.findByLabelText("Dashboard title").click({ force: true });
+              cy.findByLabelText("Dashboard border").click({ force: true });
             }
             if (resource === "question") {
               cy.findByLabelText("Question title").click({ force: true });
+              cy.findByLabelText("Question border").click({ force: true });
             }
-            cy.findByLabelText("Border").click({ force: true });
           });
 
           cy.findByTestId("embed-backend")
@@ -581,7 +582,7 @@ describe("#39152 sharing an unsaved question", () => {
 
             cy.log("Assert copying code in Appearance tab");
             modal().within(() => {
-              cy.findByRole("tab", { name: "Appearance" }).click();
+              cy.findByRole("tab", { name: "Look and Feel" }).click();
 
               cy.findByText("Ruby").click();
             });
@@ -592,11 +593,12 @@ describe("#39152 sharing an unsaved question", () => {
               cy.findByLabelText("Dark").click({ force: true });
               if (resource === "dashboard") {
                 cy.findByLabelText("Dashboard title").click({ force: true });
+                cy.findByLabelText("Dashboard border").click({ force: true });
               }
               if (resource === "question") {
                 cy.findByLabelText("Question title").click({ force: true });
+                cy.findByLabelText("Question border").click({ force: true });
               }
-              cy.findByLabelText("Border").click({ force: true });
               cy.findByLabelText("Font").click();
             });
 
