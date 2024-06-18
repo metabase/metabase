@@ -47,7 +47,7 @@
           query-field-rows                    (concat
                                                (map (partial id->row true) explicit)
                                                (map (partial id->row false) implicit))]
-      ;; when response is `nil`, it's a disabled parser, not unknown columns
+      ;; when the response is `nil`, it's a disabled parser, not unknown columns
       (when (some? res)
         (t2/with-transaction [_conn]
           (let [existing            (t2/select :model/QueryField :card_id card-id)
@@ -57,7 +57,7 @@
                                                 {:id-fn      :field_id
                                                  :to-compare #(dissoc % :id :card_id :field_id)})]
             (when (seq to-delete)
-              ;; this delete seems to break transaction (implicit commit or something) on MySQL, and this `diff`
+              ;; this deletion seems to break transaction (implicit commit or something) on MySQL, and this `diff`
               ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
               ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
               ;; executed unconditionally on every query change.

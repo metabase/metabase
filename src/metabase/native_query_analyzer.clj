@@ -149,9 +149,9 @@
   (when (and (active?)
              (:native query))
     (let [db-id        (:database query)
-          sql-string   (:query (nqa.sub/replace-tags query))
           driver       (driver.u/database->driver db-id)
           macaw-opts   (nqa.impl/macaw-options driver)
+          sql-string   (:query (nqa.sub/replace-tags query))
           parsed-query (macaw/query->components (macaw/parsed-query sql-string) macaw-opts)
           explicit-ids (explicit-field-ids-for-query parsed-query db-id)
           implicit-ids (set/difference
