@@ -2,16 +2,18 @@
 # See https://github.com/necojackarc/auto-request-review/tree/master?tab=readme-ov-file#reviewers-configuration
 # for the spec
 
+reviewers:
+  groups:
+    migration-owners:
+      - qnkhuat
+      - calherries
+
 files:
   # migrations related files
   'resources/migrations/**':
-    - qnkhuat
-    - piranha
-      #- team:core-backend-components
+    - migration-owners
   'src/metabase/db/custom_migrations.clj':
-    - qnkhuat
-    - piranha
-      #- team:core-backend-components
+    - migration-owners
 
 options:
   ignore_draft: true
