@@ -161,11 +161,13 @@ export const EmbedFrame = ({
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
-      background={checkNotNull(background)}
       className={cx(
         EmbedFrameS.EmbedFrame,
         className,
         EMBED_THEME_CLASSES(theme),
+        {
+          [EmbedFrameS.NoBackground]: !background,
+        },
       )}
       data-testid="embed-frame"
       data-embed-theme={theme}
@@ -206,6 +208,7 @@ export const EmbedFrame = ({
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             embedFrameTheme={theme}
+            background={checkNotNull(background)}
             hasScroll={hasInnerScroll}
             isSticky={isParameterPanelSticky}
             data-testid="dashboard-parameters-widget-container"

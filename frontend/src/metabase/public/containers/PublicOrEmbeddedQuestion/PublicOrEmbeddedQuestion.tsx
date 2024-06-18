@@ -199,6 +199,8 @@ export const PublicOrEmbeddedQuestion = ({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
+      // Since this isn't configurable, we always set the background to true
+      background
       bordered={bordered}
       titled={titled}
       theme={theme}

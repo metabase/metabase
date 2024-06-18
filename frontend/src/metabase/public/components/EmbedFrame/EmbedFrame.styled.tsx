@@ -15,11 +15,7 @@ import {
 export const Root = styled.div<{
   hasScroll: boolean;
   isBordered?: boolean;
-  background: boolean;
 }>`
-  /* Whether the dashboard embed background is transparent */
-  --mb-color-embed-bg-override: ${({ background }) =>
-    !background && "transparent"}
   display: flex;
   flex-direction: column;
   overflow: auto;
@@ -127,6 +123,7 @@ function getParameterPanelBorderColor(theme?: DisplayTheme) {
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   embedFrameTheme?: DisplayTheme;
+  background: boolean;
   hasScroll: boolean;
   isSticky: boolean;
 }>`
@@ -149,9 +146,10 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       width: 100%;
       z-index: 3;
 
-      background-color: ${getParameterPanelBackgroundColor(
-        props.embedFrameTheme,
-      )};
+      background-color: var(
+        --mb-color-embed-bg-color-override,
+        ${getParameterPanelBackgroundColor(props.embedFrameTheme)}
+      );
     `}
 `;
 

@@ -2,9 +2,17 @@ body {
   background-color: transparent;
 }
 
+.NoBackground {
+  --mb-color-embed-bg-color-override: transparent;
+}
+
+.ThemeNight.NoBackground {
+  --mb-color-embed-font-color-override: var(--mb-color-text-dark);
+}
+
 .EmbedFrame {
   background-color: var(
-    --mb-color-embed-bg-override,
+    --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
   );
 }
@@ -13,20 +21,29 @@ body {
 .EmbedFrameFooter {
   color: var(--mb-color-text-dark);
   background-color: var(
-    --mb-color-embed-bg-override,
+    --mb-color-embed-bg-color-override,
     var(--mb-color-bg-dashboard)
   );
 }
 
 .ThemeNight.EmbedFrame {
-  background-color: var(--mb-color-embed-bg-override, var(--mb-color-bg-black));
+  background-color: var(
+    --mb-color-embed-bg-color-override,
+    var(--mb-color-bg-black)
+  );
   border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
-  color: var(--mb-color-text-white-alpha-85);
-  background-color: var(--mb-color-embed-bg-override, var(--mb-color-bg-black));
+  color: var(
+    --mb-color-embed-font-color-override,
+    var(--mb-color-text-white-alpha-85)
+  );
+  background-color: var(
+    --mb-color-embed-bg-color-override,
+    var(--mb-color-bg-black)
+  );
   border-color: var(--mb-color-bg-dark);
 }
 
