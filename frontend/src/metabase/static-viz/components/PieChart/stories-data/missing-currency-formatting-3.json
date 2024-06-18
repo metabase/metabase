@@ -1,0 +1,315 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": "n/a",
+      "archived": false,
+      "view_count": 69,
+      "collection_position": null,
+      "table_id": 37108,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "description": "a description",
+          "database_type": "text",
+          "semantic_type": "type/Category",
+          "table_id": 37108,
+          "name": "some_column_name",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "some_column_name",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 660791,
+          "position": 10,
+          "visibility_type": "normal",
+          "display_name": "Some Display Name",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0.8335
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0.0,
+                "percent-url": 0.0,
+                "percent-email": 0.0,
+                "percent-state": 0.0,
+                "average-length": 0.942
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Some Value",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0
+        }
+      ],
+      "creator": {
+        "email": "person@metabase.com",
+        "first_name": "person",
+        "last_login": "2024-05-28T14:42:53.577247Z",
+        "is_qbnewb": false,
+        "is_superuser": false,
+        "id": 400,
+        "last_name": "person",
+        "date_joined": "2024-03-28T15:51:58.108301Z",
+        "common_name": "person person"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 26,
+      "enable_embedding": false,
+      "collection_id": 1615,
+      "query_type": "query",
+      "name": "Question Name",
+      "last_query_start": "2024-06-18T19:39:58.793333Z",
+      "dashboard_count": 1,
+      "last_used_at": "2024-06-18T19:40:00.310288Z",
+      "type": "question",
+      "average_query_time": 1684.6779661016949153,
+      "creator_id": 400,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-18T19:40:00.310288Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 26,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                "a_value",
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "some_column_name",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "order-by": [["desc", ["aggregation", 0]]],
+          "source-table": "card__6736",
+          "filter": [
+            "and",
+            [
+              "not-null",
+              [
+                "field",
+                "some_column_name",
+                {
+                  "base-type": "type/Text"
+                }
+              ]
+            ],
+            [
+              "time-interval",
+              [
+                "field",
+                "created_at",
+                {
+                  "base-type": "type/DateTimeWithLocalTZ"
+                }
+              ],
+              -8,
+              "year"
+            ]
+          ]
+        }
+      },
+      "id": 17846,
+      "parameter_mappings": [],
+      "display": "pie",
+      "archived_directly": false,
+      "entity_id": "xt-OVQ2DZew9swcsWgL2J",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 400,
+        "email": "person@metabase.com",
+        "first_name": "person",
+        "last_name": "person",
+        "timestamp": "2024-05-21T19:32:55.358174Z"
+      },
+      "visualization_settings": {
+        "table.pivot": false,
+        "pie.percent_visibility": "inside",
+        "pie.slice_threshold": 1,
+        "pie.show_legend": true
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "some_collection",
+        "archive_operation_id": null,
+        "name": "some_collection",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 1615,
+        "archived_directly": null,
+        "entity_id": "jeWy-tt_d2zwSL1lAaMe5",
+        "location": "/347/349/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-05-16T14:34:05.99969Z"
+      },
+      "metabase_version": "vUNKNOWN (c059690)",
+      "parameters": [],
+      "created_at": "2024-05-17T07:16:14.203001Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": true
+    },
+    "data": {
+      "rows": [
+        ["A", 3812367.75],
+        ["B", 3241593],
+        ["C", 2394422],
+        ["D", 930760],
+        ["E", 341344]
+      ],
+      "results_timezone": "US/Pacific",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "",
+            "semantic_type": "type/Category",
+            "name": "some_column_name",
+            "field_ref": [
+              "field",
+              "some_column_name",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 660791,
+            "visibility_type": "normal",
+            "display_name": "Some Display Name",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0.8335
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 0.942
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Sum of Some Value",
+            "semantic_type": "type/Currency",
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 341344,
+                  "q1": 783406,
+                  "q3": 3384286.6875,
+                  "max": 3812367.75,
+                  "sd": 1480911.241898375,
+                  "avg": 2144097.35
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "US/Pacific",
+      "format-rows?": true,
+      "cols": [
+        {
+          "description": "",
+          "database_type": "text",
+          "semantic_type": "type/Category",
+          "table_id": 37108,
+          "name": "some_column_name",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "some_column_name",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 660791,
+          "position": 10,
+          "visibility_type": "normal",
+          "display_name": "Some Display Name",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0.8335
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 0.942
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Some Value",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null,
+      "model": true
+    }
+  }
+]
