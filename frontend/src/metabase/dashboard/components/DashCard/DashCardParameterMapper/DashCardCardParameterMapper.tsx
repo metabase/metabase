@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { connect } from "react-redux";
-import { usePrevious } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,7 +21,7 @@ import ParameterTargetList from "metabase/parameters/components/ParameterTargetL
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, Icon, Text, Transition, Tooltip } from "metabase/ui";
+import { Flex, Icon, Text, Transition, Tooltip, Box } from "metabase/ui";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
@@ -296,6 +296,9 @@ export function DashCardCardParameterMapper({
       }[virtualCardType]) ??
     "";
 
+  const shouldShowAutoConnectHint =
+    isRecentlyAutoConnected && !!selectedMappingOption;
+
   return (
     <Container isSmall={!isMobile && dashcard.size_y < 2}>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
@@ -324,7 +327,7 @@ export function DashCardCardParameterMapper({
               <Ellipsified>{headerContent}</Ellipsified>
             </Header>
           )}
-          <Flex align="center" justify="center">
+          <Flex align="center" justify="center" gap="xs" pos="relative">
             <DeprecatedTooltip tooltip={buttonTooltip}>
               <TippyPopover
                 visible={
@@ -367,22 +370,17 @@ export function DashCardCardParameterMapper({
                 </TargetButton>
               </TippyPopover>
             </DeprecatedTooltip>
-            {isRecentlyAutoConnected &&
-            layoutHeight <= 3 &&
-            selectedMappingOption ? (
-              <Tooltip label={t`Auto-connected`}>
-                <Icon name="sparkles" />
-              </Tooltip>
-            ) : null}
+            {shouldShowAutoConnectHint &&
+              layoutHeight <= 3 &&
+              dashcard.size_x > 4 && <AutoConnectedAnimatedIcon />}
           </Flex>
         </>
       )}
       <Transition
-        mounted={
-          isRecentlyAutoConnected && layoutHeight > 3 && !!selectedMappingOption
-        }
+        mounted={shouldShowAutoConnectHint && layoutHeight > 3}
         transition="fade"
-        duration={isRecentlyAutoConnected ? 400 : 0}
+        duration={400}
+        exitDuration={0}
       >
         {styles => {
           /* bottom prop is negative as we wanted to keep layout not shifted on hint */
@@ -416,6 +414,28 @@ export function DashCardCardParameterMapper({
         </Warning>
       )}
     </Container>
+  );
+}
+
+function AutoConnectedAnimatedIcon() {
+  const [mounted, setMounted] = useState(false);
+
+  useMount(() => {
+    setMounted(true);
+  });
+
+  return (
+    <Transition transition="fade" mounted={mounted} exitDuration={0}>
+      {styles => {
+        return (
+          <Box component="span" style={styles} pos="absolute" right={-20}>
+            <Tooltip label={t`Auto-connected`}>
+              <Icon name="sparkles" />
+            </Tooltip>
+          </Box>
+        );
+      }}
+    </Transition>
   );
 }
 

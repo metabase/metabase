@@ -209,7 +209,7 @@ describe("DashCardCardParameterMapper", () => {
 
     it("should render only an icon when a dashcard is short", () => {
       const card = createMockCard();
-      const dashcard = createMockDashboardCard({ card, size_y: 3 });
+      const dashcard = createMockDashboardCard({ card, size_y: 3, size_x: 5 });
 
       setup({
         dashcard,
@@ -227,6 +227,27 @@ describe("DashCardCardParameterMapper", () => {
 
       expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
       expect(getIcon("sparkles")).toBeInTheDocument();
+    });
+    it("should not render an icon when a dashcard is narrow", () => {
+      const card = createMockCard();
+      const dashcard = createMockDashboardCard({ card, size_y: 3, size_x: 3 });
+
+      setup({
+        dashcard,
+        card,
+        mappingOptions: [
+          {
+            target: ["dimension", ["field", 1]],
+            sectionName: "Section",
+            name: "Name",
+          },
+        ],
+        target: ["dimension", ["field", 1]],
+        isRecentlyAutoConnected: true,
+      });
+
+      expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
+      expect(queryIcon("sparkles")).not.toBeInTheDocument();
     });
   });
 
