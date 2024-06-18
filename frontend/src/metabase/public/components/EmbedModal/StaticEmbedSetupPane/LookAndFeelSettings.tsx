@@ -72,18 +72,14 @@ export const LookAndFeelSettings = ({
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Customizing look and feel`}
       >
-        <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
-          <ExternalLink
-            key="doc"
-            href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
-          >{t`documentation`}</ExternalLink>
-        )} for more.`}</Text>
-      </StaticEmbedSetupPaneSettingsContentSection>
-      <StaticEmbedSetupPaneSettingsContentSection
-        mt="2rem"
-        data-testid="look-and-feel-settings"
-      >
         <Stack spacing="1rem">
+          <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
+            <ExternalLink
+              key="doc"
+              href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
+            >{t`documentation`}</ExternalLink>
+          )} for more.`}</Text>
+
           {canWhitelabel ? (
             <Select
               label={
@@ -188,6 +184,7 @@ export const LookAndFeelSettings = ({
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
+
       {!canWhitelabel && (
         <>
           <Divider my="2rem" />

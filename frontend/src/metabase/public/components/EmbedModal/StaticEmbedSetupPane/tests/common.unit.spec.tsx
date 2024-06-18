@@ -475,7 +475,7 @@ describe("Static Embed Setup phase", () => {
         ).toBeVisible();
 
         const link = within(
-          screen.getByTestId("look-and-feel-settings"),
+          screen.getByLabelText("Customizing look and feel"),
         ).getByRole("link", {
           name: "a paid plan",
         });

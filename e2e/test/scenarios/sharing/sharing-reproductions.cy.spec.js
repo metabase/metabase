@@ -638,7 +638,7 @@ describeEE("issue 26988", () => {
     cy.wait("@previewDashboard");
     getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
 
-    cy.findByTestId("look-and-feel-settings")
+    cy.findByLabelText("Customizing look and feel")
       .findByLabelText("Font")
       .as("font-control")
       .click();
