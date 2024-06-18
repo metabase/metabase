@@ -7991,8 +7991,9 @@ databaseChangeLog:
 #      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
 #    - Prefer SQL migrations over custom migrations.
 #    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
-#    - Custom migrations demand a high level of reliability. They should only use code from the standard library. Requiring code
-#      from the Metabase codebase is a bad idea because it can change and break your migration.
+#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
+#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
+#      More in `metabase.db.custom_migrations` namespace doc.
 #    - Custom migrations shouldn't use Toucan models; work directly with the table names.
 #
 # 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
