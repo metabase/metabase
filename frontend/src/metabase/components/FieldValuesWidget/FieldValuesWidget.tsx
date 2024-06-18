@@ -370,6 +370,18 @@ export function FieldValuesWidgetInner({
     search.current(value);
   };
 
+  const configValues =
+    parameter?.values_source_config?.values?.filter(
+      (entry): entry is FieldValue =>
+        Boolean(entry) && typeof entry !== "string",
+    ) ?? [];
+  const fieldValues = options.concat(configValues);
+
+  // Get the label/value options from the parameter settings/options
+  const valueOptions = value
+    .map(value => fieldValues.find(entry => entry[0] === value))
+    .filter((entry): entry is FieldValue => Boolean(entry));
+
   if (!valueRenderer) {
     valueRenderer = (value: RowValue) =>
       renderValue({
@@ -378,6 +390,7 @@ export function FieldValuesWidgetInner({
         value,
         autoLoad: true,
         compact: false,
+        displayValue: valueOptions.find(option => option[0] === value)?.[1],
       });
   }
 
@@ -549,7 +562,7 @@ export function FieldValuesWidgetInner({
             value={value
               .map(value => value?.toString())
               .filter((v): v is string => v !== null && v !== undefined)}
-            data={options.map(renderStringOption)}
+            data={options.concat(valueOptions).map(renderStringOption)}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
@@ -713,6 +726,7 @@ function renderValue({
   value: RowValue;
   autoLoad?: boolean;
   compact?: boolean;
+  displayValue?: string;
 }) {
   return (
     <ValueComponent
